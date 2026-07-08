@@ -71,7 +71,7 @@ func (m *mockStore) CleanExpiredUploadedBlobs(context.Context) error { return ni
 func newTestHandler(store oci.MetadataStore) *ReferrersHandler {
 	return &ReferrersHandler{
 		store:  store,
-		config: ReferrersConfig{LibraryNamespace: "library", AnonymousAccess: true},
+		config: ReferrersConfig{LibraryNamespace: "library", AnonymousAccess: true, LibrarySupport: true},
 	}
 }
 

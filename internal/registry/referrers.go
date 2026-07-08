@@ -31,6 +31,7 @@ var (
 type ReferrersConfig struct {
 	LibraryNamespace string
 	AnonymousAccess  bool
+	LibrarySupport   bool
 }
 
 // ReferrersHandler serves the OCI referrers API.
@@ -140,6 +141,9 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *ReferrersHandler) splitName(name string) (namespace, repo string) {
 	i := strings.IndexByte(name, '/')
 	if i < 0 {
+		if !h.config.LibrarySupport {
+			return "", ""
+		}
 		return h.config.LibraryNamespace, name
 	}
 	return name[:i], name[i+1:]

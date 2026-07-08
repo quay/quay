@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -518,17 +519,70 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 		}
 	}
 
-	out := make([]oci.ReferrerRecord, len(rows))
-	for i, r := range rows {
-		out[i] = oci.ReferrerRecord{
+	seen := make(map[string]bool, len(rows))
+	out := make([]oci.ReferrerRecord, 0, len(rows))
+	for _, r := range rows {
+		seen[r.Digest] = true
+		out = append(out, oci.ReferrerRecord{
 			Digest:       r.Digest,
 			MediaType:    r.MediaType,
 			ArtifactType: r.ArtifactType.String,
 			Size:         r.Size.Int64,
 			Annotations:  parseAnnotations(r.ManifestBytes),
-		}
+		})
 	}
+
+	fallback := s.fallbackTagReferrers(ctx, q, repoID, subject, artifactType, seen)
+	out = append(out, fallback...)
 	return out, nil
+}
+
+// fallbackTagReferrers looks up the OCI referrers fallback tag schema
+// (tag named "sha256-<encoded>") and extracts descriptors from the index.
+func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries, repoID int64, subject digest.Digest, artifactType string, seen map[string]bool) []oci.ReferrerRecord {
+	tagName := strings.Replace(subject.String(), ":", "-", 1)
+	tagDigest, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
+		RepositoryID: repoID,
+		Name:         tagName,
+	})
+	if err != nil {
+		return nil
+	}
+	content, err := q.GetManifestContentByDigest(ctx, tagDigest)
+	if err != nil {
+		return nil
+	}
+
+	var idx struct {
+		Manifests []struct {
+			MediaType    string            `json:"mediaType"`
+			Digest       string            `json:"digest"`
+			Size         int64             `json:"size"`
+			ArtifactType string            `json:"artifactType"`
+			Annotations  map[string]string `json:"annotations"`
+		} `json:"manifests"`
+	}
+	if json.Unmarshal([]byte(content), &idx) != nil {
+		return nil
+	}
+
+	var out []oci.ReferrerRecord
+	for _, m := range idx.Manifests {
+		if seen[m.Digest] {
+			continue
+		}
+		if artifactType != "" && m.ArtifactType != artifactType {
+			continue
+		}
+		out = append(out, oci.ReferrerRecord{
+			Digest:       m.Digest,
+			MediaType:    m.MediaType,
+			ArtifactType: m.ArtifactType,
+			Size:         m.Size,
+			Annotations:  m.Annotations,
+		})
+	}
+	return out
 }
 
 func parseAnnotations(manifestBytes string) map[string]string {

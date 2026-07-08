@@ -109,16 +109,24 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 
-	referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
-		LibraryNamespace: resolved.Config.LibraryNamespace,
-		AnonymousAccess:  resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
-	})
+	distHandler := registrymw.SubjectHeaderMiddleware(reg.Handler())
+
+	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
+	v2Handler := distHandler
+	if referrersEnabled {
+		referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
+			LibraryNamespace: resolved.Config.LibraryNamespace,
+			AnonymousAccess:  resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
+			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+		})
+		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
-	mux.Handle("/", registry.WrapWithReferrers(referrersHandler, registrymw.SubjectHeaderMiddleware(reg.Handler())))
+	mux.Handle("/", v2Handler)
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,

@@ -16,4 +16,6 @@ type Features struct {
 	FeatureSuperUsers           *bool `yaml:"FEATURE_SUPER_USERS"`
 	FeatureSuperUsersFullAccess *bool `yaml:"FEATURE_SUPERUSERS_FULL_ACCESS"`
 	FeatureOrgSharedEmail       *bool `yaml:"FEATURE_ORG_SHARED_EMAIL"`
+	FeatureReferrersAPI         *bool `yaml:"FEATURE_REFERRERS_API"`
+	FeatureLibrarySupport       *bool `yaml:"FEATURE_LIBRARY_SUPPORT"`
 }
