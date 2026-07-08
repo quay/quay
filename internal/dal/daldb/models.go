@@ -339,6 +339,7 @@ type Manifestsecuritystatus struct {
 	IndexerHash    string    `json:"indexer_hash"`
 	IndexerVersion int64     `json:"indexer_version"`
 	MetadataJson   string    `json:"metadata_json"`
+	ErrorCount     int64     `json:"error_count"`
 }
 
 type Mediatype struct {

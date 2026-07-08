@@ -62,6 +62,30 @@ from util.secscan.v4.api import APIRequestFailure, Non200ResponseException
 logger = logging.getLogger(__name__)
 
 
+def _backfill_pending_mss():
+    """Create PENDING MSS for any manifests that don't have one yet.
+
+    The auto-create-on-push feature creates PENDING MSS during manifest push,
+    but some test-database manifests are created through paths that bypass this.
+    Call before bulk ManifestSecurityStatus.update() in tests that assert on ALL
+    MSS records.
+    """
+    existing_ids = set(
+        mss.manifest_id for mss in ManifestSecurityStatus.select(ManifestSecurityStatus.manifest)
+    )
+    for manifest in Manifest.select():
+        if manifest.id not in existing_ids:
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                index_status=IndexStatus.PENDING,
+                error_json={},
+                indexer_hash="",
+                indexer_version=IndexerVersion.V4,
+                metadata_json={},
+            )
+
+
 @pytest.fixture()
 def set_secscan_config():
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
@@ -81,15 +105,13 @@ def test_load_security_information_failed_to_index(initialized_db, set_secscan_c
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    ManifestSecurityStatus.create(
-        manifest=manifest._db_id,
-        repository=repository_ref._db_id,
+    ManifestSecurityStatus.update(
         error_json='failed to fetch layers: encountered error while fetching a layer: fetcher: unknown content-type "binary/octet-stream"',
         index_status=IndexStatus.FAILED,
         indexer_hash="",
         indexer_version=IndexerVersion.V4,
         metadata_json={},
-    )
+    ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.FAILED_TO_INDEX
@@ -100,15 +122,13 @@ def test_load_security_information_api_returns_none(initialized_db, set_secscan_
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    ManifestSecurityStatus.create(
-        manifest=manifest._db_id,
-        repository=repository_ref._db_id,
+    ManifestSecurityStatus.update(
         error_json={},
         index_status=IndexStatus.COMPLETED,
         indexer_hash="abc",
         indexer_version=IndexerVersion.V4,
         metadata_json={},
-    )
+    ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -122,15 +142,14 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    mss = ManifestSecurityStatus.create(
-        manifest=manifest._db_id,
-        repository=repository_ref._db_id,
+    ManifestSecurityStatus.update(
         error_json={},
         index_status=IndexStatus.COMPLETED,
         indexer_hash="abc",
         indexer_version=IndexerVersion.V4,
         metadata_json={},
-    )
+    ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
+    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest._db_id)
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -146,15 +165,13 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    ManifestSecurityStatus.create(
-        manifest=manifest._db_id,
-        repository=repository_ref._db_id,
+    ManifestSecurityStatus.update(
         error_json={},
         index_status=IndexStatus.COMPLETED,
         indexer_hash="abc",
         indexer_version=IndexerVersion.V4,
         metadata_json={},
-    )
+    ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -186,15 +203,13 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
 
     sec_info_cache_key = cache_key.for_security_report(manifest.digest, {})
 
-    ManifestSecurityStatus.create(
-        manifest=manifest._db_id,
-        repository=repository_ref._db_id,
+    ManifestSecurityStatus.update(
         error_json={},
         index_status=IndexStatus.COMPLETED,
         indexer_hash="abc",
         indexer_version=IndexerVersion.V4,
         metadata_json={},
-    )
+    ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -224,6 +239,8 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
 
 
 def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
@@ -255,18 +272,16 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
         "abc",
     )
 
-    for manifest in Manifest.select():
-        ManifestSecurityStatus.create(
-            manifest=manifest,
-            repository=manifest.repository,
-            error_json={},
-            index_status=IndexStatus.FAILED,
-            indexer_hash="abc",
-            indexer_version=IndexerVersion.V4,
-            last_indexed=datetime.utcnow()
-            - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
-            metadata_json={},
-        )
+    _backfill_pending_mss()
+    ManifestSecurityStatus.update(
+        error_json={},
+        index_status=IndexStatus.FAILED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow()
+        - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+        metadata_json={},
+    ).execute()
 
     secscan.perform_indexing_recent_manifests()
     secscan.perform_indexing()
@@ -287,16 +302,15 @@ def test_perform_indexing_failed_within_reindex_threshold(initialized_db, set_se
         "abc",
     )
 
-    for manifest in Manifest.select():
-        ManifestSecurityStatus.create(
-            manifest=manifest,
-            repository=manifest.repository,
-            error_json={},
-            index_status=IndexStatus.FAILED,
-            indexer_hash="abc",
-            indexer_version=IndexerVersion.V4,
-            metadata_json={},
-        )
+    _backfill_pending_mss()
+    ManifestSecurityStatus.update(
+        error_json={},
+        index_status=IndexStatus.FAILED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow(),
+        metadata_json={},
+    ).execute()
 
     secscan.perform_indexing_recent_manifests()
     secscan.perform_indexing()
@@ -315,18 +329,16 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
         "xyz",
     )
 
-    for manifest in Manifest.select():
-        ManifestSecurityStatus.create(
-            manifest=manifest,
-            repository=manifest.repository,
-            error_json={},
-            index_status=IndexStatus.COMPLETED,
-            indexer_hash="abc",
-            indexer_version=IndexerVersion.V4,
-            last_indexed=datetime.utcnow()
-            - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
-            metadata_json={},
-        )
+    _backfill_pending_mss()
+    ManifestSecurityStatus.update(
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow()
+        - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+        metadata_json={},
+    ).execute()
 
     secscan.perform_indexing_recent_manifests()
     secscan.perform_indexing()
@@ -350,18 +362,16 @@ def test_perform_indexing_needs_reindexing_skippable(
         "new hash",
     )
 
-    for manifest in Manifest.select():
-        ManifestSecurityStatus.create(
-            manifest=manifest,
-            repository=manifest.repository,
-            error_json={},
-            index_status=index_status,
-            indexer_hash="old hash",
-            indexer_version=IndexerVersion.V4,
-            last_indexed=datetime.utcnow()
-            - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
-            metadata_json={},
-        )
+    _backfill_pending_mss()
+    ManifestSecurityStatus.update(
+        error_json={},
+        index_status=index_status,
+        indexer_hash="old hash",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow()
+        - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+        metadata_json={},
+    ).execute()
 
     secscan.perform_indexing_recent_manifests()
     secscan.perform_indexing()
@@ -527,16 +537,15 @@ def test_perform_indexing_needs_reindexing_within_reindex_threshold(
         "xyz",
     )
 
-    for manifest in Manifest.select():
-        ManifestSecurityStatus.create(
-            manifest=manifest,
-            repository=manifest.repository,
-            error_json={},
-            index_status=IndexStatus.COMPLETED,
-            indexer_hash="abc",
-            indexer_version=IndexerVersion.V4,
-            metadata_json={},
-        )
+    _backfill_pending_mss()
+    ManifestSecurityStatus.update(
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow(),
+        metadata_json={},
+    ).execute()
 
     secscan.perform_indexing_recent_manifests()
     secscan.perform_indexing()
@@ -547,6 +556,8 @@ def test_perform_indexing_needs_reindexing_within_reindex_threshold(
 
 
 def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.side_effect = APIRequestFailure()
@@ -560,6 +571,8 @@ def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_
 
 
 def test_perform_indexing_api_request_index_error_response(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "xyz"}
@@ -577,6 +590,8 @@ def test_perform_indexing_api_request_index_error_response(initialized_db, set_s
 
 
 def test_perform_indexing_api_request_non_finished_state(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "xyz"}
@@ -598,6 +613,8 @@ def test_perform_indexing_api_request_non_finished_state(initialized_db, set_sec
 
 
 def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
@@ -696,6 +713,8 @@ def test_features_for_duplicates():
 
 
 def test_perform_indexing_invalid_manifest(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
 
@@ -793,6 +812,8 @@ def test_process_notification_page(initialized_db, set_secscan_config):
 
 
 def test_perform_indexing_manifest_list(initialized_db, set_secscan_config):
+    ManifestSecurityStatus.delete().execute()
+
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
@@ -1098,6 +1119,8 @@ def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
     structure = (3, [], ["latest"])  # 3 layers, no subtrees, tag named "latest"
     create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map)
 
+    ManifestSecurityStatus.delete().execute()
+
     # Now retrieve and test the manifest
     tag = registry_model.get_repo_tag(repo_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
@@ -1142,6 +1165,8 @@ def test_perform_indexing_oci_manifest(initialized_db, set_secscan_config):
     structure = (3, [], ["latest"])  # 3 layers, no subtrees, tag named "latest"
     create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="oci")
 
+    ManifestSecurityStatus.delete().execute()
+
     # Now retrieve and test the manifest
     tag = registry_model.get_repo_tag(repo_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
@@ -1185,35 +1210,31 @@ def test_batch_preemption_check(initialized_db, set_secscan_config):
     manifests = list(Manifest.select())
     assert len(manifests) > 0
 
-    # Create security status for some manifests with different timestamps
+    # Update security status for some manifests with different timestamps
     # Manifests 0-2: recently indexed (should be skipped)
     for i in range(min(3, len(manifests))):
-        ManifestSecurityStatus.create(
-            manifest=manifests[i],
-            repository=manifests[i].repository,
+        ManifestSecurityStatus.update(
             error_json={},
             index_status=IndexStatus.COMPLETED,
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             last_indexed=datetime.utcnow(),  # Recent
             metadata_json={},
-        )
+        ).where(ManifestSecurityStatus.manifest == manifests[i]).execute()
 
     # Manifests 3-5: old indexing (should be reindexed)
     if len(manifests) > 3:
         for i in range(3, min(6, len(manifests))):
-            ManifestSecurityStatus.create(
-                manifest=manifests[i],
-                repository=manifests[i].repository,
+            ManifestSecurityStatus.update(
                 error_json={},
                 index_status=IndexStatus.COMPLETED,
                 indexer_hash="abc",
                 indexer_version=IndexerVersion.V4,
                 last_indexed=reindex_threshold - timedelta(seconds=100),  # Old
                 metadata_json={},
-            )
+            ).where(ManifestSecurityStatus.manifest == manifests[i]).execute()
 
-    # Manifests 6+: not indexed at all (should be indexed)
+    # Manifests 6+: still PENDING (should be indexed)
 
     # Test batch preemption check
     all_manifest_ids = [m.id for m in manifests]

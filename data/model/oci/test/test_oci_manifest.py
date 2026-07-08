@@ -9,8 +9,11 @@ from app import docker_v2_signing_key, storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
+    IndexerVersion,
+    IndexStatus,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Tag,
     get_epoch_timestamp_ms,
 )
@@ -712,3 +715,27 @@ def test_is_manifest_present_with_none_bytes(initialized_db):
 
     mock_manifest = MockManifest()
     assert is_manifest_present(mock_manifest) is False
+
+
+class TestPendingSecurityStatus:
+    def test_creates_pending_mss_on_manifest_creation(self, initialized_db):
+        repository = create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repository)
+
+        mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
+        assert mss.index_status == IndexStatus.PENDING
+        assert mss.indexer_hash == ""
+        assert mss.indexer_version == IndexerVersion.V4
+        assert mss.repository_id == repository.id
+
+    def test_mss_failure_propagates(self, initialized_db):
+        from unittest import mock
+
+        repository = create_repository("devtable", "newrepo", None)
+
+        with mock.patch(
+            "data.model.oci.manifest.ManifestSecurityStatus.create",
+            side_effect=Exception("db error"),
+        ):
+            with pytest.raises(Exception, match="db error"):
+                create_manifest_for_testing(repository)
