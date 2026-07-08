@@ -311,10 +311,18 @@ func (d *DistDriver) statBlob(ctx context.Context, path string) (storagedriver.F
 // It handles link files (tags, layers, manifest revisions), repo directories,
 // namespace directories, and the _manifests sentinel directory.
 func (d *DistDriver) statMetadata(ctx context.Context, path string) (storagedriver.FileInfo, error) {
-	if content, err := d.getMetadataContent(ctx, path); err == nil {
+	content, err := d.getMetadataContent(ctx, path)
+	if err == nil {
 		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
 			Path: path, Size: int64(len(content)), IsDir: false,
 		}}, nil
+	}
+	// Only fall through to virtual-dir check when the path genuinely doesn't
+	// exist. Backend errors (DB timeouts, network failures) must propagate so
+	// callers can distinguish "missing" from "broken".
+	var pnf storagedriver.PathNotFoundError
+	if !errors.As(err, &pnf) {
+		return nil, err
 	}
 
 	// Virtual directories for Walk tree traversal: _manifests, repo dirs,

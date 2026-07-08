@@ -525,6 +525,21 @@ func TestDistDriver_GetRepositoryID_PropagatesNonNotExistError(t *testing.T) {
 			t.Fatalf("expected original error %q, got %q", dbErr, err)
 		}
 	})
+
+	t.Run("statMetadata", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.Stat(ctx, tagPath)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var pnf storagedriver.PathNotFoundError
+		if errors.As(err, &pnf) {
+			t.Fatalf("non-ErrNotExist error was converted to PathNotFoundError: %v", err)
+		}
+		if !errors.Is(err, dbErr) {
+			t.Fatalf("expected original error %q, got %q", dbErr, err)
+		}
+	})
 }
 
 func TestDistDriver_GetRepositoryID_ErrNotExist_ReturnsPathNotFound(t *testing.T) {
@@ -548,6 +563,12 @@ func TestDistDriver_GetRepositoryID_ErrNotExist_ReturnsPathNotFound(t *testing.T
 	t.Run("deleteLayerLink", func(t *testing.T) {
 		layerPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/aabbccdd/link"
 		err := dd.Delete(ctx, layerPath)
+		requirePathNotFound(t, err)
+	})
+
+	t.Run("statMetadata", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.Stat(ctx, tagPath)
 		requirePathNotFound(t, err)
 	})
 }
