@@ -206,6 +206,7 @@ class OrganizationTeam(ApiResource):
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("updateOrganizationTeam")
     @validate_json_request("TeamDescription")
     def put(self, orgname, teamname):
@@ -257,6 +258,7 @@ class OrganizationTeam(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteOrganizationTeam")
     def delete(self, orgname, teamname):
         """
@@ -421,6 +423,7 @@ class TeamMember(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("updateOrganizationTeamMember")
     @disallow_nonrobots_for_synced_team
     def put(self, orgname, teamname, membername):
@@ -461,6 +464,7 @@ class TeamMember(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteOrganizationTeamMember")
     @disallow_nonrobots_for_synced_team
     def delete(self, orgname, teamname, membername):
@@ -513,6 +517,7 @@ class InviteTeamMember(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("inviteTeamMemberEmail")
     @disallow_all_for_synced_team
     def put(self, orgname, teamname, email):
@@ -542,6 +547,7 @@ class InviteTeamMember(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteTeamMemberEmailInvite")
     def delete(self, orgname, teamname, email):
         """
