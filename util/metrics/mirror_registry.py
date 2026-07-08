@@ -13,9 +13,12 @@ import os
 import time
 import urllib.error
 import urllib.request
+from typing import Dict, Tuple
 
 from prometheus_client import REGISTRY
-from prometheus_client.parser import text_string_to_metric_families
+from prometheus_client.parser import (
+    text_string_to_metric_families,  # type: ignore[import-untyped]
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +141,7 @@ def get_metric_timestamps(metric_name: str, namespace=None):
 
     Returns a dict keyed by (namespace, repository) with unix timestamps as values.
     """
-    timestamps = {}
+    timestamps: Dict[Tuple[str, str], float] = {}
     try:
         for sample in _iter_metric_samples(metric_name):
             sample_namespace = sample.labels.get("namespace")
