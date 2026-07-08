@@ -1613,6 +1613,14 @@ class OAuthAccessToken(BaseModel):
     expires_at = DateTimeField()
     data = TextField()  # This is context for which this token was generated, such as the user
 
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.now)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("application", "last_accessed"), False),)
+
 
 class NotificationKind(BaseModel):
     name = CharField(index=True, unique=True)

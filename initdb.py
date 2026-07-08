@@ -400,6 +400,21 @@ def setup_database_for_testing(testcase):
     testcases[testcase]["savepoint"].__enter__()
 
 
+def _create_seed_media_types():
+    MediaType.create(name="text/plain")
+    MediaType.create(name="application/json")
+    MediaType.create(name="text/markdown")
+
+    for media_type in sorted(DOCKER_SCHEMA1_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+    for media_type in sorted(DOCKER_SCHEMA2_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+    for media_type in sorted(OCI_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+
 def initialize_database():
     db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
     db.create_tables(all_models)
@@ -604,6 +619,9 @@ def initialize_database():
     LogEntryKind.create(name="org_change_quota_limit")
     LogEntryKind.create(name="org_delete_quota_limit")
 
+    LogEntryKind.create(name="create_oauth_api_token")
+    LogEntryKind.create(name="revoke_oauth_api_token")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
@@ -664,18 +682,7 @@ def initialize_database():
     QuayRegion.create(name="us")
     QuayService.create(name="quay")
 
-    MediaType.create(name="text/plain")
-    MediaType.create(name="application/json")
-    MediaType.create(name="text/markdown")
-
-    for media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in DOCKER_SCHEMA2_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in OCI_CONTENT_TYPES:
-        MediaType.create(name=media_type)
+    _create_seed_media_types()
 
     LabelSourceType.create(name="manifest")
     LabelSourceType.create(name="api", mutable=True)
