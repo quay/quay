@@ -1033,6 +1033,53 @@ func TestWorker_StopsOnContextCancel(t *testing.T) {
 	}
 }
 
+func TestCollect_ReferrerManifestProtectedByHiddenTag(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	// Push a base manifest (tagged).
+	baseDgst := mustDigest("base-image")
+	insertManifest(t, env, repoID, baseDgst)
+	insertTag(t, env, repoID, "latest", baseDgst)
+
+	// Push a referrer manifest (no user tag) with subject pointing to base.
+	// PutManifest should create a hidden tag automatically.
+	referrerDgst := mustDigest("sbom-referrer")
+	_, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    referrerDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+		Subject:   baseDgst,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests (referrer protected by hidden tag), got %d", stats.ManifestsDeleted)
+	}
+
+	// Verify both manifests still exist.
+	_, err = env.q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID, Digest: baseDgst.String(),
+	})
+	if err != nil {
+		t.Fatal("base manifest should exist")
+	}
+	_, err = env.q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID, Digest: referrerDgst.String(),
+	})
+	if err != nil {
+		t.Fatal("referrer manifest should exist (protected by hidden tag)")
+	}
+}
+
 func getManifestID(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest) int64 {
 	t.Helper()
 	m, err := env.q.GetManifestByDigest(ctx(t), daldb.GetManifestByDigestParams{

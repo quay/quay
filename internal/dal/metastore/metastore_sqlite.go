@@ -178,10 +178,39 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		}
 	}
 
+	if m.Subject != "" {
+		if err := s.setSubjectAndProtect(ctx, q, repoID, manifestID, &m); err != nil {
+			return 0, err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return manifestID, nil
+}
+
+// setSubjectAndProtect sets the subject column on a manifest and creates a
+// hidden tag to protect the referrer from GC. Referrer manifests typically
+// have no user-visible tag, so without the hidden tag FindOrphanedManifests
+// would collect them.
+func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, m *oci.ManifestRecord) error {
+	if err := q.SetManifestSubject(ctx, daldb.SetManifestSubjectParams{
+		Subject: sql.NullString{String: m.Subject.String(), Valid: true},
+		ID:      manifestID,
+	}); err != nil {
+		return fmt.Errorf("set manifest subject %s: %w", m.Subject, err)
+	}
+	if _, err := q.InsertHiddenTag(ctx, daldb.InsertHiddenTagParams{
+		Name:            "$referrer-" + m.Digest.Encoded()[:12],
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: time.Now().UnixMilli(),
+		TagKindID:       s.tagKindTag,
+	}); err != nil {
+		return fmt.Errorf("insert hidden referrer tag: %w", err)
+	}
+	return nil
 }
 
 // ensureBlob inserts a blob into imagestorage if it doesn't already exist,

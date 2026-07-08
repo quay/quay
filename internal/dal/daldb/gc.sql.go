@@ -57,6 +57,15 @@ func (q *Queries) DeleteTagNotifications(ctx context.Context, tagID int64) error
 	return err
 }
 
+const deleteUploadedBlobsByBlobID = `-- name: DeleteUploadedBlobsByBlobID :exec
+DELETE FROM uploadedblob WHERE blob_id = ?
+`
+
+func (q *Queries) DeleteUploadedBlobsByBlobID(ctx context.Context, blobID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUploadedBlobsByBlobID, blobID)
+	return err
+}
+
 const findExpiredTags = `-- name: FindExpiredTags :many
 SELECT t.id, t.name, t.repository_id, t.manifest_id
 FROM tag t

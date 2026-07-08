@@ -166,6 +166,9 @@ func (s *SQLiteStore) deleteBlobRows(ctx context.Context, ids []int64) error {
 
 	q := daldb.New(tx)
 	for _, id := range ids {
+		if err := q.DeleteUploadedBlobsByBlobID(ctx, id); err != nil {
+			return fmt.Errorf("delete uploadedblobs for blob %d: %w", id, err)
+		}
 		if err := q.DeleteImageStoragePlacements(ctx, id); err != nil {
 			return fmt.Errorf("delete placements for blob %d: %w", id, err)
 		}

@@ -68,5 +68,8 @@ DELETE FROM imagestorageplacement WHERE storage_id = ?;
 -- name: DeleteImageStorageSignatures :exec
 DELETE FROM imagestoragesignature WHERE storage_id = ?;
 
+-- name: DeleteUploadedBlobsByBlobID :exec
+DELETE FROM uploadedblob WHERE blob_id = ?;
+
 -- name: CountBlobsByChecksum :one
 SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?;
