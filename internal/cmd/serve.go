@@ -21,6 +21,7 @@ import (
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/registry"
 	"github.com/quay/quay/internal/registry/distribution"
+	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
 	"github.com/quay/quay/internal/server"
@@ -117,7 +118,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
-	mux.Handle("/", registry.WrapWithReferrers(referrersHandler, reg.Handler()))
+	mux.Handle("/", registry.WrapWithReferrers(referrersHandler, registrymw.SubjectHeaderMiddleware(reg.Handler())))
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,

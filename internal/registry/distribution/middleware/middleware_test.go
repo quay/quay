@@ -631,6 +631,43 @@ func TestManifestPut_NoSubject(t *testing.T) {
 	}
 }
 
+func TestManifestPut_ArtifactTypeFallbackFromConfigMediaType(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("cosign-signature")
+	subjectDgst := digest.FromString("signed-image")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newRepository(innerRepo, store, "library")
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{
+		"schemaVersion": 2,
+		"subject": {"digest": "` + subjectDgst.String() + `"},
+		"config": {"mediaType": "application/vnd.dev.cosign.simplesigning.v1+json", "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a", "size": 2},
+		"layers": []
+	}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.ArtifactType != "application/vnd.dev.cosign.simplesigning.v1+json" {
+		t.Errorf("artifactType = %q, want cosign media type (fallback from config.mediaType)", store.putManifestRec.ArtifactType)
+	}
+}
+
 func namedRef(t *testing.T) reference.Named {
 	t.Helper()
 	ref, err := reference.WithName("library/test")

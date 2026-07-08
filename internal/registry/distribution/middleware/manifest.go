@@ -53,19 +53,27 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 	}
 
 	// Extract subject and artifactType from the manifest JSON if present.
+	// OCI spec: when artifactType is absent, fall back to config.mediaType.
 	var subj struct {
 		Subject *struct {
 			Digest string `json:"digest"`
 		} `json:"subject"`
 		ArtifactType string `json:"artifactType"`
+		Config       *struct {
+			MediaType string `json:"mediaType"`
+		} `json:"config"`
 	}
 	if json.Unmarshal(payload, &subj) == nil {
 		if subj.Subject != nil && subj.Subject.Digest != "" {
 			if d, err := digest.Parse(subj.Subject.Digest); err == nil {
 				record.Subject = d
+				SetSubject(ctx, d)
 			}
 		}
 		record.ArtifactType = subj.ArtifactType
+		if record.ArtifactType == "" && subj.Config != nil {
+			record.ArtifactType = subj.Config.MediaType
+		}
 	}
 
 	// Classify references as blobs or child manifests based on parent media type.

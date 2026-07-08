@@ -108,6 +108,7 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Digest:       ref.Digest,
 			Size:         ref.Size,
 			ArtifactType: ref.ArtifactType,
+			Annotations:  ref.Annotations,
 		})
 	}
 
@@ -163,10 +164,11 @@ type ociIndex struct {
 }
 
 type ociDescriptor struct {
-	MediaType    string `json:"mediaType"`
-	Digest       string `json:"digest"`
-	Size         int64  `json:"size"`
-	ArtifactType string `json:"artifactType,omitempty"`
+	MediaType    string            `json:"mediaType"`
+	Digest       string            `json:"digest"`
+	Size         int64             `json:"size"`
+	ArtifactType string            `json:"artifactType,omitempty"`
+	Annotations  map[string]string `json:"annotations,omitempty"`
 }
 
 func writeOCIError(w http.ResponseWriter, status int, code, message string) {

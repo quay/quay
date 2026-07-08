@@ -147,7 +147,7 @@ func (q *Queries) LinkManifestChild(ctx context.Context, arg LinkManifestChildPa
 }
 
 const listReferrers = `-- name: ListReferrers :many
-SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size, m.manifest_bytes
 FROM manifest m
 JOIN mediatype mt ON mt.id = m.media_type_id
 WHERE m.repository_id = ? AND m.subject = ?
@@ -159,10 +159,11 @@ type ListReferrersParams struct {
 }
 
 type ListReferrersRow struct {
-	Digest       string         `json:"digest"`
-	MediaType    string         `json:"media_type"`
-	ArtifactType sql.NullString `json:"artifact_type"`
-	Size         sql.NullInt64  `json:"size"`
+	Digest        string         `json:"digest"`
+	MediaType     string         `json:"media_type"`
+	ArtifactType  sql.NullString `json:"artifact_type"`
+	Size          sql.NullInt64  `json:"size"`
+	ManifestBytes string         `json:"manifest_bytes"`
 }
 
 func (q *Queries) ListReferrers(ctx context.Context, arg ListReferrersParams) ([]ListReferrersRow, error) {
@@ -179,6 +180,7 @@ func (q *Queries) ListReferrers(ctx context.Context, arg ListReferrersParams) ([
 			&i.MediaType,
 			&i.ArtifactType,
 			&i.Size,
+			&i.ManifestBytes,
 		); err != nil {
 			return nil, err
 		}
@@ -194,7 +196,7 @@ func (q *Queries) ListReferrers(ctx context.Context, arg ListReferrersParams) ([
 }
 
 const listReferrersByArtifactType = `-- name: ListReferrersByArtifactType :many
-SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size, m.manifest_bytes
 FROM manifest m
 JOIN mediatype mt ON mt.id = m.media_type_id
 WHERE m.repository_id = ? AND m.subject = ? AND m.artifact_type = ?
@@ -207,10 +209,11 @@ type ListReferrersByArtifactTypeParams struct {
 }
 
 type ListReferrersByArtifactTypeRow struct {
-	Digest       string         `json:"digest"`
-	MediaType    string         `json:"media_type"`
-	ArtifactType sql.NullString `json:"artifact_type"`
-	Size         sql.NullInt64  `json:"size"`
+	Digest        string         `json:"digest"`
+	MediaType     string         `json:"media_type"`
+	ArtifactType  sql.NullString `json:"artifact_type"`
+	Size          sql.NullInt64  `json:"size"`
+	ManifestBytes string         `json:"manifest_bytes"`
 }
 
 func (q *Queries) ListReferrersByArtifactType(ctx context.Context, arg ListReferrersByArtifactTypeParams) ([]ListReferrersByArtifactTypeRow, error) {
@@ -227,6 +230,7 @@ func (q *Queries) ListReferrersByArtifactType(ctx context.Context, arg ListRefer
 			&i.MediaType,
 			&i.ArtifactType,
 			&i.Size,
+			&i.ManifestBytes,
 		); err != nil {
 			return nil, err
 		}

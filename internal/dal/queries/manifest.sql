@@ -45,13 +45,13 @@ SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?;
 SELECT manifest_bytes FROM manifest WHERE digest = ? LIMIT 1;
 
 -- name: ListReferrers :many
-SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size, m.manifest_bytes
 FROM manifest m
 JOIN mediatype mt ON mt.id = m.media_type_id
 WHERE m.repository_id = ? AND m.subject = ?;
 
 -- name: ListReferrersByArtifactType :many
-SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size, m.manifest_bytes
 FROM manifest m
 JOIN mediatype mt ON mt.id = m.media_type_id
 WHERE m.repository_id = ? AND m.subject = ? AND m.artifact_type = ?;

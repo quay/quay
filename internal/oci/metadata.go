@@ -52,6 +52,7 @@ type ReferrerRecord struct {
 	MediaType    string
 	ArtifactType string
 	Size         int64
+	Annotations  map[string]string
 }
 
 // BlobRecord holds the data needed to persist blob metadata.

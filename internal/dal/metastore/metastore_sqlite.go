@@ -3,6 +3,7 @@ package metastore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -483,8 +484,17 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 	q := daldb.New(s.db)
 	subjectStr := sql.NullString{String: subject.String(), Valid: true}
 
+	type row struct {
+		Digest        string
+		MediaType     string
+		ArtifactType  sql.NullString
+		Size          sql.NullInt64
+		ManifestBytes string
+	}
+	var rows []row
+
 	if artifactType != "" {
-		rows, err := q.ListReferrersByArtifactType(ctx, daldb.ListReferrersByArtifactTypeParams{
+		res, err := q.ListReferrersByArtifactType(ctx, daldb.ListReferrersByArtifactTypeParams{
 			RepositoryID: repoID,
 			Subject:      subjectStr,
 			ArtifactType: sql.NullString{String: artifactType, Valid: true},
@@ -492,25 +502,22 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 		if err != nil {
 			return nil, fmt.Errorf("list referrers by artifact type: %w", err)
 		}
-		out := make([]oci.ReferrerRecord, len(rows))
-		for i, r := range rows {
-			out[i] = oci.ReferrerRecord{
-				Digest:       r.Digest,
-				MediaType:    r.MediaType,
-				ArtifactType: r.ArtifactType.String,
-				Size:         r.Size.Int64,
-			}
+		for _, r := range res {
+			rows = append(rows, row{r.Digest, r.MediaType, r.ArtifactType, r.Size, r.ManifestBytes})
 		}
-		return out, nil
+	} else {
+		res, err := q.ListReferrers(ctx, daldb.ListReferrersParams{
+			RepositoryID: repoID,
+			Subject:      subjectStr,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list referrers: %w", err)
+		}
+		for _, r := range res {
+			rows = append(rows, row{r.Digest, r.MediaType, r.ArtifactType, r.Size, r.ManifestBytes})
+		}
 	}
 
-	rows, err := q.ListReferrers(ctx, daldb.ListReferrersParams{
-		RepositoryID: repoID,
-		Subject:      subjectStr,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list referrers: %w", err)
-	}
 	out := make([]oci.ReferrerRecord, len(rows))
 	for i, r := range rows {
 		out[i] = oci.ReferrerRecord{
@@ -518,9 +525,20 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 			MediaType:    r.MediaType,
 			ArtifactType: r.ArtifactType.String,
 			Size:         r.Size.Int64,
+			Annotations:  parseAnnotations(r.ManifestBytes),
 		}
 	}
 	return out, nil
+}
+
+func parseAnnotations(manifestBytes string) map[string]string {
+	var parsed struct {
+		Annotations map[string]string `json:"annotations"`
+	}
+	if json.Unmarshal([]byte(manifestBytes), &parsed) == nil && len(parsed.Annotations) > 0 {
+		return parsed.Annotations
+	}
+	return nil
 }
 
 // PutUploadedBlob marks a blob as recently uploaded to protect it from GC.
