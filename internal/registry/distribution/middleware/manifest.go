@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/distribution/distribution/v3"
@@ -51,6 +52,11 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		}
 	}
 
+	record.Subject, record.ArtifactType = parseSubjectAndArtifactType(payload)
+	if record.Subject != "" {
+		SetSubject(ctx, record.Subject)
+	}
+
 	// Classify references as blobs or child manifests based on parent media type.
 	if isIndexMediaType(mt) {
 		for _, ref := range manifest.References() {
@@ -89,6 +95,34 @@ func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retE
 	}
 
 	return nil
+}
+
+// parseSubjectAndArtifactType extracts the OCI subject digest and artifact
+// type from a manifest's raw JSON payload. When artifactType is absent, it
+// falls back to config.mediaType per the OCI spec.
+func parseSubjectAndArtifactType(payload []byte) (subject digest.Digest, artifactType string) {
+	var parsed struct {
+		Subject *struct {
+			Digest string `json:"digest"`
+		} `json:"subject"`
+		ArtifactType string `json:"artifactType"`
+		Config       *struct {
+			MediaType string `json:"mediaType"`
+		} `json:"config"`
+	}
+	if json.Unmarshal(payload, &parsed) != nil {
+		return "", ""
+	}
+	if parsed.Subject != nil && parsed.Subject.Digest != "" {
+		if d, err := digest.Parse(parsed.Subject.Digest); err == nil {
+			subject = d
+		}
+	}
+	artifactType = parsed.ArtifactType
+	if artifactType == "" && parsed.Config != nil {
+		artifactType = parsed.Config.MediaType
+	}
+	return subject, artifactType
 }
 
 func isIndexMediaType(mt string) bool {

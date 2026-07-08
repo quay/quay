@@ -33,6 +33,8 @@ func newDefaultConfig() Config {
 			FeatureChangeTagExpiration: boolPtr(true),
 			FeatureAppSpecificTokens:   boolPtr(true),
 			FeatureSuperUsers:          boolPtr(true),
+			FeatureReferrersAPI:        boolPtr(true),
+			FeatureLibrarySupport:      boolPtr(true),
 		},
 	}
 }

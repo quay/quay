@@ -19,7 +19,9 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/registry"
 	"github.com/quay/quay/internal/registry/distribution"
+	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
 	"github.com/quay/quay/internal/server"
@@ -107,11 +109,24 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 
+	distHandler := registrymw.SubjectHeaderMiddleware(reg.Handler())
+
+	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
+	v2Handler := distHandler
+	if referrersEnabled {
+		referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
+			LibraryNamespace: resolved.Config.LibraryNamespace,
+			AnonymousAccess:  resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
+			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+		})
+		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
-	mux.Handle("/", reg.Handler())
+	mux.Handle("/", v2Handler)
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,
