@@ -3,10 +3,35 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.24"></a>
+## [v3.10.24] - 2026-07-06
+### PROJQUAY-11708: Deps
+- [f4dfd561c](https://github.com/quay/quay/commit/f4dfd561cdee3189d20eb799ba6c1d41a7c72cb4): Bump golang.org/x/net to version 0.55.0 ([#6343](https://github.com/quay/quay/issues/6343))
+### [Redhat-3.10] PROJQUAY-11712: Chore(Deps)
+- [6cda50f3e](https://github.com/quay/quay/commit/6cda50f3edc434962ea12a045040b90328430e99): update go version to 1.25.0 ([#6310](https://github.com/quay/quay/issues/6310))
+### [Redhat-3.10] PROJQUAY-11871: Fix(Cve)
+- [fe81ea7d7](https://github.com/quay/quay/commit/fe81ea7d70b0126404ac9078e8d4212c1065c149): CVE-2026-12143 - form-data ([#6319](https://github.com/quay/quay/issues/6319))
+### [Redhat-3.10] PROJQUAY-11961: Deps
+- [1d58647d6](https://github.com/quay/quay/commit/1d58647d6c368e0b95356315989f2e4b8c42522a): bump sanitize-html to 2.17.5 ([#6369](https://github.com/quay/quay/issues/6369))
+
 <a name="v3.10.23"></a>
-## [v3.10.23] - 2026-06-11
+## [v3.10.23] - 2026-06-26
+### PROJQUAY-11613: Fix(Cve)
+- [63231e9e7](https://github.com/quay/quay/commit/63231e9e7343c19648938b7b3726beb6749b8f02): CVE-2026-9277 - shell-quote ([#6189](https://github.com/quay/quay/issues/6189))
+### [Redhat-3.10] Deps: Fix(Cve)
+- [8b0ba7b35](https://github.com/quay/quay/commit/8b0ba7b35e67cd1b7d99e0fb941bd26739488fd0): CVE-2026-44432 - urllib3 (PROJQUAY-11592) ([#6136](https://github.com/quay/quay/issues/6136))
 ### [Redhat-3.10] Fix(Cve)
 - [78fc25306](https://github.com/quay/quay/commit/78fc253069b3e81740bf3915e41c78f91757eeda): CVE-2026-48526 - PyJWT (PROJQUAY-11671) ([#6145](https://github.com/quay/quay/issues/6145))
+### [Redhat-3.10] NO-ISSUE: Chore(Config-Tool)
+- [36628ce28](https://github.com/quay/quay/commit/36628ce286340396ff95d317e472b045fa419811): update Go base image to 1… ([#6254](https://github.com/quay/quay/issues/6254))
+### [Redhat-3.10] NO-ISSUE: Ci
+- [d6b87fd81](https://github.com/quay/quay/commit/d6b87fd814e0ece6d57be191449d1ebef048726f): move vpc sg rule cleanup to dedicated workflow job ([#6157](https://github.com/quay/quay/issues/6157))
+### [Redhat-3.10] NO-ISSUE: Fix(Ci)
+- [fde9ffd33](https://github.com/quay/quay/commit/fde9ffd33e68eeb4412c58063cff0b3d385022b4): sync conventional commit check regex with master ([#6185](https://github.com/quay/quay/issues/6185))
+### [Redhat-3.10] PROJQUAY-11721: Fix(Cve)
+- [fd4d02140](https://github.com/quay/quay/commit/fd4d021403584eca39f77b08dfcc0eda5bc38b5c): CVE-2026-10143 - kafka-python bump ([#6198](https://github.com/quay/quay/issues/6198))
+### [Redhat-3.10] PROJQUAY-11776: Chore(Web)
+- [2cce17834](https://github.com/quay/quay/commit/2cce1783420f149ebf805bf951aefed5a4c241b3): bump axios to 1.16.1 ([#6178](https://github.com/quay/quay/issues/6178))
 
 <a name="v3.10.22"></a>
 ## [v3.10.22] - 2026-05-20
@@ -619,6 +644,23 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.23"></a>
+## [v3.9.23] - 2026-06-19
+### PROJQUAY-11612: Fix(Cve)
+- [5f49de918](https://github.com/quay/quay/commit/5f49de9188de2720ab8c38eb879c1c4c1516ec4b): CVE-2026-9277 - shell-quote ([#6190](https://github.com/quay/quay/issues/6190))
+### PROJQUAY-11663: Fix(Cve)
+- [55e7e229f](https://github.com/quay/quay/commit/55e7e229fb9f3649baa3899e96cf197f88be6c6e): CVE-2026-6322 - FastUri ([#6205](https://github.com/quay/quay/issues/6205))
+### [Redhat-3.9] Deps: Fix(Cve)
+- [0279af360](https://github.com/quay/quay/commit/0279af360e9dca7d780bb762bdf44a1b3d6757f3): CVE-2026-44432 - urllib3 (PROJQUAY-11591) ([#6137](https://github.com/quay/quay/issues/6137))
+### [Redhat-3.9] Fix(Cve)
+- [0f6d37dc8](https://github.com/quay/quay/commit/0f6d37dc8d55fa7da7d0d6076b68640e840c5b95): CVE-2026-48526 - PyJWT (PROJQUAY-11671) ([#6146](https://github.com/quay/quay/issues/6146))
+### [Redhat-3.9] NO-ISSUE: Fix(Ci)
+- [638246799](https://github.com/quay/quay/commit/638246799f60ceadb6e4ff604c9a5e103543c9dd): sync conventional commit check regex with master ([#6186](https://github.com/quay/quay/issues/6186))
+### [Redhat-3.9] PROJQUAY-11715: Fix(Cve)
+- [8a85ea7ae](https://github.com/quay/quay/commit/8a85ea7aee84d02a7f50227074b3be6b273d8b83): CVE-2026-10143 - kafka-python bump ([#6199](https://github.com/quay/quay/issues/6199))
+### [Redhat-3.9] PROJQUAY-11785: Chore(Web)
+- [79676ede4](https://github.com/quay/quay/commit/79676ede431661f5963b4106b89e631524a54d19): bump axios to 1.16.1 ([#6179](https://github.com/quay/quay/issues/6179))
 
 <a name="v3.9.22"></a>
 ## [v3.9.22] - 2026-05-20
@@ -2321,7 +2363,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.23...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.24...HEAD
+[v3.10.24]: https://github.com/quay/quay/compare/v3.10.23...v3.10.24
 [v3.10.23]: https://github.com/quay/quay/compare/v3.10.22...v3.10.23
 [v3.10.22]: https://github.com/quay/quay/compare/v3.10.21...v3.10.22
 [v3.10.21]: https://github.com/quay/quay/compare/v3.10.20...v3.10.21
@@ -2345,7 +2388,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.22...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.23...v3.10.0
+[v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
 [v3.9.22]: https://github.com/quay/quay/compare/v3.9.21...v3.9.22
 [v3.9.21]: https://github.com/quay/quay/compare/v3.9.20...v3.9.21
 [v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
