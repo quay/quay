@@ -13,6 +13,7 @@ const SUPERUSER_FIXTURES = new Set([
   'freshUser',
 ]);
 const FIXTURE_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
+const SPEC_FILE_PATTERN = /\.spec\.tsx?$/;
 
 const writeMode = process.argv.includes('--write');
 const helpMode = process.argv.includes('--help') || process.argv.includes('-h');
@@ -38,7 +39,7 @@ function listSpecFiles(dir) {
       files.push(...listSpecFiles(fullPath));
     } else if (
       entry.isFile() &&
-      entry.name.endsWith('.spec.ts') &&
+      SPEC_FILE_PATTERN.test(entry.name) &&
       FIXTURE_SOURCE_EXTENSIONS.has(path.extname(entry.name))
     ) {
       files.push(fullPath);
@@ -441,16 +442,29 @@ if (allFindings.length === 0) {
 }
 
 if (writeMode) {
-  for (const [filePath, findings] of groupByFile(allFindings)) {
+  const groupedFindings = groupByFile(allFindings);
+  let appliedCount = 0;
+
+  for (const [filePath, findings] of groupedFindings) {
     const source = fs.readFileSync(filePath, 'utf8');
-    const operations = findings.map(operationForFinding);
+    const operations = findings.map(operationForFinding).filter(Boolean);
+    appliedCount += operations.length;
     fs.writeFileSync(filePath, applyOperations(source, operations));
   }
 
   console.log(
-    `Added ${SUPERUSER_TAG} to ${allFindings.length} test declarations in ` +
-      `${groupByFile(allFindings).size} files.`,
+    `Added ${SUPERUSER_TAG} to ${appliedCount} test declarations in ` +
+      `${groupedFindings.size} files.`,
   );
+
+  if (appliedCount < allFindings.length) {
+    console.error(
+      `Could not automatically update ${allFindings.length - appliedCount} ` +
+        'test declarations.',
+    );
+    process.exit(1);
+  }
+
   process.exit(0);
 }
 
