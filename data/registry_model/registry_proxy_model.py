@@ -66,7 +66,7 @@ from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_T
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestInterface
 from image.shared.schemas import parse_manifest_from_bytes
-from proxy import Proxy, UpstreamRegistryError
+from proxy import Proxy, UpstreamAuthError, UpstreamRegistryError
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)
@@ -291,6 +291,8 @@ class ProxyModel(OCIModel):
             )
         except ManifestDoesNotExist:
             raise
+        except UpstreamAuthError:
+            raise ManifestDoesNotExist("upstream authentication failed")
         except UpstreamRegistryError:
             # when the upstream fetch fails, we only return the tag if
             # it isn't yet expired. note that we don't bump the tag's
@@ -369,6 +371,8 @@ class ProxyModel(OCIModel):
                 self._create_manifest_and_retarget_tag,
             )
         except ManifestDoesNotExist as e:
+            raise TagDoesNotExist(str(e))
+        except UpstreamAuthError as e:
             raise TagDoesNotExist(str(e))
         except UpstreamRegistryError:
             # when the upstream fetch fails, we only return the tag if
@@ -887,8 +891,12 @@ class ProxyModel(OCIModel):
             raw_manifest, content_type = self._proxy.get_manifest(
                 manifest_ref, ACCEPTED_MEDIA_TYPES
             )
+        except UpstreamAuthError:
+            raise
         except UpstreamRegistryError as e:
-            raise ManifestDoesNotExist(str(e))
+            if e.status_code == 404:
+                raise ManifestDoesNotExist(str(e))
+            raise
 
         upstream_repo_name = self._upstream_repo(repo)
         upstream_namespace = self._upstream_namespace(repo)
