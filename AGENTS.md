@@ -68,6 +68,14 @@ make types-test                      # Type checking (mypy)
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
 6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+7. **Shell script defensive coding:** Validation hooks and guard scripts (e.g., `.github/hooks/`) must fail fast on missing required inputs. Never silently skip a check with `exit 0` when a required file is absent — exit non-zero with a diagnostic message to stderr instead. Never suppress errors with `2>/dev/null` in guard scripts. Always use `set -euo pipefail` at the top of every script. Example:
+   ```bash
+   set -euo pipefail
+   if [[ ! -f "$REQUIRED_FILE" ]]; then
+     echo "ERROR: $REQUIRED_FILE not found" >&2
+     exit 1
+   fi
+   ```
 
 ## Contributing
 
