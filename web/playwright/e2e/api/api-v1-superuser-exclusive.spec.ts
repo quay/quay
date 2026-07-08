@@ -114,6 +114,46 @@ test.describe('Create Install User', {tag: ['@api', '@auth:Database']}, () => {
 });
 
 // ---------------------------------------------------------------------------
+// Duplicate user error sanitization (PROJQUAY-12195)
+// ---------------------------------------------------------------------------
+test.describe(
+  'Duplicate User Error Sanitization',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('creating user with duplicate email returns sanitized error', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      // Create first user via the superuser API fixture (auto-cleaned up)
+      const user = await superuserApi.user('duptest');
+
+      // Attempt to create a second user with the same email address
+      const resp = await adminClient.post('/api/v1/superuser/users/', {
+        username: 'another_unique_name_' + Date.now(),
+        email: user.email,
+      });
+
+      // Should be a client error, not a server error
+      expect(resp.status()).toBe(400);
+
+      const body = await resp.json();
+      const errorMessage =
+        body.error_message || body.message || JSON.stringify(body);
+
+      // Error should be user-friendly
+      expect(errorMessage.toLowerCase()).toContain('email');
+      expect(errorMessage.toLowerCase()).toContain('already exists');
+
+      // Must NOT leak raw database details
+      expect(errorMessage).not.toContain('IntegrityError');
+      expect(errorMessage).not.toContain('psycopg2');
+      expect(errorMessage).not.toContain('UniqueViolation');
+      expect(errorMessage).not.toContain('user_email_key');
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Superuser changelog
 // ---------------------------------------------------------------------------
 test.describe('Superuser Changelog', {tag: ['@api', '@auth:Database']}, () => {
