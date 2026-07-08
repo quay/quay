@@ -2,7 +2,9 @@ package local
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"path/filepath"
 	"testing"
@@ -415,4 +417,158 @@ func TestDistDriver_RedirectURL(t *testing.T) {
 	if url != "" {
 		t.Errorf("RedirectURL = %q, want empty", url)
 	}
+}
+
+// errStubMetaStore is a minimal MetadataStore mock that returns a configurable
+// error from GetRepositoryID. All other methods return errNotImplemented.
+type errStubMetaStore struct {
+	getRepoErr error
+}
+
+var errNotImplemented = errors.New("not implemented")
+
+func (s *errStubMetaStore) EnsureRepository(context.Context, oci.RepositoryName) (int64, error) {
+	return 0, errNotImplemented
+}
+func (s *errStubMetaStore) PutManifest(context.Context, int64, oci.ManifestRecord) (int64, error) {
+	return 0, errNotImplemented
+}
+func (s *errStubMetaStore) DeleteManifest(context.Context, int64, digest.Digest) error {
+	return errNotImplemented
+}
+func (s *errStubMetaStore) PutBlob(context.Context, oci.BlobRecord) (int64, error) {
+	return 0, errNotImplemented
+}
+func (s *errStubMetaStore) PutTag(context.Context, int64, oci.TagRecord) (int64, error) {
+	return 0, errNotImplemented
+}
+func (s *errStubMetaStore) DeleteTag(context.Context, int64, string) error { return errNotImplemented }
+func (s *errStubMetaStore) GetRepositoryID(_ context.Context, _ oci.RepositoryName) (int64, error) {
+	return 0, s.getRepoErr
+}
+func (s *errStubMetaStore) GetTagDigest(context.Context, int64, string) (digest.Digest, error) {
+	return "", errNotImplemented
+}
+func (s *errStubMetaStore) GetManifestDigest(context.Context, int64, digest.Digest) (digest.Digest, error) {
+	return "", errNotImplemented
+}
+func (s *errStubMetaStore) GetManifestContent(context.Context, digest.Digest) ([]byte, error) {
+	return nil, errNotImplemented
+}
+func (s *errStubMetaStore) BlobExists(context.Context, digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+func (s *errStubMetaStore) BlobLinkedToRepo(context.Context, int64, digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+func (s *errStubMetaStore) ListTags(context.Context, int64) ([]string, error) {
+	return nil, errNotImplemented
+}
+func (s *errStubMetaStore) ListRepositories(context.Context) ([]oci.RepositoryName, error) {
+	return nil, errNotImplemented
+}
+func (s *errStubMetaStore) PutUploadedBlob(context.Context, int64, digest.Digest) error {
+	return errNotImplemented
+}
+func (s *errStubMetaStore) DeleteUploadedBlob(context.Context, int64, digest.Digest) (int64, error) {
+	return 0, errNotImplemented
+}
+func (s *errStubMetaStore) CleanExpiredUploadedBlobs(context.Context) error { return errNotImplemented }
+
+func TestDistDriver_GetRepositoryID_PropagatesNonNotExistError(t *testing.T) {
+	dbErr := errors.New("database connection timeout")
+	stub := &errStubMetaStore{getRepoErr: dbErr}
+	dd := NewDistDriver(nil, stub)
+	ctx := t.Context()
+
+	t.Run("getMetadataContent", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.GetContent(ctx, tagPath)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var pnf storagedriver.PathNotFoundError
+		if errors.As(err, &pnf) {
+			t.Fatalf("non-ErrNotExist error was converted to PathNotFoundError: %v", err)
+		}
+		if !errors.Is(err, dbErr) {
+			t.Fatalf("expected original error %q, got %q", dbErr, err)
+		}
+	})
+
+	t.Run("listTags", func(t *testing.T) {
+		tagsDir := "/docker/registry/v2/repositories/lib/test/_manifests/tags"
+		_, err := dd.List(ctx, tagsDir)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var pnf storagedriver.PathNotFoundError
+		if errors.As(err, &pnf) {
+			t.Fatalf("non-ErrNotExist error was converted to PathNotFoundError: %v", err)
+		}
+		if !errors.Is(err, dbErr) {
+			t.Fatalf("expected original error %q, got %q", dbErr, err)
+		}
+	})
+
+	t.Run("deleteLayerLink", func(t *testing.T) {
+		layerPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/aabbccdd/link"
+		err := dd.Delete(ctx, layerPath)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var pnf storagedriver.PathNotFoundError
+		if errors.As(err, &pnf) {
+			t.Fatalf("non-ErrNotExist error was converted to PathNotFoundError: %v", err)
+		}
+		if !errors.Is(err, dbErr) {
+			t.Fatalf("expected original error %q, got %q", dbErr, err)
+		}
+	})
+
+	t.Run("statMetadata", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.Stat(ctx, tagPath)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var pnf storagedriver.PathNotFoundError
+		if errors.As(err, &pnf) {
+			t.Fatalf("non-ErrNotExist error was converted to PathNotFoundError: %v", err)
+		}
+		if !errors.Is(err, dbErr) {
+			t.Fatalf("expected original error %q, got %q", dbErr, err)
+		}
+	})
+}
+
+func TestDistDriver_GetRepositoryID_ErrNotExist_ReturnsPathNotFound(t *testing.T) {
+	notExistErr := fmt.Errorf("get repository lib/test: %w", oci.ErrNotExist)
+	stub := &errStubMetaStore{getRepoErr: notExistErr}
+	dd := NewDistDriver(nil, stub)
+	ctx := t.Context()
+
+	t.Run("getMetadataContent", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.GetContent(ctx, tagPath)
+		requirePathNotFound(t, err)
+	})
+
+	t.Run("listTags", func(t *testing.T) {
+		tagsDir := "/docker/registry/v2/repositories/lib/test/_manifests/tags"
+		_, err := dd.List(ctx, tagsDir)
+		requirePathNotFound(t, err)
+	})
+
+	t.Run("deleteLayerLink", func(t *testing.T) {
+		layerPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/aabbccdd/link"
+		err := dd.Delete(ctx, layerPath)
+		requirePathNotFound(t, err)
+	})
+
+	t.Run("statMetadata", func(t *testing.T) {
+		tagPath := "/docker/registry/v2/repositories/lib/test/_manifests/tags/latest/current/link"
+		_, err := dd.Stat(ctx, tagPath)
+		requirePathNotFound(t, err)
+	})
 }

@@ -89,7 +89,10 @@ func (d *DistDriver) getMetadataContent(ctx context.Context, path string) ([]byt
 	}
 	repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
 	if err != nil {
-		return nil, storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return nil, storagedriver.PathNotFoundError{Path: path}
+		}
+		return nil, err
 	}
 	dgst, err := d.resolveLink(ctx, repoID, path)
 	if err != nil {
@@ -308,10 +311,18 @@ func (d *DistDriver) statBlob(ctx context.Context, path string) (storagedriver.F
 // It handles link files (tags, layers, manifest revisions), repo directories,
 // namespace directories, and the _manifests sentinel directory.
 func (d *DistDriver) statMetadata(ctx context.Context, path string) (storagedriver.FileInfo, error) {
-	if content, err := d.getMetadataContent(ctx, path); err == nil {
+	content, err := d.getMetadataContent(ctx, path)
+	if err == nil {
 		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
 			Path: path, Size: int64(len(content)), IsDir: false,
 		}}, nil
+	}
+	// Only fall through to virtual-dir check when the path genuinely doesn't
+	// exist. Backend errors (DB timeouts, network failures) must propagate so
+	// callers can distinguish "missing" from "broken".
+	var pnf storagedriver.PathNotFoundError
+	if !errors.As(err, &pnf) {
+		return nil, err
 	}
 
 	// Virtual directories for Walk tree traversal: _manifests, repo dirs,
@@ -390,7 +401,10 @@ func (d *DistDriver) listTags(ctx context.Context, path string) ([]string, error
 	name := repoNameFromString(repo)
 	repoID, err := d.meta.GetRepositoryID(ctx, name)
 	if err != nil {
-		return nil, storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return nil, storagedriver.PathNotFoundError{Path: path}
+		}
+		return nil, err
 	}
 	tags, err := d.meta.ListTags(ctx, repoID)
 	if err != nil {
@@ -550,7 +564,10 @@ func (d *DistDriver) deleteLayerLink(ctx context.Context, path string) error {
 	}
 	repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
 	if err != nil {
-		return storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return storagedriver.PathNotFoundError{Path: path}
+		}
+		return err
 	}
 	dgst, err := digestFromLinkPath(path, "/_layers/")
 	if err != nil {
