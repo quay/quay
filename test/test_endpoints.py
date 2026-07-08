@@ -389,6 +389,27 @@ class WebEndpointTestCase(EndpointTestCase):
         )
         assert "Are you sure you want to authorize this application?" in str(response)
 
+    def test_request_authorization_code_assignment_must_match_app(self):
+        self.login("devtable", "password")
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app_a = model.oauth.create_application(org, "test-a", "http://foo/a", "http://foo/bar/baz")
+        app_b = model.oauth.create_application(org, "test-b", "http://foo/b", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app_a, devtable, app_a.redirect_uri, "repo:read", "token"
+        )
+        self.getResponse(
+            "web.request_authorization_code",
+            client_id=app_b.client_id,
+            redirect_uri=app_b.redirect_uri,
+            scope="repo:read",
+            assignment_uuid=assignment.uuid,
+            response_type="token",
+            expected_code=403,
+        )
+        assert model.oauth.get_assigned_authorization_for_user(devtable, assignment.uuid)
+
     def test_request_authorization_code_assigned_authorization_disabled(self):
         self.login("devtable", "password")
         devtable = get_user("devtable")
@@ -534,11 +555,10 @@ class OAuthTestCase(EndpointTestCase):
         }
 
         resp = self.postResponse(
-            "web.authorize_application", form=form, with_csrf=True, expected_code=302
+            "web.authorize_application", form=form, with_csrf=True, expected_code=400
         )
-        self.assertEqual(
-            "http://localhost:5000/foobar?error=unauthorized_client", resp.headers["Location"]
-        )
+        self.assertNotIn("Location", resp.headers)
+        self.assertIn(b"unauthorized_client", resp.data)
 
     @parameterized.expand(["token", "code"])
     def test_authorize_invalidscope(self, response_type):
@@ -698,7 +718,7 @@ class OAuthTestCase(EndpointTestCase):
         form = {
             "client_id": app.client_id,
             "redirect_uri": app.redirect_uri,
-            "scope": "user:admin",
+            "scope": "repo:read",
             "assignment_uuid": assignment.uuid,
             "response_type": "token",
         }

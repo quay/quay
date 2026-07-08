@@ -53,7 +53,7 @@ from data.database import User, db, random_string_generator
 from data.model.oauth import (
     assign_token_to_user,
     get_oauth_application_for_client_id,
-    get_token_assignment,
+    get_token_assignment_for_request,
 )
 from data.model.organization import is_org_admin
 from data.model.user import get_nonrobot_user, get_user
@@ -745,14 +745,20 @@ def request_authorization_code():
     if not oauth_app:
         abort(404)
 
+    token_assignment = get_token_assignment_for_request(
+        assignment_uuid,
+        current_user.db_user(),
+        client_id,
+        redirect_uri,
+        response_type,
+        scope,
+    )
+
     # If PUBLIC_OAUTH_APPS is disabled, require org admin or a pre-assigned token.
     if not features.PUBLIC_OAUTH_APPS:
         if (
             not is_org_admin(current_user.db_user(), oauth_app.organization)
-            and get_token_assignment(
-                assignment_uuid, current_user.db_user(), oauth_app.organization
-            )
-            is None
+            and token_assignment is None
         ):
             abort(403)
 

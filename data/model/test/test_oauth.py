@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from auth.scopes import READ_REPO
+from auth.scopes import READ_REPO, WRITE_REPO
 from data import model
 from data.database import LogEntryKind, OAuthAccessToken
 from data.model.oauth import DatabaseAuthorizationProvider
@@ -11,8 +11,11 @@ REDIRECT_URI = "http://foo/bar/baz"
 
 
 class MockDatabaseAuthorizationProvider(DatabaseAuthorizationProvider):
+    def __init__(self, user=None):
+        self._user = user
+
     def get_authorized_user(self):
-        return model.user.get_user("devtable")
+        return self._user or model.user.get_user("devtable")
 
 
 def setup(num_assignments=0):
@@ -246,6 +249,150 @@ def test_get_token_assignment_for_client_id(initialized_db):
         )
         == token_assignment
     )
+
+
+def test_get_token_assignment_for_request_matches_exact_request(initialized_db):
+    application, token_assignment, user, org = setup()
+
+    assert (
+        model.oauth.get_token_assignment_for_request(
+            token_assignment.uuid,
+            user,
+            application.client_id,
+            REDIRECT_URI,
+            "token",
+            READ_REPO.scope,
+        )
+        == token_assignment
+    )
+    assert (
+        model.oauth.get_token_assignment_for_request(
+            token_assignment.uuid,
+            user,
+            application.client_id,
+            REDIRECT_URI,
+            "code",
+            READ_REPO.scope,
+        )
+        is None
+    )
+    assert (
+        model.oauth.get_token_assignment_for_request(
+            token_assignment.uuid,
+            user,
+            application.client_id,
+            "http://foo/other",
+            "token",
+            READ_REPO.scope,
+        )
+        is None
+    )
+
+
+def test_token_assignment_for_app_a_cannot_authorize_app_b(initialized_db):
+    org = model.organization.get_organization("buynlarge")
+    user = model.user.get_user("freshuser")
+    app_a = model.oauth.create_application(org, "test-a", "http://foo/a", REDIRECT_URI)
+    app_b = model.oauth.create_application(org, "test-b", "http://foo/b", REDIRECT_URI)
+    assignment = model.oauth.assign_token_to_user(
+        app_a, user, REDIRECT_URI, READ_REPO.scope, "token"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="http://foo/bar/baz"):
+        with patch("data.model.oauth.features") as mock_features:
+            mock_features.PUBLIC_OAUTH_APPS = False
+            db_auth_provider = MockDatabaseAuthorizationProvider(user)
+            response = db_auth_provider.get_token_response(
+                "token",
+                app_b.client_id,
+                REDIRECT_URI,
+                assignment.uuid,
+                scope=READ_REPO.scope,
+            )
+
+    assert response.status_code == 302
+    assert "error=unauthorized_client" in response.headers["Location"]
+    assert model.oauth.get_assigned_authorization_for_user(user, assignment.uuid) is not None
+
+
+def test_token_assignment_scope_must_cover_requested_scope(initialized_db):
+    org = model.organization.get_organization("buynlarge")
+    user = model.user.get_user("freshuser")
+    application = model.oauth.create_application(org, "test-scope", "http://foo/bar", REDIRECT_URI)
+
+    narrower_assignment = model.oauth.assign_token_to_user(
+        application, user, REDIRECT_URI, READ_REPO.scope, "token"
+    )
+    with patch("data.model.oauth.url_for", return_value="http://foo/bar/baz"):
+        with patch("data.model.oauth.features") as mock_features:
+            mock_features.PUBLIC_OAUTH_APPS = False
+            db_auth_provider = MockDatabaseAuthorizationProvider(user)
+            response = db_auth_provider.get_token_response(
+                "token",
+                application.client_id,
+                REDIRECT_URI,
+                narrower_assignment.uuid,
+                scope=WRITE_REPO.scope,
+            )
+
+    assert response.status_code == 302
+    assert "error=unauthorized_client" in response.headers["Location"]
+    assert model.oauth.get_assigned_authorization_for_user(user, narrower_assignment.uuid)
+
+    broader_assignment = model.oauth.assign_token_to_user(
+        application, user, REDIRECT_URI, WRITE_REPO.scope, "token"
+    )
+    with patch("data.model.oauth.url_for", return_value="http://foo/bar/baz"):
+        with patch("data.model.oauth.features") as mock_features:
+            mock_features.PUBLIC_OAUTH_APPS = False
+            db_auth_provider = MockDatabaseAuthorizationProvider(user)
+            response = db_auth_provider.get_token_response(
+                "token",
+                application.client_id,
+                REDIRECT_URI,
+                broader_assignment.uuid,
+                scope=READ_REPO.scope,
+            )
+
+    assert response.status_code == 302
+    assert "error" not in response.headers["Location"]
+    assert "access_token=" in response.headers["Location"]
+    assert model.oauth.get_assigned_authorization_for_user(user, broader_assignment.uuid) is None
+
+
+def test_only_exact_assignment_is_consumed_after_successful_token_issuance(initialized_db):
+    application, token_assignment, user, org = setup()
+    mismatched_assignment = model.oauth.assign_token_to_user(
+        application, user, "http://foo/other", READ_REPO.scope, "token"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="http://foo/bar/baz"):
+        db_auth_provider = MockDatabaseAuthorizationProvider(user)
+        response = db_auth_provider.get_token_response(
+            "token",
+            application.client_id,
+            REDIRECT_URI,
+            mismatched_assignment.uuid,
+            scope=READ_REPO.scope,
+        )
+
+    assert response.status_code == 302
+    assert "access_token=" in response.headers["Location"]
+    assert model.oauth.get_assigned_authorization_for_user(user, mismatched_assignment.uuid)
+
+    with patch("data.model.oauth.url_for", return_value="http://foo/bar/baz"):
+        db_auth_provider = MockDatabaseAuthorizationProvider(user)
+        response = db_auth_provider.get_token_response(
+            "token",
+            application.client_id,
+            REDIRECT_URI,
+            token_assignment.uuid,
+            scope=READ_REPO.scope,
+        )
+
+    assert response.status_code == 302
+    assert "access_token=" in response.headers["Location"]
+    assert model.oauth.get_assigned_authorization_for_user(user, token_assignment.uuid) is None
 
 
 # Security tests for PROJQUAY-9849: OAuth Redirect URI Validation Bypass
