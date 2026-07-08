@@ -236,7 +236,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
             )
 
-        if status.index_status == IndexStatus.IN_PROGRESS:
+        if status.index_status in (IndexStatus.PENDING, IndexStatus.IN_PROGRESS):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         assert status.index_status == IndexStatus.COMPLETED

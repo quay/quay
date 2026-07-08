@@ -197,6 +197,7 @@ jobs:
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
+            FEATURE_SECURITY_SCANNER_V2: true
             FEATURE_SECURITY_NOTIFICATIONS: true
             DEFAULT_UI: react
             AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0
