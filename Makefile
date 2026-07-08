@@ -471,7 +471,7 @@ go-schema:
 	@echo 'DB_URI: sqlite:///$(SCHEMA_TMP)/quay.db' > $(SCHEMA_TMP)/stack/config.yaml
 	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
 	@echo "=== Extracting schema DDL ==="
-	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@python3 tools/deterministic_schema_dump.py $(SCHEMA_TMP)/quay.db $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql > $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp && mv $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@echo "=== Extracting seed data ==="
 	@sqlite3 $(SCHEMA_TMP)/quay.db \
