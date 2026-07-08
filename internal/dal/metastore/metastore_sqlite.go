@@ -532,25 +532,35 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 		})
 	}
 
-	fallback := s.fallbackTagReferrers(ctx, q, repoID, subject, artifactType, seen)
+	fallback, err := s.fallbackTagReferrers(ctx, q, repoID, subject, artifactType, seen)
+	if err != nil {
+		return nil, fmt.Errorf("fallback tag referrers: %w", err)
+	}
 	out = append(out, fallback...)
 	return out, nil
 }
 
 // fallbackTagReferrers looks up the OCI referrers fallback tag schema
 // (tag named "sha256-<encoded>") and extracts descriptors from the index.
-func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries, repoID int64, subject digest.Digest, artifactType string, seen map[string]bool) []oci.ReferrerRecord {
+// Returns (nil, nil) when the fallback tag does not exist.
+func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries, repoID int64, subject digest.Digest, artifactType string, seen map[string]bool) ([]oci.ReferrerRecord, error) {
 	tagName := strings.Replace(subject.String(), ":", "-", 1)
 	tagDigest, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
 		RepositoryID: repoID,
 		Name:         tagName,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("get fallback tag %q: %w", tagName, err)
 	}
 	content, err := q.GetManifestContentByDigest(ctx, tagDigest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("get fallback manifest %s: %w", tagDigest, err)
 	}
 
 	var idx struct {
@@ -562,8 +572,8 @@ func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries
 			Annotations  map[string]string `json:"annotations"`
 		} `json:"manifests"`
 	}
-	if json.Unmarshal([]byte(content), &idx) != nil {
-		return nil
+	if err := json.Unmarshal([]byte(content), &idx); err != nil {
+		return nil, nil //nolint:nilerr // malformed fallback index is treated as absent
 	}
 
 	var out []oci.ReferrerRecord
@@ -582,7 +592,7 @@ func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries
 			Annotations:  m.Annotations,
 		})
 	}
-	return out
+	return out, nil
 }
 
 func parseAnnotations(manifestBytes string) map[string]string {

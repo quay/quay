@@ -510,6 +510,60 @@ func TestListReferrers_FilterByArtifactType(t *testing.T) {
 	}
 }
 
+func TestListReferrers_FallbackTagSchema(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("subject-for-fallback")
+
+	// Create an OCI index manifest that lists referrers (the fallback tag content)
+	referrerDgst := digest.FromString("fallback-referrer")
+	indexContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"` + referrerDgst.String() + `","size":100,"artifactType":"application/vnd.example.sbom.v1","annotations":{"org.test":"value"}}]}`)
+	indexDgst := digest.FromBytes(indexContent)
+
+	// Store the index manifest
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    indexDgst,
+		MediaType: "application/vnd.oci.image.index.v1+json",
+		Content:   indexContent,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the fallback tag: "sha256-<encoded>" pointing to the index
+	_, err = store.PutTag(ctx, repoID, oci.TagRecord{
+		Name:   "sha256-" + subjectDgst.Encoded(),
+		Digest: indexDgst,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Query referrers — should find the descriptor from the fallback tag
+	refs, err := store.ListReferrers(ctx, repoID, subjectDgst, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("referrers = %d, want 1 (from fallback tag)", len(refs))
+	}
+	if refs[0].Digest != referrerDgst.String() {
+		t.Errorf("digest = %s, want %s", refs[0].Digest, referrerDgst)
+	}
+	if refs[0].ArtifactType != "application/vnd.example.sbom.v1" {
+		t.Errorf("artifactType = %q, want sbom", refs[0].ArtifactType)
+	}
+	if refs[0].Annotations["org.test"] != "value" {
+		t.Errorf("annotations = %v, want org.test=value", refs[0].Annotations)
+	}
+}
+
 // --- test helpers ---
 
 func assertActiveTag(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
