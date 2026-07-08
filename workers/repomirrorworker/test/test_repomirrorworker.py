@@ -2321,3 +2321,14 @@ def test_perform_mirror_generic_exception_during_sync(
     assert mock_release.call_count >= 1
     fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
     assert len(fail_calls) >= 1
+
+
+def test_workers_active_gauge_reset_on_terminate(initialized_db, app):
+    with mock.patch(
+        "workers.repomirrorworker.repomirrorworker.repo_mirror_workers_active"
+    ) as gauge:
+        worker = RepoMirrorWorker()
+        gauge.set.assert_called_once_with(1)
+
+        worker.terminate(graceful=True)
+        gauge.set.assert_called_with(0)

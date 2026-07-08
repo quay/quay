@@ -692,7 +692,7 @@ def test_extended_logging_omits_performer_email(
             )
 
             sent_event = mock_send.call_args[0][0]
-            assert "performer_email" not in sent_event
+            assert sent_event.get("performer_email") is None
             assert sent_event["performer_username"] == "fake_username"
             assert sent_event["request_url"] == "/api/v1/repository/devtable/repo1"
             assert sent_event["http_method"] == "POST"

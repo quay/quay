@@ -113,6 +113,12 @@ test.describe(
           // tags_pending is a number
           expect(typeof body.tags_pending).toBe('number');
 
+          // workers.active/configured are non-negative integers
+          expect(typeof body.workers.active).toBe('number');
+          expect(body.workers.active).toBeGreaterThanOrEqual(0);
+          expect(typeof body.workers.configured).toBe('number');
+          expect(body.workers.configured).toBeGreaterThanOrEqual(0);
+
           // last_check is an ISO timestamp ending in Z
           expect(body.last_check).toMatch(/Z$/);
 

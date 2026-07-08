@@ -258,15 +258,9 @@ quay_repository_rows_unmirrored 42
 - `limit` (optional, integer): Maximum repositories returned in `repositories.details` when `detailed=true` (default: 100, max: 1000)
 - `offset` (optional, integer): Offset into the sorted mirror list for paginated details (default: 0)
 
-<<<<<<< HEAD
-The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples in **this** process’s Prometheus registry. On typical deployments the API does not run the mirror worker, so that sum is often `0` unless metrics are shared with the worker process.
-
-The `workers.active` field is `quay_repository_mirror_workers_active` from **this** process’s registry (again often `0` on API-only pods). `workers.configured` is **`REPO_MIRROR_WORKER_REPLICAS`** when that config is set; otherwise it mirrors `workers.active` (both from the same in-process gauge). When `REPO_MIRROR_WORKER_REPLICAS` is set and exceeds `workers.active` while at least one enabled mirror exists, the response includes a warning issue and `healthy` may be `false` (HTTP **503**).
-=======
 The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples scraped from **`PROMETHEUS_PUSHGATEWAY_URL`** (where mirror workers push metrics). When PushGateway is unavailable, the API falls back to the in-process registry (used in unit tests).
 
 The `workers.active` field is `quay_repository_mirror_workers_active` summed across **fresh** PushGateway worker groupings (stale series from shut-down workers are ignored). `workers.configured` is **`REPO_MIRROR_WORKER_REPLICAS`** when that config is set; otherwise it mirrors `workers.active`. Replica mismatch warnings are emitted only when at least one worker reports in (`workers.active > 0`) and the count is below `REPO_MIRROR_WORKER_REPLICAS`, avoiding false **503** responses when metrics are temporarily unavailable on API pods.
->>>>>>> b0712e9f6 (PROJQUAY-12005: Mirror health API returns stale data: workers.active, tags_pending, last_sync always zero/null)
 
 All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run`) and the optional `repositories.details` list include **enabled** mirror configurations only; disabled mirrors are omitted.
 
@@ -338,11 +332,7 @@ All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run
 
 When `detailed=true` is specified:
 
-<<<<<<< HEAD
-Each `repositories.details[]` item includes `last_sync`, which is either an ISO-8601 UTC timestamp string ending in `Z` or **`null`**. The API reads `quay_repository_mirror_last_sync_timestamp` from the in-process Prometheus registry in `endpoints/api/mirrorhealth.py`; when that metric has no sample for the repo in this process (typical when the mirror worker runs elsewhere), `last_sync` is `null`. Clients must treat the field as nullable.
-=======
 Each `repositories.details[]` item includes `last_sync`, which is either an ISO-8601 UTC timestamp string ending in `Z` or **`null`**. The API reads `quay_repository_mirror_last_sync_timestamp` from PushGateway via `util/metrics/mirror_registry.py`; when no sample exists for the repo, `last_sync` is `null`. Clients must treat the field as nullable.
->>>>>>> b0712e9f6 (PROJQUAY-12005: Mirror health API returns stale data: workers.active, tags_pending, last_sync always zero/null)
 
 The `workers.status` field reflects aggregate health: repository mirror row state plus optional replica mismatch when `REPO_MIRROR_WORKER_REPLICAS` is configured.
 
