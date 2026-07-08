@@ -249,6 +249,9 @@ jobs:
       - name: Install dependencies
         run: cd web && pnpm install --frozen-lockfile
 
+      - name: Check Playwright superuser tags
+        run: cd web && pnpm run test:e2e:check-superuser-tags
+
       - name: Get Playwright version
         id: playwright-version
         run: |

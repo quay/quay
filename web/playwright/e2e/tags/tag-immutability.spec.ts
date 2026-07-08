@@ -352,61 +352,62 @@ test.describe(
       await expect(makeImmutableAction).toHaveClass(/pf-m-disabled/);
     });
 
-    test('superuser can remove immutability from a tag', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      const repo = await superuserApi.repository();
-      await pushImage(
-        repo.namespace,
-        repo.name,
-        'immutable-tag',
-        TEST_USERS.admin.username,
-        TEST_USERS.admin.password,
-      );
-      await superuserApi.raw.setTagImmutability(
-        repo.namespace,
-        repo.name,
-        'immutable-tag',
-        true,
-      );
+    test(
+      'superuser can remove immutability from a tag',
+      {tag: '@superuser'},
+      async ({superuserPage, superuserApi}) => {
+        const repo = await superuserApi.repository();
+        await pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-tag',
+          TEST_USERS.admin.username,
+          TEST_USERS.admin.password,
+        );
+        await superuserApi.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-tag',
+          true,
+        );
 
-      await superuserPage.goto(`/repository/${repo.fullName}?tab=tags`);
+        await superuserPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
-      await expect(
-        superuserPage.getByRole('link', {name: 'immutable-tag', exact: true}),
-      ).toBeVisible({timeout: 30000});
+        await expect(
+          superuserPage.getByRole('link', {name: 'immutable-tag', exact: true}),
+        ).toBeVisible({timeout: 30000});
 
-      const tagRow = superuserPage.getByRole('row').filter({
-        has: superuserPage.getByRole('link', {
-          name: 'immutable-tag',
-          exact: true,
-        }),
-      });
-      await expect(tagRow.getByTestId('immutable-tag-icon')).toBeVisible();
+        const tagRow = superuserPage.getByRole('row').filter({
+          has: superuserPage.getByRole('link', {
+            name: 'immutable-tag',
+            exact: true,
+          }),
+        });
+        await expect(tagRow.getByTestId('immutable-tag-icon')).toBeVisible();
 
-      await tagRow.getByLabel('Tag actions kebab').click();
-      await superuserPage
-        .getByRole('menuitem', {name: 'Remove immutability'})
-        .click();
+        await tagRow.getByLabel('Tag actions kebab').click();
+        await superuserPage
+          .getByRole('menuitem', {name: 'Remove immutability'})
+          .click();
 
-      await expect(
-        superuserPage.getByTestId('immutability-modal'),
-      ).toBeVisible();
-      await expect(
-        superuserPage.getByText('Remove immutability from 1 tag?'),
-      ).toBeVisible();
+        await expect(
+          superuserPage.getByTestId('immutability-modal'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByText('Remove immutability from 1 tag?'),
+        ).toBeVisible();
 
-      await superuserPage.getByTestId('confirm-immutability-btn').click();
+        await superuserPage.getByTestId('confirm-immutability-btn').click();
 
-      await expect(
-        superuserPage.getByTestId('immutability-modal'),
-      ).not.toBeVisible();
+        await expect(
+          superuserPage.getByTestId('immutability-modal'),
+        ).not.toBeVisible();
 
-      await expect(tagRow.getByTestId('immutable-tag-icon')).not.toBeVisible({
-        timeout: 10000,
-      });
-    });
+        await expect(tagRow.getByTestId('immutable-tag-icon')).not.toBeVisible({
+          timeout: 10000,
+        });
+      },
+    );
 
     test('bulk set expiration shows warning for immutable tags', async ({
       authenticatedPage,

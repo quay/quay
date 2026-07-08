@@ -62,6 +62,7 @@ test.describe('Feature Name', { tag: ['@critical', '@repository'] }, () => {
 | Config | `@config:BILLING` | `@config:OIDC` | Required config |
 | Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature |
 | Container | `@container` | `@container` | Requires registry image tooling (auto-skip) |
+| Superuser | `@superuser` | `@superuser` | Uses superuser-authenticated fixtures or local fixtures backed by them |
 
 ### Running Tagged Tests
 
@@ -80,6 +81,20 @@ npx playwright test --grep-invert @config:BILLING
 
 # Combine filters (AND logic)
 npx playwright test --grep "(?=.*@critical)(?=.*@repository)"
+```
+
+### Superuser Fixture Tags
+
+Tests that use `superuserPage`, `superuserRequest`, `superuserApi`,
+`superuserContext`, `freshUser`, or spec-local fixtures backed by those fixtures
+must include `@superuser`.
+
+```bash
+# Check tag coverage
+pnpm run test:e2e:check-superuser-tags
+
+# Add missing tags to existing tests
+pnpm run test:e2e:fix-superuser-tags
 ```
 
 ## Command Mapping

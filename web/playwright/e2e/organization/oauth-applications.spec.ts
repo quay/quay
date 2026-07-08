@@ -76,18 +76,19 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     ).toBeVisible();
   });
 
-  test('non-admin users cannot see OAuth Applications tab', async ({
-    authenticatedPage: page,
-    superuserApi,
-  }) => {
-    // Create org as superuser so testuser is NOT an admin
-    const org = await superuserApi.organization('noadmin');
+  test(
+    'non-admin users cannot see OAuth Applications tab',
+    {tag: '@superuser'},
+    async ({authenticatedPage: page, superuserApi}) => {
+      // Create org as superuser so testuser is NOT an admin
+      const org = await superuserApi.organization('noadmin');
 
-    await page.goto(`/organization/${org.name}`);
+      await page.goto(`/organization/${org.name}`);
 
-    // OAuth Applications tab should not be visible
-    await expect(page.getByText('OAuth Applications')).not.toBeVisible();
-  });
+      // OAuth Applications tab should not be visible
+      await expect(page.getByText('OAuth Applications')).not.toBeVisible();
+    },
+  );
 
   test('bulk select and delete apps with the same name', async ({
     authenticatedPage: page,

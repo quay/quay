@@ -52,6 +52,8 @@
     "test:coverage": "vitest run --coverage",
     "test:api": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @api",
     "test:e2e": "playwright test",
+    "test:e2e:check-superuser-tags": "node playwright/ensure-superuser-tags.cjs",
+    "test:e2e:fix-superuser-tags": "node playwright/ensure-superuser-tags.cjs --write",
     "test:e2e:no-api": "playwright test --grep-invert @api",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",

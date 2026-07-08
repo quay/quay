@@ -113,7 +113,7 @@ test.describe(
 test.describe('Signin session handling', {tag: ['@auth', '@signin']}, () => {
   test(
     'session cookie honors configured SESSION_TIMEOUT',
-    {tag: ['@PROJQUAY-5657', '@auth:Database']},
+    {tag: ['@PROJQUAY-5657', '@auth:Database', '@superuser']},
     async ({browser, freshUser}) => {
       const context = await browser.newContext();
 
@@ -166,7 +166,7 @@ test.describe('Signin error handling', {tag: ['@auth', '@signin']}, () => {
 
   test(
     'handles unverified email',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@superuser']},
     async ({browser, superuserApi}) => {
       // Create user but don't verify email
       const username = uniqueName('unverified');
@@ -423,85 +423,88 @@ test.describe(
   'Global Messages on Login Page',
   {tag: ['@auth', '@signin', '@feature:SUPERUSERS_FULL_ACCESS']},
   () => {
-    test('displays messages with different severities', async ({
-      unauthenticatedPage,
-      superuserApi,
-    }) => {
-      // Create real messages via API (auto-cleanup by superuserApi fixture)
-      await superuserApi.message('Info message content', 'info');
-      await superuserApi.message(
-        '**Warning message**',
-        'warning',
-        'text/markdown',
-      );
-      await superuserApi.message('Error message content', 'error');
+    test(
+      'displays messages with different severities',
+      {tag: '@superuser'},
+      async ({unauthenticatedPage, superuserApi}) => {
+        // Create real messages via API (auto-cleanup by superuserApi fixture)
+        await superuserApi.message('Info message content', 'info');
+        await superuserApi.message(
+          '**Warning message**',
+          'warning',
+          'text/markdown',
+        );
+        await superuserApi.message('Error message content', 'error');
 
-      await unauthenticatedPage.goto('/signin');
+        await unauthenticatedPage.goto('/signin');
 
-      await expect(
-        unauthenticatedPage.getByText('Info message content'),
-      ).toBeVisible();
-      await expect(
-        unauthenticatedPage.getByText('Warning message'),
-      ).toBeVisible();
-      await expect(
-        unauthenticatedPage.getByText('Error message content'),
-      ).toBeVisible();
+        await expect(
+          unauthenticatedPage.getByText('Info message content'),
+        ).toBeVisible();
+        await expect(
+          unauthenticatedPage.getByText('Warning message'),
+        ).toBeVisible();
+        await expect(
+          unauthenticatedPage.getByText('Error message content'),
+        ).toBeVisible();
 
-      // Verify markdown is rendered (bold)
-      await expect(
-        unauthenticatedPage.locator('strong', {hasText: 'Warning message'}),
-      ).toBeVisible();
-    });
+        // Verify markdown is rendered (bold)
+        await expect(
+          unauthenticatedPage.locator('strong', {hasText: 'Warning message'}),
+        ).toBeVisible();
+      },
+    );
 
-    test('renders markdown content with links', async ({
-      unauthenticatedPage,
-      superuserApi,
-    }) => {
-      await superuserApi.message(
-        'Check our [terms](https://example.com/terms)',
-        'info',
-        'text/markdown',
-      );
+    test(
+      'renders markdown content with links',
+      {tag: '@superuser'},
+      async ({unauthenticatedPage, superuserApi}) => {
+        await superuserApi.message(
+          'Check our [terms](https://example.com/terms)',
+          'info',
+          'text/markdown',
+        );
 
-      await unauthenticatedPage.goto('/signin');
+        await unauthenticatedPage.goto('/signin');
 
-      const link = unauthenticatedPage.locator(
-        'a[href="https://example.com/terms"]',
-      );
-      await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute('target', '_blank');
-    });
+        const link = unauthenticatedPage.locator(
+          'a[href="https://example.com/terms"]',
+        );
+        await expect(link).toBeVisible();
+        await expect(link).toHaveAttribute('target', '_blank');
+      },
+    );
 
-    test('displays multiple messages simultaneously', async ({
-      unauthenticatedPage,
-      superuserApi,
-    }) => {
-      await superuserApi.message(
-        'System Maintenance: Scheduled for Sunday 2AM-4AM EST',
-        'warning',
-      );
-      await superuserApi.message(
-        'Welcome to Red Hat Quay! Please review our updated terms.',
-        'info',
-      );
-      await superuserApi.message(
-        'Critical security update available.',
-        'error',
-      );
+    test(
+      'displays multiple messages simultaneously',
+      {tag: '@superuser'},
+      async ({unauthenticatedPage, superuserApi}) => {
+        await superuserApi.message(
+          'System Maintenance: Scheduled for Sunday 2AM-4AM EST',
+          'warning',
+        );
+        await superuserApi.message(
+          'Welcome to Red Hat Quay! Please review our updated terms.',
+          'info',
+        );
+        await superuserApi.message(
+          'Critical security update available.',
+          'error',
+        );
 
-      await unauthenticatedPage.goto('/signin');
+        await unauthenticatedPage.goto('/signin');
 
-      await expect(
-        unauthenticatedPage.getByText(/System Maintenance/),
-      ).toBeVisible();
-      await expect(
-        unauthenticatedPage.getByText(/Welcome to Red Hat Quay/),
-      ).toBeVisible();
-      await expect(
-        unauthenticatedPage.getByText(/Critical security update/),
-      ).toBeVisible();
-    });
+        await expect(
+          unauthenticatedPage.getByText(/System Maintenance/),
+        ).toBeVisible();
+        await expect(
+          unauthenticatedPage.getByText(/Welcome to Red Hat Quay/),
+        ).toBeVisible();
+        await expect(
+          unauthenticatedPage.getByText(/Critical security update/),
+        ).toBeVisible();
+      },
+    );
 
     test('does not display messages section when empty', async ({
       unauthenticatedPage,

@@ -19,58 +19,60 @@ test.describe(
   'Repository Mirror',
   {tag: ['@api', '@feature:REPO_MIRROR']},
   () => {
-    test('CRUD mirror config, sync-now, sync-cancel', async ({
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('mirror');
-      const repo = await superuserApi.repository(org.name, 'mirrorrepo');
-      const robot = await superuserApi.robot(org.name, 'mirrorbot');
+    test(
+      'CRUD mirror config, sync-now, sync-cancel',
+      {tag: '@superuser'},
+      async ({superuserApi}) => {
+        const org = await superuserApi.organization('mirror');
+        const repo = await superuserApi.repository(org.name, 'mirrorrepo');
+        const robot = await superuserApi.robot(org.name, 'mirrorbot');
 
-      // Set repo state to MIRROR
-      await superuserApi.setMirrorState(org.name, repo.name);
+        // Set repo state to MIRROR
+        await superuserApi.setMirrorState(org.name, repo.name);
 
-      const client = superuserApi.raw;
+        const client = superuserApi.raw;
 
-      // Create mirror config
-      await client.createMirrorConfig(org.name, repo.name, {
-        external_reference: 'registry.example.io/library/alpine',
-        sync_interval: 3600,
-        sync_start_date: '2023-07-10T06:24:00Z',
-        root_rule: {
-          rule_kind: 'tag_glob_csv',
-          rule_value: ['latest'],
-        },
-        robot_username: robot.fullName,
-        is_enabled: false,
-        external_registry_username: null,
-        external_registry_password: null,
-        external_registry_config: {
-          verify_tls: true,
-          unsigned_images: false,
-          proxy: {
-            http_proxy: null,
-            https_proxy: null,
-            no_proxy: null,
+        // Create mirror config
+        await client.createMirrorConfig(org.name, repo.name, {
+          external_reference: 'registry.example.io/library/alpine',
+          sync_interval: 3600,
+          sync_start_date: '2023-07-10T06:24:00Z',
+          root_rule: {
+            rule_kind: 'tag_glob_csv',
+            rule_value: ['latest'],
           },
-        },
-      });
+          robot_username: robot.fullName,
+          is_enabled: false,
+          external_registry_username: null,
+          external_registry_password: null,
+          external_registry_config: {
+            verify_tls: true,
+            unsigned_images: false,
+            proxy: {
+              http_proxy: null,
+              https_proxy: null,
+              no_proxy: null,
+            },
+          },
+        });
 
-      // Modify mirror config
-      await client.updateMirrorConfig(org.name, repo.name, {
-        sync_interval: 7200,
-      });
+        // Modify mirror config
+        await client.updateMirrorConfig(org.name, repo.name, {
+          sync_interval: 7200,
+        });
 
-      // Get mirror config and verify update
-      const mirrorCfg = await client.getMirrorConfig(org.name, repo.name);
-      expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.sync_interval).toBe(7200);
+        // Get mirror config and verify update
+        const mirrorCfg = await client.getMirrorConfig(org.name, repo.name);
+        expect(mirrorCfg).not.toBeNull();
+        expect(mirrorCfg!.sync_interval).toBe(7200);
 
-      // Sync-now (204 expected)
-      await client.triggerMirrorSync(org.name, repo.name);
+        // Sync-now (204 expected)
+        await client.triggerMirrorSync(org.name, repo.name);
 
-      // Sync-cancel (204 expected)
-      await client.cancelMirrorSync(org.name, repo.name);
-    });
+        // Sync-cancel (204 expected)
+        await client.cancelMirrorSync(org.name, repo.name);
+      },
+    );
   },
 );
 
@@ -78,42 +80,43 @@ test.describe(
 // Proxy Cache
 // ---------------------------------------------------------------------------
 test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
-  test('validate, create, get, and delete proxy cache config', async ({
-    superuserApi,
-    adminClient,
-  }) => {
-    const org = await superuserApi.organization('proxycache');
+  test(
+    'validate, create, get, and delete proxy cache config',
+    {tag: '@superuser'},
+    async ({superuserApi, adminClient}) => {
+      const org = await superuserApi.organization('proxycache');
 
-    // Validate proxy cache config
-    const validateResp = await adminClient.post(
-      `/api/v1/organization/${org.name}/validateproxycache`,
-      {
+      // Validate proxy cache config
+      const validateResp = await adminClient.post(
+        `/api/v1/organization/${org.name}/validateproxycache`,
+        {
+          upstream_registry: 'quay.io',
+        },
+      );
+      // 202 means validation was accepted; 400 means the upstream registry
+      // was unreachable (expected in isolated CI environments).
+      expect([202, 400]).toContain(validateResp.status());
+
+      // Create proxy cache config
+      const client = superuserApi.raw;
+      await client.createProxyCacheConfig(org.name, {
         upstream_registry: 'quay.io',
-      },
-    );
-    // 202 means validation was accepted; 400 means the upstream registry
-    // was unreachable (expected in isolated CI environments).
-    expect([202, 400]).toContain(validateResp.status());
+        expiration_s: 86400,
+        insecure: false,
+        upstream_registry_username: 'dummyuser',
+        upstream_registry_password: 'dummypassword',
+      });
 
-    // Create proxy cache config
-    const client = superuserApi.raw;
-    await client.createProxyCacheConfig(org.name, {
-      upstream_registry: 'quay.io',
-      expiration_s: 86400,
-      insecure: false,
-      upstream_registry_username: 'dummyuser',
-      upstream_registry_password: 'dummypassword',
-    });
+      // Get proxy cache config
+      const proxyCfg = await client.getProxyCacheConfig(org.name);
+      expect(proxyCfg).not.toBeNull();
+      expect(proxyCfg!.upstream_registry).toContain('quay.io');
 
-    // Get proxy cache config
-    const proxyCfg = await client.getProxyCacheConfig(org.name);
-    expect(proxyCfg).not.toBeNull();
-    expect(proxyCfg!.upstream_registry).toContain('quay.io');
-
-    // Delete proxy cache config -- deleteProxyCacheConfig already
-    // verifies the DELETE request succeeded (throws on failure)
-    await client.deleteProxyCacheConfig(org.name);
-  });
+      // Delete proxy cache config -- deleteProxyCacheConfig already
+      // verifies the DELETE request succeeded (throws on failure)
+      await client.deleteProxyCacheConfig(org.name);
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -123,127 +126,137 @@ test.describe(
   'Organization Quotas',
   {tag: ['@api', '@feature:QUOTA_MANAGEMENT']},
   () => {
-    test('CRUD organization quota', async ({superuserApi}) => {
-      const org = await superuserApi.organization('quota');
-      const quota = await superuserApi.quota(org.name, 1024000000);
+    test(
+      'CRUD organization quota',
+      {tag: '@superuser'},
+      async ({superuserApi}) => {
+        const org = await superuserApi.organization('quota');
+        const quota = await superuserApi.quota(org.name, 1024000000);
 
-      // Get quota
-      const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
-      expect(quotas.length).toBeGreaterThan(0);
-      expect(quotas[0].limit_bytes).toBe(1024000000);
+        // Get quota
+        const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
+        expect(quotas.length).toBeGreaterThan(0);
+        expect(quotas[0].limit_bytes).toBe(1024000000);
 
-      // Change quota
-      await superuserApi.raw.updateOrganizationQuota(
-        org.name,
-        quota.quotaId,
-        8024000000,
-      );
+        // Change quota
+        await superuserApi.raw.updateOrganizationQuota(
+          org.name,
+          quota.quotaId,
+          8024000000,
+        );
 
-      // Verify change
-      const updated = await superuserApi.raw.getOrganizationQuota(org.name);
-      expect(updated[0].limit_bytes).toBe(8024000000);
-    });
+        // Verify change
+        const updated = await superuserApi.raw.getOrganizationQuota(org.name);
+        expect(updated[0].limit_bytes).toBe(8024000000);
+      },
+    );
 
-    test('CRUD organization quota limits', async ({superuserApi}) => {
-      const org = await superuserApi.organization('quotalim');
-      const quota = await superuserApi.quota(org.name, 1024000000);
+    test(
+      'CRUD organization quota limits',
+      {tag: '@superuser'},
+      async ({superuserApi}) => {
+        const org = await superuserApi.organization('quotalim');
+        const quota = await superuserApi.quota(org.name, 1024000000);
 
-      const client = superuserApi.raw;
+        const client = superuserApi.raw;
 
-      // Create quota limit
-      await client.createQuotaLimit(org.name, quota.quotaId, 'Reject', 98);
+        // Create quota limit
+        await client.createQuotaLimit(org.name, quota.quotaId, 'Reject', 98);
 
-      // Get quota to verify limit
-      const quotas = await client.getOrganizationQuota(org.name);
-      expect(quotas[0].limits.length).toBeGreaterThan(0);
-      expect(quotas[0].limits[0].type).toBe('Reject');
-      expect(quotas[0].limits[0].limit_percent).toBe(98);
+        // Get quota to verify limit
+        const quotas = await client.getOrganizationQuota(org.name);
+        expect(quotas[0].limits.length).toBeGreaterThan(0);
+        expect(quotas[0].limits[0].type).toBe('Reject');
+        expect(quotas[0].limits[0].limit_percent).toBe(98);
 
-      // Delete the quota limit
-      const limitId = quotas[0].limits[0].id;
-      await client.deleteQuotaLimit(org.name, quota.quotaId, limitId);
+        // Delete the quota limit
+        const limitId = quotas[0].limits[0].id;
+        await client.deleteQuotaLimit(org.name, quota.quotaId, limitId);
 
-      // Verify deletion
-      const afterDelete = await client.getOrganizationQuota(org.name);
-      expect(afterDelete[0].limits.length).toBe(0);
-    });
+        // Verify deletion
+        const afterDelete = await client.getOrganizationQuota(org.name);
+        expect(afterDelete[0].limits.length).toBe(0);
+      },
+    );
 
-    test('superuser CRUD organization quota', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      // Skip when SUPER_USERS feature is disabled (403 from superuser endpoints)
-      const probe = await adminClient.get('/api/v1/superuser/registrystatus');
-      if (probe.status() === 403 || probe.status() === 404) {
-        test.skip();
-        return;
-      }
+    test(
+      'superuser CRUD organization quota',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        // Skip when SUPER_USERS feature is disabled (403 from superuser endpoints)
+        const probe = await adminClient.get('/api/v1/superuser/registrystatus');
+        if (probe.status() === 403 || probe.status() === 404) {
+          test.skip();
+          return;
+        }
 
-      const org = await superuserApi.organization('suquota');
+        const org = await superuserApi.organization('suquota');
 
-      // Create quota via superuser API
-      const createResp = await adminClient.post(
-        `/api/v1/superuser/organization/${org.name}/quota`,
-        {limit_bytes: 9024000000},
-      );
-      expect(createResp.status()).toBe(201);
+        // Create quota via superuser API
+        const createResp = await adminClient.post(
+          `/api/v1/superuser/organization/${org.name}/quota`,
+          {limit_bytes: 9024000000},
+        );
+        expect(createResp.status()).toBe(201);
 
-      // Get the quota to find its ID
-      const listResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/quota`,
-      );
-      const quotas = await listResp.json();
-      const quotaId = quotas[0].id;
+        // Get the quota to find its ID
+        const listResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/quota`,
+        );
+        const quotas = await listResp.json();
+        const quotaId = quotas[0].id;
 
-      // Change quota via superuser API
-      const changeResp = await adminClient.put(
-        `/api/v1/superuser/organization/${org.name}/quota/${quotaId}`,
-        {limit_bytes: 10024000000},
-      );
-      expect(changeResp.status()).toBe(200);
-      const changed = await changeResp.json();
-      expect(changed.limit_bytes).toBe(10024000000);
+        // Change quota via superuser API
+        const changeResp = await adminClient.put(
+          `/api/v1/superuser/organization/${org.name}/quota/${quotaId}`,
+          {limit_bytes: 10024000000},
+        );
+        expect(changeResp.status()).toBe(200);
+        const changed = await changeResp.json();
+        expect(changed.limit_bytes).toBe(10024000000);
 
-      // Delete quota via superuser API
-      const deleteResp = await adminClient.delete(
-        `/api/v1/superuser/organization/${org.name}/quota/${quotaId}`,
-      );
-      expect(deleteResp.status()).toBe(204);
-    });
+        // Delete quota via superuser API
+        const deleteResp = await adminClient.delete(
+          `/api/v1/superuser/organization/${org.name}/quota/${quotaId}`,
+        );
+        expect(deleteResp.status()).toBe(204);
+      },
+    );
 
-    test('admin can get quota limits via sub-resource endpoints', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('qlimit');
-      const quota = await superuserApi.quota(org.name, 1024000000);
+    test(
+      'admin can get quota limits via sub-resource endpoints',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('qlimit');
+        const quota = await superuserApi.quota(org.name, 1024000000);
 
-      await superuserApi.raw.createQuotaLimit(
-        org.name,
-        quota.quotaId,
-        'Warning',
-        80,
-      );
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          80,
+        );
 
-      const limitsResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit`,
-      );
-      expect(limitsResp.status()).toBe(200);
-      const limits = await limitsResp.json();
-      expect(Array.isArray(limits)).toBe(true);
-      expect(limits.length).toBeGreaterThan(0);
-      expect(limits[0].type).toBe('Warning');
-      expect(limits[0].limit_percent).toBe(80);
-      const limitId = limits[0].id;
+        const limitsResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit`,
+        );
+        expect(limitsResp.status()).toBe(200);
+        const limits = await limitsResp.json();
+        expect(Array.isArray(limits)).toBe(true);
+        expect(limits.length).toBeGreaterThan(0);
+        expect(limits[0].type).toBe('Warning');
+        expect(limits[0].limit_percent).toBe(80);
+        const limitId = limits[0].id;
 
-      const limitResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit/${limitId}`,
-      );
-      expect(limitResp.status()).toBe(200);
-      const limit = await limitResp.json();
-      expect(limit.id).toBe(limitId);
-      expect(limit.type).toBe('Warning');
-    });
+        const limitResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit/${limitId}`,
+        );
+        expect(limitResp.status()).toBe(200);
+        const limit = await limitResp.json();
+        expect(limit.id).toBe(limitId);
+        expect(limit.type).toBe('Warning');
+      },
+    );
   },
 );
 
@@ -254,77 +267,79 @@ test.describe(
   'User Quotas',
   {tag: ['@api', '@feature:QUOTA_MANAGEMENT']},
   () => {
-    test('admin can get user quota by ID and list its limits', async ({
-      superuserApi,
-      adminClient,
-      playwright,
-    }) => {
-      const user = await superuserApi.user('quotauser');
+    test(
+      'admin can get user quota by ID and list its limits',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient, playwright}) => {
+        const user = await superuserApi.user('quotauser');
 
-      await superuserApi.raw.createUserQuotaSuperuser(
-        user.username,
-        2048000000,
-      );
-
-      const quotasResp = await adminClient.get(
-        `/api/v1/superuser/users/${user.username}/quota`,
-      );
-      expect(quotasResp.status()).toBe(200);
-      const quotas = await quotasResp.json();
-      const quota = quotas.find(
-        (q: {limit_bytes: number}) => q.limit_bytes === 2048000000,
-      );
-      expect(quota).toBeTruthy();
-      const quotaId = quota.id;
-
-      // Verify the user's email via superuser API (auto_verify=True on the backend)
-      const verifyEmailResp = await adminClient.put(
-        `/api/v1/superuser/users/${user.username}`,
-        {email: user.email},
-      );
-      expect(verifyEmailResp.status()).toBe(200);
-
-      // Sign in as the created user for user-scoped quota endpoints
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const userClient = new RawApiClient(request, API_URL);
-        await userClient.signIn(user.username, user.password);
-
-        const quotaResp = await userClient.get(`/api/v1/user/quota/${quotaId}`);
-        expect(quotaResp.status()).toBe(200);
-
-        const limitsResp = await userClient.get(
-          `/api/v1/user/quota/${quotaId}/limit`,
+        await superuserApi.raw.createUserQuotaSuperuser(
+          user.username,
+          2048000000,
         );
-        expect(limitsResp.status()).toBe(200);
-      } finally {
-        await request.dispose();
-      }
 
-      // Superuser update and verify
-      try {
-        const updateResp = await adminClient.put(
-          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
-          {limit_bytes: 4096000000},
-        );
-        expect(updateResp.status()).toBe(200);
-
-        const verifyResp = await adminClient.get(
+        const quotasResp = await adminClient.get(
           `/api/v1/superuser/users/${user.username}/quota`,
         );
-        const verifiedQuotas = await verifyResp.json();
-        const updated = verifiedQuotas.find(
-          (q: {id: number}) => q.id === quotaId,
+        expect(quotasResp.status()).toBe(200);
+        const quotas = await quotasResp.json();
+        const quota = quotas.find(
+          (q: {limit_bytes: number}) => q.limit_bytes === 2048000000,
         );
-        expect(updated.limit_bytes).toBe(4096000000);
-      } finally {
-        await adminClient.delete(
-          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+        expect(quota).toBeTruthy();
+        const quotaId = quota.id;
+
+        // Verify the user's email via superuser API (auto_verify=True on the backend)
+        const verifyEmailResp = await adminClient.put(
+          `/api/v1/superuser/users/${user.username}`,
+          {email: user.email},
         );
-      }
-    });
+        expect(verifyEmailResp.status()).toBe(200);
+
+        // Sign in as the created user for user-scoped quota endpoints
+        const request = await playwright.request.newContext({
+          ignoreHTTPSErrors: true,
+        });
+        try {
+          const userClient = new RawApiClient(request, API_URL);
+          await userClient.signIn(user.username, user.password);
+
+          const quotaResp = await userClient.get(
+            `/api/v1/user/quota/${quotaId}`,
+          );
+          expect(quotaResp.status()).toBe(200);
+
+          const limitsResp = await userClient.get(
+            `/api/v1/user/quota/${quotaId}/limit`,
+          );
+          expect(limitsResp.status()).toBe(200);
+        } finally {
+          await request.dispose();
+        }
+
+        // Superuser update and verify
+        try {
+          const updateResp = await adminClient.put(
+            `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+            {limit_bytes: 4096000000},
+          );
+          expect(updateResp.status()).toBe(200);
+
+          const verifyResp = await adminClient.get(
+            `/api/v1/superuser/users/${user.username}/quota`,
+          );
+          const verifiedQuotas = await verifyResp.json();
+          const updated = verifiedQuotas.find(
+            (q: {id: number}) => q.id === quotaId,
+          );
+          expect(updated.limit_bytes).toBe(4096000000);
+        } finally {
+          await adminClient.delete(
+            `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+          );
+        }
+      },
+    );
   },
 );
 
@@ -335,63 +350,68 @@ test.describe(
   'Autoprune - Organization',
   {tag: ['@api', '@feature:AUTO_PRUNE']},
   () => {
-    test('invalid payload returns 400', async ({superuserApi, adminClient}) => {
-      const org = await superuserApi.organization('aporg');
+    test(
+      'invalid payload returns 400',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('aporg');
 
-      const resp = await adminClient.post(
-        `/api/v1/organization/${org.name}/autoprunepolicy/`,
-        {method: 'number_of_times', value: 6},
-      );
-      expect(resp.status()).toBe(400);
-      const body = await resp.json();
-      expect(body.detail).toBe('Invalid method provided');
-    });
+        const resp = await adminClient.post(
+          `/api/v1/organization/${org.name}/autoprunepolicy/`,
+          {method: 'number_of_times', value: 6},
+        );
+        expect(resp.status()).toBe(400);
+        const body = await resp.json();
+        expect(body.detail).toBe('Invalid method provided');
+      },
+    );
 
-    test('CRUD autoprune policy for organization', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('aporg');
+    test(
+      'CRUD autoprune policy for organization',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('aporg');
 
-      // Create
-      const createResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/autoprunepolicy/`,
-        {method: 'number_of_tags', value: 6},
-      );
-      expect(createResp.status()).toBe(201);
-      const created = await createResp.json();
-      const uuid = created.uuid;
-      expect(uuid).toBeTruthy();
+        // Create
+        const createResp = await adminClient.post(
+          `/api/v1/organization/${org.name}/autoprunepolicy/`,
+          {method: 'number_of_tags', value: 6},
+        );
+        expect(createResp.status()).toBe(201);
+        const created = await createResp.json();
+        const uuid = created.uuid;
+        expect(uuid).toBeTruthy();
 
-      // Get all
-      const listResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/autoprunepolicy/`,
-      );
-      expect(listResp.status()).toBe(200);
-      const policies = await listResp.json();
-      expect(policies.policies[0].uuid).toContain(uuid);
+        // Get all
+        const listResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/autoprunepolicy/`,
+        );
+        expect(listResp.status()).toBe(200);
+        const policies = await listResp.json();
+        expect(policies.policies[0].uuid).toContain(uuid);
 
-      // Get by UUID
-      const getResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(getResp.status()).toBe(200);
-      const policy = await getResp.json();
-      expect(policy.uuid).toContain(uuid);
+        // Get by UUID
+        const getResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(getResp.status()).toBe(200);
+        const policy = await getResp.json();
+        expect(policy.uuid).toContain(uuid);
 
-      // Update
-      const updateResp = await adminClient.put(
-        `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
-        {method: 'creation_date', value: '7d'},
-      );
-      expect(updateResp.status()).toBe(204);
+        // Update
+        const updateResp = await adminClient.put(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
+          {method: 'creation_date', value: '7d'},
+        );
+        expect(updateResp.status()).toBe(204);
 
-      // Delete
-      const deleteResp = await adminClient.delete(
-        `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(deleteResp.status()).toBe(200);
-    });
+        // Delete
+        const deleteResp = await adminClient.delete(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(deleteResp.status()).toBe(200);
+      },
+    );
   },
 );
 
@@ -402,65 +422,70 @@ test.describe(
   'Autoprune - Repository',
   {tag: ['@api', '@feature:AUTO_PRUNE']},
   () => {
-    test('invalid payload returns 400', async ({superuserApi, adminClient}) => {
-      const org = await superuserApi.organization('aprepo');
-      const repo = await superuserApi.repository(org.name, 'aprepo');
+    test(
+      'invalid payload returns 400',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('aprepo');
+        const repo = await superuserApi.repository(org.name, 'aprepo');
 
-      const resp = await adminClient.post(
-        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/`,
-        {method: 'number_of_times', value: 10},
-      );
-      expect(resp.status()).toBe(400);
-      const body = await resp.json();
-      expect(body.detail).toBe('Invalid method provided');
-    });
+        const resp = await adminClient.post(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/`,
+          {method: 'number_of_times', value: 10},
+        );
+        expect(resp.status()).toBe(400);
+        const body = await resp.json();
+        expect(body.detail).toBe('Invalid method provided');
+      },
+    );
 
-    test('CRUD autoprune policy for repository', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('aprepo');
-      const repo = await superuserApi.repository(org.name, 'aprepo');
-      const repo2 = await superuserApi.repository(org.name, 'aprepo2');
+    test(
+      'CRUD autoprune policy for repository',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('aprepo');
+        const repo = await superuserApi.repository(org.name, 'aprepo');
+        const repo2 = await superuserApi.repository(org.name, 'aprepo2');
 
-      // Create on first repo
-      const createResp = await adminClient.post(
-        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/`,
-        {method: 'number_of_tags', value: 10},
-      );
-      expect(createResp.status()).toBe(201);
-      const created = await createResp.json();
-      const uuid = created.uuid;
-      expect(uuid).toBeTruthy();
+        // Create on first repo
+        const createResp = await adminClient.post(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/`,
+          {method: 'number_of_tags', value: 10},
+        );
+        expect(createResp.status()).toBe(201);
+        const created = await createResp.json();
+        const uuid = created.uuid;
+        expect(uuid).toBeTruthy();
 
-      // Create on second repo (validates PROJQUAY-6782)
-      const create2Resp = await adminClient.post(
-        `/api/v1/repository/${org.name}/${repo2.name}/autoprunepolicy/`,
-        {method: 'number_of_tags', value: 8},
-      );
-      expect(create2Resp.status()).toBe(201);
+        // Create on second repo (validates PROJQUAY-6782)
+        const create2Resp = await adminClient.post(
+          `/api/v1/repository/${org.name}/${repo2.name}/autoprunepolicy/`,
+          {method: 'number_of_tags', value: 8},
+        );
+        expect(create2Resp.status()).toBe(201);
 
-      // Update
-      const updateResp = await adminClient.put(
-        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
-        {method: 'number_of_tags', uuid, value: 30},
-      );
-      expect(updateResp.status()).toBe(204);
+        // Update
+        const updateResp = await adminClient.put(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
+          {method: 'number_of_tags', uuid, value: 30},
+        );
+        expect(updateResp.status()).toBe(204);
 
-      // Get
-      const getResp = await adminClient.get(
-        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(getResp.status()).toBe(200);
-      const fetched = await getResp.json();
-      expect(fetched.uuid).toContain(uuid);
+        // Get
+        const getResp = await adminClient.get(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(getResp.status()).toBe(200);
+        const fetched = await getResp.json();
+        expect(fetched.uuid).toContain(uuid);
 
-      // Delete
-      const deleteResp = await adminClient.delete(
-        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(deleteResp.status()).toBe(200);
-    });
+        // Delete
+        const deleteResp = await adminClient.delete(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(deleteResp.status()).toBe(200);
+      },
+    );
   },
 );
 
@@ -530,61 +555,66 @@ test.describe(
   'Autoprune - User Namespace Repository',
   {tag: ['@api', '@feature:AUTO_PRUNE']},
   () => {
-    test('invalid payload returns 400', async ({superuserApi, adminClient}) => {
-      const repo = await superuserApi.repository(
-        TEST_USERS.admin.username,
-        'apuserrepo',
-      );
+    test(
+      'invalid payload returns 400',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const repo = await superuserApi.repository(
+          TEST_USERS.admin.username,
+          'apuserrepo',
+        );
 
-      const resp = await adminClient.post(
-        `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
-        {method: 'number_of_times', value: 10},
-      );
-      expect(resp.status()).toBe(400);
-      const body = await resp.json();
-      expect(body.detail).toBe('Invalid method provided');
-    });
+        const resp = await adminClient.post(
+          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          {method: 'number_of_times', value: 10},
+        );
+        expect(resp.status()).toBe(400);
+        const body = await resp.json();
+        expect(body.detail).toBe('Invalid method provided');
+      },
+    );
 
-    test('CRUD autoprune policy for user namespace repo', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const repo = await superuserApi.repository(
-        TEST_USERS.admin.username,
-        'apuserrepo',
-      );
+    test(
+      'CRUD autoprune policy for user namespace repo',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const repo = await superuserApi.repository(
+          TEST_USERS.admin.username,
+          'apuserrepo',
+        );
 
-      // Create
-      const createResp = await adminClient.post(
-        `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
-        {method: 'number_of_tags', value: 6},
-      );
-      expect(createResp.status()).toBe(201);
-      const created = await createResp.json();
-      const uuid = created.uuid;
-      expect(uuid).toBeTruthy();
+        // Create
+        const createResp = await adminClient.post(
+          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          {method: 'number_of_tags', value: 6},
+        );
+        expect(createResp.status()).toBe(201);
+        const created = await createResp.json();
+        const uuid = created.uuid;
+        expect(uuid).toBeTruthy();
 
-      // Update
-      const updateResp = await adminClient.put(
-        `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
-        {method: 'number_of_tags', uuid, value: 30},
-      );
-      expect(updateResp.status()).toBe(204);
+        // Update
+        const updateResp = await adminClient.put(
+          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          {method: 'number_of_tags', uuid, value: 30},
+        );
+        expect(updateResp.status()).toBe(204);
 
-      // Get
-      const getResp = await adminClient.get(
-        `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(getResp.status()).toBe(200);
-      const fetched = await getResp.json();
-      expect(fetched.uuid).toContain(uuid);
+        // Get
+        const getResp = await adminClient.get(
+          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(getResp.status()).toBe(200);
+        const fetched = await getResp.json();
+        expect(fetched.uuid).toContain(uuid);
 
-      // Delete
-      const deleteResp = await adminClient.delete(
-        `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
-      );
-      expect(deleteResp.status()).toBe(200);
-    });
+        // Delete
+        const deleteResp = await adminClient.delete(
+          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+        );
+        expect(deleteResp.status()).toBe(200);
+      },
+    );
   },
 );
 
@@ -592,26 +622,36 @@ test.describe(
 // Logs
 // ---------------------------------------------------------------------------
 test.describe('Logs', {tag: ['@api']}, () => {
-  test('get repository logs', async ({superuserApi, adminClient}) => {
-    const org = await superuserApi.organization('logs');
-    const repo = await superuserApi.repository(org.name, 'logrepo');
+  test(
+    'get repository logs',
+    {tag: '@superuser'},
+    async ({superuserApi, adminClient}) => {
+      const org = await superuserApi.organization('logs');
+      const repo = await superuserApi.repository(org.name, 'logrepo');
 
-    const resp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/logs`,
-    );
-    expect(resp.status()).toBe(200);
-    const body = await resp.json();
-    expect(body.logs).toBeDefined();
-  });
+      const resp = await adminClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/logs`,
+      );
+      expect(resp.status()).toBe(200);
+      const body = await resp.json();
+      expect(body.logs).toBeDefined();
+    },
+  );
 
-  test('get organization logs', async ({superuserApi, adminClient}) => {
-    const org = await superuserApi.organization('logs');
+  test(
+    'get organization logs',
+    {tag: '@superuser'},
+    async ({superuserApi, adminClient}) => {
+      const org = await superuserApi.organization('logs');
 
-    const resp = await adminClient.get(`/api/v1/organization/${org.name}/logs`);
-    expect(resp.status()).toBe(200);
-    const body = await resp.json();
-    expect(body.logs).toBeDefined();
-  });
+      const resp = await adminClient.get(
+        `/api/v1/organization/${org.name}/logs`,
+      );
+      expect(resp.status()).toBe(200);
+      const body = await resp.json();
+      expect(body.logs).toBeDefined();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -766,44 +806,50 @@ test.describe('App Tokens Superuser', {tag: ['@api']}, () => {
 // Service Keys
 // ---------------------------------------------------------------------------
 test.describe('Service Keys', {tag: ['@api']}, () => {
-  test('CRUD service key', async ({superuserApi, adminClient}) => {
-    // Skip when SUPER_USERS feature is disabled
-    const probe = await adminClient.get('/api/v1/superuser/keys');
-    if (probe.status() === 403 || probe.status() === 404) {
-      test.skip();
-      return;
-    }
+  test(
+    'CRUD service key',
+    {tag: '@superuser'},
+    async ({superuserApi, adminClient}) => {
+      // Skip when SUPER_USERS feature is disabled
+      const probe = await adminClient.get('/api/v1/superuser/keys');
+      if (probe.status() === 403 || probe.status() === 404) {
+        test.skip();
+        return;
+      }
 
-    const key = await superuserApi.serviceKey('quay', 'api_test_key');
+      const key = await superuserApi.serviceKey('quay', 'api_test_key');
 
-    // List all service keys
-    const listResp = await adminClient.get('/api/v1/superuser/keys');
-    expect(listResp.status()).toBe(200);
-    const listBody = await listResp.json();
-    expect(listBody.keys).toBeDefined();
-    expect(listBody.keys.length).toBeGreaterThan(0);
+      // List all service keys
+      const listResp = await adminClient.get('/api/v1/superuser/keys');
+      expect(listResp.status()).toBe(200);
+      const listBody = await listResp.json();
+      expect(listBody.keys).toBeDefined();
+      expect(listBody.keys.length).toBeGreaterThan(0);
 
-    // Update the service key
-    const updateResp = await adminClient.put(
-      `/api/v1/superuser/keys/${key.kid}`,
-      {
-        name: 'api_test_updated',
-        metadata: {created_by: 'Playwright Automation'},
-      },
-    );
-    expect(updateResp.status()).toBe(200);
-    const updated = await updateResp.json();
-    expect(updated.name).toBe('api_test_updated');
+      // Update the service key
+      const updateResp = await adminClient.put(
+        `/api/v1/superuser/keys/${key.kid}`,
+        {
+          name: 'api_test_updated',
+          metadata: {created_by: 'Playwright Automation'},
+        },
+      );
+      expect(updateResp.status()).toBe(200);
+      const updated = await updateResp.json();
+      expect(updated.name).toBe('api_test_updated');
 
-    // Get the service key
-    const getResp = await adminClient.get(`/api/v1/superuser/keys/${key.kid}`);
-    expect(getResp.status()).toBe(200);
-    const fetched = await getResp.json();
-    expect(fetched.name).toBe('api_test_updated');
-    expect(fetched.metadata.created_by).toBe('Playwright Automation');
+      // Get the service key
+      const getResp = await adminClient.get(
+        `/api/v1/superuser/keys/${key.kid}`,
+      );
+      expect(getResp.status()).toBe(200);
+      const fetched = await getResp.json();
+      expect(fetched.name).toBe('api_test_updated');
+      expect(fetched.metadata.created_by).toBe('Playwright Automation');
 
-    // Deletion handled by superuserApi cleanup
-  });
+      // Deletion handled by superuserApi cleanup
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -813,84 +859,85 @@ test.describe(
   'Organization Mirror',
   {tag: ['@api', '@feature:ORG_MIRROR']},
   () => {
-    test('CRUD org mirror config with sync and verify', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('orgmir');
-      const robot = await superuserApi.robot(org.name, 'mirbot');
+    test(
+      'CRUD org mirror config with sync and verify',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('orgmir');
+        const robot = await superuserApi.robot(org.name, 'mirbot');
 
-      const client = superuserApi.raw;
+        const client = superuserApi.raw;
 
-      // Create org mirror config
-      await client.createOrgMirrorConfig(org.name, {
-        external_registry_type: 'quay',
-        external_registry_url: 'https://quay.io',
-        external_namespace: 'projectquay',
-        robot_username: robot.fullName,
-        visibility: 'private',
-        sync_interval: 86400,
-        sync_start_date: '2026-03-03T08:00:00Z',
-        is_enabled: false,
-        external_registry_config: {
-          verify_tls: true,
-          proxy: {
-            http_proxy: null,
-            https_proxy: null,
-            no_proxy: null,
+        // Create org mirror config
+        await client.createOrgMirrorConfig(org.name, {
+          external_registry_type: 'quay',
+          external_registry_url: 'https://quay.io',
+          external_namespace: 'projectquay',
+          robot_username: robot.fullName,
+          visibility: 'private',
+          sync_interval: 86400,
+          sync_start_date: '2026-03-03T08:00:00Z',
+          is_enabled: false,
+          external_registry_config: {
+            verify_tls: true,
+            proxy: {
+              http_proxy: null,
+              https_proxy: null,
+              no_proxy: null,
+            },
           },
-        },
-        repository_filters: ['*'],
-        skopeo_timeout: 302,
-        external_registry_username: null,
-        external_registry_password: null,
-      });
+          repository_filters: ['*'],
+          skopeo_timeout: 302,
+          external_registry_username: null,
+          external_registry_password: null,
+        });
 
-      // Update org mirror config
-      await client.updateOrgMirrorConfig(org.name, {
-        sync_interval: 3600,
-        skopeo_timeout: 301,
-      });
+        // Update org mirror config
+        await client.updateOrgMirrorConfig(org.name, {
+          sync_interval: 3600,
+          skopeo_timeout: 301,
+        });
 
-      // Get and verify
-      const mirrorCfg = await client.getOrgMirrorConfig(org.name);
-      expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.external_registry_url).toContain('https://quay.io');
-      expect(mirrorCfg!.sync_interval).toBe(3600);
+        // Get and verify
+        const mirrorCfg = await client.getOrgMirrorConfig(org.name);
+        expect(mirrorCfg).not.toBeNull();
+        expect(mirrorCfg!.external_registry_url).toContain('https://quay.io');
+        expect(mirrorCfg!.sync_interval).toBe(3600);
 
-      // Sync-now
-      await client.triggerOrgMirrorSync(org.name);
+        // Sync-now
+        await client.triggerOrgMirrorSync(org.name);
 
-      // Sync-cancel
-      await client.cancelOrgMirrorSync(org.name);
+        // Sync-cancel
+        await client.cancelOrgMirrorSync(org.name);
 
-      // Verify connection to source registry
-      const verifyResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/mirror/verify`,
-      );
-      // 200 with success = true, or accept other valid responses
-      expect([200, 400, 502]).toContain(verifyResp.status());
+        // Verify connection to source registry
+        const verifyResp = await adminClient.post(
+          `/api/v1/organization/${org.name}/mirror/verify`,
+        );
+        // 200 with success = true, or accept other valid responses
+        expect([200, 400, 502]).toContain(verifyResp.status());
 
-      // List discovered repositories
-      const reposResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/mirror/repositories`,
-      );
-      // May fail if connection can't be established; assert known statuses
-      if (reposResp.status() === 200) {
-        const reposBody = await reposResp.json();
-        expect(reposBody).toHaveProperty('repositories');
-        expect(Array.isArray(reposBody.repositories)).toBe(true);
-      } else {
-        expect([400, 403, 404, 502]).toContain(reposResp.status());
-      }
+        // List discovered repositories
+        const reposResp = await adminClient.get(
+          `/api/v1/organization/${org.name}/mirror/repositories`,
+        );
+        // May fail if connection can't be established; assert known statuses
+        if (reposResp.status() === 200) {
+          const reposBody = await reposResp.json();
+          expect(reposBody).toHaveProperty('repositories');
+          expect(Array.isArray(reposBody.repositories)).toBe(true);
+        } else {
+          expect([400, 403, 404, 502]).toContain(reposResp.status());
+        }
 
-      // Delete org mirror config
-      await client.deleteOrgMirrorConfig(org.name);
+        // Delete org mirror config
+        await client.deleteOrgMirrorConfig(org.name);
 
-      // Verify deletion
-      const afterDelete = await client.getOrgMirrorConfig(org.name);
-      expect(afterDelete).toBeNull();
-    });
+        // Verify deletion
+        const afterDelete = await client.getOrgMirrorConfig(org.name);
+        expect(afterDelete).toBeNull();
+      },
+    );
   },
 );
 

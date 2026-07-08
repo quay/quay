@@ -4,115 +4,123 @@ test.describe(
   'Superuser Framework',
   {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
   () => {
-    test('superuser can navigate to all superuser pages', async ({
-      superuserPage,
-    }) => {
-      const pages = [
-        {path: '/service-keys', heading: 'Service Keys'},
-        {path: '/change-log', heading: 'Change Log'},
-        {path: '/usage-logs', heading: 'Usage Logs'},
-        {path: '/messages', heading: 'Messages'},
-      ];
+    test(
+      'superuser can navigate to all superuser pages',
+      {tag: '@superuser'},
+      async ({superuserPage}) => {
+        const pages = [
+          {path: '/service-keys', heading: 'Service Keys'},
+          {path: '/change-log', heading: 'Change Log'},
+          {path: '/usage-logs', heading: 'Usage Logs'},
+          {path: '/messages', heading: 'Messages'},
+        ];
 
-      for (const {path, heading} of pages) {
-        await superuserPage.goto(path);
+        for (const {path, heading} of pages) {
+          await superuserPage.goto(path);
+          await expect(
+            superuserPage.getByRole('heading', {name: heading, exact: true}),
+          ).toBeVisible();
+        }
+      },
+    );
+
+    test(
+      'superuser sees navigation items and can expand section',
+      {tag: '@superuser'},
+      async ({superuserPage}) => {
+        await superuserPage.goto('/organization');
+
+        // Verify Superuser section exists and expand it
+        const superuserNavSection = superuserPage.getByRole('button', {
+          name: 'Superuser',
+        });
+        await expect(superuserNavSection).toBeVisible();
+        await superuserNavSection.click();
+
+        // Verify all nav items are visible
         await expect(
-          superuserPage.getByRole('heading', {name: heading, exact: true}),
+          superuserPage.getByTestId('service-keys-nav'),
         ).toBeVisible();
-      }
-    });
+        await expect(superuserPage.getByTestId('change-log-nav')).toBeVisible();
+        await expect(superuserPage.getByTestId('usage-logs-nav')).toBeVisible();
+        await expect(superuserPage.getByTestId('messages-nav')).toBeVisible();
 
-    test('superuser sees navigation items and can expand section', async ({
-      superuserPage,
-    }) => {
-      await superuserPage.goto('/organization');
+        // Test navigation works
+        await superuserPage.getByTestId('service-keys-nav').click();
+        await expect(superuserPage).toHaveURL(/.*\/service-keys.*/);
+      },
+    );
 
-      // Verify Superuser section exists and expand it
-      const superuserNavSection = superuserPage.getByRole('button', {
-        name: 'Superuser',
-      });
-      await expect(superuserNavSection).toBeVisible();
-      await superuserNavSection.click();
+    test(
+      'superuser sees Settings column and organization actions menu',
+      {tag: '@superuser'},
+      async ({superuserPage, superuserApi}) => {
+        // Create test organization
+        const org = await superuserApi.organization('fwtest');
 
-      // Verify all nav items are visible
-      await expect(superuserPage.getByTestId('service-keys-nav')).toBeVisible();
-      await expect(superuserPage.getByTestId('change-log-nav')).toBeVisible();
-      await expect(superuserPage.getByTestId('usage-logs-nav')).toBeVisible();
-      await expect(superuserPage.getByTestId('messages-nav')).toBeVisible();
+        await superuserPage.goto('/organization');
 
-      // Test navigation works
-      await superuserPage.getByTestId('service-keys-nav').click();
-      await expect(superuserPage).toHaveURL(/.*\/service-keys.*/);
-    });
+        // Verify Settings column header
+        await expect(
+          superuserPage.getByRole('columnheader', {name: 'Settings'}),
+        ).toBeVisible();
 
-    test('superuser sees Settings column and organization actions menu', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      // Create test organization
-      const org = await superuserApi.organization('fwtest');
+        // Verify options toggle exists for the created org
+        const optionsToggle = superuserPage.getByTestId(
+          `${org.name}-options-toggle`,
+        );
+        await expect(optionsToggle).toBeVisible({timeout: 15000});
 
-      await superuserPage.goto('/organization');
+        // Click and verify menu items
+        await optionsToggle.click();
+        await expect(
+          superuserPage.getByRole('menuitem', {name: 'Rename Organization'}),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByRole('menuitem', {name: 'Delete Organization'}),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByRole('menuitem', {name: 'Take Ownership'}),
+        ).toBeVisible();
+      },
+    );
 
-      // Verify Settings column header
-      await expect(
-        superuserPage.getByRole('columnheader', {name: 'Settings'}),
-      ).toBeVisible();
+    test(
+      'regular user does not see superuser features',
+      {tag: '@superuser'},
+      async ({authenticatedPage, superuserApi}) => {
+        // Create org via superuser API for visibility test
+        const org = await superuserApi.organization('regulartest');
 
-      // Verify options toggle exists for the created org
-      const optionsToggle = superuserPage.getByTestId(
-        `${org.name}-options-toggle`,
-      );
-      await expect(optionsToggle).toBeVisible({timeout: 15000});
+        await authenticatedPage.goto('/organization');
 
-      // Click and verify menu items
-      await optionsToggle.click();
-      await expect(
-        superuserPage.getByRole('menuitem', {name: 'Rename Organization'}),
-      ).toBeVisible();
-      await expect(
-        superuserPage.getByRole('menuitem', {name: 'Delete Organization'}),
-      ).toBeVisible();
-      await expect(
-        superuserPage.getByRole('menuitem', {name: 'Take Ownership'}),
-      ).toBeVisible();
-    });
+        // Verify Superuser nav section is NOT visible
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Superuser'}),
+        ).not.toBeVisible();
 
-    test('regular user does not see superuser features', async ({
-      authenticatedPage,
-      superuserApi,
-    }) => {
-      // Create org via superuser API for visibility test
-      const org = await superuserApi.organization('regulartest');
+        // Verify Settings column is NOT visible
+        await expect(
+          authenticatedPage.getByRole('columnheader', {name: 'Settings'}),
+        ).not.toBeVisible();
 
-      await authenticatedPage.goto('/organization');
+        // Verify no options toggle for organizations
+        await expect(
+          authenticatedPage.getByTestId(`${org.name}-options-toggle`),
+        ).not.toBeVisible();
 
-      // Verify Superuser nav section is NOT visible
-      await expect(
-        authenticatedPage.getByRole('button', {name: 'Superuser'}),
-      ).not.toBeVisible();
+        // Verify direct navigation to superuser pages redirects away
+        await authenticatedPage.goto('/service-keys');
+        await expect(authenticatedPage).toHaveURL(
+          /.*\/(organization|repository).*/,
+        );
 
-      // Verify Settings column is NOT visible
-      await expect(
-        authenticatedPage.getByRole('columnheader', {name: 'Settings'}),
-      ).not.toBeVisible();
-
-      // Verify no options toggle for organizations
-      await expect(
-        authenticatedPage.getByTestId(`${org.name}-options-toggle`),
-      ).not.toBeVisible();
-
-      // Verify direct navigation to superuser pages redirects away
-      await authenticatedPage.goto('/service-keys');
-      await expect(authenticatedPage).toHaveURL(
-        /.*\/(organization|repository).*/,
-      );
-
-      // Also verify other superuser pages redirect
-      await authenticatedPage.goto('/change-log');
-      await expect(authenticatedPage).toHaveURL(
-        /.*\/(organization|repository).*/,
-      );
-    });
+        // Also verify other superuser pages redirect
+        await authenticatedPage.goto('/change-log');
+        await expect(authenticatedPage).toHaveURL(
+          /.*\/(organization|repository).*/,
+        );
+      },
+    );
   },
 );
