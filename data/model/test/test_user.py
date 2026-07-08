@@ -3,6 +3,9 @@ from unittest.mock import Mock
 
 import pytest
 from mock import patch
+from peewee import IntegrityError
+
+from data.model import DataModelException
 
 from auth.scopes import READ_REPO
 from auth.test.mock_oidc_server import MOCK_PUBLIC_KEY, generate_mock_oidc_token
@@ -519,3 +522,62 @@ def test_get_namespace_users_by_usernames(initialized_db):
     result = get_namespace_users_by_usernames(["nonexistent1", "nonexistent2"])
     assert result["nonexistent1"] is None
     assert result["nonexistent2"] is None
+
+
+def test_create_user_noverify_duplicate_email_integrity_error(initialized_db):
+    """IntegrityError mentioning email is sanitized into a user-friendly message."""
+    with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
+        with patch(
+            "data.model.user.User.create",
+            side_effect=IntegrityError(
+                'duplicate key value violates unique constraint "user_email_key"'
+            ),
+        ):
+            with pytest.raises(DataModelException) as exc_info:
+                create_user_noverify(
+                    "newuser", "duplicate@example.com", email_required=False
+                )
+
+            error_msg = str(exc_info.value)
+            assert "A user with this email address already exists" in error_msg
+            assert "duplicate key value" not in error_msg
+            assert "user_email_key" not in error_msg
+
+
+def test_create_user_noverify_duplicate_username_integrity_error(initialized_db):
+    """IntegrityError mentioning username is sanitized into a user-friendly message."""
+    with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
+        with patch(
+            "data.model.user.User.create",
+            side_effect=IntegrityError(
+                'duplicate key value violates unique constraint "user_username_key"'
+            ),
+        ):
+            with pytest.raises(DataModelException) as exc_info:
+                create_user_noverify(
+                    "existinguser", "new@example.com", email_required=False
+                )
+
+            error_msg = str(exc_info.value)
+            assert "A user with this username already exists" in error_msg
+            assert "duplicate key value" not in error_msg
+            assert "user_username_key" not in error_msg
+
+
+def test_create_user_noverify_generic_integrity_error(initialized_db):
+    """IntegrityError without specific field info gives a generic sanitized message."""
+    with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
+        with patch(
+            "data.model.user.User.create",
+            side_effect=IntegrityError("some other constraint violation"),
+        ):
+            with pytest.raises(DataModelException) as exc_info:
+                create_user_noverify(
+                    "anotheruser", "another@example.com", email_required=False
+                )
+
+            error_msg = str(exc_info.value)
+            assert (
+                "A user with this username or email address already exists" in error_msg
+            )
+            assert "some other constraint violation" not in error_msg

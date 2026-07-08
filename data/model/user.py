@@ -185,6 +185,17 @@ def create_user_noverify(
             create_user_prompt(new_user, prompt)
 
         return new_user
+    except IntegrityError as ex:
+        logger.warning("IntegrityError creating user '%s': %s", username, ex)
+        error_message = str(ex).lower()
+        if "email" in error_message or "user_email" in error_message:
+            raise DataModelException("A user with this email address already exists")
+        elif "username" in error_message or "user_username" in error_message:
+            raise DataModelException("A user with this username already exists")
+        else:
+            raise DataModelException(
+                "A user with this username or email address already exists"
+            )
     except Exception as ex:
         raise DataModelException(ex)
 

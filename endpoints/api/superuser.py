@@ -577,9 +577,12 @@ class SuperUserList(ApiResource):
             # Create the user.
             username = user_information["username"]
             email = user_information.get("email")
-            install_user, confirmation_code = pre_oci_model.create_install_user(
-                username, password, email
-            )
+            try:
+                install_user, confirmation_code = pre_oci_model.create_install_user(
+                    username, password, email
+                )
+            except DataModelException as ex:
+                raise request_error(exception=ex)
 
             authed_user = get_authenticated_user()
 
