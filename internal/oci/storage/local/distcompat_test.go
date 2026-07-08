@@ -476,7 +476,7 @@ func (s *errStubMetaStore) DeleteUploadedBlob(context.Context, int64, digest.Dig
 func (s *errStubMetaStore) CleanExpiredUploadedBlobs(context.Context) error { return errNotImplemented }
 
 func TestDistDriver_GetRepositoryID_PropagatesNonNotExistError(t *testing.T) {
-	dbErr := fmt.Errorf("database connection timeout")
+	dbErr := errors.New("database connection timeout")
 	stub := &errStubMetaStore{getRepoErr: dbErr}
 	dd := NewDistDriver(nil, stub)
 	ctx := t.Context()
