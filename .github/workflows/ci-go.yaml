@@ -169,7 +169,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p /tmp/oci-conformance-logs
+          mkdir -p /tmp/oci-conformance-results /tmp/oci-conformance-logs
           PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
 
           export OCI_ROOT_URL="https://localhost:8443"
@@ -180,17 +180,22 @@ jobs:
 
           export OCI_TEST_PULL=1
           export OCI_TEST_PUSH=1
-          # Content discovery currently fails because the Go registry does not
-          # implement the OCI 1.1 referrers API yet.
-          export OCI_TEST_CONTENT_DISCOVERY=0
+          # Run all OCI 1.1 workflows. Content management depends on push and
+          # content discovery, so keep these enabled together.
+          export OCI_TEST_CONTENT_DISCOVERY=1
           export OCI_TEST_CONTENT_MANAGEMENT=1
 
+          export OCI_REPORT_DIR="/tmp/oci-conformance-results"
           export OCI_HIDE_SKIPPED_WORKFLOWS=0
           export OCI_DEBUG=0
           export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
 
+          set +e
           ./dist-spec/conformance/conformance.test \
             2>&1 | tee /tmp/oci-conformance-logs/conformance-output.log
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "$status" > /tmp/oci-conformance-results/conformance.exitcode
 
       - name: Collect diagnostics
         if: always()
@@ -230,10 +235,29 @@ jobs:
           logs_dir = Path("/tmp/oci-conformance-logs")
           junit_path = results_dir / "junit.xml"
           report_path = results_dir / "report.html"
+          exit_code_path = results_dir / "conformance.exitcode"
+          exit_code = None
+          if exit_code_path.exists():
+              try:
+                  exit_code = int(exit_code_path.read_text().strip())
+              except ValueError:
+                  exit_code = None
+
+          allowed_failure_names = {
+              "OCI Distribution Conformance Tests Content Discovery Setup References setup",
+              "OCI Distribution Conformance Tests Content Discovery Test content discovery endpoints (listing references) GET request to nonexistent blob should result in empty 200 response",
+              "OCI Distribution Conformance Tests Content Discovery Test content discovery endpoints (listing references) GET request to existing blob should yield 200",
+              "OCI Distribution Conformance Tests Content Discovery Test content discovery endpoints (listing references) GET request to existing blob with filter should yield 200",
+              "OCI Distribution Conformance Tests Content Discovery Test content discovery endpoints (listing references) GET request to missing manifest should yield 200",
+          }
 
           lines = ["## OCI Distribution Spec Conformance", ""]
+          failed_cases = []
+          unexpected_failures = []
+          missing_results = False
 
           if not junit_path.exists():
+              missing_results = True
               lines.extend([
                   "No `junit.xml` was produced. Check the uploaded `oci-conformance-logs` artifact for install, registry, and conformance output.",
                   "",
@@ -254,14 +278,21 @@ jobs:
                   "",
               ])
 
-              failed_cases = []
               for case in root.iter("testcase"):
                   problems = list(case.findall("failure")) + list(case.findall("error"))
                   if problems:
                       failed_cases.append((case, problems[0]))
 
               if failed_cases:
-                  print(f"::error title=OCI conformance failures::{failures} failures, {errors} errors")
+                  unexpected_failures = [
+                      case.get("name", "unknown")
+                      for case, _ in failed_cases
+                      if case.get("name", "unknown") not in allowed_failure_names
+                  ]
+                  if unexpected_failures:
+                      print(f"::error title=Unexpected OCI conformance failures::{len(unexpected_failures)} unexpected failures")
+                  else:
+                      print(f"::warning title=Known OCI conformance failures::{len(failed_cases)} known referrers failures")
                   lines.append("### Failed Tests")
                   for case, problem in failed_cases[:20]:
                       name = case.get("name", "unknown")
@@ -275,6 +306,11 @@ jobs:
                           lines.append(f"  {message}")
                   if len(failed_cases) > 20:
                       lines.append(f"- ...and {len(failed_cases) - 20} more failures. See `junit.xml` in the uploaded results artifact.")
+                  lines.append("")
+                  if unexpected_failures:
+                      lines.append("Unexpected conformance failures were found. See `junit.xml` and `report.html` in the uploaded results artifact.")
+                  else:
+                      lines.append("Only known Go registry referrers failures were reported. These are allowed until `/v2/<name>/referrers/<digest>` support is implemented.")
                   lines.append("")
               else:
                   lines.append("All reported conformance tests passed.")
@@ -309,6 +345,12 @@ jobs:
               lines.append("")
 
           summary_path.write_text("\n".join(lines))
+          if missing_results:
+              raise SystemExit("OCI conformance did not produce junit.xml")
+          if unexpected_failures:
+              raise SystemExit("unexpected OCI conformance failures")
+          if exit_code not in (0, None) and not failed_cases:
+              raise SystemExit(f"OCI conformance exited with {exit_code} without reported failures")
           PY
 
       - name: Stop registry
