@@ -192,12 +192,10 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
         metadata_json = metadata or {}
 
-        # Only extract performer email when extended logging is enabled
-        # This avoids triggering lazy DB loads on performer which can cause deadlocks
+        # Only include performer_email in log_data when extended logging is disabled
+        # When extended logging is enabled, performer_email is intentionally excluded
+        # for ESS EOI compliance to avoid logging PII (email addresses)
         extended_logging_enabled = request_url is not None or http_method is not None
-        performer_email = None
-        if extended_logging_enabled and performer is not None:
-            performer_email = getattr(performer, "email", None)
 
         log_data = {
             "kind": kind_name,
@@ -211,7 +209,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             "request_url": request_url,
             "http_method": http_method,
             "performer_username": performer_name,
-            "performer_email": performer_email,
             "performer_kind": performer_kind,
             "auth_type": auth_type,
             "user_agent": user_agent,
@@ -220,6 +217,10 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             "request_id": request_id,
             "x_forwarded_for": x_forwarded_for,
         }
+
+        # Add performer_email as None only when extended logging is disabled
+        if not extended_logging_enabled:
+            log_data["performer_email"] = None
 
         try:
             self._logs_producer.send(log_data)
