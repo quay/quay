@@ -16,9 +16,7 @@ import urllib.request
 from typing import Dict, Tuple
 
 from prometheus_client import REGISTRY
-from prometheus_client.parser import (
-    text_string_to_metric_families,  # type: ignore[import]
-)
+from prometheus_client.parser import text_string_to_metric_families
 
 logger = logging.getLogger(__name__)
 
