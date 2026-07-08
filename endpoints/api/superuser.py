@@ -52,7 +52,7 @@ from endpoints.api import (
 )
 from endpoints.api.build import get_logs_or_log_url
 from endpoints.api.logs import _validate_logs_arguments
-from endpoints.api.mirrorhealth import get_mirror_health_data
+from endpoints.api.mirrorhealth import _CACHE_CONTROL_NO_STORE, get_mirror_health_data
 from endpoints.api.namespacequota import get_quota, limit_view, quota_view
 from endpoints.api.superuser_models_pre_oci import (
     InvalidRepositoryBuildException,
@@ -1502,9 +1502,6 @@ class SuperUserDumpConfig(ApiResource):
         raise Unauthorized()
 
 
-_MIRROR_HEALTH_CACHE_CONTROL = "no-cache, no-store, must-revalidate"
-
-
 @resource("/v1/superuser/mirror/health")
 @show_if(features.REPO_MIRROR)
 @show_if(features.SUPER_USERS)
@@ -1532,5 +1529,5 @@ class SuperUserRepositoryMirrorHealth(ApiResource):
         return (
             health_data,
             status_code,
-            {"Cache-Control": _MIRROR_HEALTH_CACHE_CONTROL},
+            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
         )
