@@ -24,7 +24,6 @@ from data.database import (
 )
 from endpoints.api import (
     ApiResource,
-    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser_with_full_access,
     nickname,
@@ -444,37 +443,6 @@ class RepositoryMirrorHealth(ApiResource):
         )
 
         # Return 503 if unhealthy, 200 if healthy
-        status_code = 200 if health_data["healthy"] else 503
-
-        return (
-            health_data,
-            status_code,
-            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
-        )
-
-
-@resource("/v1/superuser/mirror/health")
-@show_if(features.REPO_MIRROR)
-@show_if(features.SUPER_USERS)
-class SuperUserRepositoryMirrorHealth(ApiResource):
-    """
-    Resource for checking global repository mirror health from the superuser panel.
-    """
-
-    @require_fresh_login
-    @nickname("getSuperUserRepositoryMirrorHealth")
-    def get(self):
-        """
-        Get a global mirror health summary without repository-identifying samples.
-        """
-        if not allow_if_any_superuser():
-            raise Unauthorized()
-
-        health_data = get_mirror_health_data(
-            detailed=False,
-            include_repository_details=False,
-        )
-
         status_code = 200 if health_data["healthy"] else 503
 
         return (

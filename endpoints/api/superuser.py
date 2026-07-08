@@ -52,6 +52,7 @@ from endpoints.api import (
 )
 from endpoints.api.build import get_logs_or_log_url
 from endpoints.api.logs import _validate_logs_arguments
+from endpoints.api.mirrorhealth import get_mirror_health_data
 from endpoints.api.namespacequota import get_quota, limit_view, quota_view
 from endpoints.api.superuser_models_pre_oci import (
     InvalidRepositoryBuildException,
@@ -1499,3 +1500,37 @@ class SuperUserDumpConfig(ApiResource):
             if features.SUPERUSER_CONFIGDUMP:
                 return process_config()
         raise Unauthorized()
+
+
+_MIRROR_HEALTH_CACHE_CONTROL = "no-cache, no-store, must-revalidate"
+
+
+@resource("/v1/superuser/mirror/health")
+@show_if(features.REPO_MIRROR)
+@show_if(features.SUPER_USERS)
+class SuperUserRepositoryMirrorHealth(ApiResource):
+    """
+    Resource for checking global repository mirror health from the superuser panel.
+    """
+
+    @require_fresh_login
+    @nickname("getSuperUserRepositoryMirrorHealth")
+    def get(self):
+        """
+        Get a global mirror health summary without repository-identifying samples.
+        """
+        if not allow_if_any_superuser():
+            raise Unauthorized()
+
+        health_data = get_mirror_health_data(
+            detailed=False,
+            include_repository_details=False,
+        )
+
+        status_code = 200 if health_data["healthy"] else 503
+
+        return (
+            health_data,
+            status_code,
+            {"Cache-Control": _MIRROR_HEALTH_CACHE_CONTROL},
+        )
