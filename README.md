@@ -127,8 +127,8 @@ Local UI notes:
 
   ```bash
   cd web
-  npm install
-  npm start
+  pnpm install
+  pnpm start
   ```
 
 - If backend code changes are not reflected in the local stack, restart the Quay container:

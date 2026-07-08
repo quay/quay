@@ -114,16 +114,12 @@ RUN npm run --quiet build
 
 # Build React UI
 FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest AS build-ui
+RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web/package.json web/package-lock.json ./
-# web/.npmrc is intentionally excluded: it contains pnpm-specific options (node-linker=hoisted)
-# that are incompatible with npm.
-# --ignore-scripts is intentionally omitted: npm 10.9.7 crashes with "Exit handler never called!"
-# when --ignore-scripts is combined with file: URLs that hermeto injects into package-lock.json.
-# Lifecycle script risk is mitigated by cachi2/hermeto cryptographic prefetch verification.
-RUN npm clean-install --legacy-peer-deps
+COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
-RUN npm run --quiet build
+RUN pnpm run --silent build
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS pushgateway

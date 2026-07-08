@@ -85,9 +85,6 @@ jobs:
       - name: Install dependencies
         run: cd web && pnpm install --frozen-lockfile
 
-      - name: Verify npm lockfile is valid
-        run: cd web && npm ci --ignore-scripts --legacy-peer-deps --dry-run
-
       - name: Run unit tests with coverage
         run: cd web && pnpm run test:coverage
 
@@ -265,11 +262,11 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: cd web && npx playwright install --with-deps
+        run: cd web && pnpm exec playwright install --with-deps
 
       - name: Install Playwright OS dependencies only
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: cd web && npx playwright install-deps
+        run: cd web && pnpm exec playwright install-deps
 
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
@@ -286,7 +283,7 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
+        run: cd web && pnpm exec playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()
@@ -323,7 +320,7 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+        run: cd web && pnpm exec playwright test --grep @auth:OIDC --reporter=blob
 
       - name: Swap to LDAP authentication
         if: always()
@@ -360,7 +357,7 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
+        run: cd web && pnpm exec playwright test --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()
@@ -371,7 +368,7 @@ jobs:
           mkdir -p all-blob-reports
           find blob-results -name '*.zip' -exec cp {} all-blob-reports/ \; 2>/dev/null
           if [ "$(ls -A all-blob-reports 2>/dev/null)" ]; then
-            npx playwright merge-reports --reporter=html,json all-blob-reports
+            pnpm exec playwright merge-reports --reporter=html,json all-blob-reports
           else
             echo "::warning::No blob reports found. Test reports were not generated."
           fi

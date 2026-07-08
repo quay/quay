@@ -67,19 +67,19 @@ test.describe('Feature Name', { tag: ['@critical', '@repository'] }, () => {
 
 ```bash
 # Run critical tests only
-npx playwright test --grep @critical
+pnpm exec playwright test --grep @critical
 
 # Run tests for a specific JIRA ticket
-npx playwright test --grep @PROJQUAY-1234
+pnpm exec playwright test --grep @PROJQUAY-1234
 
 # Run all repository tests
-npx playwright test --grep @repository
+pnpm exec playwright test --grep @repository
 
 # Exclude tests requiring specific config
-npx playwright test --grep-invert @config:BILLING
+pnpm exec playwright test --grep-invert @config:BILLING
 
 # Combine filters (AND logic)
-npx playwright test --grep "(?=.*@critical)(?=.*@repository)"
+pnpm exec playwright test --grep "(?=.*@critical)(?=.*@repository)"
 ```
 
 ## Command Mapping
@@ -127,7 +127,7 @@ npx playwright test --grep "(?=.*@critical)(?=.*@repository)"
 |---------|------------------------|
 | `cy.intercept()` | Use real API calls |
 | `cy.fixture()` | Use API utilities to create data |
-| `cy.exec('npm run quay:seed')` | Use `utils/api.ts` functions |
+| `cy.exec('pnpm run quay:seed')` | Use `utils/api.ts` functions |
 | `cy.wait('@alias')` | `await page.waitForResponse()` or just let auto-wait work |
 
 ## Adding data-testid Attributes
@@ -551,7 +551,7 @@ The `QuayFeature` type includes:
 1. **Single source of truth**: Feature specified only in the tag, no duplication
 2. **Self-documenting**: Tests skip with clear reason in output
 3. **Type-safe**: Feature names are typed for autocomplete
-4. **CLI filtering**: Filter tests with `npx playwright test --grep @feature:BILLING`
+4. **CLI filtering**: Filter tests with `pnpm exec playwright test --grep @feature:BILLING`
 5. **No boilerplate**: No manual `test.skip()` calls needed in each test
 
 ### Test Output
@@ -631,7 +631,7 @@ When registry image tooling is unavailable:
 // cypress/e2e/repository-delete.cy.ts
 describe('Repository Delete', () => {
   beforeEach(() => {
-    cy.exec('npm run quay:seed');
+    cy.exec('pnpm run quay:seed');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => cy.loginByCSRF(token));
