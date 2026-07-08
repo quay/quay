@@ -2,8 +2,8 @@ package registry
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -199,14 +199,14 @@ func TestReferrers_InvalidDigest(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want %d (regex should not match)", w.Code, http.StatusNotFound)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 
 func TestReferrers_RepoNotFound(t *testing.T) {
 	store := &mockStore{
-		repoErr: sql.ErrNoRows,
+		repoErr: fmt.Errorf("get repository test: %w", oci.ErrNotExist),
 	}
 	handler := newTestHandler(store)
 
@@ -218,6 +218,23 @@ func TestReferrers_RepoNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestReferrers_RepoLookupError(t *testing.T) {
+	store := &mockStore{
+		repoErr: fmt.Errorf("db connection refused"),
+	}
+	handler := newTestHandler(store)
+
+	subjectDgst := digest.FromString("subject")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusInternalServerError)
 	}
 }
 
@@ -234,7 +251,7 @@ func TestReferrers_Matches(t *testing.T) {
 		{http.MethodGet, "/v2/ns/sub/repo/referrers/" + dgst.String(), true},
 		{http.MethodPost, "/v2/ns/repo/referrers/" + dgst.String(), false},
 		{http.MethodGet, "/v2/ns/repo/manifests/" + dgst.String(), false},
-		{http.MethodGet, "/v2/ns/repo/referrers/notadigest", false},
+		{http.MethodGet, "/v2/ns/repo/referrers/notadigest", true},
 	}
 
 	for _, tt := range tests {

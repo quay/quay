@@ -111,7 +111,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 
 	referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
 		LibraryNamespace: resolved.Config.LibraryNamespace,
-		AnonymousAccess:  featureEnabled(resolved.Config.FeatureAnonymousAccess),
+		AnonymousAccess:  resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
 	})
 
 	mux := http.NewServeMux()

@@ -4,6 +4,7 @@ package registry
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -21,7 +22,10 @@ const (
 	defaultLibraryNamespace = "library"
 )
 
-var referrersPathRe = regexp.MustCompile(`^/v2/(.+)/referrers/(` + digest.DigestRegexp.String() + `)$`)
+var (
+	referrersPathRe      = regexp.MustCompile(`^/v2/(.+)/referrers/(` + digest.DigestRegexp.String() + `)$`)
+	referrersPathLooseRe = regexp.MustCompile(`^/v2/.+/referrers/.+$`)
+)
 
 // ReferrersConfig holds the configuration for the referrers handler.
 type ReferrersConfig struct {
@@ -52,13 +56,13 @@ func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg ReferrersConfi
 
 // Matches reports whether the request targets the referrers endpoint.
 func (h *ReferrersHandler) Matches(r *http.Request) bool {
-	return r.Method == http.MethodGet && referrersPathRe.MatchString(r.URL.Path)
+	return r.Method == http.MethodGet && referrersPathLooseRe.MatchString(r.URL.Path)
 }
 
 func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matches := referrersPathRe.FindStringSubmatch(r.URL.Path)
 	if matches == nil {
-		http.NotFound(w, r)
+		writeOCIError(w, http.StatusBadRequest, "DIGEST_INVALID", "invalid digest")
 		return
 	}
 
@@ -88,11 +92,18 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Name:      repo,
 	})
 	if err != nil {
-		writeOCIError(w, http.StatusNotFound, "NAME_UNKNOWN", "repository name not known to registry")
+		if errors.Is(err, oci.ErrNotExist) {
+			writeOCIError(w, http.StatusNotFound, "NAME_UNKNOWN", "repository name not known to registry")
+			return
+		}
+		slog.Error("get repository id failed", "repository", name, "err", err) //nolint:gosec // structured logging, not injection
+		writeOCIError(w, http.StatusInternalServerError, "UNKNOWN", "internal error")
 		return
 	}
 
-	artifactType := r.URL.Query().Get("artifactType")
+	queryParams := r.URL.Query()
+	artifactType := queryParams.Get("artifactType")
+	_, filterPresent := queryParams["artifactType"]
 
 	referrers, err := h.store.ListReferrers(r.Context(), repoID, dgst, artifactType)
 	if err != nil {
@@ -119,7 +130,7 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", ociImageIndexMediaType)
-	if artifactType != "" {
+	if filterPresent {
 		w.Header().Set("OCI-Filters-Applied", "artifactType")
 	}
 	w.WriteHeader(http.StatusOK)

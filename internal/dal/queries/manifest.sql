@@ -4,12 +4,14 @@ FROM manifest
 WHERE repository_id = ? AND digest = ?;
 
 -- name: UpsertManifest :one
-INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type, subject_backfilled, artifact_type_backfilled)
+VALUES (?, ?, ?, ?, ?, ?, 1, 1)
 ON CONFLICT (repository_id, digest) DO UPDATE
   SET manifest_bytes = excluded.manifest_bytes,
       subject = excluded.subject,
-      artifact_type = excluded.artifact_type
+      artifact_type = excluded.artifact_type,
+      subject_backfilled = 1,
+      artifact_type_backfilled = 1
 RETURNING id;
 
 -- name: DeleteManifest :exec
