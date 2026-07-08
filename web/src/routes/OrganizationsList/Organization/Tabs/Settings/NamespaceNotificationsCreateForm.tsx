@@ -88,6 +88,20 @@ export default function NamespaceNotificationsCreateForm(
     resetCreatingNotification,
   } = useUpdateNamespaceNotifications(props.orgname, props.isUser);
 
+  useEffect(() => {
+    if (props.isOpen) {
+      setEvent(null);
+      setMethod(null);
+      setTitle('');
+      setError('');
+      setEmail('');
+      setSlackUrl('');
+      setWebhookUrl('');
+      setWebhookTemplate('');
+      setSelectedEntity(null);
+    }
+  }, [props.isOpen]);
+
   const NAMESPACE_METHODS: NotificationMethodOption[] = [
     {
       type: NamespaceNotificationMethodType.email,

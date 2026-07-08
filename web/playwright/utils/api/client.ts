@@ -818,7 +818,7 @@ export class ApiClient {
   ): Promise<{uuid: string}> {
     const token = await this.fetchToken();
     const response = await this.request.post(
-      `${API_URL}/api/v1/user/notifications`,
+      `${API_URL}/api/v1/user/namespacenotifications`,
       {
         timeout: 5000,
         headers: {
@@ -847,7 +847,7 @@ export class ApiClient {
   async deleteUserNamespaceNotification(uuid: string): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.delete(
-      `${API_URL}/api/v1/user/notifications/${uuid}`,
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}`,
       {
         timeout: 5000,
         headers: {
@@ -874,7 +874,7 @@ export class ApiClient {
     }>;
   }> {
     const response = await this.request.get(
-      `${API_URL}/api/v1/user/notifications`,
+      `${API_URL}/api/v1/user/namespacenotifications`,
       {
         timeout: 5000,
       },
@@ -893,7 +893,7 @@ export class ApiClient {
   async testUserNamespaceNotification(uuid: string): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.post(
-      `${API_URL}/api/v1/user/notifications/${uuid}/test`,
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}/test`,
       {
         timeout: 5000,
         headers: {

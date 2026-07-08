@@ -218,7 +218,7 @@ def check_limits(namespace_name, size):
 
     for limit in limits:
         bytes_allowed = int(limit.quota.limit_bytes * limit.percent_of_limit / 100)
-        if size > bytes_allowed:
+        if size >= bytes_allowed:
             if limit_bytes < bytes_allowed:
                 limit_bytes = bytes_allowed
                 severity_level = limit.quota_type.name

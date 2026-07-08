@@ -76,7 +76,7 @@ class QuotaNotificationWorker(Worker):
             threshold_percent = limit.percent_of_limit
             bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
 
-            if usage_bytes > bytes_allowed:
+            if usage_bytes >= bytes_allowed:
                 quota_result = {
                     "severity_level": limit.quota_type.name,
                     "threshold_percent": threshold_percent,

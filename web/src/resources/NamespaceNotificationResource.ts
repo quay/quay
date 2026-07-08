@@ -33,7 +33,7 @@ export async function fetchNamespaceNotifications(
   isUser: boolean = false,
 ): Promise<NamespaceNotification[]> {
   const url = isUser
-    ? '/api/v1/user/notifications'
+    ? '/api/v1/user/namespacenotifications'
     : `/api/v1/organization/${orgname}/notifications`;
   const response: AxiosResponse<FetchNamespaceNotificationsResponse> =
     await axios.get(url);
@@ -46,7 +46,7 @@ export async function createNamespaceNotification(
   isUser: boolean = false,
 ): Promise<void> {
   const url = isUser
-    ? '/api/v1/user/notifications'
+    ? '/api/v1/user/namespacenotifications'
     : `/api/v1/organization/${orgname}/notifications`;
   const payload: Record<string, unknown> = {
     event: notification.event,
@@ -65,7 +65,7 @@ export async function deleteNamespaceNotification(
 ): Promise<void> {
   try {
     const url = isUser
-      ? `/api/v1/user/notifications/${uuid}`
+      ? `/api/v1/user/namespacenotifications/${uuid}`
       : `/api/v1/organization/${orgname}/notifications/${uuid}`;
     await axios.delete(url);
   } catch (err) {
@@ -94,7 +94,7 @@ export async function testNamespaceNotification(
   isUser: boolean = false,
 ): Promise<void> {
   const url = isUser
-    ? `/api/v1/user/notifications/${uuid}/test`
+    ? `/api/v1/user/namespacenotifications/${uuid}/test`
     : `/api/v1/organization/${orgname}/notifications/${uuid}/test`;
   await axios.post(url);
 }
@@ -106,7 +106,7 @@ export async function enableNamespaceNotification(
 ): Promise<void> {
   try {
     const url = isUser
-      ? `/api/v1/user/notifications/${uuid}`
+      ? `/api/v1/user/namespacenotifications/${uuid}`
       : `/api/v1/organization/${orgname}/notifications/${uuid}`;
     await axios.post(url);
   } catch (err) {

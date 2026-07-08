@@ -28,6 +28,9 @@ def should_notify(namespace_user, threshold_percent):
     if state is None:
         return True
 
+    if state.cleared:
+        return True
+
     if state.last_notified_at is None:
         return True
 

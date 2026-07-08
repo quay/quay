@@ -61,7 +61,7 @@ class TestQuotaNotificationWorker:
 
     def _create_namespace_notification(self, namespace_user, event_name="quota_warning"):
         event = ExternalNotificationEvent.get(ExternalNotificationEvent.name == event_name)
-        method = ExternalNotificationMethod.select().first()
+        method = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "webhook")
         return NamespaceNotification.create(
             namespace=namespace_user,
             event=event,

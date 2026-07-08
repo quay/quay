@@ -266,6 +266,7 @@ export default function NamespaceNotifications({
       </Table>
       <NamespaceNotificationsCreateForm
         orgname={organizationName}
+        isUser={isUser}
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
       />

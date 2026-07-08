@@ -24,6 +24,7 @@ from endpoints.exception import NotFound, Unauthorized
 from notifications import build_namespace_event_data, build_notification_data
 from notifications.notificationevent import NotificationEvent
 from notifications.notificationmethod import (
+    CannotValidateNotificationMethodException,
     InvalidNotificationMethodException,
     NotificationMethod,
 )
@@ -62,7 +63,7 @@ def _check_org_admin(orgname):
     raise Unauthorized()
 
 
-def _validate_create_request(parsed):
+def _validate_create_request(parsed, namespace_name):
     event_name = parsed["event"]
     if event_name not in VALID_NAMESPACE_EVENTS:
         raise request_error(
@@ -71,9 +72,14 @@ def _validate_create_request(parsed):
         )
 
     try:
-        NotificationMethod.get_method(parsed["method"])
+        method_handler = NotificationMethod.get_method(parsed["method"])
     except InvalidNotificationMethodException:
         raise request_error(message="Unknown notification method '%s'" % parsed["method"])
+
+    try:
+        method_handler.validate(namespace_name, None, parsed["config"])
+    except CannotValidateNotificationMethodException as ex:
+        raise request_error(message=str(ex))
 
 
 def _get_or_404(uuid):
@@ -140,7 +146,7 @@ class OrgNamespaceNotificationList(ApiResource):
             raise NotFound()
 
         parsed = request.get_json()
-        _validate_create_request(parsed)
+        _validate_create_request(parsed, orgname)
 
         new_notification = model.notification.create_namespace_notification(
             org,
@@ -200,7 +206,10 @@ class OrgNamespaceNotification(ApiResource):
     @nickname("resetOrgNotificationFailures")
     def post(self, orgname, uuid):
         _check_org_admin(orgname)
-        reset = model.notification.reset_namespace_notification_number_of_failures(orgname, uuid)
+        try:
+            reset = model.notification.reset_namespace_notification_number_of_failures(orgname, uuid)
+        except InvalidNotificationException:
+            raise NotFound()
         if not reset:
             raise NotFound()
 
@@ -243,7 +252,7 @@ class TestOrgNamespaceNotification(ApiResource):
         return {}, 200
 
 
-@resource("/v1/user/notifications")
+@resource("/v1/user/namespacenotifications")
 @show_if(features.QUOTA_NOTIFICATIONS)
 class UserNamespaceNotificationList(ApiResource):
     schemas = {
@@ -289,7 +298,7 @@ class UserNamespaceNotificationList(ApiResource):
     def post(self):
         user = get_authenticated_user()
         parsed = request.get_json()
-        _validate_create_request(parsed)
+        _validate_create_request(parsed, user.username)
 
         new_notification = model.notification.create_namespace_notification(
             user,
@@ -313,7 +322,7 @@ class UserNamespaceNotificationList(ApiResource):
         return _notification_view(new_notification), 201
 
 
-@resource("/v1/user/notifications/<uuid>")
+@resource("/v1/user/namespacenotifications/<uuid>")
 @show_if(features.QUOTA_NOTIFICATIONS)
 @path_param("uuid", "The UUID of the notification")
 class UserNamespaceNotification(ApiResource):
@@ -351,9 +360,12 @@ class UserNamespaceNotification(ApiResource):
     @nickname("resetUserNamespaceNotificationFailures")
     def post(self, uuid):
         user = get_authenticated_user()
-        reset = model.notification.reset_namespace_notification_number_of_failures(
-            user.username, uuid
-        )
+        try:
+            reset = model.notification.reset_namespace_notification_number_of_failures(
+                user.username, uuid
+            )
+        except InvalidNotificationException:
+            raise NotFound()
         if not reset:
             raise NotFound()
 
@@ -370,7 +382,7 @@ class UserNamespaceNotification(ApiResource):
         return "No Content", 204
 
 
-@resource("/v1/user/notifications/<uuid>/test")
+@resource("/v1/user/namespacenotifications/<uuid>/test")
 @show_if(features.QUOTA_NOTIFICATIONS)
 @path_param("uuid", "The UUID of the notification")
 class TestUserNamespaceNotification(ApiResource):

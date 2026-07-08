@@ -1,4 +1,5 @@
 import {useMutation, useQueryClient} from '@tanstack/react-query';
+import {isAxiosError} from 'axios';
 import {
   bulkDeleteNamespaceNotifications,
   bulkEnableNamespaceNotifications,
@@ -78,12 +79,13 @@ export function useUpdateNamespaceNotifications(
     },
   );
 
-  let errorCreationMessage: string = null;
+  let errorCreationMessage: string | null = null;
   if (errorCreatingNotification != null) {
-    errorCreationMessage = (errorCreatingNotification as any)?.response?.data
-      ?.detail
-      ? (errorCreatingNotification as any)?.response?.data?.detail
-      : 'Unable to create notification';
+    errorCreationMessage =
+      isAxiosError(errorCreatingNotification) &&
+      errorCreatingNotification.response?.data?.detail
+        ? errorCreatingNotification.response.data.detail
+        : 'Unable to create notification';
   }
 
   return {
