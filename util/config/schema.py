@@ -74,6 +74,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "USE_CDN",
     "ANALYTICS_TYPE",
     "LAST_ACCESSED_UPDATE_THRESHOLD_S",
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S",
     "GREENLET_TRACING",
     "EXCEPTION_LOG_TYPE",
     "SENTRY_DSN",
@@ -2368,6 +2369,14 @@ CONFIG_SCHEMA = {
     "LAST_ACCESSED_UPDATE_THRESHOLD_S": {
         "type": "number",
         "description": "Update the LAST_ACCESSED database column. Defaults to 60 in seconds",
+        "x-example": 60,
+        "x-reference": None,
+    },
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": {
+        "type": "number",
+        "description": (
+            "Update the OAuth token LAST_ACCESSED database column. Defaults to 60 seconds"
+        ),
         "x-example": 60,
         "x-reference": None,
     },

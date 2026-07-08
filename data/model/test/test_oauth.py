@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from auth.scopes import READ_REPO
@@ -23,6 +23,25 @@ def setup(num_assignments=0):
         application, user, REDIRECT_URI, READ_REPO.scope, "token"
     )
     return (application, token_assignment, user, org)
+
+
+def create_access_token_for_last_accessed_test(application_name, expires_at):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, application_name, "", "")
+    token, access_token = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        READ_REPO.scope,
+        "Bearer",
+        3600,
+    )
+    (
+        OAuthAccessToken.update(expires_at=expires_at)
+        .where(OAuthAccessToken.id == token.id)
+        .execute()
+    )
+    token.expires_at = expires_at
+    return token, access_token
 
 
 def test_oauth_access_token_metadata_fields_are_nullable():
@@ -59,6 +78,101 @@ def test_oauth_access_token_created_defaults_to_now(initialized_db):
 
     assert token.last_accessed is None
     assert before <= token.created <= after
+
+
+def test_validate_access_token_updates_last_accessed_for_active_token(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-active",
+        now + timedelta(hours=1),
+    )
+
+    with patch("data.model.oauth.datetime") as mock_datetime:
+        mock_datetime.now.return_value = now
+        found = model.oauth.validate_access_token(access_token)
+
+    assert found.id == token.id
+    assert found.last_accessed == now
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == now
+
+
+def test_validate_access_token_does_not_update_expired_token(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-expired",
+        now - timedelta(seconds=1),
+    )
+
+    with patch("data.model.oauth.datetime") as mock_datetime:
+        mock_datetime.now.return_value = now
+        found = model.oauth.validate_access_token(access_token)
+
+    assert found.id == token.id
+    assert found.last_accessed is None
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed is None
+
+
+def test_validate_access_token_does_not_update_invalid_suffix(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-invalid-suffix",
+        now + timedelta(hours=1),
+    )
+    prefix_length = model.oauth.ACCESS_TOKEN_PREFIX_LENGTH
+    replacement = "x" if access_token[prefix_length] != "x" else "y"
+    invalid_access_token = (
+        access_token[:prefix_length] + replacement + access_token[prefix_length + 1 :]
+    )
+
+    assert model.oauth.validate_access_token(invalid_access_token) is None
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed is None
+
+
+def test_validate_access_token_honors_oauth_last_accessed_debounce(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    previous = now - timedelta(seconds=30)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-debounce",
+        now + timedelta(hours=1),
+    )
+    (
+        OAuthAccessToken.update(last_accessed=previous)
+        .where(OAuthAccessToken.id == token.id)
+        .execute()
+    )
+    token.last_accessed = previous
+
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": 60},
+        clear=False,
+    ):
+        with patch("data.model.oauth.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
+            found = model.oauth.validate_access_token(access_token)
+
+    assert found.last_accessed == previous
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == previous
+
+
+def test_validate_access_token_ignores_user_last_accessed_feature_flag(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-user-feature-disabled",
+        now + timedelta(hours=1),
+    )
+
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"FEATURE_USER_LAST_ACCESSED": False},
+        clear=False,
+    ):
+        with patch("data.model.oauth.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
+            found = model.oauth.validate_access_token(access_token)
+
+    assert found.last_accessed == now
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == now
 
 
 def test_get_token_response_with_assignment_id(initialized_db):

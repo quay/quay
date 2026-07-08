@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from flask import url_for
+from peewee import PeeweeException
 
 from auth import scopes
 from data.database import (
@@ -23,6 +24,7 @@ from data.database import (
 from data.fields import Credential, DecryptedValue
 from data.model import config, db_transaction, notification, user
 from data.model.organization import is_org_admin
+from data.readreplica import ReadOnlyModeException
 from oauth import utils
 from oauth.provider import AuthorizationProvider
 from util import get_app_url
@@ -635,6 +637,34 @@ def create_application(org, name, application_uri, redirect_uri, **kwargs):
     )
 
 
+def update_oauth_token_last_accessed(token: OAuthAccessToken) -> None:
+    """Update OAuth token last_accessed using OAuth-specific debounce config."""
+    now = datetime.now()
+    threshold = timedelta(
+        seconds=config.app_config.get("OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S", 60)
+    )
+    if token.last_accessed is not None and now - token.last_accessed < threshold:
+        return
+
+    try:
+        (
+            OAuthAccessToken.update(last_accessed=now)
+            .where(OAuthAccessToken.id == token.id)
+            .execute()
+        )
+        token.last_accessed = now
+    except ReadOnlyModeException:
+        pass
+    except PeeweeException:
+        strict_logging_disabled = config.app_config.get(
+            "ALLOW_WITHOUT_STRICT_LOGGING"
+        ) or config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+        if strict_logging_disabled:
+            logger.exception("update last_accessed for OAuth token failed")
+        else:
+            raise
+
+
 def validate_access_token(access_token):
     assert isinstance(access_token, str)
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
@@ -655,6 +685,9 @@ def validate_access_token(access_token):
 
         if found.token_code is None or not found.token_code.matches(token_code):
             return None
+
+        if found.expires_at > datetime.now():
+            update_oauth_token_last_accessed(found)
 
         return found
     except OAuthAccessToken.DoesNotExist:
