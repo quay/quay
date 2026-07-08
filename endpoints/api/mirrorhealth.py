@@ -24,8 +24,9 @@ from data.database import (
 )
 from endpoints.api import (
     ApiResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
-    allow_if_superuser,
+    allow_if_superuser_with_full_access,
     nickname,
     parse_args,
     query_param,
@@ -147,6 +148,7 @@ def get_mirror_health_data(
     detailed=False,
     detail_limit=100,
     detail_offset=0,
+    include_repository_details=True,
 ):
     """
     Gather health data for repository mirroring operations.
@@ -156,11 +158,15 @@ def get_mirror_health_data(
         detailed: If true, include paginated per-repository rows under repositories.details
         detail_limit: Max repositories in detailed view (clamped 1..1000)
         detail_offset: Pagination offset into the sorted mirror list (SQL LIMIT/OFFSET)
+        include_repository_details: If false, omit repository-identifying issue samples
+            and detailed rows. This is intended for global superuser summary views.
 
     Returns:
         Dictionary with health status information. Totals and `details` use enabled
         mirror configs only.
     """
+    detailed = detailed and include_repository_details
+
     counts = _mirror_status_counts(namespace)
     total_repos = counts["total"]
     syncing = counts["syncing"]
@@ -178,7 +184,9 @@ def get_mirror_health_data(
     # Stale detection: last sync from quay_repository_mirror_last_sync_timestamp via
     # PushGateway—not mirror.sync_start_date (that field is the next scheduled run).
     stale_threshold = now - timedelta(hours=24)
-    last_sync_timestamps = _get_last_sync_timestamps(namespace)
+    last_sync_timestamps = (
+        _get_last_sync_timestamps(namespace) if include_repository_details else {}
+    )
     stale_repos = []
     never_synced_repos = []
     failing_repos = []
@@ -187,31 +195,32 @@ def get_mirror_health_data(
     lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE)) if detailed else 0
     off = max(0, int(detail_offset)) if detailed else 0
 
-    # Bounded queries: sample up to _ISSUE_SAMPLE_CAP of each issue type via SQL LIMIT.
-    failing_repos = list(
-        _mirror_rows_query(namespace)
-        .where(
-            RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL,
-            RepoMirrorConfig.sync_retries_remaining == 0,
+    if include_repository_details:
+        # Bounded queries: sample up to _ISSUE_SAMPLE_CAP of each issue type via SQL LIMIT.
+        failing_repos = list(
+            _mirror_rows_query(namespace)
+            .where(
+                RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL,
+                RepoMirrorConfig.sync_retries_remaining == 0,
+            )
+            .limit(_ISSUE_SAMPLE_CAP)
         )
-        .limit(_ISSUE_SAMPLE_CAP)
-    )
 
-    never_synced_repos = list(
-        _mirror_rows_query(namespace)
-        .where(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN)
-        .limit(_ISSUE_SAMPLE_CAP)
-    )
+        never_synced_repos = list(
+            _mirror_rows_query(namespace)
+            .where(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN)
+            .limit(_ISSUE_SAMPLE_CAP)
+        )
 
-    # Stale detection uses in-process Prometheus timestamps (bounded by registry size).
-    for (ns, repo), ts in last_sync_timestamps.items():
-        if len(stale_repos) >= _ISSUE_SAMPLE_CAP:
-            break
-        if namespace and ns != namespace:
-            continue
-        last_sync_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-        if last_sync_dt < stale_threshold:
-            stale_repos.append({"namespace": ns, "repository": repo})
+        # Stale detection uses mirror metrics timestamps (PushGateway or local REGISTRY).
+        for (ns, repo), ts in last_sync_timestamps.items():
+            if len(stale_repos) >= _ISSUE_SAMPLE_CAP:
+                break
+            if namespace and ns != namespace:
+                continue
+            last_sync_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            if last_sync_dt < stale_threshold:
+                stale_repos.append({"namespace": ns, "repository": repo})
 
     if detailed:
         page_query = _mirror_rows_query(namespace).limit(lim + 1).offset(off)
@@ -408,15 +417,15 @@ class RepositoryMirrorHealth(ApiResource):
         if not authed_user:
             raise Unauthorized()
 
-        # Global access requires superuser or global readonly superuser
+        # Global access requires superuser with full access or global readonly superuser
         if namespace is None:
-            if not (allow_if_superuser() or allow_if_global_readonly_superuser()):
+            if not (allow_if_superuser_with_full_access() or allow_if_global_readonly_superuser()):
                 raise Unauthorized()
         else:
             namespace_user = model.user.get_namespace_user(namespace)
             if not namespace_user:
                 raise NotFound()
-            if not (allow_if_superuser() or allow_if_global_readonly_superuser()):
+            if not (allow_if_superuser_with_full_access() or allow_if_global_readonly_superuser()):
                 if namespace_user.organization:
                     if not OrganizationMemberPermission(namespace).can():
                         raise Unauthorized()
@@ -435,6 +444,37 @@ class RepositoryMirrorHealth(ApiResource):
         )
 
         # Return 503 if unhealthy, 200 if healthy
+        status_code = 200 if health_data["healthy"] else 503
+
+        return (
+            health_data,
+            status_code,
+            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
+        )
+
+
+@resource("/v1/superuser/mirror/health")
+@show_if(features.REPO_MIRROR)
+@show_if(features.SUPER_USERS)
+class SuperUserRepositoryMirrorHealth(ApiResource):
+    """
+    Resource for checking global repository mirror health from the superuser panel.
+    """
+
+    @require_fresh_login
+    @nickname("getSuperUserRepositoryMirrorHealth")
+    def get(self):
+        """
+        Get a global mirror health summary without repository-identifying samples.
+        """
+        if not allow_if_any_superuser():
+            raise Unauthorized()
+
+        health_data = get_mirror_health_data(
+            detailed=False,
+            include_repository_details=False,
+        )
+
         status_code = 200 if health_data["healthy"] else 503
 
         return (
