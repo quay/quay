@@ -103,7 +103,7 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
-COPY --chown=1001:0 *.json *.js  ./
+COPY --chown=1001:0 tsconfig.json webpack.config.js  ./
 RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
