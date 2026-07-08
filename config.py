@@ -755,6 +755,10 @@ class DefaultConfig(ImmutableConfig):
     # token will be updated after the previous update.
     LAST_ACCESSED_UPDATE_THRESHOLD_S = 60
 
+    # Defines the delay required (in seconds) before the last_accessed field of an OAuth access
+    # token will be updated after the previous update.
+    OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S = 60
+
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 
