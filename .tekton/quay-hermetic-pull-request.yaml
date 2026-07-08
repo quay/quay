@@ -64,7 +64,7 @@ spec:
       [
         {"type": "gomod", "path": "./config-tool"},
         {"type": "pip", "path": "."},
-        {"type": "npm", "path": "./web"},
+        {"type": "pnpm", "path": "./web"},
         {"type": "npm", "path": "."},
         {"type": "rpm", "path": "."},
         {"type": "cargo", "path": "./rust-builddeps"},

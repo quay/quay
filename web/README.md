@@ -10,7 +10,7 @@ Run the following commands to get started
 ```bash
 git clone https://github.com/quay/quay-ui.git
 cd quay-ui
-npm install
+pnpm install
 ```
 
 ## Development
@@ -18,7 +18,7 @@ npm install
 Start the dev server by running
 
 ```bash
-npm start
+pnpm start
 ```
 
 Runs the app in the development mode.\
@@ -29,7 +29,7 @@ You will also see any lint errors in the console.
 
 By default the UI connects to the quay backend for API. If you don't have
 a backend or want to develop without a backend you can set the environment
-variable `MOCK_API=true` before running `npm start`.
+variable `MOCK_API=true` before running `pnpm start`.
 
 In order for you to use this with a Quay backend, you need to configure CORS on the Quay side.
 Add the following to your `config.yaml` in Quay
@@ -44,7 +44,7 @@ in the Quay repo.
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
 Launches the test runner in the interactive watch mode.\
@@ -61,7 +61,7 @@ To run tests locally:
 ## Building for Production
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 Builds the app for production to the `dist` folder.\

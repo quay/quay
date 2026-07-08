@@ -5,7 +5,7 @@ ENV REACT_QUAY_APP_API_URL=${quay_app_api_url}
 
 RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .

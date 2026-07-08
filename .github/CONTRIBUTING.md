@@ -102,8 +102,8 @@ make types-test                                                        # Type ch
 ```bash
 cd web && pnpm install                          # Install dependencies (first time)
 cd web && pnpm run test                         # Vitest unit tests
-cd web && npx playwright test                   # All Playwright E2E tests
-cd web && npx playwright test e2e/some.spec.ts  # Single E2E test
+cd web && pnpm exec playwright test             # All Playwright E2E tests
+cd web && pnpm exec playwright test e2e/some.spec.ts  # Single E2E test
 ```
 
 - **E2E / full-flow tests:** Use Playwright for all new tests (`web/playwright/e2e/`). All E2E tests use Playwright (`web/playwright/e2e/`).

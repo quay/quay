@@ -247,9 +247,9 @@ update-testdata: local-dev-clean node_modules | build-image-quay
 	$(DOCKER) volume rm -f quay_quay-db-data
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	cd ./web/ && npm run quay:seed-db
+	cd ./web/ && pnpm run quay:seed-db
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
-	cd ./web/ && npm run quay:seed-storage
+	cd ./web/ && pnpm run quay:seed-storage
 	while ! curl -fso /dev/null http://localhost:8080; do echo "waiting for quay"; sleep 2; done
 	$(DOCKER) exec -it quay-db psql quay -U quay -c " \
 		DELETE FROM servicekey; \
@@ -258,7 +258,7 @@ update-testdata: local-dev-clean node_modules | build-image-quay
 		SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false); \
 		SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false); \
 	"
-	cd ./web/ && npm run quay:dump
+	cd ./web/ && pnpm run quay:dump
 	$(DOCKER_COMPOSE) down
 
 .PHONY: local-dev-up-react

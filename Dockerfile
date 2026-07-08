@@ -110,7 +110,7 @@ RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9 AS build-ui
 RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
+COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml  ./
 RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
 RUN pnpm run --silent build

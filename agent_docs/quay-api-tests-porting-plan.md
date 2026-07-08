@@ -33,9 +33,9 @@ All API tests are integrated into the main Playwright suite — one config, one 
 
 **Running tests:**
 ```bash
-npm run test:e2e          # All tests (UI + API together)
-npm run test:api          # Only @api tests (no browser, no frontend build)
-npm run test:e2e:no-api   # Only UI tests
+pnpm run test:e2e          # All tests (UI + API together)
+pnpm run test:api          # Only @api tests (no browser, no frontend build)
+pnpm run test:e2e:no-api   # Only UI tests
 ```
 
 **Test patterns:**
@@ -126,8 +126,8 @@ Each test should be self-contained with try/finally cleanup. Tag with `{tag: ['@
 
 API tests run automatically in the existing `web-playwright-ci.yaml` workflow. That workflow runs:
 ```bash
-npx playwright test --grep-invert @auth:OIDC   # Database auth tests (includes @api)
-npx playwright test --grep @auth:OIDC           # OIDC auth tests (excludes @api)
+pnpm exec playwright test --grep-invert @auth:OIDC   # Database auth tests (includes @api)
+pnpm exec playwright test --grep @auth:OIDC           # OIDC auth tests (excludes @api)
 ```
 
 Since API tests are tagged `@auth:Database` (not `@auth:OIDC`), they're picked up by the first run. The workflow already:
