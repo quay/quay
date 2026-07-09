@@ -13,8 +13,8 @@ import features
 from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
-from util.validation import validate_email
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
+from util.validation import validate_email
 from workers.queueworker import JobException
 
 logger = logging.getLogger(__name__)

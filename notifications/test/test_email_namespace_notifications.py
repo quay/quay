@@ -10,7 +10,6 @@ from notifications.notificationmethod import (
     CannotValidateNotificationMethodException,
     EmailMethod,
 )
-
 from test.fixtures import *
 
 

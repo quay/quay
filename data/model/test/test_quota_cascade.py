@@ -34,10 +34,14 @@ class TestDeleteQuotaLimitCascade:
         delete_namespace_quota_limit(self.limit)
 
         assert should_notify(self.org, 80) is True
-        count = QuotaNotificationState.select().where(
-            QuotaNotificationState.namespace == self.org,
-            QuotaNotificationState.threshold_percent == 80,
-        ).count()
+        count = (
+            QuotaNotificationState.select()
+            .where(
+                QuotaNotificationState.namespace == self.org,
+                QuotaNotificationState.threshold_percent == 80,
+            )
+            .count()
+        )
         assert count == 0
 
     def test_deleting_limit_preserves_other_thresholds(self, initialized_db):
@@ -86,29 +90,39 @@ class TestDeleteQuotaCascade:
         assert should_notify(self.org, 70) is True
         assert should_notify(self.org, 80) is True
         assert should_notify(self.org, 90) is True
-        count = QuotaNotificationState.select().where(
-            QuotaNotificationState.namespace == self.org,
-        ).count()
+        count = (
+            QuotaNotificationState.select()
+            .where(
+                QuotaNotificationState.namespace == self.org,
+            )
+            .count()
+        )
         assert count == 0
 
     def test_deleting_quota_removes_namespace_notifications(self, initialized_db):
         create_namespace_notification(
             self.org, "quota_warning", "webhook", '{"url":"http://example.com"}', "{}"
         )
-        create_namespace_notification(
-            self.org, "quota_error", "email", '{"email":"a@b.com"}', "{}"
-        )
+        create_namespace_notification(self.org, "quota_error", "email", '{"email":"a@b.com"}', "{}")
 
-        before = NamespaceNotification.select().where(
-            NamespaceNotification.namespace == self.org,
-        ).count()
+        before = (
+            NamespaceNotification.select()
+            .where(
+                NamespaceNotification.namespace == self.org,
+            )
+            .count()
+        )
         assert before == 2
 
         delete_namespace_quota(self.quota)
 
-        after = NamespaceNotification.select().where(
-            NamespaceNotification.namespace == self.org,
-        ).count()
+        after = (
+            NamespaceNotification.select()
+            .where(
+                NamespaceNotification.namespace == self.org,
+            )
+            .count()
+        )
         assert after == 0
 
     def test_deleting_quota_preserves_other_namespace_state(self, initialized_db):
@@ -126,9 +140,13 @@ class TestDeleteQuotaCascade:
         delete_namespace_quota(self.quota)
 
         assert should_notify(other_org, 80) is False
-        other_notif_count = NamespaceNotification.select().where(
-            NamespaceNotification.namespace == other_org,
-        ).count()
+        other_notif_count = (
+            NamespaceNotification.select()
+            .where(
+                NamespaceNotification.namespace == other_org,
+            )
+            .count()
+        )
         assert other_notif_count == 1
 
     def test_deleting_quota_also_removes_limits(self, initialized_db):
@@ -146,7 +164,11 @@ class TestDeleteQuotaCascade:
         create_namespace_quota_limit(new_quota, "Warning", 80)
 
         assert should_notify(self.org, 80) is True
-        notif_count = NamespaceNotification.select().where(
-            NamespaceNotification.namespace == self.org,
-        ).count()
+        notif_count = (
+            NamespaceNotification.select()
+            .where(
+                NamespaceNotification.namespace == self.org,
+            )
+            .count()
+        )
         assert notif_count == 0

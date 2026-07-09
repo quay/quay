@@ -1,13 +1,14 @@
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytest
+
 from data.database import QuotaNotificationState
 from data.model.quota_notification_state import (
-    should_notify,
-    record_notification,
-    clear_notification,
     clear_all_for_namespace,
+    clear_notification,
+    record_notification,
+    should_notify,
 )
 from data.model.user import get_user
 from test.fixtures import *

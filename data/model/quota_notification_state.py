@@ -49,7 +49,11 @@ def claim_notification(namespace_user, threshold_percent):
             except IntegrityError:
                 return False
 
-        if not state.cleared and state.last_notified_at is not None and state.last_notified_at > cutoff:
+        if (
+            not state.cleared
+            and state.last_notified_at is not None
+            and state.last_notified_at > cutoff
+        ):
             return False
 
         updated = (

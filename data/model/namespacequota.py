@@ -324,7 +324,9 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     )
 
 
-def maybe_trigger_retroactive_notification(namespace_name, quota, threshold_percent, quota_type_name):
+def maybe_trigger_retroactive_notification(
+    namespace_name, quota, threshold_percent, quota_type_name
+):
     """
     Check if current usage exceeds a specific threshold and fire a notification if so.
     Called when a quota limit is created or updated.

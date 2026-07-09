@@ -7,8 +7,8 @@ Create Date: 2026-06-15 05:05:54.770716
 """
 
 # revision identifiers, used by Alembic.
-revision = '6715e4719375'
-down_revision = 'd064a4f00d4a'
+revision = "6715e4719375"
+down_revision = "d064a4f00d4a"
 
 import sqlalchemy as sa
 
@@ -99,9 +99,7 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.externalnotificationevent.delete().where(
-            tables.externalnotificationevent.c.name.in_(
-                ["quota_warning", "quota_error"]
-            )
+            tables.externalnotificationevent.c.name.in_(["quota_warning", "quota_error"])
         )
     )
 

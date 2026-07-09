@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from notifications.notificationevent import (
@@ -9,6 +7,7 @@ from notifications.notificationevent import (
     QuotaWarningEvent,
     VulnerabilityFoundEvent,
 )
+from test.fixtures import *
 from util.morecollections import AttrDict
 
 

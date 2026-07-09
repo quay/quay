@@ -1,5 +1,6 @@
+from unittest.mock import call, patch
+
 import pytest
-from unittest.mock import patch, call
 
 from data import model
 from data.database import QuotaNamespaceSize
@@ -11,7 +12,6 @@ from data.model.namespacequota import (
     maybe_trigger_retroactive_notifications_for_quota,
 )
 from data.model.user import get_user
-
 from test.fixtures import *
 
 

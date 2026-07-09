@@ -363,17 +363,13 @@ def get_namespace_notification(uuid):
             .get()
         )
     except NamespaceNotification.DoesNotExist:
-        raise InvalidNotificationException(
-            "No namespace notification found with uuid: %s" % uuid
-        )
+        raise InvalidNotificationException("No namespace notification found with uuid: %s" % uuid)
 
 
 def delete_namespace_notification(namespace_name, uuid):
     found = get_namespace_notification(uuid)
     if found.namespace.username != namespace_name:
-        raise InvalidNotificationException(
-            "No namespace notification found with uuid: %s" % uuid
-        )
+        raise InvalidNotificationException("No namespace notification found with uuid: %s" % uuid)
     found.delete_instance()
     return found
 
@@ -415,6 +411,4 @@ def get_enabled_namespace_notification(uuid):
             .get()
         )
     except NamespaceNotification.DoesNotExist:
-        raise InvalidNotificationException(
-            "No namespace notification found with uuid: %s" % uuid
-        )
+        raise InvalidNotificationException("No namespace notification found with uuid: %s" % uuid)

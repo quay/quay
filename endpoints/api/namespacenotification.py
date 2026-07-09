@@ -208,7 +208,9 @@ class OrgNamespaceNotification(ApiResource):
     def post(self, orgname, uuid):
         _check_org_admin(orgname)
         try:
-            reset = model.notification.reset_namespace_notification_number_of_failures(orgname, uuid)
+            reset = model.notification.reset_namespace_notification_number_of_failures(
+                orgname, uuid
+            )
         except InvalidNotificationException:
             raise NotFound()
         if not reset:

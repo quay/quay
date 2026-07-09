@@ -1,11 +1,11 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from data import model
 from data.model.namespacequota import maybe_trigger_quota_notification
 from data.model.notification import create_namespace_notification
 from data.model.user import get_user
-
 from test.fixtures import *
 
 
@@ -29,8 +29,11 @@ class TestMaybeTriggerQuotaNotification:
     def test_warning_triggers_notification(self, mock_spawn, initialized_db):
         """Warning severity spawns a quota_warning namespace notification."""
         create_namespace_notification(
-            self.org, "quota_warning", "quay_notification",
-            {"target": {"kind": "user", "name": "public"}}, {},
+            self.org,
+            "quota_warning",
+            "quay_notification",
+            {"target": {"kind": "user", "name": "public"}},
+            {},
         )
 
         quota = self._quota_result("Warning", threshold=80, usage=858993459, limit=1073741824)

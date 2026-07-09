@@ -271,7 +271,8 @@ class OrganizationQuota(ApiResource):
                     },
                 )
                 model.namespacequota.maybe_trigger_retroactive_notifications_for_quota(
-                    orgname, quota,
+                    orgname,
+                    quota,
                 )
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -388,7 +389,10 @@ class OrganizationQuotaLimitList(ApiResource):
                 },
             )
             model.namespacequota.maybe_trigger_retroactive_notification(
-                orgname, quota, quota_limit_threshold, quota_type,
+                orgname,
+                quota,
+                quota_limit_threshold,
+                quota_type,
             )
             return "Created", 201
         except model.DataModelException as ex:
@@ -471,7 +475,10 @@ class OrganizationQuotaLimit(ApiResource):
         log_action("org_change_quota_limit", orgname, metadata)
 
         model.namespacequota.maybe_trigger_retroactive_notification(
-            orgname, quota, current_threshold, current_type,
+            orgname,
+            quota,
+            current_threshold,
+            current_type,
         )
 
         return quota_view(quota)

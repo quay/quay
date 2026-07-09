@@ -7,9 +7,9 @@ from endpoints.api.namespacenotification import (
     OrgNamespaceNotification,
     OrgNamespaceNotificationList,
     TestOrgNamespaceNotification,
+    TestUserNamespaceNotification,
     UserNamespaceNotification,
     UserNamespaceNotificationList,
-    TestUserNamespaceNotification,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -203,9 +203,7 @@ class TestOrgNotificationTest:
 class TestUserNotificationList:
     def test_list_empty(self, app):
         with client_with_identity("devtable", app) as cl:
-            resp = conduct_api_call(
-                cl, UserNamespaceNotificationList, "GET", {}, None, 200
-            )
+            resp = conduct_api_call(cl, UserNamespaceNotificationList, "GET", {}, None, 200)
             assert resp.json["notifications"] == []
 
     def test_create_notification(self, app):
@@ -217,9 +215,7 @@ class TestUserNotificationList:
                 "eventConfig": {},
                 "title": "User Quota Warning",
             }
-            resp = conduct_api_call(
-                cl, UserNamespaceNotificationList, "POST", {}, body, 201
-            )
+            resp = conduct_api_call(cl, UserNamespaceNotificationList, "POST", {}, body, 201)
             data = resp.json
             assert data["event"] == "quota_warning"
             assert data["method"] == "email"
@@ -235,9 +231,7 @@ class TestUserNotificationList:
                 "config": {"email": "user@example.com"},
                 "eventConfig": {},
             }
-            conduct_api_call(
-                cl, UserNamespaceNotificationList, "POST", {}, body, 400
-            )
+            conduct_api_call(cl, UserNamespaceNotificationList, "POST", {}, body, 400)
 
 
 class TestUserNotification:
@@ -324,9 +318,7 @@ class TestAuditLogging:
                 assert metadata["event"] == "quota_warning"
                 assert metadata["method"] == "email"
 
-                model.notification.delete_namespace_notification(
-                    "buynlarge", resp.json["uuid"]
-                )
+                model.notification.delete_namespace_notification("buynlarge", resp.json["uuid"])
 
     def test_delete_logs_action(self, app):
         notif = _create_notification("buynlarge")
