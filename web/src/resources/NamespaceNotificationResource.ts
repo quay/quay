@@ -30,7 +30,7 @@ interface FetchNamespaceNotificationsResponse {
 
 export async function fetchNamespaceNotifications(
   orgname: string,
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<NamespaceNotification[]> {
   const url = isUser
     ? '/api/v1/user/namespacenotifications'
@@ -43,7 +43,7 @@ export async function fetchNamespaceNotifications(
 export async function createNamespaceNotification(
   orgname: string,
   notification: NamespaceNotification,
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   const url = isUser
     ? '/api/v1/user/namespacenotifications'
@@ -61,7 +61,7 @@ export async function createNamespaceNotification(
 export async function deleteNamespaceNotification(
   orgname: string,
   uuid: string,
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   try {
     const url = isUser
@@ -80,7 +80,7 @@ export async function deleteNamespaceNotification(
 export async function bulkDeleteNamespaceNotifications(
   orgname: string,
   uuids: string[],
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   const responses = await Promise.allSettled(
     uuids.map((uuid) => deleteNamespaceNotification(orgname, uuid, isUser)),
@@ -91,7 +91,7 @@ export async function bulkDeleteNamespaceNotifications(
 export async function testNamespaceNotification(
   orgname: string,
   uuid: string,
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   const url = isUser
     ? `/api/v1/user/namespacenotifications/${uuid}/test`
@@ -102,7 +102,7 @@ export async function testNamespaceNotification(
 export async function enableNamespaceNotification(
   orgname: string,
   uuid: string,
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   try {
     const url = isUser
@@ -121,7 +121,7 @@ export async function enableNamespaceNotification(
 export async function bulkEnableNamespaceNotifications(
   orgname: string,
   uuids: string[],
-  isUser: boolean = false,
+  isUser = false,
 ): Promise<void> {
   const responses = await Promise.allSettled(
     uuids.map((uuid) => enableNamespaceNotification(orgname, uuid, isUser)),

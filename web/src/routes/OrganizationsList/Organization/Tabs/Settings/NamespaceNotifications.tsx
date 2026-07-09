@@ -117,8 +117,10 @@ export default function NamespaceNotifications({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [expandedUuids, setExpandedUuids] = useState<string[]>([]);
 
-  const {notifications, loading, error} =
-    useNamespaceNotifications(organizationName, isUser);
+  const {notifications, loading, error} = useNamespaceNotifications(
+    organizationName,
+    isUser,
+  );
 
   const {
     paginatedData: paginatedNotifications,

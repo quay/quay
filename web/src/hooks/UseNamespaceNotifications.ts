@@ -19,7 +19,7 @@ export interface NamespaceNotificationFilter {
 
 export function useNamespaceNotifications(
   orgname: string,
-  isUser: boolean = false,
+  isUser = false,
 ) {
   const [filter, setFilter] = useState<NamespaceNotificationFilter>({
     event: [],

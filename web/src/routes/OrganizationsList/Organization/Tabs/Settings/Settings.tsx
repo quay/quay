@@ -167,7 +167,7 @@ export default function Settings(props: SettingsProps) {
   const visibleTabs = tabs.filter((tab) => tab.visible === true);
   const normalizedActiveId = visibleTabs.some((tab) => tab.id === activeTabId)
     ? activeTabId
-    : visibleTabs[0]?.id ?? null;
+    : (visibleTabs[0]?.id ?? null);
   const activeTab = normalizedActiveId
     ? visibleTabs.find((tab) => tab.id === normalizedActiveId)
     : null;

@@ -10,7 +10,7 @@ import {
 
 export function useUpdateNamespaceNotifications(
   orgname: string,
-  isUser: boolean = false,
+  isUser = false,
 ) {
   const queryClient = useQueryClient();
 

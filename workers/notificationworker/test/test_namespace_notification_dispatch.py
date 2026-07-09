@@ -10,10 +10,9 @@ from data.model.notification import (
     increment_namespace_notification_failure_count,
 )
 from notifications.notificationevent import QuotaWarningEvent
+from test.fixtures import *
 from workers.notificationworker.models_pre_oci import pre_oci_model
 from workers.notificationworker.notificationworker import NotificationWorker
-
-from test.fixtures import *
 
 
 class TestNamespaceNotificationDispatch:
