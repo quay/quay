@@ -22,14 +22,16 @@ QUAY_E2E_ALLOW_PROD=1 \
 pnpm run test:e2e:service
 ```
 
-Run it against another deployment with explicit URLs:
+Run it against another deployment with the original explicit URL overrides:
 
 ```bash
-QUAY_E2E_TARGET=custom \
 PLAYWRIGHT_BASE_URL=https://quay.example.test \
-REACT_QUAY_APP_API_URL=https://quay.example.test \
 pnpm run test:e2e:service
 ```
+
+Set `REACT_QUAY_APP_API_URL` as well when the API endpoint differs from the
+frontend URL. Use `QUAY_E2E_TARGET=custom` when you want the target name to
+reflect a non-stage/non-prod service.
 
 Service mode intentionally:
 
@@ -55,9 +57,7 @@ Repository read checks can be pointed at a target-specific public image with:
 QUAY_E2E_PUBLIC_REPOSITORY=<namespace/repository> \
 QUAY_E2E_PUBLIC_TAG=<tag> \
 PLAYWRIGHT_GREP=@service-integration \
-QUAY_E2E_TARGET=custom \
 PLAYWRIGHT_BASE_URL=https://quay.example.test \
-REACT_QUAY_APP_API_URL=https://quay.example.test \
 pnpm run test:e2e:service
 ```
 

@@ -1,5 +1,6 @@
 import {test, expect} from '@playwright/test';
 import {API_URL} from '../../utils/config';
+import {expectSigninPageForTarget} from '../../utils/signin';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
@@ -12,9 +13,7 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
 
   test('sign-in page renders', {tag: '@service-safe'}, async ({page}) => {
     await page.goto('/signin/', {waitUntil: 'domcontentloaded'});
-    await expect(page.locator('body')).toContainText(
-      /Sign in|Log in to your (Red Hat )?account|Red Hat login/i,
-    );
+    await expectSigninPageForTarget(page, {localAngularShell: true});
   });
 
   test('repository list page loads after login', async ({page, request}) => {

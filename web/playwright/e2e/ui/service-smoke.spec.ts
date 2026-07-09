@@ -1,5 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {API_URL} from '../../utils/config';
+import {expectSigninPageForTarget} from '../../utils/signin';
 
 test.describe('Service-safe smoke', {tag: ['@service-safe', '@ui']}, () => {
   test('signin page renders without authentication', async ({
@@ -7,10 +8,7 @@ test.describe('Service-safe smoke', {tag: ['@service-safe', '@ui']}, () => {
   }) => {
     await unauthenticatedPage.goto('/signin');
 
-    await expect(unauthenticatedPage.locator('body')).toBeVisible();
-    await expect(unauthenticatedPage.locator('body')).toContainText(
-      /Log in to your (Red Hat )?account|Red Hat login/i,
-    );
+    await expectSigninPageForTarget(unauthenticatedPage);
   });
 
   test('public config endpoint is readable', async ({request}) => {

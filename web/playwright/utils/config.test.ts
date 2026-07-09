@@ -60,15 +60,42 @@ describe('Playwright service target config', () => {
     delete process.env.REACT_QUAY_APP_API_URL;
 
     expect(() => requireServiceTargetAllowed()).toThrow(
-      'QUAY_E2E_TARGET=custom requires external URL env: PLAYWRIGHT_BASE_URL, REACT_QUAY_APP_API_URL',
+      'QUAY_E2E_TARGET=custom requires PLAYWRIGHT_BASE_URL or REACT_QUAY_APP_API_URL',
     );
 
     process.env.PLAYWRIGHT_BASE_URL = 'https://ui.example.test';
+
+    expect(() => requireServiceTargetAllowed()).not.toThrow();
+    expect(getBaseUrl()).toBe('https://ui.example.test');
+    expect(getApiUrl()).toBe('https://ui.example.test');
+
     process.env.REACT_QUAY_APP_API_URL = 'https://api.example.test';
 
     expect(() => requireServiceTargetAllowed()).not.toThrow();
     expect(getBaseUrl()).toBe('https://ui.example.test');
     expect(getApiUrl()).toBe('https://api.example.test');
+  });
+
+  test('preserves original explicit URL overrides for local downstream runs', () => {
+    delete process.env.QUAY_E2E_TARGET;
+    process.env.OPENSHIFT_CI = '1';
+    process.env.PLAYWRIGHT_BASE_URL = 'https://downstream-ui.example.test';
+    process.env.REACT_QUAY_APP_API_URL = 'https://downstream-api.example.test';
+
+    expect(getQuayE2ETarget()).toBe('local');
+    expect(isServiceMode()).toBe(false);
+    expect(getBaseUrl()).toBe('https://downstream-ui.example.test');
+    expect(getApiUrl()).toBe('https://downstream-api.example.test');
+    expect(getPlaywrightGrep()).toBeUndefined();
+  });
+
+  test('uses explicit base URL for service API calls when API URL is unset', () => {
+    process.env.QUAY_E2E_TARGET = 'stage';
+    process.env.PLAYWRIGHT_BASE_URL = 'https://stage-downstream.example.test';
+    delete process.env.REACT_QUAY_APP_API_URL;
+
+    expect(getBaseUrl()).toBe('https://stage-downstream.example.test');
+    expect(getApiUrl()).toBe('https://stage-downstream.example.test');
   });
 
   test('allows explicit URLs to override service target defaults', () => {

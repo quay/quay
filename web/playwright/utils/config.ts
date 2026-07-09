@@ -47,14 +47,9 @@ function getTargetDefaultUrl(): string | undefined {
 function requireCustomUrls(): void {
   if (getQuayE2ETarget() !== 'custom') return;
 
-  const missing = [
-    !process.env.PLAYWRIGHT_BASE_URL && 'PLAYWRIGHT_BASE_URL',
-    !process.env.REACT_QUAY_APP_API_URL && 'REACT_QUAY_APP_API_URL',
-  ].filter(Boolean);
-
-  if (missing.length > 0) {
+  if (!process.env.PLAYWRIGHT_BASE_URL && !process.env.REACT_QUAY_APP_API_URL) {
     throw new Error(
-      `QUAY_E2E_TARGET=custom requires external URL env: ${missing.join(', ')}`,
+      'QUAY_E2E_TARGET=custom requires PLAYWRIGHT_BASE_URL or REACT_QUAY_APP_API_URL',
     );
   }
 }
@@ -74,15 +69,7 @@ export function getApiUrl(): string {
     return process.env.REACT_QUAY_APP_API_URL;
   }
 
-  const defaultUrl = getTargetDefaultUrl();
-  if (defaultUrl) return defaultUrl;
-
-  requireCustomUrls();
-  return process.env.REACT_QUAY_APP_API_URL!;
-}
-
-export function getBaseUrl(): string {
-  if (process.env.PLAYWRIGHT_BASE_URL) {
+  if (isServiceMode() && process.env.PLAYWRIGHT_BASE_URL) {
     return process.env.PLAYWRIGHT_BASE_URL;
   }
 
@@ -90,7 +77,35 @@ export function getBaseUrl(): string {
   if (defaultUrl) return defaultUrl;
 
   requireCustomUrls();
-  return process.env.PLAYWRIGHT_BASE_URL!;
+  const customUrl =
+    process.env.PLAYWRIGHT_BASE_URL || process.env.REACT_QUAY_APP_API_URL;
+  if (customUrl) return customUrl;
+
+  throw new Error(
+    'QUAY_E2E_TARGET=custom requires PLAYWRIGHT_BASE_URL or REACT_QUAY_APP_API_URL',
+  );
+}
+
+export function getBaseUrl(): string {
+  if (process.env.PLAYWRIGHT_BASE_URL) {
+    return process.env.PLAYWRIGHT_BASE_URL;
+  }
+
+  if (isServiceMode() && process.env.REACT_QUAY_APP_API_URL) {
+    return process.env.REACT_QUAY_APP_API_URL;
+  }
+
+  const defaultUrl = getTargetDefaultUrl();
+  if (defaultUrl) return defaultUrl;
+
+  requireCustomUrls();
+  const customUrl =
+    process.env.PLAYWRIGHT_BASE_URL || process.env.REACT_QUAY_APP_API_URL;
+  if (customUrl) return customUrl;
+
+  throw new Error(
+    'QUAY_E2E_TARGET=custom requires PLAYWRIGHT_BASE_URL or REACT_QUAY_APP_API_URL',
+  );
 }
 
 export function getPlaywrightGrep(): string | undefined {
