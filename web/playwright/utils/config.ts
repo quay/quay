@@ -123,6 +123,9 @@ export function getPlaywrightWorkers(): number | undefined {
     if (!Number.isNaN(parsed) && parsed > 0) {
       return parsed;
     }
+    console.warn(
+      `Ignoring invalid PLAYWRIGHT_WORKERS="${explicitWorkers}"; expected a positive integer.`,
+    );
   }
 
   if (isServiceMode()) {

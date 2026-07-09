@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, test} from 'vitest';
+import {afterEach, describe, expect, test, vi} from 'vitest';
 import {
   getApiUrl,
   getBaseUrl,
@@ -15,6 +15,7 @@ const originalEnv = {...process.env};
 describe('Playwright service target config', () => {
   afterEach(() => {
     process.env = {...originalEnv};
+    vi.restoreAllMocks();
   });
 
   test('defaults to local target and local URLs', () => {
@@ -131,6 +132,17 @@ describe('Playwright service target config', () => {
 
     expect(getPlaywrightGrep()).toBe('@service-safe|@smoke');
     expect(getPlaywrightWorkers()).toBe(2);
+  });
+
+  test('warns and falls back when explicit workers are invalid', () => {
+    process.env.QUAY_E2E_TARGET = 'stage';
+    process.env.PLAYWRIGHT_WORKERS = 'invalid';
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(getPlaywrightWorkers()).toBe(1);
+    expect(warn).toHaveBeenCalledWith(
+      'Ignoring invalid PLAYWRIGHT_WORKERS="invalid"; expected a positive integer.',
+    );
   });
 
   test('reads optional service user credentials from env', () => {
