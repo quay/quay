@@ -103,6 +103,38 @@ def test_create_token_rejects_invalid_scope_and_expiration(app):
         )
 
 
+def test_create_token_rejects_missing_authenticated_user(app):
+    _, application = _setup_app()
+
+    with patch(
+        "endpoints.api.organization_application_tokens.get_authenticated_user",
+        return_value=None,
+    ):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationApplicationTokens,
+                "POST",
+                {"orgname": "buynlarge", "client_id": application.client_id},
+                {"scope": "repo:read"},
+                403,
+            )
+
+
+def test_create_token_rejects_global_readonly_superuser(app):
+    _, application = _setup_app()
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"scope": "repo:read"},
+            403,
+        )
+
+
 def test_create_token_enforces_scope_subset_for_oauth_caller(app):
     _, application = _setup_app()
     user = model.user.get_user("devtable")
@@ -216,6 +248,50 @@ def test_list_tokens_non_admin_rejected(app):
         )
 
 
+def test_list_tokens_invalid_organization_returns_not_found(app):
+    with patch(
+        "endpoints.api.organization_application_tokens.allow_if_superuser_with_full_access",
+        return_value=True,
+    ):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationApplicationTokens,
+                "GET",
+                {"orgname": "missingorg", "client_id": "missing-client"},
+                None,
+                404,
+            )
+
+
+def test_create_token_invalid_organization_returns_not_found(app):
+    with patch(
+        "endpoints.api.organization_application_tokens.allow_if_superuser_with_full_access",
+        return_value=True,
+    ):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationApplicationTokens,
+                "POST",
+                {"orgname": "missingorg", "client_id": "missing-client"},
+                {"scope": "repo:read"},
+                404,
+            )
+
+
+def test_create_token_missing_application_returns_not_found(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": "missing-client"},
+            {"scope": "repo:read"},
+            404,
+        )
+
+
 def test_revoke_token_invalidates_token(app):
     _, application = _setup_app()
     user = model.user.get_user("devtable")
@@ -249,6 +325,82 @@ def test_revoke_missing_token_returns_not_found(app):
             {
                 "orgname": "buynlarge",
                 "client_id": application.client_id,
+                "token_uuid": "00000000-0000-0000-0000-000000000000",
+            },
+            None,
+            404,
+        )
+
+
+def test_revoke_token_non_admin_rejected(app):
+    _, application = _setup_app()
+    user = model.user.get_user("devtable")
+    token_record, _ = oauth_model.create_oauth_api_token(application, user, "repo:read")
+
+    with client_with_identity("freshuser", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationToken,
+            "DELETE",
+            {
+                "orgname": "buynlarge",
+                "client_id": application.client_id,
+                "token_uuid": token_record.uuid,
+            },
+            None,
+            403,
+        )
+
+
+def test_revoke_token_rejects_global_readonly_superuser(app):
+    _, application = _setup_app()
+    user = model.user.get_user("devtable")
+    token_record, _ = oauth_model.create_oauth_api_token(application, user, "repo:read")
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationToken,
+            "DELETE",
+            {
+                "orgname": "buynlarge",
+                "client_id": application.client_id,
+                "token_uuid": token_record.uuid,
+            },
+            None,
+            403,
+        )
+
+
+def test_revoke_token_invalid_organization_returns_not_found(app):
+    with patch(
+        "endpoints.api.organization_application_tokens.allow_if_superuser_with_full_access",
+        return_value=True,
+    ):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationApplicationToken,
+                "DELETE",
+                {
+                    "orgname": "missingorg",
+                    "client_id": "missing-client",
+                    "token_uuid": "00000000-0000-0000-0000-000000000000",
+                },
+                None,
+                404,
+            )
+
+
+def test_revoke_token_missing_application_returns_not_found(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationToken,
+            "DELETE",
+            {
+                "orgname": "buynlarge",
+                "client_id": "missing-client",
                 "token_uuid": "00000000-0000-0000-0000-000000000000",
             },
             None,
@@ -317,9 +469,12 @@ def test_create_and_revoke_audit_logs(app):
     assert create_call.args[:2] == ("create_oauth_api_token", "buynlarge")
     assert create_call.kwargs["metadata"]["oauth_token_uuid"] == created["uuid"]
     assert create_call.kwargs["metadata"]["scope"] == "repo:read"
+    assert create_call.kwargs["metadata"]["application_name"] == application.name
+    assert create_call.kwargs["metadata"]["auth_method"] == "OAuth"
     assert create_call.kwargs["metadata"]["client_id"] == application.client_id
     assert revoke_call.args[:2] == ("revoke_oauth_api_token", "buynlarge")
     assert revoke_call.kwargs["metadata"]["oauth_token_uuid"] == created["uuid"]
+    assert revoke_call.kwargs["metadata"]["application_name"] == application.name
     assert revoke_call.kwargs["metadata"]["client_id"] == application.client_id
 
 

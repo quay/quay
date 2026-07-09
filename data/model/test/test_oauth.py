@@ -125,12 +125,17 @@ def test_create_oauth_api_token_under_limit_enforces_limit(initialized_db):
     owner = model.user.get_user("devtable")
     application = model.oauth.create_application(owner, "limited-token-create", "", "")
 
-    model.oauth.create_oauth_api_token_under_limit(
+    token, access_token = model.oauth.create_oauth_api_token_under_limit(
         application,
         owner,
         "repo:read",
         max_active_tokens=1,
     )
+
+    assert token.application == application
+    assert token.authorized_user == owner
+    assert token.scope == "repo:read"
+    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
 
     with pytest.raises(model.oauth.TokenLimitExceeded):
         model.oauth.create_oauth_api_token_under_limit(
@@ -185,15 +190,39 @@ def test_delete_application_token_rejects_cross_application_uuid(initialized_db)
     assert model.oauth.lookup_access_token_by_uuid(other_token.uuid) is not None
 
 
+def test_delete_application_token_returns_false_for_missing_uuid(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "delete-api-token-missing", "", "")
+
+    assert (
+        model.oauth.delete_application_token(
+            application,
+            "00000000-0000-0000-0000-000000000000",
+        )
+        is False
+    )
+
+
 def test_normalize_scope_and_validate_expiration():
     assert model.oauth.normalize_scope("repo:read, repo:write repo:read") == "repo:read repo:write"
     assert model.oauth.validate_expiration(3600.5) == 3600
+    assert model.oauth.validate_expiration(0.5) == 1
+    assert (
+        model.oauth.validate_expiration(model.oauth.MAX_TOKEN_EXPIRATION_SECONDS + 1)
+        == model.oauth.MAX_TOKEN_EXPIRATION_SECONDS
+    )
 
     with pytest.raises(ValueError):
         model.oauth.validate_expiration(0)
 
     with pytest.raises(ValueError):
         model.oauth.validate_expiration(True)
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(float("inf"))
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(float("nan"))
 
 
 def test_validate_access_token_updates_last_accessed_for_active_token(initialized_db):

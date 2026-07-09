@@ -30,6 +30,10 @@ from endpoints.api.mirrorhealth import (
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
+from endpoints.api.organization_application_tokens import (
+    OrganizationApplicationToken,
+    OrganizationApplicationTokens,
+)
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.policy import *
 from endpoints.api.prototype import *
@@ -75,6 +79,12 @@ TAG_PARAMS = {"repository": "devtable/simple", "tag": "latest"}
 EXPORTLOGS_PARAMS = {"callback_email": "test@example.com"}
 ORG_IMMUTABILITY_POLICY_PARAMS = {"orgname": "buynlarge", "policy_uuid": "someuuid"}
 REPO_IMMUTABILITY_POLICY_PARAMS = {"repository": "devtable/simple", "policy_uuid": "someuuid"}
+ORG_APPLICATION_TOKEN_PARAMS = {"orgname": "buynlarge", "client_id": "missing-client-id"}
+ORG_APPLICATION_TOKEN_UUID_PARAMS = {
+    "orgname": "buynlarge",
+    "client_id": "missing-client-id",
+    "token_uuid": "someuuid",
+}
 
 
 SECURITY_TESTS: List[
@@ -4323,6 +4333,91 @@ SECURITY_TESTS: List[
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
+    (OrganizationApplicationTokens, "GET", ORG_APPLICATION_TOKEN_PARAMS, None, None, 401),
+    (OrganizationApplicationTokens, "GET", ORG_APPLICATION_TOKEN_PARAMS, None, "freshuser", 403),
+    (OrganizationApplicationTokens, "GET", ORG_APPLICATION_TOKEN_PARAMS, None, "reader", 403),
+    (OrganizationApplicationTokens, "GET", ORG_APPLICATION_TOKEN_PARAMS, None, "devtable", 404),
+    (
+        OrganizationApplicationTokens,
+        "GET",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        None,
+        "globalreadonlysuperuser",
+        404,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        {"scope": "repo:read"},
+        None,
+        401,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        {"scope": "repo:read"},
+        "freshuser",
+        403,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        {"scope": "repo:read"},
+        "reader",
+        403,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        {"scope": "repo:read"},
+        "devtable",
+        404,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        ORG_APPLICATION_TOKEN_PARAMS,
+        {"scope": "repo:read"},
+        "globalreadonlysuperuser",
+        403,
+    ),
+    (OrganizationApplicationToken, "DELETE", ORG_APPLICATION_TOKEN_UUID_PARAMS, None, None, 401),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        ORG_APPLICATION_TOKEN_UUID_PARAMS,
+        None,
+        "freshuser",
+        403,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        ORG_APPLICATION_TOKEN_UUID_PARAMS,
+        None,
+        "reader",
+        403,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        ORG_APPLICATION_TOKEN_UUID_PARAMS,
+        None,
+        "devtable",
+        404,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        ORG_APPLICATION_TOKEN_UUID_PARAMS,
+        None,
+        "globalreadonlysuperuser",
+        403,
+    ),
     (
         RepositoryVisibility,
         "POST",

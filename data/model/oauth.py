@@ -40,6 +40,7 @@ ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
 MAX_TOKENS_PER_APPLICATION = 1000
 DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
+MAX_TOKEN_EXPIRATION_SECONDS = DEFAULT_TOKEN_EXPIRATION_SECONDS
 BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
 BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
 BOOTSTRAP_TOKEN_DATA_KIND = "bootstrap"
@@ -67,7 +68,7 @@ def validate_expiration(value: int | float) -> int:
     if value <= 0:
         raise ValueError("'expiration' must be a positive number of seconds")
 
-    return int(value)
+    return min(max(int(value), 1), MAX_TOKEN_EXPIRATION_SECONDS)
 
 
 class DatabaseAuthorizationProvider(AuthorizationProvider):
