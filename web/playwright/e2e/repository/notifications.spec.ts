@@ -893,7 +893,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'build_start notification delivered via webhook',
-    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-12196']},
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-12196', '@webhook']},
     async ({api}) => {
       test.setTimeout(300_000);
       const org = await api.organization('buildstartwh');
