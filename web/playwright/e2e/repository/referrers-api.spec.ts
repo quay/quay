@@ -64,9 +64,7 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
 
     const response = await authenticatedPage.evaluate(
       async ({ns, name, digest}) => {
-        const res = await fetch(
-          `/v2/${ns}/${name}/referrers/${digest}`,
-        );
+        const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
         return {
           status: res.status,
           contentType: res.headers.get('content-type'),
@@ -109,9 +107,7 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
 
     const response = await authenticatedPage.evaluate(
       async ({ns, name, digest}) => {
-        const res = await fetch(
-          `/v2/${ns}/${name}/referrers/${digest}`,
-        );
+        const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
         return {
           status: res.status,
           body: await res.json(),
