@@ -284,9 +284,7 @@ class OCIModel(RegistryDataInterface):
         self, model_cache, repository_ref, manifest, artifact_type=None
     ):
         def load_referrers():
-            referrers = self.lookup_referrers_for_manifest(
-                repository_ref, manifest, artifact_type
-            )
+            referrers = self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
             serializable = []
             for r in referrers:
                 d = r.asdict()

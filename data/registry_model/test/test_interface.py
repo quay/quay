@@ -1547,9 +1547,7 @@ def test_lookup_cached_referrers_for_manifest(oci_model):
     referrer = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
     assert referrer is not None
 
-    referrers = oci_model.lookup_cached_referrers_for_manifest(
-        model_cache, repository_ref, subject
-    )
+    referrers = oci_model.lookup_cached_referrers_for_manifest(model_cache, repository_ref, subject)
     assert len(referrers) >= 1
 
     referrer_digests = {r.digest for r in referrers}
@@ -1582,9 +1580,7 @@ def test_lookup_cached_referrers_for_manifest_empty(oci_model):
     subject = oci_model.get_manifest_for_tag(latest_tag)
     assert subject is not None
 
-    referrers = oci_model.lookup_cached_referrers_for_manifest(
-        model_cache, repository_ref, subject
-    )
+    referrers = oci_model.lookup_cached_referrers_for_manifest(model_cache, repository_ref, subject)
     assert referrers == []
 
 
@@ -1598,9 +1594,7 @@ def test_lookup_cached_referrers_serialization_roundtrip(oci_model):
     ref1 = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
     ref2 = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
 
-    referrers = oci_model.lookup_cached_referrers_for_manifest(
-        model_cache, repository_ref, subject
-    )
+    referrers = oci_model.lookup_cached_referrers_for_manifest(model_cache, repository_ref, subject)
     assert len(referrers) >= 2
 
     digests_from_db = {r.digest for r in referrers}
@@ -1608,9 +1602,7 @@ def test_lookup_cached_referrers_serialization_roundtrip(oci_model):
     assert ref2.digest in digests_from_db
 
     # Fetch from cache and verify all fields survived roundtrip
-    cached = oci_model.lookup_cached_referrers_for_manifest(
-        model_cache, repository_ref, subject
-    )
+    cached = oci_model.lookup_cached_referrers_for_manifest(model_cache, repository_ref, subject)
 
     for orig, from_cache in zip(
         sorted(referrers, key=lambda m: m.digest),
