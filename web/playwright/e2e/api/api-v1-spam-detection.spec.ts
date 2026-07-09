@@ -31,13 +31,13 @@ test.describe(
       expect(dockerignore).not.toMatch(/^conf\/spam-detection(?:\/\*\*)?$/m);
     });
 
-    test('allows repository description create and update when disabled', async ({
+    test('allows benign repository description create and update', async ({
       adminClient,
       superuserApi,
     }) => {
       const org = await superuserApi.organization('spaming');
       const repoName = uniqueName('spamrepo');
-      const description = 'free casino bonus crypto gift cards click now';
+      const description = 'trusted base image for python applications';
 
       const create = await adminClient.post('/api/v1/repository', {
         repo_kind: 'image',
