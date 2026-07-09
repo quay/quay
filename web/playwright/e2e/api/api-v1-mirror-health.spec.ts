@@ -208,16 +208,17 @@ test.describe(
         expect(body).toHaveProperty('healthy');
       });
 
-      test('normal user cannot GET mirror health for other namespace', async ({
-        userClient,
-        superuserApi,
-      }) => {
-        const org = await superuserApi.organization('mhealthtest');
+      test(
+        'normal user cannot GET mirror health for other namespace',
+        {tag: '@superuser'},
+        async ({userClient, superuserApi}) => {
+          const org = await superuserApi.organization('mhealthtest');
 
-        const r = await userClient.get(`${HEALTH_URL}?namespace=${org.name}`);
-        // Should be denied — user is not a member of this org
-        expect([401, 403]).toContain(r.status());
-      });
+          const r = await userClient.get(`${HEALTH_URL}?namespace=${org.name}`);
+          // Should be denied — user is not a member of this org
+          expect([401, 403]).toContain(r.status());
+        },
+      );
     });
 
     // ========================================================================

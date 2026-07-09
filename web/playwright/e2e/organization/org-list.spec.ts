@@ -348,135 +348,146 @@ test.describe(
       'Superuser Features',
       {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
       () => {
-        test('displays user status labels', async ({superuserPage}) => {
-          await superuserPage.goto('/organization');
+        test(
+          'displays user status labels',
+          {tag: '@superuser'},
+          async ({superuserPage}) => {
+            await superuserPage.goto('/organization');
 
-          // Wait for table to load
-          await expect(
-            superuserPage.locator('td[data-label="Name"]').first(),
-          ).toBeVisible();
+            // Wait for table to load
+            await expect(
+              superuserPage.locator('td[data-label="Name"]').first(),
+            ).toBeVisible();
 
-          // Search for admin (superuser) and verify label
-          await superuserPage
-            .getByPlaceholder(/Search by/)
-            .fill(TEST_USERS.admin.username);
-          const adminRow = superuserPage.locator('tr').filter({
-            has: superuserPage.getByRole('link', {
-              name: TEST_USERS.admin.username,
-            }),
-          });
-          await expect(adminRow.getByText('Superuser')).toBeVisible();
+            // Search for admin (superuser) and verify label
+            await superuserPage
+              .getByPlaceholder(/Search by/)
+              .fill(TEST_USERS.admin.username);
+            const adminRow = superuserPage.locator('tr').filter({
+              has: superuserPage.getByRole('link', {
+                name: TEST_USERS.admin.username,
+              }),
+            });
+            await expect(adminRow.getByText('Superuser')).toBeVisible();
 
-          // Search for readonly user and verify "Global Readonly Superuser" label with cyan color
-          await superuserPage.locator('[aria-label="Reset search"]').click();
-          await superuserPage
-            .getByPlaceholder(/Search by/)
-            .fill(TEST_USERS.readonly.username);
-          const readonlyRow = superuserPage.locator('tr').filter({
-            has: superuserPage.getByRole('link', {
-              name: TEST_USERS.readonly.username,
-            }),
-          });
-          await expect(
-            readonlyRow.getByText('Global Readonly Superuser'),
-          ).toBeVisible();
-          await expect(
-            readonlyRow
-              .locator('.pf-v6-c-label.pf-m-teal')
-              .getByText('Global Readonly Superuser'),
-          ).toBeVisible();
+            // Search for readonly user and verify "Global Readonly Superuser" label with cyan color
+            await superuserPage.locator('[aria-label="Reset search"]').click();
+            await superuserPage
+              .getByPlaceholder(/Search by/)
+              .fill(TEST_USERS.readonly.username);
+            const readonlyRow = superuserPage.locator('tr').filter({
+              has: superuserPage.getByRole('link', {
+                name: TEST_USERS.readonly.username,
+              }),
+            });
+            await expect(
+              readonlyRow.getByText('Global Readonly Superuser'),
+            ).toBeVisible();
+            await expect(
+              readonlyRow
+                .locator('.pf-v6-c-label.pf-m-teal')
+                .getByText('Global Readonly Superuser'),
+            ).toBeVisible();
 
-          // Verify regular superuser doesn't have "Global Readonly Superuser" label
-          await superuserPage.locator('[aria-label="Reset search"]').click();
-          await superuserPage
-            .getByPlaceholder(/Search by/)
-            .fill(TEST_USERS.admin.username);
-          const adminRowAgain = superuserPage.locator('tr').filter({
-            has: superuserPage.getByRole('link', {
-              name: TEST_USERS.admin.username,
-            }),
-          });
-          await expect(adminRowAgain.getByText('Superuser')).toBeVisible();
-          await expect(
-            adminRowAgain.getByText('Global Readonly Superuser'),
-          ).not.toBeVisible();
-        });
+            // Verify regular superuser doesn't have "Global Readonly Superuser" label
+            await superuserPage.locator('[aria-label="Reset search"]').click();
+            await superuserPage
+              .getByPlaceholder(/Search by/)
+              .fill(TEST_USERS.admin.username);
+            const adminRowAgain = superuserPage.locator('tr').filter({
+              has: superuserPage.getByRole('link', {
+                name: TEST_USERS.admin.username,
+              }),
+            });
+            await expect(adminRowAgain.getByText('Superuser')).toBeVisible();
+            await expect(
+              adminRowAgain.getByText('Global Readonly Superuser'),
+            ).not.toBeVisible();
+          },
+        );
 
-        test('shows user orgs when superuser API fails', async ({
-          superuserPage,
-          superuserApi,
-        }) => {
-          // Create an org that the superuser owns
-          const ownedOrg = await superuserApi.organization('ownedbyadmin');
+        test(
+          'shows user orgs when superuser API fails',
+          {tag: '@superuser'},
+          async ({superuserPage, superuserApi}) => {
+            // Create an org that the superuser owns
+            const ownedOrg = await superuserApi.organization('ownedbyadmin');
 
-          // Mock superuser API endpoints to return 403 (fresh login required)
-          await superuserPage.route(
-            '**/api/v1/superuser/organizations/',
-            async (route) => {
-              await route.fulfill({
-                status: 403,
-                body: JSON.stringify({error: 'Fresh login required'}),
-              });
-            },
-          );
-          await superuserPage.route(
-            '**/api/v1/superuser/users/',
-            async (route) => {
-              await route.fulfill({
-                status: 403,
-                body: JSON.stringify({error: 'Fresh login required'}),
-              });
-            },
-          );
+            // Mock superuser API endpoints to return 403 (fresh login required)
+            await superuserPage.route(
+              '**/api/v1/superuser/organizations/',
+              async (route) => {
+                await route.fulfill({
+                  status: 403,
+                  body: JSON.stringify({error: 'Fresh login required'}),
+                });
+              },
+            );
+            await superuserPage.route(
+              '**/api/v1/superuser/users/',
+              async (route) => {
+                await route.fulfill({
+                  status: 403,
+                  body: JSON.stringify({error: 'Fresh login required'}),
+                });
+              },
+            );
 
-          await superuserPage.goto('/organization');
+            await superuserPage.goto('/organization');
 
-          // Wait for table to load
-          await expect(
-            superuserPage.locator('td[data-label="Name"]').first(),
-          ).toBeVisible();
+            // Wait for table to load
+            await expect(
+              superuserPage.locator('td[data-label="Name"]').first(),
+            ).toBeVisible();
 
-          // Should still show superuser's own organizations and namespace
-          await expect(
-            superuserPage.getByRole('link', {
-              name: TEST_USERS.admin.username,
+            // Should still show superuser's own organizations and namespace
+            await expect(
+              superuserPage.getByRole('link', {
+                name: TEST_USERS.admin.username,
+                exact: true,
+              }),
+            ).toBeVisible();
+            await expect(
+              superuserPage.getByRole('link', {
+                name: ownedOrg.name,
+                exact: true,
+              }),
+            ).toBeVisible();
+          },
+        );
+
+        test(
+          'shows combined orgs and no duplicates',
+          {tag: '@superuser'},
+          async ({superuserPage, superuserApi}) => {
+            // Create an org for testing
+            const testOrg = await superuserApi.organization('combinedtest');
+
+            await superuserPage.goto('/organization');
+
+            // Wait for table to load
+            await expect(
+              superuserPage.locator('td[data-label="Name"]').first(),
+            ).toBeVisible();
+
+            // Search for the test org
+            await superuserPage
+              .getByPlaceholder(/Search by/)
+              .fill(testOrg.name);
+
+            // Should show exactly once (no duplicates)
+            await expect(
+              superuserPage.locator(
+                '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+              ),
+            ).toContainText('1 - 1 of 1');
+            const orgLinks = superuserPage.getByRole('link', {
+              name: testOrg.name,
               exact: true,
-            }),
-          ).toBeVisible();
-          await expect(
-            superuserPage.getByRole('link', {name: ownedOrg.name, exact: true}),
-          ).toBeVisible();
-        });
-
-        test('shows combined orgs and no duplicates', async ({
-          superuserPage,
-          superuserApi,
-        }) => {
-          // Create an org for testing
-          const testOrg = await superuserApi.organization('combinedtest');
-
-          await superuserPage.goto('/organization');
-
-          // Wait for table to load
-          await expect(
-            superuserPage.locator('td[data-label="Name"]').first(),
-          ).toBeVisible();
-
-          // Search for the test org
-          await superuserPage.getByPlaceholder(/Search by/).fill(testOrg.name);
-
-          // Should show exactly once (no duplicates)
-          await expect(
-            superuserPage.locator(
-              '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
-            ),
-          ).toContainText('1 - 1 of 1');
-          const orgLinks = superuserPage.getByRole('link', {
-            name: testOrg.name,
-            exact: true,
-          });
-          await expect(orgLinks).toHaveCount(1);
-        });
+            });
+            await expect(orgLinks).toHaveCount(1);
+          },
+        );
       },
     );
 
@@ -484,72 +495,80 @@ test.describe(
       'Read-only Superuser',
       {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
       () => {
-        test('can see orgs but cannot perform actions', async ({
-          readonlyPage,
-          superuserApi,
-        }) => {
-          // Create orgs that readonly user doesn't own
-          const otherOrg = await superuserApi.organization('readonlytest');
+        test(
+          'can see orgs but cannot perform actions',
+          {tag: '@superuser'},
+          async ({readonlyPage, superuserApi}) => {
+            // Create orgs that readonly user doesn't own
+            const otherOrg = await superuserApi.organization('readonlytest');
 
-          await readonlyPage.goto('/organization');
+            await readonlyPage.goto('/organization');
 
-          // Wait for table to load
-          await expect(
-            readonlyPage.locator('td[data-label="Name"]').first(),
-          ).toBeVisible();
+            // Wait for table to load
+            await expect(
+              readonlyPage.locator('td[data-label="Name"]').first(),
+            ).toBeVisible();
 
-          // Can see all orgs/users
-          await expect(
-            readonlyPage.getByRole('link', {
-              name: TEST_USERS.readonly.username,
-              exact: true,
-            }),
-          ).toBeVisible();
-          await expect(
-            readonlyPage.getByRole('link', {name: otherOrg.name, exact: true}),
-          ).toBeVisible();
+            // Can see all orgs/users
+            await expect(
+              readonlyPage.getByRole('link', {
+                name: TEST_USERS.readonly.username,
+                exact: true,
+              }),
+            ).toBeVisible();
+            await expect(
+              readonlyPage.getByRole('link', {
+                name: otherOrg.name,
+                exact: true,
+              }),
+            ).toBeVisible();
 
-          // Settings column header should NOT exist for read-only superusers
-          await expect(
-            readonlyPage.locator('th').getByText('Settings'),
-          ).not.toBeVisible();
+            // Settings column header should NOT exist for read-only superusers
+            await expect(
+              readonlyPage.locator('th').getByText('Settings'),
+            ).not.toBeVisible();
 
-          // No kebab menus should be visible (canModify = false)
-          await expect(
-            readonlyPage.locator('[data-testid$="-options-toggle"]'),
-          ).not.toBeVisible();
+            // No kebab menus should be visible (canModify = false)
+            await expect(
+              readonlyPage.locator('[data-testid$="-options-toggle"]'),
+            ).not.toBeVisible();
 
-          // Create Organization button SHOULD exist (regular user action)
-          await expect(
-            readonlyPage.locator('#create-organization-button'),
-          ).toBeVisible();
+            // Create Organization button SHOULD exist (regular user action)
+            await expect(
+              readonlyPage.locator('#create-organization-button'),
+            ).toBeVisible();
 
-          // Create User button should NOT exist (superuser-only action)
-          await expect(
-            readonlyPage.locator('[data-testid="create-user-button"]'),
-          ).not.toBeVisible();
+            // Create User button should NOT exist (superuser-only action)
+            await expect(
+              readonlyPage.locator('[data-testid="create-user-button"]'),
+            ).not.toBeVisible();
 
-          // Can't select orgs they don't own - search for other org
-          await readonlyPage.getByPlaceholder(/Search by/).fill(otherOrg.name);
-          const otherOrgRow = readonlyPage.locator('tr').filter({
-            has: readonlyPage.getByRole('link', {name: otherOrg.name}),
-          });
-          await expect(
-            otherOrgRow.locator('input[type="checkbox"]'),
-          ).not.toBeVisible();
+            // Can't select orgs they don't own - search for other org
+            await readonlyPage
+              .getByPlaceholder(/Search by/)
+              .fill(otherOrg.name);
+            const otherOrgRow = readonlyPage.locator('tr').filter({
+              has: readonlyPage.getByRole('link', {name: otherOrg.name}),
+            });
+            await expect(
+              otherOrgRow.locator('input[type="checkbox"]'),
+            ).not.toBeVisible();
 
-          // Can select own namespace
-          await readonlyPage.locator('[aria-label="Reset search"]').click();
-          await readonlyPage
-            .getByPlaceholder(/Search by/)
-            .fill(TEST_USERS.readonly.username);
-          const ownRow = readonlyPage.locator('tr').filter({
-            has: readonlyPage.getByRole('link', {
-              name: TEST_USERS.readonly.username,
-            }),
-          });
-          await expect(ownRow.locator('input[type="checkbox"]')).toBeVisible();
-        });
+            // Can select own namespace
+            await readonlyPage.locator('[aria-label="Reset search"]').click();
+            await readonlyPage
+              .getByPlaceholder(/Search by/)
+              .fill(TEST_USERS.readonly.username);
+            const ownRow = readonlyPage.locator('tr').filter({
+              has: readonlyPage.getByRole('link', {
+                name: TEST_USERS.readonly.username,
+              }),
+            });
+            await expect(
+              ownRow.locator('input[type="checkbox"]'),
+            ).toBeVisible();
+          },
+        );
       },
     );
 
@@ -559,7 +578,7 @@ test.describe(
       () => {
         test(
           'superuser displays quota consumed column',
-          {tag: '@PROJQUAY-9641'},
+          {tag: ['@PROJQUAY-9641', '@superuser']},
           async ({superuserPage, superuserApi}) => {
             // Create org with quota
             const org = await superuserApi.organization('quotatest');
@@ -586,7 +605,7 @@ test.describe(
 
         test(
           'regular user sees their own namespace quota',
-          {tag: '@PROJQUAY-9886'},
+          {tag: ['@PROJQUAY-9886', '@superuser']},
           async ({authenticatedPage, superuserApi}) => {
             // Superuser creates quota for the test user's namespace (uses superuser API for user namespaces)
             await superuserApi.userQuota(TEST_USERS.user.username, 10737418240);
@@ -616,7 +635,7 @@ test.describe(
 
         test(
           'registry calculation error shows correct modal title',
-          {tag: '@PROJQUAY-9874'},
+          {tag: ['@PROJQUAY-9874', '@superuser']},
           async ({superuserPage}) => {
             // Mock registry size endpoints
             await superuserPage.route(
@@ -671,7 +690,7 @@ test.describe(
 
         test(
           'displays "0.00 KiB" for zero registry size',
-          {tag: '@PROJQUAY-9860'},
+          {tag: ['@PROJQUAY-9860', '@superuser']},
           async ({superuserPage}) => {
             // Mock registry size endpoint with 0 bytes
             await superuserPage.route(

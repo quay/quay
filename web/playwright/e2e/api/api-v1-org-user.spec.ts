@@ -475,22 +475,23 @@ test.describe(
   'Organization Member Details',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('admin can get individual org member info', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('memberinfo');
+    test(
+      'admin can get individual org member info',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('memberinfo');
 
-      // The creating user (admin) is automatically in the 'owners' team
-      const resp = await adminClient.get(
-        `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
-      );
-      expect(resp.status()).toBe(200);
-      const member = await resp.json();
-      expect(member.name).toBe(TEST_USERS.admin.username);
-      expect(member.kind).toBe('user');
-      expect(member.teams).toBeDefined();
-    });
+        // The creating user (admin) is automatically in the 'owners' team
+        const resp = await adminClient.get(
+          `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
+        );
+        expect(resp.status()).toBe(200);
+        const member = await resp.json();
+        expect(member.name).toBe(TEST_USERS.admin.username);
+        expect(member.kind).toBe('user');
+        expect(member.teams).toBeDefined();
+      },
+    );
   },
 );
 
@@ -633,32 +634,33 @@ test.describe(
   'OAuth Application Info',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('user can get OAuth application info by client_id', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('oauthapp');
+    test(
+      'user can get OAuth application info by client_id',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('oauthapp');
 
-      const appName = uniqueName('app');
-      const createResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/applications`,
-        {name: appName},
-      );
-      expect(createResp.status()).toBe(200);
-      const createBody = await createResp.json();
-      const clientId = createBody.client_id;
-
-      try {
-        const getResp = await adminClient.get(`/api/v1/app/${clientId}`);
-        expect(getResp.status()).toBe(200);
-        const appInfo = await getResp.json();
-        expect(appInfo.name).toBe(appName);
-      } finally {
-        await adminClient.delete(
-          `/api/v1/organization/${org.name}/applications/${clientId}`,
+        const appName = uniqueName('app');
+        const createResp = await adminClient.post(
+          `/api/v1/organization/${org.name}/applications`,
+          {name: appName},
         );
-      }
-    });
+        expect(createResp.status()).toBe(200);
+        const createBody = await createResp.json();
+        const clientId = createBody.client_id;
+
+        try {
+          const getResp = await adminClient.get(`/api/v1/app/${clientId}`);
+          expect(getResp.status()).toBe(200);
+          const appInfo = await getResp.json();
+          expect(appInfo.name).toBe(appName);
+        } finally {
+          await adminClient.delete(
+            `/api/v1/organization/${org.name}/applications/${clientId}`,
+          );
+        }
+      },
+    );
   },
 );
 
