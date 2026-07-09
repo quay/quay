@@ -1,9 +1,9 @@
 /**
- * OCI Referrers API Tests
+ * OCI Referrers API Response Tests
  *
  * Verifies that the /v2/.../referrers/<digest> endpoint returns a valid
- * OCI image index response. Uses API route mocking to simulate the
- * referrers listing returned by the backend cache layer.
+ * OCI image index response. Uses Playwright's API request context with
+ * route mocking to validate the response shape.
  *
  * Related fix: serialization of Manifest objects in the referrers Redis
  * cache (lookup_cached_referrers_for_manifest).
@@ -62,6 +62,9 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
       },
     );
 
+    // Navigate to the repo page so the page has a valid origin for fetch
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
     const response = await authenticatedPage.evaluate(
       async ({ns, name, digest}) => {
         const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
@@ -105,6 +108,8 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
       },
     );
 
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
     const response = await authenticatedPage.evaluate(
       async ({ns, name, digest}) => {
         const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
@@ -132,7 +137,7 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
     };
 
     await authenticatedPage.route(
-      `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}?artifactType=*`,
+      `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}?**`,
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -144,6 +149,8 @@ test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
         });
       },
     );
+
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
     const response = await authenticatedPage.evaluate(
       async ({ns, name, digest}) => {
