@@ -11,6 +11,22 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INGRESS_THRESHOLD = 0.9
 DEFAULT_TOKEN_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+REQUIRED_ARTIFACT_FIELDS = {
+    "version": str,
+    "training_corpus_version": str,
+    "spam_prior": (int, float),
+    "ham_prior": (int, float),
+    "token_spam_counts": dict,
+    "token_ham_counts": dict,
+    "spam_token_total": int,
+    "ham_token_total": int,
+    "vocabulary_size": int,
+    "smoothing": (int, float),
+    "ingress_threshold": (int, float),
+    "ingress_thresholds": dict,
+    "feature_config": dict,
+    "training_metrics": dict,
+}
 
 
 class SpamIngressUnavailable(Exception):
@@ -38,6 +54,7 @@ class SpamIngressDecision:
 
 class BayesianSpamClassifier:
     def __init__(self, artifact):
+        _validate_artifact_schema(artifact)
         self._artifact = artifact
         self.version = artifact.get("version")
         self._spam_counts = artifact.get("token_spam_counts") or {}
@@ -108,6 +125,23 @@ class BayesianSpamClassifier:
         if visibility and visibility in self._thresholds:
             return float(self._thresholds[visibility])
         return self._threshold
+
+
+def _validate_artifact_schema(artifact):
+    for field, expected_type in REQUIRED_ARTIFACT_FIELDS.items():
+        if field not in artifact:
+            raise SpamIngressUnavailable(
+                f"Spam classifier artifact missing required field: {field}"
+            )
+        if not isinstance(artifact[field], expected_type):
+            raise SpamIngressUnavailable(
+                f"Spam classifier artifact field has invalid type: {field}"
+            )
+
+    if artifact["spam_token_total"] < 0 or artifact["ham_token_total"] < 0:
+        raise SpamIngressUnavailable("Classifier token totals must be non-negative")
+    if artifact["vocabulary_size"] <= 0:
+        raise SpamIngressUnavailable("Classifier vocabulary size must be greater than zero")
 
 
 _CLASSIFIER_CACHE: Dict[Tuple[str, int, int], BayesianSpamClassifier] = {}
