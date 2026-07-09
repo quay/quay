@@ -53,6 +53,7 @@ def test_oauth_access_token_metadata_fields_are_nullable():
     assert OAuthAccessToken._meta.fields["created"].null is True
     assert OAuthAccessToken._meta.fields["created"].default == datetime.now
     assert OAuthAccessToken._meta.fields["last_accessed"].null is True
+    assert OAuthAccessToken._meta.fields["display_name"].null is True
 
 
 def test_oauth_access_token_last_accessed_indexed_by_application():
@@ -100,8 +101,47 @@ def test_create_oauth_api_token_populates_fields(initialized_db):
     assert token.scope == "repo:read"
     assert token.token_type == "Bearer"
     assert token.last_accessed is None
+    assert token.display_name is None
     assert access_token
     assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+
+def test_create_oauth_api_token_persists_display_name_without_affecting_secret(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "api-token-display-name", "", "")
+
+    token, access_token = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:read",
+        display_name="Release automation",
+    )
+
+    assert token.display_name == "Release automation"
+    assert token.token_name != token.display_name
+    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+
+def test_create_oauth_api_token_allows_duplicate_display_names(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "duplicate-token-display-name", "", "")
+
+    token_one, _ = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:read",
+        display_name="Shared label",
+    )
+    token_two, _ = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:write",
+        display_name="Shared label",
+    )
+
+    assert token_one.uuid != token_two.uuid
+    assert token_one.display_name == "Shared label"
+    assert token_two.display_name == "Shared label"
 
 
 def test_count_active_tokens_excludes_expired(initialized_db):
@@ -144,6 +184,21 @@ def test_create_oauth_api_token_under_limit_enforces_limit(initialized_db):
             "repo:read",
             max_active_tokens=1,
         )
+
+
+def test_list_application_tokens_excludes_expired_tokens(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "active-token-list", "", "")
+
+    active_token, _ = model.oauth.create_oauth_api_token(application, owner, "repo:read")
+    expired_token, _ = model.oauth.create_oauth_api_token(application, owner, "repo:write")
+    expired_token.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    expired_token.save()
+
+    tokens, next_page = model.oauth.list_application_tokens(application)
+
+    assert {token.uuid for token in tokens} == {active_token.uuid}
+    assert next_page is None
 
 
 def test_list_application_tokens_paginates_and_excludes_other_apps(initialized_db):
@@ -201,6 +256,21 @@ def test_delete_application_token_returns_false_for_missing_uuid(initialized_db)
         )
         is False
     )
+
+
+def test_validate_token_display_name():
+    assert model.oauth.validate_token_display_name("  Release automation  ") == "Release automation"
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name(123)
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name("   ")
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name(
+            "n" * (model.oauth.MAX_TOKEN_DISPLAY_NAME_LENGTH + 1)
+        )
 
 
 def test_normalize_scope_and_validate_expiration():

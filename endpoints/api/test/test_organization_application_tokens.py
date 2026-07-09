@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -6,7 +6,10 @@ from uuid import uuid4
 from data import model
 from data.database import User
 from data.model import oauth as oauth_model
-from data.model.oauth import DEFAULT_TOKEN_EXPIRATION_SECONDS
+from data.model.oauth import (
+    DEFAULT_TOKEN_EXPIRATION_SECONDS,
+    MAX_TOKEN_DISPLAY_NAME_LENGTH,
+)
 from endpoints.api.organization_application_tokens import (
     OrganizationApplicationToken,
     OrganizationApplicationTokens,
@@ -37,11 +40,12 @@ def test_create_token_returns_secret_once_and_list_omits_secret(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read,repo:write"},
+            {"name": "  Frontend token  ", "scope": "repo:read,repo:write"},
             200,
         ).json
 
         assert created["token"]
+        assert created["name"] == "Frontend token"
         assert created["scope"] == "repo:read repo:write"
         assert created["uuid"]
         assert created["expires_at"]
@@ -60,6 +64,7 @@ def test_create_token_returns_secret_once_and_list_omits_secret(app):
     assert "token" not in listed_token
     assert "token_code" not in listed_token
     assert "token_name" not in listed_token
+    assert listed_token["name"] == "Frontend token"
     assert listed_token["created_by"] == "devtable"
 
 
@@ -72,7 +77,7 @@ def test_create_token_default_expiration_is_10_years(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read"},
+            {"name": "Default expiration token", "scope": "repo:read"},
             200,
         ).json
 
@@ -90,7 +95,7 @@ def test_create_token_rejects_invalid_scope_and_expiration(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "invalid:scope"},
+            {"name": "Invalid scope token", "scope": "invalid:scope"},
             400,
         )
         conduct_api_call(
@@ -98,9 +103,65 @@ def test_create_token_rejects_invalid_scope_and_expiration(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read", "expiration": 0},
+            {"name": "Invalid expiration token", "scope": "repo:read", "expiration": 0},
             400,
         )
+
+
+def test_create_token_rejects_invalid_name(app):
+    _, application = _setup_app()
+
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"scope": "repo:read"},
+            400,
+        )
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"name": "   ", "scope": "repo:read"},
+            400,
+        )
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"name": "n" * (MAX_TOKEN_DISPLAY_NAME_LENGTH + 1), "scope": "repo:read"},
+            400,
+        )
+
+
+def test_create_token_allows_duplicate_display_names(app):
+    _, application = _setup_app()
+
+    with client_with_identity("devtable", app) as cl:
+        first = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"name": "Shared name", "scope": "repo:read"},
+            200,
+        ).json
+        second = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"name": "Shared name", "scope": "repo:write"},
+            200,
+        ).json
+
+    assert first["uuid"] != second["uuid"]
+    assert first["name"] == "Shared name"
+    assert second["name"] == "Shared name"
 
 
 def test_create_token_rejects_missing_authenticated_user(app):
@@ -116,7 +177,7 @@ def test_create_token_rejects_missing_authenticated_user(app):
                 OrganizationApplicationTokens,
                 "POST",
                 {"orgname": "buynlarge", "client_id": application.client_id},
-                {"scope": "repo:read"},
+                {"name": "Missing user token", "scope": "repo:read"},
                 403,
             )
 
@@ -130,7 +191,7 @@ def test_create_token_rejects_global_readonly_superuser(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read"},
+            {"name": "Read only token", "scope": "repo:read"},
             403,
         )
 
@@ -150,7 +211,7 @@ def test_create_token_enforces_scope_subset_for_oauth_caller(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:write"},
+            {"name": "Rejected subset token", "scope": "repo:write"},
             403,
             headers={"Authorization": "Bearer %s" % access_token},
         )
@@ -160,7 +221,7 @@ def test_create_token_enforces_scope_subset_for_oauth_caller(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read"},
+            {"name": "Accepted subset token", "scope": "repo:read"},
             200,
             headers={"Authorization": "Bearer %s" % access_token},
         ).json
@@ -177,7 +238,7 @@ def test_create_token_non_admin_rejected(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": application.client_id},
-            {"scope": "repo:read"},
+            {"name": "Non admin token", "scope": "repo:read"},
             403,
         )
 
@@ -218,6 +279,107 @@ def test_list_tokens_supports_pagination(app):
     assert [token["uuid"] for token in first_page["tokens"]] == [token_two.uuid]
     assert [token["uuid"] for token in second_page["tokens"]] == [token_one.uuid]
     assert "next_page" not in second_page
+
+
+def test_list_tokens_returns_active_tokens_and_supports_legacy_unnamed_tokens(app):
+    _, application = _setup_app()
+    user = model.user.get_user("devtable")
+    legacy_token, _ = oauth_model.create_oauth_api_token(application, user, "repo:read")
+    expired_token, _ = oauth_model.create_oauth_api_token(
+        application,
+        user,
+        "repo:write",
+        display_name="Expired token",
+    )
+    expired_token.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    expired_token.save()
+
+    with client_with_identity("devtable", app) as cl:
+        listed = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "GET",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            None,
+            200,
+        ).json
+
+    listed_by_uuid = {token["uuid"]: token for token in listed["tokens"]}
+    assert listed_by_uuid[legacy_token.uuid]["name"] is None
+    assert expired_token.uuid not in listed_by_uuid
+
+
+def test_create_list_use_revoke_flow_for_named_token(app):
+    _, application = _setup_app()
+
+    with client_with_identity("devtable", app) as cl:
+        created = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {"name": "Frontend flow token", "scope": "org:admin"},
+            200,
+        ).json
+
+        listed = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "GET",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            None,
+            200,
+        ).json
+        listed_token = next(token for token in listed["tokens"] if token["uuid"] == created["uuid"])
+        assert listed_token["name"] == "Frontend flow token"
+        assert listed_token["last_accessed"] is None
+
+    with app.test_client() as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "GET",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            None,
+            200,
+            headers={"Authorization": "Bearer %s" % created["token"]},
+        )
+
+    with client_with_identity("devtable", app) as cl:
+        listed = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "GET",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            None,
+            200,
+        ).json
+        listed_token = next(token for token in listed["tokens"] if token["uuid"] == created["uuid"])
+        assert listed_token["last_accessed"] is not None
+
+        conduct_api_call(
+            cl,
+            OrganizationApplicationToken,
+            "DELETE",
+            {
+                "orgname": "buynlarge",
+                "client_id": application.client_id,
+                "token_uuid": created["uuid"],
+            },
+            None,
+            204,
+        )
+        listed = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "GET",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            None,
+            200,
+        ).json
+
+    assert oauth_model.validate_access_token(created["token"]) is None
+    assert created["uuid"] not in {token["uuid"] for token in listed["tokens"]}
 
 
 def test_list_tokens_allows_global_readonly_superuser(app):
@@ -275,7 +437,7 @@ def test_create_token_invalid_organization_returns_not_found(app):
                 OrganizationApplicationTokens,
                 "POST",
                 {"orgname": "missingorg", "client_id": "missing-client"},
-                {"scope": "repo:read"},
+                {"name": "Missing org token", "scope": "repo:read"},
                 404,
             )
 
@@ -287,7 +449,7 @@ def test_create_token_missing_application_returns_not_found(app):
             OrganizationApplicationTokens,
             "POST",
             {"orgname": "buynlarge", "client_id": "missing-client"},
-            {"scope": "repo:read"},
+            {"name": "Missing app token", "scope": "repo:read"},
             404,
         )
 
@@ -434,7 +596,7 @@ def test_token_limit_enforced(app):
                 OrganizationApplicationTokens,
                 "POST",
                 {"orgname": "buynlarge", "client_id": application.client_id},
-                {"scope": "repo:read"},
+                {"name": "Limited token", "scope": "repo:read"},
                 400,
             )
 
@@ -449,7 +611,7 @@ def test_create_and_revoke_audit_logs(app):
                 OrganizationApplicationTokens,
                 "POST",
                 {"orgname": "buynlarge", "client_id": application.client_id},
-                {"scope": "repo:read"},
+                {"name": "Audit token", "scope": "repo:read"},
                 200,
             ).json
             conduct_api_call(
@@ -469,6 +631,7 @@ def test_create_and_revoke_audit_logs(app):
     assert create_call.args[:2] == ("create_oauth_api_token", "buynlarge")
     assert create_call.kwargs["metadata"]["oauth_token_uuid"] == created["uuid"]
     assert create_call.kwargs["metadata"]["scope"] == "repo:read"
+    assert create_call.kwargs["metadata"]["token_display_name"] == "Audit token"
     assert create_call.kwargs["metadata"]["application_name"] == application.name
     assert create_call.kwargs["metadata"]["auth_method"] == "OAuth"
     assert create_call.kwargs["metadata"]["client_id"] == application.client_id
@@ -488,6 +651,7 @@ def test_token_view_handles_missing_authorized_user():
     token_without_user = SimpleNamespace(
         uuid="token-uuid-no-user",
         scope="repo:read",
+        display_name=None,
         expires_at=None,
         created=None,
         authorized_user=None,
@@ -496,11 +660,13 @@ def test_token_view_handles_missing_authorized_user():
     token_with_deleted_user = SimpleNamespace(
         uuid="token-uuid-deleted-user",
         scope="repo:read",
+        display_name=None,
         expires_at=None,
         created=None,
         authorized_user=_DeletedAuthorizedUser(),
         last_accessed=None,
     )
 
+    assert token_view(token_without_user)["name"] is None
     assert token_view(token_without_user)["created_by"] is None
     assert token_view(token_with_deleted_user)["created_by"] is None

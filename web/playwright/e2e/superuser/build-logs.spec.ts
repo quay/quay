@@ -1,5 +1,23 @@
+import type {APIRequestContext} from '@playwright/test';
 import {test, expect} from '../../fixtures';
+import type {QuayConfig} from '../../fixtures';
+import {TEST_USERS, TEST_USERS_LDAP} from '../../global-setup';
+import {ApiClient} from '../../utils/api';
 import {API_URL} from '../../utils/config';
+
+async function refreshSuperuserSession(
+  request: APIRequestContext,
+  quayConfig: QuayConfig,
+) {
+  if (quayConfig.config.AUTHENTICATION_TYPE === 'OIDC') return;
+
+  const users =
+    quayConfig.config.AUTHENTICATION_TYPE === 'LDAP'
+      ? TEST_USERS_LDAP
+      : TEST_USERS;
+  const client = new ApiClient(request);
+  await client.signIn(users.admin.username, users.admin.password);
+}
 
 test.describe(
   'Superuser Build Logs',
@@ -52,7 +70,12 @@ test.describe(
       ).toBeDisabled();
     });
 
-    test('shows error for invalid build UUID', async ({superuserPage}) => {
+    test('shows error for invalid build UUID', async ({
+      superuserPage,
+      superuserRequest,
+      quayConfig,
+    }) => {
+      await refreshSuperuserSession(superuserRequest, quayConfig);
       await superuserPage.goto('/build-logs');
 
       await superuserPage
@@ -87,10 +110,13 @@ test.describe(
       superuserPage,
       superuserRequest,
       api,
+      quayConfig,
     }) => {
       const org = await api.organization('sunotrigger');
       const repo = await api.repository(org.name, 'notrigger');
       const build = await api.build(org.name, repo.name);
+
+      await refreshSuperuserSession(superuserRequest, quayConfig);
 
       // API layer: verify the fix — trigger is null, not a 500
       const response = await superuserRequest.get(
@@ -126,8 +152,9 @@ test.describe(
 
     test('loads and displays real build logs', async ({
       superuserPage,
-      superuserApi,
+      superuserRequest,
       api,
+      quayConfig,
     }) => {
       test.setTimeout(180_000);
 
@@ -143,7 +170,7 @@ test.describe(
       await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
 
       // Re-sign in to refresh the superuser session (stales during build wait)
-      await superuserApi.raw.signIn('admin', 'password');
+      await refreshSuperuserSession(superuserRequest, quayConfig);
 
       await superuserPage.goto('/build-logs');
 

@@ -41,6 +41,7 @@ AUTHORIZATION_CODE_PREFIX_LENGTH = 20
 MAX_TOKENS_PER_APPLICATION = 1000
 DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
 MAX_TOKEN_EXPIRATION_SECONDS = DEFAULT_TOKEN_EXPIRATION_SECONDS
+MAX_TOKEN_DISPLAY_NAME_LENGTH = 255
 BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
 BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
 BOOTSTRAP_TOKEN_DATA_KIND = "bootstrap"
@@ -69,6 +70,21 @@ def validate_expiration(value: int | float) -> int:
         raise ValueError("'expiration' must be a positive number of seconds")
 
     return min(max(int(value), 1), MAX_TOKEN_EXPIRATION_SECONDS)
+
+
+def validate_token_display_name(value: str) -> str:
+    """Validate and return a trimmed user-facing OAuth token display name."""
+    if not isinstance(value, str):
+        raise ValueError("'name' must be a string")
+
+    display_name = value.strip()
+    if not display_name:
+        raise ValueError("'name' must not be empty")
+
+    if len(display_name) > MAX_TOKEN_DISPLAY_NAME_LENGTH:
+        raise ValueError("'name' must be at most %d characters" % MAX_TOKEN_DISPLAY_NAME_LENGTH)
+
+    return display_name
 
 
 class DatabaseAuthorizationProvider(AuthorizationProvider):
@@ -552,6 +568,7 @@ def create_oauth_api_token(
     user_obj: User,
     scope: str,
     expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
+    display_name: str | None = None,
 ) -> tuple[OAuthAccessToken, str]:
     """Create an OAuth API access token for an application/user pair."""
     return create_user_access_token_for_application(
@@ -561,6 +578,7 @@ def create_oauth_api_token(
         "Bearer",
         expiration_seconds,
         access_token=utils.random_ascii_string(40),
+        display_name=display_name,
     )
 
 
@@ -582,6 +600,7 @@ def create_oauth_api_token_under_limit(
     scope: str,
     expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
     max_active_tokens: int = MAX_TOKENS_PER_APPLICATION,
+    display_name: str | None = None,
 ) -> tuple[OAuthAccessToken, str]:
     """Create an OAuth API token while atomically enforcing the active-token limit."""
     with db_transaction():
@@ -597,6 +616,7 @@ def create_oauth_api_token_under_limit(
             user_obj=user_obj,
             scope=scope,
             expiration_seconds=expiration_seconds,
+            display_name=display_name,
         )
 
 
@@ -608,7 +628,10 @@ def list_application_tokens(
         OAuthAccessToken.select(OAuthAccessToken, User)
         .join(User, JOIN.LEFT_OUTER, on=(OAuthAccessToken.authorized_user == User.id))
         .switch(OAuthAccessToken)
-        .where(OAuthAccessToken.application == application)
+        .where(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.expires_at > datetime.utcnow(),
+        )
     )
     return paginate(query, OAuthAccessToken, descending=True, page_token=page_token, limit=limit)
 
@@ -973,7 +996,14 @@ def create_user_access_token(user_obj, client_id, scope, access_token=None, expi
 
 
 def create_user_access_token_for_application(
-    user_obj, application, scope, token_type, expires_in, access_token=None, data=""
+    user_obj,
+    application,
+    scope,
+    token_type,
+    expires_in,
+    access_token=None,
+    data="",
+    display_name=None,
 ):
     access_token = access_token or random_string_generator(length=40)()
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
@@ -991,6 +1021,7 @@ def create_user_access_token_for_application(
         access_token="",
         token_code=Credential.from_string(token_code),
         token_name=token_name,
+        display_name=display_name,
         expires_at=expires_at,
         data=data,
     )

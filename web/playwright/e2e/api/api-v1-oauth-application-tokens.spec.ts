@@ -3,6 +3,7 @@ import {API_URL} from '../../utils/config';
 
 interface OAuthApplicationToken {
   uuid: string;
+  name: string | null;
   scope: string;
   token?: string;
   expires_at: string | null;
@@ -32,7 +33,11 @@ test.describe(
         `${API_URL}/api/v1/organization/${org.name}/applications/${app.clientId}/tokens`,
         {
           headers: {'X-CSRF-Token': csrfToken},
-          data: {scope: 'repo:read,user:read', expiration: 3600},
+          data: {
+            name: 'Playwright lifecycle token',
+            scope: 'repo:read,user:read',
+            expiration: 3600,
+          },
         },
       );
 
@@ -40,6 +45,7 @@ test.describe(
       const created = (await createResponse.json()) as OAuthApplicationToken;
       expect(created.uuid).toBeTruthy();
       expect(created.token).toBeTruthy();
+      expect(created.name).toBe('Playwright lifecycle token');
       expect(created.scope).toBe('repo:read user:read');
       expect(created.created_by).toBeTruthy();
       expect(created.expires_at).toBeTruthy();
@@ -57,6 +63,7 @@ test.describe(
         (token) => token.uuid === created.uuid,
       );
       expect(listedToken).toBeDefined();
+      expect(listedToken?.name).toBe('Playwright lifecycle token');
       expect(listedToken?.scope).toBe('repo:read user:read');
       expect(listedToken?.token).toBeUndefined();
 

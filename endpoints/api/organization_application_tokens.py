@@ -23,9 +23,11 @@ from data.database import User
 from data.model import oauth as oauth_model
 from data.model.oauth import (
     DEFAULT_TOKEN_EXPIRATION_SECONDS,
+    MAX_TOKEN_DISPLAY_NAME_LENGTH,
     MAX_TOKENS_PER_APPLICATION,
     normalize_scope,
     validate_expiration,
+    validate_token_display_name,
 )
 from endpoints.api import (
     ApiResource,
@@ -70,6 +72,7 @@ def _can_mint_scope(orgname, normalized_scope, user):
 def token_view(token, include_secret=False, secret=None):
     view = {
         "uuid": token.uuid,
+        "name": getattr(token, "display_name", None),
         "scope": token.scope,
         "expires_at": token.expires_at.isoformat() + "Z" if token.expires_at else None,
         "created": token.created.isoformat() + "Z" if token.created else None,
@@ -100,17 +103,43 @@ class OrganizationApplicationTokens(ApiResource):
     schemas = {
         "NewToken": {
             "type": "object",
-            "description": "Description of a new OAuth API token.",
-            "required": ["scope"],
+            "description": "Description of a new OAuth API token. Duplicate names are allowed within an application.",
+            "required": ["name", "scope"],
             "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "User-facing token name. Leading and trailing whitespace is trimmed before storage.",
+                    "minLength": 1,
+                    "maxLength": MAX_TOKEN_DISPLAY_NAME_LENGTH,
+                },
                 "scope": {
                     "type": "string",
                     "description": "Space- or comma-separated scope string",
                 },
                 "expiration": {
                     "type": "number",
-                    "description": "Token lifetime in seconds",
+                    "description": "Token lifetime in seconds. Must be positive and is capped at the maximum supported lifetime.",
                     "minimum": 1,
+                },
+            },
+        },
+        "OAuthApplicationToken": {
+            "type": "object",
+            "description": "OAuth API token metadata. The bearer token secret is only returned when the token is created.",
+            "properties": {
+                "uuid": {"type": "string"},
+                "name": {
+                    "type": ["string", "null"],
+                    "description": "User-facing token name. Null indicates a legacy unnamed token.",
+                },
+                "scope": {"type": "string"},
+                "expires_at": {"type": ["string", "null"]},
+                "created": {"type": ["string", "null"]},
+                "created_by": {"type": ["string", "null"]},
+                "last_accessed": {"type": ["string", "null"]},
+                "token": {
+                    "type": "string",
+                    "description": "Bearer token secret, present only in create responses.",
                 },
             },
         },
@@ -168,6 +197,11 @@ class OrganizationApplicationTokens(ApiResource):
             raise NotFound()
 
         body = request.get_json()
+        try:
+            display_name = validate_token_display_name(body.get("name"))
+        except ValueError as e:
+            return {"message": str(e)}, 400
+
         scope_string = body["scope"]
         normalized_scope = normalize_scope(scope_string)
         if not scopes.validate_scope_string(normalized_scope):
@@ -194,6 +228,7 @@ class OrganizationApplicationTokens(ApiResource):
                 scope=normalized_scope,
                 expiration_seconds=expiration,
                 max_active_tokens=MAX_TOKENS_PER_APPLICATION,
+                display_name=display_name,
             )
         except oauth_model.TokenLimitExceeded:
             return {
@@ -207,6 +242,7 @@ class OrganizationApplicationTokens(ApiResource):
             metadata={
                 "oauth_token_uuid": token_record.uuid,
                 "scope": normalized_scope,
+                "token_display_name": display_name,
                 "application_name": application.name,
                 "auth_method": "OAuth",
                 "client_id": application.client_id,
