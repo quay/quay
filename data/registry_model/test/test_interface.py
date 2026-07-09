@@ -1475,3 +1475,147 @@ def test_lookup_repository_cache_stale_after_delete_without_invalidation(
 
     assert repo_ref_stale._db_id == old_repo_id  # Points to a deleted repo
     assert repo_ref_stale._db_id != new_repo.id
+
+
+def _create_oci_manifest_with_subject(oci_model, repository_ref, subject_manifest):
+    """Helper to create an OCI manifest that references another manifest as its subject."""
+    from image.oci.manifest import OCIManifestBuilder
+
+    config = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    config_bytes = config.encode("utf-8")
+    config_digest = sha256_digest(config_bytes)
+
+    layer_data = os.urandom(32)
+    layer_digest = sha256_digest(layer_data)
+
+    builder = OCIManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_bytes))
+    builder.add_layer(layer_digest, len(layer_data))
+
+    subject_bytes = subject_manifest.internal_manifest_bytes.as_encoded_str()
+    builder.set_subject(
+        subject_manifest.digest,
+        len(subject_bytes),
+        subject_manifest.media_type,
+    )
+
+    oci_manifest = builder.build()
+
+    repo_obj = Repository.get(Repository.id == repository_ref._db_id)
+    location = ImageStorageLocation.get(name="local_us")
+    blob = store_blob_record_and_temp_link(
+        repo_obj.namespace_user.username,
+        repo_obj.name,
+        config_digest,
+        location,
+        len(config_bytes),
+        120,
+    )
+    storage.put_content(["local_us"], get_layer_path(blob), config_bytes)
+
+    blob2 = store_blob_record_and_temp_link(
+        repo_obj.namespace_user.username,
+        repo_obj.name,
+        layer_digest,
+        location,
+        len(layer_data),
+        120,
+    )
+    storage.put_content(["local_us"], get_layer_path(blob2), layer_data)
+
+    created, _ = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, oci_manifest, "referrer-" + os.urandom(4).hex(), storage
+    )
+    return created
+
+
+def test_lookup_cached_referrers_for_manifest(oci_model):
+    """Test that referrers can be cached and retrieved from cache correctly."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
+    subject = oci_model.get_manifest_for_tag(latest_tag)
+    assert subject is not None
+
+    referrer = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
+    assert referrer is not None
+
+    referrers = oci_model.lookup_cached_referrers_for_manifest(
+        model_cache, repository_ref, subject
+    )
+    assert len(referrers) >= 1
+
+    referrer_digests = {r.digest for r in referrers}
+    assert referrer.digest in referrer_digests
+
+    for r in referrers:
+        assert r.digest is not None
+        assert r.media_type is not None
+
+    # Call again — this time the result should come from cache.
+    # Patch the DB lookup to verify the cache is actually being used.
+    with patch(
+        "data.registry_model.registry_oci_model.oci.manifest.lookup_manifest_referrers",
+    ) as mock_db:
+        mock_db.side_effect = AssertionError("DB should not be called when cache is warm")
+        cached_referrers = oci_model.lookup_cached_referrers_for_manifest(
+            model_cache, repository_ref, subject
+        )
+
+    assert len(cached_referrers) == len(referrers)
+    cached_digests = {r.digest for r in cached_referrers}
+    assert cached_digests == referrer_digests
+
+
+def test_lookup_cached_referrers_for_manifest_empty(oci_model):
+    """Test cached referrers returns empty list when no referrers exist."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
+    subject = oci_model.get_manifest_for_tag(latest_tag)
+    assert subject is not None
+
+    referrers = oci_model.lookup_cached_referrers_for_manifest(
+        model_cache, repository_ref, subject
+    )
+    assert referrers == []
+
+
+def test_lookup_cached_referrers_serialization_roundtrip(oci_model):
+    """Test that Manifest objects survive the serialize->cache->deserialize roundtrip."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
+    subject = oci_model.get_manifest_for_tag(latest_tag)
+
+    ref1 = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
+    ref2 = _create_oci_manifest_with_subject(oci_model, repository_ref, subject)
+
+    referrers = oci_model.lookup_cached_referrers_for_manifest(
+        model_cache, repository_ref, subject
+    )
+    assert len(referrers) >= 2
+
+    digests_from_db = {r.digest for r in referrers}
+    assert ref1.digest in digests_from_db
+    assert ref2.digest in digests_from_db
+
+    # Fetch from cache and verify all fields survived roundtrip
+    cached = oci_model.lookup_cached_referrers_for_manifest(
+        model_cache, repository_ref, subject
+    )
+
+    for orig, from_cache in zip(
+        sorted(referrers, key=lambda m: m.digest),
+        sorted(cached, key=lambda m: m.digest),
+    ):
+        assert from_cache.digest == orig.digest
+        assert from_cache.media_type == orig.media_type
+        assert from_cache._db_id == orig._db_id

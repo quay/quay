@@ -284,7 +284,21 @@ class OCIModel(RegistryDataInterface):
         self, model_cache, repository_ref, manifest, artifact_type=None
     ):
         def load_referrers():
-            return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
+            referrers = self.lookup_referrers_for_manifest(
+                repository_ref, manifest, artifact_type
+            )
+            serializable = []
+            for r in referrers:
+                d = r.asdict()
+                if d["internal_manifest_bytes"] is not None:
+                    d["internal_manifest_bytes"] = d["internal_manifest_bytes"].as_unicode()
+                if d.get("inputs") and d["inputs"].get("repository") is not None:
+                    d["inputs"]["repository"] = d["inputs"]["repository"].asdict()
+                if d.get("inputs"):
+                    d["inputs"]["legacy_id_handler"] = None
+                    d["inputs"]["legacy_image_row"] = None
+                serializable.append(d)
+            return serializable
 
         referrers_cache_key = cache_key.for_manifest_referrers(
             repository_ref, manifest.digest, model_cache.cache_config
