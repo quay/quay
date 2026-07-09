@@ -4,14 +4,23 @@ const fs = require('fs');
 const path = require('path');
 const ts = require('typescript');
 
-const SUPERUSER_TAG = '@superuser';
-const SUPERUSER_FIXTURES = new Set([
-  'superuserApi',
-  'superuserContext',
-  'superuserPage',
-  'superuserRequest',
-  'freshUser',
-]);
+const REQUIRED_TAG_RULES = [
+  {
+    tag: '@superuser',
+    fixtures: new Set([
+      'superuserApi',
+      'superuserContext',
+      'superuserPage',
+      'superuserRequest',
+      'freshUser',
+    ]),
+  },
+  {
+    tag: '@webhook',
+    fixtures: new Set(['webhook']),
+    constructors: new Set(['WebhookReceiver']),
+  },
+];
 const FIXTURE_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const SPEC_FILE_PATTERN = /\.spec\.tsx?$/;
 
@@ -19,12 +28,12 @@ const writeMode = process.argv.includes('--write');
 const helpMode = process.argv.includes('--help') || process.argv.includes('-h');
 
 if (helpMode) {
-  console.log(`Usage: node playwright/ensure-superuser-tags.cjs [--write]
+  console.log(`Usage: node playwright/ensure-required-tags.cjs [--write]
 
-Checks that Playwright tests using superuser fixtures include ${SUPERUSER_TAG}.
+Checks that Playwright tests include required usage tags when they use tagged fixtures or helpers.
 
 By default, this script only reports missing tags and exits non-zero.
-Pass --write to add ${SUPERUSER_TAG} to existing test declarations.`);
+Pass --write to add missing tags to existing test declarations.`);
   process.exit(0);
 }
 
@@ -66,6 +75,40 @@ function expressionChain(expression) {
     return [...expressionChain(expression.expression), expression.name.text];
   }
   return [];
+}
+
+function expressionMatches(expression, names) {
+  const chain = expressionChain(expression);
+  if (chain.length === 0) {
+    return undefined;
+  }
+
+  const fullName = chain.join('.');
+  if (names.has(fullName)) {
+    return fullName;
+  }
+
+  const localName = chain[chain.length - 1];
+  return names.has(localName) ? localName : undefined;
+}
+
+function addUsage(usagesByTag, tag, usage) {
+  if (!usagesByTag.has(tag)) {
+    usagesByTag.set(tag, new Set());
+  }
+  usagesByTag.get(tag).add(usage);
+}
+
+function mergeUsageMaps(...usageMaps) {
+  const merged = new Map();
+  for (const usageMap of usageMaps) {
+    for (const [tag, usages] of usageMap) {
+      for (const usage of usages) {
+        addUsage(merged, tag, usage);
+      }
+    }
+  }
+  return merged;
 }
 
 function callbackArgument(args) {
@@ -159,6 +202,16 @@ function lineNumber(sourceFile, node) {
   );
 }
 
+function callExpressionFromNode(node) {
+  if (ts.isCallExpression(node)) {
+    return node;
+  }
+  if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
+    return node.expression;
+  }
+  return undefined;
+}
+
 function isTestCall(node) {
   if (!ts.isCallExpression(node)) {
     return false;
@@ -202,11 +255,7 @@ function isExtendCall(node) {
   return chain[chain.length - 1] === 'extend';
 }
 
-function addRequiredFixtureNames(names, dependentFixtures) {
-  return [...new Set(names.filter((name) => dependentFixtures.has(name)))];
-}
-
-function collectLocalFixtureDependencies(sourceFile, dependentFixtures) {
+function collectLocalFixtureDefinitions(sourceFile) {
   const localFixtureDependencies = new Map();
 
   function recordFixtureDefinitions(node) {
@@ -249,6 +298,11 @@ function collectLocalFixtureDependencies(sourceFile, dependentFixtures) {
   }
 
   recordFixtureDefinitions(sourceFile);
+  return localFixtureDependencies;
+}
+
+function dependentFixturesForRule(rule, localFixtureDependencies) {
+  const dependentFixtures = new Set(rule.fixtures || []);
 
   let changed = true;
   while (changed) {
@@ -265,6 +319,70 @@ function collectLocalFixtureDependencies(sourceFile, dependentFixtures) {
       }
     }
   }
+
+  return dependentFixtures;
+}
+
+function collectFixtureUsages(fixtureNames, dependentFixturesByTag) {
+  const usages = new Map();
+  for (const rule of REQUIRED_TAG_RULES) {
+    const dependentFixtures = dependentFixturesByTag.get(rule.tag);
+    for (const fixtureName of fixtureNames) {
+      if (dependentFixtures.has(fixtureName)) {
+        addUsage(usages, rule.tag, fixtureName);
+      }
+    }
+  }
+  return usages;
+}
+
+function collectHelperUsages(node) {
+  const usages = new Map();
+  if (!node) {
+    return usages;
+  }
+
+  function visit(current) {
+    if (ts.isNewExpression(current)) {
+      for (const rule of REQUIRED_TAG_RULES) {
+        const constructor = expressionMatches(
+          current.expression,
+          rule.constructors || new Set(),
+        );
+        if (constructor) {
+          addUsage(usages, rule.tag, constructor);
+        }
+      }
+    }
+
+    if (ts.isCallExpression(current)) {
+      for (const rule of REQUIRED_TAG_RULES) {
+        const fn = expressionMatches(
+          current.expression,
+          rule.functions || new Set(),
+        );
+        if (fn) {
+          addUsage(usages, rule.tag, fn);
+        }
+      }
+    }
+
+    ts.forEachChild(current, visit);
+  }
+
+  visit(node);
+  return usages;
+}
+
+function collectFunctionUsages(fn, dependentFixturesByTag) {
+  if (!fn) {
+    return new Map();
+  }
+
+  return mergeUsageMaps(
+    collectFixtureUsages(fixtureNamesFromFunction(fn), dependentFixturesByTag),
+    collectHelperUsages(fn.body),
+  );
 }
 
 function collectFindings(filePath) {
@@ -276,96 +394,117 @@ function collectFindings(filePath) {
     true,
   );
   const relativePath = path.relative(webRoot, filePath);
-  const dependentFixtures = new Set(SUPERUSER_FIXTURES);
-
-  collectLocalFixtureDependencies(sourceFile, dependentFixtures);
+  const localFixtureDependencies = collectLocalFixtureDefinitions(sourceFile);
+  const dependentFixturesByTag = new Map(
+    REQUIRED_TAG_RULES.map((rule) => [
+      rule.tag,
+      dependentFixturesForRule(rule, localFixtureDependencies),
+    ]),
+  );
 
   const findings = [];
 
-  function visitStatements(statements, inheritedTags, inheritedHookFixtures) {
-    const localHookFixtures = [];
+  function visitStatements(statements, inheritedTags, inheritedHookUsages) {
+    const localHookUsages = [];
 
     for (const statement of statements) {
-      if (!isHookCall(statement)) {
+      const hookCall = callExpressionFromNode(statement);
+      if (!hookCall || !isHookCall(hookCall)) {
         continue;
       }
-      const hookFixtures = addRequiredFixtureNames(
-        fixtureNamesFromFunction(callbackArgument(statement.arguments)),
-        dependentFixtures,
+      const hookUsages = collectFunctionUsages(
+        callbackArgument(hookCall.arguments),
+        dependentFixturesByTag,
       );
-      localHookFixtures.push(...hookFixtures);
+      localHookUsages.push(hookUsages);
     }
 
-    const hookFixtures = [
-      ...new Set([...inheritedHookFixtures, ...localHookFixtures]),
-    ];
+    const hookUsages = mergeUsageMaps(inheritedHookUsages, ...localHookUsages);
 
     for (const statement of statements) {
-      visitNode(statement, inheritedTags, hookFixtures);
+      visitNode(statement, inheritedTags, hookUsages);
     }
   }
 
-  function visitNode(node, inheritedTags, inheritedHookFixtures) {
-    if (isDescribeCall(node)) {
-      const detailsArg = tagDetailsArg(node.arguments);
+  function visitNode(node, inheritedTags, inheritedHookUsages) {
+    const callExpression = callExpressionFromNode(node);
+
+    if (callExpression && isDescribeCall(callExpression)) {
+      const detailsArg = tagDetailsArg(callExpression.arguments);
       const describeTags = tagsFromDetails(detailsArg);
-      const describeCallback = callbackArgument(node.arguments);
+      const describeCallback = callbackArgument(callExpression.arguments);
       if (describeCallback && ts.isBlock(describeCallback.body)) {
         visitStatements(
           describeCallback.body.statements,
           [...inheritedTags, ...describeTags],
-          inheritedHookFixtures,
+          inheritedHookUsages,
         );
         return;
       }
     }
 
-    if (isTestCall(node)) {
-      const detailsArg = tagDetailsArg(node.arguments);
+    if (callExpression && isTestCall(callExpression)) {
+      const detailsArg = tagDetailsArg(callExpression.arguments);
       const testTags = tagsFromDetails(detailsArg);
       const effectiveTags = [...inheritedTags, ...testTags];
-      const directFixtures = addRequiredFixtureNames(
-        fixtureNamesFromFunction(callbackArgument(node.arguments)),
-        dependentFixtures,
+      const directUsages = collectFunctionUsages(
+        callbackArgument(callExpression.arguments),
+        dependentFixturesByTag,
       );
-      const requiredFixtures = [
-        ...new Set([...inheritedHookFixtures, ...directFixtures]),
-      ];
+      const requiredUsages = mergeUsageMaps(inheritedHookUsages, directUsages);
+      const missingRequirements = [];
 
-      if (
-        requiredFixtures.length > 0 &&
-        !effectiveTags.includes(SUPERUSER_TAG)
-      ) {
+      for (const rule of REQUIRED_TAG_RULES) {
+        const usages = requiredUsages.get(rule.tag);
+        if (usages && usages.size > 0 && !effectiveTags.includes(rule.tag)) {
+          missingRequirements.push({
+            tag: rule.tag,
+            usages: [...usages],
+          });
+        }
+      }
+
+      if (missingRequirements.length > 0) {
         findings.push({
-          callExpression: node,
+          callExpression,
           detailsArg,
           filePath,
-          fixtures: requiredFixtures,
-          line: lineNumber(sourceFile, node),
+          line: lineNumber(sourceFile, callExpression),
+          missingRequirements,
           relativePath,
           source,
           sourceFile,
-          title: testTitle(node.arguments[0]),
+          title: testTitle(callExpression.arguments[0]),
         });
       }
       return;
     }
 
     ts.forEachChild(node, (child) =>
-      visitNode(child, inheritedTags, inheritedHookFixtures),
+      visitNode(child, inheritedTags, inheritedHookUsages),
     );
   }
 
-  visitStatements(sourceFile.statements, [], []);
+  visitStatements(sourceFile.statements, [], new Map());
   return findings;
 }
 
-function replaceTagInitializerOperation(sourceFile, tagValue) {
+function tagInitializerText(tags) {
+  if (tags.length === 1) {
+    return `'${tags[0]}'`;
+  }
+  return `[${tags.map((tag) => `'${tag}'`).join(', ')}]`;
+}
+
+function replaceTagInitializerOperation(sourceFile, tagValue, tags) {
   if (ts.isStringLiteral(tagValue)) {
     return {
       start: tagValue.getStart(sourceFile),
       end: tagValue.getEnd(),
-      text: `[${tagValue.getText(sourceFile)}, '${SUPERUSER_TAG}']`,
+      text: `[${tagValue.getText(sourceFile)}, ${tags
+        .map((tag) => `'${tag}'`)
+        .join(', ')}]`,
+      tagCount: tags.length,
     };
   }
 
@@ -373,11 +512,12 @@ function replaceTagInitializerOperation(sourceFile, tagValue) {
     const tagTexts = tagValue.elements.map((element) =>
       element.getText(sourceFile),
     );
-    tagTexts.push(`'${SUPERUSER_TAG}'`);
+    tagTexts.push(...tags.map((tag) => `'${tag}'`));
     return {
       start: tagValue.getStart(sourceFile),
       end: tagValue.getEnd(),
       text: `[${tagTexts.join(', ')}]`,
+      tagCount: tags.length,
     };
   }
 
@@ -386,25 +526,36 @@ function replaceTagInitializerOperation(sourceFile, tagValue) {
 
 function operationForFinding(finding) {
   const {callExpression, detailsArg, sourceFile} = finding;
+  const tags = finding.missingRequirements.map(({tag}) => tag);
+  const tagText = tagInitializerText(tags);
 
   if (!detailsArg) {
+    if (!callExpression.arguments[0]) {
+      return undefined;
+    }
     return {
       start: callExpression.arguments[0].end,
       end: callExpression.arguments[0].end,
-      text: `, {tag: '${SUPERUSER_TAG}'}`,
+      text: `, {tag: ${tagText}}`,
+      tagCount: tags.length,
     };
   }
 
   const property = tagProperty(detailsArg);
   if (property && ts.isPropertyAssignment(property)) {
-    return replaceTagInitializerOperation(sourceFile, property.initializer);
+    return replaceTagInitializerOperation(
+      sourceFile,
+      property.initializer,
+      tags,
+    );
   }
 
   const openBrace = detailsArg.getStart(sourceFile);
   return {
     start: openBrace + 1,
     end: openBrace + 1,
-    text: `tag: '${SUPERUSER_TAG}', `,
+    text: `tag: ${tagText}, `,
+    tagCount: tags.length,
   };
 }
 
@@ -434,33 +585,46 @@ function groupByFile(findings) {
   return grouped;
 }
 
+function missingRequirementCount(findings) {
+  return findings.reduce(
+    (count, finding) => count + finding.missingRequirements.length,
+    0,
+  );
+}
+
 const allFindings = listSpecFiles(testRoot).flatMap(collectFindings);
 
 if (allFindings.length === 0) {
-  console.log(`All superuser fixture tests include ${SUPERUSER_TAG}.`);
+  console.log('All Playwright tests include required usage tags.');
   process.exit(0);
 }
 
 if (writeMode) {
   const groupedFindings = groupByFile(allFindings);
-  let appliedCount = 0;
+  let appliedDeclarationCount = 0;
+  let appliedTagCount = 0;
 
   for (const [filePath, findings] of groupedFindings) {
     const source = fs.readFileSync(filePath, 'utf8');
     const operations = findings.map(operationForFinding).filter(Boolean);
-    appliedCount += operations.length;
+    appliedDeclarationCount += operations.length;
+    appliedTagCount += operations.reduce(
+      (count, operation) => count + operation.tagCount,
+      0,
+    );
     fs.writeFileSync(filePath, applyOperations(source, operations));
   }
 
   console.log(
-    `Added ${SUPERUSER_TAG} to ${appliedCount} test declarations in ` +
+    `Added ${appliedTagCount} required tags to ` +
+      `${appliedDeclarationCount} test declarations in ` +
       `${groupedFindings.size} files.`,
   );
 
-  if (appliedCount < allFindings.length) {
+  if (appliedDeclarationCount < allFindings.length) {
     console.error(
-      `Could not automatically update ${allFindings.length - appliedCount} ` +
-        'test declarations.',
+      `Could not automatically update ` +
+        `${allFindings.length - appliedDeclarationCount} test declarations.`,
     );
     process.exit(1);
   }
@@ -469,17 +633,19 @@ if (writeMode) {
 }
 
 console.error(
-  `Missing ${SUPERUSER_TAG} on ${allFindings.length} Playwright tests using ` +
-    'superuser fixtures:',
+  `Missing ${missingRequirementCount(allFindings)} required usage tags on ` +
+    `${allFindings.length} Playwright tests:`,
 );
 for (const finding of allFindings) {
-  console.error(
-    `  ${finding.relativePath}:${finding.line} ` +
-      `[${finding.fixtures.join(', ')}] ${finding.title}`,
-  );
+  for (const requirement of finding.missingRequirements) {
+    console.error(
+      `  ${finding.relativePath}:${finding.line} ${requirement.tag} ` +
+        `[${requirement.usages.join(', ')}] ${finding.title}`,
+    );
+  }
 }
 console.error(
-  `\nRun "node playwright/ensure-superuser-tags.cjs --write" from web/ to ` +
-    `add ${SUPERUSER_TAG} to existing tests.`,
+  '\nRun "node playwright/ensure-required-tags.cjs --write" from web/ to ' +
+    'add missing tags to existing tests.',
 );
 process.exit(1);

@@ -847,7 +847,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'build event notification delivered via webhook',
-    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626']},
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626', '@webhook']},
     async ({api}) => {
       // Build trigger + webhook wait (240s) + overhead; build may queue behind concurrent tests
       test.setTimeout(300_000);
