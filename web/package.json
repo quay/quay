@@ -55,6 +55,8 @@
     "test:e2e:check-required-tags": "node playwright/ensure-required-tags.cjs",
     "test:e2e:fix-required-tags": "node playwright/ensure-required-tags.cjs --write",
     "test:e2e:no-api": "playwright test --grep-invert @api",
+    "test:e2e:service": "QUAY_E2E_TARGET=${QUAY_E2E_TARGET:-stage} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test",
+    "test:e2e:service:config": "vitest run --config playwright/vitest.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",

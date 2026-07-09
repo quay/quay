@@ -29,7 +29,14 @@ import {
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
-import {API_URL, BASE_URL} from './utils/config';
+import {
+  API_URL,
+  BASE_URL,
+  getServiceCredentials,
+  isServiceMode,
+  requireServiceUserCredentials,
+  ServiceCredentials,
+} from './utils/config';
 import {
   ApiClient,
   AutoPrunePolicy,
@@ -957,10 +964,31 @@ export function skipUnlessAuthType(
 }
 
 function getTestUsers(config?: QuayConfig | null) {
+  if (isServiceMode()) {
+    const credentials = requireServiceUserCredentials();
+    const user = {
+      username: credentials.username,
+      password: credentials.password,
+      email: `${credentials.username}@example.com`,
+    };
+
+    return {
+      admin: TEST_USERS.admin,
+      user,
+      readonly: TEST_USERS.readonly,
+    };
+  }
+
   const authType = config?.config?.AUTHENTICATION_TYPE;
   if (authType === 'OIDC') return TEST_USERS_OIDC;
   if (authType === 'LDAP') return TEST_USERS_LDAP;
   return TEST_USERS;
+}
+
+function throwServiceUnsupportedFixture(fixtureName: string): never {
+  throw new Error(
+    `${fixtureName} is not supported when QUAY_E2E_TARGET is not local. Service tests must use regular or unauthenticated fixtures only.`,
+  );
 }
 
 async function setReactUICookie(context: BrowserContext): Promise<void> {
@@ -1050,6 +1078,9 @@ type TestFixtures = {
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
+  // Optional regular service user credentials supplied by env
+  serviceCredentials: ServiceCredentials;
+
   // Isolated user with its own API client (no shared namespace state)
   freshUser: {user: CreatedUser; api: TestApi};
 
@@ -1116,6 +1147,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   superuserContext: [
     async ({browser, cachedQuayConfig}, use) => {
+      if (isServiceMode()) {
+        throwServiceUnsupportedFixture('superuserContext');
+      }
+
       const context = await browser.newContext();
       await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
@@ -1133,6 +1168,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   readonlyContext: [
     async ({browser, cachedQuayConfig}, use) => {
+      if (isServiceMode()) {
+        throwServiceUnsupportedFixture('readonlyContext');
+      }
+
       const context = await browser.newContext();
       await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
@@ -1230,6 +1269,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
+    if (isServiceMode()) {
+      throwServiceUnsupportedFixture('superuserApi');
+    }
+
     const client = new ApiClient(superuserRequest);
     const users = getTestUsers(cachedQuayConfig);
     client.setCredentials(users.admin.username, users.admin.password);
@@ -1262,6 +1305,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   adminClient: async ({playwright, cachedQuayConfig}, use) => {
+    if (isServiceMode()) {
+      throwServiceUnsupportedFixture('adminClient');
+    }
+
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
     });
@@ -1299,6 +1346,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     } finally {
       await request.dispose();
     }
+  },
+
+  // eslint-disable-next-line no-empty-pattern
+  serviceCredentials: async ({}, use) => {
+    await use(getServiceCredentials());
   },
 
   // =========================================================================

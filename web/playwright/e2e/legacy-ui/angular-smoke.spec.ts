@@ -10,13 +10,11 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     });
   });
 
-  test('sign-in page renders', async ({page}) => {
+  test('sign-in page renders', {tag: '@service-safe'}, async ({page}) => {
     await page.goto('/signin/', {waitUntil: 'domcontentloaded'});
-    await expect(page.locator('html[ng-app="quay"]')).toBeAttached();
-    // Angular signin page has a form with username/password inputs
-    await expect(page.locator('input[name="username"]')).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(page.locator('body')).toContainText(
+      /Sign in|Log in to your (Red Hat )?account|Red Hat login/i,
+    );
   });
 
   test('repository list page loads after login', async ({page, request}) => {
@@ -62,21 +60,29 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     });
   });
 
-  test('about page loads', async ({page}) => {
+  test('about page loads', {tag: '@service-safe'}, async ({page}) => {
     await page.goto('/about/', {waitUntil: 'domcontentloaded'});
     await expect(page.locator('html[ng-app="quay"]')).toBeAttached();
   });
 
-  test('API health endpoint is reachable through nginx', async ({request}) => {
-    const response = await request.get('/health/instance');
-    expect(response.ok()).toBeTruthy();
-  });
+  test(
+    'API health endpoint is reachable through nginx',
+    {tag: '@service-safe'},
+    async ({request}) => {
+      const response = await request.get('/health/instance');
+      expect(response.ok()).toBeTruthy();
+    },
+  );
 
-  test('API config endpoint returns expected fields', async ({request}) => {
-    const response = await request.get(`${API_URL}/config`);
-    expect(response.ok()).toBeTruthy();
-    const config = await response.json();
-    expect(config).toHaveProperty('features');
-    expect(config).toHaveProperty('config');
-  });
+  test(
+    'API config endpoint returns expected fields',
+    {tag: '@service-safe'},
+    async ({request}) => {
+      const response = await request.get(`${API_URL}/config`);
+      expect(response.ok()).toBeTruthy();
+      const config = await response.json();
+      expect(config).toHaveProperty('features');
+      expect(config).toHaveProperty('config');
+    },
+  );
 });

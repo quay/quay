@@ -11,7 +11,7 @@
  */
 
 import {chromium, FullConfig, request} from '@playwright/test';
-import {API_URL} from './utils/config';
+import {API_URL, getQuayE2ETarget, isServiceMode} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
 
@@ -120,6 +120,14 @@ async function globalSetup(config: FullConfig) {
       throw new Error(
         '[Global Setup] Failed to fetch Quay config after 3 attempts',
       );
+    }
+
+    if (isServiceMode()) {
+      console.log(
+        `[Global Setup] QUAY_E2E_TARGET=${getQuayE2ETarget()}, skipping local fixed-user creation`,
+      );
+      console.log('[Global Setup] Complete');
+      return;
     }
 
     // For OIDC auth, skip user creation — users are created on first login
