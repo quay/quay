@@ -197,7 +197,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
 
   test(
     'non-admin user can authorize an OAuth app (PUBLIC_OAUTH_APPS)',
-    {tag: ['@feature:PUBLIC_OAUTH_APPS']},
+    {tag: ['@feature:PUBLIC_OAUTH_APPS', '@superuser']},
     async ({authenticatedPage: page, superuserApi}) => {
       // Admin creates org + OAuth app — testuser is NOT an admin of this org
       const org = await superuserApi.organization('public-oauth');
@@ -230,7 +230,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
 
   test(
     'non-admin user can authorize an OAuth app with code flow (PUBLIC_OAUTH_APPS)',
-    {tag: ['@feature:PUBLIC_OAUTH_APPS']},
+    {tag: ['@feature:PUBLIC_OAUTH_APPS', '@superuser']},
     async ({authenticatedPage: page, superuserApi}) => {
       const org = await superuserApi.organization('public-oauth-code');
       const redirectUri = `${API_URL}/oauth/localapp`;
@@ -312,20 +312,21 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     expectLocalOAuthError(response);
   });
 
-  test('non-admin user cannot create OAuth apps', async ({
-    superuserApi,
-    userClient,
-  }) => {
-    // Create org as superuser so testuser is NOT an admin
-    const org = await superuserApi.organization('no-create-oauth');
+  test(
+    'non-admin user cannot create OAuth apps',
+    {tag: '@superuser'},
+    async ({superuserApi, userClient}) => {
+      // Create org as superuser so testuser is NOT an admin
+      const org = await superuserApi.organization('no-create-oauth');
 
-    // Attempt to create an OAuth app as the non-admin user
-    const response = await userClient.post(
-      `/api/v1/organization/${org.name}/applications`,
-      {name: 'should-fail', redirect_uri: '', application_uri: ''},
-    );
+      // Attempt to create an OAuth app as the non-admin user
+      const response = await userClient.post(
+        `/api/v1/organization/${org.name}/applications`,
+        {name: 'should-fail', redirect_uri: '', application_uri: ''},
+      );
 
-    // Should be forbidden — only org admins can manage OAuth apps
-    expect(response.status()).toBe(403);
-  });
+      // Should be forbidden — only org admins can manage OAuth apps
+      expect(response.status()).toBe(403);
+    },
+  );
 });
