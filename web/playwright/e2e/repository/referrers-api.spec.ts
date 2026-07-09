@@ -1,9 +1,12 @@
 /**
- * OCI Referrers API Response Tests
+ * OCI Referrers API — Mocked Smoke Tests
  *
- * Verifies that the /v2/.../referrers/<digest> endpoint returns a valid
- * OCI image index response. Uses Playwright's API request context with
- * route mocking to validate the response shape.
+ * These tests validate the expected OCI referrers response shape using
+ * mocked routes. They do NOT hit the real backend.
+ *
+ * For real end-to-end referrers tests (pushing images, attaching via
+ * oras, fetching the live endpoint), see api-v2.spec.ts which covers
+ * the full "list referrers for manifest" flow with actual data.
  *
  * Related fix: serialization of Manifest objects in the referrers Redis
  * cache (lookup_cached_referrers_for_manifest).
@@ -38,139 +41,135 @@ const MOCK_REFERRERS_INDEX = {
   ],
 };
 
-const EMPTY_REFERRERS_INDEX = {
-  schemaVersion: 2,
-  mediaType: 'application/vnd.oci.image.index.v1+json',
-  manifests: [],
-};
+test.describe(
+  'OCI Referrers API (mocked)',
+  {tag: ['@repository']},
+  () => {
+    test('returns a valid OCI index with referrers', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
 
-test.describe('OCI Referrers API', {tag: ['@repository']}, () => {
-  test('returns a valid OCI index with referrers for a manifest', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const repo = await api.repository();
+      await authenticatedPage.route(
+        `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/vnd.oci.image.index.v1+json',
+            body: JSON.stringify(MOCK_REFERRERS_INDEX),
+          });
+        },
+      );
 
-    await authenticatedPage.route(
-      `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}`,
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/vnd.oci.image.index.v1+json',
-          body: JSON.stringify(MOCK_REFERRERS_INDEX),
-        });
-      },
-    );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
-    // Navigate to the repo page so the page has a valid origin for fetch
-    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      const response = await authenticatedPage.evaluate(
+        async ({ns, name, digest}) => {
+          const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
+          return {
+            status: res.status,
+            contentType: res.headers.get('content-type'),
+            body: await res.json(),
+          };
+        },
+        {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
+      );
 
-    const response = await authenticatedPage.evaluate(
-      async ({ns, name, digest}) => {
-        const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
-        return {
-          status: res.status,
-          contentType: res.headers.get('content-type'),
-          body: await res.json(),
-        };
-      },
-      {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
-    );
+      expect(response.status).toBe(200);
+      expect(response.contentType).toContain(
+        'application/vnd.oci.image.index.v1+json',
+      );
+      expect(response.body.schemaVersion).toBe(2);
+      expect(response.body.manifests).toHaveLength(2);
+      expect(response.body.manifests[0].artifactType).toBe(
+        'application/vnd.example.sbom.v1',
+      );
+      expect(response.body.manifests[1].artifactType).toBe(
+        'application/vnd.example.signature.v1',
+      );
+    });
 
-    expect(response.status).toBe(200);
-    expect(response.contentType).toContain(
-      'application/vnd.oci.image.index.v1+json',
-    );
-    expect(response.body.schemaVersion).toBe(2);
-    expect(response.body.manifests).toHaveLength(2);
-    expect(response.body.manifests[0].artifactType).toBe(
-      'application/vnd.example.sbom.v1',
-    );
-    expect(response.body.manifests[1].artifactType).toBe(
-      'application/vnd.example.signature.v1',
-    );
-  });
+    test('returns an empty OCI index when no referrers exist', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
 
-  test('returns an empty OCI index when no referrers exist', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const repo = await api.repository();
+      await authenticatedPage.route(
+        `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/vnd.oci.image.index.v1+json',
+            body: JSON.stringify({
+              schemaVersion: 2,
+              mediaType: 'application/vnd.oci.image.index.v1+json',
+              manifests: [],
+            }),
+          });
+        },
+      );
 
-    await authenticatedPage.route(
-      `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}`,
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/vnd.oci.image.index.v1+json',
-          body: JSON.stringify(EMPTY_REFERRERS_INDEX),
-        });
-      },
-    );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
-    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      const response = await authenticatedPage.evaluate(
+        async ({ns, name, digest}) => {
+          const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
+          return {status: res.status, body: await res.json()};
+        },
+        {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
+      );
 
-    const response = await authenticatedPage.evaluate(
-      async ({ns, name, digest}) => {
-        const res = await fetch(`/v2/${ns}/${name}/referrers/${digest}`);
-        return {
-          status: res.status,
-          body: await res.json(),
-        };
-      },
-      {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
-    );
+      expect(response.status).toBe(200);
+      expect(response.body.schemaVersion).toBe(2);
+      expect(response.body.manifests).toHaveLength(0);
+    });
 
-    expect(response.status).toBe(200);
-    expect(response.body.schemaVersion).toBe(2);
-    expect(response.body.manifests).toHaveLength(0);
-  });
+    test('supports artifactType filtering via query parameter', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      const filteredIndex = {
+        ...MOCK_REFERRERS_INDEX,
+        manifests: [MOCK_REFERRERS_INDEX.manifests[0]],
+      };
 
-  test('supports artifactType filtering via query parameter', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const repo = await api.repository();
-    const filteredIndex = {
-      ...MOCK_REFERRERS_INDEX,
-      manifests: [MOCK_REFERRERS_INDEX.manifests[0]],
-    };
+      await authenticatedPage.route(
+        `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}?**`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/vnd.oci.image.index.v1+json',
+            headers: {'OCI-Filters-Applied': 'artifactType'},
+            body: JSON.stringify(filteredIndex),
+          });
+        },
+      );
 
-    await authenticatedPage.route(
-      `**/v2/${repo.namespace}/${repo.name}/referrers/${SUBJECT_DIGEST}?**`,
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/vnd.oci.image.index.v1+json',
-          headers: {
-            'OCI-Filters-Applied': 'artifactType',
-          },
-          body: JSON.stringify(filteredIndex),
-        });
-      },
-    );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
-    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      const response = await authenticatedPage.evaluate(
+        async ({ns, name, digest}) => {
+          const res = await fetch(
+            `/v2/${ns}/${name}/referrers/${digest}?artifactType=application/vnd.example.sbom.v1`,
+          );
+          return {
+            status: res.status,
+            filtersApplied: res.headers.get('oci-filters-applied'),
+            body: await res.json(),
+          };
+        },
+        {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
+      );
 
-    const response = await authenticatedPage.evaluate(
-      async ({ns, name, digest}) => {
-        const res = await fetch(
-          `/v2/${ns}/${name}/referrers/${digest}?artifactType=application/vnd.example.sbom.v1`,
-        );
-        return {
-          status: res.status,
-          filtersApplied: res.headers.get('oci-filters-applied'),
-          body: await res.json(),
-        };
-      },
-      {ns: repo.namespace, name: repo.name, digest: SUBJECT_DIGEST},
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.filtersApplied).toBe('artifactType');
-    expect(response.body.manifests).toHaveLength(1);
-    expect(response.body.manifests[0].artifactType).toBe(
-      'application/vnd.example.sbom.v1',
-    );
-  });
-});
+      expect(response.status).toBe(200);
+      expect(response.filtersApplied).toBe('artifactType');
+      expect(response.body.manifests).toHaveLength(1);
+      expect(response.body.manifests[0].artifactType).toBe(
+        'application/vnd.example.sbom.v1',
+      );
+    });
+  },
+);
