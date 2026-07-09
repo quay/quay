@@ -1,0 +1,527 @@
+# Playwright E2E Testing Guide
+
+Authoritative reference for writing and maintaining Playwright end-to-end tests in Project Quay.
+
+## Key Principles
+
+1. **NO MOCKS/INTERCEPTS** - Use real API interactions, not `page.route()` stubs (exception: external third-party CDNs like StatusPage)
+2. **NO DATABASE SEEDING** - Use API utilities to create test data dynamically
+3. **Use Playwright Tags** - Label every test with `{ tag: [...] }` for filtering and traceability
+4. **Use the `api` Fixture** - Create test data inline with automatic cleanup
+5. **Consolidate When Logical** - Merge sequential CRUD operations into single e2e flows
+
+## Directory Structure
+
+```text
+web/playwright/
+├── e2e/                          # Test specifications
+│   ├── api/                      # API-level tests
+│   ├── auth/                     # Authentication tests
+│   ├── legacy-ui/                # Angular UI tests
+│   ├── organization/             # Organization tests
+│   ├── repository/               # Repository tests
+│   ├── superuser/                # Superuser tests
+│   ├── tags/                     # Tag tests
+│   ├── ui/                       # UI component tests
+│   └── user/                     # User account tests
+├── utils/                        # Shared utilities
+│   ├── api/                      # API utilities by resource
+│   │   ├── index.ts              # Re-exports all API utilities
+│   │   ├── auth.ts               # Authentication helpers
+│   │   ├── client.ts             # TestApi client (auto-cleanup)
+│   │   ├── csrf.ts               # getCsrfToken
+│   │   └── raw-client.ts         # ApiClient (raw, no auto-cleanup)
+│   ├── config.ts                 # API_URL, BASE_URL
+│   ├── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
+│   ├── mailpit.ts                # Email testing utilities
+│   ├── s3.ts                     # S3 storage utilities
+│   ├── security.ts               # Security scanning utilities
+│   ├── test-utils.ts             # General test helpers
+│   └── webhook.ts                # Webhook receiver utilities
+├── fixtures/                     # Static test data (e.g., ORAS referrer JSON)
+├── fixtures.ts                   # Custom fixtures, uniqueName()
+├── global-setup.ts               # Creates admin, testuser, readonly users
+├── ensure-required-tags.cjs      # Tag validation script
+└── AGENTS.md                     # This guide
+```
+
+## Test Tagging System
+
+Use Playwright's built-in tag feature for test categorization.
+
+### Syntax
+
+```typescript
+// Tag a describe block
+test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
+  // Tag individual tests
+  test('does something', {tag: '@PROJQUAY-1234'}, async ({page}) => {
+    // ...
+  });
+});
+```
+
+### Tag Categories
+
+| Category     | Format                 | Example                | Purpose                                                                |
+| ------------ | ---------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| JIRA         | `@PROJQUAY-####`       | `@PROJQUAY-1234`       | Link to JIRA ticket                                                    |
+| Priority     | `@critical`, `@smoke`  | `@critical`            | Test importance                                                        |
+| Feature      | `@repository`          | `@repository`          | Feature area                                                           |
+| Config       | `@config:BILLING`      | `@config:OIDC`         | Required config                                                        |
+| Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature                                                       |
+| Container    | `@container`           | `@container`           | Requires registry image tooling (auto-skip)                            |
+| Superuser    | `@superuser`           | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them |
+| Webhook      | `@webhook`             | `@webhook`             | Uses the webhook receiver fixture or helper                            |
+
+### Running Tagged Tests
+
+```bash
+# Run critical tests only
+npx playwright test --grep @critical
+
+# Run tests for a specific JIRA ticket
+npx playwright test --grep @PROJQUAY-1234
+
+# Run all repository tests
+npx playwright test --grep @repository
+
+# Exclude tests requiring specific config
+npx playwright test --grep-invert @config:BILLING
+
+# Combine filters (AND logic)
+npx playwright test --grep "(?=.*@critical)(?=.*@repository)"
+```
+
+### Required Usage Tags
+
+Tests that use `superuserPage`, `superuserRequest`, `superuserApi`,
+`superuserContext`, `freshUser`, or spec-local fixtures backed by those fixtures
+must include `@superuser`.
+
+Tests that use the `webhook` fixture or instantiate `WebhookReceiver` must
+include `@webhook`.
+
+```bash
+# Check tag coverage
+pnpm run test:e2e:check-required-tags
+
+# Add missing tags to existing tests
+pnpm run test:e2e:fix-required-tags
+```
+
+## data-testid Conventions
+
+Prefer `getByTestId()` over element IDs or framework-generated selectors (like PatternFly's `#pf-tab-N-tabname`). `data-testid` attributes are stable across CSS and framework changes.
+
+### IMPORTANT: Use data-testid, NOT test-id
+
+Playwright's `getByTestId()` only works with the standard `data-testid` attribute. Using `test-id` (without the `data-` prefix) requires manual locator selectors.
+
+```tsx
+// Wrong - requires manual locator
+<Button test-id="my-button">Click</Button>
+await page.locator('[test-id="my-button"]').click();
+
+// Correct - works with getByTestId()
+<Button data-testid="my-button">Click</Button>
+await page.getByTestId('my-button').click();
+```
+
+### Naming Convention
+
+```text
+{feature}-{component}-{action/purpose}
+```
+
+Examples: `org-settings-email`, `org-settings-save-button`, `billing-invoice-checkbox`, `delete-repository-confirm-btn`
+
+### Adding to Components
+
+```tsx
+// Add data-testid to interactive elements
+<Button
+  id="save-billing-settings"
+  data-testid="billing-save-button"
+  onClick={handleSave}
+>
+  Save
+</Button>
+
+// For form components using shared wrappers
+<FormTextInput
+  name="email"
+  fieldId="org-settings-email"
+  data-testid="org-settings-email"
+  // ...
+/>
+```
+
+### Using in Tests
+
+```typescript
+// Prefer getByTestId
+await page.getByTestId('org-settings-save-button').click();
+
+// Over element IDs
+await page.locator('#save-org-settings').click();
+
+// Or framework-specific selectors (may break on upgrade)
+await page.locator('#pf-tab-2-cliconfig').click();
+```
+
+## Authentication Pattern
+
+### Using Fixtures (Recommended)
+
+```typescript
+import {test, expect} from '../fixtures';
+
+// authenticatedPage is already logged in as regular user
+test('can view repository list', async ({authenticatedPage}) => {
+  await authenticatedPage.goto('/repository');
+  await expect(authenticatedPage.getByText('Repositories')).toBeVisible();
+});
+
+// superuserPage is logged in as superuser
+test('superuser can manage users', async ({superuserPage}) => {
+  await superuserPage.goto('/superuser');
+});
+```
+
+### Manual Login (When Needed)
+
+```typescript
+import {loginUser} from '../fixtures';
+
+test('custom login scenario', async ({page, request}) => {
+  const csrfToken = await loginUser(request, 'customuser', 'password');
+  await page.goto('/repository');
+});
+```
+
+## Test Data Creation with the `api` Fixture
+
+The `api` fixture provides methods to create test resources with **automatic cleanup** after each test (even on failure). Resources are deleted in reverse creation order.
+
+```typescript
+import {test, expect} from '../../fixtures';
+
+test.describe('Repository Tests', () => {
+  test('works with repository', async ({authenticatedPage, api}) => {
+    // Create resources inline - auto-cleaned after test
+    const org = await api.organization('myorg');
+    const repo = await api.repository(org.name, 'myrepo');
+    const team = await api.team(org.name, 'myteam');
+    const robot = await api.robot(org.name, 'mybot');
+
+    await authenticatedPage.goto(`/repository/${repo.fullName}`);
+    // ... test code ...
+    // Resources auto-deleted in reverse order: robot, team, repo, org
+  });
+});
+```
+
+### Available `api` Methods
+
+| Method                                                    | Returns                          | Description                                         |
+| --------------------------------------------------------- | -------------------------------- | --------------------------------------------------- |
+| `api.organization(prefix?)`                               | `{name, email}`                  | Creates org with unique name                        |
+| `api.repository(namespace?, prefix?, visibility?)`        | `{namespace, name, fullName}`    | Creates repo (defaults to test user namespace)      |
+| `api.team(orgName, prefix?, role?)`                       | `{orgName, name}`                | Creates team in org                                 |
+| `api.robot(orgName, prefix?, description?)`               | `{orgName, shortname, fullName}` | Creates robot account                               |
+| `api.prototype(orgName, role, delegate, activatingUser?)` | `{id}`                           | Creates default permission                          |
+| `api.setMirrorState(namespace, repoName)`                 | `void`                           | Sets repo to MIRROR state                           |
+| `api.raw`                                                 | `ApiClient`                      | Access underlying client for non-tracked operations |
+
+### Using `api.raw` for Non-Tracked Operations
+
+For operations that don't need cleanup (reads) or are cleaned up by parent resource deletion:
+
+```typescript
+test('configures mirror', async ({api}) => {
+  const org = await api.organization('mirror');
+  const repo = await api.repository(org.name, 'mirrorrepo');
+  const robot = await api.robot(org.name, 'mirrorbot');
+  await api.setMirrorState(org.name, repo.name);
+
+  // Mirror config is cleaned up when repo is deleted
+  await api.raw.createMirrorConfig(org.name, repo.name, {...});
+
+  // Read operations don't need cleanup
+  const config = await api.raw.getMirrorConfig(org.name, repo.name);
+});
+```
+
+### Superuser API
+
+Use `superuserApi` for operations requiring superuser privileges:
+
+```typescript
+test('admin creates user', async ({superuserApi}) => {
+  const user = await superuserApi.raw.createUser(
+    'newuser',
+    'password',
+    'user@example.com',
+  );
+});
+```
+
+### Anti-Pattern: Manual Cleanup
+
+Avoid `beforeEach`/`afterEach` with manual `try/catch` cleanup. The `api` fixture handles cleanup automatically, is parallel-safe, and guarantees reverse-order deletion. See existing tests for the legacy pattern if maintaining older specs.
+
+### Why Cleanup Matters
+
+- Tests run in parallel - leftover data causes collisions
+- Tests should be independent and repeatable
+- Cleanup prevents database bloat in CI environments
+- Use `uniqueName()` to avoid collisions even if cleanup fails
+
+## Session-Destructive Tests (Logout)
+
+Tests that call `/api/v1/signout` require special handling because Quay invalidates **ALL sessions** for that user server-side (`invalidate_all_sessions(user)`). This breaks parallel tests using the same user.
+
+### Solution: Unique Temporary Users
+
+Create a custom fixture that provisions a unique user per test:
+
+```typescript
+import {test as base, expect, uniqueName} from '../../fixtures';
+import {ApiClient} from '../../utils/api';
+
+const test = base.extend<{logoutPage: Page; logoutUsername: string}>({
+  logoutUsername: async ({}, use) => {
+    await use(uniqueName('logout'));
+  },
+
+  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
+    const password = 'testpassword123';
+    const email = `${logoutUsername}@example.com`;
+
+    // Create temporary user
+    const superApi = new ApiClient(superuserRequest);
+    await superApi.createUser(logoutUsername, password, email);
+
+    // Login as temporary user
+    const context = await browser.newContext();
+    const api = new ApiClient(context.request);
+    await api.signIn(logoutUsername, password);
+
+    const page = await context.newPage();
+    await use(page);
+
+    // Cleanup
+    await page.close();
+    await context.close();
+    try {
+      await superApi.deleteUser(logoutUsername);
+    } catch {
+      // Already deleted
+    }
+  },
+});
+
+test('logs out successfully', async ({logoutPage}) => {
+  // Safe to logout - won't affect other tests
+});
+```
+
+### When to Use This Pattern
+
+- Tests that call the logout API
+- Tests that invalidate sessions
+- Any test where signing out is part of the test flow
+
+See `e2e/auth/logout.spec.ts` for a complete implementation.
+
+## Test Consolidation Guidelines
+
+### When to Consolidate
+
+- Tests that share the same setup (create repo -> ...)
+- Sequential workflow steps (create -> verify -> update -> delete)
+- Tests that would be faster as a single flow
+- Related CRUD operations on the same entity
+
+### When NOT to Consolidate
+
+- Independent feature verifications
+- Tests with different config requirements
+- Error/edge case scenarios
+- Tests that need isolation for debugging
+
+### Example: Consolidated Lifecycle Test
+
+```typescript
+test(
+  'repo settings lifecycle: create, update, delete',
+  {tag: '@PROJQUAY-1234'},
+  async ({page}) => {
+    // Create
+    await page.goto('/repository/testuser/myrepo?tab=settings');
+    // ... configure setting
+    await expect(page.getByText('Setting saved')).toBeVisible();
+
+    // Update
+    // ... update setting
+    await expect(page.getByText('Setting updated')).toBeVisible();
+
+    // Delete
+    // ... delete setting
+    await expect(page.getByText('Setting removed')).toBeVisible();
+  },
+);
+```
+
+## Config-Dependent Tests
+
+For tests that require specific Quay features, use `@feature:X` tags on the describe block. The test framework automatically skips tests when required features are not enabled.
+
+### Using @feature: Tags (Recommended)
+
+```typescript
+import {test, expect} from '../../fixtures';
+
+// Single feature requirement - just add the tag
+test.describe(
+  'Billing Settings',
+  {tag: ['@organization', '@feature:BILLING']},
+  () => {
+    test('shows billing information', async ({authenticatedPage}) => {
+      // Auto-skipped if BILLING is not enabled - no manual skip needed!
+      await authenticatedPage.goto('/organization/myorg?tab=Settings');
+      await authenticatedPage.getByTestId('Billing information').click();
+    });
+  },
+);
+
+// Multiple feature requirements - add multiple @feature: tags
+test.describe(
+  'Quota Editing',
+  {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
+  () => {
+    test('edits quota', async ({authenticatedPage}) => {
+      // Auto-skipped if EITHER feature is disabled
+    });
+  },
+);
+```
+
+### Manual Skip (Edge Cases Only)
+
+For rare cases where you need conditional logic beyond feature flags, use `skipUnlessFeature` directly:
+
+```typescript
+import {test, expect, skipUnlessFeature} from '../../fixtures';
+
+test('shows registry autoprune policy', async ({
+  authenticatedPage,
+  quayConfig,
+}) => {
+  const hasRegistryPolicy =
+    quayConfig?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null;
+  test.skip(
+    !hasRegistryPolicy,
+    'DEFAULT_NAMESPACE_AUTOPRUNE_POLICY not configured',
+  );
+  // Test code...
+});
+```
+
+### Available Features
+
+The `QuayFeature` type includes:
+
+- `BILLING` - Billing/subscription features
+- `QUOTA_MANAGEMENT` / `EDIT_QUOTA` - Storage quotas
+- `AUTO_PRUNE` - Auto-pruning policies
+- `PROXY_CACHE` - Proxy cache configuration
+- `REPO_MIRROR` - Repository mirroring
+- `SECURITY_SCANNER` - Security scanning
+- `CHANGE_TAG_EXPIRATION` - Tag expiration settings
+- `USER_METADATA` - User profile metadata
+- `MAILING` - Email features
+
+### Test Output
+
+When a feature is disabled, tests skip with a clear reason:
+
+```text
+- billing email and receipt settings (skipped: Required feature(s) not enabled: BILLING)
+```
+
+## Container-Dependent Tests
+
+For tests that require registry image tooling (skopeo, crane, oras, or regctl), use the `@container` tag. Tests are automatically skipped when skopeo is unavailable.
+
+### Using @container Tag
+
+```typescript
+import {test, expect} from '../../fixtures';
+import {pushImage} from '../../utils/container';
+
+// Tag on describe block - all tests auto-skip if registry image tooling is unavailable
+test.describe('Image Push Tests', {tag: ['@container']}, () => {
+  test('pushes image to registry', async ({authenticatedPage, api}) => {
+    const repo = await api.repository();
+    await pushImage(repo.namespace, repo.name, 'latest', username, password);
+    // ... test assertions
+  });
+});
+```
+
+### With beforeAll Setup
+
+When using `beforeAll` for shared container setup, check `cachedContainerAvailable`:
+
+```typescript
+test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
+  let testRepo: {namespace: string; name: string};
+
+  test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+    // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
+    if (!cachedContainerAvailable) return;
+    // Push images for tests...
+  });
+
+  test('verifies multi-arch manifest', async ({authenticatedPage}) => {
+    // Auto-skipped if registry image tooling is unavailable
+  });
+});
+```
+
+## Common Gotchas
+
+| Issue | What to Know |
+| ----- | ------------ |
+| **Async/Await** | Every Playwright interaction must be `await`ed - no implicit chaining |
+| **Auto-waiting** | Locators auto-wait for elements; explicit waits are rarely needed |
+| **Timeouts** | Configure via `timeout` in `playwright.config.ts`, not per-command |
+| **Screenshots** | Configure capture-on-failure in `playwright.config.ts` |
+| **Selectors** | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors |
+| **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
+| **Parallel safety** | Use `uniqueName()` for all created resources; never hard-code entity names |
+| **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
+
+## Files Reference
+
+| File                                   | Purpose                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `playwright.config.ts`                 | Playwright configuration                                                                                   |
+| `playwright/global-setup.ts`           | Creates test users (admin, testuser, readonly)                                                             |
+| `playwright/fixtures.ts`               | Custom fixtures with pre-auth contexts, `uniqueName()`                                                     |
+| `playwright/utils/api/`                | API utilities organized by resource type                                                                   |
+| `playwright/utils/api/csrf.ts`         | CSRF token helper: `getCsrfToken`                                                                          |
+| `playwright/utils/api/client.ts`       | `TestApi` client with auto-cleanup tracking                                                                |
+| `playwright/utils/api/raw-client.ts`   | `ApiClient` raw client for non-tracked operations                                                          |
+| `playwright/utils/api/auth.ts`         | Authentication helpers                                                                                     |
+| `playwright/utils/config.ts`           | Global config: `API_URL`, `BASE_URL`                                                                       |
+| `playwright/utils/container.ts`        | Registry image utilities (`skopeo`, `crane`, `oras`, `regctl`): `pushImage`, `isContainerRuntimeAvailable` |
+| `playwright/utils/mailpit.ts`          | Email testing utilities                                                                                    |
+| `playwright/utils/s3.ts`              | S3 storage utilities                                                                                       |
+| `playwright/utils/security.ts`         | Security scanning utilities                                                                                |
+| `playwright/utils/test-utils.ts`       | General test helpers                                                                                       |
+| `playwright/utils/webhook.ts`          | Webhook receiver utilities                                                                                 |
+| `playwright/ensure-required-tags.cjs`  | Tag validation script                                                                                      |
+| `playwright/AGENTS.md`                 | This guide                                                                                                 |

@@ -57,7 +57,7 @@ make types-test                      # Type checking (mypy)
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
-| Frontend E2E tests, Playwright fixtures | `web/playwright/MIGRATION.md` |
+| Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
 
 ## Universal Conventions
