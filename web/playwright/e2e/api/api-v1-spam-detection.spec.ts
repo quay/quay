@@ -7,7 +7,7 @@ const repoRoot = path.resolve(__dirname, '../../../..');
 
 test.describe(
   'Repository spam detection ingress',
-  {tag: ['@api', '@auth:Database']},
+  {tag: ['@api', '@auth:Database', '@superuser']},
   () => {
     test('image build context carries the baked classifier artifact path', async () => {
       const configPy = fs.readFileSync(
