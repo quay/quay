@@ -431,17 +431,7 @@ test('shows registry autoprune policy', async ({
 
 ### Available Features
 
-The `QuayFeature` type includes:
-
-- `BILLING` - Billing/subscription features
-- `QUOTA_MANAGEMENT` / `EDIT_QUOTA` - Storage quotas
-- `AUTO_PRUNE` - Auto-pruning policies
-- `PROXY_CACHE` - Proxy cache configuration
-- `REPO_MIRROR` - Repository mirroring
-- `SECURITY_SCANNER` - Security scanning
-- `CHANGE_TAG_EXPIRATION` - Tag expiration settings
-- `USER_METADATA` - User profile metadata
-- `MAILING` - Email features
+See the `QuayFeature` type in `fixtures.ts` for the complete list of available feature flags.
 
 ### Test Output
 
@@ -503,25 +493,3 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
 | **Parallel safety** | Use `uniqueName()` for all created resources; never hard-code entity names |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
-
-## Files Reference
-
-| File                                   | Purpose                                                                                                    |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `playwright.config.ts`                 | Playwright configuration                                                                                   |
-| `playwright/global-setup.ts`           | Creates test users (admin, testuser, readonly)                                                             |
-| `playwright/fixtures.ts`               | Custom fixtures with pre-auth contexts, `uniqueName()`                                                     |
-| `playwright/utils/api/`                | API utilities organized by resource type                                                                   |
-| `playwright/utils/api/csrf.ts`         | CSRF token helper: `getCsrfToken`                                                                          |
-| `playwright/utils/api/client.ts`       | `TestApi` client with auto-cleanup tracking                                                                |
-| `playwright/utils/api/raw-client.ts`   | `ApiClient` raw client for non-tracked operations                                                          |
-| `playwright/utils/api/auth.ts`         | Authentication helpers                                                                                     |
-| `playwright/utils/config.ts`           | Global config: `API_URL`, `BASE_URL`                                                                       |
-| `playwright/utils/container.ts`        | Registry image utilities (`skopeo`, `crane`, `oras`, `regctl`): `pushImage`, `isContainerRuntimeAvailable` |
-| `playwright/utils/mailpit.ts`          | Email testing utilities                                                                                    |
-| `playwright/utils/s3.ts`              | S3 storage utilities                                                                                       |
-| `playwright/utils/security.ts`         | Security scanning utilities                                                                                |
-| `playwright/utils/test-utils.ts`       | General test helpers                                                                                       |
-| `playwright/utils/webhook.ts`          | Webhook receiver utilities                                                                                 |
-| `playwright/ensure-required-tags.cjs`  | Tag validation script                                                                                      |
-| `playwright/AGENTS.md`                 | This guide                                                                                                 |
