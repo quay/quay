@@ -150,9 +150,13 @@ def spawn_namespace_notification(namespace_name, event_name, extra_data=None, pe
         namespace_name, event_name=event_name
     )
 
+    enqueued = 0
     for notification in list(notifications):
         notification_data = build_namespace_notification_data(
             notification, event_data, performer_data
         )
         path = [namespace_name, event_name]
         notification_queue.put(path, json.dumps(notification_data))
+        enqueued += 1
+
+    return enqueued

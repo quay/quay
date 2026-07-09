@@ -5,12 +5,13 @@ from flask import request
 
 import features
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerOrganizationPermission, SuperUserPermission
+from auth.permissions import AdministerOrganizationPermission
 from data import model
 from data.model import InvalidNotificationException
 from endpoints.api import (
     ApiResource,
     InvalidRequest,
+    allow_if_superuser_with_full_access,
     log_action,
     nickname,
     path_param,
@@ -21,7 +22,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import NotFound, Unauthorized
-from notifications import build_namespace_event_data, build_notification_data
+from notifications import build_namespace_notification_data
 from notifications.notificationevent import NotificationEvent
 from notifications.notificationmethod import (
     CannotValidateNotificationMethodException,
@@ -58,7 +59,7 @@ def _notification_view(notification):
 
 def _check_org_admin(orgname):
     permission = AdministerOrganizationPermission(orgname)
-    if permission.can() or SuperUserPermission().can():
+    if permission.can() or allow_if_superuser_with_full_access():
         return
     raise Unauthorized()
 
@@ -241,7 +242,7 @@ class TestOrgNamespaceNotification(ApiResource):
         event_config = json.loads(found.event_config_json or "{}")
         event_info = NotificationEvent.get_event(found.event.name)
         sample_data = event_info.get_sample_data(orgname, None, event_config)
-        notification_data = build_notification_data(found, sample_data)
+        notification_data = build_namespace_notification_data(found, sample_data)
 
         from app import notification_queue
 
@@ -397,7 +398,7 @@ class TestUserNamespaceNotification(ApiResource):
         event_config = json.loads(found.event_config_json or "{}")
         event_info = NotificationEvent.get_event(found.event.name)
         sample_data = event_info.get_sample_data(user.username, None, event_config)
-        notification_data = build_notification_data(found, sample_data)
+        notification_data = build_namespace_notification_data(found, sample_data)
 
         from app import notification_queue
 

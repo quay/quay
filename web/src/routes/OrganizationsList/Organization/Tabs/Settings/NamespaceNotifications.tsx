@@ -66,7 +66,7 @@ function NotificationConfig({
     case NamespaceNotificationMethodType.email:
       return (
         <FlexItem style={{color: 'grey'}}>
-          email: {(notification.config as any)?.email}
+          Sent to namespace contact or admin emails
         </FlexItem>
       );
     case NamespaceNotificationMethodType.slack:

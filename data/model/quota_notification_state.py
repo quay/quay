@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime, timedelta
 
+from peewee import IntegrityError
+
 from data.database import QuotaNotificationState
 from data.model import config, db_transaction
 
@@ -15,10 +17,68 @@ def _get_cooldown_seconds():
     return config.app_config.get("QUOTA_NOTIFICATION_COOLDOWN_SECONDS", DEFAULT_COOLDOWN_SECONDS)
 
 
+def claim_notification(namespace_user, threshold_percent):
+    """
+    Atomically claims the right to send a notification for this namespace + threshold.
+
+    Returns True if the caller won the claim and should proceed to enqueue.
+    Returns False if another caller already claimed it or cooldown hasn't expired.
+
+    On success the state row is created/updated with cleared=False and last_notified_at=now,
+    so concurrent callers that race on the same slot will lose.
+    """
+    now = datetime.utcnow()
+    cooldown = timedelta(seconds=_get_cooldown_seconds())
+    cutoff = now - cooldown
+
+    with db_transaction():
+        state = QuotaNotificationState.get_or_none(
+            QuotaNotificationState.namespace == namespace_user,
+            QuotaNotificationState.threshold_percent == threshold_percent,
+        )
+
+        if state is None:
+            try:
+                QuotaNotificationState.create(
+                    namespace=namespace_user,
+                    threshold_percent=threshold_percent,
+                    last_notified_at=now,
+                    cleared=False,
+                )
+                return True
+            except IntegrityError:
+                return False
+
+        if not state.cleared and state.last_notified_at is not None and state.last_notified_at > cutoff:
+            return False
+
+        updated = (
+            QuotaNotificationState.update(last_notified_at=now, cleared=False)
+            .where(
+                QuotaNotificationState.id == state.id,
+                QuotaNotificationState.last_notified_at == state.last_notified_at,
+                QuotaNotificationState.cleared == state.cleared,
+            )
+            .execute()
+        )
+        return updated > 0
+
+
+def release_claim(namespace_user, threshold_percent):
+    """
+    Reverts a successful claim when no notifications were actually enqueued.
+    Deletes the state row so the threshold starts fresh when a channel is later created.
+    """
+    QuotaNotificationState.delete().where(
+        QuotaNotificationState.namespace == namespace_user,
+        QuotaNotificationState.threshold_percent == threshold_percent,
+    ).execute()
+
+
 def should_notify(namespace_user, threshold_percent):
     """
-    Returns True if a notification should be sent for this namespace + threshold_percent.
-    A notification is eligible if no state row exists, or the cooldown has expired.
+    Read-only check: returns True if a notification is eligible for this namespace + threshold.
+    Used by the background worker and tests. The push path should use claim_notification() instead.
     """
     state = QuotaNotificationState.get_or_none(
         QuotaNotificationState.namespace == namespace_user,
@@ -41,6 +101,7 @@ def should_notify(namespace_user, threshold_percent):
 def record_notification(namespace_user, threshold_percent):
     """
     Creates or updates the state row: sets cleared=False, last_notified_at=now.
+    Used by the background worker and tests. The push path should use claim_notification() instead.
     """
     now = datetime.utcnow()
 

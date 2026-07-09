@@ -70,36 +70,27 @@ class TestQuotaNotificationState:
 
         assert should_notify(self.user, 80) is True
 
-    def test_cleared_but_within_cooldown_should_not_notify(self, initialized_db):
-        """After clear_notification but still within cooldown, should_notify returns False."""
+    def test_cleared_within_cooldown_should_notify(self, initialized_db):
+        """After clear_notification, should_notify returns True even within cooldown."""
         record_notification(self.user, 80)
         clear_notification(self.user, 80)
 
-        # last_notified_at is still recent (just recorded), so cooldown hasn't expired
-        assert should_notify(self.user, 80) is False
+        # cleared=True means usage dropped below threshold; re-crossing should re-notify immediately
+        assert should_notify(self.user, 80) is True
 
     def test_drop_below_and_rise_again_cycle(self, initialized_db):
-        """Full cycle: record -> clear -> cooldown expires -> should_notify True -> record again."""
+        """Full cycle: record -> clear -> re-notify immediately -> record again."""
         # Step 1: Record notification (usage exceeded threshold)
         record_notification(self.user, 80)
         assert should_notify(self.user, 80) is False
 
         # Step 2: Clear notification (usage dropped below threshold)
         clear_notification(self.user, 80)
-        assert should_notify(self.user, 80) is False  # still within cooldown
 
-        # Step 3: Simulate cooldown expiry
-        QuotaNotificationState.update(
-            last_notified_at=datetime.utcnow() - timedelta(seconds=86401)
-        ).where(
-            QuotaNotificationState.namespace == self.user,
-            QuotaNotificationState.threshold_percent == 80,
-        ).execute()
-
-        # Step 4: Usage rises again - should be eligible for notification
+        # Step 3: Usage rises again — cleared flag means immediate re-notification
         assert should_notify(self.user, 80) is True
 
-        # Step 5: Record the new notification
+        # Step 4: Record the new notification
         record_notification(self.user, 80)
         assert should_notify(self.user, 80) is False
 

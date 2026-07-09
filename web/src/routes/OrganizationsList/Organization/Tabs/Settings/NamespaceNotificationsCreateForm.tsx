@@ -32,7 +32,6 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useUpdateNamespaceNotifications} from 'src/hooks/UseUpdateNamespaceNotifications';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
-import {isValidEmail} from 'src/libs/utils';
 import {Entity, EntityKind} from 'src/resources/UserResource';
 import {
   NamespaceNotificationEventType,
@@ -67,7 +66,6 @@ export default function NamespaceNotificationsCreateForm(
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
 
-  const [email, setEmail] = useState('');
   const [slackUrl, setSlackUrl] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookTemplate, setWebhookTemplate] = useState('');
@@ -94,7 +92,6 @@ export default function NamespaceNotificationsCreateForm(
       setMethod(null);
       setTitle('');
       setError('');
-      setEmail('');
       setSlackUrl('');
       setWebhookUrl('');
       setWebhookTemplate('');
@@ -139,7 +136,7 @@ export default function NamespaceNotificationsCreateForm(
     if (!event || !method) return false;
     switch (method.type) {
       case NamespaceNotificationMethodType.email:
-        return email !== '' && isValidEmail(email);
+        return true;
       case NamespaceNotificationMethodType.slack:
         return slackUrl !== '' && isValidSlackUrl(slackUrl);
       case NamespaceNotificationMethodType.webhook:
@@ -154,7 +151,7 @@ export default function NamespaceNotificationsCreateForm(
   const getConfig = (): Record<string, unknown> => {
     switch (method?.type) {
       case NamespaceNotificationMethodType.email:
-        return {email};
+        return {};
       case NamespaceNotificationMethodType.slack:
         return {url: slackUrl};
       case NamespaceNotificationMethodType.webhook:
@@ -327,31 +324,17 @@ export default function NamespaceNotificationsCreateForm(
             <Conditional
               if={method?.type === NamespaceNotificationMethodType.email}
             >
-              <FormGroup
-                fieldId="ns-notification-email"
-                label="E-mail address"
-                isRequired
-              >
-                <TextInput
-                  id="ns-notification-email"
-                  data-testid="ns-notification-email"
-                  isRequired
-                  value={email}
-                  onChange={(_event, value) => setEmail(value)}
-                />
-                {email !== '' && !isValidEmail(email) && (
-                  <FormHelperText>
-                    <HelperText>
-                      <HelperTextItem
-                        variant="error"
-                        icon={<ExclamationCircleIcon />}
-                      >
-                        Invalid email
-                      </HelperTextItem>
-                    </HelperText>
-                  </FormHelperText>
-                )}
-              </FormGroup>
+              <Alert
+                variant="info"
+                isInline
+                isPlain
+                title={
+                  props.isUser
+                    ? 'Notifications will be sent to your account email address.'
+                    : 'Notifications will be sent to the organization contact email or organization admin emails.'
+                }
+                data-testid="ns-notification-email-info"
+              />
             </Conditional>
 
             <Conditional

@@ -276,7 +276,7 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     gated behind FEATURE_QUOTA_NOTIFICATIONS with dedup via the state machine.
     """
     import features
-    from data.model.quota_notification_state import record_notification, should_notify
+    from data.model.quota_notification_state import claim_notification, release_claim
     from notifications import spawn_namespace_notification
 
     if not features.QUOTA_NOTIFICATIONS:
@@ -294,7 +294,7 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     if namespace_user is None:
         return
 
-    if not should_notify(namespace_user, threshold_percent):
+    if not claim_notification(namespace_user, threshold_percent):
         return
 
     event_name = "quota_warning" if severity == "Warning" else "quota_error"
@@ -302,7 +302,7 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     quota_limit_bytes = quota_result.get("quota_limit_bytes", 0)
     usage_percent = int(usage_bytes * 100 / quota_limit_bytes) if quota_limit_bytes else 0
 
-    spawn_namespace_notification(
+    enqueued = spawn_namespace_notification(
         namespace_name,
         event_name,
         extra_data={
@@ -312,7 +312,10 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
             "usage_percent": usage_percent,
         },
     )
-    record_notification(namespace_user, threshold_percent)
+    if not enqueued:
+        release_claim(namespace_user, threshold_percent)
+        return
+
     logger.info(
         "Quota %s notification triggered for namespace %s at %d%% threshold",
         severity.lower(),
