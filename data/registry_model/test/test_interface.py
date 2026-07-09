@@ -1619,3 +1619,10 @@ def test_lookup_cached_referrers_serialization_roundtrip(oci_model):
         assert from_cache.digest == orig.digest
         assert from_cache.media_type == orig.media_type
         assert from_cache._db_id == orig._db_id
+
+        # Verify internal_manifest_bytes survived the roundtrip as a Bytes object
+        assert from_cache.internal_manifest_bytes is not None
+        assert from_cache.internal_manifest_bytes.as_encoded_str() == (
+            orig.internal_manifest_bytes.as_encoded_str()
+        )
+        assert from_cache.get_parsed_manifest() is not None

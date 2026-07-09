@@ -305,6 +305,11 @@ class OCIModel(RegistryDataInterface):
         )
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
+            for referrer_dict in result:
+                if referrer_dict.get("internal_manifest_bytes") is not None:
+                    referrer_dict["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
+                        referrer_dict["internal_manifest_bytes"]
+                    )
             return [Manifest.from_dict(referrer_dict) for referrer_dict in result]
         except FromDictionaryException:
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
