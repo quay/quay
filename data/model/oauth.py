@@ -10,6 +10,7 @@ from urllib.parse import unquote, urlparse
 from flask import url_for
 from peewee import PeeweeException
 
+import features
 from auth import scopes
 from data.database import (
     OAuthAccessToken,
@@ -243,29 +244,42 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
     def get_token_response(
         self, response_type, client_id, redirect_uri, assignment_uuid=None, **params
     ):
-        # Ensure proper response_type
-        if response_type != "token":
-            err = "unsupported_response_type"
-            return self._make_redirect_error_response(redirect_uri, err)
-
         # Check for a valid client ID.
         oauth_application = self.get_application_for_client_id(client_id)
-
-        if oauth_application is None or not self.is_org_admin_or_has_token_assignment(
-            oauth_application.organization, assignment_uuid
-        ):
-            err = "unauthorized_client"
-            return self._make_redirect_error_response(redirect_uri, err)
+        if oauth_application is None:
+            return self._make_json_error_response("unauthorized_client")
 
         # Check for a valid redirect URI.
         is_valid_redirect_uri = self.validate_redirect_uri(client_id, redirect_uri)
         if not is_valid_redirect_uri:
             return self._invalid_redirect_uri_response()
 
+        # Ensure proper response_type
+        if response_type != "token":
+            err = "unsupported_response_type"
+            return self._make_redirect_error_response(redirect_uri, err)
+
         # Check conditions
         is_valid_access = self.validate_access()
         scope = params.get("scope", "")
         are_valid_scopes = self.validate_scope(client_id, scope)
+
+        user_obj = self.get_authorized_user()
+        token_assignment = get_token_assignment_for_request(
+            assignment_uuid,
+            user_obj,
+            client_id,
+            redirect_uri,
+            response_type,
+            scope,
+        )
+
+        # If PUBLIC_OAUTH_APPS is disabled, require org admin or an exact token assignment.
+        if not features.PUBLIC_OAUTH_APPS and not (
+            is_org_admin(user_obj, oauth_application.organization) or token_assignment is not None
+        ):
+            err = "unauthorized_client"
+            return self._make_redirect_error_response(redirect_uri, err)
 
         # Return proper error responses on invalid conditions
         if not is_valid_access:
@@ -295,12 +309,9 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             data=data,
         )
 
-        # check for assignment_id and delete it if it exists
-        if assignment_uuid is not None:
-            user_obj = self.get_authorized_user()
-            assign = get_token_assignment_for_client_id(assignment_uuid, user_obj, client_id)
-            if assign is not None:
-                assign.delete_instance()
+        # Check for an exact assignment and delete it if it exists.
+        if token_assignment is not None:
+            token_assignment.delete_instance()
 
         url = utils.build_url(redirect_uri, params)
         url += "#access_token=%s&token_type=%s&expires_in=%s" % (
@@ -310,6 +321,50 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         )
 
         return self._make_response(headers={"Location": url}, status_code=302)
+
+    def get_authorization_code(self, response_type, client_id, redirect_uri, **params):
+        # Check for a valid client ID.
+        oauth_application = self.get_application_for_client_id(client_id)
+        if oauth_application is None:
+            return self._make_json_error_response("unauthorized_client")
+
+        # Check for a valid redirect URI before redirecting any error to the client.
+        is_valid_redirect_uri = self.validate_redirect_uri(client_id, redirect_uri)
+        if not is_valid_redirect_uri:
+            return self._invalid_redirect_uri_response()
+
+        # Ensure proper response_type.
+        if response_type != "code":
+            err = "unsupported_response_type"
+            return self._make_redirect_error_response(redirect_uri, err)
+
+        # If PUBLIC_OAUTH_APPS is disabled, code grants require org admin approval.
+        if not features.PUBLIC_OAUTH_APPS and not is_org_admin(
+            self.get_authorized_user(), oauth_application.organization
+        ):
+            err = "unauthorized_client"
+            return self._make_redirect_error_response(redirect_uri, err)
+
+        is_valid_access = self.validate_access()
+        scope = params.get("scope", "")
+        is_valid_scope = self.validate_scope(client_id, scope)
+
+        if not is_valid_access:
+            err = "access_denied"
+            return self._make_redirect_error_response(redirect_uri, err)
+
+        if not is_valid_scope:
+            err = "invalid_scope"
+            return self._make_redirect_error_response(redirect_uri, err)
+
+        code = self.generate_authorization_code()
+        self.persist_authorization_code(client_id=client_id, code=code, scope=scope)
+
+        params.update(
+            {"code": code, "response_type": None, "client_id": None, "redirect_uri": None}
+        )
+        redirect = utils.build_url(redirect_uri, params)
+        return self._make_response(headers={"Location": redirect}, status_code=302)
 
     def generate_refresh_token(self):
         return None
@@ -336,13 +391,6 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
 
     def discard_refresh_token(self, client_id, refresh_token):
         raise NotImplementedError()
-
-    def is_org_admin_or_has_token_assignment(self, organization, assignment_uuid):
-        return (
-            is_org_admin(self.get_authorized_user(), organization)
-            or get_token_assignment(assignment_uuid, self.get_authorized_user(), organization)
-            is not None
-        )
 
 
 def get_bootstrap_app_name() -> str:
@@ -879,6 +927,32 @@ def get_token_assignment(uuid, db_user, org):
         )
     except OauthAssignedToken.DoesNotExist:
         return None
+
+
+def get_token_assignment_for_request(uuid, db_user, client_id, redirect_uri, response_type, scope):
+    if uuid is None or response_type != "token" or not scopes.validate_scope_string(scope):
+        return None
+
+    try:
+        assignment = (
+            OauthAssignedToken.select()
+            .join(OAuthApplication)
+            .where(
+                OauthAssignedToken.uuid == uuid,
+                OauthAssignedToken.assigned_user == db_user,
+                OAuthApplication.client_id == client_id,
+                OauthAssignedToken.redirect_uri == redirect_uri,
+                OauthAssignedToken.response_type == "token",
+            )
+            .get()
+        )
+    except OauthAssignedToken.DoesNotExist:
+        return None
+
+    if not scopes.is_subset_string(assignment.scope, scope):
+        return None
+
+    return assignment
 
 
 def get_token_assignment_for_client_id(uuid, user, client_id):

@@ -140,6 +140,7 @@ export interface CreatedOAuthApp {
   name: string;
   clientId: string;
   clientSecret?: string;
+  redirectUri?: string;
 }
 
 /**
@@ -806,10 +807,17 @@ export class TestApi {
   async oauthApplication(
     orgName: string,
     namePrefix = 'oauth-app',
+    redirectUri?: string,
+    appUri?: string,
   ): Promise<CreatedOAuthApp> {
     const name = uniqueName(namePrefix);
 
-    const result = await this.client.createOAuthApplication(orgName, name);
+    const result = await this.client.createOAuthApplication(
+      orgName,
+      name,
+      redirectUri,
+      appUri,
+    );
 
     this.cleanupStack.push(async () => {
       try {
@@ -824,6 +832,7 @@ export class TestApi {
       name,
       clientId: result.client_id,
       clientSecret: result.client_secret,
+      redirectUri: result.redirect_uri,
     };
   }
 
@@ -868,7 +877,8 @@ export type QuayFeature =
   | 'DIRECT_LOGIN'
   | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
   | 'BUILD_SUPPORT'
-  | 'STORAGE_REPLICATION';
+  | 'STORAGE_REPLICATION'
+  | 'PUBLIC_OAUTH_APPS';
 
 /**
  * Quay configuration from /config endpoint
