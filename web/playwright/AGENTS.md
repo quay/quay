@@ -224,15 +224,67 @@ test.describe('Repository Tests', () => {
 
 ### Available `api` Methods
 
-| Method                                                    | Returns                          | Description                                         |
-| --------------------------------------------------------- | -------------------------------- | --------------------------------------------------- |
-| `api.organization(prefix?)`                               | `{name, email}`                  | Creates org with unique name                        |
-| `api.repository(namespace?, prefix?, visibility?)`        | `{namespace, name, fullName}`    | Creates repo (defaults to test user namespace)      |
-| `api.team(orgName, prefix?, role?)`                       | `{orgName, name}`                | Creates team in org                                 |
-| `api.robot(orgName, prefix?, description?)`               | `{orgName, shortname, fullName}` | Creates robot account                               |
-| `api.prototype(orgName, role, delegate, activatingUser?)` | `{id}`                           | Creates default permission                          |
-| `api.setMirrorState(namespace, repoName)`                 | `void`                           | Sets repo to MIRROR state                           |
-| `api.raw`                                                 | `ApiClient`                      | Access underlying client for non-tracked operations |
+Methods are grouped by category. All create methods register automatic cleanup unless noted otherwise.
+
+#### Basic Resources
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.organization(prefix?, email?)` | `{name, email}` | Creates org with unique name |
+| `api.repository(namespace?, prefix?, visibility?)` | `{namespace, name, fullName}` | Creates repo (defaults to test user namespace) |
+| `api.repositoryWithName(namespace, name, visibility?)` | `{namespace, name, fullName}` | Creates repo with an exact name; supports multi-segment names like `release/installer` |
+| `api.team(orgName, prefix?, role?)` | `{orgName, name}` | Creates team in org |
+| `api.teamMember(orgName, teamName, memberName)` | `{orgName, teamName, memberName}` | Adds a member to a team |
+| `api.robot(orgName, prefix?, description?)` | `{orgName, shortname, fullName, token}` | Creates robot account in org |
+
+#### Permissions
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.prototype(orgName, role, delegate, activatingUser?)` | `{id}` | Creates default permission (prototype) |
+| `api.repositoryPermission(namespace, repoName, entityType, entityName, role?)` | `{namespace, repoName, entityType, entityName}` | Grants a user, robot, or team access to a repo |
+
+#### Repository Features
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.notification(namespace, repoName, event, method, config, title?)` | `{uuid, namespace, repoName}` | Creates a repository notification |
+| `api.setMirrorState(namespace, repoName)` | `void` | Sets repo to MIRROR state (no cleanup needed) |
+| `api.build(namespace, repoName, dockerfileContent?, dockerTags?)` | `{namespace, repoName, buildId}` | Starts a Dockerfile build (no cleanup needed; tied to repo lifecycle) |
+
+#### Policies
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.orgImmutabilityPolicy(orgName, tagPattern, tagPatternMatches?)` | `{uuid, tagPattern, tagPatternMatches, orgName}` | Creates an immutability policy for an org |
+| `api.repoImmutabilityPolicy(namespace, repoName, tagPattern, tagPatternMatches?)` | `{uuid, tagPattern, tagPatternMatches, namespace, repoName}` | Creates an immutability policy for a repo |
+| `api.orgAutoPrunePolicy(orgName, policy)` | `{uuid, orgName}` | Creates an auto-prune policy for an org |
+| `api.repoAutoPrunePolicy(namespace, repoName, policy)` | `{uuid, namespace, repoName}` | Creates an auto-prune policy for a repo |
+| `api.userAutoPrunePolicy(policy)` | `{uuid}` | Creates an auto-prune policy for the current user |
+| `api.quota(orgName, limitBytes?)` | `{orgName, quotaId, limitBytes}` | Creates a quota for an org (default: 10 GiB) |
+| `api.userQuota(username, limitBytes?)` | `{orgName, quotaId, limitBytes}` | Creates a quota for a user namespace (superuser only) |
+
+#### Superuser-Only
+
+These methods require the `superuserApi` fixture instead of `api`.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `superuserApi.user(prefix?)` | `{username, email, password}` | Creates a user via the superuser API |
+| `superuserApi.message(content, severity?)` | `{uuid, content, severity}` | Creates a global message |
+| `superuserApi.serviceKey(service, name?, expiration?)` | `{kid, service, name?, expiration?}` | Creates a service key |
+
+#### OAuth
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.oauthApplication(orgName, prefix?)` | `{orgName, name, clientId, clientSecret?}` | Creates an OAuth application in an org |
+
+#### Raw Client Access
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `api.raw` | `ApiClient` | Access underlying client for non-tracked operations |
 
 ### Using `api.raw` for Non-Tracked Operations
 
