@@ -602,13 +602,88 @@ class OAuthTestCase(EndpointTestCase):
             "redirect_uri": "http://localhost:8000/o2c.html",
             "scope": "user:admin",
             "response_type": response_type,
+            "state": "xyzzy",
         }
 
         resp = self.postResponse(
             "web.authorize_application", form=form, with_csrf=True, expected_code=302
         )
         expected_value = "access_token=" if response_type == "token" else "code="
-        self.assertTrue(expected_value in resp.headers["Location"])
+        location = resp.headers["Location"]
+        self.assertTrue(expected_value in location)
+        if response_type == "code":
+            self.assertEqual(["xyzzy"], parse_qs(urlparse(location).query)["state"])
+
+    def test_public_oauth_code_grant_can_be_exchanged_for_token(self):
+        self.login("freshuser", "password")
+
+        org = model.organization.get_organization("buynlarge")
+        oauth_app = model.oauth.create_application(
+            org,
+            "public-code-test",
+            "http://foo/bar",
+            "http://foo/bar/baz",
+            client_secret="correct-secret",
+        )
+
+        with toggle_feature("PUBLIC_OAUTH_APPS", True):
+            authorize_response = self.postResponse(
+                "web.authorize_application",
+                form={
+                    "client_id": oauth_app.client_id,
+                    "redirect_uri": oauth_app.redirect_uri,
+                    "scope": "repo:read",
+                    "response_type": "code",
+                    "state": "xyzzy",
+                },
+                with_csrf=True,
+                expected_code=302,
+            )
+
+            location = authorize_response.headers["Location"]
+            parsed_query = parse_qs(urlparse(location).query)
+            self.assertEqual(["xyzzy"], parsed_query["state"])
+            code = parsed_query["code"][0]
+
+            invalid_secret_response = self.postResponse(
+                "web.exchange_code_for_token",
+                form={
+                    "grant_type": "authorization_code",
+                    "client_id": oauth_app.client_id,
+                    "client_secret": "wrong-secret",
+                    "redirect_uri": oauth_app.redirect_uri,
+                    "code": code,
+                    "scope": "repo:read",
+                },
+                with_csrf=False,
+                expected_code=400,
+            )
+            self.assertEqual(
+                {"error": "invalid_client"}, py_json.loads(invalid_secret_response.data)
+            )
+
+            token_response = self.postResponse(
+                "web.exchange_code_for_token",
+                form={
+                    "grant_type": "authorization_code",
+                    "client_id": oauth_app.client_id,
+                    "client_secret": "correct-secret",
+                    "redirect_uri": oauth_app.redirect_uri,
+                    "code": code,
+                    "scope": "repo:read",
+                },
+                with_csrf=False,
+                expected_code=200,
+            )
+
+        token_body = py_json.loads(token_response.data)
+        self.assertEqual("Bearer", token_body["token_type"])
+        self.assertIn("access_token", token_body)
+        token = model.oauth.validate_access_token(token_body["access_token"])
+        self.assertIsNotNone(token)
+        self.assertEqual("freshuser", token.authorized_user.username)
+        self.assertEqual(oauth_app, token.application)
+        self.assertEqual("repo:read", token.scope)
 
     @parameterized.expand(["token", "code"])
     def test_authorize_nocsrf(self, response_type):

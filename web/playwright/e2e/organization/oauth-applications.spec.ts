@@ -1,5 +1,18 @@
-import {test, expect} from '../../fixtures';
+import type {APIResponse} from '@playwright/test';
+import {test, expect, uniqueName} from '../../fixtures';
 import {API_URL} from '../../utils/config';
+
+const ATTACKER_REDIRECT_URI = 'https://example.invalid/callback';
+
+function expectLocalOAuthError(response: APIResponse): void {
+  const location = response.headers()['location'];
+  expect(
+    location,
+    `OAuth authorize unexpectedly redirected to ${location ?? '(no location)'}`,
+  ).toBeUndefined();
+  expect(response.status()).toBeGreaterThanOrEqual(400);
+  expect(response.status()).toBeLessThan(500);
+}
 
 test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   test('OAuth app lifecycle: create, view, update, delete', async ({
@@ -214,6 +227,90 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
       expect(url).toContain('access_token=');
     },
   );
+
+  test(
+    'non-admin user can authorize an OAuth app with code flow (PUBLIC_OAUTH_APPS)',
+    {tag: ['@feature:PUBLIC_OAUTH_APPS']},
+    async ({authenticatedPage: page, superuserApi}) => {
+      const org = await superuserApi.organization('public-oauth-code');
+      const redirectUri = `${API_URL}/oauth/localapp`;
+      const app = await superuserApi.oauthApplication(
+        org.name,
+        'public-code-app',
+        redirectUri,
+        API_URL,
+      );
+
+      await page.goto(
+        `/oauth/authorize?client_id=${
+          app.clientId
+        }&redirect_uri=${encodeURIComponent(
+          redirectUri,
+        )}&scope=repo:read&response_type=code`,
+      );
+
+      await expect(
+        page.getByRole('button', {name: 'Authorize Application'}),
+      ).toBeVisible();
+
+      await page.getByRole('button', {name: 'Authorize Application'}).click();
+
+      await page.waitForURL(/\/oauth\/localapp/);
+      const url = page.url();
+      expect(url).toContain('code=');
+      expect(url).not.toContain('access_token=');
+    },
+  );
+
+  test('unknown OAuth client_id returns a local error without redirecting', async ({
+    authenticatedRequest,
+  }) => {
+    const response = await authenticatedRequest.get(
+      `${API_URL}/oauth/authorize`,
+      {
+        maxRedirects: 0,
+        params: {
+          client_id: uniqueName('missing-oauth-client'),
+          redirect_uri: ATTACKER_REDIRECT_URI,
+          scope: 'repo:read',
+          response_type: 'token',
+        },
+      },
+    );
+
+    expectLocalOAuthError(response);
+  });
+
+  test('OAuth client with mismatched redirect_uri returns a local error without redirecting', async ({
+    authenticatedRequest,
+    csrfToken,
+    api,
+  }) => {
+    const org = await api.organization('bad-oauth-redirect');
+    const redirectUri = `${API_URL}/oauth/localapp`;
+    const app = await api.oauthApplication(
+      org.name,
+      'redirect-boundary-app',
+      redirectUri,
+      API_URL,
+    );
+
+    const response = await authenticatedRequest.post(
+      `${API_URL}/oauth/authorizeapp`,
+      {
+        maxRedirects: 0,
+        headers: {'X-CSRF-Token': csrfToken},
+        form: {
+          client_id: app.clientId,
+          redirect_uri: ATTACKER_REDIRECT_URI,
+          scope: 'repo:read',
+          response_type: 'token',
+        },
+      },
+    );
+
+    expectLocalOAuthError(response);
+  });
 
   test('non-admin user cannot create OAuth apps', async ({
     superuserApi,
