@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import posixpath
+from contextlib import nullcontext
 from datetime import datetime, timedelta
+from math import isfinite
 from typing import Any
 from urllib.parse import unquote, urlparse
 
 from flask import url_for
-from peewee import PeeweeException
+from peewee import JOIN, PeeweeException
 
 import features
 from auth import scopes
@@ -20,10 +22,12 @@ from data.database import (
     User,
     compute_advisory_lock_id,
     db_advisory_xact_lock,
+    db_for_update,
     random_string_generator,
 )
 from data.fields import Credential, DecryptedValue
 from data.model import config, db_transaction, notification, user
+from data.model.modelutil import paginate
 from data.model.organization import is_org_admin
 from data.readreplica import ReadOnlyModeException
 from oauth import utils
@@ -36,10 +40,55 @@ ACCESS_TOKEN_PREFIX_LENGTH = 20
 ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
 DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
+MAX_TOKEN_EXPIRATION_SECONDS = DEFAULT_TOKEN_EXPIRATION_SECONDS
+MAX_TOKEN_DISPLAY_NAME_LENGTH = 255
 BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
 BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
 BOOTSTRAP_TOKEN_DATA_KIND = "bootstrap"
 BOOTSTRAP_TOKEN_LOCK_ID = compute_advisory_lock_id("bootstrap_token", 0)
+
+
+class TokenLimitExceeded(Exception):
+    """Raised when an OAuth application has reached its active token limit."""
+
+    def __init__(self, max_active_tokens: int):
+        self.max_active_tokens = max_active_tokens
+        super().__init__("maximum %d non-expired tokens per application" % max_active_tokens)
+
+
+def normalize_scope(scope_string: str) -> str:
+    """Normalize comma- or space-separated scopes to a deduplicated space-separated string."""
+    normalized = scope_string.replace(",", " ")
+    return " ".join(dict.fromkeys(normalized.split()))
+
+
+def validate_expiration(value: int | float) -> int:
+    """Validate and return an OAuth token expiration in seconds."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("'expiration' must be a positive number of seconds")
+
+    if isinstance(value, float) and not isfinite(value):
+        raise ValueError("'expiration' must be a finite number of seconds")
+
+    if value <= 0:
+        raise ValueError("'expiration' must be a positive number of seconds")
+
+    return min(max(int(value), 1), MAX_TOKEN_EXPIRATION_SECONDS)
+
+
+def validate_token_display_name(value: str) -> str:
+    """Validate and return a trimmed user-facing OAuth token display name."""
+    if not isinstance(value, str):
+        raise ValueError("'name' must be a string")
+
+    display_name = value.strip()
+    if not display_name:
+        raise ValueError("'name' must not be empty")
+
+    if len(display_name) > MAX_TOKEN_DISPLAY_NAME_LENGTH:
+        raise ValueError("'name' must be at most %d characters" % MAX_TOKEN_DISPLAY_NAME_LENGTH)
+
+    return display_name
 
 
 class DatabaseAuthorizationProvider(AuthorizationProvider):
@@ -518,6 +567,97 @@ def delete_bootstrap_tokens(
         OAuthAccessToken.delete().where(OAuthAccessToken.id << ids_to_delete).execute()
 
 
+def create_oauth_api_token(
+    application: OAuthApplication,
+    user_obj: User,
+    scope: str,
+    expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
+    display_name: str | None = None,
+) -> tuple[OAuthAccessToken, str]:
+    """Create an OAuth API access token for an application/user pair."""
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "Bearer",
+        expiration_seconds,
+        access_token=utils.random_ascii_string(40),
+        display_name=display_name,
+    )
+
+
+def count_active_tokens(application: OAuthApplication) -> int:
+    """Return the active non-expired OAuth access token count for an application."""
+    return (
+        OAuthAccessToken.select()
+        .where(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.expires_at > datetime.utcnow(),
+        )
+        .count()
+    )
+
+
+def create_oauth_api_token_under_limit(
+    application: OAuthApplication,
+    user_obj: User,
+    scope: str,
+    expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
+    display_name: str | None = None,
+) -> tuple[OAuthAccessToken, str]:
+    """Create an OAuth API token while enforcing the configured active-token limit."""
+    max_active_tokens = (config.app_config or {}).get("OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT")
+    transaction = db_transaction() if max_active_tokens is not None else nullcontext()
+
+    with transaction:
+        token_application = application
+        if max_active_tokens is not None:
+            max_active_tokens = int(max_active_tokens)
+            token_application = db_for_update(
+                OAuthApplication.select().where(OAuthApplication.id == application.id)
+            ).get()
+
+            if count_active_tokens(token_application) >= max_active_tokens:
+                raise TokenLimitExceeded(max_active_tokens)
+
+        return create_oauth_api_token(
+            application=token_application,
+            user_obj=user_obj,
+            scope=scope,
+            expiration_seconds=expiration_seconds,
+            display_name=display_name,
+        )
+
+
+def list_application_tokens(
+    application: OAuthApplication, page_token: dict[str, Any] | None = None, limit: int = 50
+) -> tuple[list[OAuthAccessToken], dict[str, Any] | None]:
+    """Return paginated OAuth access tokens for an application."""
+    query = (
+        OAuthAccessToken.select(OAuthAccessToken, User)
+        .join(User, JOIN.LEFT_OUTER, on=(OAuthAccessToken.authorized_user == User.id))
+        .switch(OAuthAccessToken)
+        .where(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.expires_at > datetime.utcnow(),
+        )
+    )
+    return paginate(query, OAuthAccessToken, descending=True, page_token=page_token, limit=limit)
+
+
+def delete_application_token(application: OAuthApplication, token_uuid: str) -> bool:
+    """Delete a specific OAuth access token for an application by UUID."""
+    try:
+        token = OAuthAccessToken.get(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.uuid == token_uuid,
+        )
+        token.delete_instance()
+        return True
+    except OAuthAccessToken.DoesNotExist:
+        return False
+
+
 def get_bootstrap_application_candidates(
     owner: User,
 ) -> tuple[OAuthApplication | None, list[OAuthApplication]]:
@@ -865,7 +1005,14 @@ def create_user_access_token(user_obj, client_id, scope, access_token=None, expi
 
 
 def create_user_access_token_for_application(
-    user_obj, application, scope, token_type, expires_in, access_token=None, data=""
+    user_obj,
+    application,
+    scope,
+    token_type,
+    expires_in,
+    access_token=None,
+    data="",
+    display_name=None,
 ):
     access_token = access_token or random_string_generator(length=40)()
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
@@ -883,6 +1030,7 @@ def create_user_access_token_for_application(
         access_token="",
         token_code=Credential.from_string(token_code),
         token_name=token_name,
+        display_name=display_name,
         expires_at=expires_at,
         data=data,
     )

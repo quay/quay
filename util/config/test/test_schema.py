@@ -22,6 +22,17 @@ def test_bootstrap_token_expiration_must_be_positive():
             validate(value, schema)
 
 
+def test_oauth_application_maximum_token_count_is_optional_positive_integer():
+    schema = CONFIG_SCHEMA["properties"]["OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT"]
+
+    validate(None, schema)
+    validate(1, schema)
+
+    for value in [0, -1, "1"]:
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+
 def test_bootstrap_token_owner_required_when_programmatic_bootstrap_enabled():
     schema = {
         "type": "object",

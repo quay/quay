@@ -760,6 +760,10 @@ class DefaultConfig(ImmutableConfig):
     # token will be updated after the previous update.
     OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S = 60
 
+    # Optional maximum number of non-expired OAuth access tokens allowed per OAuth application.
+    # None disables the cap.
+    OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT: Optional[int] = None
+
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 
