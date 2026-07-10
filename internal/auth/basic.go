@@ -3,13 +3,8 @@ package auth
 
 import (
 	"database/sql"
-	"log/slog"
 	"net/http"
 	"strings"
-
-	"golang.org/x/crypto/bcrypt"
-
-	"github.com/quay/quay/internal/dal/daldb"
 )
 
 // PrincipalKind identifies the kind of authenticated identity.
@@ -59,26 +54,20 @@ type Result struct {
 	Authenticated bool
 }
 
-// BasicAuthenticator validates HTTP Basic credentials against the Quay user table.
+// BasicAuthenticator adapts HTTP Basic credentials to a credential verifier.
 type BasicAuthenticator struct {
-	queries *daldb.Queries
+	verifier Verifier
 }
 
-// NewBasicAuthenticator creates a BasicAuthenticator backed by db.
-func NewBasicAuthenticator(db *sql.DB) *BasicAuthenticator {
-	return &BasicAuthenticator{queries: daldb.New(db)}
+// NewBasicAuthenticator creates a BasicAuthenticator backed by verifier.
+func NewBasicAuthenticator(verifier Verifier) *BasicAuthenticator {
+	return &BasicAuthenticator{verifier: verifier}
 }
 
-// dummyHash is a valid bcrypt hash used when the user is not found, so that
-// bcrypt.CompareHashAndPassword always runs and timing is constant regardless
-// of whether the username exists.
-var dummyHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
-
-// Authenticate validates request Basic credentials.
+// Authenticate extracts request Basic credentials and delegates verification.
 //
 // Result.Username is set when credentials were presented, even if they did not
-// validate. Callers can distinguish missing credentials from failed credentials
-// while preserving constant-time password comparison.
+// validate. Callers can distinguish missing credentials from failed credentials.
 func (a *BasicAuthenticator) Authenticate(r *http.Request) Result {
 	basicPresented := hasBasicAuthorizationHeader(r.Header.Get("Authorization"))
 	username, password, presented := r.BasicAuth()
@@ -89,31 +78,11 @@ func (a *BasicAuthenticator) Authenticate(r *http.Request) Result {
 		return Result{}
 	}
 
-	dbUser, err := a.queries.GetUserByUsername(r.Context(), username)
-
-	hashToCompare := dummyHash
-	if err == nil && dbUser.Enabled && dbUser.PasswordHash.Valid {
-		hashToCompare = []byte(dbUser.PasswordHash.String)
-	}
-
-	if bcrypt.CompareHashAndPassword(hashToCompare, []byte(password)) != nil ||
-		err != nil || !dbUser.Enabled || !dbUser.PasswordHash.Valid {
-		slog.Debug("authentication failed", "username", username)
+	if a == nil || a.verifier == nil {
 		return Result{Username: username, Presented: true}
 	}
 
-	return Result{
-		Principal: Principal{
-			ID:       dbUser.ID,
-			UUID:     dbUser.Uuid,
-			Username: dbUser.Username,
-			Email:    dbUser.Email,
-			Kind:     PrincipalUser,
-		},
-		Username:      username,
-		Presented:     true,
-		Authenticated: true,
-	}
+	return a.verifier.Verify(r.Context(), Credentials{Username: username, Secret: password})
 }
 
 func hasBasicAuthorizationHeader(authHeader string) bool {

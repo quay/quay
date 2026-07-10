@@ -66,6 +66,67 @@ func (q *Queries) EnsureUser(ctx context.Context, username string) (int64, error
 	return id, err
 }
 
+const getNamespaceUserByUsername = `-- name: GetNamespaceUserByUsername :one
+SELECT id, username, enabled
+FROM "user"
+WHERE username = ?1
+`
+
+type GetNamespaceUserByUsernameRow struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Enabled  bool   `json:"enabled"`
+}
+
+func (q *Queries) GetNamespaceUserByUsername(ctx context.Context, username string) (GetNamespaceUserByUsernameRow, error) {
+	row := q.db.QueryRowContext(ctx, getNamespaceUserByUsername, username)
+	var i GetNamespaceUserByUsernameRow
+	err := row.Scan(&i.ID, &i.Username, &i.Enabled)
+	return i, err
+}
+
+const getRobotByUsername = `-- name: GetRobotByUsername :one
+SELECT id, uuid, username, email, enabled, last_accessed
+FROM "user"
+WHERE username = ?1 AND robot = 1
+`
+
+type GetRobotByUsernameRow struct {
+	ID           int64          `json:"id"`
+	Uuid         sql.NullString `json:"uuid"`
+	Username     string         `json:"username"`
+	Email        string         `json:"email"`
+	Enabled      bool           `json:"enabled"`
+	LastAccessed sql.NullTime   `json:"last_accessed"`
+}
+
+func (q *Queries) GetRobotByUsername(ctx context.Context, username string) (GetRobotByUsernameRow, error) {
+	row := q.db.QueryRowContext(ctx, getRobotByUsername, username)
+	var i GetRobotByUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Username,
+		&i.Email,
+		&i.Enabled,
+		&i.LastAccessed,
+	)
+	return i, err
+}
+
+const getRobotTokenByRobotID = `-- name: GetRobotTokenByRobotID :one
+SELECT token
+FROM robotaccounttoken
+WHERE robot_account_id = ?1
+`
+
+func (q *Queries) GetRobotTokenByRobotID(ctx context.Context, robotID int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, getRobotTokenByRobotID, robotID)
+	var token string
+	err := row.Scan(&token)
+	return token, err
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, uuid, username, password_hash, email, enabled
 FROM "user"
@@ -93,4 +154,25 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 		&i.Enabled,
 	)
 	return i, err
+}
+
+const updateUserLastAccessedIfOlder = `-- name: UpdateUserLastAccessedIfOlder :exec
+UPDATE "user"
+SET last_accessed = datetime('now')
+WHERE id = ?1
+  AND (
+    last_accessed IS NULL
+    OR ?2 <= 0
+    OR last_accessed <= datetime('now', '-' || ?2 || ' seconds')
+  )
+`
+
+type UpdateUserLastAccessedIfOlderParams struct {
+	UserID           int64       `json:"user_id"`
+	ThresholdSeconds interface{} `json:"threshold_seconds"`
+}
+
+func (q *Queries) UpdateUserLastAccessedIfOlder(ctx context.Context, arg UpdateUserLastAccessedIfOlderParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserLastAccessedIfOlder, arg.UserID, arg.ThresholdSeconds)
+	return err
 }

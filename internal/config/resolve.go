@@ -118,6 +118,14 @@ func NewDefault(hostname, storagePath string) *Config {
 			ServerHostname:     hostname,
 			PreferredURLScheme: "https",
 		},
+		Auth: Auth{
+			AuthenticationType: "Database",
+			SuperUsers:         []string{"admin"},
+		},
+		Features: Features{
+			FeatureSuperUsers:           boolPtr(true),
+			FeatureSuperUsersFullAccess: boolPtr(true),
+		},
 		Storage: Storage{
 			DistributedStorageConfig: StorageEntries{
 				"default": {

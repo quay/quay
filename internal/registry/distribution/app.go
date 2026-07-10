@@ -17,13 +17,20 @@ import (
 
 // Config holds the parameters needed to construct the distribution registry.
 type Config struct {
-	StoragePath      string
-	Hostname         string
-	ListenAddr       string
-	DB               *sql.DB
-	Store            oci.MetadataStore
-	LibraryNamespace string
-	AnonymousAccess  *bool
+	StoragePath                        string
+	Hostname                           string
+	ListenAddr                         string
+	DB                                 *sql.DB
+	Store                              oci.MetadataStore
+	LibraryNamespace                   string
+	AnonymousAccess                    *bool
+	DatabaseSecretKey                  string
+	RobotsDisallow                     bool
+	RobotsWhitelist                    []string
+	FeatureUserLastAccessed            bool
+	LastAccessedUpdateThresholdSeconds int
+	SuperUsers                         []string
+	SuperUsersFullAccess               bool
 }
 
 // Registry wraps the distribution registry handler.
@@ -67,10 +74,17 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		},
 		Auth: configuration.Auth{
 			"quaydb": configuration.Parameters{
-				"realm":            cfg.Hostname,
-				"db":               cfg.DB,
-				"libraryNamespace": libraryNamespace,
-				"anonymousAccess":  anonymousAccessEnabled(cfg.AnonymousAccess),
+				authOptionRealm:                      cfg.Hostname,
+				"db":                                 cfg.DB,
+				"libraryNamespace":                   libraryNamespace,
+				authOptionAnonAccess:                 anonymousAccessEnabled(cfg.AnonymousAccess),
+				"databaseSecretKey":                  cfg.DatabaseSecretKey,
+				"robotsDisallow":                     cfg.RobotsDisallow,
+				"robotsWhitelist":                    cfg.RobotsWhitelist,
+				"featureUserLastAccessed":            cfg.FeatureUserLastAccessed,
+				"lastAccessedUpdateThresholdSeconds": cfg.LastAccessedUpdateThresholdSeconds,
+				"superUsers":                         cfg.SuperUsers,
+				"superUsersFullAccess":               cfg.SuperUsersFullAccess,
 			},
 		},
 	}

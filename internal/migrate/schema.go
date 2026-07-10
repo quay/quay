@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/quay/quay/internal/dal/dbcore"
@@ -93,11 +94,19 @@ func (m *Migrator) install(ctx context.Context) error {
 		return fmt.Errorf("create installer: %w", err)
 	}
 
-	cfg := installer.Config{
+	configPath := ""
+	if _, err := os.Stat(filepath.Join(m.DataDir, runtimeConfigFile)); err == nil {
+		configPath = "/data/" + runtimeConfigFile
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat runtime config: %w", err)
+	}
+
+	cfg := &installer.Config{
 		Hostname:     m.Source.Hostname,
 		DataDir:      m.DataDir,
 		ImageArchive: m.Source.ImageArchive,
 		Image:        m.Source.Image,
+		ConfigPath:   configPath,
 	}
 
 	slog.Info("installing new registry", "hostname", cfg.Hostname, "data-dir", cfg.DataDir)

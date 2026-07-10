@@ -18,4 +18,5 @@ type Features struct {
 	FeatureOrgSharedEmail       *bool `yaml:"FEATURE_ORG_SHARED_EMAIL"`
 	FeatureReferrersAPI         *bool `yaml:"FEATURE_REFERRERS_API"`
 	FeatureLibrarySupport       *bool `yaml:"FEATURE_LIBRARY_SUPPORT"`
+	FeatureUserLastAccessed     *bool `yaml:"FEATURE_USER_LAST_ACCESSED"`
 }

@@ -15,6 +15,8 @@ import (
 	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/repository"
+	repositorydal "github.com/quay/quay/internal/repository/dal"
 )
 
 const (
@@ -29,29 +31,51 @@ var (
 
 // ReferrersConfig holds the configuration for the referrers handler.
 type ReferrersConfig struct {
-	LibraryNamespace string
-	AnonymousAccess  bool
-	LibrarySupport   bool
+	LibraryNamespace                   string
+	AnonymousAccess                    bool
+	LibrarySupport                     bool
+	DatabaseSecretKey                  string
+	RobotsDisallow                     bool
+	RobotsWhitelist                    []string
+	FeatureUserLastAccessed            bool
+	LastAccessedUpdateThresholdSeconds int
+	SuperUsers                         []string
+	SuperUsersFullAccess               bool
 }
 
 // ReferrersHandler serves the OCI referrers API.
 type ReferrersHandler struct {
 	store         oci.MetadataStore
 	authenticator *auth.BasicAuthenticator
+	authorizer    *repositorydal.Authorizer
 	queries       *daldb.Queries
 	config        ReferrersConfig
 }
 
 // NewReferrersHandler creates a handler for GET /v2/{name}/referrers/{digest}.
-func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg ReferrersConfig) *ReferrersHandler {
-	if cfg.LibraryNamespace == "" {
-		cfg.LibraryNamespace = defaultLibraryNamespace
+func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg *ReferrersConfig) *ReferrersHandler {
+	config := ReferrersConfig{}
+	if cfg != nil {
+		config = *cfg
+	}
+	if config.LibraryNamespace == "" {
+		config.LibraryNamespace = defaultLibraryNamespace
 	}
 	return &ReferrersHandler{
-		store:         store,
-		authenticator: auth.NewBasicAuthenticator(db),
-		queries:       daldb.New(db),
-		config:        cfg,
+		store: store,
+		authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
+			DatabaseSecretKey:              config.DatabaseSecretKey,
+			RobotsDisallow:                 config.RobotsDisallow,
+			RobotsWhitelist:                config.RobotsWhitelist,
+			FeatureUserLastAccessed:        config.FeatureUserLastAccessed,
+			LastAccessedUpdateThresholdSec: config.LastAccessedUpdateThresholdSeconds,
+		})),
+		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
+			SuperUsers:           config.SuperUsers,
+			SuperUsersFullAccess: config.SuperUsersFullAccess,
+		}),
+		queries: daldb.New(db),
+		config:  config,
 	}
 }
 
@@ -155,7 +179,7 @@ func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bo
 	}
 	result := h.authenticator.Authenticate(r)
 	if result.Authenticated {
-		return true
+		return h.canPullRepository(r, &result.Principal, namespace, repo)
 	}
 	if result.Presented {
 		return false
@@ -170,6 +194,39 @@ func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bo
 		}
 	}
 	return false
+}
+
+func (h *ReferrersHandler) canPullRepository(r *http.Request, principal *auth.Principal, namespace, repoName string) bool {
+	if h.queries == nil || h.authorizer == nil {
+		return false
+	}
+
+	row, err := h.queries.GetRepositoryAccessByNamespaceName(r.Context(), daldb.GetRepositoryAccessByNamespaceNameParams{
+		Username: namespace,
+		Name:     repoName,
+	})
+	if err != nil {
+		slog.Debug("referrers repository lookup failed", "namespace", namespace, "repository", repoName, "err", err)
+		return false
+	}
+
+	repo := repository.Repository{
+		ID: row.ID,
+		Ref: repository.Ref{
+			Namespace: row.Namespace,
+			Name:      row.Name,
+		},
+		Visibility:       repository.Visibility(row.Visibility),
+		State:            row.State,
+		KindID:           row.KindID,
+		NamespaceEnabled: row.NamespaceEnabled,
+	}
+	allowed, err := h.authorizer.CanPullRepository(r.Context(), principal, &repo)
+	if err != nil {
+		slog.Debug("referrers pull authorization failed", "namespace", namespace, "repository", repoName, "err", err)
+		return false
+	}
+	return allowed
 }
 
 type ociIndex struct {

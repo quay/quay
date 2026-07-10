@@ -58,6 +58,47 @@ func TestParseDefaults(t *testing.T) {
 	assert.True(t, *cfg.FeatureDirectLogin)
 }
 
+func TestParseRobotAuthConfig(t *testing.T) {
+	cfg, err := Parse([]byte(`
+SERVER_HOSTNAME: test
+ROBOTS_DISALLOW: true
+ROBOTS_WHITELIST:
+  - acme+deploy
+  - mirror+sync
+FEATURE_USER_LAST_ACCESSED: false
+LAST_ACCESSED_UPDATE_THRESHOLD_S: 300
+`))
+	require.NoError(t, err)
+
+	assert.True(t, cfg.RobotsDisallow)
+	assert.Equal(t, []string{"acme+deploy", "mirror+sync"}, cfg.RobotsWhitelist)
+	require.NotNil(t, cfg.FeatureUserLastAccessed)
+	assert.False(t, *cfg.FeatureUserLastAccessed)
+	assert.Equal(t, 300, cfg.LastAccessedUpdateThresholdS)
+}
+
+func TestParseRobotAuthDefaults(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\n"))
+	require.NoError(t, err)
+
+	assert.False(t, cfg.RobotsDisallow)
+	assert.Empty(t, cfg.RobotsWhitelist)
+	require.NotNil(t, cfg.FeatureUserLastAccessed)
+	assert.True(t, *cfg.FeatureUserLastAccessed)
+	assert.Equal(t, 60, cfg.LastAccessedUpdateThresholdS)
+}
+
+func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {
+	cfg := NewDefault("localhost", "/data/storage")
+
+	assert.Equal(t, "Database", cfg.AuthenticationType)
+	assert.Equal(t, []string{"admin"}, cfg.SuperUsers)
+	require.NotNil(t, cfg.FeatureSuperUsers)
+	assert.True(t, *cfg.FeatureSuperUsers)
+	require.NotNil(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, *cfg.FeatureSuperUsersFullAccess)
+}
+
 func TestParseExplicitFalseNotOverridden(t *testing.T) {
 	yaml := "FEATURE_DIRECT_LOGIN: false\n"
 	cfg, err := Parse([]byte(yaml))

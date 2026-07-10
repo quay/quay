@@ -12,12 +12,12 @@ import (
 type Store interface {
 	Get(ctx context.Context, ref Ref) (Repository, error)
 	SetVisibility(ctx context.Context, id int64, visibility Visibility) error
-	MarkDeleted(ctx context.Context, repo Repository, deletedName string) error
+	MarkDeleted(ctx context.Context, repo *Repository, deletedName string) error
 }
 
 // Authorizer decides whether an actor can perform repository operations.
 type Authorizer interface {
-	CanAdminRepository(ctx context.Context, principal *auth.Principal, repo Repository) (bool, error)
+	CanAdminRepository(ctx context.Context, principal *auth.Principal, repo *Repository) (bool, error)
 }
 
 // Service implements repository business operations.
@@ -62,7 +62,7 @@ func (s *Service) Delete(ctx context.Context, principal *auth.Principal, ref Ref
 		return err
 	}
 
-	return s.store.MarkDeleted(ctx, repo, uuid.NewString())
+	return s.store.MarkDeleted(ctx, &repo, uuid.NewString())
 }
 
 func (s *Service) getAuthorized(ctx context.Context, principal *auth.Principal, ref Ref) (Repository, error) {
@@ -71,7 +71,7 @@ func (s *Service) getAuthorized(ctx context.Context, principal *auth.Principal, 
 		return Repository{}, err
 	}
 
-	allowed, err := s.authorizer.CanAdminRepository(ctx, principal, repo)
+	allowed, err := s.authorizer.CanAdminRepository(ctx, principal, &repo)
 	if err != nil {
 		return Repository{}, err
 	}

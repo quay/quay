@@ -59,7 +59,7 @@ func (q *Queries) GetOrCreateRepository(ctx context.Context, arg GetOrCreateRepo
 }
 
 const getRepositoryAccessByNamespaceName = `-- name: GetRepositoryAccessByNamespaceName :one
-SELECT r.id, u.id AS namespace_user_id, u.username AS namespace, r.name, r.visibility_id, v.name AS visibility, r.state
+SELECT r.id, u.id AS namespace_user_id, u.username AS namespace, r.name, r.visibility_id, v.name AS visibility, r.state, r.kind_id, u.enabled AS namespace_enabled
 FROM repository r
 JOIN "user" u ON r.namespace_user_id = u.id
 JOIN visibility v ON r.visibility_id = v.id
@@ -72,13 +72,15 @@ type GetRepositoryAccessByNamespaceNameParams struct {
 }
 
 type GetRepositoryAccessByNamespaceNameRow struct {
-	ID              int64  `json:"id"`
-	NamespaceUserID int64  `json:"namespace_user_id"`
-	Namespace       string `json:"namespace"`
-	Name            string `json:"name"`
-	VisibilityID    int64  `json:"visibility_id"`
-	Visibility      string `json:"visibility"`
-	State           int64  `json:"state"`
+	ID               int64  `json:"id"`
+	NamespaceUserID  int64  `json:"namespace_user_id"`
+	Namespace        string `json:"namespace"`
+	Name             string `json:"name"`
+	VisibilityID     int64  `json:"visibility_id"`
+	Visibility       string `json:"visibility"`
+	State            int64  `json:"state"`
+	KindID           int64  `json:"kind_id"`
+	NamespaceEnabled bool   `json:"namespace_enabled"`
 }
 
 func (q *Queries) GetRepositoryAccessByNamespaceName(ctx context.Context, arg GetRepositoryAccessByNamespaceNameParams) (GetRepositoryAccessByNamespaceNameRow, error) {
@@ -92,6 +94,8 @@ func (q *Queries) GetRepositoryAccessByNamespaceName(ctx context.Context, arg Ge
 		&i.VisibilityID,
 		&i.Visibility,
 		&i.State,
+		&i.KindID,
+		&i.NamespaceEnabled,
 	)
 	return i, err
 }
@@ -245,6 +249,22 @@ func (q *Queries) MarkRepositoryDeleted(ctx context.Context, arg MarkRepositoryD
 	return q.db.ExecContext(ctx, markRepositoryDeleted, arg.DeletedName, arg.RepositoryID)
 }
 
+const namespaceIsOrgMirrored = `-- name: NamespaceIsOrgMirrored :one
+SELECT EXISTS(
+  SELECT 1
+  FROM "user" ns
+  JOIN orgmirrorconfig omc ON omc.organization_id = ns.id
+  WHERE ns.username = ?1
+)
+`
+
+func (q *Queries) NamespaceIsOrgMirrored(ctx context.Context, namespace string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, namespaceIsOrgMirrored, namespace)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const repositoryIsPublicByNamespaceName = `-- name: RepositoryIsPublicByNamespaceName :one
 SELECT EXISTS(
   SELECT 1
@@ -255,6 +275,7 @@ SELECT EXISTS(
     AND r.name = ?
     AND v.name = 'public'
     AND r.state != 3
+    AND u.enabled = 1
 )
 `
 
@@ -351,6 +372,193 @@ type UserCanAdminRepositoryParams struct {
 
 func (q *Queries) UserCanAdminRepository(ctx context.Context, arg UserCanAdminRepositoryParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, userCanAdminRepository, arg.RepositoryID, arg.Username, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const userCanCreateRepositoryInNamespace = `-- name: UserCanCreateRepositoryInNamespace :one
+SELECT EXISTS(
+  SELECT 1
+  FROM "user" ns
+  WHERE ns.username = ?1
+    AND ns.username = ?2
+    AND ns.id = ?3
+    AND ns.enabled = 1
+
+  UNION ALL
+
+  SELECT 1
+  FROM "user" ns
+  JOIN team t ON t.organization_id = ns.id
+  JOIN teamrole tr ON t.role_id = tr.id
+  JOIN teammember tm ON tm.team_id = t.id
+  WHERE ns.username = ?1
+    AND ns.enabled = 1
+    AND tm.user_id = ?3
+    AND tr.name IN ('creator', 'admin')
+)
+`
+
+type UserCanCreateRepositoryInNamespaceParams struct {
+	Namespace string `json:"namespace"`
+	Username  string `json:"username"`
+	UserID    int64  `json:"user_id"`
+}
+
+func (q *Queries) UserCanCreateRepositoryInNamespace(ctx context.Context, arg UserCanCreateRepositoryInNamespaceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, userCanCreateRepositoryInNamespace, arg.Namespace, arg.Username, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const userCanPullRepository = `-- name: UserCanPullRepository :one
+SELECT EXISTS(
+  SELECT 1
+  FROM repository r
+  JOIN "user" ns ON r.namespace_user_id = ns.id
+  WHERE r.id = ?1
+    AND ns.username = ?2
+    AND ns.enabled = 1
+
+  UNION ALL
+
+  SELECT 1
+  FROM repositorypermission rp
+  JOIN role ro ON rp.role_id = ro.id
+  WHERE rp.repository_id = ?1
+    AND rp.user_id = ?3
+    AND ro.name IN ('read', 'write', 'admin')
+
+  UNION ALL
+
+  SELECT 1
+  FROM repositorypermission rp
+  JOIN role ro ON rp.role_id = ro.id
+  JOIN teammember tm ON rp.team_id = tm.team_id
+  WHERE rp.repository_id = ?1
+    AND tm.user_id = ?3
+    AND ro.name IN ('read', 'write', 'admin')
+
+  UNION ALL
+
+  SELECT 1
+  FROM repository r
+  JOIN team t ON t.organization_id = r.namespace_user_id
+  JOIN teamrole tr ON t.role_id = tr.id
+  JOIN teammember tm ON tm.team_id = t.id
+  WHERE r.id = ?1
+    AND tm.user_id = ?3
+    AND tr.name = 'admin'
+)
+`
+
+type UserCanPullRepositoryParams struct {
+	RepositoryID int64         `json:"repository_id"`
+	Username     string        `json:"username"`
+	UserID       sql.NullInt64 `json:"user_id"`
+}
+
+func (q *Queries) UserCanPullRepository(ctx context.Context, arg UserCanPullRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, userCanPullRepository, arg.RepositoryID, arg.Username, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const userCanPushRepository = `-- name: UserCanPushRepository :one
+SELECT EXISTS(
+  SELECT 1
+  FROM repository r
+  JOIN "user" ns ON r.namespace_user_id = ns.id
+  WHERE r.id = ?1
+    AND ns.username = ?2
+    AND ns.enabled = 1
+
+  UNION ALL
+
+  SELECT 1
+  FROM repositorypermission rp
+  JOIN role ro ON rp.role_id = ro.id
+  WHERE rp.repository_id = ?1
+    AND rp.user_id = ?3
+    AND ro.name IN ('write', 'admin')
+
+  UNION ALL
+
+  SELECT 1
+  FROM repositorypermission rp
+  JOIN role ro ON rp.role_id = ro.id
+  JOIN teammember tm ON rp.team_id = tm.team_id
+  WHERE rp.repository_id = ?1
+    AND tm.user_id = ?3
+    AND ro.name IN ('write', 'admin')
+
+  UNION ALL
+
+  SELECT 1
+  FROM repository r
+  JOIN team t ON t.organization_id = r.namespace_user_id
+  JOIN teamrole tr ON t.role_id = tr.id
+  JOIN teammember tm ON tm.team_id = t.id
+  WHERE r.id = ?1
+    AND tm.user_id = ?3
+    AND tr.name = 'admin'
+)
+`
+
+type UserCanPushRepositoryParams struct {
+	RepositoryID int64         `json:"repository_id"`
+	Username     string        `json:"username"`
+	UserID       sql.NullInt64 `json:"user_id"`
+}
+
+func (q *Queries) UserCanPushRepository(ctx context.Context, arg UserCanPushRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, userCanPushRepository, arg.RepositoryID, arg.Username, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const userIsOrgMirrorRobot = `-- name: UserIsOrgMirrorRobot :one
+SELECT EXISTS(
+  SELECT 1
+  FROM orgmirrorrepository omr
+  JOIN orgmirrorconfig omc ON omr.org_mirror_config_id = omc.id
+  WHERE omr.repository_id = ?1
+    AND omc.internal_robot_id = ?2
+)
+`
+
+type UserIsOrgMirrorRobotParams struct {
+	RepositoryID sql.NullInt64 `json:"repository_id"`
+	UserID       int64         `json:"user_id"`
+}
+
+func (q *Queries) UserIsOrgMirrorRobot(ctx context.Context, arg UserIsOrgMirrorRobotParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, userIsOrgMirrorRobot, arg.RepositoryID, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const userIsRepoMirrorRobot = `-- name: UserIsRepoMirrorRobot :one
+SELECT EXISTS(
+  SELECT 1
+  FROM repomirrorconfig rmc
+  WHERE rmc.repository_id = ?1
+    AND rmc.internal_robot_id = ?2
+)
+`
+
+type UserIsRepoMirrorRobotParams struct {
+	RepositoryID int64 `json:"repository_id"`
+	UserID       int64 `json:"user_id"`
+}
+
+func (q *Queries) UserIsRepoMirrorRobot(ctx context.Context, arg UserIsRepoMirrorRobotParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, userIsRepoMirrorRobot, arg.RepositoryID, arg.UserID)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
