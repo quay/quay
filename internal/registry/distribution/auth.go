@@ -200,7 +200,7 @@ func (ac *accessController) repositoryIsPublic(req *http.Request, name string) b
 		return false
 	}
 
-	return isPublic
+	return isPublic != 0
 }
 
 func (ac *accessController) authorizeDistributionAccess(req *http.Request, principal *auth.Principal, access []distauth.Access) error {

@@ -189,7 +189,7 @@ func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bo
 			Username: namespace,
 			Name:     repo,
 		})
-		if err == nil && isPublic {
+		if err == nil && isPublic != 0 {
 			return true
 		}
 	}
