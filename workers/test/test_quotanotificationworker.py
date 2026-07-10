@@ -20,15 +20,15 @@ from data.model.namespacequota import (
 from data.model.quota_notification_state import record_notification
 from data.model.user import get_user
 from test.fixtures import *
-from workers.quotanotificationworker import QuotaNotificationWorker
+from workers.quotatotalworker import QuotaTotalWorker
 
 
-class TestQuotaNotificationWorker:
+class TestQuotaTotalWorker:
     @pytest.fixture(autouse=True)
     def setup(self, initialized_db):
         self.org = model.organization.get_organization("buynlarge")
         self.user = get_user("devtable")
-        self.worker = QuotaNotificationWorker()
+        self.worker = QuotaTotalWorker()
 
         QuotaNotificationState.delete().execute()
         NamespaceNotification.delete().execute()
@@ -72,7 +72,7 @@ class TestQuotaNotificationWorker:
         )
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_namespace_over_threshold_fires(self, mock_trigger, initialized_db):
         """Namespace exceeding threshold fires a notification."""
         self._set_namespace_size(self.org, 850)
@@ -90,7 +90,7 @@ class TestQuotaNotificationWorker:
         assert result["usage_bytes"] == 850
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_namespace_under_threshold_no_notification(self, mock_trigger, initialized_db):
         """Namespace under threshold does NOT fire a notification."""
         self._set_namespace_size(self.org, 500)
@@ -102,7 +102,7 @@ class TestQuotaNotificationWorker:
         mock_trigger.assert_not_called()
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_dropped_below_threshold_clears_state(self, mock_trigger, initialized_db):
         """Usage dropping below a previously-notified threshold clears dedup state."""
         self._set_namespace_size(self.org, 500)
@@ -127,7 +127,7 @@ class TestQuotaNotificationWorker:
         mock_trigger.assert_not_called()
 
     @patch("features.QUOTA_NOTIFICATIONS", False)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_feature_flag_off_skips(self, mock_trigger, initialized_db):
         """Worker skips entirely when FEATURE_QUOTA_NOTIFICATIONS is disabled."""
         self._set_namespace_size(self.org, 850)
@@ -139,7 +139,7 @@ class TestQuotaNotificationWorker:
         mock_trigger.assert_not_called()
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_no_notification_config_skips(self, mock_trigger, initialized_db):
         """Namespace with quota but no NamespaceNotification config is not checked."""
         self._set_namespace_size(self.org, 850)
@@ -150,7 +150,7 @@ class TestQuotaNotificationWorker:
         mock_trigger.assert_not_called()
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_no_quota_skips(self, mock_trigger, initialized_db):
         """Namespace with notification config but no quota is skipped."""
         self._create_namespace_notification(self.org)
@@ -160,7 +160,7 @@ class TestQuotaNotificationWorker:
         mock_trigger.assert_not_called()
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_multiple_limits_checked(self, mock_trigger, initialized_db):
         """Worker checks all limits on a namespace and fires for each exceeded threshold."""
         self._set_namespace_size(self.org, 950)
@@ -175,7 +175,7 @@ class TestQuotaNotificationWorker:
         assert thresholds == {80, 90}
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("workers.quotanotificationworker.maybe_trigger_quota_notification")
+    @patch("workers.quotatotalworker.maybe_trigger_quota_notification")
     def test_reject_type_fires_with_reject_severity(self, mock_trigger, initialized_db):
         """Reject-type threshold passes Reject severity."""
         self._set_namespace_size(self.org, 1050)
