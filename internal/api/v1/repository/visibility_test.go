@@ -272,7 +272,7 @@ func newAPITestHandlerWithSuperUsers(t *testing.T, db *sql.DB, superUsers []stri
 	}
 
 	handler, err := apiv1.New(apiv1.Config{
-		Authenticator: auth.NewBasicAuthenticator(db),
+		Authenticator: auth.NewBasicAuthenticator(auth.NewUserPasswordVerifier(db)),
 		Realm:         "test",
 	},
 		NewModule(repositoryService),

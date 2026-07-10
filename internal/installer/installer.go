@@ -29,6 +29,7 @@ type Config struct {
 	DataDir      string
 	ImageArchive string
 	Image        string
+	ConfigPath   string
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -65,7 +66,11 @@ func New(stderr io.Writer) (*Installer, error) {
 
 // Run performs an install or upgrade based on whether a Quadlet unit already
 // exists.
-func (inst *Installer) Run(ctx context.Context, cfg Config) error {
+func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+
 	imageRef, err := inst.resolveImage(ctx, cfg.ImageArchive, cfg.Image)
 	if err != nil {
 		return fmt.Errorf("image resolution: %w", err)
@@ -133,7 +138,7 @@ func (inst *Installer) upgrade(ctx context.Context, imageRef string) error {
 	return nil
 }
 
-func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef string) error {
+func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef string) error {
 	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
 		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("create directory %s: %w", dir, err)
@@ -141,12 +146,13 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef st
 	}
 
 	spec := system.QuadletSpec{
-		Image:    imageRef,
-		DataDir:  cfg.DataDir,
-		Hostname: cfg.Hostname,
-		Port:     "8443",
+		Image:      imageRef,
+		DataDir:    cfg.DataDir,
+		Hostname:   cfg.Hostname,
+		Port:       "8443",
+		ConfigPath: cfg.ConfigPath,
 	}
-	if err := inst.quadlet.Install(quadletServiceName, spec); err != nil {
+	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
 		return fmt.Errorf("install quadlet: %w", err)
 	}
 	slog.Info("quadlet installed", "path", inst.env.QuadletPath(quadletServiceName))

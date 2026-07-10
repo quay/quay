@@ -441,6 +441,12 @@ CONFIG_SCHEMA = {
             "uniqueItems": True,
             "items": {"type": "string"},
         },
+        "OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Optional maximum number of non-expired OAuth access tokens allowed per OAuth application. If omitted or null, no cap is enforced.",
+            "x-example": 1000,
+        },
         # Redis.
         "BUILDLOGS_REDIS": {
             "type": "object",

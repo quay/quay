@@ -8,10 +8,11 @@ import (
 
 // QuadletSpec describes a Quadlet container unit.
 type QuadletSpec struct {
-	Image    string
-	DataDir  string
-	Hostname string
-	Port     string
+	Image      string
+	DataDir    string
+	Hostname   string
+	Port       string
+	ConfigPath string
 }
 
 // QuadletManager handles Quadlet .container files.
@@ -32,10 +33,18 @@ func (q *QuadletManager) Exists(service string) bool {
 }
 
 // Install writes a new Quadlet .container file.
-func (q *QuadletManager) Install(service string, spec QuadletSpec) error {
+func (q *QuadletManager) Install(service string, spec *QuadletSpec) error {
 	dir := q.env.QuadletDir()
 	if err := q.fs.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create quadlet dir: %w", err)
+	}
+	if spec == nil {
+		return fmt.Errorf("nil quadlet spec")
+	}
+
+	serveCommand := fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
+	if spec.ConfigPath != "" {
+		serveCommand = fmt.Sprintf("serve --config %s", spec.ConfigPath)
 	}
 
 	content := fmt.Sprintf(`[Unit]
@@ -46,11 +55,11 @@ After=network-online.target
 Image=%s
 Volume=%s:/data:Z
 PublishPort=%s:%s
-Exec=serve --data-dir /data --hostname %s
+Exec=%s
 
 [Install]
 WantedBy=default.target
-`, spec.Image, spec.DataDir, spec.Port, spec.Port, spec.Hostname)
+`, spec.Image, spec.DataDir, spec.Port, spec.Port, serveCommand)
 
 	path := q.env.QuadletPath(service)
 	if err := q.fs.WriteFile(path, []byte(content), 0o600); err != nil {

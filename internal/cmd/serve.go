@@ -71,14 +71,32 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 
+	featureUserLastAccessed := featureEnabled(resolved.Config.FeatureUserLastAccessed)
+	lastAccessedUpdateThresholdSeconds := resolved.Config.LastAccessedUpdateThresholdS
+	databaseVerifierConfig := auth.DatabaseVerifierConfig{
+		DatabaseSecretKey:              resolved.Config.DatabaseSecretKey,
+		RobotsDisallow:                 resolved.Config.RobotsDisallow,
+		RobotsWhitelist:                resolved.Config.RobotsWhitelist,
+		FeatureUserLastAccessed:        featureUserLastAccessed,
+		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
+	}
+	superUsersFullAccess := featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess)
+
 	reg, err := distribution.NewRegistry(ctx, &distribution.Config{
-		StoragePath:      resolved.StoragePath,
-		Hostname:         resolved.Config.ServerHostname,
-		ListenAddr:       addr,
-		DB:               db,
-		Store:            store,
-		LibraryNamespace: resolved.Config.LibraryNamespace,
-		AnonymousAccess:  resolved.Config.FeatureAnonymousAccess,
+		StoragePath:                        resolved.StoragePath,
+		Hostname:                           resolved.Config.ServerHostname,
+		ListenAddr:                         addr,
+		DB:                                 db,
+		Store:                              store,
+		LibraryNamespace:                   resolved.Config.LibraryNamespace,
+		AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess,
+		DatabaseSecretKey:                  resolved.Config.DatabaseSecretKey,
+		RobotsDisallow:                     resolved.Config.RobotsDisallow,
+		RobotsWhitelist:                    resolved.Config.RobotsWhitelist,
+		FeatureUserLastAccessed:            featureUserLastAccessed,
+		LastAccessedUpdateThresholdSeconds: lastAccessedUpdateThresholdSeconds,
+		SuperUsers:                         resolved.Config.SuperUsers,
+		SuperUsersFullAccess:               superUsersFullAccess,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)
@@ -90,7 +108,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		repositorydal.NewStore(db),
 		repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
 			SuperUsers:           resolved.Config.SuperUsers,
-			SuperUsersFullAccess: featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess),
+			SuperUsersFullAccess: superUsersFullAccess,
 		}),
 	)
 	if err != nil {
@@ -99,7 +117,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	}
 
 	api, err := apiv1.New(apiv1.Config{
-		Authenticator: auth.NewBasicAuthenticator(db),
+		Authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(db, databaseVerifierConfig)),
 		Realm:         resolved.Config.ServerHostname,
 	},
 		repositoryapi.NewModule(repositoryService),
@@ -114,10 +132,17 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
 	v2Handler := distHandler
 	if referrersEnabled {
-		referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
-			LibraryNamespace: resolved.Config.LibraryNamespace,
-			AnonymousAccess:  resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
-			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+		referrersHandler := registry.NewReferrersHandler(db, store, &registry.ReferrersConfig{
+			LibraryNamespace:                   resolved.Config.LibraryNamespace,
+			AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
+			LibrarySupport:                     resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+			DatabaseSecretKey:                  databaseVerifierConfig.DatabaseSecretKey,
+			RobotsDisallow:                     databaseVerifierConfig.RobotsDisallow,
+			RobotsWhitelist:                    databaseVerifierConfig.RobotsWhitelist,
+			FeatureUserLastAccessed:            databaseVerifierConfig.FeatureUserLastAccessed,
+			LastAccessedUpdateThresholdSeconds: databaseVerifierConfig.LastAccessedUpdateThresholdSec,
+			SuperUsers:                         resolved.Config.SuperUsers,
+			SuperUsersFullAccess:               superUsersFullAccess,
 		})
 		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
 	}

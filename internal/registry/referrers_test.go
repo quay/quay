@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,8 +10,10 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/quay/quay/internal/oci"
+	_ "modernc.org/sqlite"
 )
 
 // --- mock store ---
@@ -38,6 +41,7 @@ func (m *mockStore) ListReferrers(_ context.Context, _ int64, subject digest.Dig
 func (m *mockStore) EnsureRepository(context.Context, oci.RepositoryName) (int64, error) {
 	return 0, nil
 }
+
 func (m *mockStore) PutManifest(context.Context, int64, oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
 	return 0, nil
 }
@@ -48,9 +52,11 @@ func (m *mockStore) DeleteTag(context.Context, int64, string) error             
 func (m *mockStore) GetTagDigest(context.Context, int64, string) (digest.Digest, error) {
 	return "", nil
 }
+
 func (m *mockStore) GetManifestDigest(context.Context, int64, digest.Digest) (digest.Digest, error) {
 	return "", nil
 }
+
 func (m *mockStore) GetManifestContent(context.Context, digest.Digest) ([]byte, error) {
 	return nil, nil
 }
@@ -72,6 +78,122 @@ func newTestHandler(store oci.MetadataStore) *ReferrersHandler {
 	return &ReferrersHandler{
 		store:  store,
 		config: ReferrersConfig{LibraryNamespace: "library", AnonymousAccess: true, LibrarySupport: true},
+	}
+}
+
+func TestNewReferrersHandlerConstructsDatabaseVerifier(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+
+	handler := NewReferrersHandler(db, &mockStore{}, &ReferrersConfig{
+		AnonymousAccess:                    true,
+		LibrarySupport:                     true,
+		DatabaseSecretKey:                  "test1234",
+		RobotsDisallow:                     true,
+		RobotsWhitelist:                    []string{"acme+deploy"},
+		FeatureUserLastAccessed:            true,
+		LastAccessedUpdateThresholdSeconds: 60,
+	})
+
+	if handler == nil {
+		t.Fatal("expected handler")
+	}
+	if handler.authenticator == nil {
+		t.Fatal("expected database-backed authenticator")
+	}
+	if handler.queries == nil {
+		t.Fatal("expected database queries")
+	}
+	if handler.config.LibraryNamespace != defaultLibraryNamespace {
+		t.Fatalf("library namespace = %q, want default %q", handler.config.LibraryNamespace, defaultLibraryNamespace)
+	}
+}
+
+func setupReferrersAuthDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+
+	statements := []string{
+		`CREATE TABLE "user" (id INTEGER PRIMARY KEY, uuid VARCHAR(36), username VARCHAR(255) NOT NULL, password_hash VARCHAR(255), email VARCHAR(255) NOT NULL, verified INTEGER NOT NULL DEFAULT 0, organization INTEGER NOT NULL DEFAULT 0, robot INTEGER NOT NULL DEFAULT 0, enabled INTEGER NOT NULL DEFAULT 1, last_accessed DATETIME)`,
+		`CREATE TABLE visibility (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
+		`CREATE TABLE repository (id INTEGER PRIMARY KEY, namespace_user_id INTEGER, name VARCHAR(255) NOT NULL, visibility_id INTEGER NOT NULL, kind_id INTEGER NOT NULL DEFAULT 1, state INTEGER NOT NULL DEFAULT 0)`,
+		`CREATE TABLE role (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
+		`CREATE TABLE teamrole (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
+		`CREATE TABLE team (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL, organization_id INTEGER NOT NULL, role_id INTEGER NOT NULL, description TEXT NOT NULL)`,
+		`CREATE TABLE teammember (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, team_id INTEGER NOT NULL)`,
+		`CREATE TABLE repositorypermission (id INTEGER PRIMARY KEY, team_id INTEGER, user_id INTEGER, repository_id INTEGER NOT NULL, role_id INTEGER NOT NULL)`,
+		`CREATE TABLE repomirrorconfig (id INTEGER PRIMARY KEY, repository_id INTEGER NOT NULL, internal_robot_id INTEGER)`,
+		`CREATE TABLE orgmirrorconfig (id INTEGER PRIMARY KEY, organization_id INTEGER NOT NULL, internal_robot_id INTEGER)`,
+		`CREATE TABLE orgmirrorrepository (id INTEGER PRIMARY KEY, org_mirror_config_id INTEGER NOT NULL, repository_id INTEGER)`,
+		`INSERT INTO visibility (id, name) VALUES (1, 'public'), (2, 'private')`,
+		`INSERT INTO role (id, name) VALUES (1, 'read'), (2, 'write'), (3, 'admin')`,
+		`INSERT INTO teamrole (id, name) VALUES (1, 'admin'), (2, 'creator'), (3, 'member')`,
+		`INSERT INTO "user" (id, uuid, username, password_hash, email, verified, organization, robot, enabled) VALUES (2, 'org-acme', 'acme', NULL, 'acme@example.com', 1, 1, 0, 1)`,
+		`INSERT INTO repository (id, namespace_user_id, name, visibility_id, kind_id, state) VALUES (10, 2, 'private', 2, 1, 0)`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(t.Context(), stmt); err != nil {
+			t.Fatalf("exec %q: %v", stmt, err)
+		}
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("bcrypt: %v", err)
+	}
+	if _, err := db.ExecContext(t.Context(), `INSERT INTO "user" (id, uuid, username, password_hash, email, verified, organization, robot, enabled) VALUES (1, 'user-admin', 'admin', ?, 'admin@example.com', 1, 0, 0, 1)`, string(hash)); err != nil {
+		t.Fatalf("insert admin: %v", err)
+	}
+	return db
+}
+
+func TestReferrers_AuthenticatedUserRequiresPullPermission(t *testing.T) {
+	db := setupReferrersAuthDB(t)
+	defer db.Close()
+
+	handler := NewReferrersHandler(db, &mockStore{repoID: 10}, &ReferrersConfig{
+		AnonymousAccess: false,
+		LibrarySupport:  true,
+	})
+	subjectDgst := digest.FromString("subject")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/private/referrers/"+subjectDgst.String(), http.NoBody)
+	req.SetBasicAuth("admin", "correct-password")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestReferrers_AuthenticatedUserWithPullPermissionAllowed(t *testing.T) {
+	db := setupReferrersAuthDB(t)
+	defer db.Close()
+	if _, err := db.ExecContext(t.Context(), `INSERT INTO repositorypermission (id, user_id, repository_id, role_id) VALUES (1, 1, 10, 1)`); err != nil {
+		t.Fatalf("insert permission: %v", err)
+	}
+
+	handler := NewReferrersHandler(db, &mockStore{repoID: 10}, &ReferrersConfig{
+		AnonymousAccess: false,
+		LibrarySupport:  true,
+	})
+	subjectDgst := digest.FromString("subject")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/private/referrers/"+subjectDgst.String(), http.NoBody)
+	req.SetBasicAuth("admin", "correct-password")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
 }
 

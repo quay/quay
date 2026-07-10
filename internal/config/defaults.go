@@ -2,11 +2,12 @@ package config
 
 // Default values for Quay configuration fields.
 const (
-	DefaultPreferredURLScheme = "http"
-	DefaultRegistryTitle      = "Red Hat Quay"
-	DefaultAuthenticationType = "Database"
-	DefaultTagExpiration      = "2w"
-	DefaultLibraryNamespace   = "library"
+	DefaultPreferredURLScheme           = "http"
+	DefaultRegistryTitle                = "Red Hat Quay"
+	DefaultAuthenticationType           = "Database"
+	DefaultTagExpiration                = "2w"
+	DefaultLibraryNamespace             = "library"
+	DefaultLastAccessedUpdateThresholdS = 60
 )
 
 // newDefaultConfig returns a Config pre-populated with Quay's documented
@@ -35,6 +36,10 @@ func newDefaultConfig() Config {
 			FeatureSuperUsers:          boolPtr(true),
 			FeatureReferrersAPI:        boolPtr(true),
 			FeatureLibrarySupport:      boolPtr(true),
+			FeatureUserLastAccessed:    boolPtr(true),
+		},
+		AccessLog: AccessLog{
+			LastAccessedUpdateThresholdS: DefaultLastAccessedUpdateThresholdS,
 		},
 	}
 }

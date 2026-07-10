@@ -57,12 +57,13 @@ var knownUnmapped = map[string]bool{
 	"LOG_ARCHIVE_PATH":                 true,
 
 	// OAuth
-	"DIRECT_OAUTH_CLIENTID_WHITELIST": true,
-	"GITHUB_LOGIN_CONFIG":             true,
-	"BITBUCKET_TRIGGER_CONFIG":        true,
-	"GITHUB_TRIGGER_CONFIG":           true,
-	"GOOGLE_LOGIN_CONFIG":             true,
-	"GITLAB_TRIGGER_CONFIG":           true,
+	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
+	"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": true,
+	"GITHUB_LOGIN_CONFIG":                   true,
+	"BITBUCKET_TRIGGER_CONFIG":              true,
+	"GITHUB_TRIGGER_CONFIG":                 true,
+	"GOOGLE_LOGIN_CONFIG":                   true,
+	"GITLAB_TRIGGER_CONFIG":                 true,
 
 	// Branding
 	"BRANDING":           true,
@@ -153,7 +154,6 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_UI_V2":                                 true,
 	"FEATURE_USER_EVENTS":                           true,
 	"FEATURE_USER_INITIALIZE":                       true,
-	"FEATURE_USER_LAST_ACCESSED":                    true,
 	"FEATURE_USER_LOG_ACCESS":                       true,
 	"FEATURE_USER_METADATA":                         true,
 	"FEATURE_USER_RENAME":                           true,
@@ -221,7 +221,6 @@ var knownUnmapped = map[string]bool{
 	"WEBHOOK_HOSTNAME_BLACKLIST":  true,
 	"RESTRICTED_USERS_WHITELIST":  true,
 	"BLACKLISTED_EMAIL_DOMAINS":   true,
-	"ROBOTS_WHITELIST":            true,
 
 	// Misc continued
 	"ALLOWED_OCI_ARTIFACT_TYPES":                     true,
@@ -246,7 +245,6 @@ var knownUnmapped = map[string]bool{
 	"ORG_MIRROR_MAX_DISCOVERY_DURATION":              true,
 	"PERMANENTLY_DELETE_TAGS":                        true,
 	"RESET_CHILD_MANIFEST_EXPIRATION":                true,
-	"ROBOTS_DISALLOW":                                true,
 	"SECURITY_SCANNER_INDEXING_INTERVAL":             true,
 	"SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE":       true,
 	"SESSION_TIMEOUT":                                true,
@@ -258,9 +256,10 @@ var knownUnmapped = map[string]bool{
 // INTERNAL_ONLY_PROPERTIES) that the Go CLI needs but are not part of the
 // public schema.
 var goOnlyFields = map[string]bool{
-	"DATABASE_SECRET_KEY": true,
-	"SECRET_KEY":          true,
-	"LIBRARY_NAMESPACE":   true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"DATABASE_SECRET_KEY":              true,
+	"LAST_ACCESSED_UPDATE_THRESHOLD_S": true,
+	"SECRET_KEY":                       true,
+	"LIBRARY_NAMESPACE":                true, // QUAY.IO-only in Python schema but needed by Go middleware
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

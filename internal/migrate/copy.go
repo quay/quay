@@ -9,8 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
+	"gopkg.in/yaml.v3"
 )
+
+const runtimeConfigFile = "config.yaml"
 
 func (m *Migrator) copyData(ctx context.Context) error {
 	if err := os.MkdirAll(m.DataDir, 0o750); err != nil {
@@ -59,6 +63,10 @@ func (m *Migrator) copyData(ctx context.Context) error {
 			}
 			slog.Info("copied cert", "src", src, "dst", dst)
 		}
+
+		if err := m.writeRuntimeConfig(); err != nil {
+			return err
+		}
 	}
 
 	// Copy blob storage recursively.
@@ -71,6 +79,62 @@ func (m *Migrator) copyData(ctx context.Context) error {
 		slog.Info("copied storage", "files", count, "bytes", totalBytes)
 	}
 
+	return nil
+}
+
+func (m *Migrator) writeRuntimeConfig() error {
+	sourcePath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	if _, err := os.Stat(sourcePath); err != nil {
+		if os.IsNotExist(err) {
+			slog.Warn("source config not found, skipping runtime config generation", "path", sourcePath)
+			return nil
+		}
+		return fmt.Errorf("stat source config: %w", err)
+	}
+
+	sourceCfg, err := config.Load(sourcePath)
+	if err != nil {
+		return fmt.Errorf("load source config: %w", err)
+	}
+
+	runtimeCfg := map[string]any{
+		"SERVER_HOSTNAME":      m.Source.Hostname,
+		"PREFERRED_URL_SCHEME": "https",
+		"DB_URI":               "sqlite:////data/quay.db",
+		"DISTRIBUTED_STORAGE_CONFIG": map[string]any{
+			"default": []any{
+				"LocalStorage",
+				map[string]any{"storage_path": "/data/storage"},
+			},
+		},
+		"DISTRIBUTED_STORAGE_PREFERENCE": []string{"default"},
+		"SECRET_KEY":                     sourceCfg.SecretKey,
+		"DATABASE_SECRET_KEY":            sourceCfg.DatabaseSecretKey,
+		"AUTHENTICATION_TYPE":            sourceCfg.AuthenticationType,
+		"ROBOTS_DISALLOW":                sourceCfg.RobotsDisallow,
+		"ROBOTS_WHITELIST":               sourceCfg.RobotsWhitelist,
+		"SUPER_USERS":                    sourceCfg.SuperUsers,
+	}
+	if sourceCfg.FeatureSuperUsers != nil {
+		runtimeCfg["FEATURE_SUPER_USERS"] = *sourceCfg.FeatureSuperUsers
+	}
+	if sourceCfg.FeatureSuperUsersFullAccess != nil {
+		runtimeCfg["FEATURE_SUPERUSERS_FULL_ACCESS"] = *sourceCfg.FeatureSuperUsersFullAccess
+	}
+	if sourceCfg.FeatureUserLastAccessed != nil {
+		runtimeCfg["FEATURE_USER_LAST_ACCESSED"] = *sourceCfg.FeatureUserLastAccessed
+	}
+
+	data, err := yaml.Marshal(runtimeCfg)
+	if err != nil {
+		return fmt.Errorf("marshal runtime config: %w", err)
+	}
+
+	targetPath := filepath.Join(m.DataDir, runtimeConfigFile)
+	if err := os.WriteFile(targetPath, data, 0o600); err != nil {
+		return fmt.Errorf("write runtime config: %w", err)
+	}
+	slog.Info("wrote runtime config", "src", sourcePath, "dst", targetPath)
 	return nil
 }
 

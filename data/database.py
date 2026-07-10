@@ -1606,6 +1606,7 @@ class OAuthAccessToken(BaseModel):
     application = ForeignKeyField(OAuthApplication)
     authorized_user = QuayUserField()
     scope = CharField()
+    display_name = CharField(null=True)
     token_name = CharField(index=True, unique=True)
     token_code = CredentialField()
 
