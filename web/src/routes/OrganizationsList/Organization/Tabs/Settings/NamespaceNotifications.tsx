@@ -23,6 +23,7 @@ import {
 import Empty from 'src/components/empty/Empty';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useNamespaceNotifications} from 'src/hooks/UseNamespaceNotifications';
 import {usePaginatedSortableTable} from 'src/hooks/usePaginatedSortableTable';
@@ -191,14 +192,14 @@ export default function NamespaceNotifications({
               Create notification
             </Button>
           </ToolbarItem>
-          <ToolbarItem variant="pagination">
-            {paginationProps.total > paginationProps.perPage && (
-              <span>
-                {paginationProps.total} item
-                {paginationProps.total !== 1 ? 's' : ''}
-              </span>
-            )}
-          </ToolbarItem>
+          <ToolbarPagination
+            total={paginationProps.total}
+            perPage={paginationProps.perPage}
+            page={paginationProps.page}
+            setPage={paginationProps.setPage}
+            setPerPage={paginationProps.setPerPage}
+            data-testid="ns-notifications-pagination"
+          />
         </ToolbarContent>
       </Toolbar>
       <Table

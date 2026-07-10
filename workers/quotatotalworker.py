@@ -58,15 +58,16 @@ class QuotaTotalWorker(Worker):
         if not features.QUOTA_NOTIFICATIONS:
             return
 
-        namespace_ids = (
-            NamespaceNotification.select(NamespaceNotification.namespace).distinct().tuples()
+        namespaces = (
+            User.select()
+            .join(NamespaceNotification, on=(NamespaceNotification.namespace == User.id))
+            .distinct()
         )
-        namespace_id_set = {row[0] for row in namespace_ids}
 
-        if not namespace_id_set:
+        if not namespaces:
             return
 
-        for namespace_user in User.select().where(User.id << list(namespace_id_set)):
+        for namespace_user in namespaces:
             try:
                 self._check_namespace(namespace_user)
             except Exception:

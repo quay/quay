@@ -18,9 +18,11 @@ from data.database import (
     LoginService,
     Namespace,
     NamespaceAutoPrunePolicy,
+    NamespaceNotification,
     OAuthApplication,
     OauthAssignedToken,
     QuotaNamespaceSize,
+    QuotaNotificationState,
     RepoMirrorConfig,
     Repository,
     RepositoryBuildTrigger,
@@ -1539,6 +1541,10 @@ def _delete_user_linked_data(user):
 
     # Delete any federated user links.
     FederatedLogin.delete().where(FederatedLogin.user == user).execute()
+
+    # Delete quota notification configs and state
+    NamespaceNotification.delete().where(NamespaceNotification.namespace == user).execute()
+    QuotaNotificationState.delete().where(QuotaNotificationState.namespace == user).execute()
 
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()

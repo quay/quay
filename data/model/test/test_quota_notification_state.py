@@ -5,9 +5,11 @@ import pytest
 
 from data.database import QuotaNotificationState
 from data.model.quota_notification_state import (
+    claim_notification,
     clear_all_for_namespace,
     clear_notification,
     record_notification,
+    release_claim,
     should_notify,
 )
 from data.model.user import get_user
@@ -198,3 +200,83 @@ class TestQuotaNotificationState:
         with patch("data.model.quota_notification_state.config") as mock_config:
             mock_config.app_config = {"QUOTA_NOTIFICATION_COOLDOWN_SECONDS": 3600}
             assert should_notify(self.user, 80) is True
+
+
+class TestClaimNotification:
+    @pytest.fixture(autouse=True)
+    def setup(self, initialized_db):
+        self.user = get_user("devtable")
+
+    def test_basic_claim_succeeds(self, initialized_db):
+        """First claim for a namespace+threshold returns True."""
+        assert claim_notification(self.user, 80) is True
+
+    def test_second_claim_within_cooldown_rejected(self, initialized_db):
+        """Second claim within cooldown returns False."""
+        assert claim_notification(self.user, 80) is True
+        assert claim_notification(self.user, 80) is False
+
+    def test_claim_after_cleared_succeeds(self, initialized_db):
+        """Claim succeeds after the state has been cleared (usage dropped and rose again)."""
+        assert claim_notification(self.user, 80) is True
+        clear_notification(self.user, 80)
+        assert claim_notification(self.user, 80) is True
+
+    def test_claim_after_cooldown_expired_succeeds(self, initialized_db):
+        """Claim succeeds when the previous cooldown has expired."""
+        assert claim_notification(self.user, 80) is True
+
+        QuotaNotificationState.update(
+            last_notified_at=datetime.utcnow() - timedelta(seconds=86401)
+        ).where(
+            QuotaNotificationState.namespace == self.user,
+            QuotaNotificationState.threshold_percent == 80,
+        ).execute()
+
+        assert claim_notification(self.user, 80) is True
+
+    def test_claim_creates_state_row(self, initialized_db):
+        """Successful claim creates a QuotaNotificationState row."""
+        claim_notification(self.user, 80)
+
+        state = QuotaNotificationState.get_or_none(
+            QuotaNotificationState.namespace == self.user,
+            QuotaNotificationState.threshold_percent == 80,
+        )
+        assert state is not None
+        assert state.cleared is False
+        assert state.last_notified_at is not None
+
+
+class TestReleaseClaim:
+    @pytest.fixture(autouse=True)
+    def setup(self, initialized_db):
+        self.user = get_user("devtable")
+
+    def test_release_claim_deletes_state(self, initialized_db):
+        """release_claim removes the state row so the threshold starts fresh."""
+        claim_notification(self.user, 80)
+
+        state = QuotaNotificationState.get_or_none(
+            QuotaNotificationState.namespace == self.user,
+            QuotaNotificationState.threshold_percent == 80,
+        )
+        assert state is not None
+
+        release_claim(self.user, 80)
+
+        state = QuotaNotificationState.get_or_none(
+            QuotaNotificationState.namespace == self.user,
+            QuotaNotificationState.threshold_percent == 80,
+        )
+        assert state is None
+
+    def test_release_claim_allows_reclaim(self, initialized_db):
+        """After release_claim, the same namespace+threshold can be claimed again."""
+        assert claim_notification(self.user, 80) is True
+        release_claim(self.user, 80)
+        assert claim_notification(self.user, 80) is True
+
+    def test_release_claim_noop_when_no_state(self, initialized_db):
+        """release_claim is a no-op when no state row exists."""
+        release_claim(self.user, 80)

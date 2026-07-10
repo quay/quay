@@ -5,6 +5,7 @@ from peewee import JOIN, DataError, fn
 
 from data import model
 from data.database import (
+    ExternalNotificationEvent,
     ImageStorage,
     Manifest,
     ManifestBlob,
@@ -94,12 +95,16 @@ def update_namespace_quota_size(quota, limit_bytes):
 
 
 def delete_namespace_quota(quota):
+    quota_events = ExternalNotificationEvent.select().where(
+        ExternalNotificationEvent.name << ["quota_warning", "quota_error"]
+    )
     with db_transaction():
         QuotaNotificationState.delete().where(
             QuotaNotificationState.namespace == quota.namespace,
         ).execute()
         NamespaceNotification.delete().where(
             NamespaceNotification.namespace == quota.namespace,
+            NamespaceNotification.event << quota_events,
         ).execute()
         QuotaLimits.delete().where(QuotaLimits.quota == quota).execute()
         quota.delete_instance()
@@ -269,6 +274,18 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
 
 logger = logging.getLogger(__name__)
 
+_BYTE_UNITS = ["bytes", "KB", "MB", "GB", "TB"]
+
+
+def _format_bytes(num_bytes):
+    value = float(num_bytes)
+    for unit in _BYTE_UNITS:
+        if abs(value) < 1024.0 or unit == _BYTE_UNITS[-1]:
+            if unit == "bytes":
+                return f"{int(value)} {unit}"
+            return f"{value:.2f} {unit}"
+        value /= 1024.0
+
 
 def maybe_trigger_quota_notification(namespace_name, quota_result):
     """
@@ -305,10 +322,14 @@ def _do_trigger_quota_notification(namespace_name, quota_result):
     if namespace_user is None:
         return
 
+    event_name = "quota_warning" if severity == "Warning" else "quota_error"
+
+    if not model.notification.list_namespace_notifications(namespace_name, event_name=event_name).exists():
+        return
+
     if not claim_notification(namespace_user, threshold_percent):
         return
 
-    event_name = "quota_warning" if severity == "Warning" else "quota_error"
     usage_bytes = quota_result.get("usage_bytes", 0)
     quota_limit_bytes = quota_result.get("quota_limit_bytes", 0)
     usage_percent = int(usage_bytes * 100 / quota_limit_bytes) if quota_limit_bytes else 0
@@ -322,6 +343,8 @@ def _do_trigger_quota_notification(namespace_name, quota_result):
                 "usage_bytes": usage_bytes,
                 "limit_bytes": quota_limit_bytes,
                 "usage_percent": usage_percent,
+                "usage_bytes_formatted": _format_bytes(usage_bytes),
+                "limit_bytes_formatted": _format_bytes(quota_limit_bytes),
             },
         )
     except Exception:

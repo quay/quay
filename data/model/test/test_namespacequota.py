@@ -2,10 +2,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from data.database import Notification
-from data.model.namespacequota import notify_organization_admins
+from data.database import NamespaceNotification, Notification
+from data.model.namespacequota import (
+    create_namespace_quota,
+    delete_namespace_quota,
+    get_namespace_quota_list,
+    notify_organization_admins,
+)
 from data.model.notification import (
+    create_namespace_notification,
     create_notification,
+    list_namespace_notifications,
     notification_exists_with_metadata,
 )
 from data.model.organization import create_organization
@@ -224,3 +231,28 @@ class TestNamespaceQuota:
         notifications_after = Notification.select().where(Notification.target == self.user).count()
 
         assert notifications_after == notifications_before + 1
+
+
+class TestDeleteNamespaceQuotaNotificationFilter:
+    @pytest.fixture(autouse=True)
+    def setup(self, initialized_db):
+        self.user = get_user("devtable")
+
+    def test_delete_quota_only_removes_quota_notifications(self, initialized_db):
+        """Deleting a quota removes quota_warning/quota_error notifications but not others."""
+        quota = create_namespace_quota(self.user, 1073741824)
+
+        create_namespace_notification(
+            self.user, "quota_warning", "email", {"email": "a@b.com"}, {}
+        )
+        create_namespace_notification(
+            self.user, "quota_error", "email", {"email": "a@b.com"}, {}
+        )
+
+        assert list(list_namespace_notifications(self.user.username, event_name="quota_warning"))
+        assert list(list_namespace_notifications(self.user.username, event_name="quota_error"))
+
+        delete_namespace_quota(quota)
+
+        assert not list(list_namespace_notifications(self.user.username, event_name="quota_warning"))
+        assert not list(list_namespace_notifications(self.user.username, event_name="quota_error"))

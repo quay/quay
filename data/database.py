@@ -936,6 +936,8 @@ class User(BaseModel):
                 UploadedBlob,
                 QuotaRepositorySize,
                 QuotaNamespaceSize,
+                QuotaNotificationState,
+                NamespaceNotification,
                 UserOrganizationQuota,
                 QuotaLimits,
                 RedHatSubscriptions,

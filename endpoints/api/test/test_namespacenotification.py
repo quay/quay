@@ -262,6 +262,32 @@ class TestUserNotification:
             )
         notif.delete_instance()
 
+    def test_delete_other_users_notification(self, app):
+        notif = _create_notification("freshuser")
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                UserNamespaceNotification,
+                "DELETE",
+                {"uuid": notif.uuid},
+                None,
+                404,
+            )
+        notif.delete_instance()
+
+    def test_reset_other_users_notification(self, app):
+        notif = _create_notification("freshuser")
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                UserNamespaceNotification,
+                "POST",
+                {"uuid": notif.uuid},
+                None,
+                404,
+            )
+        notif.delete_instance()
+
     def test_delete_notification(self, app):
         notif = _create_notification("devtable")
         uuid = notif.uuid

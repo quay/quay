@@ -24,6 +24,7 @@ from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.mirrorhealth import RepositoryMirrorHealth
+from endpoints.api.namespacenotification import *  # type: ignore
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
@@ -82,6 +83,9 @@ ORG_APPLICATION_TOKEN_UUID_PARAMS = {
     "client_id": "missing-client-id",
     "token_uuid": "someuuid",
 }
+ORG_NS_NOTIFICATION_PARAMS = {"orgname": "buynlarge"}
+ORG_NS_NOTIFICATION_UUID_PARAMS = {"orgname": "buynlarge", "uuid": "someuuid"}
+USER_NS_NOTIFICATION_UUID_PARAMS = {"uuid": "someuuid"}
 
 
 SECURITY_TESTS: List[
@@ -7290,6 +7294,49 @@ SECURITY_TESTS: List[
         "devtable",
         404,
     ),
+    # Namespace notification endpoints (gated by QUOTA_NOTIFICATIONS feature)
+    (OrgNamespaceNotificationList, "GET", ORG_NS_NOTIFICATION_PARAMS, None, None, 401),
+    (OrgNamespaceNotificationList, "GET", ORG_NS_NOTIFICATION_PARAMS, None, "freshuser", 403),
+    (OrgNamespaceNotificationList, "GET", ORG_NS_NOTIFICATION_PARAMS, None, "reader", 403),
+    (OrgNamespaceNotificationList, "GET", ORG_NS_NOTIFICATION_PARAMS, None, "devtable", 200),
+    (OrgNamespaceNotificationList, "POST", ORG_NS_NOTIFICATION_PARAMS, {}, None, 401),
+    (OrgNamespaceNotificationList, "POST", ORG_NS_NOTIFICATION_PARAMS, {}, "freshuser", 403),
+    (OrgNamespaceNotificationList, "POST", ORG_NS_NOTIFICATION_PARAMS, {}, "reader", 403),
+    (OrgNamespaceNotificationList, "POST", ORG_NS_NOTIFICATION_PARAMS, {}, "devtable", 400),
+    (OrgNamespaceNotification, "GET", ORG_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (OrgNamespaceNotification, "GET", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 403),
+    (OrgNamespaceNotification, "GET", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "reader", 403),
+    (OrgNamespaceNotification, "GET", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (OrgNamespaceNotification, "DELETE", ORG_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (OrgNamespaceNotification, "DELETE", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 403),
+    (OrgNamespaceNotification, "DELETE", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "reader", 403),
+    (OrgNamespaceNotification, "DELETE", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (OrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (OrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 403),
+    (OrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "reader", 403),
+    (OrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (TestOrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (TestOrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 403),
+    (TestOrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "reader", 403),
+    (TestOrgNamespaceNotification, "POST", ORG_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (UserNamespaceNotificationList, "GET", {}, None, None, 401),
+    (UserNamespaceNotificationList, "GET", {}, None, "freshuser", 200),
+    (UserNamespaceNotificationList, "GET", {}, None, "devtable", 200),
+    (UserNamespaceNotificationList, "POST", {}, {}, None, 401),
+    (UserNamespaceNotificationList, "POST", {}, {}, "freshuser", 400),
+    (UserNamespaceNotificationList, "POST", {}, {}, "devtable", 400),
+    (UserNamespaceNotification, "GET", USER_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (UserNamespaceNotification, "GET", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
+    (UserNamespaceNotification, "GET", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (UserNamespaceNotification, "DELETE", USER_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (UserNamespaceNotification, "DELETE", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
+    (UserNamespaceNotification, "DELETE", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (UserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (UserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
+    (UserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
+    (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
+    (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
 ]
 
 
