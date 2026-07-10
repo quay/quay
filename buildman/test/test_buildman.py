@@ -395,11 +395,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.test_executor.stop_builder.assert_called_once_with("foobar")
         self.assertEqual(self.test_executor.stop_builder.call_count, 1)
 
-
-
-    @patch("buildman.manager.ephemeral.model")
-    @patch("buildman.manager.ephemeral.BuildJob")
-    def test_update_job_phase_sends_build_start_on_building(self, mock_build_job_cls, mock_model):
+    def _setup_update_job_phase_test(self, mock_build_job_cls, mock_model):
         self.manager._orchestrator.get_key = Mock(
             return_value=json.dumps({"job_queue_item": self.mock_job.job_item})
         )
@@ -409,6 +405,12 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         mock_build_job_cls.return_value = build_job
         mock_model.build.update_phase_then_close.return_value = True
         self.manager.append_log_message = Mock()
+        return build_job
+
+    @patch("buildman.manager.ephemeral.model")
+    @patch("buildman.manager.ephemeral.BuildJob")
+    def test_update_job_phase_sends_build_start_on_building(self, mock_build_job_cls, mock_model):
+        build_job = self._setup_update_job_phase_test(mock_build_job_cls, mock_model)
 
         result = self.manager.update_job_phase(self.mock_job_key, BUILD_PHASE.BUILDING)
 
@@ -418,19 +420,12 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
     @patch("buildman.manager.ephemeral.model")
     @patch("buildman.manager.ephemeral.BuildJob")
     def test_update_job_phase_no_build_start_on_other_phase(self, mock_build_job_cls, mock_model):
-        self.manager._orchestrator.get_key = Mock(
-            return_value=json.dumps({"job_queue_item": self.mock_job.job_item})
-        )
-        build_job = Mock()
-        build_job.build_uuid = BUILD_UUID
-        build_job.repo_build.phase = BUILD_PHASE.BUILD_SCHEDULED
-        mock_build_job_cls.return_value = build_job
-        mock_model.build.update_phase_then_close.return_value = True
-        self.manager.append_log_message = Mock()
+        build_job = self._setup_update_job_phase_test(mock_build_job_cls, mock_model)
 
         self.manager.update_job_phase(self.mock_job_key, BUILD_PHASE.PUSHING)
 
         build_job.send_notification.assert_not_called()
+
 
 class TestEphemeral(EphemeralBuilderTestCase):
     """
