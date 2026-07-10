@@ -91,6 +91,47 @@ TEST=true PYTHONPATH="." pytest test/test_file.py -v
 make test_postgres TESTS=test/test_file.py
 ```
 
+## High-Impact Model Fields
+
+Some database fields are read widely across the codebase. Before changing
+their semantics (what values they store, their format, or their
+nullability), you must trace all consumers and verify each one handles
+the new semantics correctly. Failing to do so causes silent breakages in
+unmodified code paths — the kind that only human reviewers catch late in
+the review cycle.
+
+**Motivation:** On PR #6160, a `User.email` semantic change (from real
+email addresses to UUIDs for organization users) modified 25 files but
+missed critical consumers in `workers/reconciliationworker.py` and
+`endpoints/webhooks.py`. The PR was closed after 26 days of review.
+
+### Widely-read fields
+
+| Field | Key consumers to check |
+|-------|------------------------|
+| `User.email` | `workers/reconciliationworker.py` (marketplace customer ID lookup), `endpoints/webhooks.py` (invoice/payment notification recipient), `util/useremails.py` (email sending), `endpoints/api/user.py`, `endpoints/api/billing.py`, `oauth/login.py`, auth modules |
+| `User.organization` | Organization-gated logic in `data/model/organization.py`, `data/model/repository.py`, `data/model/permission.py`, `auth/permissions.py`, `endpoints/api/` |
+| `Repository.visibility` | Permission checks in `data/model/_basequery.py`, `data/model/repository.py`, registry endpoints in `endpoints/v2/`, `data/registry_model/` |
+
+This table is not exhaustive — always grep to discover the full set of
+consumers for any field you are changing.
+
+### Checklist for field semantic changes
+
+When changing what a database field stores (not just adding a new field):
+
+1. **Find all readers:** `grep -rn 'model.field' --include='*.py'` and
+   `grep -rn '.field' --include='*.py'` (dot-access patterns may not
+   include the model name)
+2. **Verify each reader** handles both old values (existing database
+   records) and new values correctly
+3. **Add a data migration** if existing records need updating to match
+   the new semantics (see Migration Best Practices above)
+4. **Update tests** that assert on the old field values — tests often
+   hardcode expected values rather than referencing constants
+5. **Document the behavioral change** in the PR description, listing
+   every consumer you verified and how it handles the change
+
 ## Key Files
 
 - `data/database.py` - Peewee model class definitions (schema source of truth)
