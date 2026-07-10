@@ -8,13 +8,13 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from app import app as quay_app
 from endpoints.api.mirrorhealth import (
     RepositoryMirrorHealth,
-    SuperUserRepositoryMirrorHealth,
     _get_last_sync_timestamps,
     _get_mirror_workers_active_value,
     _get_pending_tags_total,
     _mirror_status_counts,
     get_mirror_health_data,
 )
+from endpoints.api.superuser import SuperUserRepositoryMirrorHealth
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
@@ -26,10 +26,13 @@ from test.fixtures import *
 
 class TestGetLastSyncTimestamps:
     def test_returns_empty_when_metric_absent(self):
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = []
-            result = _get_last_sync_timestamps()
-            assert result == {}
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = []
+                result = _get_last_sync_timestamps()
+                assert result == {}
 
     def test_parses_samples_correctly(self):
         sample = mock.Mock()
@@ -41,10 +44,13 @@ class TestGetLastSyncTimestamps:
         metric.name = "quay_repository_mirror_last_sync_timestamp"
         metric.samples = [sample]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            result = _get_last_sync_timestamps()
-            assert result == {("ns1", "repo1"): 1700000000.0}
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                result = _get_last_sync_timestamps()
+                assert result == {("ns1", "repo1"): 1700000000.0}
 
     def test_skips_samples_missing_labels(self):
         sample = mock.Mock()
@@ -56,24 +62,33 @@ class TestGetLastSyncTimestamps:
         metric.name = "quay_repository_mirror_last_sync_timestamp"
         metric.samples = [sample]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            result = _get_last_sync_timestamps()
-            assert result == {}
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                result = _get_last_sync_timestamps()
+                assert result == {}
 
     def test_handles_registry_exception(self):
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.side_effect = RuntimeError("boom")
-            result = _get_last_sync_timestamps()
-            assert result == {}
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.side_effect = RuntimeError("boom")
+                result = _get_last_sync_timestamps()
+                assert result == {}
 
 
 class TestGetPendingTagsTotal:
     def test_returns_zero_when_metric_absent(self):
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = []
-            result = _get_pending_tags_total()
-            assert result == 0
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = []
+                result = _get_pending_tags_total()
+                assert result == 0
 
     def test_sums_across_namespaces(self):
         s1 = mock.Mock()
@@ -90,9 +105,12 @@ class TestGetPendingTagsTotal:
         metric.name = "quay_repository_mirror_pending_tags"
         metric.samples = [s1, s2]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            assert _get_pending_tags_total() == 8
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                assert _get_pending_tags_total() == 8
 
     def test_filters_by_namespace(self):
         s1 = mock.Mock()
@@ -109,9 +127,12 @@ class TestGetPendingTagsTotal:
         metric.name = "quay_repository_mirror_pending_tags"
         metric.samples = [s1, s2]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            assert _get_pending_tags_total(namespace="ns1") == 5
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                assert _get_pending_tags_total(namespace="ns1") == 5
 
     def test_returns_int_for_whole_numbers(self):
         s1 = mock.Mock()
@@ -123,18 +144,24 @@ class TestGetPendingTagsTotal:
         metric.name = "quay_repository_mirror_pending_tags"
         metric.samples = [s1]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            result = _get_pending_tags_total()
-            assert result == 7
-            assert isinstance(result, int)
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                result = _get_pending_tags_total()
+                assert result == 7
+                assert isinstance(result, int)
 
 
 class TestGetMirrorWorkersActiveValue:
     def test_returns_zero_when_metric_absent(self):
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = []
-            assert _get_mirror_workers_active_value() == 0
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = []
+                assert _get_mirror_workers_active_value() == 0
 
     def test_returns_sample_value(self):
         sample = mock.Mock()
@@ -145,9 +172,12 @@ class TestGetMirrorWorkersActiveValue:
         metric.name = "quay_repository_mirror_workers_active"
         metric.samples = [sample]
 
-        with mock.patch("endpoints.api.mirrorhealth.REGISTRY") as mock_reg:
-            mock_reg.collect.return_value = [metric]
-            assert _get_mirror_workers_active_value() == 1
+        with mock.patch(
+            "util.metrics.mirror_registry._should_read_pushgateway", return_value=False
+        ):
+            with mock.patch("util.metrics.mirror_registry.REGISTRY") as mock_reg:
+                mock_reg.collect.return_value = [metric]
+                assert _get_mirror_workers_active_value() == 1
 
 
 # =============================================================================
@@ -304,6 +334,32 @@ class TestGetMirrorHealthData:
         worker_warnings = [w for w in warning_issues if "worker" in w["message"].lower()]
         assert len(worker_warnings) == 1
         assert "2 mirror worker" in worker_warnings[0]["message"]
+
+    @mock.patch("endpoints.api.mirrorhealth.app")
+    @mock.patch("endpoints.api.mirrorhealth._get_mirror_workers_active_value", return_value=0)
+    @mock.patch("endpoints.api.mirrorhealth._get_last_sync_timestamps", return_value={})
+    @mock.patch("endpoints.api.mirrorhealth._get_pending_tags_total", return_value=0)
+    @mock.patch("endpoints.api.mirrorhealth._mirror_rows_query")
+    @mock.patch("endpoints.api.mirrorhealth._mirror_status_counts")
+    def test_skips_worker_replica_warning_when_no_workers_reporting(
+        self, mock_counts, mock_rows, mock_pending, mock_ts, mock_wk, mock_app
+    ):
+        mock_counts.return_value = {
+            "total": 5,
+            "syncing": 1,
+            "completed": 4,
+            "failed": 0,
+            "never_run": 0,
+        }
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
+        mock_app.config.get.return_value = 3
+
+        result = get_mirror_health_data()
+
+        assert result["healthy"] is True
+        assert not any("worker" in i["message"].lower() for i in result["issues"])
 
     @mock.patch("endpoints.api.mirrorhealth._get_mirror_workers_active_value", return_value=0)
     @mock.patch("endpoints.api.mirrorhealth._get_pending_tags_total", return_value=0)
@@ -477,13 +533,19 @@ class TestGetMirrorHealthData:
         assert result["repositories"]["pagination"]["limit"] == 1000
 
     @mock.patch("endpoints.api.mirrorhealth._get_mirror_workers_active_value", return_value=0)
-    @mock.patch("endpoints.api.mirrorhealth._get_last_sync_timestamps")
+    @mock.patch("endpoints.api.mirrorhealth._get_last_sync_timestamps", return_value={})
     @mock.patch("endpoints.api.mirrorhealth._get_pending_tags_total", return_value=0)
     @mock.patch("endpoints.api.mirrorhealth._mirror_rows_query")
     @mock.patch("endpoints.api.mirrorhealth._mirror_status_counts")
     def test_summary_mode_omits_repository_details(
         self, mock_counts, mock_rows, mock_pending, mock_ts, mock_wk
     ):
+        """
+        Test that detailed=True with include_repository_details=False returns summary only.
+
+        This code path is used by SuperUserRepositoryMirrorHealth endpoint to get
+        aggregate stats without exposing repository-identifying information.
+        """
         mock_counts.return_value = {
             "total": 10,
             "syncing": 0,
@@ -497,35 +559,23 @@ class TestGetMirrorHealthData:
             include_repository_details=False,
         )
 
+        # Should not query individual repository rows or timestamps
         mock_rows.assert_not_called()
         mock_ts.assert_not_called()
+
+        # Should return unhealthy due to 50% failure rate
         assert result["healthy"] is False
+
+        # Should have repository counts but no details or pagination
         assert "details" not in result["repositories"]
         assert "pagination" not in result["repositories"]
-        assert result["issues"][0]["severity"] == "critical"
-        assert "repositories are failing" in result["issues"][0]["message"]
+        assert result["repositories"]["total"] == 10
+        assert result["repositories"]["failed"] == 5
 
 
 # =============================================================================
 # API endpoint integration tests
 # =============================================================================
-
-
-def _set_healthy_mirror_health(mock_health):
-    mock_health.return_value = {
-        "healthy": True,
-        "workers": {"active": 0, "configured": 0, "status": "healthy"},
-        "repositories": {
-            "total": 0,
-            "syncing": 0,
-            "completed": 0,
-            "failed": 0,
-            "never_run": 0,
-        },
-        "tags_pending": 0,
-        "last_check": "2024-01-01T00:00:00Z",
-        "issues": [],
-    }
 
 
 class TestMirrorHealthEndpoint:
@@ -649,7 +699,39 @@ class TestMirrorHealthEndpoint:
             conduct_api_call(cl, RepositoryMirrorHealth, "GET", None, None, 200)
 
 
+# =============================================================================
+# Tests for SUPERUSERS_FULL_ACCESS permission logic
+# =============================================================================
+
+
+def _set_healthy_mirror_health(mock_health):
+    """Helper to set a healthy mirror health response"""
+    mock_health.return_value = {
+        "healthy": True,
+        "workers": {"active": 0, "configured": 0, "status": "healthy"},
+        "repositories": {
+            "total": 0,
+            "syncing": 0,
+            "completed": 0,
+            "failed": 0,
+            "never_run": 0,
+        },
+        "tags_pending": 0,
+        "last_check": "2024-01-01T00:00:00Z",
+        "issues": [],
+    }
+
+
 class TestMirrorHealthFullAccessPermissions:
+    """
+    Tests for RepositoryMirrorHealth endpoint with SUPERUSERS_FULL_ACCESS=False.
+
+    Verifies that regular superusers without full access:
+    - Are denied global access (namespace=None)
+    - Are denied access to other namespaces
+    - Can still access their own namespace via normal permission checks
+    """
+
     @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
     def test_regular_superuser_global_access_requires_full_access(
         self, mock_health, app, initialized_db
@@ -701,9 +783,10 @@ class TestMirrorHealthFullAccessPermissions:
         mock_health.assert_called_once()
 
     @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
-    def test_global_readonly_superuser_global_access_without_full_access(
+    def test_global_readonly_superuser_bypasses_full_access_requirement(
         self, mock_health, app, initialized_db
     ):
+        """Global readonly superuser can access global health even without SUPERUSERS_FULL_ACCESS"""
         _set_healthy_mirror_health(mock_health)
 
         with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
@@ -713,9 +796,24 @@ class TestMirrorHealthFullAccessPermissions:
         mock_health.assert_called_once()
 
 
+# =============================================================================
+# Tests for SuperUserRepositoryMirrorHealth endpoint
+# =============================================================================
+
+
 class TestSuperUserMirrorHealthEndpoint:
-    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    """
+    Tests for the /v1/superuser/mirror/health endpoint.
+
+    Verifies:
+    - Correct access control (any superuser, not just full access)
+    - Correct arguments passed to get_mirror_health_data
+    - Response structure and status codes
+    """
+
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
     def test_regular_superuser_access_without_full_access(self, mock_health, app, initialized_db):
+        """Regular superuser can access superuser endpoint even without SUPERUSERS_FULL_ACCESS"""
         _set_healthy_mirror_health(mock_health)
 
         with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
@@ -730,15 +828,17 @@ class TestSuperUserMirrorHealthEndpoint:
                 )
                 assert resp.json["healthy"] is True
 
+        # Verify correct arguments: no namespace, no repository details
         mock_health.assert_called_once_with(
             detailed=False,
             include_repository_details=False,
         )
 
-    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
     def test_global_readonly_superuser_access_without_full_access(
         self, mock_health, app, initialized_db
     ):
+        """Global readonly superuser can access superuser endpoint"""
         _set_healthy_mirror_health(mock_health)
 
         with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
@@ -757,8 +857,9 @@ class TestSuperUserMirrorHealthEndpoint:
             include_repository_details=False,
         )
 
-    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
     def test_non_superuser_denied(self, mock_health, app, initialized_db):
+        """Non-superuser is denied access"""
         _set_healthy_mirror_health(mock_health)
 
         with client_with_identity("freshuser", app) as cl:
@@ -773,8 +874,9 @@ class TestSuperUserMirrorHealthEndpoint:
 
         mock_health.assert_not_called()
 
-    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
     def test_anonymous_returns_401(self, mock_health, app, initialized_db):
+        """Anonymous user is denied access"""
         _set_healthy_mirror_health(mock_health)
 
         with client_with_identity(None, app) as cl:
@@ -788,3 +890,57 @@ class TestSuperUserMirrorHealthEndpoint:
             )
 
         mock_health.assert_not_called()
+
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
+    def test_unhealthy_returns_503(self, mock_health, app, initialized_db):
+        """Unhealthy status returns 503"""
+        mock_health.return_value = {
+            "healthy": False,
+            "workers": {"active": 0, "configured": 0, "status": "degraded"},
+            "repositories": {
+                "total": 10,
+                "syncing": 0,
+                "completed": 5,
+                "failed": 5,
+                "never_run": 0,
+            },
+            "tags_pending": 0,
+            "last_check": "2024-01-01T00:00:00Z",
+            "issues": [
+                {
+                    "severity": "critical",
+                    "message": "high failure rate",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                }
+            ],
+        }
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                SuperUserRepositoryMirrorHealth,
+                "GET",
+                None,
+                None,
+                503,
+            )
+            assert resp.json["healthy"] is False
+
+    @mock.patch("endpoints.api.superuser.get_mirror_health_data")
+    def test_cache_control_header(self, mock_health, app, initialized_db):
+        """Verifies no-cache headers are set"""
+        _set_healthy_mirror_health(mock_health)
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                SuperUserRepositoryMirrorHealth,
+                "GET",
+                None,
+                None,
+                200,
+            )
+            cache_control = resp.headers.get("Cache-Control", "")
+            assert "no-cache" in cache_control
+            assert "no-store" in cache_control
+            assert "must-revalidate" in cache_control

@@ -23,10 +23,7 @@ from endpoints.api.immutability_policy import *
 from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
-from endpoints.api.mirrorhealth import (
-    RepositoryMirrorHealth,
-    SuperUserRepositoryMirrorHealth,
-)
+from endpoints.api.mirrorhealth import RepositoryMirrorHealth
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]

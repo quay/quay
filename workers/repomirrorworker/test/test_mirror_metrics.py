@@ -61,7 +61,7 @@ class TestUpdateMirrorMetricsOnFailure:
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_failures_total")
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_complete")
     @mock.patch("workers.repomirrorworker.repo_mirror_last_sync_status")
-    @mock.patch("workers.repomirrorworker.repo_mirror_tags_pending")
+    @mock.patch("workers.repomirrorworker.repo_mirror_pending_tags")
     def test_sets_all_failure_metrics(
         self, mock_pending, mock_status, mock_complete, mock_failures, mock_duration
     ):
@@ -92,7 +92,7 @@ class TestUpdateMirrorMetricsOnFailure:
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_failures_total")
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_complete")
     @mock.patch("workers.repomirrorworker.repo_mirror_last_sync_status")
-    @mock.patch("workers.repomirrorworker.repo_mirror_tags_pending")
+    @mock.patch("workers.repomirrorworker.repo_mirror_pending_tags")
     def test_records_duration_when_start_time_provided(
         self, mock_pending, mock_status, mock_complete, mock_failures, mock_duration
     ):
@@ -116,7 +116,7 @@ class TestUpdateMirrorMetricsOnFailure:
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_failures_total")
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_complete")
     @mock.patch("workers.repomirrorworker.repo_mirror_last_sync_status")
-    @mock.patch("workers.repomirrorworker.repo_mirror_tags_pending")
+    @mock.patch("workers.repomirrorworker.repo_mirror_pending_tags")
     def test_skips_duration_when_no_start_time(
         self, mock_pending, mock_status, mock_complete, mock_failures, mock_duration
     ):
@@ -133,7 +133,7 @@ class TestUpdateMirrorMetricsOnFailure:
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_failures_total")
     @mock.patch("workers.repomirrorworker.repo_mirror_sync_complete")
     @mock.patch("workers.repomirrorworker.repo_mirror_last_sync_status")
-    @mock.patch("workers.repomirrorworker.repo_mirror_tags_pending")
+    @mock.patch("workers.repomirrorworker.repo_mirror_pending_tags")
     def test_defaults_to_unknown_error_reason(
         self, mock_pending, mock_status, mock_complete, mock_failures, mock_duration
     ):
@@ -170,9 +170,9 @@ class TestMetricCardinality:
         assert list(repo_mirror_sync_duration_seconds._upper_bounds) == expected
 
     def test_tags_pending_gauge_has_per_repo_labels(self):
-        from workers.repomirrorworker import repo_mirror_tags_pending
+        from workers.repomirrorworker import repo_mirror_pending_tags
 
-        assert repo_mirror_tags_pending._labelnames == ("namespace", "repository")
+        assert repo_mirror_pending_tags._labelnames == ("namespace", "repository")
 
     def test_last_sync_status_gauge_has_per_repo_labels(self):
         from workers.repomirrorworker import repo_mirror_last_sync_status

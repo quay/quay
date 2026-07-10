@@ -663,6 +663,41 @@ def test_submit_skip_ssl_verify_false(
             mock_send.assert_has_calls(expected_call_args)
 
 
+def test_extended_logging_omits_performer_email(
+    logs_model,
+    splunk_logs_model_config,
+    mock_db_model,
+    initialized_db,
+    cert_file_path,
+):
+    with (
+        patch(
+            "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
+        ) as mock_send,
+        patch("splunklib.client.connect"),
+    ):
+        with patch("ssl.SSLContext.load_verify_locations"):
+            configure(splunk_logs_model_config)
+            logs_model.log_action(
+                "push_repo",
+                "devtable",
+                FAKE_PERFORMER["user1"],
+                "192.168.1.1",
+                {"key": "value"},
+                None,
+                "repo1",
+                parse("2019-01-01T03:30"),
+                request_url="/api/v1/repository/devtable/repo1",
+                http_method="POST",
+            )
+
+            sent_event = mock_send.call_args[0][0]
+            assert "performer_email" not in sent_event
+            assert sent_event["performer_username"] == "fake_username"
+            assert sent_event["request_url"] == "/api/v1/repository/devtable/repo1"
+            assert sent_event["http_method"] == "POST"
+
+
 def test_connect_with_invalid_certfile_path(
     logs_model, splunk_logs_model_config, mock_db_model, initialized_db
 ):
