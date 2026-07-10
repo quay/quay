@@ -15,6 +15,8 @@ test.describe(
           '@feature:QUOTA_MANAGEMENT',
           '@feature:EDIT_QUOTA',
           '@container',
+          '@superuser',
+          '@webhook',
         ],
       },
       async ({api, superuserApi}) => {
@@ -63,12 +65,9 @@ test.describe(
           );
 
           // Wait for webhook
-          const webhook = await receiver.waitForWebhook(
-            undefined,
-            60_000,
-          );
+          const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook!.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('event_data');
         } finally {
           await receiver.stop();
         }
@@ -82,6 +81,8 @@ test.describe(
           '@feature:QUOTA_MANAGEMENT',
           '@feature:EDIT_QUOTA',
           '@container',
+          '@superuser',
+          '@webhook',
         ],
       },
       async ({api, superuserApi}) => {
@@ -136,12 +137,9 @@ test.describe(
           }
 
           // Wait for webhook with quota_error event
-          const webhook = await receiver.waitForWebhook(
-            undefined,
-            60_000,
-          );
+          const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook!.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('event_data');
         } finally {
           await receiver.stop();
         }
@@ -156,6 +154,7 @@ test.describe(
           '@feature:EDIT_QUOTA',
           '@feature:MAILING',
           '@container',
+          '@superuser',
         ],
       },
       async ({api, superuserApi}) => {
@@ -225,6 +224,7 @@ test.describe(
           '@feature:EDIT_QUOTA',
           '@feature:MAILING',
           '@container',
+          '@superuser',
         ],
       },
       async ({api, superuserApi}) => {
@@ -275,54 +275,47 @@ test.describe(
         // Email should be delivered to org admin (testuser) email
         const email = await mailpit.waitForEmail(
           (msg) =>
-            msg.To.some(
-              (to) => to.Address === TEST_USERS.user.email,
-            ) &&
-            (msg.Subject.includes('quota') ||
-              msg.Subject.includes('Quota')),
+            msg.To.some((to) => to.Address === TEST_USERS.user.email) &&
+            (msg.Subject.includes('quota') || msg.Subject.includes('Quota')),
           30_000,
         );
         expect(email).not.toBeNull();
       },
     );
 
-    test('test notification button fires a webhook delivery', async ({
-      api,
-    }) => {
-      test.setTimeout(60_000);
+    test(
+      'test notification button fires a webhook delivery',
+      {tag: '@webhook'},
+      async ({api}) => {
+        test.setTimeout(60_000);
 
-      const org = await api.organization('nsdelivtest');
+        const org = await api.organization('nsdelivtest');
 
-      // Start webhook receiver
-      const receiver = new WebhookReceiver();
-      await receiver.start();
-      try {
-        // Create webhook notification via API
-        const notification = await api.namespaceNotification(
-          org.name,
-          'quota_warning',
-          'webhook',
-          {url: receiver.getUrl()},
-          {},
-          'Test Button Webhook',
-        );
+        // Start webhook receiver
+        const receiver = new WebhookReceiver();
+        await receiver.start();
+        try {
+          // Create webhook notification via API
+          const notification = await api.namespaceNotification(
+            org.name,
+            'quota_warning',
+            'webhook',
+            {url: receiver.getUrl()},
+            {},
+            'Test Button Webhook',
+          );
 
-        // Fire test notification via API
-        await api.raw.testNamespaceNotification(
-          org.name,
-          notification.uuid,
-        );
+          // Fire test notification via API
+          await api.raw.testNamespaceNotification(org.name, notification.uuid);
 
-        // Verify webhook received
-        const webhook = await receiver.waitForWebhook(
-          undefined,
-          30_000,
-        );
-        expect(webhook).not.toBeNull();
-      } finally {
-        await receiver.stop();
-      }
-    });
+          // Verify webhook received
+          const webhook = await receiver.waitForWebhook(undefined, 30_000);
+          expect(webhook).not.toBeNull();
+        } finally {
+          await receiver.stop();
+        }
+      },
+    );
 
     test(
       'retroactive webhook fires when quota limit is created while already exceeded',
@@ -331,6 +324,8 @@ test.describe(
           '@feature:QUOTA_MANAGEMENT',
           '@feature:EDIT_QUOTA',
           '@container',
+          '@superuser',
+          '@webhook',
         ],
       },
       async ({api, superuserApi}) => {
@@ -379,12 +374,9 @@ test.describe(
           );
 
           // Webhook should fire retroactively
-          const webhook = await receiver.waitForWebhook(
-            undefined,
-            60_000,
-          );
+          const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook!.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('event_data');
         } finally {
           await receiver.stop();
         }

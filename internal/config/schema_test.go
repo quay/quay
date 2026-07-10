@@ -135,6 +135,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
+	"FEATURE_QUOTA_NOTIFICATIONS":                   true,
 	"FEATURE_QUOTA_SUPPRESS_FAILURES":               true,
 	"FEATURE_RATE_LIMITS":                           true,
 	"FEATURE_READER_BUILD_LOGS":                     true,
@@ -191,9 +192,10 @@ var knownUnmapped = map[string]bool{
 	"QUOTA_BACKFILL":                    true,
 	"QUOTA_BACKFILL_BATCH_SIZE":         true,
 	"QUOTA_BACKFILL_POLL_PERIOD":        true,
-	"QUOTA_INVALIDATE_TOTALS":           true,
-	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":   true,
-	"QUOTA_TOTAL_DELAY_SECONDS":         true,
+	"QUOTA_INVALIDATE_TOTALS":              true,
+	"QUOTA_NOTIFICATION_COOLDOWN_SECONDS":  true,
+	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":      true,
+	"QUOTA_TOTAL_DELAY_SECONDS":            true,
 
 	// UI
 	"DISABLE_ANGULAR_UI":            true,

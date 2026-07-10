@@ -29,11 +29,9 @@ interface NamespaceNotificationsKebabProps {
   notification: NamespaceNotification;
 }
 
-const NamespaceNotificationsKebab: React.FC<NamespaceNotificationsKebabProps> = ({
-  orgname,
-  isUser = false,
-  notification,
-}) => {
+const NamespaceNotificationsKebab: React.FC<
+  NamespaceNotificationsKebabProps
+> = ({orgname, isUser = false, notification}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -63,7 +61,9 @@ const NamespaceNotificationsKebab: React.FC<NamespaceNotificationsKebabProps> = 
         <AlertGroup isToast isLiveRegion>
           <Alert
             variant="danger"
-            title={`Unable to delete notification ${notification.title || '(Untitled)'}`}
+            title={`Unable to delete notification ${
+              notification.title || '(Untitled)'
+            }`}
             actionClose={
               <AlertActionCloseButton onClose={resetDeletingNotification} />
             }
@@ -74,7 +74,9 @@ const NamespaceNotificationsKebab: React.FC<NamespaceNotificationsKebabProps> = 
         <AlertGroup isToast isLiveRegion>
           <Alert
             variant="danger"
-            title={`Unable to test notification ${notification.title || '(Untitled)'}`}
+            title={`Unable to test notification ${
+              notification.title || '(Untitled)'
+            }`}
             actionClose={
               <AlertActionCloseButton onClose={resetTestingNotification} />
             }
@@ -85,7 +87,9 @@ const NamespaceNotificationsKebab: React.FC<NamespaceNotificationsKebabProps> = 
         <AlertGroup isToast isLiveRegion>
           <Alert
             variant="danger"
-            title={`Unable to enable notification ${notification.title || '(Untitled)'}`}
+            title={`Unable to enable notification ${
+              notification.title || '(Untitled)'
+            }`}
             actionClose={
               <AlertActionCloseButton onClose={resetEnablingNotification} />
             }

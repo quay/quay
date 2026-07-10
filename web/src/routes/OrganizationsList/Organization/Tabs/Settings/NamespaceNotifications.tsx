@@ -74,17 +74,24 @@ function NotificationConfig({
     case NamespaceNotificationMethodType.slack:
       return (
         <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
-          Webhook URL: {(notification.config as any)?.url}
+          Webhook URL: {String(notification.config?.url ?? '')}
         </FlexItem>
       );
     case NamespaceNotificationMethodType.webhook:
       return (
         <>
-          <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)', marginBottom: 0}}>
-            Webhook URL: {(notification.config as any)?.url}
+          <FlexItem
+            style={{
+              color: 'var(--pf-t--global--text--color--subtle)',
+              marginBottom: 0,
+            }}
+          >
+            Webhook URL: {String(notification.config?.url ?? '')}
           </FlexItem>
-          <Conditional if={(notification.config as any)?.template !== ''}>
-            <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
+          <Conditional if={notification.config?.template !== ''}>
+            <FlexItem
+              style={{color: 'var(--pf-t--global--text--color--subtle)'}}
+            >
               POST body template (optional):
               <ClipboardCopy
                 isCode
@@ -93,18 +100,22 @@ function NotificationConfig({
                 clickTip="Copied"
                 variant={ClipboardCopyVariant.expansion}
               >
-                {(notification.config as any)?.template}
+                {String(notification.config?.template ?? '')}
               </ClipboardCopy>
             </FlexItem>
           </Conditional>
         </>
       );
-    case NamespaceNotificationMethodType.quaynotification:
+    case NamespaceNotificationMethodType.quaynotification: {
+      const target = notification.config?.target as
+        | Record<string, unknown>
+        | undefined;
       return (
         <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
-          Recipient: {(notification.config as any)?.target?.name}
+          Recipient: {String(target?.name ?? '')}
         </FlexItem>
       );
+    }
     default:
       return null;
   }

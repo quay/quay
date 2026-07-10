@@ -25,9 +25,9 @@ test.describe(
         (n) => n.uuid === notification.uuid,
       );
       expect(found).toBeDefined();
-      expect(found!.title).toBe('User Webhook');
-      expect(found!.event).toBe('quota_warning');
-      expect(found!.method).toBe('webhook');
+      expect(found?.title).toBe('User Webhook');
+      expect(found?.event).toBe('quota_warning');
+      expect(found?.method).toBe('webhook');
 
       // Delete notification
       await api.raw.deleteUserNamespaceNotification(notification.uuid);
@@ -88,10 +88,7 @@ test.describe(
 
         // Verify email delivered to user's address
         const email = await mailpit.waitForEmail(
-          (msg) =>
-            msg.To.some(
-              (to) => to.Address === 'testuser@example.com',
-            ),
+          (msg) => msg.To.some((to) => to.Address === 'testuser@example.com'),
           15_000,
         );
         expect(email).not.toBeNull();

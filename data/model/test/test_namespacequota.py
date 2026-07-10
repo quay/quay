@@ -242,17 +242,15 @@ class TestDeleteNamespaceQuotaNotificationFilter:
         """Deleting a quota removes quota_warning/quota_error notifications but not others."""
         quota = create_namespace_quota(self.user, 1073741824)
 
-        create_namespace_notification(
-            self.user, "quota_warning", "email", {"email": "a@b.com"}, {}
-        )
-        create_namespace_notification(
-            self.user, "quota_error", "email", {"email": "a@b.com"}, {}
-        )
+        create_namespace_notification(self.user, "quota_warning", "email", {"email": "a@b.com"}, {})
+        create_namespace_notification(self.user, "quota_error", "email", {"email": "a@b.com"}, {})
 
         assert list(list_namespace_notifications(self.user.username, event_name="quota_warning"))
         assert list(list_namespace_notifications(self.user.username, event_name="quota_error"))
 
         delete_namespace_quota(quota)
 
-        assert not list(list_namespace_notifications(self.user.username, event_name="quota_warning"))
+        assert not list(
+            list_namespace_notifications(self.user.username, event_name="quota_warning")
+        )
         assert not list(list_namespace_notifications(self.user.username, event_name="quota_error"))

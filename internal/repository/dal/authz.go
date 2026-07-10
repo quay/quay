@@ -59,7 +59,7 @@ func (a *Authorizer) CanAdminRepository(ctx context.Context, principal *auth.Pri
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 // CanPullRepository reports whether principal can pull repo contents.

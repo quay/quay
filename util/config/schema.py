@@ -1626,6 +1626,11 @@ CONFIG_SCHEMA = {
             "description": "Enables configuration, caching, and validation for quota management feature",
             "x-example": False,
         },
+        "FEATURE_QUOTA_NOTIFICATIONS": {
+            "type": "boolean",
+            "description": "Enables quota threshold notifications via namespace notification channels",
+            "x-example": False,
+        },
         "FEATURE_QUOTA_SUPPRESS_FAILURES": {
             "type": "boolean",
             "description": "Catches and suppresses quota failures during image push and garbage collection",
@@ -1655,6 +1660,11 @@ CONFIG_SCHEMA = {
             "type": "int",
             "description": "The amount of namespaces that will be calculated for quota backfill on wakeup of the backfill worker.",
             "x-example": 100,
+        },
+        "QUOTA_NOTIFICATION_COOLDOWN_SECONDS": {
+            "type": "int",
+            "description": "Minimum seconds between duplicate quota notifications for the same namespace and threshold",
+            "x-example": 86400,
         },
         "QUOTA_INVALIDATE_TOTALS": {
             "type": "boolean",

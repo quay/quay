@@ -1,14 +1,14 @@
 """add_namespace_notification_tables
 
 Revision ID: 6715e4719375
-Revises: d064a4f00d4a
+Revises: b30800b1d271
 Create Date: 2026-06-15 05:05:54.770716
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "6715e4719375"
-down_revision = "d064a4f00d4a"
+down_revision = "b30800b1d271"
 
 import sqlalchemy as sa
 

@@ -15,9 +15,7 @@ test.describe(
       await authenticatedPage.getByTestId('Notifications').click();
 
       // Create a webhook notification
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
       await authenticatedPage
         .getByTestId('ns-notification-event-dropdown')
         .click();
@@ -32,9 +30,7 @@ test.describe(
       await authenticatedPage
         .getByTestId('ns-notification-title')
         .fill('Admin Notification');
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify created
       await expect(
@@ -60,68 +56,70 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('non-admin org member cannot access notification management', async ({
-      authenticatedPage,
-      superuserApi,
-    }) => {
-      // Create org as superuser — testuser is NOT an admin
-      const org = await superuserApi.organization('nsnotifnoadmin');
+    test(
+      'non-admin org member cannot access notification management',
+      {tag: '@superuser'},
+      async ({authenticatedPage, superuserApi}) => {
+        // Create org as superuser — testuser is NOT an admin
+        const org = await superuserApi.organization('nsnotifnoadmin');
 
-      // Add testuser as a member via a team with 'member' role
-      const team = await superuserApi.team(org.name, 'members', 'member');
-      await superuserApi.teamMember(
-        org.name,
-        team.name,
-        TEST_USERS.user.username,
-      );
+        // Add testuser as a member via a team with 'member' role
+        const team = await superuserApi.team(org.name, 'members', 'member');
+        await superuserApi.teamMember(
+          org.name,
+          team.name,
+          TEST_USERS.user.username,
+        );
 
-      // Navigate to org settings as non-admin testuser
-      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        // Navigate to org settings as non-admin testuser
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
-      // Either the Notifications tab is hidden, or the create button is not available
-      const notifTab = authenticatedPage.getByTestId('Notifications');
-      if (await notifTab.isVisible()) {
-        await notifTab.click();
-        await expect(
-          authenticatedPage.getByTestId('create-ns-notification-btn'),
-        ).not.toBeVisible();
-      }
-    });
+        // Either the Notifications tab is hidden, or the create button is not available
+        const notifTab = authenticatedPage.getByTestId('Notifications');
+        if (await notifTab.isVisible()) {
+          await notifTab.click();
+          await expect(
+            authenticatedPage.getByTestId('create-ns-notification-btn'),
+          ).not.toBeVisible();
+        }
+      },
+    );
 
-    test('superuser can manage notifications on any org via API', async ({
-      superuserApi,
-      api,
-    }) => {
-      // Create org as testuser
-      const org = await api.organization('nsnotifsu');
+    test(
+      'superuser can manage notifications on any org via API',
+      {tag: '@superuser'},
+      async ({superuserApi, api}) => {
+        // Create org as testuser
+        const org = await api.organization('nsnotifsu');
 
-      // Superuser creates a notification on testuser's org
-      const notification = await superuserApi.namespaceNotification(
-        org.name,
-        'quota_warning',
-        'webhook',
-        {url: 'https://example.com/hook'},
-        {},
-        'Superuser Notification',
-      );
+        // Superuser creates a notification on testuser's org
+        const notification = await superuserApi.namespaceNotification(
+          org.name,
+          'quota_warning',
+          'webhook',
+          {url: 'https://example.com/hook'},
+          {},
+          'Superuser Notification',
+        );
 
-      // Verify notification exists
-      const list =
-        await superuserApi.raw.getNamespaceNotifications(org.name);
-      expect(list.notifications).toHaveLength(1);
-      expect(list.notifications[0].uuid).toBe(notification.uuid);
+        // Verify notification exists
+        const list = await superuserApi.raw.getNamespaceNotifications(org.name);
+        expect(list.notifications).toHaveLength(1);
+        expect(list.notifications[0].uuid).toBe(notification.uuid);
 
-      // Superuser deletes it
-      await superuserApi.raw.deleteNamespaceNotification(
-        org.name,
-        notification.uuid,
-      );
+        // Superuser deletes it
+        await superuserApi.raw.deleteNamespaceNotification(
+          org.name,
+          notification.uuid,
+        );
 
-      // Verify deleted
-      const listAfter =
-        await superuserApi.raw.getNamespaceNotifications(org.name);
-      expect(listAfter.notifications).toHaveLength(0);
-    });
+        // Verify deleted
+        const listAfter = await superuserApi.raw.getNamespaceNotifications(
+          org.name,
+        );
+        expect(listAfter.notifications).toHaveLength(0);
+      },
+    );
 
     test('unauthenticated API requests are rejected', async ({
       api,

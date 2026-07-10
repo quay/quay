@@ -17,10 +17,7 @@ export interface NamespaceNotificationFilter {
   status: NamespaceNotificationStatus[];
 }
 
-export function useNamespaceNotifications(
-  orgname: string,
-  isUser = false,
-) {
+export function useNamespaceNotifications(orgname: string, isUser = false) {
   const [filter, setFilter] = useState<NamespaceNotificationFilter>({
     event: [],
     status: [],

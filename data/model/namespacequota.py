@@ -297,9 +297,7 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     try:
         _do_trigger_quota_notification(namespace_name, quota_result)
     except Exception:
-        logger.exception(
-            "Failed to trigger quota notification for namespace %s", namespace_name
-        )
+        logger.exception("Failed to trigger quota notification for namespace %s", namespace_name)
 
 
 def _do_trigger_quota_notification(namespace_name, quota_result):
@@ -324,7 +322,9 @@ def _do_trigger_quota_notification(namespace_name, quota_result):
 
     event_name = "quota_warning" if severity == "Warning" else "quota_error"
 
-    if not model.notification.list_namespace_notifications(namespace_name, event_name=event_name).exists():
+    if not model.notification.list_namespace_notifications(
+        namespace_name, event_name=event_name
+    ).exists():
         return
 
     if not claim_notification(namespace_user, threshold_percent):
@@ -382,7 +382,7 @@ def maybe_trigger_retroactive_notification(
         quota_limit_bytes = quota.limit_bytes
         bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
 
-        if usage_bytes < bytes_allowed:
+        if usage_bytes <= bytes_allowed:
             return
 
         quota_result = {
