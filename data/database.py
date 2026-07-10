@@ -2223,6 +2223,7 @@ class ManifestSecurityStatus(BaseModel):
     indexer_hash = CharField(max_length=128, index=True)
     indexer_version = ClientEnumField(IndexerVersion)
     metadata_json = JSONField(default={})
+    error_count = IntegerField(default=0)
 
 
 class ProxyCacheConfig(BaseModel):

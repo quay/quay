@@ -1,10 +1,6 @@
 import logging
 import time
-import urllib
-from collections import namedtuple
 from datetime import datetime, timedelta
-
-from peewee import JOIN, IntegrityError, OperationalError, fn
 
 import features
 from data.database import (
@@ -22,6 +18,7 @@ from data.secscan_model.interface import SecurityScannerIndexerInterface
 from data.secscan_model.secscan_v4_model import IndexReportState, _has_container_layers
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import (
+    secscan_v2_claim_status,
     secscan_v2_cycle_duration,
     secscan_v2_manifests_claimed,
     secscan_v2_scan_duration,
@@ -40,6 +37,7 @@ from util.secscan.validator import V4SecurityConfigValidator
 logger = logging.getLogger(__name__)
 
 DEFAULT_REINDEX_THRESHOLD = 86400
+DEFAULT_MAX_SCAN_RETRIES = 3
 STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
 
@@ -89,63 +87,57 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         )
         stale_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
 
-        claimed_new = self._claim_unindexed_manifests(batch_size)
+        claimed = self._find_and_claim_batch(
+            batch_size, reindex_threshold, stale_threshold, indexer_hash
+        )
 
-        remaining = batch_size - len(claimed_new)
-        claimed_mss = []
-        if remaining > 0:
-            claimed_mss = self._find_and_claim_batch(
-                remaining, reindex_threshold, stale_threshold, indexer_hash
-            )
+        secscan_v2_manifests_claimed.observe(len(claimed))
 
-        total_claimed = len(claimed_new) + len(claimed_mss)
-        secscan_v2_manifests_claimed.observe(total_claimed)
-
-        if total_claimed == 0:
+        if not claimed:
             logger.debug("No manifests to index this cycle")
             return
 
-        for candidate in claimed_new:
-            self._index_manifest_by_id(candidate.id, candidate.repository_id)
-
-        for mss_row in claimed_mss:
+        for mss_row in claimed:
             self._index_manifest_by_id(mss_row.manifest_id, mss_row.repository_id)
 
         cycle_duration = time.monotonic() - cycle_start
         secscan_v2_cycle_duration.observe(cycle_duration)
-        logger.debug(
-            "Indexing cycle complete: %d manifests in %.1fs", total_claimed, cycle_duration
-        )
+        logger.debug("Indexing cycle complete: %d manifests in %.1fs", len(claimed), cycle_duration)
 
     def _find_and_claim_batch(self, batch_size, reindex_threshold, stale_threshold, indexer_hash):
+        max_retries = self.app.config.get(
+            "SECURITY_SCANNER_V2_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
+        )
+
         with db_transaction():
-            query = (
-                ManifestSecurityStatus.select()
-                .where(
-                    (ManifestSecurityStatus.index_status == IndexStatus.PENDING)
-                    | (
-                        (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
-                        & (ManifestSecurityStatus.last_indexed < reindex_threshold)
-                    )
-                    | (
-                        (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
-                        & (ManifestSecurityStatus.last_indexed < stale_threshold)
-                    )
-                    | (
-                        (
-                            ManifestSecurityStatus.index_status.not_in(
-                                [
-                                    IndexStatus.MANIFEST_UNSUPPORTED,
-                                    IndexStatus.MANIFEST_LAYER_TOO_LARGE,
-                                    IndexStatus.IN_PROGRESS,
-                                ]
-                            )
-                        )
-                        & (ManifestSecurityStatus.indexer_hash != indexer_hash)
-                        & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+            conditions = (ManifestSecurityStatus.index_status == IndexStatus.PENDING) | (
+                (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
+                & (ManifestSecurityStatus.last_indexed < stale_threshold)
+            )
+
+            conditions |= (
+                (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+                & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+                & (ManifestSecurityStatus.error_count < max_retries)
+            )
+            conditions |= (
+                (
+                    ManifestSecurityStatus.index_status.not_in(
+                        [
+                            IndexStatus.MANIFEST_UNSUPPORTED,
+                            IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                            IndexStatus.IN_PROGRESS,
+                        ]
                     )
                 )
-                .order_by(ManifestSecurityStatus.last_indexed.asc())
+                & (ManifestSecurityStatus.indexer_hash != indexer_hash)
+                & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+            )
+
+            query = (
+                ManifestSecurityStatus.select()
+                .where(conditions)
+                .order_by(ManifestSecurityStatus.last_indexed.desc())
                 .limit(batch_size)
             )
 
@@ -153,6 +145,9 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
             if not rows:
                 return []
+
+            for row in rows:
+                secscan_v2_claim_status.labels(status=row.index_status.name).inc()
 
             row_ids = [r.id for r in rows]
             now = datetime.utcnow()
@@ -163,43 +158,6 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             ).where(ManifestSecurityStatus.id.in_(row_ids)).execute()
 
             return rows
-
-    def _claim_unindexed_manifests(self, batch_size):
-        candidates = list(
-            Manifest.select(Manifest.id, Manifest.repository, can_use_read_replica=True)
-            .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
-            .where(ManifestSecurityStatus.id >> None)
-            .order_by(Manifest.id.desc())
-            .limit(batch_size * 2)
-        )
-
-        if not candidates:
-            return []
-
-        claimed = []
-        now = datetime.utcnow()
-        for candidate in candidates:
-            try:
-                with db_transaction():
-                    ManifestSecurityStatus.create(
-                        manifest=candidate.id,
-                        repository=candidate.repository_id,
-                        index_status=IndexStatus.IN_PROGRESS,
-                        indexer_hash="in_progress_v2",
-                        indexer_version=IndexerVersion.V4,
-                        last_indexed=now,
-                        metadata_json={},
-                    )
-                claimed.append(candidate)
-                if len(claimed) >= batch_size:
-                    break
-            except IntegrityError:
-                continue
-            except OperationalError:
-                logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
-                continue
-
-        return claimed
 
     def _index_manifest_by_id(self, manifest_id, repository_id):
         try:
@@ -264,10 +222,20 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         secscan_v2_scan_duration.observe(scan_duration)
 
         if report["state"] == IndexReportState.Index_Finished:
-            index_status = IndexStatus.COMPLETED
             self._handle_scan_success(manifest, candidate)
+            ManifestSecurityStatus.update(
+                error_json=report["err"],
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash=state,
+                indexer_version=IndexerVersion.V4,
+                metadata_json={},
+                error_count=0,
+                last_indexed=datetime.utcnow(),
+            ).where(ManifestSecurityStatus.manifest == candidate).execute()
+            secscan_v2_scan_result.labels(result="completed").inc()
         elif report["state"] == IndexReportState.Index_Error:
-            index_status = IndexStatus.FAILED
+            self._mark_failed(candidate.id, state, report["err"])
+            secscan_v2_scan_result.labels(result="failed").inc()
         else:
             self._mark_failed(
                 candidate.id,
@@ -280,24 +248,6 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 report.get("state"),
                 candidate.id,
             )
-            return
-
-        with db_transaction():
-            ManifestSecurityStatus.delete().where(
-                ManifestSecurityStatus.manifest == candidate
-            ).execute()
-            ManifestSecurityStatus.create(
-                manifest=candidate,
-                repository=candidate.repository,
-                error_json=report["err"],
-                index_status=index_status,
-                indexer_hash=state,
-                indexer_version=IndexerVersion.V4,
-                metadata_json={},
-            )
-
-        result_label = "completed" if index_status == IndexStatus.COMPLETED else "failed"
-        secscan_v2_scan_result.labels(result=result_label).inc()
 
     def _handle_scan_success(self, manifest, candidate):
         if not manifest.has_been_scanned:
@@ -392,6 +342,8 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             indexer_hash=indexer_hash,
             error_json=error_json,
             last_indexed=datetime.utcnow(),
+            error_count=ManifestSecurityStatus.error_count + 1,
+            metadata_json={"last_error": error_json},
         ).where(
             ManifestSecurityStatus.manifest == manifest_id,
             ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
