@@ -24,7 +24,6 @@ from data.model import oauth as oauth_model
 from data.model.oauth import (
     DEFAULT_TOKEN_EXPIRATION_SECONDS,
     MAX_TOKEN_DISPLAY_NAME_LENGTH,
-    MAX_TOKENS_PER_APPLICATION,
     normalize_scope,
     validate_expiration,
     validate_token_display_name,
@@ -47,6 +46,26 @@ from endpoints.exception import NotFound, Unauthorized
 logger = logging.getLogger(__name__)
 
 
+MINTABLE_SCOPE_PERMISSION_FACTORIES = {
+    scopes.READ_REPO: lambda orgname, user: ReadRepositoryPermission(orgname, ""),
+    scopes.WRITE_REPO: lambda orgname, user: ModifyRepositoryPermission(orgname, ""),
+    scopes.ADMIN_REPO: lambda orgname, user: AdministerRepositoryPermission(orgname, ""),
+    scopes.CREATE_REPO: lambda orgname, user: CreateRepositoryPermission(orgname),
+    scopes.READ_USER: lambda orgname, user: UserReadPermission(user.username),
+    scopes.ADMIN_USER: lambda orgname, user: UserAdminPermission(user.username),
+    scopes.ORG_ADMIN: lambda orgname, user: AdministerOrganizationPermission(orgname),
+    scopes.SUPERUSER: lambda orgname, user: SuperUserPermission(),
+}
+
+
+def _permission_for_scope(scope, orgname, user):
+    permission_factory = MINTABLE_SCOPE_PERMISSION_FACTORIES.get(scope)
+    if permission_factory is None:
+        return None
+
+    return permission_factory(orgname, user)
+
+
 def _can_mint_scope(orgname, normalized_scope, user):
     current_oauth_token = get_validated_oauth_token()
     if current_oauth_token is not None and not scopes.is_subset_string(
@@ -55,24 +74,31 @@ def _can_mint_scope(orgname, normalized_scope, user):
         return False
 
     requested_scopes = scopes.scopes_from_scope_string(normalized_scope)
-    scope_permissions = {
-        scopes.READ_REPO: ReadRepositoryPermission(orgname, ""),
-        scopes.WRITE_REPO: ModifyRepositoryPermission(orgname, ""),
-        scopes.ADMIN_REPO: AdministerRepositoryPermission(orgname, ""),
-        scopes.CREATE_REPO: CreateRepositoryPermission(orgname),
-        scopes.READ_USER: UserReadPermission(user.username),
-        scopes.ADMIN_USER: UserAdminPermission(user.username),
-        scopes.ORG_ADMIN: AdministerOrganizationPermission(orgname),
-        scopes.SUPERUSER: SuperUserPermission(),
-    }
+    for scope in requested_scopes:
+        permission = _permission_for_scope(scope, orgname, user)
+        if permission is None or not permission.can():
+            return False
 
-    return all(scope_permissions[scope].can() for scope in requested_scopes)
+    return True
+
+
+def _lookup_application_or_raise(orgname, client_id):
+    try:
+        org = model.organization.get_organization(orgname)
+    except model.InvalidOrganizationException:
+        raise NotFound()
+
+    application = oauth_model.lookup_application(org, client_id)
+    if not application:
+        raise NotFound()
+
+    return application
 
 
 def token_view(token, include_secret=False, secret=None):
     view = {
         "uuid": token.uuid,
-        "name": getattr(token, "display_name", None),
+        "name": token.display_name,
         "scope": token.scope,
         "expires_at": token.expires_at.isoformat() + "Z" if token.expires_at else None,
         "created": token.created.isoformat() + "Z" if token.created else None,
@@ -161,14 +187,7 @@ class OrganizationApplicationTokens(ApiResource):
         ):
             raise Unauthorized()
 
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
-        application = oauth_model.lookup_application(org, client_id)
-        if not application:
-            raise NotFound()
+        application = _lookup_application_or_raise(orgname, client_id)
 
         tokens, next_page_token = oauth_model.list_application_tokens(
             application, page_token=page_token
@@ -187,14 +206,7 @@ class OrganizationApplicationTokens(ApiResource):
         if not (permission.can() or allow_if_superuser_with_full_access()):
             raise Unauthorized()
 
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
-        application = oauth_model.lookup_application(org, client_id)
-        if not application:
-            raise NotFound()
+        application = _lookup_application_or_raise(orgname, client_id)
 
         body = request.get_json()
         try:
@@ -227,13 +239,12 @@ class OrganizationApplicationTokens(ApiResource):
                 user_obj=user,
                 scope=normalized_scope,
                 expiration_seconds=expiration,
-                max_active_tokens=MAX_TOKENS_PER_APPLICATION,
                 display_name=display_name,
             )
-        except oauth_model.TokenLimitExceeded:
+        except oauth_model.TokenLimitExceeded as e:
             return {
                 "message": "Token limit reached: maximum %d non-expired tokens per application"
-                % MAX_TOKENS_PER_APPLICATION
+                % e.max_active_tokens
             }, 400
 
         log_action(
@@ -271,14 +282,7 @@ class OrganizationApplicationToken(ApiResource):
         if not (permission.can() or allow_if_superuser_with_full_access()):
             raise Unauthorized()
 
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
-        application = oauth_model.lookup_application(org, client_id)
-        if not application:
-            raise NotFound()
+        application = _lookup_application_or_raise(orgname, client_id)
 
         deleted = oauth_model.delete_application_token(application, token_uuid)
         if not deleted:

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+from auth import scopes
 from data import model
 from data.database import User
 from data.model import oauth as oauth_model
@@ -11,8 +12,10 @@ from data.model.oauth import (
     MAX_TOKEN_DISPLAY_NAME_LENGTH,
 )
 from endpoints.api.organization_application_tokens import (
+    MINTABLE_SCOPE_PERMISSION_FACTORIES,
     OrganizationApplicationToken,
     OrganizationApplicationTokens,
+    _can_mint_scope,
     token_view,
 )
 from endpoints.api.test.shared import conduct_api_call
@@ -227,6 +230,34 @@ def test_create_token_enforces_scope_subset_for_oauth_caller(app):
         ).json
 
     assert created["scope"] == "repo:read"
+
+
+def test_can_mint_scope_has_explicit_mapping_for_known_scopes():
+    assert set(MINTABLE_SCOPE_PERMISSION_FACTORIES) == set(scopes.ALL_SCOPES.values())
+
+
+def test_can_mint_scope_denies_unmapped_valid_scope():
+    new_scope = scopes.Scope(
+        scope="new:scope",
+        icon="fa-plus",
+        dangerous=False,
+        title="New Scope",
+        description="New scope added without a token minting permission mapping.",
+    )
+
+    with patch.dict(scopes.ALL_SCOPES, {new_scope.scope: new_scope}):
+        with patch(
+            "endpoints.api.organization_application_tokens.get_validated_oauth_token",
+            return_value=None,
+        ):
+            assert (
+                _can_mint_scope(
+                    "buynlarge",
+                    new_scope.scope,
+                    SimpleNamespace(username="devtable"),
+                )
+                is False
+            )
 
 
 def test_create_token_non_admin_rejected(app):
@@ -589,9 +620,13 @@ def test_token_limit_enforced(app):
     user = model.user.get_user("devtable")
     oauth_model.create_oauth_api_token(application, user, "repo:read")
 
-    with patch("endpoints.api.organization_application_tokens.MAX_TOKENS_PER_APPLICATION", 1):
+    with patch.dict(
+        oauth_model.config.app_config,
+        {"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": 1},
+        clear=False,
+    ):
         with client_with_identity("devtable", app) as cl:
-            conduct_api_call(
+            response = conduct_api_call(
                 cl,
                 OrganizationApplicationTokens,
                 "POST",
@@ -599,6 +634,10 @@ def test_token_limit_enforced(app):
                 {"name": "Limited token", "scope": "repo:read"},
                 400,
             )
+
+    assert response.json["message"] == (
+        "Token limit reached: maximum 1 non-expired tokens per application"
+    )
 
 
 def test_create_and_revoke_audit_logs(app):

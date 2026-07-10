@@ -57,12 +57,13 @@ var knownUnmapped = map[string]bool{
 	"LOG_ARCHIVE_PATH":                 true,
 
 	// OAuth
-	"DIRECT_OAUTH_CLIENTID_WHITELIST": true,
-	"GITHUB_LOGIN_CONFIG":             true,
-	"BITBUCKET_TRIGGER_CONFIG":        true,
-	"GITHUB_TRIGGER_CONFIG":           true,
-	"GOOGLE_LOGIN_CONFIG":             true,
-	"GITLAB_TRIGGER_CONFIG":           true,
+	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
+	"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": true,
+	"GITHUB_LOGIN_CONFIG":                   true,
+	"BITBUCKET_TRIGGER_CONFIG":              true,
+	"GITHUB_TRIGGER_CONFIG":                 true,
+	"GOOGLE_LOGIN_CONFIG":                   true,
+	"GITLAB_TRIGGER_CONFIG":                 true,
 
 	// Branding
 	"BRANDING":           true,

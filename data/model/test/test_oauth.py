@@ -161,29 +161,56 @@ def test_count_active_tokens_excludes_expired(initialized_db):
     assert model.oauth.count_active_tokens(application) == 1
 
 
-def test_create_oauth_api_token_under_limit_enforces_limit(initialized_db):
+def test_create_oauth_api_token_under_limit_enforces_configured_limit(initialized_db):
     owner = model.user.get_user("devtable")
     application = model.oauth.create_application(owner, "limited-token-create", "", "")
 
-    token, access_token = model.oauth.create_oauth_api_token_under_limit(
-        application,
-        owner,
-        "repo:read",
-        max_active_tokens=1,
-    )
-
-    assert token.application == application
-    assert token.authorized_user == owner
-    assert token.scope == "repo:read"
-    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
-
-    with pytest.raises(model.oauth.TokenLimitExceeded):
-        model.oauth.create_oauth_api_token_under_limit(
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": 1},
+        clear=False,
+    ):
+        token, access_token = model.oauth.create_oauth_api_token_under_limit(
             application,
             owner,
             "repo:read",
-            max_active_tokens=1,
         )
+
+        assert token.application == application
+        assert token.authorized_user == owner
+        assert token.scope == "repo:read"
+        assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+        with pytest.raises(model.oauth.TokenLimitExceeded) as exc_info:
+            model.oauth.create_oauth_api_token_under_limit(
+                application,
+                owner,
+                "repo:read",
+            )
+
+    assert exc_info.value.max_active_tokens == 1
+
+
+def test_create_oauth_api_token_under_limit_allows_multiple_tokens_when_unconfigured(
+    initialized_db,
+):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "unlimited-token-create", "", "")
+
+    with patch.dict(model.oauth.config.app_config, {}, clear=True):
+        token_one, _ = model.oauth.create_oauth_api_token_under_limit(
+            application,
+            owner,
+            "repo:read",
+        )
+        token_two, _ = model.oauth.create_oauth_api_token_under_limit(
+            application,
+            owner,
+            "repo:read",
+        )
+
+    assert token_one.uuid != token_two.uuid
+    assert model.oauth.count_active_tokens(application) == 2
 
 
 def test_list_application_tokens_excludes_expired_tokens(initialized_db):

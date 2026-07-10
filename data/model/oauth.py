@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import posixpath
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 from math import isfinite
 from typing import Any
@@ -38,7 +39,6 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_PREFIX_LENGTH = 20
 ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
-MAX_TOKENS_PER_APPLICATION = 1000
 DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
 MAX_TOKEN_EXPIRATION_SECONDS = DEFAULT_TOKEN_EXPIRATION_SECONDS
 MAX_TOKEN_DISPLAY_NAME_LENGTH = 255
@@ -50,6 +50,10 @@ BOOTSTRAP_TOKEN_LOCK_ID = compute_advisory_lock_id("bootstrap_token", 0)
 
 class TokenLimitExceeded(Exception):
     """Raised when an OAuth application has reached its active token limit."""
+
+    def __init__(self, max_active_tokens: int):
+        self.max_active_tokens = max_active_tokens
+        super().__init__("maximum %d non-expired tokens per application" % max_active_tokens)
 
 
 def normalize_scope(scope_string: str) -> str:
@@ -599,20 +603,25 @@ def create_oauth_api_token_under_limit(
     user_obj: User,
     scope: str,
     expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
-    max_active_tokens: int = MAX_TOKENS_PER_APPLICATION,
     display_name: str | None = None,
 ) -> tuple[OAuthAccessToken, str]:
-    """Create an OAuth API token while atomically enforcing the active-token limit."""
-    with db_transaction():
-        locked_application = db_for_update(
-            OAuthApplication.select().where(OAuthApplication.id == application.id)
-        ).get()
+    """Create an OAuth API token while enforcing the configured active-token limit."""
+    max_active_tokens = (config.app_config or {}).get("OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT")
+    transaction = db_transaction() if max_active_tokens is not None else nullcontext()
 
-        if count_active_tokens(locked_application) >= max_active_tokens:
-            raise TokenLimitExceeded()
+    with transaction:
+        token_application = application
+        if max_active_tokens is not None:
+            max_active_tokens = int(max_active_tokens)
+            token_application = db_for_update(
+                OAuthApplication.select().where(OAuthApplication.id == application.id)
+            ).get()
+
+            if count_active_tokens(token_application) >= max_active_tokens:
+                raise TokenLimitExceeded(max_active_tokens)
 
         return create_oauth_api_token(
-            application=locked_application,
+            application=token_application,
             user_obj=user_obj,
             scope=scope,
             expiration_seconds=expiration_seconds,
