@@ -1,9 +1,6 @@
 import pytest
 
-from data.database import (
-    NamespaceNotification,
-    QuotaNotificationState,
-)
+from data.database import NamespaceNotification, QuotaNotificationState
 from data.model.namespacequota import (
     create_namespace_quota,
     create_namespace_quota_limit,
