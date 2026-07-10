@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytest
+
 from auth.scopes import READ_REPO
 from data import model
 from data.database import LogEntryKind, OAuthAccessToken
