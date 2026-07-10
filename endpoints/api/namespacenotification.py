@@ -137,7 +137,6 @@ class OrgNamespaceNotificationList(ApiResource):
         return {"notifications": [_notification_view(n) for n in notifications]}
 
     @nickname("createOrgNotification")
-    @validate_json_request("NotificationCreateRequest")
     def post(self, orgname):
         _check_org_admin(orgname)
 
@@ -147,6 +146,16 @@ class OrgNamespaceNotificationList(ApiResource):
             raise NotFound()
 
         parsed = request.get_json()
+        if parsed is None:
+            raise InvalidRequest("Missing JSON body")
+
+        from jsonschema import ValidationError, validate as json_validate
+
+        try:
+            json_validate(parsed, self.schemas["NotificationCreateRequest"])
+        except ValidationError as ex:
+            raise InvalidRequest(str(ex))
+
         _validate_create_request(parsed, orgname)
 
         new_notification = model.notification.create_namespace_notification(
