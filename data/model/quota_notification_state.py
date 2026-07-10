@@ -116,13 +116,23 @@ def record_notification(namespace_user, threshold_percent):
         )
 
         if state is None:
-            QuotaNotificationState.create(
-                namespace=namespace_user,
-                threshold_percent=threshold_percent,
-                last_notified_at=now,
-                cleared=False,
+            try:
+                QuotaNotificationState.create(
+                    namespace=namespace_user,
+                    threshold_percent=threshold_percent,
+                    last_notified_at=now,
+                    cleared=False,
+                )
+                return
+            except IntegrityError:
+                pass
+
+            state = QuotaNotificationState.get_or_none(
+                QuotaNotificationState.namespace == namespace_user,
+                QuotaNotificationState.threshold_percent == threshold_percent,
             )
-        else:
+
+        if state is not None:
             state.last_notified_at = now
             state.cleared = False
             state.save()

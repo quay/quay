@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Alert,
   AlertActionCloseButton,
@@ -23,11 +23,17 @@ import {
   NamespaceNotification,
 } from 'src/resources/NamespaceNotificationResource';
 
-export default function NamespaceNotificationsKebab({
+interface NamespaceNotificationsKebabProps {
+  orgname: string;
+  isUser?: boolean;
+  notification: NamespaceNotification;
+}
+
+const NamespaceNotificationsKebab: React.FC<NamespaceNotificationsKebabProps> = ({
   orgname,
   isUser = false,
   notification,
-}: NamespaceNotificationsKebabProps) {
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -183,10 +189,6 @@ export default function NamespaceNotificationsKebab({
       </Dropdown>
     </>
   );
-}
+};
 
-interface NamespaceNotificationsKebabProps {
-  orgname: string;
-  isUser?: boolean;
-  notification: NamespaceNotification;
-}
+export default NamespaceNotificationsKebab;

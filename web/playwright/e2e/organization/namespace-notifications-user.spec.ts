@@ -46,7 +46,7 @@ test.describe(
     }) => {
       // Create notification as admin for their own namespace
       const createResp = await adminClient.post(
-        '/api/v1/user/notifications',
+        '/api/v1/user/namespacenotifications',
         {
           event: 'quota_warning',
           method: 'webhook',
@@ -60,13 +60,13 @@ test.describe(
 
       // Regular user attempts to delete admin's notification
       const deleteResp = await userClient.delete(
-        `/api/v1/user/notifications/${uuid}`,
+        `/api/v1/user/namespacenotifications/${uuid}`,
       );
       // Should get 404 (notification belongs to different user)
       expect([403, 404]).toContain(deleteResp.status());
 
       // Clean up — admin deletes own notification
-      await adminClient.delete(`/api/v1/user/notifications/${uuid}`);
+      await adminClient.delete(`/api/v1/user/namespacenotifications/${uuid}`);
     });
 
     test(

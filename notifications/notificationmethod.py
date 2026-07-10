@@ -336,7 +336,8 @@ class FlowdockMethod(NotificationMethod):
             ),
             "from_name": owner.username,
             "project": (
-                notification_obj.repository.namespace_name + " " + notification_obj.repository.name
+                notification_obj.repository.namespace_name
+                + (" " + notification_obj.repository.name if notification_obj.repository.name else "")
             ),
             "tags": ["#" + event_handler.event_name()],
             "link": notification_data["event_data"]["homepage"],

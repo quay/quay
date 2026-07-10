@@ -18,6 +18,7 @@ export function useUpdateNamespaceNotifications(
     mutate: create,
     error: errorCreatingNotification,
     isSuccess: successCreatingNotification,
+    isLoading: isCreatingNotification,
     reset: resetCreatingNotification,
   } = useMutation(
     async (notification: NamespaceNotification) =>
@@ -91,6 +92,7 @@ export function useUpdateNamespaceNotifications(
   return {
     create,
     successCreatingNotification,
+    isCreatingNotification,
     errorCreatingNotification: errorCreationMessage,
     resetCreatingNotification,
 

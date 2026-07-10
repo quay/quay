@@ -274,7 +274,18 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     """
     Spawn external namespace notifications when a quota threshold is crossed,
     gated behind FEATURE_QUOTA_NOTIFICATIONS with dedup via the state machine.
+
+    Never raises — notification side effects must not block image pushes.
     """
+    try:
+        _do_trigger_quota_notification(namespace_name, quota_result)
+    except Exception:
+        logger.exception(
+            "Failed to trigger quota notification for namespace %s", namespace_name
+        )
+
+
+def _do_trigger_quota_notification(namespace_name, quota_result):
     import features
     from data.model.quota_notification_state import claim_notification, release_claim
     from notifications import spawn_namespace_notification
@@ -302,16 +313,21 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     quota_limit_bytes = quota_result.get("quota_limit_bytes", 0)
     usage_percent = int(usage_bytes * 100 / quota_limit_bytes) if quota_limit_bytes else 0
 
-    enqueued = spawn_namespace_notification(
-        namespace_name,
-        event_name,
-        extra_data={
-            "threshold_percent": threshold_percent,
-            "usage_bytes": usage_bytes,
-            "limit_bytes": quota_limit_bytes,
-            "usage_percent": usage_percent,
-        },
-    )
+    try:
+        enqueued = spawn_namespace_notification(
+            namespace_name,
+            event_name,
+            extra_data={
+                "threshold_percent": threshold_percent,
+                "usage_bytes": usage_bytes,
+                "limit_bytes": quota_limit_bytes,
+                "usage_percent": usage_percent,
+            },
+        )
+    except Exception:
+        release_claim(namespace_user, threshold_percent)
+        raise
+
     if not enqueued:
         release_claim(namespace_user, threshold_percent)
         return
@@ -330,27 +346,35 @@ def maybe_trigger_retroactive_notification(
     """
     Check if current usage exceeds a specific threshold and fire a notification if so.
     Called when a quota limit is created or updated.
+
+    Never raises — notification side effects must not fail quota CRUD operations.
     """
-    import features
+    try:
+        import features
 
-    if not features.QUOTA_NOTIFICATIONS:
-        return
+        if not features.QUOTA_NOTIFICATIONS:
+            return
 
-    usage_bytes = get_namespace_size(namespace_name)
-    quota_limit_bytes = quota.limit_bytes
-    bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
+        usage_bytes = get_namespace_size(namespace_name)
+        quota_limit_bytes = quota.limit_bytes
+        bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
 
-    if usage_bytes <= bytes_allowed:
-        return
+        if usage_bytes < bytes_allowed:
+            return
 
-    quota_result = {
-        "severity_level": quota_type_name,
-        "threshold_percent": threshold_percent,
-        "usage_bytes": usage_bytes,
-        "quota_limit_bytes": quota_limit_bytes,
-        "limit_bytes": bytes_allowed,
-    }
-    maybe_trigger_quota_notification(namespace_name, quota_result)
+        quota_result = {
+            "severity_level": quota_type_name,
+            "threshold_percent": threshold_percent,
+            "usage_bytes": usage_bytes,
+            "quota_limit_bytes": quota_limit_bytes,
+            "limit_bytes": bytes_allowed,
+        }
+        maybe_trigger_quota_notification(namespace_name, quota_result)
+    except Exception:
+        logger.exception(
+            "Failed to trigger retroactive quota notification for namespace %s",
+            namespace_name,
+        )
 
 
 def maybe_trigger_retroactive_notifications_for_quota(namespace_name, quota):

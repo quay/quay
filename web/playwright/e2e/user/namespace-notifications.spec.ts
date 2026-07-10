@@ -112,10 +112,6 @@ test.describe(
       await authenticatedPage.getByTestId('ns-method-email').click();
 
       await authenticatedPage
-        .getByTestId('ns-notification-email')
-        .fill('admin@example.com');
-
-      await authenticatedPage
         .getByTestId('ns-notification-title')
         .fill('User Quota Error Email');
 

@@ -131,11 +131,6 @@ test.describe(
         .click();
       await authenticatedPage.getByTestId('ns-method-email').click();
 
-      // Fill in email
-      await authenticatedPage
-        .getByTestId('ns-notification-email')
-        .fill('admin@example.com');
-
       // Fill in title
       await authenticatedPage
         .getByTestId('ns-notification-title')
@@ -239,10 +234,9 @@ test.describe(
         .click();
 
       // Select team as recipient in entity search
-      const entitySearch = authenticatedPage.getByTestId(
-        'ns-notification-entity-search',
-      );
-      await entitySearch.fill(team.name);
+      await authenticatedPage
+        .locator('#entity-search-input')
+        .fill(team.name);
       await authenticatedPage.getByText(team.name).click();
 
       // Fill in title
@@ -495,10 +489,9 @@ test.describe(
       ).toBeDisabled();
 
       // Select team as recipient
-      const entitySearch = authenticatedPage.getByTestId(
-        'ns-notification-entity-search',
-      );
-      await entitySearch.fill(team.name);
+      await authenticatedPage
+        .locator('#entity-search-input')
+        .fill(team.name);
       await authenticatedPage.getByText(team.name).click();
 
       // Submit should now be enabled

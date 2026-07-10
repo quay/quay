@@ -22,6 +22,7 @@ import {
 } from '@patternfly/react-table';
 import Empty from 'src/components/empty/Empty';
 import Conditional from 'src/components/empty/Conditional';
+import RequestError from 'src/components/errors/RequestError';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useNamespaceNotifications} from 'src/hooks/UseNamespaceNotifications';
 import {usePaginatedSortableTable} from 'src/hooks/usePaginatedSortableTable';
@@ -65,24 +66,24 @@ function NotificationConfig({
   switch (notification.method) {
     case NamespaceNotificationMethodType.email:
       return (
-        <FlexItem style={{color: 'grey'}}>
+        <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
           Sent to namespace contact or admin emails
         </FlexItem>
       );
     case NamespaceNotificationMethodType.slack:
       return (
-        <FlexItem style={{color: 'grey'}}>
+        <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
           Webhook URL: {(notification.config as any)?.url}
         </FlexItem>
       );
     case NamespaceNotificationMethodType.webhook:
       return (
         <>
-          <FlexItem style={{color: 'grey', marginBottom: '0px'}}>
+          <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)', marginBottom: 0}}>
             Webhook URL: {(notification.config as any)?.url}
           </FlexItem>
           <Conditional if={(notification.config as any)?.template !== ''}>
-            <FlexItem style={{color: 'grey'}}>
+            <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
               POST body template (optional):
               <ClipboardCopy
                 isCode
@@ -99,7 +100,7 @@ function NotificationConfig({
       );
     case NamespaceNotificationMethodType.quaynotification:
       return (
-        <FlexItem style={{color: 'grey'}}>
+        <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
           Recipient: {(notification.config as any)?.target?.name}
         </FlexItem>
       );
@@ -149,7 +150,7 @@ export default function NamespaceNotifications({
   }
 
   if (error) {
-    return <>Unable to load notifications</>;
+    return <RequestError message="Unable to load notifications" />;
   }
 
   if (notifications && notifications.length === 0) {

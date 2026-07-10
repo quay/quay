@@ -82,6 +82,7 @@ export default function NamespaceNotificationsCreateForm(
   const {
     create,
     successCreatingNotification,
+    isCreatingNotification,
     errorCreatingNotification,
     resetCreatingNotification,
   } = useUpdateNamespaceNotifications(props.orgname, props.isUser);
@@ -444,7 +445,8 @@ export default function NamespaceNotificationsCreateForm(
             <ActionGroup>
               <Button
                 data-testid="ns-notification-submit-btn"
-                isDisabled={!isFormComplete()}
+                isDisabled={!isFormComplete() || isCreatingNotification}
+                isLoading={isCreatingNotification}
                 onClick={handleSubmit}
                 variant="primary"
               >

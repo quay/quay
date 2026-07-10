@@ -1,7 +1,7 @@
 """add_namespace_notification_tables
 
 Revision ID: 6715e4719375
-Revises: b1a79fa8e630
+Revises: d064a4f00d4a
 Create Date: 2026-06-15 05:05:54.770716
 
 """
