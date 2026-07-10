@@ -167,7 +167,9 @@ class TestMaybeTriggerQuotaNotification:
         assert state is None
 
     @patch("features.QUOTA_NOTIFICATIONS", True)
-    @patch("notifications.spawn_namespace_notification", side_effect=RuntimeError("connection failed"))
+    @patch(
+        "notifications.spawn_namespace_notification", side_effect=RuntimeError("connection failed")
+    )
     def test_spawn_raises_releases_claim(self, mock_spawn, initialized_db):
         """When spawn raises an exception, claim is released and error is swallowed."""
         from data.database import QuotaNotificationState

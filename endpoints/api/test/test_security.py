@@ -7336,8 +7336,22 @@ SECURITY_TESTS: List[
     (UserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
     (UserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
     (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, None, 401),
-    (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "freshuser", 404),
-    (TestUserNamespaceNotification, "POST", USER_NS_NOTIFICATION_UUID_PARAMS, None, "devtable", 404),
+    (
+        TestUserNamespaceNotification,
+        "POST",
+        USER_NS_NOTIFICATION_UUID_PARAMS,
+        None,
+        "freshuser",
+        404,
+    ),
+    (
+        TestUserNamespaceNotification,
+        "POST",
+        USER_NS_NOTIFICATION_UUID_PARAMS,
+        None,
+        "devtable",
+        404,
+    ),
 ]
 
 

@@ -33,8 +33,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
       // Both tabs should exist as distinct, separate tabs
-      const notificationsTab =
-        authenticatedPage.getByTestId('Notifications');
+      const notificationsTab = authenticatedPage.getByTestId('Notifications');
       await expect(notificationsTab).toBeVisible();
 
       // Click Notifications tab — content should be notification-specific

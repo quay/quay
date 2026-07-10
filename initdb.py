@@ -1576,6 +1576,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
     "OrganizationContactEmail",
+    "NamespaceNotification",
+    "QuotaNotificationState",
 ]
 
 

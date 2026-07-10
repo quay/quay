@@ -149,7 +149,8 @@ class OrgNamespaceNotificationList(ApiResource):
         if parsed is None:
             raise InvalidRequest("Missing JSON body")
 
-        from jsonschema import ValidationError, validate as json_validate
+        from jsonschema import ValidationError
+        from jsonschema import validate as json_validate
 
         try:
             json_validate(parsed, self.schemas["NotificationCreateRequest"])

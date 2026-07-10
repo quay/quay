@@ -22,9 +22,7 @@ test.describe(
       ).toBeVisible();
 
       // Click "Create notification" button
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select event: Quota Warning
       await authenticatedPage
@@ -49,9 +47,7 @@ test.describe(
         .fill('Test Webhook Notification');
 
       // Submit
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify notification appears in the list
       await expect(
@@ -60,12 +56,8 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Test Webhook Notification'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Warning'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Webhook POST'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
+      await expect(authenticatedPage.getByText('Webhook POST')).toBeVisible();
       await expect(authenticatedPage.getByText('Enabled')).toBeVisible();
 
       // Test the notification via kebab menu
@@ -83,9 +75,7 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Test Notification Queued'),
       ).toBeVisible();
-      await authenticatedPage
-        .getByRole('button', {name: 'Close'})
-        .click();
+      await authenticatedPage.getByRole('button', {name: 'Close'}).click();
 
       // Delete the notification via kebab menu
       await kebabToggle.click();
@@ -115,9 +105,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select event: Quota Error
       await authenticatedPage
@@ -137,17 +125,13 @@ test.describe(
         .fill('Quota Error Email');
 
       // Submit
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify notification appears in list
       await expect(
         authenticatedPage.getByText('Quota Error Email'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Error'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Error')).toBeVisible();
       await expect(
         authenticatedPage.getByText('Email Notification'),
       ).toBeVisible();
@@ -162,9 +146,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select event: Quota Warning
       await authenticatedPage
@@ -189,17 +171,13 @@ test.describe(
         .fill('Slack Quota Warning');
 
       // Submit
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify notification appears in list
       await expect(
         authenticatedPage.getByText('Slack Quota Warning'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Warning'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
       await expect(
         authenticatedPage.getByText('Slack Notification'),
       ).toBeVisible();
@@ -215,9 +193,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select event: Quota Error
       await authenticatedPage
@@ -234,9 +210,7 @@ test.describe(
         .click();
 
       // Select team as recipient in entity search
-      await authenticatedPage
-        .locator('#entity-search-input')
-        .fill(team.name);
+      await authenticatedPage.locator('#entity-search-input').fill(team.name);
       await authenticatedPage.getByText(team.name).click();
 
       // Fill in title
@@ -245,17 +219,13 @@ test.describe(
         .fill('Quay Notification to Team');
 
       // Submit
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify notification appears in list
       await expect(
         authenticatedPage.getByText('Quay Notification to Team'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Error'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Error')).toBeVisible();
     });
 
     test('multiple notifications coexist in list', async ({
@@ -297,12 +267,8 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Webhook Warning'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Email Error'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Slack Warning'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Email Error')).toBeVisible();
+      await expect(authenticatedPage.getByText('Slack Warning')).toBeVisible();
     });
 
     test('API-created notification appears in UI list', async ({
@@ -328,9 +294,7 @@ test.describe(
       await expect(
         authenticatedPage.getByText('API-Created Notification'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Warning'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
     });
 
     test('both quota event types available in dropdown', async ({
@@ -342,9 +306,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Open event dropdown
       await authenticatedPage
@@ -374,9 +336,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select an event first to enable method dropdown
       await authenticatedPage
@@ -404,12 +364,8 @@ test.describe(
       ).toBeVisible();
 
       // Flowdock and HipChat should NOT be listed
-      await expect(
-        authenticatedPage.getByText('Flowdock'),
-      ).not.toBeVisible();
-      await expect(
-        authenticatedPage.getByText('HipChat'),
-      ).not.toBeVisible();
+      await expect(authenticatedPage.getByText('Flowdock')).not.toBeVisible();
+      await expect(authenticatedPage.getByText('HipChat')).not.toBeVisible();
     });
 
     test('form validation — submit disabled without required fields', async ({
@@ -421,9 +377,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Submit should be disabled with no selections
       await expect(
@@ -467,9 +421,7 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Select event and Quay Notification method
       await authenticatedPage
@@ -489,9 +441,7 @@ test.describe(
       ).toBeDisabled();
 
       // Select team as recipient
-      await authenticatedPage
-        .locator('#entity-search-input')
-        .fill(team.name);
+      await authenticatedPage.locator('#entity-search-input').fill(team.name);
       await authenticatedPage.getByText(team.name).click();
 
       // Submit should now be enabled

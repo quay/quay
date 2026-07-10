@@ -188,14 +188,14 @@ var knownUnmapped = map[string]bool{
 	"REPO_MIRROR_TLS_VERIFY":             true,
 
 	// Quotas
-	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": true,
-	"QUOTA_BACKFILL":                    true,
-	"QUOTA_BACKFILL_BATCH_SIZE":         true,
-	"QUOTA_BACKFILL_POLL_PERIOD":        true,
-	"QUOTA_INVALIDATE_TOTALS":              true,
-	"QUOTA_NOTIFICATION_COOLDOWN_SECONDS":  true,
-	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":      true,
-	"QUOTA_TOTAL_DELAY_SECONDS":            true,
+	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES":   true,
+	"QUOTA_BACKFILL":                      true,
+	"QUOTA_BACKFILL_BATCH_SIZE":           true,
+	"QUOTA_BACKFILL_POLL_PERIOD":          true,
+	"QUOTA_INVALIDATE_TOTALS":             true,
+	"QUOTA_NOTIFICATION_COOLDOWN_SECONDS": true,
+	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":     true,
+	"QUOTA_TOTAL_DELAY_SECONDS":           true,
 
 	// UI
 	"DISABLE_ANGULAR_UI":            true,

@@ -18,9 +18,7 @@ test.describe(
         authenticatedPage.getByText('No notifications configured'),
       ).toBeVisible();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       await authenticatedPage
         .getByTestId('ns-notification-event-dropdown')
@@ -40,9 +38,7 @@ test.describe(
         .getByTestId('ns-notification-title')
         .fill('User Webhook Notification');
 
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       await expect(
         authenticatedPage.getByTestId('ns-notifications-table'),
@@ -50,12 +46,8 @@ test.describe(
       await expect(
         authenticatedPage.getByText('User Webhook Notification'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Warning'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Webhook POST'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
+      await expect(authenticatedPage.getByText('Webhook POST')).toBeVisible();
       await expect(authenticatedPage.getByText('Enabled')).toBeVisible();
 
       // Test the notification via kebab menu
@@ -72,9 +64,7 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Test Notification Queued'),
       ).toBeVisible();
-      await authenticatedPage
-        .getByRole('button', {name: 'Close'})
-        .click();
+      await authenticatedPage.getByRole('button', {name: 'Close'}).click();
 
       // Delete the notification via kebab menu
       await kebabToggle.click();
@@ -97,9 +87,7 @@ test.describe(
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       await authenticatedPage
         .getByTestId('ns-notification-event-dropdown')
@@ -115,16 +103,12 @@ test.describe(
         .getByTestId('ns-notification-title')
         .fill('User Quota Error Email');
 
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       await expect(
         authenticatedPage.getByText('User Quota Error Email'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Error'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Error')).toBeVisible();
       await expect(
         authenticatedPage.getByText('Email Notification'),
       ).toBeVisible();
@@ -148,18 +132,14 @@ test.describe(
       await expect(
         authenticatedPage.getByText('API-Created User Notification'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Quota Warning'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
     });
 
     test('can create a Slack notification', async ({authenticatedPage}) => {
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       await authenticatedPage
         .getByTestId('ns-notification-event-dropdown')
@@ -179,9 +159,7 @@ test.describe(
         .getByTestId('ns-notification-title')
         .fill('User Slack Notification');
 
-      await authenticatedPage
-        .getByTestId('ns-notification-submit-btn')
-        .click();
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       await expect(
         authenticatedPage.getByText('User Slack Notification'),
@@ -213,12 +191,8 @@ test.describe(
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(
-        authenticatedPage.getByText('User Webhook 1'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('User Email 1'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('User Webhook 1')).toBeVisible();
+      await expect(authenticatedPage.getByText('User Email 1')).toBeVisible();
     });
 
     test('Notifications tab is visible in user settings when feature flag enabled', async ({
@@ -244,9 +218,7 @@ test.describe(
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await authenticatedPage
-        .getByTestId('create-ns-notification-btn')
-        .click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       // Submit should be disabled with no selections
       await expect(
@@ -316,9 +288,7 @@ test.describe(
       ).not.toBeVisible();
 
       // Navigate to org settings — user notification should NOT appear
-      await authenticatedPage.goto(
-        `/organization/${org.name}?tab=Settings`,
-      );
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
       await expect(
         authenticatedPage.getByText('Org Only Notification'),
