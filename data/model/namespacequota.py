@@ -95,17 +95,21 @@ def update_namespace_quota_size(quota, limit_bytes):
 
 
 def delete_namespace_quota(quota):
-    quota_events = ExternalNotificationEvent.select().where(
-        ExternalNotificationEvent.name << ["quota_warning", "quota_error"]
-    )
+    quota_event_ids = [
+        row[0]
+        for row in ExternalNotificationEvent.select(ExternalNotificationEvent.id)
+        .where(ExternalNotificationEvent.name << ["quota_warning", "quota_error"])
+        .tuples()
+    ]
     with db_transaction():
         QuotaNotificationState.delete().where(
             QuotaNotificationState.namespace == quota.namespace,
         ).execute()
-        NamespaceNotification.delete().where(
-            NamespaceNotification.namespace == quota.namespace,
-            NamespaceNotification.event << quota_events,
-        ).execute()
+        if quota_event_ids:
+            NamespaceNotification.delete().where(
+                NamespaceNotification.namespace == quota.namespace,
+                NamespaceNotification.event << quota_event_ids,
+            ).execute()
         QuotaLimits.delete().where(QuotaLimits.quota == quota).execute()
         quota.delete_instance()
 
