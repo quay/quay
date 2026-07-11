@@ -12,9 +12,7 @@ const mockResetDeletingNotification = vi.fn();
 const mockResetTestingNotification = vi.fn();
 const mockResetEnablingNotification = vi.fn();
 
-function defaultHookReturn(
-  overrides: Record<string, unknown> = {},
-) {
+function defaultHookReturn(overrides: Record<string, unknown> = {}) {
   return {
     deleteNotifications: mockDeleteNotifications,
     errorDeletingNotification: false,
@@ -32,9 +30,7 @@ function defaultHookReturn(
   };
 }
 
-const mockUseUpdateNamespaceNotifications = vi.hoisted(() =>
-  vi.fn(),
-);
+const mockUseUpdateNamespaceNotifications = vi.hoisted(() => vi.fn());
 
 const mockIsDisabled = vi.hoisted(() => vi.fn(() => false));
 
@@ -88,9 +84,7 @@ describe('NamespaceNotificationsKebab', () => {
         notification={enabledNotification}
       />,
     );
-    expect(
-      screen.getByTestId('uuid-1-ns-toggle-kebab'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('uuid-1-ns-toggle-kebab')).toBeInTheDocument();
   });
 
   it('shows dropdown menu items on click', async () => {
@@ -101,9 +95,7 @@ describe('NamespaceNotificationsKebab', () => {
       />,
     );
     await userEvent.click(screen.getByTestId('uuid-1-ns-toggle-kebab'));
-    expect(
-      screen.getByTestId('uuid-1-test-notification'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('uuid-1-test-notification')).toBeInTheDocument();
     expect(
       screen.getByTestId('uuid-1-delete-notification'),
     ).toBeInTheDocument();

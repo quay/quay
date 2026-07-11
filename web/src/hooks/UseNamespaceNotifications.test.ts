@@ -48,10 +48,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(fetchNamespaceNotifications).mockResolvedValueOnce(
       mockNotifications as NamespaceNotification[],
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.notifications).toHaveLength(3);
   });
@@ -60,10 +59,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(fetchNamespaceNotifications).mockResolvedValueOnce(
       mockNotifications as NamespaceNotification[],
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
@@ -81,10 +79,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(isNamespaceNotificationEnabled).mockImplementation(
       (n: NamespaceNotification) => n.uuid === 'n1',
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
@@ -103,10 +100,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(isNamespaceNotificationDisabled).mockImplementation(
       (n: NamespaceNotification) => n.uuid !== 'n1',
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
@@ -121,10 +117,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(fetchNamespaceNotifications).mockResolvedValueOnce(
       mockNotifications as NamespaceNotification[],
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
@@ -142,10 +137,9 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(fetchNamespaceNotifications).mockResolvedValueOnce(
       mockNotifications as NamespaceNotification[],
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
@@ -164,13 +158,15 @@ describe('useNamespaceNotifications', () => {
     vi.mocked(fetchNamespaceNotifications).mockResolvedValueOnce(
       mockNotifications as NamespaceNotification[],
     );
-    const {result} = renderHook(
-      () => useNamespaceNotifications('myorg'),
-      {wrapper},
-    );
+    const {result} = renderHook(() => useNamespaceNotifications('myorg'), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
-      result.current.setFilter({event: [NamespaceNotificationEventType.quotaWarning], status: []});
+      result.current.setFilter({
+        event: [NamespaceNotificationEventType.quotaWarning],
+        status: [],
+      });
     });
     act(() => {
       result.current.resetFilter('event');

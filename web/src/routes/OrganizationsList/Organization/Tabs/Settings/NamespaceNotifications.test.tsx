@@ -83,7 +83,9 @@ describe('NamespaceNotifications', () => {
       resetFilter: vi.fn(),
     });
     render(<NamespaceNotifications organizationName="myorg" />);
-    expect(screen.getByText(/unable to load notifications/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/unable to load notifications/i),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state with create button', () => {
@@ -96,9 +98,7 @@ describe('NamespaceNotifications', () => {
       resetFilter: vi.fn(),
     });
     render(<NamespaceNotifications organizationName="myorg" />);
-    expect(
-      screen.getByText('No notifications configured'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('No notifications configured')).toBeInTheDocument();
     expect(
       screen.getByTestId('create-ns-notification-btn'),
     ).toBeInTheDocument();
@@ -134,9 +134,7 @@ describe('NamespaceNotifications', () => {
       resetFilter: vi.fn(),
     });
     render(<NamespaceNotifications organizationName="myorg" />);
-    expect(
-      screen.getByTestId('ns-notifications-table'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('ns-notifications-table')).toBeInTheDocument();
     expect(screen.getByText('My Alert')).toBeInTheDocument();
     expect(screen.getByText('(Untitled)')).toBeInTheDocument();
     expect(screen.getByText('Quota Warning')).toBeInTheDocument();
@@ -180,9 +178,7 @@ describe('NamespaceNotifications', () => {
   });
 
   it('displays enabled/disabled status', () => {
-    mockIsEnabled.mockImplementation(
-      (n: {uuid: string}) => n.uuid === 'n1',
-    );
+    mockIsEnabled.mockImplementation((n: {uuid: string}) => n.uuid === 'n1');
     const notifications = [
       {
         uuid: 'n1',

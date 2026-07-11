@@ -68,9 +68,7 @@ function renderForm(overrides: Record<string, unknown> = {}) {
 describe('NamespaceNotificationsCreateForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseUpdateNamespaceNotifications.mockReturnValue(
-      defaultHookReturn(),
-    );
+    mockUseUpdateNamespaceNotifications.mockReturnValue(defaultHookReturn());
     mockUseQuayConfig.mockReturnValue({
       features: {MAILING: true, QUOTA_NOTIFICATIONS: true},
       config: {REGISTRY_TITLE_SHORT: 'Quay'},
@@ -96,27 +94,21 @@ describe('NamespaceNotificationsCreateForm', () => {
 
   it('shows event options in dropdown', async () => {
     renderForm();
-    await userEvent.click(
-      screen.getByTestId('ns-notification-event-dropdown'),
-    );
+    await userEvent.click(screen.getByTestId('ns-notification-event-dropdown'));
     expect(screen.getByTestId('ns-event-quota_warning')).toBeInTheDocument();
     expect(screen.getByTestId('ns-event-quota_error')).toBeInTheDocument();
   });
 
   it('selects event from dropdown', async () => {
     renderForm();
-    await userEvent.click(
-      screen.getByTestId('ns-notification-event-dropdown'),
-    );
+    await userEvent.click(screen.getByTestId('ns-notification-event-dropdown'));
     await userEvent.click(screen.getByTestId('ns-event-quota_warning'));
     expect(screen.getByText('Quota Warning')).toBeInTheDocument();
   });
 
   it('shows method options in dropdown', async () => {
     renderForm();
-    await userEvent.click(
-      screen.getByTestId('ns-notification-method-dropdown'),
-    );
+    await userEvent.click(screen.getByTestId('ns-notification-method-dropdown'));
     expect(
       screen.getByTestId('ns-method-quay_notification'),
     ).toBeInTheDocument();
@@ -146,9 +138,7 @@ describe('NamespaceNotificationsCreateForm', () => {
 
   it('submit button remains disabled with only event selected', async () => {
     renderForm();
-    await userEvent.click(
-      screen.getByTestId('ns-notification-event-dropdown'),
-    );
+    await userEvent.click(screen.getByTestId('ns-notification-event-dropdown'));
     await userEvent.click(screen.getByTestId('ns-event-quota_warning'));
     expect(screen.getByTestId('ns-notification-submit-btn')).toBeDisabled();
   });
@@ -169,8 +159,6 @@ describe('NamespaceNotificationsCreateForm', () => {
 
   it('does not render modal when isOpen is false', () => {
     renderForm({isOpen: false});
-    expect(
-      screen.queryByText('Create notification'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Create notification')).not.toBeInTheDocument();
   });
 });

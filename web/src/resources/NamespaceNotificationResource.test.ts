@@ -55,9 +55,7 @@ describe('NamespaceNotificationResource', () => {
   describe('fetchNamespaceNotifications', () => {
     it('fetches notifications for an organization', async () => {
       const notifications = [{uuid: 'n1', title: 'test'}];
-      vi.mocked(axios.get).mockResolvedValueOnce(
-        mockResponse({notifications}),
-      );
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse({notifications}));
 
       const result = await fetchNamespaceNotifications('myorg');
       expect(axios.get).toHaveBeenCalledWith(
@@ -68,9 +66,7 @@ describe('NamespaceNotificationResource', () => {
 
     it('fetches notifications for a user', async () => {
       const notifications = [{uuid: 'n1'}];
-      vi.mocked(axios.get).mockResolvedValueOnce(
-        mockResponse({notifications}),
-      );
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse({notifications}));
 
       const result = await fetchNamespaceNotifications('user1', true);
       expect(axios.get).toHaveBeenCalledWith(
