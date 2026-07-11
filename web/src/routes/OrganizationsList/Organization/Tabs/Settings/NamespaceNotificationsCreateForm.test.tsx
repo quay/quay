@@ -108,7 +108,9 @@ describe('NamespaceNotificationsCreateForm', () => {
 
   it('shows method options in dropdown', async () => {
     renderForm();
-    await userEvent.click(screen.getByTestId('ns-notification-method-dropdown'));
+    await userEvent.click(
+      screen.getByTestId('ns-notification-method-dropdown'),
+    );
     expect(
       screen.getByTestId('ns-method-quay_notification'),
     ).toBeInTheDocument();
