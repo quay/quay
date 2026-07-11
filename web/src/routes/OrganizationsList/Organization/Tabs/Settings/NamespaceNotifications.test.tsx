@@ -180,7 +180,9 @@ describe('NamespaceNotifications', () => {
   });
 
   it('displays enabled/disabled status', () => {
-    mockIsEnabled.mockImplementation((n: any) => n.uuid === 'n1');
+    mockIsEnabled.mockImplementation(
+      (n: {uuid: string}) => n.uuid === 'n1',
+    );
     const notifications = [
       {
         uuid: 'n1',

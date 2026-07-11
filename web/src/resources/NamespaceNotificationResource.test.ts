@@ -85,7 +85,7 @@ describe('NamespaceNotificationResource', () => {
       vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
 
       const notification = createMockNotification({
-        event_config: {threshold: 80} as any,
+        event_config: {threshold: 80},
       });
       await createNamespaceNotification('myorg', notification);
       expect(axios.post).toHaveBeenCalledWith(

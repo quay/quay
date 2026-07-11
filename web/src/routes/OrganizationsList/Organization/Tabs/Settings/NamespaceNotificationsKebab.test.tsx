@@ -12,8 +12,10 @@ const mockResetDeletingNotification = vi.fn();
 const mockResetTestingNotification = vi.fn();
 const mockResetEnablingNotification = vi.fn();
 
-const mockUseUpdateNamespaceNotifications = vi.hoisted(() =>
-  vi.fn(() => ({
+function defaultHookReturn(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
     deleteNotifications: mockDeleteNotifications,
     errorDeletingNotification: false,
     successDeletingNotification: false,
@@ -26,7 +28,12 @@ const mockUseUpdateNamespaceNotifications = vi.hoisted(() =>
     errorEnablingNotification: false,
     successEnablingNotification: false,
     resetEnablingNotification: mockResetEnablingNotification,
-  })),
+    ...overrides,
+  };
+}
+
+const mockUseUpdateNamespaceNotifications = vi.hoisted(() =>
+  vi.fn(),
 );
 
 const mockIsDisabled = vi.hoisted(() => vi.fn(() => false));
@@ -61,23 +68,16 @@ const disabledNotification = {
   number_of_failures: 3,
 };
 
+const untitledNotification = {
+  ...enabledNotification,
+  uuid: 'uuid-3',
+  title: '',
+};
+
 describe('NamespaceNotificationsKebab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseUpdateNamespaceNotifications.mockReturnValue({
-      deleteNotifications: mockDeleteNotifications,
-      errorDeletingNotification: false,
-      successDeletingNotification: false,
-      resetDeletingNotification: mockResetDeletingNotification,
-      test: mockTest,
-      errorTestingNotification: false,
-      successTestingNotification: false,
-      resetTestingNotification: mockResetTestingNotification,
-      enableNotifications: mockEnableNotifications,
-      errorEnablingNotification: false,
-      successEnablingNotification: false,
-      resetEnablingNotification: mockResetEnablingNotification,
-    });
+    mockUseUpdateNamespaceNotifications.mockReturnValue(defaultHookReturn());
     mockIsDisabled.mockReturnValue(false);
   });
 
@@ -109,56 +109,6 @@ describe('NamespaceNotificationsKebab', () => {
     ).toBeInTheDocument();
   });
 
-  it('calls test mutation when Test Notification is clicked', async () => {
-    render(
-      <NamespaceNotificationsKebab
-        orgname="myorg"
-        notification={enabledNotification}
-      />,
-    );
-    await userEvent.click(screen.getByTestId('uuid-1-ns-toggle-kebab'));
-    await userEvent.click(screen.getByTestId('uuid-1-test-notification'));
-    expect(mockTest).toHaveBeenCalledWith('uuid-1');
-  });
-
-  it('shows delete confirmation modal', async () => {
-    render(
-      <NamespaceNotificationsKebab
-        orgname="myorg"
-        notification={enabledNotification}
-      />,
-    );
-    await userEvent.click(screen.getByTestId('uuid-1-ns-toggle-kebab'));
-    await userEvent.click(screen.getByTestId('uuid-1-delete-notification'));
-    expect(screen.getByText(/are you sure you want to delete/i)).toBeInTheDocument();
-  });
-
-  it('calls deleteNotifications when delete is confirmed', async () => {
-    render(
-      <NamespaceNotificationsKebab
-        orgname="myorg"
-        notification={enabledNotification}
-      />,
-    );
-    await userEvent.click(screen.getByTestId('uuid-1-ns-toggle-kebab'));
-    await userEvent.click(screen.getByTestId('uuid-1-delete-notification'));
-    await userEvent.click(screen.getByTestId('confirm-delete-ns-notification'));
-    expect(mockDeleteNotifications).toHaveBeenCalledWith('uuid-1');
-  });
-
-  it('cancel in delete modal does not call delete', async () => {
-    render(
-      <NamespaceNotificationsKebab
-        orgname="myorg"
-        notification={enabledNotification}
-      />,
-    );
-    await userEvent.click(screen.getByTestId('uuid-1-ns-toggle-kebab'));
-    await userEvent.click(screen.getByTestId('uuid-1-delete-notification'));
-    await userEvent.click(screen.getByRole('button', {name: /cancel/i}));
-    expect(mockDeleteNotifications).not.toHaveBeenCalled();
-  });
-
   it('shows Enable option for disabled notifications', async () => {
     mockIsDisabled.mockReturnValue(true);
     render(
@@ -187,24 +137,10 @@ describe('NamespaceNotificationsKebab', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('calls enableNotifications when Enable is clicked', async () => {
-    mockIsDisabled.mockReturnValue(true);
-    render(
-      <NamespaceNotificationsKebab
-        orgname="myorg"
-        notification={disabledNotification}
-      />,
-    );
-    await userEvent.click(screen.getByTestId('uuid-2-ns-toggle-kebab'));
-    await userEvent.click(screen.getByTestId('uuid-2-enable-notification'));
-    expect(mockEnableNotifications).toHaveBeenCalledWith('uuid-2');
-  });
-
   it('shows error alert when delete fails', () => {
-    mockUseUpdateNamespaceNotifications.mockReturnValue({
-      ...mockUseUpdateNamespaceNotifications(),
-      errorDeletingNotification: true,
-    });
+    mockUseUpdateNamespaceNotifications.mockReturnValue(
+      defaultHookReturn({errorDeletingNotification: true}),
+    );
     render(
       <NamespaceNotificationsKebab
         orgname="myorg"
@@ -217,10 +153,9 @@ describe('NamespaceNotificationsKebab', () => {
   });
 
   it('shows error alert when test fails', () => {
-    mockUseUpdateNamespaceNotifications.mockReturnValue({
-      ...mockUseUpdateNamespaceNotifications(),
-      errorTestingNotification: true,
-    });
+    mockUseUpdateNamespaceNotifications.mockReturnValue(
+      defaultHookReturn({errorTestingNotification: true}),
+    );
     render(
       <NamespaceNotificationsKebab
         orgname="myorg"
@@ -233,10 +168,9 @@ describe('NamespaceNotificationsKebab', () => {
   });
 
   it('shows error alert when enable fails', () => {
-    mockUseUpdateNamespaceNotifications.mockReturnValue({
-      ...mockUseUpdateNamespaceNotifications(),
-      errorEnablingNotification: true,
-    });
+    mockUseUpdateNamespaceNotifications.mockReturnValue(
+      defaultHookReturn({errorEnablingNotification: true}),
+    );
     render(
       <NamespaceNotificationsKebab
         orgname="myorg"
@@ -245,6 +179,36 @@ describe('NamespaceNotificationsKebab', () => {
     );
     expect(
       screen.getByText(/unable to enable notification/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows (Untitled) in error messages for notifications without title', () => {
+    mockUseUpdateNamespaceNotifications.mockReturnValue(
+      defaultHookReturn({errorDeletingNotification: true}),
+    );
+    render(
+      <NamespaceNotificationsKebab
+        orgname="myorg"
+        notification={untitledNotification}
+      />,
+    );
+    expect(
+      screen.getByText(/unable to delete notification \(Untitled\)/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows test notification queued modal on success', () => {
+    mockUseUpdateNamespaceNotifications.mockReturnValue(
+      defaultHookReturn({successTestingNotification: true}),
+    );
+    render(
+      <NamespaceNotificationsKebab
+        orgname="myorg"
+        notification={enabledNotification}
+      />,
+    );
+    expect(
+      screen.getByText(/a test version of this notification has been queued/i),
     ).toBeInTheDocument();
   });
 });

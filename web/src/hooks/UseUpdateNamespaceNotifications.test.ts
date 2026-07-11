@@ -8,6 +8,7 @@ import {
   bulkDeleteNamespaceNotifications,
   testNamespaceNotification,
   bulkEnableNamespaceNotifications,
+  NamespaceNotification,
 } from 'src/resources/NamespaceNotificationResource';
 
 vi.mock('src/resources/NamespaceNotificationResource', () => ({
@@ -41,7 +42,7 @@ describe('useUpdateNamespaceNotifications', () => {
       event: 'quota_warning',
       method: 'email',
       config: {},
-    } as any;
+    } as unknown as NamespaceNotification;
     act(() => {
       result.current.create(notification);
     });
@@ -66,7 +67,7 @@ describe('useUpdateNamespaceNotifications', () => {
       {wrapper},
     );
     act(() => {
-      result.current.create({} as any);
+      result.current.create({} as unknown as NamespaceNotification);
     });
     await waitFor(() =>
       expect(result.current.errorCreatingNotification).not.toBeNull(),
