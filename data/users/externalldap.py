@@ -60,8 +60,12 @@ class _LDAPTraceRedactor:
     argument tuple arrives in the next write.
     """
 
-    _BIND_PW_RE = re.compile(
+    _BIND_PW_SINGLE_RE = re.compile(
         r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*')((?:\\.|[^'\\])*)(')",
+    )
+
+    _BIND_PW_DOUBLE_RE = re.compile(
+        r'(SimpleLDAPObject\.simple_bind\s*\n\(\(\'[^\']*\',\s*")((?:\\.|[^"\\])*)(")',
     )
 
     _BIND_HEADER_RE = re.compile(
@@ -72,17 +76,23 @@ class _LDAPTraceRedactor:
         self._stream = stream or sys.stdout
         self._buf = ""
 
+    @classmethod
+    def _redact(cls, data):
+        data = cls._BIND_PW_SINGLE_RE.sub(r"\1******\3", data)
+        data = cls._BIND_PW_DOUBLE_RE.sub(r"\1******\3", data)
+        return data
+
     def write(self, data):
         data = self._buf + data
         self._buf = ""
         if self._BIND_HEADER_RE.search(data):
             self._buf = data
             return
-        self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", data))
+        self._stream.write(self._redact(data))
 
     def flush(self):
         if self._buf:
-            self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", self._buf))
+            self._stream.write(self._redact(self._buf))
             self._buf = ""
         self._stream.flush()
 
@@ -576,7 +586,7 @@ class LDAPUsers(FederatedUsers):
                 return cached
 
         logger.debug("Looking up LDAP %s with key=%s", log_name, cache_key)
-        (found_user, err_msg) = lookup_fn()
+        found_user, err_msg = lookup_fn()
         result = found_user is not None
 
         if found_user is None:
@@ -719,7 +729,7 @@ class LDAPUsers(FederatedUsers):
                 pairs = []
                 err_msg = None
                 for user_search_dn in self._user_dns:
-                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                    pairs, err_msg = self._ldap_user_search_with_rdn(
                         conn,
                         username_or_email,
                         user_search_dn,
@@ -860,7 +870,7 @@ class LDAPUsers(FederatedUsers):
         Looks up a username or email in LDAP.
         """
         logger.debug("Looking up LDAP username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if err_msg is not None:
             return (None, err_msg)
 
@@ -876,7 +886,7 @@ class LDAPUsers(FederatedUsers):
             return (None, self.federated_service, "Empty query")
 
         logger.debug("Got query %s with limit %s", query, limit)
-        (results, err_msg) = self._ldap_user_search(query, limit=limit, suffix="*")
+        results, err_msg = self._ldap_user_search(query, limit=limit, suffix="*")
         if err_msg is not None:
             return (None, self.federated_service, err_msg)
 
@@ -912,7 +922,7 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if found_user is None:
             return (None, err_msg)
 
@@ -936,7 +946,7 @@ class LDAPUsers(FederatedUsers):
         if not group_lookup_args.get("group_dn"):
             return (False, "Missing group_dn")
 
-        (it, err) = self.iterate_group_members(
+        it, err = self.iterate_group_members(
             group_lookup_args, page_size=1, disable_pagination=disable_pagination
         )
         if err is not None:
