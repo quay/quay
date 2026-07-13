@@ -113,6 +113,11 @@ objects:
         - name: tls
           secret:
             secretName: ${{ENVOY_TLS_SECRET}}
+            items:
+            - key: ssl.cert
+              path: ssl.cert
+            - key: ssl.key
+              path: ssl.key
 - apiVersion: v1
   kind: Service
   metadata:
