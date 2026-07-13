@@ -39,7 +39,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
       .getByRole('button', {name: 'test-oauth-app'});
     await expect(appButton).toBeVisible();
 
-    // Click app to open manage drawer
+    // Click app to open the management modal
     await appButton.click();
     await expect(
       page.getByText('Manage OAuth Application: test-oauth-app'),
@@ -52,7 +52,9 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     await expect(
       page.getByRole('tab', {name: 'OAuth Information'}),
     ).toBeVisible();
-    await expect(page.getByRole('tab', {name: 'Generate Token'})).toBeVisible();
+    await expect(
+      page.getByRole('tab', {name: 'API Access Tokens'}),
+    ).toBeVisible();
 
     // Verify settings values
     await expect(page.getByTestId('application-name-input')).toHaveValue(
@@ -64,8 +66,11 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     await expect(page.getByText('Client ID:')).toBeVisible();
     await expect(page.getByText('Client Secret:')).toBeVisible();
 
-    // Close drawer by clicking the X button
-    await page.locator('.pf-v6-c-drawer__close button').click();
+    // Close modal by clicking the X button
+    await page
+      .getByTestId('manage-oauth-modal')
+      .getByRole('button', {name: 'Close'})
+      .click();
     await page.getByTestId('oauth-application-actions').first().click();
     await page.getByRole('menuitem', {name: 'Delete'}).click();
 
@@ -75,6 +80,77 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
       page.getByText('Successfully deleted oauth application').first(),
     ).toBeVisible();
   });
+
+  test(
+    'API access token lifecycle: generate, copy, refresh, and revoke',
+    {tag: '@PROJQUAY-9857'},
+    async ({authenticatedPage: page, api}) => {
+      const org = await api.organization('oauth-token-ui');
+      const app = await api.oauthApplication(org.name, 'token-ui-app');
+      const tokenName = 'ui-token';
+
+      await page
+        .context()
+        .grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+
+      const openApplication = async (): Promise<void> => {
+        await page
+          .getByTestId('oauth-applications-table')
+          .getByRole('button', {name: app.name, exact: true})
+          .click();
+        await page.getByRole('tab', {name: 'API Access Tokens'}).click();
+      };
+
+      await openApplication();
+      await expect(page.getByText('No API access tokens')).toBeVisible();
+      await page.getByTestId('generate-new-api-token-button').click();
+      await page.getByTestId('api-token-name-input').fill(tokenName);
+      await page.getByTestId('api-token-scope-repo:read').click();
+      await page.getByTestId('generate-api-token-submit').click();
+      await page.getByRole('button', {name: 'Authorize Application'}).click();
+
+      const tokenDisplayModal = page.getByTestId('token-display-modal');
+      await expect(tokenDisplayModal).toBeVisible();
+      const secretControl = tokenDisplayModal.getByTestId(
+        'generated-token-secret',
+      );
+      const secretInput = secretControl.getByLabel('Copyable input');
+      await expect(secretInput).not.toHaveValue('');
+      const generatedSecret = await secretInput.inputValue();
+
+      await secretControl.getByLabel('Copy to clipboard').click();
+      const clipboardSecret = await page.evaluate(() =>
+        navigator.clipboard.readText(),
+      );
+      expect(clipboardSecret).toBe(generatedSecret);
+
+      await tokenDisplayModal.getByTestId('token-display-done').click();
+      let tokenRow = page
+        .getByTestId('api-access-tokens-table')
+        .getByRole('row')
+        .filter({hasText: tokenName});
+      await expect(tokenRow).toBeVisible();
+
+      await page.reload();
+      await openApplication();
+      tokenRow = page
+        .getByTestId('api-access-tokens-table')
+        .getByRole('row')
+        .filter({hasText: tokenName});
+      await expect(tokenRow).toBeVisible();
+
+      await tokenRow
+        .getByRole('button', {name: `Actions for ${tokenName}`})
+        .click();
+      await page.getByRole('menuitem', {name: 'Revoke'}).click();
+      await expect(page.getByTestId('revoke-api-token-modal')).toBeVisible();
+      await page.getByTestId('revoke-api-token-confirm').click();
+
+      await expect(tokenRow).not.toBeVisible();
+      await expect(page.getByText('No API access tokens')).toBeVisible();
+    },
+  );
 
   test(
     'non-admin users cannot see OAuth Applications tab',
@@ -158,7 +234,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
     await expect(page.getByText(app.name)).toBeVisible();
 
-    // Open manage drawer and go to OAuth Information
+    // Open the management modal and go to OAuth Information
     await page.getByText(app.name).click();
     await page.getByText('OAuth Information').click();
 

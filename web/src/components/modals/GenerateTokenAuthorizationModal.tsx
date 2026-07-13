@@ -17,7 +17,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@patternfly/react-icons';
-import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 
 // OAuth scope interface - we'll get this from the JSON endpoint
 interface OAuthScope {
@@ -36,14 +36,15 @@ interface GenerateTokenAuthorizationModalProps {
   hasDangerousScopes?: boolean;
   isAssignmentMode?: boolean;
   targetUsername?: string;
+  isPending?: boolean;
 }
 
-export default function GenerateTokenAuthorizationModal(
-  props: GenerateTokenAuthorizationModalProps,
-) {
+const GenerateTokenAuthorizationModal: React.FC<
+  GenerateTokenAuthorizationModalProps
+> = (props): React.ReactElement => {
   const [expandedScopes, setExpandedScopes] = useState<Set<string>>(new Set());
 
-  const toggleScope = (scopeName: string) => {
+  const toggleScope = (scopeName: string): void => {
     setExpandedScopes((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(scopeName)) {
@@ -61,7 +62,7 @@ export default function GenerateTokenAuthorizationModal(
     <Modal
       variant={ModalVariant.medium}
       isOpen={props.isOpen}
-      onClose={props.onClose}
+      onClose={props.isPending ? undefined : props.onClose}
     >
       <ModalHeader
         title={isAssignment ? 'Assign Authorization?' : props.application.name}
@@ -150,13 +151,26 @@ export default function GenerateTokenAuthorizationModal(
         </Stack>
       </ModalBody>
       <ModalFooter>
-        <Button key="authorize" variant="primary" onClick={props.onConfirm}>
+        <Button
+          key="authorize"
+          variant="primary"
+          onClick={props.onConfirm}
+          isLoading={props.isPending}
+          isDisabled={props.isPending}
+        >
           {isAssignment ? 'Assign token' : 'Authorize Application'}
         </Button>
-        <Button key="cancel" variant="link" onClick={props.onClose}>
+        <Button
+          key="cancel"
+          variant="link"
+          onClick={props.onClose}
+          isDisabled={props.isPending}
+        >
           Cancel
         </Button>
       </ModalFooter>
     </Modal>
   );
-}
+};
+
+export default GenerateTokenAuthorizationModal;
