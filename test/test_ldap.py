@@ -389,126 +389,126 @@ class TestLDAP(unittest.TestCase):
             )
 
             # Try to login.
-            (response, err_msg) = ldap.verify_and_link_user("someuser", "somepass")
+            response, err_msg = ldap.verify_and_link_user("someuser", "somepass")
             self.assertIsNone(response)
             self.assertEqual("LDAP Admin dn or password is invalid", err_msg)
 
     def test_login(self):
         with mock_ldap() as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
             self.assertTrue(model.user.has_user_prompt(response, "confirm_username"))
 
             # Verify we can confirm the user.
-            (response, _) = ldap.confirm_existing_user("someuser", "somepass")
+            response, _ = ldap.confirm_existing_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
     def test_login_empty_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login.
-            (response, err_msg) = ldap.verify_and_link_user("someuser", "")
+            response, err_msg = ldap.verify_and_link_user("someuser", "")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Anonymous binding not allowed.")
 
             # Verify we cannot confirm the user.
-            (response, err_msg) = ldap.confirm_existing_user("someuser", "")
+            response, err_msg = ldap.confirm_existing_user("someuser", "")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_login_whitespace_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login.
-            (response, err_msg) = ldap.verify_and_link_user("someuser", "    ")
+            response, err_msg = ldap.verify_and_link_user("someuser", "    ")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
-            (response, err_msg) = ldap.confirm_existing_user("someuser", "    ")
+            response, err_msg = ldap.confirm_existing_user("someuser", "    ")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_login_secondary(self):
         with mock_ldap() as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("secondaryuser", "somepass")
+            response, _ = ldap.verify_and_link_user("secondaryuser", "somepass")
             self.assertEqual(response.username, "secondaryuser")
 
             # Verify we can confirm the user.
-            (response, _) = ldap.confirm_existing_user("secondaryuser", "somepass")
+            response, _ = ldap.confirm_existing_user("secondaryuser", "somepass")
             self.assertEqual(response.username, "secondaryuser")
 
     def test_invalid_wildcard(self):
         with mock_ldap() as ldap:
             # Verify we cannot login with a wildcard.
-            (response, err_msg) = ldap.verify_and_link_user("some*", "somepass")
+            response, err_msg = ldap.verify_and_link_user("some*", "somepass")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
-            (response, err_msg) = ldap.confirm_existing_user("some*", "somepass")
+            response, err_msg = ldap.confirm_existing_user("some*", "somepass")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_invalid_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login with an invalid password.
-            (response, err_msg) = ldap.verify_and_link_user("someuser", "invalidpass")
+            response, err_msg = ldap.verify_and_link_user("someuser", "invalidpass")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
-            (response, err_msg) = ldap.confirm_existing_user("someuser", "invalidpass")
+            response, err_msg = ldap.confirm_existing_user("someuser", "invalidpass")
             self.assertIsNone(response)
             self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_missing_mail(self):
         with mock_ldap() as ldap:
-            (response, err_msg) = ldap.get_user("nomail")
+            response, err_msg = ldap.get_user("nomail")
             self.assertIsNone(response)
             self.assertEqual('Missing mail field "mail" in user record', err_msg)
 
     def test_missing_mail_allowed(self):
         with mock_ldap(requires_email=False) as ldap:
-            (response, _) = ldap.get_user("nomail")
+            response, _ = ldap.get_user("nomail")
             self.assertEqual(response.username, "nomail")
 
     def test_bytes_in_results(self):
         with mock_ldap() as ldap:
-            (response, _) = ldap.get_user("bytesuser")
+            response, _ = ldap.get_user("bytesuser")
             self.assertEqual(response.username, "bytesuser")
 
     def test_confirm_different_username(self):
         with mock_ldap() as ldap:
             # Verify that the user is logged in and their username was adjusted.
-            (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
+            response, _ = ldap.verify_and_link_user("cool.user", "somepass")
             self.assertEqual(response.username, "cool_user")
 
             # Verify we can confirm the user's quay username.
-            (response, _) = ldap.confirm_existing_user("cool_user", "somepass")
+            response, _ = ldap.confirm_existing_user("cool_user", "somepass")
             self.assertEqual(response.username, "cool_user")
 
             # Verify that we *cannot* confirm the LDAP username.
-            (response, _) = ldap.confirm_existing_user("cool.user", "somepass")
+            response, _ = ldap.confirm_existing_user("cool.user", "somepass")
             self.assertIsNone(response)
 
     def test_referral(self):
         with mock_ldap() as ldap:
-            (response, _) = ldap.verify_and_link_user("referred", "somepass")
+            response, _ = ldap.verify_and_link_user("referred", "somepass")
             self.assertEqual(response.username, "cool_user")
 
             # Verify we can confirm the user's quay username.
-            (response, _) = ldap.confirm_existing_user("cool_user", "somepass")
+            response, _ = ldap.confirm_existing_user("cool_user", "somepass")
             self.assertEqual(response.username, "cool_user")
 
     def test_invalid_referral(self):
         with mock_ldap() as ldap:
-            (response, _) = ldap.verify_and_link_user("invalidreferred", "somepass")
+            response, _ = ldap.verify_and_link_user("invalidreferred", "somepass")
             self.assertIsNone(response)
 
     def test_multientry(self):
         with mock_ldap() as ldap:
-            (response, _) = ldap.verify_and_link_user("multientry", "somepass")
+            response, _ = ldap.verify_and_link_user("multientry", "somepass")
             self.assertEqual(response.username, "multientry")
 
     def test_login_empty_userdn(self):
@@ -535,11 +535,11 @@ class TestLDAP(unittest.TestCase):
             )
 
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
             # Verify we can confirm the user.
-            (response, _) = ldap.confirm_existing_user("someuser", "somepass")
+            response, _ = ldap.confirm_existing_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
     def test_link_user(self):
@@ -563,7 +563,7 @@ class TestLDAP(unittest.TestCase):
     def test_query(self):
         with mock_ldap() as ldap:
             # Lookup cool.
-            (response, federated_id, error_message) = ldap.query_users("cool")
+            response, federated_id, error_message = ldap.query_users("cool")
             self.assertIsNone(error_message)
             self.assertEqual(1, len(response))
             self.assertEqual("ldap", federated_id)
@@ -573,7 +573,7 @@ class TestLDAP(unittest.TestCase):
             self.assertEqual("foo@bar.com", user_info.email)
 
             # Lookup unknown.
-            (response, federated_id, error_message) = ldap.query_users("unknown")
+            response, federated_id, error_message = ldap.query_users("unknown")
             self.assertIsNone(error_message)
             self.assertEqual(0, len(response))
             self.assertEqual("ldap", federated_id)
@@ -606,7 +606,7 @@ class TestLDAP(unittest.TestCase):
 
     def test_iterate_group_members(self):
         with mock_ldap() as ldap:
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -654,7 +654,7 @@ class TestLDAP(unittest.TestCase):
     def test_iterate_group_members_with_pagination(self):
         with mock_ldap() as ldap:
             for dn in ["cn=AwesomeFolk", "cn=*Guys"]:
-                (it, err) = ldap.iterate_group_members({"group_dn": dn}, page_size=1)
+                it, err = ldap.iterate_group_members({"group_dn": dn}, page_size=1)
                 self.assertIsNone(err)
 
                 results = list(it)
@@ -678,19 +678,19 @@ class TestLDAP(unittest.TestCase):
 
     def test_check_group_lookup_args(self):
         with mock_ldap() as ldap:
-            (result, err) = ldap.check_group_lookup_args(
+            result, err = ldap.check_group_lookup_args(
                 {"group_dn": "cn=invalid"}, disable_pagination=True
             )
             self.assertFalse(result)
             self.assertIsNotNone(err)
 
-            (result, err) = ldap.check_group_lookup_args(
+            result, err = ldap.check_group_lookup_args(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertTrue(result)
             self.assertIsNone(err)
 
-            (result, err) = ldap.check_group_lookup_args(
+            result, err = ldap.check_group_lookup_args(
                 {"group_dn": "cn=*Guys"}, disable_pagination=True
             )
             self.assertTrue(result)
@@ -724,7 +724,7 @@ class TestLDAP(unittest.TestCase):
 
             ldap_users.iterate_group_members = tracking_iterate
 
-            (result, err) = ldap_users.check_group_lookup_args(
+            result, err = ldap_users.check_group_lookup_args(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertTrue(result)
@@ -748,7 +748,7 @@ class TestLDAP(unittest.TestCase):
             )
 
             # Try to query with invalid credentials.
-            (response, err_msg) = ldap.at_least_one_user_exists()
+            response, err_msg = ldap.at_least_one_user_exists()
             self.assertFalse(response)
             self.assertEqual("LDAP Admin dn or password is invalid", err_msg)
 
@@ -766,14 +766,14 @@ class TestLDAP(unittest.TestCase):
             )
 
             # Try to find users in a nonexistent group.
-            (response, err_msg) = ldap.at_least_one_user_exists()
+            response, err_msg = ldap.at_least_one_user_exists()
             self.assertFalse(response)
             assert err_msg is not None
 
     def test_at_least_one_user_exists_true(self):
         with mock_ldap() as ldap:
             # Ensure we have at least a single user in the valid group
-            (response, err_msg) = ldap.at_least_one_user_exists()
+            response, err_msg = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertTrue(response)
 
@@ -796,7 +796,7 @@ class TestLDAP(unittest.TestCase):
                 email_attr,
                 memberof_attr,
             )
-            (result, err) = ldap.check_group_lookup_args(
+            result, err = ldap.check_group_lookup_args(
                 {"group_dn": "cn=StrangeFolk"}, disable_pagination=True
             )
             self.assertTrue(result)
@@ -844,10 +844,10 @@ class TestLDAP(unittest.TestCase):
         no_user_filter = "(filterField=anothervalue)"
         with mock_ldap(user_filter=no_user_filter) as ldap:
             # Verify we cannot login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             assert response is None
 
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -859,10 +859,10 @@ class TestLDAP(unittest.TestCase):
         valid_user_filter = "(filterField=somevalue)"
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -878,7 +878,7 @@ class TestLDAP(unittest.TestCase):
 
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
         with mock_ldap(
@@ -887,7 +887,7 @@ class TestLDAP(unittest.TestCase):
             restricted_user_filter=valid_restricted_user_filter,
             global_readonly_superuser_filter=valid_global_readonly_user_filter,
         ) as ldap:
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -945,7 +945,7 @@ class TestLDAP(unittest.TestCase):
 
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
         with mock_ldap(
@@ -954,7 +954,7 @@ class TestLDAP(unittest.TestCase):
             restricted_user_filter=invalid_restricted_user_filter,
             global_readonly_superuser_filter=invalid_global_readonly_superuser_filter,
         ) as ldap:
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -983,7 +983,7 @@ class TestLDAP(unittest.TestCase):
 
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
-            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            response, _ = ldap.verify_and_link_user("someuser", "somepass")
             self.assertEqual(response.username, "someuser")
 
         with mock_ldap(
@@ -992,7 +992,7 @@ class TestLDAP(unittest.TestCase):
             restricted_user_filter=restricted_user_filter,
             global_readonly_superuser_filter=global_readonly_superuser_filter,
         ) as ldap:
-            (it, err) = ldap.iterate_group_members(
+            it, err = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -1035,7 +1035,7 @@ class TestLDAP(unittest.TestCase):
                 memberof_attr,
                 ldap_user_filter="(filterField=somevalue)",
             )
-            (response, err_msg) = ldap.at_least_one_user_exists()
+            response, err_msg = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertTrue(response)
 
@@ -1061,7 +1061,7 @@ class TestLDAP(unittest.TestCase):
                 memberof_attr,
                 ldap_user_filter="(filterField=someothervalue)",
             )
-            (response, err_msg) = ldap.at_least_one_user_exists()
+            response, err_msg = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertFalse(response)
 
@@ -1223,11 +1223,11 @@ class TestLDAPConnectionPool(unittest.TestCase):
     def test_pool_reuses_connections(self):
         """Connections are returned to pool and reused on next checkout."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (result1, _) = ldap_users.get_user("someuser")
+            result1, _ = ldap_users.get_user("someuser")
             self.assertEqual(result1.username, "someuser")
             self.assertEqual(ldap_users._ldap._total_created, 1)
 
-            (result2, _) = ldap_users.get_user("someuser")
+            result2, _ = ldap_users.get_user("someuser")
             self.assertEqual(result2.username, "someuser")
             self.assertEqual(ldap_users._ldap._total_created, 1)
 
@@ -1236,10 +1236,10 @@ class TestLDAPConnectionPool(unittest.TestCase):
         with mock_ldap(enable_pooling=True) as ldap_users:
             ldap_users.get_user("someuser")
 
-            (result, err) = ldap_users.get_user("nonexistentuser")
+            result, err = ldap_users.get_user("nonexistentuser")
             self.assertIsNone(result)
 
-            (result2, _) = ldap_users.get_user("someuser")
+            result2, _ = ldap_users.get_user("someuser")
             self.assertEqual(result2.username, "someuser")
 
     def test_pool_verify_credentials_uses_bind_and_revert(self):
@@ -1251,7 +1251,7 @@ class TestLDAPConnectionPool(unittest.TestCase):
             with patch.object(
                 ldap_users._ldap, "verify_bind", wraps=ldap_users._ldap.verify_bind
             ) as mock_vb:
-                (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+                result, _ = ldap_users.verify_and_link_user("someuser", "somepass")
                 self.assertEqual(result.username, "someuser")
                 mock_vb.assert_called_once()
 
@@ -1262,13 +1262,13 @@ class TestLDAPConnectionPool(unittest.TestCase):
 
             self.assertIsInstance(ldap_users._ldap, LDAPConnectionBuilder)
 
-            (result, _) = ldap_users.get_user("someuser")
+            result, _ = ldap_users.get_user("someuser")
             self.assertEqual(result.username, "someuser")
 
     def test_pool_iterate_group_members(self):
         """Team sync iteration works through pooled connections."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (it, err) = ldap_users.iterate_group_members(
+            it, err = ldap_users.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
             )
             self.assertIsNone(err)
@@ -1278,37 +1278,37 @@ class TestLDAPConnectionPool(unittest.TestCase):
     def test_pool_ping(self):
         """Ping works through pooled connections."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (ok, err) = ldap_users.ping()
+            ok, err = ldap_users.ping()
             self.assertTrue(ok)
             self.assertIsNone(err)
 
     def test_pool_bind_and_revert_valid(self):
         """Bind-and-revert verifies valid credentials through the pool."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            result, _ = ldap_users.verify_and_link_user("someuser", "somepass")
             self.assertEqual(result.username, "someuser")
 
     def test_pool_bind_and_revert_invalid(self):
         """Bind-and-revert rejects invalid credentials."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (result, err) = ldap_users.verify_and_link_user("someuser", "wrongpass")
+            result, err = ldap_users.verify_and_link_user("someuser", "wrongpass")
             self.assertIsNone(result)
             self.assertEqual(err, "Invalid username or password.")
 
     def test_pool_bind_and_revert_empty_password(self):
         """Empty password is rejected before reaching the pool."""
         with mock_ldap(enable_pooling=True) as ldap_users:
-            (result, err) = ldap_users.verify_and_link_user("someuser", "")
+            result, err = ldap_users.verify_and_link_user("someuser", "")
             self.assertIsNone(result)
             self.assertEqual(err, "Anonymous binding not allowed.")
 
     def test_pool_disabled_uses_direct_connection(self):
         """With pooling disabled, verify_credentials uses direct LDAPConnection."""
         with mock_ldap(enable_pooling=False) as ldap_users:
-            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            result, _ = ldap_users.verify_and_link_user("someuser", "somepass")
             self.assertEqual(result.username, "someuser")
 
-            (result, err) = ldap_users.verify_and_link_user("someuser", "wrongpass")
+            result, err = ldap_users.verify_and_link_user("someuser", "wrongpass")
             self.assertIsNone(result)
             self.assertEqual(err, "Invalid username or password.")
 
@@ -1317,22 +1317,22 @@ class TestLDAPConnectionPool(unittest.TestCase):
         and can perform admin searches (not stuck as the user)."""
         with mock_ldap(enable_pooling=True) as ldap_users:
             # Login as someuser — this does bind-and-revert internally
-            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            result, _ = ldap_users.verify_and_link_user("someuser", "somepass")
             self.assertEqual(result.username, "someuser")
 
             # Now do an admin operation that requires the admin bind.
             # If the connection were still bound as someuser, this would
             # fail because the admin search uses the pooled connection.
-            (result2, _) = ldap_users.get_user("testy")
+            result2, _ = ldap_users.get_user("testy")
             self.assertEqual(result2.username, "testy")
 
             # Do it again with a different user to prove the pool isn't
             # leaking the first user's identity
-            (result3, _) = ldap_users.verify_and_link_user("secondaryuser", "somepass")
+            result3, _ = ldap_users.verify_and_link_user("secondaryuser", "somepass")
             self.assertEqual(result3.username, "secondaryuser")
 
             # Admin search still works
-            (result4, _) = ldap_users.get_user("someuser")
+            result4, _ = ldap_users.get_user("someuser")
             self.assertEqual(result4.username, "someuser")
 
 
@@ -1559,6 +1559,14 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
             f"(('{dn}', '{password}', None, None), {{}})"
         )
 
+    def _make_bind_trace_double_quoted(self, dn, password):
+        """Double-quoted password format (pprint uses this when password contains ')."""
+        return (
+            f"*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            f"ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
+            f"(('{dn}', \"{password}\", None, None), {{}})"
+        )
+
     def test_redacts_simple_password(self):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
@@ -1614,6 +1622,52 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         output = buf.getvalue()
 
         self.assertNotIn(secret, output)
+        self.assertIn("******", output)
+
+    def test_redacts_double_quoted_password(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace_double_quoted("cn=admin,dc=quay,dc=io", "pa'ssword"))
+        output = buf.getvalue()
+
+        self.assertNotIn("pa'ssword", output)
+        self.assertIn("******", output)
+        self.assertIn("cn=admin,dc=quay,dc=io", output)
+
+    def test_redacts_double_quoted_split_write(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        header = (
+            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind"
+        )
+        args = """\n(('cn=admin,dc=quay,dc=io', "pa'ssword", None, None), {})"""
+        redactor.write(header)
+        redactor.write(args)
+        output = buf.getvalue()
+
+        self.assertNotIn("pa'ssword", output)
+        self.assertIn("******", output)
+        self.assertIn("cn=admin,dc=quay,dc=io", output)
+
+    def test_redacts_pprint_double_quoted_password(self):
+        import pprint
+
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        args = ("cn=admin,dc=quay,dc=io", "pa'ssword", None, None)
+        trace = (
+            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
+            "{}\n".format(pprint.pformat((args, {})))
+        )
+        redactor.write(trace)
+        output = buf.getvalue()
+
+        self.assertNotIn("pa'ssword", output)
         self.assertIn("******", output)
 
     def test_redacts_split_write_multi_line(self):
