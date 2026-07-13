@@ -1540,6 +1540,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
     """
 
     def _make_bind_trace(self, dn, password):
+        """Multi-line pprint format (some python-ldap versions)."""
         return (
             f"*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
             f"ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
@@ -1548,6 +1549,14 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
             f"  None,\n"
             f"  None),\n"
             f" {{}})\n"
+        )
+
+    def _make_bind_trace_single_line(self, dn, password):
+        """Single-line repr format (some python-ldap versions)."""
+        return (
+            f"*** <SimpleLDAPObject 0x3ff76a67e30> "
+            f"ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind\n"
+            f"(('{dn}', '{password}', None, None), {{}})"
         )
 
     def test_redacts_simple_password(self):
@@ -1584,6 +1593,32 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         self.assertNotIn(super_secret_password, output)
         self.assertIn("*****", output)
         self.assertIn("uid=user,dc=example", output)
+
+    def test_redacts_single_line_trace(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(
+            self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", "password")
+        )
+        output = buf.getvalue()
+
+        self.assertNotIn("password", output)
+        self.assertIn("******", output)
+        self.assertIn("cn=admin,dc=quay,dc=io", output)
+
+    def test_redacts_single_line_complex_password(self):
+        buf = StringIO()
+        secret = "#HRx-u9r>W+?.?QTtN_X"
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(
+            self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", secret)
+        )
+        output = buf.getvalue()
+
+        self.assertNotIn(secret, output)
+        self.assertIn("******", output)
 
     def test_trace_pass_unchanged(self):
         buf = StringIO()
