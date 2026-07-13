@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
@@ -8,15 +8,13 @@ import {
 } from '@patternfly/react-core';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
-import {
-  IOAuthApplication,
-  useDeleteOAuthApplication,
-} from 'src/hooks/UseOAuthApplications';
+import {useDeleteOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 
-export default function OAuthApplicationActionsKebab(
-  props: OAuthApplicationDropdownProps,
-) {
+const OAuthApplicationActionsKebab: React.FC<OAuthApplicationDropdownProps> = (
+  props,
+): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const {addAlert} = useUI();
@@ -45,12 +43,12 @@ export default function OAuthApplicationActionsKebab(
     }
   }, [success]);
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = (): void => {
     setIsOpen(false); // Close the dropdown
     setIsDeleteModalOpen(true); // Open confirmation modal
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = (): void => {
     removeOAuthApplication({oauthApp: props.oauthApplication});
     setIsDeleteModalOpen(false);
   };
@@ -106,10 +104,12 @@ export default function OAuthApplicationActionsKebab(
       />
     </>
   );
-}
+};
 
 interface OAuthApplicationDropdownProps {
   orgName: string;
   oauthApplication: IOAuthApplication;
   onEdit?: () => void;
 }
+
+export default OAuthApplicationActionsKebab;

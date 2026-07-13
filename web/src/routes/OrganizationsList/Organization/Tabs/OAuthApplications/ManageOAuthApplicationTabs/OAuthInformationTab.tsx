@@ -11,10 +11,8 @@ import {
   StackItem,
   Content,
 } from '@patternfly/react-core';
-import {
-  IOAuthApplication,
-  useResetOAuthApplicationClientSecret,
-} from 'src/hooks/UseOAuthApplications';
+import {useResetOAuthApplicationClientSecret} from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 
@@ -25,7 +23,9 @@ interface OAuthInformationTabProps {
   updateSelectedApplication: (updatedApplication: IOAuthApplication) => void;
 }
 
-export default function OAuthInformationTab(props: OAuthInformationTabProps) {
+const OAuthInformationTab: React.FC<OAuthInformationTabProps> = (
+  props,
+): React.ReactElement => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const {addAlert} = useUI();
 
@@ -54,14 +54,14 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
     return <Content component="p">No application selected</Content>;
   }
 
-  const handleResetSecret = () => {
+  const handleResetSecret = (): void => {
     if (props.application?.client_id) {
       resetOAuthApplicationClientSecretMutation(props.application.client_id);
       setIsResetModalOpen(false);
     }
   };
 
-  const toggleResetModal = () => {
+  const toggleResetModal = (): void => {
     setIsResetModalOpen(!isResetModalOpen);
   };
 
@@ -117,4 +117,6 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
       />
     </PageSection>
   );
-}
+};
+
+export default OAuthInformationTab;

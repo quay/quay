@@ -1,15 +1,15 @@
 import {PageSection, Spinner, Button} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {
-  IOAuthApplication,
   useBulkDeleteOAuthApplications,
   useFetchOAuthApplications,
 } from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import CreateOAuthApplicationModal from './CreateOAuthApplicationModal';
 import OAuthApplicationActionsKebab from './OAuthApplicationActionsKebab';
 import OAuthApplicationsToolbar from './OAuthApplicationsToolbar';
-import ManageOAuthApplicationDrawer from './ManageOAuthApplicationDrawer';
+import ManageOAuthApplicationModal from './ManageOAuthApplicationModal';
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
@@ -25,13 +25,13 @@ export const oauthApplicationColumnName = {
   application_uri: 'Application URI',
 };
 
-export default function OAuthApplicationsList(
-  props: OAuthApplicationsListProps,
-) {
+const OAuthApplicationsList: React.FC<OAuthApplicationsListProps> = (
+  props,
+): React.ReactElement => {
   const [createModalIsOpen, setCreateModalIsOpen] = useState<boolean>(false);
   const [bulkDeleteModalIsOpen, setBulkDeleteModalIsOpen] =
     useState<boolean>(false);
-  const [manageDrawerIsOpen, setManageDrawerIsOpen] = useState<boolean>(false);
+  const [manageModalIsOpen, setManageModalIsOpen] = useState<boolean>(false);
   const [selectedApplication, setSelectedApplication] =
     useState<IOAuthApplication | null>(null);
   const [selectedOAuthApplications, setSelectedOAuthApplications] = useState<
@@ -92,7 +92,7 @@ export default function OAuthApplicationsList(
     permission: IOAuthApplication,
     rowIndex: number,
     isSelecting: boolean,
-  ) => {
+  ): void => {
     setSelectedOAuthApplications((prevSelected) => {
       const otherSelectedOAuthApplications = prevSelected.filter(
         (p) => p.client_id !== permission.client_id,
@@ -103,23 +103,25 @@ export default function OAuthApplicationsList(
     });
   };
 
-  const handleBulkDeleteModalToggle = () => {
+  const handleBulkDeleteModalToggle = (): void => {
     setBulkDeleteModalIsOpen(!bulkDeleteModalIsOpen);
   };
 
-  const handleManageDrawerToggle = () => {
-    setManageDrawerIsOpen(!manageDrawerIsOpen);
-    if (manageDrawerIsOpen) {
+  const handleManageModalToggle = (): void => {
+    setManageModalIsOpen(!manageModalIsOpen);
+    if (manageModalIsOpen) {
       setSelectedApplication(null); // Clear selection when closing
     }
   };
 
-  const openManageApplication = (application: IOAuthApplication) => {
+  const openManageApplication = (application: IOAuthApplication): void => {
     setSelectedApplication(application);
-    setManageDrawerIsOpen(true);
+    setManageModalIsOpen(true);
   };
 
-  const updateSelectedApplication = (updatedApplication: IOAuthApplication) => {
+  const updateSelectedApplication = (
+    updatedApplication: IOAuthApplication,
+  ): void => {
     setSelectedApplication(updatedApplication);
   };
 
@@ -197,221 +199,112 @@ export default function OAuthApplicationsList(
 
   return (
     <>
-      {manageDrawerIsOpen ? (
-        <ManageOAuthApplicationDrawer
-          isDrawerOpen={manageDrawerIsOpen}
-          handleDrawerToggle={handleManageDrawerToggle}
+      {manageModalIsOpen && (
+        <ManageOAuthApplicationModal
+          isModalOpen={manageModalIsOpen}
+          handleModalToggle={handleManageModalToggle}
           application={selectedApplication}
           orgName={props.orgName}
           updateSelectedApplication={updateSelectedApplication}
-        >
-          <PageSection hasBodyWrapper={false}>
-            {error && error.length > 0 && (
-              <ErrorModal
-                title="OAuth application operation failed"
-                error={error}
-                setError={setError}
-              />
-            )}
-            <OAuthApplicationsToolbar
-              selectedItems={selectedOAuthApplications}
-              deSelectAll={() => setSelectedOAuthApplications([])}
-              allItems={filteredOAuthApplications}
-              paginatedItems={paginatedOAuthApplications}
-              onItemSelect={onSelectPermission}
-              page={page}
-              setPage={setPage}
-              perPage={perPage}
-              setPerPage={setPerPage}
-              search={search}
-              setSearch={setSearch}
-              searchOptions={[oauthApplicationColumnName.name]}
-              handleCreateModalToggle={() =>
-                setCreateModalIsOpen(!createModalIsOpen)
-              }
-              handleBulkDeleteModalToggle={handleBulkDeleteModalToggle}
-            />
-            <Conditional if={oauthApplications?.length === 0}>
-              <Empty
-                title="No OAuth applications exist"
-                icon={KeyIcon}
-                body="Create an OAuth application for your organization by clicking the button above."
-              />
-            </Conditional>
-            <Conditional if={oauthApplications && oauthApplications.length > 0}>
-              <Table
-                aria-label="OAuth Applications table"
-                data-testid="oauth-applications-table"
-                variant="compact"
-                style={{tableLayout: 'fixed', width: '100%'}}
-              >
-                <Thead>
-                  <Tr>
-                    <Th style={{width: '5%'}} />
-                    <Th style={{width: '30%'}}>Application Name</Th>
-                    <Th style={{width: '35%'}}>Application URI</Th>
-                    <Th style={{width: '10%'}} />
-                    <Th style={{width: '20%'}} />
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {paginatedOAuthApplications?.map(
-                    (oauthApplication, rowIndex) => (
-                      <Tr key={rowIndex}>
-                        <Td
-                          select={{
-                            rowIndex,
-                            onSelect: (_event, isSelecting) =>
-                              onSelectPermission(
-                                oauthApplication,
-                                rowIndex,
-                                isSelecting,
-                              ),
-                            isSelected: selectedOAuthApplications.some(
-                              (p) => p.client_id === oauthApplication.client_id,
-                            ),
-                            isDisabled: false,
-                          }}
-                        />
-                        <Td dataLabel={oauthApplicationColumnName.name}>
-                          {tableDisplayTransformFuncs.Name(oauthApplication)}
-                        </Td>
-                        <Td
-                          dataLabel={oauthApplicationColumnName.application_uri}
-                        >
-                          {tableDisplayTransformFuncs.ApplicationURI(
-                            oauthApplication,
-                          )}
-                        </Td>
-                        <Td isActionCell>
-                          <OAuthApplicationActionsKebab
-                            orgName={props.orgName}
-                            oauthApplication={oauthApplication}
-                            onEdit={() =>
-                              openManageApplication(oauthApplication)
-                            }
-                          />
-                        </Td>
-                        <Td />
-                      </Tr>
-                    ),
-                  )}
-                </Tbody>
-              </Table>
-              <ToolbarPagination
-                itemsList={filteredOAuthApplications}
-                perPage={perPage}
-                page={page}
-                setPage={setPage}
-                setPerPage={setPerPage}
-                bottom={true}
-              />
-            </Conditional>
-          </PageSection>
-        </ManageOAuthApplicationDrawer>
-      ) : (
-        <PageSection hasBodyWrapper={false}>
-          {error && error.length > 0 && (
-            <ErrorModal
-              title="OAuth application operation failed"
-              error={error}
-              setError={setError}
-            />
-          )}
-          <OAuthApplicationsToolbar
-            selectedItems={selectedOAuthApplications}
-            deSelectAll={() => setSelectedOAuthApplications([])}
-            allItems={filteredOAuthApplications}
-            paginatedItems={paginatedOAuthApplications}
-            onItemSelect={onSelectPermission}
+        />
+      )}
+      <PageSection hasBodyWrapper={false}>
+        {error && error.length > 0 && (
+          <ErrorModal
+            title="OAuth application operation failed"
+            error={error}
+            setError={setError}
+          />
+        )}
+        <OAuthApplicationsToolbar
+          selectedItems={selectedOAuthApplications}
+          deSelectAll={() => setSelectedOAuthApplications([])}
+          allItems={filteredOAuthApplications}
+          paginatedItems={paginatedOAuthApplications}
+          onItemSelect={onSelectPermission}
+          page={page}
+          setPage={setPage}
+          perPage={perPage}
+          setPerPage={setPerPage}
+          search={search}
+          setSearch={setSearch}
+          searchOptions={[oauthApplicationColumnName.name]}
+          handleCreateModalToggle={() =>
+            setCreateModalIsOpen(!createModalIsOpen)
+          }
+          handleBulkDeleteModalToggle={handleBulkDeleteModalToggle}
+        />
+        <Conditional if={oauthApplications?.length === 0}>
+          <Empty
+            title="No OAuth applications exist"
+            icon={KeyIcon}
+            body="Create an OAuth application for your organization by clicking the button above."
+          />
+        </Conditional>
+        <Conditional if={oauthApplications && oauthApplications.length > 0}>
+          <Table
+            aria-label="OAuth Applications table"
+            data-testid="oauth-applications-table"
+            variant="compact"
+            style={{tableLayout: 'fixed', width: '100%'}}
+          >
+            <Thead>
+              <Tr>
+                <Th style={{width: '5%'}} />
+                <Th style={{width: '30%'}}>Application Name</Th>
+                <Th style={{width: '35%'}}>Application URI</Th>
+                <Th style={{width: '10%'}} />
+                <Th style={{width: '20%'}} />
+              </Tr>
+            </Thead>
+            <Tbody>
+              {paginatedOAuthApplications?.map((oauthApplication, rowIndex) => (
+                <Tr key={rowIndex}>
+                  <Td
+                    select={{
+                      rowIndex,
+                      onSelect: (_event, isSelecting) =>
+                        onSelectPermission(
+                          oauthApplication,
+                          rowIndex,
+                          isSelecting,
+                        ),
+                      isSelected: selectedOAuthApplications.some(
+                        (p) => p.client_id === oauthApplication.client_id,
+                      ),
+                      isDisabled: false,
+                    }}
+                  />
+                  <Td dataLabel={oauthApplicationColumnName.name}>
+                    {tableDisplayTransformFuncs.Name(oauthApplication)}
+                  </Td>
+                  <Td dataLabel={oauthApplicationColumnName.application_uri}>
+                    {tableDisplayTransformFuncs.ApplicationURI(
+                      oauthApplication,
+                    )}
+                  </Td>
+                  <Td isActionCell>
+                    <OAuthApplicationActionsKebab
+                      orgName={props.orgName}
+                      oauthApplication={oauthApplication}
+                      onEdit={() => openManageApplication(oauthApplication)}
+                    />
+                  </Td>
+                  <Td />
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <ToolbarPagination
+            itemsList={filteredOAuthApplications}
+            perPage={perPage}
             page={page}
             setPage={setPage}
-            perPage={perPage}
             setPerPage={setPerPage}
-            search={search}
-            setSearch={setSearch}
-            searchOptions={[oauthApplicationColumnName.name]}
-            handleCreateModalToggle={() =>
-              setCreateModalIsOpen(!createModalIsOpen)
-            }
-            handleBulkDeleteModalToggle={handleBulkDeleteModalToggle}
+            bottom={true}
           />
-          <Conditional if={oauthApplications?.length === 0}>
-            <Empty
-              title="No OAuth applications exist"
-              icon={KeyIcon}
-              body="Create an OAuth application for your organization by clicking the button above."
-            />
-          </Conditional>
-          <Conditional if={oauthApplications && oauthApplications.length > 0}>
-            <Table
-              aria-label="OAuth Applications table"
-              data-testid="oauth-applications-table"
-              variant="compact"
-              style={{tableLayout: 'fixed', width: '100%'}}
-            >
-              <Thead>
-                <Tr>
-                  <Th style={{width: '5%'}} />
-                  <Th style={{width: '30%'}}>Application Name</Th>
-                  <Th style={{width: '35%'}}>Application URI</Th>
-                  <Th style={{width: '10%'}} />
-                  <Th style={{width: '20%'}} />
-                </Tr>
-              </Thead>
-              <Tbody>
-                {paginatedOAuthApplications?.map(
-                  (oauthApplication, rowIndex) => (
-                    <Tr key={rowIndex}>
-                      <Td
-                        select={{
-                          rowIndex,
-                          onSelect: (_event, isSelecting) =>
-                            onSelectPermission(
-                              oauthApplication,
-                              rowIndex,
-                              isSelecting,
-                            ),
-                          isSelected: selectedOAuthApplications.some(
-                            (p) => p.client_id === oauthApplication.client_id,
-                          ),
-                          isDisabled: false,
-                        }}
-                      />
-                      <Td dataLabel={oauthApplicationColumnName.name}>
-                        {tableDisplayTransformFuncs.Name(oauthApplication)}
-                      </Td>
-                      <Td
-                        dataLabel={oauthApplicationColumnName.application_uri}
-                      >
-                        {tableDisplayTransformFuncs.ApplicationURI(
-                          oauthApplication,
-                        )}
-                      </Td>
-                      <Td isActionCell>
-                        <OAuthApplicationActionsKebab
-                          orgName={props.orgName}
-                          oauthApplication={oauthApplication}
-                          onEdit={() => openManageApplication(oauthApplication)}
-                        />
-                      </Td>
-                      <Td />
-                    </Tr>
-                  ),
-                )}
-              </Tbody>
-            </Table>
-            <ToolbarPagination
-              itemsList={filteredOAuthApplications}
-              perPage={perPage}
-              page={page}
-              setPage={setPage}
-              setPerPage={setPerPage}
-              bottom={true}
-            />
-          </Conditional>
-        </PageSection>
-      )}
+        </Conditional>
+      </PageSection>
       <CreateOAuthApplicationModal
         isModalOpen={createModalIsOpen}
         handleModalToggle={() => setCreateModalIsOpen(!createModalIsOpen)}
@@ -429,8 +322,10 @@ export default function OAuthApplicationsList(
       />
     </>
   );
-}
+};
 
 interface OAuthApplicationsListProps {
   orgName: string;
 }
+
+export default OAuthApplicationsList;

@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Button,
   Flex,
@@ -14,71 +15,68 @@ import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {TrashIcon} from '@patternfly/react-icons';
-import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 
-export default function OAuthApplicationsToolbar(
-  props: OAuthApplicationsToolbarProps,
-) {
+const OAuthApplicationsToolbar: React.FC<OAuthApplicationsToolbarProps> = (
+  props,
+): React.ReactElement => {
   return (
-    <>
-      <Toolbar>
-        <ToolbarContent>
-          <DropdownCheckbox
-            selectedItems={props.selectedItems}
-            deSelectAll={props.deSelectAll}
-            allItemsList={props.allItems}
-            itemsPerPageList={props.paginatedItems}
-            onItemSelect={props.onItemSelect}
-            id="default-perm-bulk-select"
-          />
-          <SearchDropdown
-            items={props.searchOptions}
-            searchState={props.search}
-            setSearchState={props.setSearch}
-          />
-          <Flex className="pf-v6-u-mr-md">
-            <FlexItem>
-              <SearchInput
-                searchState={props.search}
-                onChange={props.setSearch}
-                id="default-permissions-search"
-              />
-            </FlexItem>
-          </Flex>
-          <Button
-            onClick={props.handleCreateModalToggle}
-            data-testid="create-oauth-application-button"
-          >
-            Create OAuth Application
-          </Button>
-          <Conditional if={props.selectedItems?.length !== 0}>
-            <ToolbarItem>
-              <Button
-                style={{paddingBottom: '0px'}}
-                icon={
-                  <Icon size="lg">
-                    <TrashIcon />
-                  </Icon>
-                }
-                variant="plain"
-                onClick={props.handleBulkDeleteModalToggle}
-                data-testid="default-perm-bulk-delete-icon"
-              />
-            </ToolbarItem>
-          </Conditional>
-          <ToolbarPagination
-            itemsList={props.allItems}
-            perPage={props.perPage}
-            page={props.page}
-            setPage={props.setPage}
-            setPerPage={props.setPerPage}
-          />
-        </ToolbarContent>
-      </Toolbar>
-      {props.children}
-    </>
+    <Toolbar>
+      <ToolbarContent>
+        <DropdownCheckbox
+          selectedItems={props.selectedItems}
+          deSelectAll={props.deSelectAll}
+          allItemsList={props.allItems}
+          itemsPerPageList={props.paginatedItems}
+          onItemSelect={props.onItemSelect}
+          id="default-perm-bulk-select"
+        />
+        <SearchDropdown
+          items={props.searchOptions}
+          searchState={props.search}
+          setSearchState={props.setSearch}
+        />
+        <Flex className="pf-v6-u-mr-md">
+          <FlexItem>
+            <SearchInput
+              searchState={props.search}
+              onChange={props.setSearch}
+              id="default-permissions-search"
+            />
+          </FlexItem>
+        </Flex>
+        <Button
+          onClick={props.handleCreateModalToggle}
+          data-testid="create-oauth-application-button"
+        >
+          Create OAuth Application
+        </Button>
+        <Conditional if={props.selectedItems?.length !== 0}>
+          <ToolbarItem>
+            <Button
+              style={{paddingBottom: '0px'}}
+              icon={
+                <Icon size="lg">
+                  <TrashIcon />
+                </Icon>
+              }
+              variant="plain"
+              onClick={props.handleBulkDeleteModalToggle}
+              data-testid="default-perm-bulk-delete-icon"
+            />
+          </ToolbarItem>
+        </Conditional>
+        <ToolbarPagination
+          itemsList={props.allItems}
+          perPage={props.perPage}
+          page={props.page}
+          setPage={props.setPage}
+          setPerPage={props.setPerPage}
+        />
+      </ToolbarContent>
+    </Toolbar>
   );
-}
+};
 
 interface OAuthApplicationsToolbarProps {
   selectedItems: IOAuthApplication[];
@@ -98,6 +96,7 @@ interface OAuthApplicationsToolbarProps {
   search: SearchState;
   setSearch: (search: SearchState) => void;
   handleCreateModalToggle: () => void;
-  children?: React.ReactNode;
   handleBulkDeleteModalToggle: () => void;
 }
+
+export default OAuthApplicationsToolbar;
