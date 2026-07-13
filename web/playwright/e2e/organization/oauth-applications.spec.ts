@@ -101,7 +101,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     async ({authenticatedPage: page, api}) => {
       const org = await api.organization('oauth-token-ui');
       const app = await api.oauthApplication(org.name, 'token-ui-app');
-      const tokenName = uniqueName('ui-token');
+      const tokenName = 'ui-token';
 
       await page
         .context()
