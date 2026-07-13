@@ -25,11 +25,13 @@ func GenerateSelfSigned(hostname, certPath, keyPath string) error {
 	}
 
 	template := x509.Certificate{
-		Subject:     pkix.Name{CommonName: hostname},
-		NotBefore:   time.Now(),
-		NotAfter:    time.Now().Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Subject:               pkix.Name{CommonName: hostname},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
 	}
 
 	if ip := net.ParseIP(hostname); ip != nil {

@@ -63,6 +63,24 @@ func TestGenerateSelfSigned_KeyPermissions(t *testing.T) {
 	}
 }
 
+func TestGenerateSelfSigned_IsCertificateAuthority(t *testing.T) {
+	dir := t.TempDir()
+	certPath := filepath.Join(dir, "cert.pem")
+	keyPath := filepath.Join(dir, "key.pem")
+
+	if err := GenerateSelfSigned("registry.example.com", certPath, keyPath); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	cert := loadCert(t, certPath, keyPath)
+	if !cert.Leaf.IsCA || !cert.Leaf.BasicConstraintsValid {
+		t.Error("expected a valid CA certificate")
+	}
+	if cert.Leaf.KeyUsage&x509.KeyUsageCertSign == 0 {
+		t.Error("expected certificate signing key usage")
+	}
+}
+
 func TestFilesExist(t *testing.T) {
 	dir := t.TempDir()
 	certPath := filepath.Join(dir, "cert.pem")
