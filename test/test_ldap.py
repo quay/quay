@@ -1616,6 +1616,63 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         self.assertNotIn(secret, output)
         self.assertIn("******", output)
 
+    def test_redacts_split_write_multi_line(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        header = (
+            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind"
+        )
+        args = "\n(('cn=admin,dc=quay,dc=io',\n  'S3cret!P@ss',\n  None,\n  None),\n {})\n"
+        redactor.write(header)
+        redactor.write(args)
+        output = buf.getvalue()
+
+        self.assertNotIn("S3cret!P@ss", output)
+        self.assertIn("******", output)
+        self.assertIn("cn=admin,dc=quay,dc=io", output)
+
+    def test_redacts_split_write_single_line(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        header = (
+            "*** <SimpleLDAPObject 0x3ff76a67e30> "
+            "ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind"
+        )
+        args = "\n(('cn=admin,dc=quay,dc=io', 'S3cret!P@ss', None, None), {})"
+        redactor.write(header)
+        redactor.write(args)
+        output = buf.getvalue()
+
+        self.assertNotIn("S3cret!P@ss", output)
+        self.assertIn("******", output)
+        self.assertIn("cn=admin,dc=quay,dc=io", output)
+
+    def test_flush_emits_buffered_header(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        header = (
+            "*** <SimpleLDAPObject 0x3ff76a67e30> "
+            "ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind"
+        )
+        redactor.write(header)
+        self.assertEqual(buf.getvalue(), "")
+
+        redactor.flush()
+        self.assertIn("SimpleLDAPObject.simple_bind", buf.getvalue())
+
+    def test_non_bind_trace_not_buffered(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        search_trace = "*** <ldap...> - SimpleLDAPObject.search_ext\n(('dc=example',), {})\n"
+        redactor.write(search_trace)
+
+        self.assertEqual(buf.getvalue(), search_trace)
+
     def test_trace_pass_unchanged(self):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)

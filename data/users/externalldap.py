@@ -51,19 +51,39 @@ _TRANSIENT_ERROR_MESSAGES = frozenset(
 class _LDAPTraceRedactor:
     """
     Wraps the LDAP output for password redaction when USERS_DEBUG is set.
+
+    python-ldap normally emits the ``simple_bind`` header and its argument
+    tuple in a single ``write()`` call.  However, to guard against future
+    library changes or intermediary wrappers that might split the trace
+    across two calls, this class buffers any write that ends with a
+    ``simple_bind`` header so the password can still be redacted when the
+    argument tuple arrives in the next write.
     """
 
     _BIND_PW_RE = re.compile(
         r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*')((?:\\.|[^'\\])*)(')",
     )
 
+    _BIND_HEADER_RE = re.compile(
+        r"SimpleLDAPObject\.simple_bind\s*$",
+    )
+
     def __init__(self, stream=None):
         self._stream = stream or sys.stdout
+        self._buf = ""
 
     def write(self, data):
+        data = self._buf + data
+        self._buf = ""
+        if self._BIND_HEADER_RE.search(data):
+            self._buf = data
+            return
         self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", data))
 
     def flush(self):
+        if self._buf:
+            self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", self._buf))
+            self._buf = ""
         self._stream.flush()
 
 
