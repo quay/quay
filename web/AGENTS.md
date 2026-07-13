@@ -146,6 +146,51 @@ const RepositoriesList = lazy(() => import('./RepositoriesList'));
 
 **Legacy:** Recoil atoms in `src/atoms/` (avoid for new code)
 
+### Write Operation Authorization
+
+Components that render mutation controls (create, update, delete buttons, kebab actions, forms that POST/PUT/DELETE) **must** gate those controls on the user's write authorization. Two conditions block writes: the user is a **global readonly superuser**, or the registry is in **readonly mode**.
+
+> **Background:** See `agent_docs/global_readonly_superuser.md` for the backend implementation of global readonly superusers and how the API returns 403 for write operations.
+
+**Standard `canManage` pattern:**
+
+```typescript
+import { useCurrentUser } from 'src/hooks/UseCurrentUser';
+import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+
+// Inside the component:
+const { user } = useCurrentUser();
+const quayConfig = useQuayConfig();
+
+const canManage =
+  user != null &&
+  quayConfig != null &&
+  user.global_readonly_super_user !== true &&
+  quayConfig.registry_state !== 'readonly';
+```
+
+**Rules:**
+
+1. Every new component with mutation controls must derive `canManage` using the pattern above.
+2. **Hide** mutation controls when `canManage` is `false` — do not merely disable them. The backend rejects these operations with 403, and disabled buttons produce confusing generic error messages.
+3. Use conditional rendering to wrap mutation UI:
+   ```typescript
+   {canManage && (
+     <Button onClick={handleDelete}>Delete</Button>
+   )}
+   ```
+4. For table action columns, conditionally render the entire actions column header and cells:
+   ```typescript
+   {canManage && <Th screenReaderText="Actions" />}
+   ```
+
+**Required hooks:**
+
+| Hook | Import | Provides |
+|------|--------|----------|
+| `useCurrentUser()` | `src/hooks/UseCurrentUser` | `user.global_readonly_super_user` flag |
+| `useQuayConfig()` | `src/hooks/UseQuayConfig` | `quayConfig.registry_state` value |
+
 ## Critical Rules
 
 1. **No Early Returns with Loading Spinners**
@@ -200,6 +245,7 @@ import type { Repository } from 'src/types/Repository';
 - [ ] Use `useSuspenseQuery` for data fetching
 - [ ] Use `useCallback` for event handlers passed to children
 - [ ] Use `useMemo` for expensive computations
+- [ ] Derive `canManage` and hide mutation controls for readonly users (see Write Operation Authorization)
 - [ ] Default export at bottom
 
 ### Testing
