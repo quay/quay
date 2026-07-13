@@ -110,7 +110,13 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 		if err != nil {
 			return "", err
 		}
-		return d.meta.GetManifestDigest(ctx, repoID, dgst)
+		if result, err := d.meta.GetManifestDigest(ctx, repoID, dgst); err == nil {
+			return result, nil
+		}
+		if _, err := d.blobs.Stat(ctx, dgst); err == nil {
+			return dgst, nil
+		}
+		return "", fmt.Errorf("manifest revision not found: %s", dgst)
 	}
 	if strings.Contains(path, "/_layers/") && strings.HasSuffix(path, "/link") {
 		return d.resolveLayerLink(ctx, repoID, path)

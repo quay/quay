@@ -156,19 +156,8 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 	}
 
 	for _, childDgst := range m.ChildDigests {
-		child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
-			RepositoryID: repoID,
-			Digest:       childDgst.String(),
-		})
-		if err != nil {
-			return 0, fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
-		}
-		if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
-			RepositoryID:    repoID,
-			ManifestID:      manifestID,
-			ChildManifestID: child.ID,
-		}); err != nil {
-			return 0, fmt.Errorf("link child manifest %s: %w", childDgst, err)
+		if err := s.linkChild(ctx, q, repoID, manifestID, mtID, childDgst); err != nil {
+			return 0, err
 		}
 	}
 
@@ -209,6 +198,38 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 		TagKindID:       s.tagKindTag,
 	}); err != nil {
 		return fmt.Errorf("insert hidden referrer tag: %w", err)
+	}
+	return nil
+}
+
+// linkChild resolves or creates a child manifest and links it to the parent
+// via manifestchild. Under concurrent multi-arch pushes, the child's metadata
+// write may not have committed yet even though distribution accepted the blob.
+// In that case, we create a placeholder manifest row so the FK link succeeds.
+func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, repoID, manifestID, mtID int64, childDgst digest.Digest) error {
+	child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID,
+		Digest:       childDgst.String(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		child.ID, err = q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+			RepositoryID:  repoID,
+			Digest:        childDgst.String(),
+			MediaTypeID:   mtID,
+			ManifestBytes: "{}",
+		})
+		if err != nil {
+			return fmt.Errorf("ensure child manifest %s: %w", childDgst, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
+	}
+	if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+		RepositoryID:    repoID,
+		ManifestID:      manifestID,
+		ChildManifestID: child.ID,
+	}); err != nil {
+		return fmt.Errorf("link child manifest %s: %w", childDgst, err)
 	}
 	return nil
 }
