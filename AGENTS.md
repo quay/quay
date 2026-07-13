@@ -75,7 +75,7 @@ make types-test                      # Type checking (mypy)
 
 - **PR title:** `PROJQUAY-XXXXX: type(scope): lowercase description`
   - Use `NO-ISSUE:` when there is no associated Jira ticket
-  - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
+  - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`, `revert`
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `NO-ISSUE: docs(agents): add contributing guide`
 - **Branch naming:** `<type>/projquay-XXXXX-short-description` where `<type>` matches the PR type
