@@ -1598,9 +1598,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(
-            self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", "password")
-        )
+        redactor.write(self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", "password"))
         output = buf.getvalue()
 
         self.assertNotIn("password", output)
@@ -1612,9 +1610,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         secret = "#HRx-u9r>W+?.?QTtN_X"
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(
-            self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", secret)
-        )
+        redactor.write(self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", secret))
         output = buf.getvalue()
 
         self.assertNotIn(secret, output)
