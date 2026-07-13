@@ -52,6 +52,12 @@ repos:
         language: system
         files: ^web/.*\.(js|jsx|ts|tsx)$
         exclude: ^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml|^web/package-lock\.json
+    -   id: check-playwright-tags
+        name: Check Playwright required usage tags
+        entry: bash -c 'cd web && node playwright/ensure-required-tags.cjs'
+        language: system
+        files: ^web/playwright/.*\.spec\.ts$
+        pass_filenames: false
 -   repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
