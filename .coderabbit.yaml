@@ -25,6 +25,8 @@ reviews:
       - "[do not merge]"
 
   path_filters:
+    - "!.agents/**"
+    - "!.claude/**"
     - "!static/js/**"
     - "!static/lib/**"
     - "!**/*.min.js"
