@@ -19,11 +19,13 @@ type Collector interface {
 
 // Stats summarizes a single GC cycle.
 type Stats struct {
-	TagsExpired         int
-	ManifestsDeleted    int
+	TagsExpired      int
+	ManifestsDeleted int
+	// BlobsDeleted counts imagestorage metadata rows actually deleted.
 	BlobsDeleted        int
 	StaleUploadsRemoved int
-	BytesReclaimed      int64
+	// BytesReclaimed counts successful physical blob and stale-upload deletion.
+	BytesReclaimed int64
 }
 
 // Config tunes the GC worker behavior.

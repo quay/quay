@@ -18,14 +18,16 @@ const staleUploadThreshold = 48 * time.Hour
 // knowledge of SQL, transactions, or FK relationships — the Store handles
 // all of that.
 type collector struct {
-	store Store
-	blobs oci.BlobStore
-	log   *slog.Logger
+	store  Store
+	blobs  oci.BlobStore
+	locker oci.BlobLocker
+	log    *slog.Logger
 }
 
-// NewCollector creates a Collector from a metadata Store and a BlobStore.
-func NewCollector(store Store, blobs oci.BlobStore, log *slog.Logger) Collector {
-	return &collector{store: store, blobs: blobs, log: log}
+// NewCollector creates a Collector from a metadata Store, BlobStore, and the
+// same in-process digest coordinator used by blob uploads.
+func NewCollector(store Store, blobs oci.BlobStore, locker oci.BlobLocker, log *slog.Logger) Collector {
+	return &collector{store: store, blobs: blobs, locker: locker, log: log}
 }
 
 // Collect runs a full GC cycle.
@@ -126,8 +128,8 @@ func (c *collector) collectManifests(ctx context.Context) (int, error) {
 	return total, nil
 }
 
-// collectBlobs finds orphaned blobs, deletes their DB records (with FK
-// cleanup), then deletes only the storage files that are safe to remove.
+// collectBlobs finds orphaned blobs, then processes each candidate while
+// holding its digest lock across metadata revalidation and physical deletion.
 func (c *collector) collectBlobs(ctx context.Context) (deleted int, bytesFreed int64, err error) {
 	orphans, err := c.store.FindOrphanedBlobs(ctx)
 	if err != nil {
@@ -137,31 +139,64 @@ func (c *collector) collectBlobs(ctx context.Context) (deleted int, bytesFreed i
 		return 0, 0, nil
 	}
 
-	var totalBytes int64
-	ids := make([]int64, len(orphans))
-	for i, b := range orphans {
-		ids[i] = b.ID
-		totalBytes += b.ImageSize
+	if c.locker == nil {
+		return 0, 0, fmt.Errorf("nil blob locker")
 	}
 
-	// Delete DB records and get back only checksums safe to delete from storage.
-	safeChecksums, err := c.store.DeleteBlobRecords(ctx, ids)
+	for _, candidate := range orphans {
+		candidateDeleted, candidateBytes, err := c.collectBlob(ctx, candidate)
+		if err != nil {
+			return deleted, bytesFreed, err
+		}
+		deleted += candidateDeleted
+		bytesFreed += candidateBytes
+	}
+
+	return deleted, bytesFreed, nil
+}
+
+func (c *collector) collectBlob(ctx context.Context, candidate OrphanedBlob) (deleted int, bytesFreed int64, err error) {
+	dgst, parseErr := digest.Parse(candidate.ContentChecksum)
+	if parseErr != nil {
+		result, err := c.store.DeleteBlobRecord(ctx, candidate)
+		if err != nil {
+			return 0, 0, err
+		}
+		if result.Deleted {
+			c.log.Warn("gc: invalid digest, skipped storage delete", "checksum", result.ContentChecksum, "err", parseErr)
+			return 1, 0, nil
+		}
+		return 0, 0, nil
+	}
+
+	unlock, err := c.locker.Lock(ctx, dgst)
 	if err != nil {
 		return 0, 0, err
 	}
+	defer unlock()
 
-	// Delete storage files. Failures are logged but not fatal — DB records
-	// are already gone so the blobs won't be served.
-	for _, checksum := range safeChecksums {
-		dgst, err := digest.Parse(checksum)
-		if err != nil {
-			c.log.Warn("gc: invalid digest, skipping storage delete", "checksum", checksum, "err", err)
-			continue
-		}
-		if err := c.blobs.Delete(ctx, dgst); err != nil {
-			c.log.Warn("gc: storage delete failed", "digest", dgst, "err", err)
-		}
+	result, err := c.store.DeleteBlobRecord(ctx, candidate)
+	if err != nil {
+		return 0, 0, err
+	}
+	if !result.Deleted {
+		return 0, 0, nil
+	}
+	if !result.DeleteFromStorage {
+		return 1, 0, nil
 	}
 
-	return len(orphans), totalBytes, nil
+	deleteDigest, err := digest.Parse(result.ContentChecksum)
+	if err != nil {
+		c.log.Warn("gc: invalid digest, skipped storage delete", "checksum", result.ContentChecksum, "err", err)
+		return 1, 0, nil
+	}
+	if deleteDigest != dgst {
+		return 1, 0, fmt.Errorf("blob candidate digest changed from %s to %s", dgst, deleteDigest)
+	}
+	if err := c.blobs.Delete(ctx, deleteDigest); err != nil {
+		c.log.Warn("gc: storage delete failed", "digest", deleteDigest, "err", err)
+		return 1, 0, nil
+	}
+	return 1, result.ImageSize, nil
 }

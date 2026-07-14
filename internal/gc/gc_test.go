@@ -29,6 +29,47 @@ type testEnv struct {
 	q         *daldb.Queries
 }
 
+type blockingDeleteBlobStore struct {
+	oci.BlobStore
+	started chan digest.Digest
+	release chan struct{}
+}
+
+type beforeBlobDeleteStore struct {
+	gc.Store
+	once         sync.Once
+	beforeDelete func()
+}
+
+func (s *beforeBlobDeleteStore) DeleteBlobRecord(ctx context.Context, candidate gc.OrphanedBlob) (gc.BlobDeletion, error) {
+	s.once.Do(s.beforeDelete)
+	return s.Store.DeleteBlobRecord(ctx, candidate)
+}
+
+type failingDeleteBlobStore struct {
+	oci.BlobStore
+	err error
+}
+
+func (s *failingDeleteBlobStore) Delete(context.Context, digest.Digest) error {
+	return s.err
+}
+
+func (s *blockingDeleteBlobStore) Delete(ctx context.Context, dgst digest.Digest) error {
+	select {
+	case s.started <- dgst:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	select {
+	case <-s.release:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return s.BlobStore.Delete(ctx, dgst)
+}
+
 func setup(t *testing.T) *testEnv {
 	t.Helper()
 	dir := t.TempDir()
@@ -52,7 +93,7 @@ func setup(t *testing.T) *testEnv {
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	gcStore := gc.NewSQLiteStore(db)
-	collector := gc.NewCollector(gcStore, blobs, log)
+	collector := gc.NewCollector(gcStore, blobs, oci.NewBlobLockSet(), log)
 
 	return &testEnv{
 		db:        db,
@@ -192,6 +233,9 @@ func TestCollect_OrphanedBlob(t *testing.T) {
 	}
 	if stats.BlobsDeleted != 1 {
 		t.Fatalf("expected 1 deleted blob, got %d", stats.BlobsDeleted)
+	}
+	if stats.BytesReclaimed != int64(len(content)) {
+		t.Fatalf("expected %d reclaimed bytes, got %d", len(content), stats.BytesReclaimed)
 	}
 
 	// Verify storage file is gone.
@@ -872,6 +916,9 @@ func TestCollect_SharedChecksumBlobDedup(t *testing.T) {
 	if stats.BlobsDeleted != 1 {
 		t.Fatalf("expected 1 deleted blob (orphan duplicate), got %d", stats.BlobsDeleted)
 	}
+	if stats.BytesReclaimed != 0 {
+		t.Fatalf("expected 0 reclaimed bytes for shared checksum, got %d", stats.BytesReclaimed)
+	}
 	_, err = env.blobs.Stat(ctx, dgst)
 	if err != nil {
 		t.Fatal("storage file should survive (another imagestorage row shares the checksum)")
@@ -1099,32 +1146,24 @@ func TestRace_GCRevalidatesBeforeDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Step 1: GC finds the unprotected blob as orphan.
-	gcStore := gc.NewSQLiteStore(env.db)
-	orphans, err := gcStore.FindOrphanedBlobs(ctx)
+	gcStore := &beforeBlobDeleteStore{
+		Store: gc.NewSQLiteStore(env.db),
+		beforeDelete: func() {
+			if putErr := env.store.PutUploadedBlob(ctx, repoID, dgst); putErr != nil {
+				t.Errorf("protect blob before GC delete: %v", putErr)
+			}
+		},
+	}
+	collector := gc.NewCollector(gcStore, env.blobs, oci.NewBlobLockSet(), slog.Default())
+	stats, err := collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(orphans) == 0 {
-		t.Fatal("expected FindOrphanedBlobs to find the unprotected blob")
+	if stats.BlobsDeleted != 0 {
+		t.Fatalf("expected 0 deleted blobs after revalidation, got %d", stats.BlobsDeleted)
 	}
-
-	// Step 2: Upload finishes — protection added.
-	if err := env.store.PutUploadedBlob(ctx, repoID, dgst); err != nil {
-		t.Fatal(err)
-	}
-
-	// Step 3: GC processes candidates — must skip the now-protected blob.
-	ids := make([]int64, len(orphans))
-	for i, o := range orphans {
-		ids[i] = o.ID
-	}
-	safeChecksums, err := gcStore.DeleteBlobRecords(ctx, ids)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(safeChecksums) > 0 {
-		t.Fatalf("expected 0 safe checksums (blob now protected), got %v", safeChecksums)
+	if stats.BytesReclaimed != 0 {
+		t.Fatalf("expected 0 reclaimed bytes after revalidation, got %d", stats.BytesReclaimed)
 	}
 
 	// Verify blob survived in DB, uploadedblob intact, storage file intact.
@@ -1138,6 +1177,82 @@ func TestRace_GCRevalidatesBeforeDelete(t *testing.T) {
 	_, err = env.blobs.Stat(ctx, dgst)
 	if err != nil {
 		t.Fatal("storage file should survive")
+	}
+}
+
+func TestDeleteBlobRecord_SkipsChangedCandidate(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	content := []byte("changed-candidate")
+	dgst := digest.FromBytes(content)
+	if _, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
+		t.Fatal(err)
+	}
+
+	gcStore := gc.NewSQLiteStore(env.db)
+	orphans, err := gcStore.FindOrphanedBlobs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orphans) != 1 {
+		t.Fatalf("expected one orphan candidate, got %d", len(orphans))
+	}
+	if _, err := env.db.ExecContext(ctx, "UPDATE imagestorage SET image_size = ? WHERE id = ?", int64(len(content)+1), orphans[0].ID); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := gcStore.DeleteBlobRecord(ctx, orphans[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Deleted {
+		t.Fatal("changed candidate should be skipped")
+	}
+	var rows int
+	if err := env.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM imagestorage WHERE id = ?", orphans[0].ID).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Fatalf("changed candidate metadata should remain, found %d rows", rows)
+	}
+}
+
+func TestCollect_StorageDeleteFailureReportsNoReclaimedBytes(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	content := []byte("storage-delete-fails")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
+		t.Fatal(err)
+	}
+
+	deleteErr := errors.New("injected storage delete failure")
+	blobs := &failingDeleteBlobStore{BlobStore: env.blobs, err: deleteErr}
+	collector := gc.NewCollector(gc.NewSQLiteStore(env.db), blobs, oci.NewBlobLockSet(), slog.Default())
+	stats, err := collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.BlobsDeleted != 1 {
+		t.Fatalf("expected 1 metadata row deleted, got %d", stats.BlobsDeleted)
+	}
+	if stats.BytesReclaimed != 0 {
+		t.Fatalf("expected 0 reclaimed bytes after storage delete failure, got %d", stats.BytesReclaimed)
+	}
+	if _, err := env.blobs.Stat(ctx, dgst); err != nil {
+		t.Fatalf("physical blob should remain after delete failure: %v", err)
+	}
+	var rows int
+	if err := env.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?", dgst.String()).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 0 {
+		t.Fatalf("expected blob metadata to be deleted, found %d rows", rows)
 	}
 }
 
@@ -1172,6 +1287,132 @@ func TestRace_AtomicBlobProtection(t *testing.T) {
 		if o.ContentChecksum == dgst.String() {
 			t.Fatalf("blob %s should NOT be found as orphaned (atomic protection)", dgst)
 		}
+	}
+}
+
+// TestRace_UploadBetweenDBAndStorageDeleteSurvives verifies that a successful
+// same-digest upload cannot be removed after GC finishes its final DB check but
+// before it deletes the physical blob.
+func TestRace_UploadBetweenDBAndStorageDeleteSurvives(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	content := []byte("reuploaded-between-db-check-and-storage-delete")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
+		t.Fatal(err)
+	}
+
+	deleteStarted := make(chan digest.Digest, 1)
+	releaseDelete := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(releaseDelete)
+		}
+	}()
+
+	blockingBlobs := &blockingDeleteBlobStore{
+		BlobStore: env.blobs,
+		started:   deleteStarted,
+		release:   releaseDelete,
+	}
+	blobLocks := oci.NewBlobLockSet()
+	collector := gc.NewCollector(gc.NewSQLiteStore(env.db), blockingBlobs, blobLocks, slog.Default())
+
+	type collectResult struct {
+		stats gc.Stats
+		err   error
+	}
+	resultCh := make(chan collectResult, 1)
+	go func() {
+		stats, err := collector.Collect(ctx)
+		resultCh <- collectResult{stats: stats, err: err}
+	}()
+
+	select {
+	case deleting := <-deleteStarted:
+		if deleting != dgst {
+			t.Fatalf("GC deleting %s, want %s", deleting, dgst)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for GC storage deletion")
+	}
+
+	// GC has deleted the old metadata and decided the checksum is safe, but its
+	// physical delete is paused. Prepare a real chunked upload without holding
+	// the digest lock; only finalization and metadata registration are locked.
+	uploadID, err := env.blobs.InitUpload(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, err := env.blobs.UploadWriter(ctx, uploadID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	uploadAttempted := make(chan struct{})
+	uploadAcquired := make(chan struct{})
+	uploadResult := make(chan error, 1)
+	go func() {
+		close(uploadAttempted)
+		unlock, lockErr := blobLocks.Lock(ctx, dgst)
+		if lockErr != nil {
+			uploadResult <- lockErr
+			return
+		}
+		defer unlock()
+		close(uploadAcquired)
+
+		if commitErr := env.blobs.CommitUpload(ctx, uploadID, dgst); commitErr != nil {
+			uploadResult <- commitErr
+			return
+		}
+		_, putErr := env.store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+			Digest: dgst,
+			Size:   int64(len(content)),
+		})
+		uploadResult <- putErr
+	}()
+	<-uploadAttempted
+	select {
+	case <-uploadAcquired:
+		t.Fatal("same-digest upload acquired the lock before GC released it")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(releaseDelete)
+	released = true
+	result := <-resultCh
+	if result.err != nil {
+		t.Fatal(result.err)
+	}
+	if err := <-uploadResult; err != nil {
+		t.Fatal(err)
+	}
+
+	linked, err := env.store.BlobLinkedToRepo(ctx, repoID, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !linked {
+		t.Fatal("re-uploaded blob metadata should remain linked to the repository")
+	}
+	if _, err := env.blobs.Stat(ctx, dgst); err != nil {
+		t.Fatalf("re-uploaded physical blob should survive GC: %v (stats: %+v)", err, result.stats)
 	}
 }
 

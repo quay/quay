@@ -20,6 +20,7 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/gc"
+	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
 	"github.com/quay/quay/internal/registry"
 	"github.com/quay/quay/internal/registry/distribution"
@@ -66,6 +67,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		slog.Error("metastore setup error", "err", err)
 		return 1
 	}
+	blobLocks := oci.NewBlobLockSet()
 
 	authDir := filepath.Join(resolved.DataDir, "auth")
 	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
@@ -90,6 +92,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		ListenAddr:                         addr,
 		DB:                                 db,
 		Store:                              store,
+		BlobLocker:                         blobLocks,
 		LibraryNamespace:                   resolved.Config.LibraryNamespace,
 		AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess,
 		DatabaseSecretKey:                  resolved.Config.DatabaseSecretKey,
@@ -172,7 +175,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 	gcStore := gc.NewSQLiteStore(db)
-	collector := gc.NewCollector(gcStore, blobs, slog.Default())
+	collector := gc.NewCollector(gcStore, blobs, blobLocks, slog.Default())
 	gcWorker := gc.NewWorker(collector, gc.DefaultConfig(), slog.Default())
 	go func() { _ = gcWorker.Run(ctx) }()
 

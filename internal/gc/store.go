@@ -29,10 +29,10 @@ type Store interface {
 	// active uploadedblob.
 	FindOrphanedBlobs(ctx context.Context) ([]OrphanedBlob, error)
 
-	// DeleteBlobRecords removes blob metadata and dependent rows (placements,
-	// signatures) in a single transaction. Returns only the checksums whose
-	// storage files are safe to delete (no other imagestorage row shares them).
-	DeleteBlobRecords(ctx context.Context, ids []int64) (safeChecksums []string, err error)
+	// DeleteBlobRecord revalidates and removes one orphan candidate and its
+	// dependent rows in a transaction. The result reports the actual metadata
+	// deletion and whether no remaining row shares its physical content.
+	DeleteBlobRecord(ctx context.Context, candidate OrphanedBlob) (BlobDeletion, error)
 }
 
 // ExpiredTag is a tag whose grace period has elapsed.
@@ -54,4 +54,14 @@ type OrphanedBlob struct {
 	ID              int64
 	ContentChecksum string
 	ImageSize       int64
+}
+
+// BlobDeletion describes the outcome of revalidating and deleting one blob
+// metadata candidate. DeleteFromStorage is true only for the final row sharing
+// ContentChecksum.
+type BlobDeletion struct {
+	Deleted           bool
+	ContentChecksum   string
+	ImageSize         int64
+	DeleteFromStorage bool
 }
