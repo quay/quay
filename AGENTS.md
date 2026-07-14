@@ -68,6 +68,7 @@ make types-test                      # Type checking (mypy)
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
 6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+7. **Pattern completeness:** When fixing a bug caused by a fragile code pattern, search for all instances of the same pattern in the file and related files. Fix every instance — not just the one triggering the reported bug. If a helper function becomes unused after the fix, remove it. Note in the PR description if additional instances of the same pattern were found and fixed.
 
 ## Contributing
 
