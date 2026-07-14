@@ -1,14 +1,18 @@
 import json
+import logging
 
 from peewee import JOIN, DataError, fn
 
 from data import model
 from data.database import (
+    ExternalNotificationEvent,
     ImageStorage,
     Manifest,
     ManifestBlob,
+    NamespaceNotification,
     QuotaLimits,
     QuotaNamespaceSize,
+    QuotaNotificationState,
     QuotaType,
     QuotaTypes,
     Repository,
@@ -91,7 +95,21 @@ def update_namespace_quota_size(quota, limit_bytes):
 
 
 def delete_namespace_quota(quota):
+    quota_event_ids = [
+        row[0]
+        for row in ExternalNotificationEvent.select(ExternalNotificationEvent.id)
+        .where(ExternalNotificationEvent.name << ["quota_warning", "quota_error"])
+        .tuples()
+    ]
     with db_transaction():
+        QuotaNotificationState.delete().where(
+            QuotaNotificationState.namespace == quota.namespace,
+        ).execute()
+        if quota_event_ids:
+            NamespaceNotification.delete().where(
+                NamespaceNotification.namespace == quota.namespace,
+                NamespaceNotification.event << quota_event_ids,
+            ).execute()
         QuotaLimits.delete().where(QuotaLimits.quota == quota).execute()
         quota.delete_instance()
 
@@ -167,7 +185,12 @@ def update_namespace_quota_limit_type(limit, type_name):
 
 
 def delete_namespace_quota_limit(limit):
-    limit.delete_instance()
+    with db_transaction():
+        QuotaNotificationState.delete().where(
+            QuotaNotificationState.namespace == limit.quota.namespace,
+            QuotaNotificationState.threshold_percent == limit.percent_of_limit,
+        ).execute()
+        limit.delete_instance()
 
 
 def verify_namespace_quota(repository_ref):
@@ -186,11 +209,13 @@ def check_limits(namespace_name, size):
     quotas = get_namespace_quota_list(namespace_user.username)
     if not quotas:
         default_size = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES", 0)
+        exceeded = default_size > 0 and size >= default_size
         return {
             "limit_bytes": default_size,
-            "severity_level": (
-                None if (default_size == 0 or size < default_size) else QuotaTypes.REJECT
-            ),
+            "severity_level": QuotaTypes.REJECT if exceeded else None,
+            "usage_bytes": size,
+            "quota_limit_bytes": default_size,
+            "threshold_percent": 100 if exceeded else None,
         }
 
     # Currently only one quota per namespace is supported
@@ -198,15 +223,23 @@ def check_limits(namespace_name, size):
     limits = get_namespace_quota_limit_list(quota)
     limit_bytes = 0
     severity_level = None
+    threshold_percent = None
 
     for limit in limits:
         bytes_allowed = int(limit.quota.limit_bytes * limit.percent_of_limit / 100)
-        if size > bytes_allowed:
+        if size >= bytes_allowed:
             if limit_bytes < bytes_allowed:
                 limit_bytes = bytes_allowed
                 severity_level = limit.quota_type.name
+                threshold_percent = limit.percent_of_limit
 
-    return {"limit_bytes": limit_bytes, "severity_level": severity_level}
+    return {
+        "limit_bytes": limit_bytes,
+        "severity_level": severity_level,
+        "usage_bytes": size,
+        "quota_limit_bytes": quota.limit_bytes,
+        "threshold_percent": threshold_percent,
+    }
 
 
 def notify_organization_admins(repository_ref, notification_kind, metadata={}):
@@ -241,6 +274,150 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
                 namespace_user,
                 metadata,
             )
+
+
+logger = logging.getLogger(__name__)
+
+_BYTE_UNITS = ["bytes", "KB", "MB", "GB", "TB"]
+
+
+def _format_bytes(num_bytes):
+    value = float(num_bytes)
+    for unit in _BYTE_UNITS:
+        if abs(value) < 1024.0 or unit == _BYTE_UNITS[-1]:
+            if unit == "bytes":
+                return f"{int(value)} {unit}"
+            return f"{value:.2f} {unit}"
+        value /= 1024.0
+
+
+def maybe_trigger_quota_notification(namespace_name, quota_result):
+    """
+    Spawn external namespace notifications when a quota threshold is crossed,
+    gated behind FEATURE_QUOTA_NOTIFICATIONS with dedup via the state machine.
+
+    Never raises — notification side effects must not block image pushes.
+    """
+    try:
+        _do_trigger_quota_notification(namespace_name, quota_result)
+    except Exception:
+        logger.exception("Failed to trigger quota notification for namespace %s", namespace_name)
+
+
+def _do_trigger_quota_notification(namespace_name, quota_result):
+    import features
+    from data.model.quota_notification_state import claim_notification, release_claim
+    from notifications import spawn_namespace_notification
+
+    if not features.QUOTA_NOTIFICATIONS:
+        return
+
+    severity = quota_result.get("severity_level")
+    if severity not in ("Warning", "Reject"):
+        return
+
+    threshold_percent = quota_result.get("threshold_percent")
+    if threshold_percent is None:
+        return
+
+    namespace_user = model.user.get_user_or_org(namespace_name)
+    if namespace_user is None:
+        return
+
+    event_name = "quota_warning" if severity == "Warning" else "quota_error"
+
+    if not model.notification.list_namespace_notifications(
+        namespace_name, event_name=event_name
+    ).exists():
+        return
+
+    if not claim_notification(namespace_user, threshold_percent):
+        return
+
+    usage_bytes = quota_result.get("usage_bytes", 0)
+    quota_limit_bytes = quota_result.get("quota_limit_bytes", 0)
+    usage_percent = int(usage_bytes * 100 / quota_limit_bytes) if quota_limit_bytes else 0
+
+    try:
+        enqueued = spawn_namespace_notification(
+            namespace_name,
+            event_name,
+            extra_data={
+                "threshold_percent": threshold_percent,
+                "usage_bytes": usage_bytes,
+                "limit_bytes": quota_limit_bytes,
+                "usage_percent": usage_percent,
+                "usage_bytes_formatted": _format_bytes(usage_bytes),
+                "limit_bytes_formatted": _format_bytes(quota_limit_bytes),
+            },
+        )
+    except Exception:
+        release_claim(namespace_user, threshold_percent)
+        raise
+
+    if not enqueued:
+        release_claim(namespace_user, threshold_percent)
+        return
+
+    logger.info(
+        "Quota %s notification triggered for namespace %s at %d%% threshold",
+        severity.lower(),
+        namespace_name,
+        threshold_percent,
+    )
+
+
+def maybe_trigger_retroactive_notification(
+    namespace_name, quota, threshold_percent, quota_type_name
+):
+    """
+    Check if current usage exceeds a specific threshold and fire a notification if so.
+    Called when a quota limit is created or updated.
+
+    Never raises — notification side effects must not fail quota CRUD operations.
+    """
+    try:
+        import features
+
+        if not features.QUOTA_NOTIFICATIONS:
+            return
+
+        usage_bytes = get_namespace_size(namespace_name)
+        quota_limit_bytes = quota.limit_bytes
+        bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
+
+        if usage_bytes <= bytes_allowed:
+            return
+
+        quota_result = {
+            "severity_level": quota_type_name,
+            "threshold_percent": threshold_percent,
+            "usage_bytes": usage_bytes,
+            "quota_limit_bytes": quota_limit_bytes,
+            "limit_bytes": bytes_allowed,
+        }
+        maybe_trigger_quota_notification(namespace_name, quota_result)
+    except Exception:
+        logger.exception(
+            "Failed to trigger retroactive quota notification for namespace %s",
+            namespace_name,
+        )
+
+
+def maybe_trigger_retroactive_notifications_for_quota(namespace_name, quota):
+    """
+    Re-evaluate all quota limits against current usage after the quota size changes.
+    """
+    import features
+
+    if not features.QUOTA_NOTIFICATIONS:
+        return
+
+    limits = get_namespace_quota_limit_list(quota)
+    for limit in limits:
+        maybe_trigger_retroactive_notification(
+            namespace_name, quota, limit.percent_of_limit, limit.quota_type.name
+        )
 
 
 def get_namespace_size(namespace_name):

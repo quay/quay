@@ -697,6 +697,219 @@ export class ApiClient {
     return response.json();
   }
 
+  // Namespace notification methods
+
+  async createNamespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/notifications`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create namespace notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteNamespaceNotification(
+    orgName: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/notifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getNamespaceNotifications(orgName: string): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/notifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get namespace notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async testNamespaceNotification(
+    orgName: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/notifications/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // User namespace notification methods
+
+  async createUserNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/namespacenotifications`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create user namespace notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteUserNamespaceNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete user namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getUserNamespaceNotifications(): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/namespacenotifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get user namespace notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async testUserNamespaceNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test user namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Team methods
 
   async createTeam(
@@ -903,6 +1116,9 @@ export class ApiClient {
         `Failed to create user ${username}: ${response.status()} - ${body}`,
       );
     }
+
+    // Creating a user changes the server session; invalidate cached CSRF token
+    this.csrfToken = null;
 
     const result = await response.json();
     return {

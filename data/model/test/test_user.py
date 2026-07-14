@@ -11,9 +11,11 @@ from data.database import (
     DeletedNamespace,
     EmailConfirmation,
     FederatedLogin,
+    NamespaceNotification,
     OrgMirrorConfig,
     OrgMirrorRepository,
     OrgMirrorStatus,
+    QuotaNotificationState,
     Repository,
     RepositoryState,
     SourceRegistryType,
@@ -325,6 +327,49 @@ def test_delete_namespace_via_marker(initialized_db):
 
     with pytest.raises(DeletedNamespace.DoesNotExist):
         DeletedNamespace.get(id=marker_id)
+
+
+def test_delete_namespace_cleans_up_notifications(initialized_db):
+    """Namespace GC removes NamespaceNotification and QuotaNotificationState rows."""
+
+    def create_transaction(db):
+        return db.transaction()
+
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+
+    model.notification.create_namespace_notification(
+        user, "quota_warning", "email", {"email": "a@b.com"}, {}
+    )
+    QuotaNotificationState.create(
+        namespace=user,
+        threshold_percent=80,
+        cleared=False,
+    )
+
+    assert (
+        NamespaceNotification.select().where(NamespaceNotification.namespace == user).count() == 1
+    )
+    assert (
+        QuotaNotificationState.select().where(QuotaNotificationState.namespace == user).count() == 1
+    )
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    marker_id = mark_namespace_for_deletion(user, [], queue)
+
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=user.id)
+
+    assert (
+        NamespaceNotification.select().where(NamespaceNotification.namespace == user.id).count()
+        == 0
+    )
+    assert (
+        QuotaNotificationState.select().where(QuotaNotificationState.namespace == user.id).count()
+        == 0
+    )
 
 
 def test_delete_namespace_bulk_state_update(initialized_db):

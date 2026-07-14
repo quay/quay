@@ -41,6 +41,11 @@ var knownOMRVersions = map[string]bool{
 	"b1c2d3e4f5a6": true,
 	"15f06d00c4b3": true,
 	"414c5e2fc487": true,
+	// Previous target version (systems already bridged once)
+	"b30800b1d271": true,
+	// Quota notification tables
+	"6715e4719375": true,
+	"9fa37f66a9b6": true,
 }
 
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
