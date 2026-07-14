@@ -120,6 +120,7 @@
     "axios": "^1.16.1",
     "minimatch": "^3.1.5",
     "immutable": "^5.1.5",
+    "decode-uri-component": "^0.5.0",
     "svgo": "4.0.1"
   }
 }
