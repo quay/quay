@@ -110,13 +110,7 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 		if err != nil {
 			return "", err
 		}
-		if result, err := d.meta.GetManifestDigest(ctx, repoID, dgst); err == nil {
-			return result, nil
-		}
-		if _, err := d.blobs.Stat(ctx, dgst); err == nil {
-			return dgst, nil
-		}
-		return "", fmt.Errorf("manifest revision not found: %s", dgst)
+		return d.resolveManifestRevision(ctx, repoID, dgst)
 	}
 	if strings.Contains(path, "/_layers/") && strings.HasSuffix(path, "/link") {
 		return d.resolveLayerLink(ctx, repoID, path)
@@ -129,6 +123,26 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 		return d.meta.GetManifestDigest(ctx, repoID, dgst)
 	}
 	return "", fmt.Errorf("unknown metadata path")
+}
+
+// resolveManifestRevision checks if a manifest exists, first via SQLite metadata,
+// then falling back to the BlobStore. The fallback handles the race where a child
+// manifest blob was written by distribution but the middleware's metadata write
+// hasn't committed yet (common under concurrent multi-arch pushes).
+func (d *DistDriver) resolveManifestRevision(ctx context.Context, repoID int64, dgst digest.Digest) (digest.Digest, error) {
+	result, err := d.meta.GetManifestDigest(ctx, repoID, dgst)
+	if err == nil {
+		return result, nil
+	}
+	if !errors.Is(err, oci.ErrNotExist) {
+		return "", err
+	}
+	if _, statErr := d.blobs.Stat(ctx, dgst); statErr == nil {
+		return dgst, nil
+	} else if !errors.Is(statErr, storage.ErrNotExist) {
+		return "", statErr
+	}
+	return "", fmt.Errorf("manifest revision not found: %s", dgst)
 }
 
 // resolveLayerLink checks if a blob is linked to the repo via manifestblob or

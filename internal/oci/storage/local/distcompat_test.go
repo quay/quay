@@ -575,3 +575,104 @@ func TestDistDriver_GetRepositoryID_ErrNotExist_ReturnsPathNotFound(t *testing.T
 		requirePathNotFound(t, err)
 	})
 }
+
+func revisionLinkPath(repo string, dgst digest.Digest) string {
+	return fmt.Sprintf("/docker/registry/v2/repositories/%s/_manifests/revisions/sha256/%s/link", repo, dgst.Encoded())
+}
+
+func TestDistDriver_ManifestRevisionLink_MetadataHit(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dgst := digest.FromString("metadata-hit-manifest")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := dd.GetContent(ctx, revisionLinkPath("lib/test", dgst))
+	if err != nil {
+		t.Fatalf("expected metadata hit to resolve, got: %v", err)
+	}
+	if string(got) != dgst.String() {
+		t.Fatalf("got %q, want %q", got, dgst.String())
+	}
+}
+
+func TestDistDriver_ManifestRevisionLink_BlobOnlyFallback(t *testing.T) {
+	dd, blobs, store := setupDistTest(t)
+	ctx := t.Context()
+
+	if _, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"}); err != nil {
+		t.Fatal(err)
+	}
+
+	content := []byte("blob-only-manifest-content")
+	dgst := digest.FromBytes(content)
+	if err := blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := dd.GetContent(ctx, revisionLinkPath("lib/test", dgst))
+	if err != nil {
+		t.Fatalf("expected blob-only fallback to resolve, got: %v", err)
+	}
+	if string(got) != dgst.String() {
+		t.Fatalf("got %q, want %q", got, dgst.String())
+	}
+}
+
+func TestDistDriver_ManifestRevisionLink_BothAbsent(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	if _, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"}); err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("nonexistent-manifest")
+	_, err := dd.GetContent(ctx, revisionLinkPath("lib/test", dgst))
+	requirePathNotFound(t, err)
+}
+
+func TestDistDriver_ManifestRevisionLink_RepoIsolation(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoA, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "org", Name: "repo-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "org", Name: "repo-b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("repo-a-only-manifest")
+	if _, err := store.PutManifest(ctx, repoA, oci.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Should resolve in repo-a
+	got, err := dd.GetContent(ctx, revisionLinkPath("org/repo-a", dgst))
+	if err != nil {
+		t.Fatalf("repo-a should resolve: %v", err)
+	}
+	if string(got) != dgst.String() {
+		t.Fatalf("got %q, want %q", got, dgst.String())
+	}
+
+	// Should NOT resolve in repo-b (metadata is repo-scoped)
+	_, err = dd.GetContent(ctx, revisionLinkPath("org/repo-b", dgst))
+	requirePathNotFound(t, err)
+}
