@@ -164,6 +164,62 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
         `/repository/${org.name}/${repo.name}/tag/${tagName}`,
       );
     });
+
+    test(
+      'tag names containing the repository name use canonical breadcrumbs',
+      {tag: '@PROJQUAY-9330'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('breadcrumborg');
+        const repo = await api.repositoryWithName(org.name, 'alpine');
+        const tagNames = [repo.name, `${repo.name}1`];
+
+        for (const tagName of tagNames) {
+          await pushImage(
+            org.name,
+            repo.name,
+            tagName,
+            TEST_USERS.user.username,
+            TEST_USERS.user.password,
+          );
+
+          const tagPath = `/repository/${org.name}/${repo.name}/tag/${tagName}`;
+          await authenticatedPage.goto(tagPath);
+
+          const items = authenticatedPage
+            .getByTestId('page-breadcrumbs-list')
+            .locator('li');
+          await expect(items).toHaveCount(4);
+          await expect(items).toHaveText([
+            'Repository',
+            org.name,
+            repo.name,
+            tagName,
+          ]);
+          await expect(items.nth(2).locator('a')).toHaveAttribute(
+            'href',
+            `/repository/${org.name}/${repo.name}`,
+          );
+          await expect(items.nth(3).locator('a')).toHaveClass(/disabled-link/);
+          await expect(items.nth(3).locator('a')).toHaveAttribute(
+            'href',
+            tagPath,
+          );
+        }
+
+        await authenticatedPage
+          .getByTestId('page-breadcrumbs-list')
+          .locator('li')
+          .nth(2)
+          .locator('a')
+          .click();
+        await expect(authenticatedPage).toHaveURL(
+          `/repository/${org.name}/${repo.name}`,
+        );
+        await expect(
+          authenticatedPage.getByText('Unable to complete request'),
+        ).not.toBeVisible();
+      },
+    );
   });
 
   test.describe('Team breadcrumbs', () => {
