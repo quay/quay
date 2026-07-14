@@ -71,5 +71,11 @@ DELETE FROM imagestoragesignature WHERE storage_id = ?;
 -- name: DeleteUploadedBlobsByBlobID :exec
 DELETE FROM uploadedblob WHERE blob_id = ?;
 
+-- name: CountManifestBlobRefs :one
+SELECT COUNT(*) FROM manifestblob WHERE blob_id = ?;
+
+-- name: CountActiveUploadedBlobRefs :one
+SELECT COUNT(*) FROM uploadedblob WHERE blob_id = ? AND expires_at > datetime('now');
+
 -- name: CountBlobsByChecksum :one
 SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?;

@@ -63,19 +63,15 @@ func (bs *blobStore) Resume(ctx context.Context, id string) (distribution.BlobWr
 }
 
 func (bs *blobStore) recordBlob(ctx context.Context, desc v1.Descriptor) error { //nolint:gocritic // distribution passes descriptors by value
-	if _, err := bs.repo.store.PutBlob(ctx, oci.BlobRecord{
-		Digest: desc.Digest,
-		Size:   desc.Size,
-	}); err != nil {
-		return logMetadataError("blob_put", bs.repo.Named().Name(), desc.Digest.String(), err)
-	}
-
 	repoID, err := bs.repo.ensureRepo(ctx)
 	if err != nil {
 		return err
 	}
-	if err := bs.repo.store.PutUploadedBlob(ctx, repoID, desc.Digest); err != nil {
-		return logMetadataError("uploaded_blob", bs.repo.Named().Name(), desc.Digest.String(), err)
+	if _, err := bs.repo.store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+		Digest: desc.Digest,
+		Size:   desc.Size,
+	}); err != nil {
+		return logMetadataError("blob_put", bs.repo.Named().Name(), desc.Digest.String(), err)
 	}
 	return nil
 }

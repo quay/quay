@@ -29,6 +29,7 @@ type MetadataStore interface {
 	ListReferrers(ctx context.Context, repoID int64, subject digest.Digest, artifactType string) ([]ReferrerRecord, error)
 
 	// Upload tracking (prevents GC of unreferenced blobs during push)
+	PutRepositoryBlob(ctx context.Context, repoID int64, b BlobRecord) (int64, error)
 	PutUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) error
 	DeleteUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) (int64, error)
 	CleanExpiredUploadedBlobs(ctx context.Context) error

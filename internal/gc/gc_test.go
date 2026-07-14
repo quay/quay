@@ -1080,6 +1080,101 @@ func TestCollect_ReferrerManifestProtectedByHiddenTag(t *testing.T) {
 	}
 }
 
+// TestRace_GCRevalidatesBeforeDelete simulates the race where GC finds an
+// orphan candidate, then uploadedblob protection is added before GC deletes.
+// GC must revalidate and skip the now-protected blob.
+func TestRace_GCRevalidatesBeforeDelete(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	content := []byte("blob-in-flight")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+	_, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Step 1: GC finds the unprotected blob as orphan.
+	gcStore := gc.NewSQLiteStore(env.db)
+	orphans, err := gcStore.FindOrphanedBlobs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orphans) == 0 {
+		t.Fatal("expected FindOrphanedBlobs to find the unprotected blob")
+	}
+
+	// Step 2: Upload finishes — protection added.
+	if err := env.store.PutUploadedBlob(ctx, repoID, dgst); err != nil {
+		t.Fatal(err)
+	}
+
+	// Step 3: GC processes candidates — must skip the now-protected blob.
+	ids := make([]int64, len(orphans))
+	for i, o := range orphans {
+		ids[i] = o.ID
+	}
+	safeChecksums, err := gcStore.DeleteBlobRecords(ctx, ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(safeChecksums) > 0 {
+		t.Fatalf("expected 0 safe checksums (blob now protected), got %v", safeChecksums)
+	}
+
+	// Verify blob survived in DB, uploadedblob intact, storage file intact.
+	var count int
+	if err := env.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?", dgst.String()).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count == 0 {
+		t.Fatal("imagestorage row should survive")
+	}
+	_, err = env.blobs.Stat(ctx, dgst)
+	if err != nil {
+		t.Fatal("storage file should survive")
+	}
+}
+
+// TestRace_AtomicBlobProtection verifies PutRepositoryBlob writes both
+// imagestorage and uploadedblob in a single transaction so no window
+// exists for GC to find an unprotected blob.
+func TestRace_AtomicBlobProtection(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	content := []byte("atomic-blob")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+
+	// Use PutRepositoryBlob (atomic) instead of separate PutBlob + PutUploadedBlob.
+	_, err := env.store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// GC should NOT find this blob as orphaned — uploadedblob was written atomically.
+	gcStore := gc.NewSQLiteStore(env.db)
+	orphans, err := gcStore.FindOrphanedBlobs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range orphans {
+		if o.ContentChecksum == dgst.String() {
+			t.Fatalf("blob %s should NOT be found as orphaned (atomic protection)", dgst)
+		}
+	}
+}
+
 func getManifestID(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest) int64 {
 	t.Helper()
 	m, err := env.q.GetManifestByDigest(ctx(t), daldb.GetManifestByDigestParams{

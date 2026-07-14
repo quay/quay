@@ -10,12 +10,34 @@ import (
 	"database/sql"
 )
 
+const countActiveUploadedBlobRefs = `-- name: CountActiveUploadedBlobRefs :one
+SELECT COUNT(*) FROM uploadedblob WHERE blob_id = ? AND expires_at > datetime('now')
+`
+
+func (q *Queries) CountActiveUploadedBlobRefs(ctx context.Context, blobID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveUploadedBlobRefs, blobID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countBlobsByChecksum = `-- name: CountBlobsByChecksum :one
 SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?
 `
 
 func (q *Queries) CountBlobsByChecksum(ctx context.Context, contentChecksum sql.NullString) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countBlobsByChecksum, contentChecksum)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countManifestBlobRefs = `-- name: CountManifestBlobRefs :one
+SELECT COUNT(*) FROM manifestblob WHERE blob_id = ?
+`
+
+func (q *Queries) CountManifestBlobRefs(ctx context.Context, blobID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countManifestBlobRefs, blobID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

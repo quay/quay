@@ -333,6 +333,34 @@ func (s *SQLiteStore) PutBlob(ctx context.Context, b oci.BlobRecord) (int64, err
 	return id, nil
 }
 
+// PutRepositoryBlob atomically inserts the blob metadata and its upload
+// protection marker in a single transaction, closing the race window where
+// GC could see the imagestorage row before the uploadedblob row exists.
+func (s *SQLiteStore) PutRepositoryBlob(ctx context.Context, repoID int64, b oci.BlobRecord) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	blobID, err := s.ensureBlob(ctx, tx, oci.BlobRef(b))
+	if err != nil {
+		return 0, err
+	}
+
+	if err := daldb.New(tx).InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{
+		RepositoryID: repoID,
+		BlobID:       blobID,
+	}); err != nil {
+		return 0, fmt.Errorf("insert uploaded blob %s: %w", b.Digest, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return blobID, nil
+}
+
 // PutTag expires any active tag with the same name and inserts a new one.
 func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)

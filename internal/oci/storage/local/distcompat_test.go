@@ -470,6 +470,9 @@ func (s *errStubMetaStore) ListRepositories(context.Context) ([]oci.RepositoryNa
 func (s *errStubMetaStore) ListReferrers(context.Context, int64, digest.Digest, string) ([]oci.ReferrerRecord, error) {
 	return nil, errNotImplemented
 }
+func (s *errStubMetaStore) PutRepositoryBlob(context.Context, int64, oci.BlobRecord) (int64, error) {
+	return 0, errNotImplemented
+}
 func (s *errStubMetaStore) PutUploadedBlob(context.Context, int64, digest.Digest) error {
 	return errNotImplemented
 }

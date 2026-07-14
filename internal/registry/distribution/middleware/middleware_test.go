@@ -105,6 +105,12 @@ func (m *mockStore) ListRepositories(_ context.Context) ([]oci.RepositoryName, e
 	return nil, errNotImplemented
 }
 
+func (m *mockStore) PutRepositoryBlob(_ context.Context, repoID int64, b oci.BlobRecord) (int64, error) {
+	m.lastRepoID = repoID
+	m.putBlobRec = b
+	return m.putBlobID, m.putBlobErr
+}
+
 func (m *mockStore) PutUploadedBlob(_ context.Context, _ int64, _ digest.Digest) error {
 	return nil
 }
