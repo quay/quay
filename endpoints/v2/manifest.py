@@ -357,6 +357,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         parsed,
         expiration_sec,
         storage,
+        model_cache=model_cache,
     )
 
     if manifest is None:

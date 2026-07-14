@@ -287,7 +287,7 @@ class OCIModel(RegistryDataInterface):
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
 
         referrers_cache_key = cache_key.for_manifest_referrers(
-            repository_ref, manifest.digest, model_cache.cache_config
+            repository_ref, manifest.digest, model_cache.cache_config, artifact_type=artifact_type
         )
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
@@ -859,11 +859,16 @@ class OCIModel(RegistryDataInterface):
         manifest_interface_instance,
         expiration_sec,
         storage,
+        model_cache=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated so that subsequent queries
+        return fresh results.
         """
         with db_disallow_replica_use():
             # Get or create the manifest itself. get_or_create_manifest will take care of the
@@ -876,6 +881,28 @@ class OCIModel(RegistryDataInterface):
             )
             if created_manifest is None:
                 return None
+
+            # Invalidate the referrers cache for the subject digest so that
+            # subsequent lookups return the newly attached referrer immediately.
+            if model_cache is not None and manifest_interface_instance.subject is not None:
+                subject_digest = manifest_interface_instance.subject.digest
+                # Invalidate the unfiltered referrers cache entry.
+                unfiltered_key = cache_key.for_manifest_referrers(
+                    repository_ref, subject_digest, model_cache.cache_config
+                )
+                model_cache.invalidate(unfiltered_key)
+
+                # Invalidate the artifact-type-filtered cache entry so that
+                # queries with ?artifactType=<type> also see the new referrer.
+                manifest_artifact_type = manifest_interface_instance.artifact_type
+                if manifest_artifact_type is not None:
+                    filtered_key = cache_key.for_manifest_referrers(
+                        repository_ref,
+                        subject_digest,
+                        model_cache.cache_config,
+                        artifact_type=manifest_artifact_type,
+                    )
+                    model_cache.invalidate(filtered_key)
 
             return Manifest.for_manifest(created_manifest.manifest, self._legacy_image_id_handler)
 
