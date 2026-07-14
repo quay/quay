@@ -401,12 +401,15 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage
+        self, repository_ref, manifest_interface_instance, expiration_sec, storage, model_cache=None
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
