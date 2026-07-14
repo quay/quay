@@ -33,6 +33,8 @@ reviews:
     - "!**/*_generated*"
     - "!**/node_modules/**"
     - "!web/dist/**"
+    - "!.agents/**"
+    - "!.claude/**"
 
   path_instructions:
     - path: "data/migrations/versions/**/*.py"
