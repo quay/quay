@@ -138,70 +138,87 @@ func (s *SQLiteStore) DeleteBlobRecord(ctx context.Context, candidate OrphanedBl
 	defer func() { _ = tx.Rollback() }()
 
 	q := daldb.New(tx)
-
-	var checksum sql.NullString
-	var imageSize sql.NullInt64
-	if err := tx.QueryRowContext(ctx, "SELECT content_checksum, image_size FROM imagestorage WHERE id = ?", candidate.ID).Scan(&checksum, &imageSize); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return BlobDeletion{}, nil
-		}
-		return BlobDeletion{}, fmt.Errorf("read blob candidate %d: %w", candidate.ID, err)
+	result, checksum, matches, err := readBlobCandidate(ctx, tx, candidate)
+	if err != nil {
+		return BlobDeletion{}, err
 	}
-
-	actualChecksum := ""
-	if checksum.Valid {
-		actualChecksum = checksum.String
-	}
-	actualSize := int64(0)
-	if imageSize.Valid {
-		actualSize = imageSize.Int64
-	}
-	if actualChecksum != candidate.ContentChecksum || actualSize != candidate.ImageSize {
+	if !matches {
 		return BlobDeletion{}, nil
 	}
 
-	mbRefs, err := q.CountManifestBlobRefs(ctx, candidate.ID)
+	protected, err := blobIsProtected(ctx, q, candidate.ID)
 	if err != nil {
-		return BlobDeletion{}, fmt.Errorf("revalidate manifestblob for blob %d: %w", candidate.ID, err)
+		return BlobDeletion{}, err
 	}
-	ubRefs, err := q.CountActiveUploadedBlobRefs(ctx, candidate.ID)
-	if err != nil {
-		return BlobDeletion{}, fmt.Errorf("revalidate uploadedblob for blob %d: %w", candidate.ID, err)
-	}
-	if mbRefs > 0 || ubRefs > 0 {
+	if protected {
 		return BlobDeletion{}, nil
 	}
 
-	if err := q.DeleteUploadedBlobsByBlobID(ctx, candidate.ID); err != nil {
-		return BlobDeletion{}, fmt.Errorf("delete uploadedblobs for blob %d: %w", candidate.ID, err)
-	}
-	if err := q.DeleteImageStoragePlacements(ctx, candidate.ID); err != nil {
-		return BlobDeletion{}, fmt.Errorf("delete placements for blob %d: %w", candidate.ID, err)
-	}
-	if err := q.DeleteImageStorageSignatures(ctx, candidate.ID); err != nil {
-		return BlobDeletion{}, fmt.Errorf("delete signatures for blob %d: %w", candidate.ID, err)
-	}
-	if err := q.DeleteImageStorage(ctx, candidate.ID); err != nil {
-		return BlobDeletion{}, fmt.Errorf("delete imagestorage %d: %w", candidate.ID, err)
+	if err := deleteBlobRows(ctx, q, candidate.ID); err != nil {
+		return BlobDeletion{}, err
 	}
 
-	deleteFromStorage := false
 	if checksum.Valid {
 		count, err := q.CountBlobsByChecksum(ctx, checksum)
 		if err != nil {
-			return BlobDeletion{}, fmt.Errorf("count blobs for checksum %s: %w", actualChecksum, err)
+			return BlobDeletion{}, fmt.Errorf("count blobs for checksum %s: %w", result.ContentChecksum, err)
 		}
-		deleteFromStorage = count == 0
+		result.DeleteFromStorage = count == 0
 	}
 
 	if err := tx.Commit(); err != nil {
 		return BlobDeletion{}, fmt.Errorf("commit blob delete %d: %w", candidate.ID, err)
 	}
 
-	return BlobDeletion{
-		Deleted:           true,
-		ContentChecksum:   actualChecksum,
-		ImageSize:         actualSize,
-		DeleteFromStorage: deleteFromStorage,
-	}, nil
+	result.Deleted = true
+	return result, nil
+}
+
+func readBlobCandidate(ctx context.Context, tx *sql.Tx, candidate OrphanedBlob) (BlobDeletion, sql.NullString, bool, error) {
+	var checksum sql.NullString
+	var imageSize sql.NullInt64
+	if err := tx.QueryRowContext(ctx, "SELECT content_checksum, image_size FROM imagestorage WHERE id = ?", candidate.ID).Scan(&checksum, &imageSize); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return BlobDeletion{}, sql.NullString{}, false, nil
+		}
+		return BlobDeletion{}, sql.NullString{}, false, fmt.Errorf("read blob candidate %d: %w", candidate.ID, err)
+	}
+
+	result := BlobDeletion{}
+	if checksum.Valid {
+		result.ContentChecksum = checksum.String
+	}
+	if imageSize.Valid {
+		result.ImageSize = imageSize.Int64
+	}
+	matches := result.ContentChecksum == candidate.ContentChecksum && result.ImageSize == candidate.ImageSize
+	return result, checksum, matches, nil
+}
+
+func blobIsProtected(ctx context.Context, q *daldb.Queries, id int64) (bool, error) {
+	mbRefs, err := q.CountManifestBlobRefs(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("revalidate manifestblob for blob %d: %w", id, err)
+	}
+	ubRefs, err := q.CountActiveUploadedBlobRefs(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("revalidate uploadedblob for blob %d: %w", id, err)
+	}
+	return mbRefs > 0 || ubRefs > 0, nil
+}
+
+func deleteBlobRows(ctx context.Context, q *daldb.Queries, id int64) error {
+	if err := q.DeleteUploadedBlobsByBlobID(ctx, id); err != nil {
+		return fmt.Errorf("delete uploadedblobs for blob %d: %w", id, err)
+	}
+	if err := q.DeleteImageStoragePlacements(ctx, id); err != nil {
+		return fmt.Errorf("delete placements for blob %d: %w", id, err)
+	}
+	if err := q.DeleteImageStorageSignatures(ctx, id); err != nil {
+		return fmt.Errorf("delete signatures for blob %d: %w", id, err)
+	}
+	if err := q.DeleteImageStorage(ctx, id); err != nil {
+		return fmt.Errorf("delete imagestorage %d: %w", id, err)
+	}
+	return nil
 }
