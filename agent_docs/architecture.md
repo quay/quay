@@ -140,6 +140,69 @@ if not repo:
     raise NotFound()
 ```
 
+### Side-Effect Safety
+
+Notification dispatch, queue operations, and telemetry **must never block
+primary user-facing operations** (image pushes, API CRUD). If Redis is down
+or the database is unreachable during a side-effect, the primary operation
+must still succeed. Wrap all side-effects in `try/except` with logging.
+
+**Rule:** Any code that sends notifications, enqueues background work, or
+records telemetry inside a request path must be wrapped so that failures are
+logged but never propagated to the caller.
+
+#### Fire-and-forget pattern
+
+Wrap the side-effect call in a function that catches all exceptions and logs
+them. The caller never sees the error:
+
+```python
+def maybe_trigger_quota_notification(namespace_name, quota_result):
+    """
+    Never raises — notification side effects must not block image pushes.
+    """
+    try:
+        _do_trigger_quota_notification(namespace_name, quota_result)
+    except Exception:
+        logger.exception(
+            "Failed to trigger quota notification for namespace %s",
+            namespace_name,
+        )
+```
+
+The calling code (e.g., `endpoints/v2/blob.py`) invokes
+`maybe_trigger_quota_notification()` without any `try/except` of its own
+because the function guarantees it will not raise.
+
+#### Cleanup on failure
+
+When a side-effect acquires state (e.g., a dedup claim, a lock, or a
+temporary record), use `try/except` to release the state on failure so it
+does not leak:
+
+```python
+if not claim_notification(namespace_user, threshold_percent):
+    return  # another caller already claimed this threshold
+
+try:
+    enqueued = spawn_namespace_notification(namespace_name, event_name, ...)
+except Exception:
+    release_claim(namespace_user, threshold_percent)
+    raise  # re-raise into the outer fire-and-forget wrapper
+```
+
+Without the cleanup, a failed `spawn_namespace_notification` call would
+leave the dedup claim unreleased, silently suppressing all notifications for
+that threshold until the cooldown expired.
+
+#### Examples in the codebase
+
+| File | Pattern |
+|------|---------|
+| `data/model/namespacequota.py` | `maybe_trigger_quota_notification` — fire-and-forget wrapper with inner cleanup for dedup claims |
+| `data/model/namespacequota.py` | `maybe_trigger_retroactive_notification` — fire-and-forget wrapper for retroactive quota checks |
+| `workers/quotatotalworker.py` | Worker loop wraps each `_check_namespace` call in `try/except` so one failing namespace does not abort the batch |
+
 ### Feature Flags
 
 ```python
