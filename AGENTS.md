@@ -62,7 +62,11 @@ make types-test                      # Type checking (mypy)
 
 ## Universal Conventions
 
-1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. Always run relevant tests before committing.
+1. **Testing:** Every code change must include tests.
+   - **Backend** (Python: `data/`, `endpoints/`, `workers/`, `auth/`, `storage/`): Use **pytest** in the appropriate `test/` directory. This includes cache behavior, database queries, API logic, and worker processing.
+   - **Frontend UI** (`web/src/`): Use **Playwright** for E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`). Use vitest only for pure unit logic with no UI interaction (utilities, data transformers).
+   - **Do not use Playwright for backend-only changes** — Playwright tests run in a browser and cannot exercise data-layer internals like cache invalidation, database queries, or worker logic.
+   - Always run relevant tests before committing.
 2. **Formatting:** Rely on pre-commit hook to format code on commit
 3. **No secrets:** Never commit credentials, API keys, or sensitive config
 4. **Imports:** Follow existing import ordering patterns in each file
