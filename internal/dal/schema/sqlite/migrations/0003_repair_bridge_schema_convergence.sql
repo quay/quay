@@ -1,0 +1,4 @@
+-- revision: 9fdf045306b8
+-- down_revision: a2fc72f380b7
+-- Repair incomplete OMR bridge schema convergence. The transactional,
+-- idempotent repair is dispatched by dbcore before this revision is stamped.

@@ -204,7 +204,17 @@ func TestRunBridge_MigratesPriorGoRevisionWithoutOMRBridge(t *testing.T) {
 	defer db.Close()
 
 	ctx := t.Context()
-	if _, err := db.ExecContext(ctx, "CREATE TABLE alembic_version (version_num TEXT NOT NULL)"); err != nil {
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE alembic_version (version_num TEXT NOT NULL);
+		CREATE TABLE "user" (id INTEGER PRIMARY KEY, email TEXT NOT NULL, organization BOOLEAN NOT NULL);
+		CREATE TABLE organizationcontactemail (
+			id INTEGER PRIMARY KEY,
+			organization_id INTEGER NOT NULL,
+			contact_email TEXT
+		);
+		CREATE TABLE oauthaccesstoken (id INTEGER PRIMARY KEY, application_id INTEGER NOT NULL);
+		CREATE TABLE logentrykind (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
+	`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(ctx, "INSERT INTO alembic_version VALUES ('prior_go_revision')"); err != nil {

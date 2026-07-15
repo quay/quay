@@ -20,8 +20,10 @@ import (
 // before Go-only SQLite migrations are applied.
 const BridgeTargetVersion = "9fa37f66a9b6"
 
+const schemaConvergenceVersion = "9fdf045306b8"
+
 // TargetVersion is the SQLite schema revision this binary expects.
-const TargetVersion = "a2fc72f380b7"
+const TargetVersion = schemaConvergenceVersion
 
 // InitDatabase creates a fresh SQLite database from the generated bridge DDL
 // and seed data, then applies Go-only migrations. It returns an error if the
@@ -107,10 +109,17 @@ func initDatabaseWithSources(
 	if err != nil {
 		return fmt.Errorf("plan Go-only migrations from seeded version %q: %w", seedVersion, err)
 	}
+	if err := verifyForeignKeys(ctx, tx); err != nil {
+		return fmt.Errorf("validate schema and seed data: %w", err)
+	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+		return fmt.Errorf("re-enable foreign keys before migrations: %w", err)
+	}
+	foreignKeysDisabled = false
 
 	if err := applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w); err != nil {
 		return fmt.Errorf("apply Go-only migrations: %w", err)
@@ -119,7 +128,6 @@ func initDatabaseWithSources(
 	if err := verifyForeignKeys(ctx, db); err != nil {
 		return err
 	}
-	foreignKeysDisabled = false
 
 	writeInitSummary(ctx, db, w)
 	return nil
@@ -148,12 +156,12 @@ func writeInitSummary(ctx context.Context, db *sql.DB, w io.Writer) {
 	fmt.Fprintf(w, "Initialized database: %d tables, %d seed rows\n", tables, seedRows)
 }
 
-func verifyForeignKeys(ctx context.Context, db *sql.DB) error {
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("re-enable foreign keys: %w", err)
-	}
+type foreignKeyQueryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
 
-	rows, err := db.QueryContext(ctx, "PRAGMA foreign_key_check")
+func verifyForeignKeys(ctx context.Context, queryer foreignKeyQueryer) error {
+	rows, err := queryer.QueryContext(ctx, "PRAGMA foreign_key_check")
 	if err != nil {
 		return fmt.Errorf("foreign key check: %w", err)
 	}
@@ -560,6 +568,14 @@ func applyMigrationTx(ctx context.Context, db *sql.DB, migrationSQL, revisionID 
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execute SQL: %w", err)
 		}
+	}
+	if revisionID == schemaConvergenceVersion {
+		if err := convergeBridgeSchema(ctx, tx); err != nil {
+			return fmt.Errorf("converge bridge schema: %w", err)
+		}
+	}
+	if err := verifyForeignKeys(ctx, tx); err != nil {
+		return fmt.Errorf("validate migration foreign keys: %w", err)
 	}
 
 	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", revisionID); err != nil {

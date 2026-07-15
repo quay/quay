@@ -217,4 +217,7 @@ INSERT OR IGNORE INTO externalnotificationevent (name) VALUES ('quota_error');
 -- ============================================================
 
 INSERT OR IGNORE INTO organizationcontactemail (organization_id, contact_email)
-SELECT id, email FROM "user" WHERE organization = 1 AND email IS NOT NULL;
+SELECT id, email FROM "user"
+WHERE organization = 1
+	AND email IS NOT NULL
+	AND length(email) < 64;

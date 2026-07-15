@@ -40,6 +40,9 @@ var knownOMRVersions = map[string]bool{
 	"b1c2d3e4f5a6": true,
 	"15f06d00c4b3": true,
 	"414c5e2fc487": true,
+	"c3d4e5f6a7b8": true,
+	"b1a79fa8e630": true,
+	"d064a4f00d4a": true,
 	// Previous target version (systems already bridged once)
 	"b30800b1d271": true,
 	// Quota notification tables
@@ -170,6 +173,9 @@ func bridgeToRootWithApply(
 	if err := apply(ctx, tx, bridgeRoot.sql); err != nil {
 		return err
 	}
+	if err := verifyForeignKeys(ctx, tx); err != nil {
+		return fmt.Errorf("validate bridge foreign keys: %w", err)
+	}
 
 	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", bridgeRoot.revision); err != nil {
 		return fmt.Errorf("stamp version: %w", err)
@@ -207,8 +213,111 @@ func applyBridge(ctx context.Context, tx *sql.Tx, bridgeSQL string) error {
 			return fmt.Errorf("execute bridge SQL: %w\nstatement: %s", err, truncate(trimmed, 200))
 		}
 	}
+	if err := convergeBridgeSchema(ctx, tx); err != nil {
+		return fmt.Errorf("converge bridge schema: %w", err)
+	}
 
 	return nil
+}
+
+// convergeBridgeSchema applies the SQLite equivalents of the Alembic
+// b1a79fa8e630, d064a4f00d4a, and b30800b1d271 migrations. It is safe to run
+// both while bridging historical OMR databases and as a Go-only repair for
+// databases stamped by an older, incomplete bridge.
+func convergeBridgeSchema(ctx context.Context, tx *sql.Tx) error {
+	for _, col := range []struct {
+		name, typedef string
+	}{
+		{name: "last_accessed", typedef: "DATETIME"},
+		{name: "created", typedef: "DATETIME"},
+		{name: "display_name", typedef: "VARCHAR(255)"},
+	} {
+		if err := ensureColumn(ctx, tx, "oauthaccesstoken", col.name, col.typedef); err != nil {
+			return fmt.Errorf("ensure oauthaccesstoken.%s: %w", col.name, err)
+		}
+	}
+
+	indexes := []struct {
+		name, createSQL string
+	}{
+		{
+			name: "user_email_unique_non_org",
+			createSQL: `CREATE UNIQUE INDEX user_email_unique_non_org ` +
+				`ON "user"(email) WHERE organization = false`,
+		},
+		{
+			name:      "user_email_idx",
+			createSQL: `CREATE INDEX user_email_idx ON user (email)`,
+		},
+		{
+			name: "oauthaccesstoken_application_id_last_accessed",
+			createSQL: `CREATE INDEX oauthaccesstoken_application_id_last_accessed ` +
+				`ON oauthaccesstoken (application_id, last_accessed)`,
+		},
+	}
+	for _, index := range indexes {
+		if err := ensureIndexDefinition(ctx, tx, index.name, index.createSQL); err != nil {
+			return fmt.Errorf("ensure index %s: %w", index.name, err)
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS user_email`); err != nil {
+		return fmt.Errorf("drop full user email index: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE "user"
+		SET email = (
+			SELECT contact_email
+			FROM organizationcontactemail
+			WHERE organization_id = "user".id
+				AND contact_email IS NOT NULL
+		)
+		WHERE organization = true
+			AND email NOT LIKE '%@%'
+			AND EXISTS (
+				SELECT 1
+				FROM organizationcontactemail
+				WHERE organization_id = "user".id
+					AND contact_email IS NOT NULL
+			)
+	`); err != nil {
+		return fmt.Errorf("restore organization contact emails: %w", err)
+	}
+
+	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT OR IGNORE INTO logentrykind (name) VALUES (?)`, kind,
+		); err != nil {
+			return fmt.Errorf("seed log entry kind %s: %w", kind, err)
+		}
+	}
+	return nil
+}
+
+func ensureIndexDefinition(ctx context.Context, tx *sql.Tx, indexName, createSQL string) error {
+	var existingSQL sql.NullString
+	err := tx.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?`, indexName,
+	).Scan(&existingSQL)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("query index: %w", err)
+	}
+	if err == nil && existingSQL.Valid && canonicalSQL(existingSQL.String) == canonicalSQL(createSQL) {
+		return nil
+	}
+	if err == nil {
+		if _, err := tx.ExecContext(ctx, `DROP INDEX `+indexName); err != nil {
+			return fmt.Errorf("drop incorrect index: %w", err)
+		}
+	}
+	if _, err := tx.ExecContext(ctx, createSQL); err != nil {
+		return fmt.Errorf("create index: %w", err)
+	}
+	return nil
+}
+
+func canonicalSQL(raw string) string {
+	return strings.ToUpper(strings.Join(strings.Fields(raw), " "))
 }
 
 // ensureColumn adds a column to a table if it does not already exist.
