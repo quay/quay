@@ -82,39 +82,9 @@ func initDatabaseWithSources(
 		}
 	}()
 
-	// Execute DDL in a transaction.
-	tx, err := db.BeginTx(ctx, nil)
+	plan, err := initializeBaseSchema(ctx, db, catalog, schemaSQL, seedSQL)
 	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck // no-op after commit
-
-	if _, err := tx.ExecContext(ctx, schemaSQL); err != nil {
-		return fmt.Errorf("execute schema DDL: %w", err)
-	}
-
-	// Seed data: split on semicolons and execute each INSERT.
-	// The embedded seed_data.sql contains one INSERT per line.
-	for _, stmt := range splitStatements(seedSQL) {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("execute seed data: %w", err)
-		}
-	}
-
-	var seedVersion string
-	if err := tx.QueryRowContext(ctx, "SELECT version_num FROM alembic_version").Scan(&seedVersion); err != nil {
-		return fmt.Errorf("read seeded schema version: %w", err)
-	}
-	plan, err := catalog.plan(seedVersion, TargetVersion)
-	if err != nil {
-		return fmt.Errorf("plan Go-only migrations from seeded version %q: %w", seedVersion, err)
-	}
-	if err := verifyForeignKeys(ctx, tx); err != nil {
-		return fmt.Errorf("validate schema and seed data: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
+		return err
 	}
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("re-enable foreign keys before migrations: %w", err)
@@ -131,6 +101,49 @@ func initDatabaseWithSources(
 
 	writeInitSummary(ctx, db, w)
 	return nil
+}
+
+func initializeBaseSchema(
+	ctx context.Context,
+	db *sql.DB,
+	catalog *migrationCatalog,
+	schemaSQL, seedSQL string,
+) ([]migrationInfo, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after commit
+
+	if _, err := tx.ExecContext(ctx, schemaSQL); err != nil {
+		return nil, fmt.Errorf("execute schema DDL: %w", err)
+	}
+
+	// Seed data: split on semicolons and execute each INSERT.
+	// The embedded seed_data.sql contains one INSERT per line.
+	for _, stmt := range splitStatements(seedSQL) {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return nil, fmt.Errorf("execute seed data: %w", err)
+		}
+	}
+
+	var seedVersion string
+	if err := tx.QueryRowContext(ctx, "SELECT version_num FROM alembic_version").Scan(&seedVersion); err != nil {
+		return nil, fmt.Errorf("read seeded schema version: %w", err)
+	}
+	plan, err := catalog.plan(seedVersion, TargetVersion)
+	if err != nil {
+		return nil, fmt.Errorf("plan Go-only migrations from seeded version %q: %w", seedVersion, err)
+	}
+	if err := verifyForeignKeys(ctx, tx); err != nil {
+		return nil, fmt.Errorf("validate schema and seed data: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
+	return plan, nil
 }
 
 func writeInitSummary(ctx context.Context, db *sql.DB, w io.Writer) {

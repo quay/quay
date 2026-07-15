@@ -10,6 +10,19 @@ import (
 	"strings"
 )
 
+const (
+	sqliteVarchar255Type    = "VARCHAR(255)"
+	sqliteDateTimeType      = "DATETIME"
+	manifestTable           = "manifest"
+	repoMirrorConfigTable   = "repomirrorconfig"
+	oauthAccessTokenTable   = "oauthaccesstoken"
+	oauthCreatedColumn      = "created"
+	oauthLastAccessedColumn = "last_accessed"
+	oauthDisplayNameColumn  = "display_name"
+	createOAuthAPILogKind   = "create_oauth_api_token"
+	revokeOAuthAPILogKind   = "revoke_oauth_api_token"
+)
+
 // knownOMRVersions lists every Alembic version a supported OMR v2.0.x SQLite
 // database could have. The bridge migration is safe to run from any of these
 // starting points.
@@ -56,10 +69,10 @@ var bridgeColumns = []struct {
 	table, column, typedef string
 }{
 	{"tag", "immutable", "BOOLEAN DEFAULT (0) NOT NULL"},
-	{"manifest", "artifact_type", "VARCHAR(255)"},
-	{"manifest", "artifact_type_backfilled", "BOOLEAN"},
-	{"repomirrorconfig", "skopeo_timeout", "BIGINT DEFAULT '300' NOT NULL"},
-	{"repomirrorconfig", "architecture_filter", "TEXT"},
+	{manifestTable, "artifact_type", sqliteVarchar255Type},
+	{manifestTable, "artifact_type_backfilled", "BOOLEAN"},
+	{repoMirrorConfigTable, "skopeo_timeout", "BIGINT DEFAULT '300' NOT NULL"},
+	{repoMirrorConfigTable, "architecture_filter", "TEXT"},
 }
 
 // bridgeIndexFixes are indexes that changed from UNIQUE to non-UNIQUE.
@@ -228,11 +241,11 @@ func convergeBridgeSchema(ctx context.Context, tx *sql.Tx) error {
 	for _, col := range []struct {
 		name, typedef string
 	}{
-		{name: "last_accessed", typedef: "DATETIME"},
-		{name: "created", typedef: "DATETIME"},
-		{name: "display_name", typedef: "VARCHAR(255)"},
+		{name: oauthLastAccessedColumn, typedef: sqliteDateTimeType},
+		{name: oauthCreatedColumn, typedef: sqliteDateTimeType},
+		{name: oauthDisplayNameColumn, typedef: sqliteVarchar255Type},
 	} {
-		if err := ensureColumn(ctx, tx, "oauthaccesstoken", col.name, col.typedef); err != nil {
+		if err := ensureColumn(ctx, tx, oauthAccessTokenTable, col.name, col.typedef); err != nil {
 			return fmt.Errorf("ensure oauthaccesstoken.%s: %w", col.name, err)
 		}
 	}
@@ -284,7 +297,7 @@ func convergeBridgeSchema(ctx context.Context, tx *sql.Tx) error {
 		return fmt.Errorf("restore organization contact emails: %w", err)
 	}
 
-	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT OR IGNORE INTO logentrykind (name) VALUES (?)`, kind,
 		); err != nil {

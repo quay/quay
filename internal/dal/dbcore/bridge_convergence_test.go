@@ -61,7 +61,7 @@ func TestRunBridge_RepairsPreviouslyFlawedA2FCSchema(t *testing.T) {
 	assertSchemaVersion(t, db, flawedBridgeVersion)
 	assertSingleVersionMarker(t, db)
 	assertFlawedA2FCBridgeArtifacts(t, db)
-	assertTagIndexes(t, db, true)
+	assertTagIndexes(t, db)
 
 	var output bytes.Buffer
 	if err := RunBridge(t.Context(), db, &output); err != nil {
@@ -82,7 +82,7 @@ func TestRunBridge_RepairsPreviouslyFlawedA2FCSchema(t *testing.T) {
 	}
 
 	assertBridgeSchemaConverged(t, db)
-	assertTagIndexes(t, db, true)
+	assertTagIndexes(t, db)
 	assertSchemaVersion(t, db, TargetVersion)
 	assertSingleVersionMarker(t, db)
 
@@ -147,10 +147,10 @@ func assertFlawedA2FCBridgeArtifacts(t *testing.T, db *sql.DB) {
 
 	for _, column := range []struct{ table, name string }{
 		{table: "tag", name: "immutable"},
-		{table: "manifest", name: "artifact_type"},
-		{table: "manifest", name: "artifact_type_backfilled"},
-		{table: "repomirrorconfig", name: "skopeo_timeout"},
-		{table: "repomirrorconfig", name: "architecture_filter"},
+		{table: manifestTable, name: "artifact_type"},
+		{table: manifestTable, name: "artifact_type_backfilled"},
+		{table: repoMirrorConfigTable, name: "skopeo_timeout"},
+		{table: repoMirrorConfigTable, name: "architecture_filter"},
 	} {
 		assertColumnCount(t, db, column.table, column.name, 1)
 	}
@@ -187,10 +187,10 @@ func assertFlawedA2FCBridgeArtifacts(t *testing.T, db *sql.DB) {
 	assertIndexAbsent(t, db, "user_email_unique_non_org")
 	assertIndexAbsent(t, db, "user_email_idx")
 	assertIndexAbsent(t, db, "oauthaccesstoken_application_id_last_accessed")
-	for _, column := range []string{"created", "last_accessed", "display_name"} {
+	for _, column := range []string{oauthCreatedColumn, oauthLastAccessedColumn, oauthDisplayNameColumn} {
 		assertColumnCount(t, db, "oauthaccesstoken", column, 0)
 	}
-	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
 		var count int
 		if err := db.QueryRowContext(ctx,
 			`SELECT count(*) FROM logentrykind WHERE name = ?`, kind,
@@ -242,9 +242,9 @@ func assertBridgeSchemaConverged(t *testing.T, db *sql.DB) {
 	for _, column := range []struct {
 		name, wantType string
 	}{
-		{name: "created", wantType: "DATETIME"},
-		{name: "last_accessed", wantType: "DATETIME"},
-		{name: "display_name", wantType: "VARCHAR(255)"},
+		{name: oauthCreatedColumn, wantType: sqliteDateTimeType},
+		{name: oauthLastAccessedColumn, wantType: sqliteDateTimeType},
+		{name: oauthDisplayNameColumn, wantType: sqliteVarchar255Type},
 	} {
 		var gotType string
 		var notNull int
@@ -254,12 +254,12 @@ func assertBridgeSchemaConverged(t *testing.T, db *sql.DB) {
 		).Scan(&gotType, &notNull); err != nil {
 			t.Fatalf("oauthaccesstoken.%s: %v", column.name, err)
 		}
-		if strings.ToUpper(gotType) != column.wantType || notNull != 0 {
+		if !strings.EqualFold(gotType, column.wantType) || notNull != 0 {
 			t.Errorf("oauthaccesstoken.%s = type %q notnull %d", column.name, gotType, notNull)
 		}
 	}
 
-	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
 		var count int
 		if err := db.QueryRowContext(ctx,
 			`SELECT count(*) FROM logentrykind WHERE name = ?`, kind,

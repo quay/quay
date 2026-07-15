@@ -83,5 +83,5 @@ func TestSetup_ExistingBridgeTargetDB(t *testing.T) {
 	if ver != TargetVersion {
 		t.Errorf("version = %q, want %q", ver, TargetVersion)
 	}
-	assertTagIndexes(t, db, true)
+	assertTagIndexes(t, db)
 }

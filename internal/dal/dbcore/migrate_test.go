@@ -56,7 +56,7 @@ func TestInitDatabase(t *testing.T) {
 	if ver != TargetVersion {
 		t.Errorf("version = %q, want %q", ver, TargetVersion)
 	}
-	assertTagIndexes(t, db, true)
+	assertTagIndexes(t, db)
 }
 
 func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
@@ -96,7 +96,7 @@ func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
 	if ver != TargetVersion {
 		t.Errorf("version = %q, want %q", ver, TargetVersion)
 	}
-	assertTagIndexes(t, db, true)
+	assertTagIndexes(t, db)
 
 	var activeCount int
 	if err := db.QueryRowContext(ctx,
@@ -303,7 +303,7 @@ func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
 		t.Fatalf("InitDatabase: %v", err)
 	}
 
-	for _, column := range []string{"created", "last_accessed"} {
+	for _, column := range []string{oauthCreatedColumn, oauthLastAccessedColumn} {
 		var count int
 		err := db.QueryRowContext(ctx,
 			"SELECT count(*) FROM pragma_table_info('oauthaccesstoken') WHERE name=?", column,
@@ -327,7 +327,7 @@ func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
 		t.Errorf("expected oauth access token last_accessed index columns application_id,last_accessed; got %s", indexedColumns)
 	}
 
-	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
 		var count int
 		err := db.QueryRowContext(ctx,
 			"SELECT count(*) FROM logentrykind WHERE name=?", kind,
@@ -828,7 +828,7 @@ func prepareLegacyTagMigration(t *testing.T) *sql.DB {
 	return db
 }
 
-func assertTagIndexes(t *testing.T, db *sql.DB, wantActiveUnique bool) {
+func assertTagIndexes(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ctx := t.Context()
 
@@ -843,16 +843,9 @@ func assertTagIndexes(t *testing.T, db *sql.DB, wantActiveUnique bool) {
 	}
 
 	var activeSQL string
-	err := db.QueryRowContext(ctx,
+	if err := db.QueryRowContext(ctx,
 		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'tag_repository_id_name_active'`,
-	).Scan(&activeSQL)
-	if !wantActiveUnique {
-		if err != sql.ErrNoRows {
-			t.Fatalf("active tag index should be absent, got sql=%q err=%v", activeSQL, err)
-		}
-		return
-	}
-	if err != nil {
+	).Scan(&activeSQL); err != nil {
 		t.Fatalf("query active tag index: %v", err)
 	}
 	activeSQLUpper := strings.ToUpper(activeSQL)

@@ -73,7 +73,7 @@ INSERT INTO parent (id) VALUES (1);`, BridgeTargetVersion)
 	}
 	assertForeignKeysEnabled(t, db)
 	assertSchemaVersion(t, db, BridgeTargetVersion)
-	assertTableRowCount(t, db, "child", 0)
+	assertChildRowCount(t, db, 0)
 
 	retryCatalog := testForeignKeyCatalog(t,
 		`INSERT INTO child (id, parent_id) VALUES (1, 1);`,
@@ -84,7 +84,7 @@ INSERT INTO parent (id) VALUES (1);`, BridgeTargetVersion)
 		t.Fatalf("retry valid migration: %v", err)
 	}
 	assertSchemaVersion(t, db, TargetVersion)
-	assertTableRowCount(t, db, "child", 1)
+	assertChildRowCount(t, db, 1)
 }
 
 func TestBridgeForeignKeyViolationRollsBackDataAndVersionAndRetries(t *testing.T) {
@@ -115,7 +115,7 @@ func TestBridgeForeignKeyViolationRollsBackDataAndVersionAndRetries(t *testing.T
 	}
 	assertForeignKeysEnabled(t, db)
 	assertSchemaVersion(t, db, "old_revision")
-	assertTableRowCount(t, db, "child", 0)
+	assertChildRowCount(t, db, 0)
 
 	if err := bridgeToRootWithApply(
 		ctx, db, "old_revision", bridgeRoot, &bytes.Buffer{},
@@ -132,7 +132,7 @@ func TestBridgeForeignKeyViolationRollsBackDataAndVersionAndRetries(t *testing.T
 		t.Fatalf("retry valid bridge: %v", err)
 	}
 	assertSchemaVersion(t, db, BridgeTargetVersion)
-	assertTableRowCount(t, db, "child", 1)
+	assertChildRowCount(t, db, 1)
 }
 
 func testForeignKeyCatalog(t *testing.T, migrationBody string) *migrationCatalog {
@@ -171,15 +171,13 @@ func assertNoUserTables(t *testing.T, db *sql.DB) {
 	}
 }
 
-func assertTableRowCount(t *testing.T, db *sql.DB, table string, want int) {
+func assertChildRowCount(t *testing.T, db *sql.DB, want int) {
 	t.Helper()
 	var got int
-	if err := db.QueryRowContext(t.Context(),
-		fmt.Sprintf(`SELECT count(*) FROM %q`, table),
-	).Scan(&got); err != nil {
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM child`).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {
-		t.Errorf("%s row count = %d, want %d", table, got, want)
+		t.Errorf("child row count = %d, want %d", got, want)
 	}
 }
