@@ -68,6 +68,11 @@ test.describe(
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
           expect(webhook?.body).toHaveProperty('event_data');
+
+          // PROJQUAY-12230: verify numeric fields are serialized correctly
+          // (Decimal from PostgreSQL must be cast to int before json.dumps)
+          expect(typeof webhook?.body?.limit_bytes).toBe('number');
+          expect(typeof webhook?.body?.usage_bytes).toBe('number');
         } finally {
           await receiver.stop();
         }
