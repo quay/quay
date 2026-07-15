@@ -237,7 +237,7 @@ def check_limits(namespace_name, size):
         "limit_bytes": limit_bytes,
         "severity_level": severity_level,
         "usage_bytes": size,
-        "quota_limit_bytes": quota.limit_bytes,
+        "quota_limit_bytes": int(quota.limit_bytes),
         "threshold_percent": threshold_percent,
     }
 
