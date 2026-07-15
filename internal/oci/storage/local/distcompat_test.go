@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/require"
 
 	storagedriver "github.com/distribution/distribution/v3/registry/storage/driver"
 
@@ -18,7 +19,7 @@ import (
 	"github.com/quay/quay/internal/oci"
 )
 
-func setupDistTest(t *testing.T) (*DistDriver, oci.BlobStore, oci.MetadataStore) {
+func setupDistTest(t *testing.T, opts ...metastore.SQLiteStoreOption) (*DistDriver, oci.BlobStore, oci.MetadataStore) {
 	t.Helper()
 	rootDir := t.TempDir()
 	blobs, err := New(rootDir)
@@ -33,7 +34,7 @@ func setupDistTest(t *testing.T) (*DistDriver, oci.BlobStore, oci.MetadataStore)
 	}
 	t.Cleanup(func() { db.Close() })
 
-	store, err := metastore.NewSQLiteStore(t.Context(), db)
+	store, err := metastore.NewSQLiteStore(t.Context(), db, opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,6 +407,146 @@ func TestDistDriver_ListTags(t *testing.T) {
 	if len(tags) != 1 || tags[0] != tagsDir+"/v1" {
 		t.Errorf("List(tags) = %v, want [%s/v1]", tags, tagsDir)
 	}
+}
+
+func TestDistDriver_ListTags_RollbackClock(t *testing.T) {
+	const tagStart = int64(130_000)
+	tagsDir := "/docker/registry/v2/repositories/lib/test/_manifests/tags"
+
+	t.Run("retarget", func(t *testing.T) {
+		now := tagStart
+		dd, _, store := setupDistTest(t, metastore.WithNowFunc(func() int64 { return now }))
+		ctx := t.Context()
+
+		repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+		require.NoError(t, err)
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString("dist-retarget-first"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+
+		now = tagStart + 100
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString("dist-retarget-second"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+		now = tagStart + 50
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString("dist-retarget-third"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+
+		tags, err := dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Equal(t, []string{tagsDir + "/latest"}, tags)
+
+		now = tagStart + 100
+		tags, err = dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Equal(t, []string{tagsDir + "/latest"}, tags)
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		now := tagStart
+		dd, _, store := setupDistTest(t, metastore.WithNowFunc(func() int64 { return now }))
+		ctx := t.Context()
+
+		repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+		require.NoError(t, err)
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString("dist-delete"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+
+		now = tagStart + 100
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString("dist-delete-second"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+
+		now = tagStart + 50
+		require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
+
+		tags, err := dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Empty(t, tags)
+		currentLink := tagsDir + "/latest/current/link"
+		_, err = dd.GetContent(ctx, currentLink)
+		requirePathNotFound(t, err)
+
+		now = tagStart + 100
+		tags, err = dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Empty(t, tags)
+		_, err = dd.GetContent(ctx, currentLink)
+		requirePathNotFound(t, err)
+
+		now = tagStart + 50
+		recreatedDigest := digest.FromString("dist-delete-recreated")
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: recreatedDigest, MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: "latest",
+		})
+		require.NoError(t, err)
+		tags, err = dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Equal(t, []string{tagsDir + "/latest"}, tags)
+		content, err := dd.GetContent(ctx, currentLink)
+		require.NoError(t, err)
+		require.Equal(t, recreatedDigest.String(), string(content))
+
+		now = tagStart + 100
+		tags, err = dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Equal(t, []string{tagsDir + "/latest"}, tags)
+		content, err = dd.GetContent(ctx, currentLink)
+		require.NoError(t, err)
+		require.Equal(t, recreatedDigest.String(), string(content))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		now := tagStart + 200
+		dd, _, store := setupDistTest(t, metastore.WithNowFunc(func() int64 { return now }))
+		ctx := t.Context()
+
+		repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+		require.NoError(t, err)
+		manifestDigest := digest.FromString("dist-finite")
+		manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: manifestDigest, MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`),
+		})
+		require.NoError(t, err)
+		_, err = store.(*metastore.SQLiteStore).DB().ExecContext(ctx, `
+			INSERT INTO tag (
+				name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
+			)
+			SELECT 'finite', ?, ?, ?, ?, id
+			FROM tagkind
+			WHERE name = 'tag'`, repoID, manifestID, now, now+100)
+		require.NoError(t, err)
+
+		now += 50
+		tags, err := dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Equal(t, []string{tagsDir + "/finite"}, tags)
+		currentLink := tagsDir + "/finite/current/link"
+		content, err := dd.GetContent(ctx, currentLink)
+		require.NoError(t, err)
+		require.Equal(t, manifestDigest.String(), string(content))
+
+		now += 50
+		tags, err = dd.List(ctx, tagsDir)
+		require.NoError(t, err)
+		require.Empty(t, tags)
+		_, err = dd.GetContent(ctx, currentLink)
+		requirePathNotFound(t, err)
+	})
 }
 
 func TestDistDriver_RedirectURL(t *testing.T) {

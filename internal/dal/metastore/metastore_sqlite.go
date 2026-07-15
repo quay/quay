@@ -419,6 +419,19 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 		Name:         tag,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
+		latestStart, latestErr := q.GetLatestTagStart(ctx, daldb.GetLatestTagStartParams{
+			RepositoryID: repoID,
+			Name:         tag,
+		})
+		if errors.Is(latestErr, sql.ErrNoRows) {
+			return s.insertTag(ctx, q, repoID, manifestID, tag, now)
+		}
+		if latestErr != nil {
+			return 0, fmt.Errorf("lookup latest tag start %q: %w", tag, latestErr)
+		}
+		if now < latestStart {
+			now = latestStart
+		}
 		return s.insertTag(ctx, q, repoID, manifestID, tag, now)
 	}
 	if err != nil {
@@ -519,12 +532,15 @@ func (s *SQLiteStore) GetRepositoryID(ctx context.Context, name oci.RepositoryNa
 	return id, nil
 }
 
-// GetTagDigest retrieves the manifest digest for an active tag.
+// GetTagDigest retrieves the manifest digest for a live tag.
 func (s *SQLiteStore) GetTagDigest(ctx context.Context, repoID int64, tag string) (digest.Digest, error) {
 	q := daldb.New(s.db)
-	d, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
-		RepositoryID: repoID,
-		Name:         tag,
+	now := s.nowMs()
+	d, err := q.GetLiveTagDigest(ctx, daldb.GetLiveTagDigestParams{
+		RepositoryID:    repoID,
+		Name:            tag,
+		LifetimeStartMs: now,
+		LifetimeEndMs:   sql.NullInt64{Int64: now, Valid: true},
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", fmt.Errorf("get tag %q: %w", tag, oci.ErrNotExist)
@@ -597,20 +613,17 @@ func (s *SQLiteStore) BlobExists(ctx context.Context, dgst digest.Digest) (bool,
 	return true, nil
 }
 
-// ListTags returns all active tags for a repository.
+// ListTags returns all visible tags for a repository.
 func (s *SQLiteStore) ListTags(ctx context.Context, repoID int64) ([]string, error) {
 	q := daldb.New(s.db)
 	now := s.nowMs()
-	rows, err := q.GetTagsByRepository(ctx, daldb.GetTagsByRepositoryParams{
-		RepositoryID:  repoID,
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
+	tags, err := q.GetTagsByRepository(ctx, daldb.GetTagsByRepositoryParams{
+		RepositoryID:    repoID,
+		LifetimeStartMs: now,
+		LifetimeEndMs:   sql.NullInt64{Int64: now, Valid: true},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
-	}
-	tags := make([]string, len(rows))
-	for i, r := range rows {
-		tags[i] = r.Name
 	}
 	return tags, nil
 }
@@ -694,9 +707,12 @@ func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject d
 // Returns (nil, nil) when the fallback tag does not exist.
 func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries, repoID int64, subject digest.Digest, artifactType string, seen map[string]bool) ([]oci.ReferrerRecord, error) {
 	tagName := strings.Replace(subject.String(), ":", "-", 1)
-	tagDigest, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
-		RepositoryID: repoID,
-		Name:         tagName,
+	now := s.nowMs()
+	tagDigest, err := q.GetLiveTagDigest(ctx, daldb.GetLiveTagDigestParams{
+		RepositoryID:    repoID,
+		Name:            tagName,
+		LifetimeStartMs: now,
+		LifetimeEndMs:   sql.NullInt64{Int64: now, Valid: true},
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

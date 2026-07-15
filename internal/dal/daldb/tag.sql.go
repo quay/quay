@@ -59,67 +59,96 @@ func (q *Queries) GetActiveTag(ctx context.Context, arg GetActiveTagParams) (Get
 	return i, err
 }
 
-const getActiveTagDigest = `-- name: GetActiveTagDigest :one
-SELECT m.digest
-FROM tag t
-JOIN manifest m ON t.manifest_id = m.id
-WHERE t.repository_id = ? AND t.name = ? AND t.lifetime_end_ms IS NULL
+const getLatestTagStart = `-- name: GetLatestTagStart :one
+SELECT lifetime_start_ms
+FROM tag
+WHERE repository_id = ? AND name = ?
+ORDER BY lifetime_start_ms DESC, id DESC
+LIMIT 1
 `
 
-type GetActiveTagDigestParams struct {
+type GetLatestTagStartParams struct {
 	RepositoryID int64  `json:"repository_id"`
 	Name         string `json:"name"`
 }
 
-func (q *Queries) GetActiveTagDigest(ctx context.Context, arg GetActiveTagDigestParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getActiveTagDigest, arg.RepositoryID, arg.Name)
+func (q *Queries) GetLatestTagStart(ctx context.Context, arg GetLatestTagStartParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getLatestTagStart, arg.RepositoryID, arg.Name)
+	var lifetime_start_ms int64
+	err := row.Scan(&lifetime_start_ms)
+	return lifetime_start_ms, err
+}
+
+const getLiveTagDigest = `-- name: GetLiveTagDigest :one
+WITH latest_tag AS (
+  SELECT t.manifest_id, t.lifetime_start_ms, t.lifetime_end_ms
+  FROM tag t
+  WHERE t.repository_id = ? AND t.name = ?
+  ORDER BY t.lifetime_start_ms DESC, t.id DESC
+  LIMIT 1
+)
+SELECT m.digest
+FROM latest_tag t
+JOIN manifest m ON t.manifest_id = m.id
+WHERE t.lifetime_end_ms IS NULL
+   OR (t.lifetime_start_ms <= ? AND t.lifetime_end_ms > ?)
+`
+
+type GetLiveTagDigestParams struct {
+	RepositoryID    int64         `json:"repository_id"`
+	Name            string        `json:"name"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+func (q *Queries) GetLiveTagDigest(ctx context.Context, arg GetLiveTagDigestParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getLiveTagDigest,
+		arg.RepositoryID,
+		arg.Name,
+		arg.LifetimeStartMs,
+		arg.LifetimeEndMs,
+	)
 	var digest string
 	err := row.Scan(&digest)
 	return digest, err
 }
 
 const getTagsByRepository = `-- name: GetTagsByRepository :many
-SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
-FROM tag
-WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0
+WITH ranked_tags AS (
+  SELECT name, lifetime_start_ms, lifetime_end_ms,
+         row_number() OVER (
+           PARTITION BY repository_id, name
+           ORDER BY lifetime_start_ms DESC, id DESC
+         ) AS row_num
+  FROM tag
+  WHERE repository_id = ? AND hidden = 0
+)
+SELECT name
+FROM ranked_tags
+WHERE row_num = 1
+  AND (lifetime_end_ms IS NULL OR (lifetime_start_ms <= ? AND lifetime_end_ms > ?))
+ORDER BY name
 `
 
 type GetTagsByRepositoryParams struct {
-	RepositoryID  int64         `json:"repository_id"`
-	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
-}
-
-type GetTagsByRepositoryRow struct {
-	ID              int64         `json:"id"`
-	Name            string        `json:"name"`
 	RepositoryID    int64         `json:"repository_id"`
-	ManifestID      sql.NullInt64 `json:"manifest_id"`
 	LifetimeStartMs int64         `json:"lifetime_start_ms"`
 	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
-	TagKindID       int64         `json:"tag_kind_id"`
 }
 
-func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByRepositoryParams) ([]GetTagsByRepositoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTagsByRepository, arg.RepositoryID, arg.LifetimeEndMs)
+func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByRepositoryParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getTagsByRepository, arg.RepositoryID, arg.LifetimeStartMs, arg.LifetimeEndMs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetTagsByRepositoryRow
+	var items []string
 	for rows.Next() {
-		var i GetTagsByRepositoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.RepositoryID,
-			&i.ManifestID,
-			&i.LifetimeStartMs,
-			&i.LifetimeEndMs,
-			&i.TagKindID,
-		); err != nil {
+		var name string
+		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, name)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
