@@ -1,3 +1,5 @@
+import json
+from decimal import Decimal
 from unittest.mock import call, patch
 
 import pytest
@@ -11,6 +13,7 @@ from data.model.namespacequota import (
     maybe_trigger_retroactive_notification,
     maybe_trigger_retroactive_notifications_for_quota,
 )
+from data.model.notification import create_namespace_notification
 from data.model.user import get_user
 from test.fixtures import *
 
@@ -153,3 +156,31 @@ class TestMaybeTriggerRetroactiveNotification:
         maybe_trigger_retroactive_notifications_for_quota("buynlarge", quota)
 
         mock_trigger.assert_not_called()
+
+    @patch("features.QUOTA_NOTIFICATIONS", True)
+    @patch("notifications.spawn_namespace_notification")
+    def test_retroactive_notification_json_serializable(self, mock_spawn, initialized_db):
+        """quota_limit_bytes passed through the full notification path is an int,
+        not a Decimal, so json.dumps() in spawn_namespace_notification succeeds."""
+        limit_bytes = 1000
+        self._set_namespace_size(self.org, 850)
+        quota, _ = self._create_quota_with_limit(self.org, limit_bytes, 80, "Warning")
+        create_namespace_notification(
+            self.org,
+            "quota_warning",
+            "quay_notification",
+            {"target": {"kind": "user", "name": "public"}},
+            {},
+        )
+
+        maybe_trigger_retroactive_notification("buynlarge", quota, 80, "Warning")
+
+        mock_spawn.assert_called_once()
+        extra = mock_spawn.call_args[1]["extra_data"]
+        # All numeric values must be int, not Decimal, for JSON serialization
+        assert isinstance(extra["limit_bytes"], int)
+        assert isinstance(extra["usage_bytes"], int)
+        assert isinstance(extra["usage_percent"], int)
+        assert isinstance(extra["threshold_percent"], int)
+        # The full extra_data dict must be JSON-serializable without TypeError
+        json.dumps(extra)
