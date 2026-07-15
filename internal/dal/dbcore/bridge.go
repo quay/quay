@@ -56,7 +56,7 @@ var knownOMRVersions = map[string]bool{
 	"c3d4e5f6a7b8": true,
 	"b1a79fa8e630": true,
 	"d064a4f00d4a": true,
-	// Previous target version (systems already bridged once)
+	// OAuth API token metadata and display name
 	"b30800b1d271": true,
 	// Quota notification tables
 	"6715e4719375": true,
@@ -234,9 +234,8 @@ func applyBridge(ctx context.Context, tx *sql.Tx, bridgeSQL string) error {
 }
 
 // convergeBridgeSchema applies the SQLite equivalents of the Alembic
-// b1a79fa8e630, d064a4f00d4a, and b30800b1d271 migrations. It is safe to run
-// both while bridging historical OMR databases and as a Go-only repair for
-// databases stamped by an older, incomplete bridge.
+// b1a79fa8e630, d064a4f00d4a, and b30800b1d271 migrations while bridging
+// historical OMR databases.
 func convergeBridgeSchema(ctx context.Context, tx *sql.Tx) error {
 	for _, col := range []struct {
 		name, typedef string

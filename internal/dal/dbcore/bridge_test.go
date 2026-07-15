@@ -199,7 +199,7 @@ func TestRunBridge_RejectsUnknownVersion(t *testing.T) {
 	}
 }
 
-func TestRunBridge_MigratesPriorGoRevisionWithoutOMRBridge(t *testing.T) {
+func TestRunBridge_MigratesBridgeRootWithoutOMRBridge(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
 
@@ -217,17 +217,16 @@ func TestRunBridge_MigratesPriorGoRevisionWithoutOMRBridge(t *testing.T) {
 	`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, "INSERT INTO alembic_version VALUES ('prior_go_revision')"); err != nil {
+	if _, err := db.ExecContext(ctx, "INSERT INTO alembic_version VALUES (?)", BridgeTargetVersion); err != nil {
 		t.Fatal(err)
 	}
 
 	fsys := testMigrationFS(map[string]string{
 		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", "INVALID BRIDGE SQL;"),
-		"0002.sql": testMigrationSQL("prior_go_revision", BridgeTargetVersion, "CREATE TABLE already_applied (id INTEGER);"),
-		"0003.sql": testMigrationSQL(TargetVersion, "prior_go_revision", "CREATE TABLE future_applied (id INTEGER);"),
+		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, "CREATE TABLE future_applied (id INTEGER);"),
 	})
 	if err := runBridgeWithFS(ctx, db, fsys, &bytes.Buffer{}); err != nil {
-		t.Fatalf("RunBridge from prior Go revision: %v", err)
+		t.Fatalf("RunBridge from bridge root: %v", err)
 	}
 
 	version, err := SchemaVersion(ctx, db)

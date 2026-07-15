@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-const flawedBridgeVersion = "a2fc72f380b7"
-
 func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
 	for _, index := range []string{
@@ -55,48 +53,6 @@ func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 	}
 }
 
-func TestRunBridge_RepairsPreviouslyFlawedA2FCSchema(t *testing.T) {
-	db := openBridgeFixture(t, "sqlite_a2fc72f380b7_flawed_bridge.sql")
-
-	assertSchemaVersion(t, db, flawedBridgeVersion)
-	assertSingleVersionMarker(t, db)
-	assertFlawedA2FCBridgeArtifacts(t, db)
-	assertTagIndexes(t, db)
-
-	var output bytes.Buffer
-	if err := RunBridge(t.Context(), db, &output); err != nil {
-		t.Fatalf("RunBridge: %v", err)
-	}
-
-	for _, skippedMigration := range []string{"0001_bridge_from_omr.sql", "0002_tag_active_unique_index.sql"} {
-		if strings.Contains(output.String(), skippedMigration) {
-			t.Errorf("a2fc repair unexpectedly reran %s:\n%s", skippedMigration, output.String())
-		}
-	}
-	if strings.Contains(output.String(), "Bridging schema") {
-		t.Fatalf("a2fc repair unexpectedly entered the OMR bridge path:\n%s", output.String())
-	}
-	if !strings.Contains(output.String(), "Applying: 0003_repair_bridge_schema_convergence.sql") ||
-		!strings.Contains(output.String(), "Migration complete: 1 migration(s) applied") {
-		t.Fatalf("a2fc repair did not apply only 0003:\n%s", output.String())
-	}
-
-	assertBridgeSchemaConverged(t, db)
-	assertTagIndexes(t, db)
-	assertSchemaVersion(t, db, TargetVersion)
-	assertSingleVersionMarker(t, db)
-
-	var preservedLongContact int
-	if err := db.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM organizationcontactemail WHERE organization_id = 3`,
-	).Scan(&preservedLongContact); err != nil {
-		t.Fatal(err)
-	}
-	if preservedLongContact != 1 {
-		t.Fatalf("previously copied long organization contact count = %d, want preserved", preservedLongContact)
-	}
-}
-
 func TestKnownOMRVersions_ContainsSkippedAlembicRevisions(t *testing.T) {
 	for _, revision := range []string{"c3d4e5f6a7b8", "b1a79fa8e630", "d064a4f00d4a"} {
 		if !knownOMRVersions[revision] {
@@ -118,102 +74,6 @@ func openBridgeFixture(t *testing.T, filename string) *sql.DB {
 		t.Fatalf("load historical fixture: %v", err)
 	}
 	return db
-}
-
-func assertFlawedA2FCBridgeArtifacts(t *testing.T, db *sql.DB) {
-	t.Helper()
-	ctx := t.Context()
-
-	for _, table := range []string{
-		"tagpullstatistics",
-		"manifestpullstatistics",
-		"orgmirrorconfig",
-		"orgmirrorrepository",
-		"namespaceimmutabilitypolicy",
-		"repositoryimmutabilitypolicy",
-		"namespacenotification",
-		"quotanotificationstate",
-	} {
-		var count int
-		if err := db.QueryRowContext(ctx,
-			`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table,
-		).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 1 {
-			t.Errorf("pre-fix 0001 table %s count = %d, want 1", table, count)
-		}
-	}
-
-	for _, column := range []struct{ table, name string }{
-		{table: "tag", name: "immutable"},
-		{table: manifestTable, name: "artifact_type"},
-		{table: manifestTable, name: "artifact_type_backfilled"},
-		{table: repoMirrorConfigTable, name: "skopeo_timeout"},
-		{table: repoMirrorConfigTable, name: "architecture_filter"},
-	} {
-		assertColumnCount(t, db, column.table, column.name, 1)
-	}
-
-	for _, kind := range []string{
-		"change_tag_immutability",
-		"org_mirror_enabled",
-		"create_immutability_policy",
-		"create_namespace_notification",
-	} {
-		var count int
-		if err := db.QueryRowContext(ctx,
-			`SELECT count(*) FROM logentrykind WHERE name = ?`, kind,
-		).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 1 {
-			t.Errorf("pre-fix 0001 log seed %s count = %d, want 1", kind, count)
-		}
-	}
-	for _, event := range []string{"quota_warning", "quota_error"} {
-		var count int
-		if err := db.QueryRowContext(ctx,
-			`SELECT count(*) FROM externalnotificationevent WHERE name = ?`, event,
-		).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 1 {
-			t.Errorf("pre-fix 0001 event seed %s count = %d, want 1", event, count)
-		}
-	}
-
-	assertIndexSQLContains(t, db, "user_email", "UNIQUE")
-	assertIndexAbsent(t, db, "user_email_unique_non_org")
-	assertIndexAbsent(t, db, "user_email_idx")
-	assertIndexAbsent(t, db, "oauthaccesstoken_application_id_last_accessed")
-	for _, column := range []string{oauthCreatedColumn, oauthLastAccessedColumn, oauthDisplayNameColumn} {
-		assertColumnCount(t, db, "oauthaccesstoken", column, 0)
-	}
-	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
-		var count int
-		if err := db.QueryRowContext(ctx,
-			`SELECT count(*) FROM logentrykind WHERE name = ?`, kind,
-		).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 0 {
-			t.Errorf("pre-fix omitted log seed %s count = %d, want 0", kind, count)
-		}
-	}
-}
-
-func assertColumnCount(t *testing.T, db *sql.DB, table, column string, want int) {
-	t.Helper()
-	var got int
-	if err := db.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, table, column,
-	).Scan(&got); err != nil {
-		t.Fatal(err)
-	}
-	if got != want {
-		t.Errorf("%s.%s column count = %d, want %d", table, column, got, want)
-	}
 }
 
 func assertBridgeSchemaConverged(t *testing.T, db *sql.DB) {

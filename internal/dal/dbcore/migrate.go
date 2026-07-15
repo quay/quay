@@ -20,10 +20,8 @@ import (
 // before Go-only SQLite migrations are applied.
 const BridgeTargetVersion = "9fa37f66a9b6"
 
-const schemaConvergenceVersion = "9fdf045306b8"
-
 // TargetVersion is the SQLite schema revision this binary expects.
-const TargetVersion = schemaConvergenceVersion
+const TargetVersion = "a2fc72f380b7"
 
 // InitDatabase creates a fresh SQLite database from the generated bridge DDL
 // and seed data, then applies Go-only migrations. It returns an error if the
@@ -580,11 +578,6 @@ func applyMigrationTx(ctx context.Context, db *sql.DB, migrationSQL, revisionID 
 		}
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execute SQL: %w", err)
-		}
-	}
-	if revisionID == schemaConvergenceVersion {
-		if err := convergeBridgeSchema(ctx, tx); err != nil {
-			return fmt.Errorf("converge bridge schema: %w", err)
 		}
 	}
 	if err := verifyForeignKeys(ctx, tx); err != nil {

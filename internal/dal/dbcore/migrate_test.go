@@ -32,6 +32,18 @@ func TestInitDatabase(t *testing.T) {
 	if !strings.Contains(output, "tables") {
 		t.Errorf("expected summary with table count, got: %s", output)
 	}
+	for _, expected := range []string{
+		"Found 1 migration file(s)",
+		"Applying: 0002_tag_active_unique_index.sql",
+		"Migration complete: 1 migration(s) applied",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("initialization output missing %q:\n%s", expected, output)
+		}
+	}
+	if strings.Contains(output, "0001_bridge_from_omr.sql") {
+		t.Errorf("initialization unexpectedly applied the OMR bridge root:\n%s", output)
+	}
 
 	// Verify tables were created.
 	var tableCount int
@@ -57,6 +69,18 @@ func TestInitDatabase(t *testing.T) {
 		t.Errorf("version = %q, want %q", ver, TargetVersion)
 	}
 	assertTagIndexes(t, db)
+}
+
+func TestListMigrations_ReportsSupportedTwoFileChain(t *testing.T) {
+	var output bytes.Buffer
+	ListMigrations(&output)
+
+	const expected = "Pending migrations:\n" +
+		"  - 0001_bridge_from_omr.sql\n" +
+		"  - 0002_tag_active_unique_index.sql\n"
+	if output.String() != expected {
+		t.Fatalf("ListMigrations output:\n%s\nwant:\n%s", output.String(), expected)
+	}
 }
 
 func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
@@ -543,6 +567,16 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load embedded migration catalog: %v", err)
 	}
+	if len(catalog.migrations) != 2 {
+		t.Fatalf("embedded migration count = %d, want 2", len(catalog.migrations))
+	}
+	if catalog.chainableCount() != 1 {
+		t.Fatalf("chainable migration count = %d, want 1", catalog.chainableCount())
+	}
+	if catalog.root.filename != "0001_bridge_from_omr.sql" || catalog.root.revision != BridgeTargetVersion {
+		t.Fatalf("bridge root = %s (%s), want 0001_bridge_from_omr.sql (%s)",
+			catalog.root.filename, catalog.root.revision, BridgeTargetVersion)
+	}
 
 	db := openTestDB(t)
 	defer db.Close()
@@ -565,8 +599,12 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	if seedVersion == "" {
 		t.Fatal("embedded seed data did not provide a schema version")
 	}
-	if _, err := catalog.plan(seedVersion, TargetVersion); err != nil {
+	plan, err := catalog.plan(seedVersion, TargetVersion)
+	if err != nil {
 		t.Fatalf("embedded seed version %q has no route to %q: %v", seedVersion, TargetVersion, err)
+	}
+	if len(plan) != 1 || plan[0].filename != "0002_tag_active_unique_index.sql" {
+		t.Fatalf("embedded seed route = %#v, want only 0002_tag_active_unique_index.sql", plan)
 	}
 }
 

@@ -1,6 +1,6 @@
 -- revision: 9fa37f66a9b6
 -- Bridge migration: brings any OMR v2.0.x SQLite database to the
--- Go binary's target schema. All statements are idempotent.
+-- Go migration chain's bridge root. All statements are idempotent.
 
 -- ============================================================
 -- SECTION 1: New tables
