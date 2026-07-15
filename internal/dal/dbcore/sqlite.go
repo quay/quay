@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -15,16 +16,17 @@ import (
 // WAL mode allows concurrent readers while a single writer holds the lock.
 // busy_timeout avoids immediate SQLITE_BUSY errors under brief contention.
 var pragmas = []string{
-	"_pragma=foreign_keys(1)",
-	"_pragma=journal_mode(WAL)",
-	"_pragma=busy_timeout(10000)",
-	"_pragma=synchronous(NORMAL)",
-	"_pragma=wal_autocheckpoint(1000)",
+	"foreign_keys(1)",
+	"journal_mode(WAL)",
+	"busy_timeout(10000)",
+	"synchronous(NORMAL)",
+	"wal_autocheckpoint(1000)",
 }
 
 // OpenSQLite opens (or creates) the SQLite database at dbPath and configures
-// PRAGMAs via DSN parameters. The returned *sql.DB has MaxOpenConns=1 to
-// serialize all writes through a single connection, eliminating lock contention.
+// PRAGMAs via DSN parameters. Write transactions acquire the SQLite writer lock
+// when they begin, before they can establish a stale WAL snapshot. The returned
+// *sql.DB has MaxOpenConns=1 to serialize writes within each database handle.
 func OpenSQLite(dbPath string) (*sql.DB, error) {
 	// Ensure parent directory exists.
 	dir := filepath.Dir(dbPath)
@@ -32,20 +34,24 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("create database directory %s: %w", dir, err)
 	}
 
-	dsn := fmt.Sprintf("file:%s?", dbPath)
-	for i, p := range pragmas {
-		if i > 0 {
-			dsn += "&"
-		}
-		dsn += p
+	query := make(url.Values)
+	query.Set("_txlock", "immediate")
+	for _, p := range pragmas {
+		query.Add("_pragma", p)
 	}
+	dsn := (&url.URL{
+		Scheme:   "file",
+		OmitHost: true,
+		Path:     dbPath,
+		RawQuery: query.Encode(),
+	}).String()
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", dbPath, err)
 	}
 
-	// Single writer eliminates SQLite lock contention.
+	// A single connection serializes writes within this database handle.
 	db.SetMaxOpenConns(1)
 
 	// Verify the connection works and PRAGMAs took effect.
