@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,31 @@ const TargetVersion = "a2fc72f380b7"
 // and seed data, then applies Go-only migrations. It returns an error if the
 // database file already contains tables (use Upgrade for existing databases).
 func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		return fmt.Errorf("load migration catalog: %w", err)
+	}
+	return initDatabaseWithSources(ctx, db, catalog, schema.QuaySchemaSQL, schema.SeedDataSQL, w)
+}
+
+func initDatabaseWithFS(ctx context.Context, db *sql.DB, migrationFS fs.FS, w io.Writer) error {
+	catalog, err := loadMigrationCatalog(migrationFS)
+	if err != nil {
+		return fmt.Errorf("load migration catalog: %w", err)
+	}
+	if err := catalog.validateVersions(); err != nil {
+		return fmt.Errorf("validate migration catalog: %w", err)
+	}
+	return initDatabaseWithSources(ctx, db, catalog, schema.QuaySchemaSQL, schema.SeedDataSQL, w)
+}
+
+func initDatabaseWithSources(
+	ctx context.Context,
+	db *sql.DB,
+	catalog *migrationCatalog,
+	schemaSQL, seedSQL string,
+	w io.Writer,
+) (retErr error) {
 	// Check if database already has tables.
 	var tableCount int
 	err := db.QueryRowContext(ctx,
@@ -44,6 +70,15 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
 	}
+	foreignKeysDisabled := true
+	defer func() {
+		if !foreignKeysDisabled {
+			return
+		}
+		if _, err := db.ExecContext(context.WithoutCancel(ctx), "PRAGMA foreign_keys = ON"); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("re-enable foreign keys: %w", err))
+		}
+	}()
 
 	// Execute DDL in a transaction.
 	tx, err := db.BeginTx(ctx, nil)
@@ -52,31 +87,45 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after commit
 
-	if _, err := tx.ExecContext(ctx, schema.QuaySchemaSQL); err != nil {
+	if _, err := tx.ExecContext(ctx, schemaSQL); err != nil {
 		return fmt.Errorf("execute schema DDL: %w", err)
 	}
 
 	// Seed data: split on semicolons and execute each INSERT.
 	// The embedded seed_data.sql contains one INSERT per line.
-	for _, stmt := range splitStatements(schema.SeedDataSQL) {
+	for _, stmt := range splitStatements(seedSQL) {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execute seed data: %w", err)
 		}
+	}
+
+	var seedVersion string
+	if err := tx.QueryRowContext(ctx, "SELECT version_num FROM alembic_version").Scan(&seedVersion); err != nil {
+		return fmt.Errorf("read seeded schema version: %w", err)
+	}
+	plan, err := catalog.plan(seedVersion, TargetVersion)
+	if err != nil {
+		return fmt.Errorf("plan Go-only migrations from seeded version %q: %w", seedVersion, err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 
-	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, w); err != nil {
+	if err := applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w); err != nil {
 		return fmt.Errorf("apply Go-only migrations: %w", err)
 	}
 
 	if err := verifyForeignKeys(ctx, db); err != nil {
 		return err
 	}
+	foreignKeysDisabled = false
 
-	// Count tables and seed rows for summary.
+	writeInitSummary(ctx, db, w)
+	return nil
+}
+
+func writeInitSummary(ctx context.Context, db *sql.DB, w io.Writer) {
 	var tables int
 	_ = db.QueryRowContext(ctx,
 		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -97,7 +146,6 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 	}
 
 	fmt.Fprintf(w, "Initialized database: %d tables, %d seed rows\n", tables, seedRows)
-	return nil
 }
 
 func verifyForeignKeys(ctx context.Context, db *sql.DB) error {
@@ -215,22 +263,17 @@ func CleanOldBackups(dbPath string, keep int) error {
 
 // ListMigrations prints the available migration files to w.
 func ListMigrations(w io.Writer) {
-	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	catalog, err := loadEmbeddedMigrationCatalog()
 	if err != nil {
 		return
 	}
-	found := false
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			if !found {
-				fmt.Fprintln(w, "Pending migrations:")
-				found = true
-			}
-			fmt.Fprintf(w, "  - %s\n", e.Name())
-		}
-	}
-	if !found {
+	if len(catalog.migrations) == 0 {
 		fmt.Fprintln(w, "No migration files found.")
+		return
+	}
+	fmt.Fprintln(w, "Pending migrations:")
+	for _, migration := range catalog.migrations {
+		fmt.Fprintf(w, "  - %s\n", migration.filename)
 	}
 }
 
@@ -241,64 +284,264 @@ type migrationInfo struct {
 	downRevision string
 }
 
+type migrationCatalog struct {
+	migrations           []migrationInfo
+	root                 migrationInfo
+	migrationsByRevision map[string]migrationInfo
+	migrationsByDown     map[string]migrationInfo
+}
+
+func loadEmbeddedMigrationCatalog() (*migrationCatalog, error) {
+	migrationFS, err := fs.Sub(schema.MigrationFiles, "sqlite/migrations")
+	if err != nil {
+		return nil, fmt.Errorf("open migrations directory: %w", err)
+	}
+	catalog, err := loadMigrationCatalog(migrationFS)
+	if err != nil {
+		return nil, err
+	}
+	if err := catalog.validateVersions(); err != nil {
+		return nil, err
+	}
+	return catalog, nil
+}
+
+func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
+	entries, err := fs.ReadDir(migrationFS, ".")
+	if err != nil {
+		return nil, fmt.Errorf("read migrations directory: %w", err)
+	}
+
+	catalog := &migrationCatalog{
+		migrationsByRevision: make(map[string]migrationInfo),
+		migrationsByDown:     make(map[string]migrationInfo),
+	}
+	var roots []migrationInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		migrationSQL, err := fs.ReadFile(migrationFS, entry.Name())
+		if err != nil {
+			return nil, fmt.Errorf("read migration %s: %w", entry.Name(), err)
+		}
+		info, err := extractMigrationInfo(entry.Name(), string(migrationSQL))
+		if err != nil {
+			return nil, fmt.Errorf("migration %s: %w", entry.Name(), err)
+		}
+		if previous, ok := catalog.migrationsByRevision[info.revision]; ok {
+			return nil, fmt.Errorf(
+				"duplicate revision %q in %s and %s", info.revision, previous.filename, info.filename,
+			)
+		}
+		if info.revision == info.downRevision {
+			return nil, fmt.Errorf("migration %s has self-link revision %q", info.filename, info.revision)
+		}
+
+		catalog.migrations = append(catalog.migrations, info)
+		catalog.migrationsByRevision[info.revision] = info
+		if info.downRevision == "" {
+			roots = append(roots, info)
+			continue
+		}
+		if previous, ok := catalog.migrationsByDown[info.downRevision]; ok {
+			return nil, fmt.Errorf(
+				"duplicate down_revision %q in %s and %s",
+				info.downRevision, previous.filename, info.filename,
+			)
+		}
+		catalog.migrationsByDown[info.downRevision] = info
+	}
+
+	if err := catalog.validateStructure(roots); err != nil {
+		return nil, err
+	}
+	return catalog, nil
+}
+
+func (catalog *migrationCatalog) validateStructure(roots []migrationInfo) error {
+	if len(catalog.migrations) == 0 {
+		return fmt.Errorf("no migration files found")
+	}
+	if len(roots) != 1 {
+		return fmt.Errorf("migration catalog must contain exactly one bridge root; found %d", len(roots))
+	}
+	catalog.root = roots[0]
+	for _, migration := range catalog.migrations {
+		if migration.downRevision == "" {
+			continue
+		}
+		if _, ok := catalog.migrationsByRevision[migration.downRevision]; !ok {
+			return fmt.Errorf(
+				"migration %s has dangling down_revision %q",
+				migration.filename, migration.downRevision,
+			)
+		}
+	}
+	if err := catalog.validateAcyclic(); err != nil {
+		return err
+	}
+	if _, err := catalog.terminalRevision(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (catalog *migrationCatalog) validateAcyclic() error {
+	const (
+		visiting = 1
+		visited  = 2
+	)
+	state := make(map[string]int, len(catalog.migrationsByRevision))
+	var visit func(string) error
+	visit = func(revision string) error {
+		switch state[revision] {
+		case visiting:
+			return fmt.Errorf("migration catalog contains a cycle at revision %q", revision)
+		case visited:
+			return nil
+		}
+		state[revision] = visiting
+		migration := catalog.migrationsByRevision[revision]
+		if _, ok := catalog.migrationsByRevision[migration.downRevision]; ok {
+			if err := visit(migration.downRevision); err != nil {
+				return err
+			}
+		}
+		state[revision] = visited
+		return nil
+	}
+	for revision := range catalog.migrationsByRevision {
+		if err := visit(revision); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (catalog *migrationCatalog) terminalRevision() (string, error) {
+	visited := make(map[string]bool, len(catalog.migrationsByRevision))
+	revision := catalog.root.revision
+	for {
+		visited[revision] = true
+		next, ok := catalog.migrationsByDown[revision]
+		if !ok {
+			break
+		}
+		revision = next.revision
+	}
+	if len(visited) != len(catalog.migrationsByRevision) {
+		return "", fmt.Errorf(
+			"migration catalog has %d revision(s) not connected to bridge root %q",
+			len(catalog.migrationsByRevision)-len(visited), catalog.root.revision,
+		)
+	}
+	return revision, nil
+}
+
+func (catalog *migrationCatalog) validateVersions() error {
+	if catalog.root.revision != BridgeTargetVersion {
+		return fmt.Errorf(
+			"bridge root revision %q does not match BridgeTargetVersion %q",
+			catalog.root.revision, BridgeTargetVersion,
+		)
+	}
+	terminalRevision, err := catalog.terminalRevision()
+	if err != nil {
+		return err
+	}
+	if terminalRevision != TargetVersion {
+		return fmt.Errorf(
+			"migration catalog terminal revision %q does not match TargetVersion %q",
+			terminalRevision, TargetVersion,
+		)
+	}
+	return nil
+}
+
+func (catalog *migrationCatalog) plan(currentVersion, targetVersion string) ([]migrationInfo, error) {
+	if _, ok := catalog.migrationsByRevision[targetVersion]; !ok {
+		return nil, fmt.Errorf("target revision %q is unreachable from %q", targetVersion, currentVersion)
+	}
+	if _, ok := catalog.migrationsByRevision[currentVersion]; !ok {
+		return nil, fmt.Errorf("current revision %q is not in the migration catalog", currentVersion)
+	}
+
+	var plan []migrationInfo
+	seen := make(map[string]bool)
+	for currentVersion != targetVersion {
+		if seen[currentVersion] {
+			return nil, fmt.Errorf("migration path contains a cycle at revision %q", currentVersion)
+		}
+		seen[currentVersion] = true
+		next, ok := catalog.migrationsByDown[currentVersion]
+		if !ok {
+			return nil, fmt.Errorf("target revision %q is unreachable from %q", targetVersion, currentVersion)
+		}
+		plan = append(plan, next)
+		currentVersion = next.revision
+	}
+	return plan, nil
+}
+
+func (catalog *migrationCatalog) chainableCount() int {
+	return len(catalog.migrations) - 1
+}
+
 // ApplyMigrations reads embedded SQL migration files and applies the revision
 // chain needed to bring the database from currentVersion to targetVersion.
 // Each non-bridge migration must contain "-- revision: <id>" and
 // "-- down_revision: <id>" comments.
 func ApplyMigrations(ctx context.Context, db *sql.DB, currentVersion, targetVersion string, w io.Writer) error {
-	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	catalog, err := loadEmbeddedMigrationCatalog()
 	if err != nil {
-		return fmt.Errorf("read migrations directory: %w", err)
+		return fmt.Errorf("load migration catalog: %w", err)
 	}
+	return applyMigrationsWithCatalog(ctx, db, catalog, currentVersion, targetVersion, w)
+}
 
-	migrationsByDownRevision := map[string]migrationInfo{}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
-		filename := e.Name()
-		sqlBytes, err := schema.MigrationFiles.ReadFile("sqlite/migrations/" + filename)
-		if err != nil {
-			return fmt.Errorf("read migration %s: %w", filename, err)
-		}
-
-		migrationSQL := string(sqlBytes)
-		info, err := extractMigrationInfo(filename, migrationSQL)
-		if err != nil {
-			return fmt.Errorf("migration %s: %w", filename, err)
-		}
-		if info.downRevision == "" {
-			continue
-		}
-		if _, ok := migrationsByDownRevision[info.downRevision]; ok {
-			return fmt.Errorf("multiple migrations found for down_revision %s", info.downRevision)
-		}
-		migrationsByDownRevision[info.downRevision] = info
+func applyMigrationsWithFS(
+	ctx context.Context,
+	db *sql.DB,
+	migrationFS fs.FS,
+	currentVersion, targetVersion string,
+	w io.Writer,
+) error {
+	catalog, err := loadMigrationCatalog(migrationFS)
+	if err != nil {
+		return fmt.Errorf("load migration catalog: %w", err)
 	}
+	return applyMigrationsWithCatalog(ctx, db, catalog, currentVersion, targetVersion, w)
+}
 
-	if len(migrationsByDownRevision) == 0 {
-		return fmt.Errorf("no migration files found")
+func applyMigrationsWithCatalog(
+	ctx context.Context,
+	db *sql.DB,
+	catalog *migrationCatalog,
+	currentVersion, targetVersion string,
+	w io.Writer,
+) error {
+	plan, err := catalog.plan(currentVersion, targetVersion)
+	if err != nil {
+		return err
 	}
+	return applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w)
+}
 
-	fmt.Fprintf(w, "Found %d migration file(s)\n", len(migrationsByDownRevision))
-
-	applied := 0
-	for currentVersion != targetVersion {
-		info, ok := migrationsByDownRevision[currentVersion]
-		if !ok {
-			return fmt.Errorf("no migration found from %s to %s", currentVersion, targetVersion)
-		}
+func applyMigrationPlan(
+	ctx context.Context, db *sql.DB, plan []migrationInfo, migrationCount int, w io.Writer,
+) error {
+	fmt.Fprintf(w, "Found %d migration file(s)\n", migrationCount)
+	for _, info := range plan {
 		fmt.Fprintf(w, "Applying: %s (revision %s)\n", info.filename, info.revision)
 
 		if err := applyMigrationTx(ctx, db, info.sql, info.revision); err != nil {
 			return fmt.Errorf("apply migration %s: %w", info.filename, err)
 		}
-		applied++
-		currentVersion = info.revision
 		fmt.Fprintf(w, "Applied: %s\n", info.filename)
 	}
 
-	fmt.Fprintf(w, "Migration complete: %d migration(s) applied\n", applied)
+	fmt.Fprintf(w, "Migration complete: %d migration(s) applied\n", len(plan))
 	return nil
 }
 

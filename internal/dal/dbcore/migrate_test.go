@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
+
+	"github.com/quay/quay/internal/dal/schema"
 )
 
 func TestInitDatabase(t *testing.T) {
@@ -254,6 +257,323 @@ CREATE TABLE second (id INTEGER);
 	if !strings.Contains(stmts[1], "CREATE TABLE second") {
 		t.Errorf("second statement was dropped: %#v", stmts)
 	}
+}
+
+func TestLoadMigrationCatalog_RejectsInvalidGraphs(t *testing.T) {
+	tests := []struct {
+		name    string
+		files   map[string]string
+		wantErr string
+	}{
+		{
+			name: "duplicate revisions",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("root", "parent", ""),
+			},
+			wantErr: "duplicate revision",
+		},
+		{
+			name: "duplicate down revisions",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("one", "root", ""),
+				"0003.sql": testMigrationSQL("two", "root", ""),
+			},
+			wantErr: "duplicate down_revision",
+		},
+		{
+			name: "self link",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("self", "self", ""),
+			},
+			wantErr: "self-link",
+		},
+		{
+			name: "cycle",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("one", "two", ""),
+				"0003.sql": testMigrationSQL("two", "one", ""),
+			},
+			wantErr: "cycle",
+		},
+		{
+			name: "dangling parent",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("orphan", "missing", ""),
+			},
+			wantErr: "dangling down_revision",
+		},
+		{
+			name: "missing bridge root",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("one", "missing", ""),
+			},
+			wantErr: "exactly one bridge root",
+		},
+		{
+			name: "disconnected off-chain root",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root-one", "", ""),
+				"0002.sql": testMigrationSQL("one", "root-one", ""),
+				"0003.sql": testMigrationSQL("root-two", "", ""),
+				"0004.sql": testMigrationSQL("two", "root-two", ""),
+			},
+			wantErr: "exactly one bridge root",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadMigrationCatalog(testMigrationFS(tt.files))
+			if err == nil {
+				t.Fatal("expected invalid migration catalog to fail")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %q, want substring %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestMigrationCatalog_RejectsSuccessorAfterTargetVersion(t *testing.T) {
+	catalog, err := loadMigrationCatalog(testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL("unexpected_successor", TargetVersion, ""),
+	}))
+	if err != nil {
+		t.Fatalf("load migration catalog: %v", err)
+	}
+	if err := catalog.validateVersions(); err == nil || !strings.Contains(err.Error(), "terminal revision") {
+		t.Fatalf("error = %v, want terminal revision mismatch", err)
+	}
+}
+
+func TestApplyMigrations_UnreachableTargetDoesNotMutateDatabase(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE alembic_version (version_num TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alembic_version VALUES ('one')`); err != nil {
+		t.Fatal(err)
+	}
+
+	fsys := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL("root", "", ""),
+		"0002.sql": testMigrationSQL("one", "root", "CREATE TABLE already_applied (id INTEGER);"),
+		"0003.sql": testMigrationSQL("head", "one", "CREATE TABLE must_not_exist (id INTEGER);"),
+	})
+	err := applyMigrationsWithFS(ctx, db, fsys, "one", "root", &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "unreachable") {
+		t.Fatalf("error = %v, want unreachable target error", err)
+	}
+
+	version, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "one" {
+		t.Fatalf("version = %q, want one", version)
+	}
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'must_not_exist'`,
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 0 {
+		t.Fatal("migration SQL committed before the complete path was planned")
+	}
+}
+
+func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		t.Fatalf("load embedded migration catalog: %v", err)
+	}
+
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE alembic_version (version_num TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range splitStatements(schema.SeedDataSQL) {
+		if strings.HasPrefix(stmt, "INSERT INTO alembic_version") {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				t.Fatalf("execute embedded version seed: %v", err)
+			}
+			break
+		}
+	}
+	seedVersion, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seedVersion == "" {
+		t.Fatal("embedded seed data did not provide a schema version")
+	}
+	if _, err := catalog.plan(seedVersion, TargetVersion); err != nil {
+		t.Fatalf("embedded seed version %q has no route to %q: %v", seedVersion, TargetVersion, err)
+	}
+}
+
+func TestInitDatabase_MigrationFailureRestoresForeignKeysAndLeavesSeedVersionRetryable(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+
+	failingFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(
+			TargetVersion,
+			BridgeTargetVersion,
+			"CREATE TABLE recovered (id INTEGER); CREATE TABLE broken (",
+		),
+	})
+	err := initDatabaseWithFS(ctx, db, failingFS, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "apply Go-only migrations") {
+		t.Fatalf("error = %v, want migration failure", err)
+	}
+
+	var foreignKeys int
+	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+		t.Fatal(err)
+	}
+	if foreignKeys != 1 {
+		t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+	}
+	seedVersion, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seedVersion != BridgeTargetVersion {
+		t.Fatalf("version = %q, want retryable seed version %q", seedVersion, BridgeTargetVersion)
+	}
+
+	retryFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, "CREATE TABLE recovered (id INTEGER);"),
+	})
+	if err := applyMigrationsWithFS(
+		ctx, db, retryFS, seedVersion, TargetVersion, &bytes.Buffer{},
+	); err != nil {
+		t.Fatalf("retry migration from seeded version: %v", err)
+	}
+}
+
+func TestInitDatabase_InvalidSeedRouteDoesNotCommitSchema(t *testing.T) {
+	versionSeed := fmt.Sprintf("INSERT INTO alembic_version VALUES('%s');", BridgeTargetVersion)
+	tests := []struct {
+		name    string
+		seedSQL string
+		wantErr string
+	}{
+		{
+			name:    "missing version marker",
+			seedSQL: strings.Replace(schema.SeedDataSQL, versionSeed, "", 1),
+			wantErr: "read seeded schema version",
+		},
+		{
+			name: "unreachable version marker",
+			seedSQL: strings.Replace(
+				schema.SeedDataSQL,
+				versionSeed,
+				"INSERT INTO alembic_version VALUES('unreachable_seed');",
+				1,
+			),
+			wantErr: "plan Go-only migrations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := openTestDB(t)
+			defer db.Close()
+			ctx := t.Context()
+			catalog, err := loadEmbeddedMigrationCatalog()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = initDatabaseWithSources(
+				ctx, db, catalog, schema.QuaySchemaSQL, tt.seedSQL, &bytes.Buffer{},
+			)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, tt.wantErr)
+			}
+
+			var tableCount int
+			if err := db.QueryRowContext(ctx,
+				"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+			).Scan(&tableCount); err != nil {
+				t.Fatal(err)
+			}
+			if tableCount != 0 {
+				t.Fatalf("schema transaction committed %d tables after seed route failure", tableCount)
+			}
+			var foreignKeys int
+			if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+				t.Fatal(err)
+			}
+			if foreignKeys != 1 {
+				t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+			}
+			if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+				t.Fatalf("retry InitDatabase after seed route failure: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitDatabase_InvalidCatalogDoesNotCommitSchema(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+
+	invalidFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(TargetVersion, "missing_parent", ""),
+	})
+	err := initDatabaseWithFS(ctx, db, invalidFS, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "dangling down_revision") {
+		t.Fatalf("error = %v, want dangling catalog error", err)
+	}
+
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 0 {
+		t.Fatalf("invalid catalog committed %d tables", tableCount)
+	}
+}
+
+func testMigrationFS(files map[string]string) fstest.MapFS {
+	fsys := make(fstest.MapFS, len(files))
+	for name, contents := range files {
+		fsys[name] = &fstest.MapFile{Data: []byte(contents)}
+	}
+	return fsys
+}
+
+func testMigrationSQL(revision, downRevision, body string) string {
+	var migration strings.Builder
+	fmt.Fprintf(&migration, "-- revision: %s\n", revision)
+	if downRevision != "" {
+		fmt.Fprintf(&migration, "-- down_revision: %s\n", downRevision)
+	}
+	migration.WriteString(body)
+	return migration.String()
 }
 
 func TestIntegrityCheck(t *testing.T) {

@@ -2,7 +2,9 @@ package dbcore
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -194,6 +196,93 @@ func TestRunBridge_RejectsUnknownVersion(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unknown schema version") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestRunBridge_MigratesPriorGoRevisionWithoutOMRBridge(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, "CREATE TABLE alembic_version (version_num TEXT NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO alembic_version VALUES ('prior_go_revision')"); err != nil {
+		t.Fatal(err)
+	}
+
+	fsys := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", "INVALID BRIDGE SQL;"),
+		"0002.sql": testMigrationSQL("prior_go_revision", BridgeTargetVersion, "CREATE TABLE already_applied (id INTEGER);"),
+		"0003.sql": testMigrationSQL(TargetVersion, "prior_go_revision", "CREATE TABLE future_applied (id INTEGER);"),
+	})
+	if err := runBridgeWithFS(ctx, db, fsys, &bytes.Buffer{}); err != nil {
+		t.Fatalf("RunBridge from prior Go revision: %v", err)
+	}
+
+	version, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != TargetVersion {
+		t.Fatalf("version = %q, want %q", version, TargetVersion)
+	}
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'future_applied'`,
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 1 {
+		t.Fatal("future Go-only migration was not applied")
+	}
+}
+
+func TestBridgeToRoot_RestoresForeignKeysAfterFailureAndCancellation(t *testing.T) {
+	tests := []struct {
+		name   string
+		cancel bool
+	}{
+		{name: "failure"},
+		{name: "canceled context", cancel: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := openTestDB(t)
+			defer db.Close()
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			applyErr := errors.New("injected bridge failure")
+			if tt.cancel {
+				applyErr = context.Canceled
+			}
+
+			err := bridgeToRootWithApply(
+				ctx,
+				db,
+				"old_revision",
+				migrationInfo{revision: BridgeTargetVersion},
+				&bytes.Buffer{},
+				func(context.Context, *sql.Tx, string) error {
+					if tt.cancel {
+						cancel()
+					}
+					return applyErr
+				},
+			)
+			if !errors.Is(err, applyErr) {
+				t.Fatalf("error = %v, want %v", err, applyErr)
+			}
+
+			var foreignKeys int
+			if err := db.QueryRowContext(t.Context(), "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+				t.Fatal(err)
+			}
+			if foreignKeys != 1 {
+				t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+			}
+		})
 	}
 }
 
