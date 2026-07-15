@@ -156,19 +156,8 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 	}
 
 	for _, childDgst := range m.ChildDigests {
-		child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
-			RepositoryID: repoID,
-			Digest:       childDgst.String(),
-		})
-		if err != nil {
-			return 0, fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
-		}
-		if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
-			RepositoryID:    repoID,
-			ManifestID:      manifestID,
-			ChildManifestID: child.ID,
-		}); err != nil {
-			return 0, fmt.Errorf("link child manifest %s: %w", childDgst, err)
+		if err := s.linkChild(ctx, q, repoID, manifestID, mtID, childDgst); err != nil {
+			return 0, err
 		}
 	}
 
@@ -178,10 +167,71 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		}
 	}
 
+	if m.Subject != "" {
+		if err := s.setSubjectAndProtect(ctx, q, repoID, manifestID, &m); err != nil {
+			return 0, err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return manifestID, nil
+}
+
+// setSubjectAndProtect sets the subject column on a manifest and creates a
+// hidden tag to protect the referrer from GC. Referrer manifests typically
+// have no user-visible tag, so without the hidden tag FindOrphanedManifests
+// would collect them.
+func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, m *oci.ManifestRecord) error {
+	if err := q.SetManifestSubject(ctx, daldb.SetManifestSubjectParams{
+		Subject: sql.NullString{String: m.Subject.String(), Valid: true},
+		ID:      manifestID,
+	}); err != nil {
+		return fmt.Errorf("set manifest subject %s: %w", m.Subject, err)
+	}
+	if _, err := q.InsertHiddenTag(ctx, daldb.InsertHiddenTagParams{
+		Name:            "$referrer-" + m.Digest.Encoded()[:12],
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: time.Now().UnixMilli(),
+		TagKindID:       s.tagKindTag,
+	}); err != nil {
+		return fmt.Errorf("insert hidden referrer tag: %w", err)
+	}
+	return nil
+}
+
+// linkChild resolves or creates a child manifest and links it to the parent
+// via manifestchild. Under concurrent multi-arch pushes, the child's metadata
+// write may not have committed yet even though distribution accepted the blob.
+// In that case, we create a placeholder manifest row so the FK link succeeds.
+func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, repoID, manifestID, mtID int64, childDgst digest.Digest) error {
+	child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID,
+		Digest:       childDgst.String(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		child.ID, err = q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+			RepositoryID:  repoID,
+			Digest:        childDgst.String(),
+			MediaTypeID:   mtID,
+			ManifestBytes: "{}",
+		})
+		if err != nil {
+			return fmt.Errorf("ensure child manifest %s: %w", childDgst, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
+	}
+	if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+		RepositoryID:    repoID,
+		ManifestID:      manifestID,
+		ChildManifestID: child.ID,
+	}); err != nil {
+		return fmt.Errorf("link child manifest %s: %w", childDgst, err)
+	}
+	return nil
 }
 
 // ensureBlob inserts a blob into imagestorage if it doesn't already exist,
@@ -281,6 +331,34 @@ func (s *SQLiteStore) PutBlob(ctx context.Context, b oci.BlobRecord) (int64, err
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return id, nil
+}
+
+// PutRepositoryBlob atomically inserts the blob metadata and its upload
+// protection marker in a single transaction, closing the race window where
+// GC could see the imagestorage row before the uploadedblob row exists.
+func (s *SQLiteStore) PutRepositoryBlob(ctx context.Context, repoID int64, b oci.BlobRecord) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	blobID, err := s.ensureBlob(ctx, tx, oci.BlobRef(b))
+	if err != nil {
+		return 0, err
+	}
+
+	if err := daldb.New(tx).InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{
+		RepositoryID: repoID,
+		BlobID:       blobID,
+	}); err != nil {
+		return 0, fmt.Errorf("insert uploaded blob %s: %w", b.Digest, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return blobID, nil
 }
 
 // PutTag expires any active tag with the same name and inserts a new one.

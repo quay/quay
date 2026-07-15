@@ -22,6 +22,7 @@ type Config struct {
 	ListenAddr                         string
 	DB                                 *sql.DB
 	Store                              oci.MetadataStore
+	BlobLocker                         oci.BlobLocker
 	LibraryNamespace                   string
 	AnonymousAccess                    *bool
 	DatabaseSecretKey                  string
@@ -44,6 +45,9 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil Config")
 	}
+	if cfg.BlobLocker == nil {
+		return nil, fmt.Errorf("nil blob locker")
+	}
 	if cfg.Store == nil {
 		return nil, fmt.Errorf("nil metastore store")
 	}
@@ -58,7 +62,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 
 	local.RegisterMetadataStore(cfg.Store)
 
-	if err := registrymw.Register(cfg.Store, libraryNamespace); err != nil {
+	if err := registrymw.Register(cfg.Store, cfg.BlobLocker, libraryNamespace); err != nil {
 		return nil, fmt.Errorf("register middleware: %w", err)
 	}
 

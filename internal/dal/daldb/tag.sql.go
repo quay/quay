@@ -105,6 +105,34 @@ func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByReposito
 	return items, nil
 }
 
+const insertHiddenTag = `-- name: InsertHiddenTag :one
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, 1)
+ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
+RETURNING id
+`
+
+type InsertHiddenTagParams struct {
+	Name            string        `json:"name"`
+	RepositoryID    int64         `json:"repository_id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	TagKindID       int64         `json:"tag_kind_id"`
+}
+
+func (q *Queries) InsertHiddenTag(ctx context.Context, arg InsertHiddenTagParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertHiddenTag,
+		arg.Name,
+		arg.RepositoryID,
+		arg.ManifestID,
+		arg.LifetimeStartMs,
+		arg.TagKindID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const upsertTag = `-- name: UpsertTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
 VALUES (?, ?, ?, ?, ?)

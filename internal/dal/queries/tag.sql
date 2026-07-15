@@ -21,6 +21,12 @@ SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms,
 FROM tag
 WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0;
 
+-- name: InsertHiddenTag :one
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, 1)
+ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
+RETURNING id;
+
 -- name: GetActiveTagDigest :one
 SELECT m.digest
 FROM tag t

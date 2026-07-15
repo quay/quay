@@ -57,3 +57,6 @@ SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes
 FROM manifest m
 JOIN mediatype mt ON mt.id = m.media_type_id
 WHERE m.repository_id = ? AND m.subject = ? AND m.artifact_type = ?;
+
+-- name: SetManifestSubject :exec
+UPDATE manifest SET subject = ? WHERE id = ?;

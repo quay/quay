@@ -261,6 +261,20 @@ func (q *Queries) ManifestExistsByDigest(ctx context.Context, arg ManifestExists
 	return digest, err
 }
 
+const setManifestSubject = `-- name: SetManifestSubject :exec
+UPDATE manifest SET subject = ? WHERE id = ?
+`
+
+type SetManifestSubjectParams struct {
+	Subject sql.NullString `json:"subject"`
+	ID      int64          `json:"id"`
+}
+
+func (q *Queries) SetManifestSubject(ctx context.Context, arg SetManifestSubjectParams) error {
+	_, err := q.db.ExecContext(ctx, setManifestSubject, arg.Subject, arg.ID)
+	return err
+}
+
 const upsertManifest = `-- name: UpsertManifest :one
 INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type, subject_backfilled, artifact_type_backfilled)
 VALUES (?, ?, ?, ?, ?, ?, 1, 1)

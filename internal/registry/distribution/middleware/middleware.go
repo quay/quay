@@ -28,13 +28,16 @@ const middlewareName = "quaydb"
 // handlers.NewApp so that the middleware config reference resolves.
 //
 // The store is captured by closure---no options map is needed at runtime.
-func Register(store oci.MetadataStore, libraryNamespace string) error {
+func Register(store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string) error {
+	if locker == nil {
+		return fmt.Errorf("nil blob locker")
+	}
 	return repositorymiddleware.Register(middlewareName, func(
 		ctx context.Context,
 		repo distribution.Repository,
 		_ map[string]interface{},
 	) (distribution.Repository, error) {
-		return newRepository(repo, store, libraryNamespace), nil
+		return newRepository(repo, store, locker, libraryNamespace), nil
 	})
 }
 
@@ -49,6 +52,7 @@ func Name() string { return middlewareName }
 type repository struct {
 	distribution.Repository
 	store            oci.MetadataStore
+	locker           oci.BlobLocker
 	libraryNamespace string
 
 	repoOnce sync.Once
@@ -56,8 +60,8 @@ type repository struct {
 	repoErr  error
 }
 
-func newRepository(inner distribution.Repository, store oci.MetadataStore, libraryNamespace string) *repository {
-	return &repository{Repository: inner, store: store, libraryNamespace: libraryNamespace}
+func newRepository(inner distribution.Repository, store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string) *repository {
+	return &repository{Repository: inner, store: store, locker: locker, libraryNamespace: libraryNamespace}
 }
 
 func (r *repository) Named() reference.Named { return r.Repository.Named() }

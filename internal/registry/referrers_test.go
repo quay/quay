@@ -66,7 +66,10 @@ func (m *mockStore) BlobLinkedToRepo(context.Context, int64, digest.Digest) (boo
 }
 func (m *mockStore) ListTags(context.Context, int64) ([]string, error)              { return nil, nil }
 func (m *mockStore) ListRepositories(context.Context) ([]oci.RepositoryName, error) { return nil, nil }
-func (m *mockStore) PutUploadedBlob(context.Context, int64, digest.Digest) error    { return nil }
+func (m *mockStore) PutRepositoryBlob(context.Context, int64, oci.BlobRecord) (int64, error) {
+	return 0, nil
+}
+func (m *mockStore) PutUploadedBlob(context.Context, int64, digest.Digest) error { return nil }
 func (m *mockStore) DeleteUploadedBlob(context.Context, int64, digest.Digest) (int64, error) {
 	return 0, nil
 }
