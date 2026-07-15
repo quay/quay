@@ -58,6 +58,7 @@ make types-test                      # Type checking (mypy)
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
+| GC, blob lifecycle, storage deletion | `agent_docs/gc.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
 
 ## Universal Conventions
@@ -124,6 +125,7 @@ Use this low-token routing map before opening broader docs:
 - API: `endpoints/api/`, `agent_docs/api.md`
 - Registry protocol: `endpoints/v2/`, `data/registry_model/`
 - Schema/migrations: `data/database.py`, `data/migrations/`, `agent_docs/database.md`
+- GC / blob lifecycle: `internal/gc/`, `internal/oci/blob_locker.go`, `agent_docs/gc.md`
 - Workers: `workers/`
 - Storage: `storage/`
 - React UI: `web/AGENTS.md`
