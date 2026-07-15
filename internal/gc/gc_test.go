@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1130,6 +1131,70 @@ func TestCollect_ReferrerManifestProtectedByHiddenTag(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal("referrer manifest should exist (protected by hidden tag)")
+	}
+}
+
+func TestCollect_CollidingReferrerPrefixesRemainProtected(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	baseDgst := mustDigest("shared-referrer-base")
+	insertManifest(t, env, repoID, baseDgst)
+	insertTag(t, env, repoID, "latest", baseDgst)
+
+	sharedPrefix := strings.Repeat("b", 12)
+	referrerDigests := []digest.Digest{
+		digest.NewDigestFromEncoded(digest.SHA256, sharedPrefix+strings.Repeat("1", 52)),
+		digest.NewDigestFromEncoded(digest.SHA256, sharedPrefix+strings.Repeat("2", 52)),
+	}
+	for _, referrerDgst := range referrerDigests {
+		if _, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    referrerDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+			Subject:   baseDgst,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// A retry of the first referrer must remain idempotent and must not steal
+	// the second referrer's protection row.
+	if _, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    referrerDigests[0],
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+		Subject:   baseDgst,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var protectionRows int
+	if err := env.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM tag
+		 WHERE repository_id = ? AND hidden = 1 AND lifetime_end_ms IS NULL`, repoID,
+	).Scan(&protectionRows); err != nil {
+		t.Fatal(err)
+	}
+	if protectionRows != 2 {
+		t.Fatalf("active referrer protection rows = %d, want 2", protectionRows)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("deleted manifests = %d, want 0", stats.ManifestsDeleted)
+	}
+	for _, referrerDgst := range referrerDigests {
+		if _, err := env.q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+			RepositoryID: repoID,
+			Digest:       referrerDgst.String(),
+		}); err != nil {
+			t.Fatalf("referrer manifest %s should remain protected: %v", referrerDgst, err)
+		}
 	}
 }
 

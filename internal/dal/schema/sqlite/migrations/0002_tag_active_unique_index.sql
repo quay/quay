@@ -7,28 +7,51 @@ DROP INDEX IF EXISTS tag_repository_id_name_lifetime_end_ms;
 CREATE INDEX tag_repository_id_name_lifetime_end_ms
 ON tag (repository_id, name, lifetime_end_ms);
 
-UPDATE tag
-SET lifetime_end_ms = (
-	SELECT kept.lifetime_start_ms
-	FROM tag AS kept
-	WHERE kept.repository_id = tag.repository_id
-		AND kept.name = tag.name
-		AND kept.lifetime_end_ms IS NULL
-	ORDER BY kept.lifetime_start_ms DESC, kept.id DESC
-	LIMIT 1
-)
-WHERE lifetime_end_ms IS NULL
-	AND EXISTS (
+UPDATE tag AS protection
+SET name = CASE
+	WHEN EXISTS (
 		SELECT 1
-		FROM tag AS newer
-		WHERE newer.repository_id = tag.repository_id
-			AND newer.name = tag.name
-			AND newer.lifetime_end_ms IS NULL
+		FROM manifest
+		WHERE manifest.id = protection.manifest_id
 			AND (
-				newer.lifetime_start_ms > tag.lifetime_start_ms
-				OR (newer.lifetime_start_ms = tag.lifetime_start_ms AND newer.id > tag.id)
+				(substr(manifest.digest, 1, 7) = 'sha256:'
+					AND length(substr(manifest.digest, 8)) = 64)
+				OR (substr(manifest.digest, 1, 7) = 'sha384:'
+					AND length(substr(manifest.digest, 8)) = 96)
+				OR (substr(manifest.digest, 1, 7) = 'sha512:'
+					AND length(substr(manifest.digest, 8)) = 128)
 			)
-	);
+			AND substr(manifest.digest, 8) NOT GLOB '*[^0-9a-fA-F]*'
+	) THEN (
+		SELECT '$referrer-' || replace(manifest.digest, ':', '-')
+		FROM manifest
+		WHERE manifest.id = protection.manifest_id
+	)
+	ELSE '$referrer-$legacy-' || protection.id
+END
+WHERE protection.hidden = 1
+	AND protection.lifetime_end_ms IS NULL
+	AND protection.name LIKE '$referrer-%';
+
+WITH ranked AS MATERIALIZED (
+	SELECT
+		id,
+		row_number() OVER (
+			PARTITION BY repository_id, name
+			ORDER BY lifetime_start_ms DESC, id DESC
+		) AS active_rank,
+		first_value(lifetime_start_ms) OVER (
+			PARTITION BY repository_id, name
+			ORDER BY lifetime_start_ms DESC, id DESC
+		) AS winner_start_ms
+	FROM tag
+	WHERE lifetime_end_ms IS NULL
+)
+UPDATE tag
+SET lifetime_end_ms = ranked.winner_start_ms
+FROM ranked
+WHERE tag.id = ranked.id
+	AND ranked.active_rank > 1;
 
 CREATE UNIQUE INDEX tag_repository_id_name_active
 ON tag (repository_id, name)

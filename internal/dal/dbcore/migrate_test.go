@@ -145,6 +145,151 @@ func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
 	}
 }
 
+func TestApplyMigrations_NormalizesReferrerProtectionNames(t *testing.T) {
+	db := prepareLegacyTagMigration(t)
+	ctx := t.Context()
+
+	sharedPrefix := strings.Repeat("a", 12)
+	digest1 := "sha256:" + sharedPrefix + strings.Repeat("1", 52)
+	digest2 := "sha256:" + sharedPrefix + strings.Repeat("2", 52)
+	statements := []struct {
+		query string
+		args  []any
+	}{
+		{
+			query: `INSERT INTO "user" (
+				id, username, email, verified, organization, robot, invoice_email,
+				invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+			) VALUES (11, 'migration-referrers', 'migration-referrers@example.com', 1, 0, 0, 0, 0,
+				'2026-01-01 00:00:00', 1209600, 1)`,
+		},
+		{
+			query: `INSERT INTO repository (
+				id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+			) VALUES (11, 11, 'referrers', 2, '', '', 1)`,
+		},
+		{
+			query: `INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+				VALUES (101, 11, ?, 17, '{}'), (102, 11, ?, 17, '{}'),
+				       (103, 11, 'malformed', 17, '{}')`,
+			args: []any{digest1, digest2},
+		},
+		{
+			query: `INSERT INTO tag (
+				id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden
+			) VALUES (101, '$referrer-aaaaaaaaaaaa', 11, 101, 100, 1, 1),
+			         (102, '$referrer-aaaaaaaaaaaa', 11, 102, 200, 1, 1),
+			         (103, '$referrer-aaaaaaaaaaaa', 11, 101, 300, 1, 1),
+			         (104, '$referrer-broken', 11, 103, 400, 1, 1),
+			         (105, '$referrer-broken', 11, NULL, 500, 1, 1)`,
+		},
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt.query, stmt.args...); err != nil {
+			t.Fatalf("insert migration fixture: %v\nstatement: %s", err, stmt.query)
+		}
+	}
+
+	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+		t.Fatalf("ApplyMigrations: %v", err)
+	}
+
+	assertActiveProtection := func(name string, manifestID sql.NullInt64) {
+		t.Helper()
+		var gotManifestID sql.NullInt64
+		if err := db.QueryRowContext(ctx,
+			`SELECT manifest_id FROM tag
+			 WHERE repository_id = 11 AND name = ? AND hidden = 1 AND lifetime_end_ms IS NULL`,
+			name,
+		).Scan(&gotManifestID); err != nil {
+			t.Fatalf("active protection %q: %v", name, err)
+		}
+		if gotManifestID != manifestID {
+			t.Fatalf("active protection %q manifest = %v, want %v", name, gotManifestID, manifestID)
+		}
+	}
+	assertActiveProtection("$referrer-sha256-"+sharedPrefix+strings.Repeat("1", 52), sql.NullInt64{Int64: 101, Valid: true})
+	assertActiveProtection("$referrer-sha256-"+sharedPrefix+strings.Repeat("2", 52), sql.NullInt64{Int64: 102, Valid: true})
+	assertActiveProtection("$referrer-$legacy-104", sql.NullInt64{Int64: 103, Valid: true})
+	assertActiveProtection("$referrer-$legacy-105", sql.NullInt64{})
+
+	var duplicateEnd int64
+	if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = 101`).Scan(&duplicateEnd); err != nil {
+		t.Fatalf("expired true retry duplicate: %v", err)
+	}
+	if duplicateEnd != 300 {
+		t.Fatalf("retry duplicate lifetime_end_ms = %d, want 300", duplicateEnd)
+	}
+	var activeHidden int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM tag WHERE repository_id = 11 AND hidden = 1 AND lifetime_end_ms IS NULL`,
+	).Scan(&activeHidden); err != nil {
+		t.Fatal(err)
+	}
+	if activeHidden != 4 {
+		t.Fatalf("active hidden protection rows = %d, want 4", activeHidden)
+	}
+}
+
+func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
+	db := prepareLegacyTagMigration(t)
+	ctx := t.Context()
+
+	statements := []string{
+		`INSERT INTO "user" (
+			id, username, email, verified, organization, robot, invoice_email,
+			invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+		) VALUES (21, 'ranking-one', 'ranking-one@example.com', 1, 0, 0, 0, 0,
+			'2026-01-01 00:00:00', 1209600, 1),
+		         (22, 'ranking-two', 'ranking-two@example.com', 1, 0, 0, 0, 0,
+			'2026-01-01 00:00:00', 1209600, 1)`,
+		`INSERT INTO repository (
+			id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+		) VALUES (21, 21, 'one', 2, '', '', 1), (22, 22, 'two', 2, '', '', 1)`,
+		`INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+		 VALUES (201, 21, 'sha256:201', 17, '{}'), (202, 21, 'sha256:202', 17, '{}'),
+		        (203, 22, 'sha256:203', 17, '{}'), (204, 22, 'sha256:204', 17, '{}')`,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (201, 'latest', 21, 201, 100, 1),
+		        (202, 'latest', 21, 202, 200, 1),
+		        (203, 'latest', 21, 201, 200, 1),
+		        (204, 'stable', 21, 201, 10, 1),
+		        (205, 'stable', 21, 202, 20, 1),
+		        (206, 'latest', 22, 203, 500, 1),
+		        (207, 'latest', 22, 204, 400, 1),
+		        (208, 'latest', 22, 204, 500, 1)`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("insert ranking fixture: %v\nstatement: %s", err, stmt)
+		}
+	}
+
+	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+		t.Fatalf("ApplyMigrations: %v", err)
+	}
+
+	wantEnds := map[int64]sql.NullInt64{
+		201: {Int64: 200, Valid: true},
+		202: {Int64: 200, Valid: true},
+		203: {},
+		204: {Int64: 20, Valid: true},
+		205: {},
+		206: {Int64: 500, Valid: true},
+		207: {Int64: 500, Valid: true},
+		208: {},
+	}
+	for id, wantEnd := range wantEnds {
+		var gotEnd sql.NullInt64
+		if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = ?`, id).Scan(&gotEnd); err != nil {
+			t.Fatalf("tag %d lifetime_end_ms: %v", id, err)
+		}
+		if gotEnd != wantEnd {
+			t.Errorf("tag %d lifetime_end_ms = %v, want %v", id, gotEnd, wantEnd)
+		}
+	}
+}
+
 func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := OpenSQLite(dbPath)
@@ -655,6 +800,32 @@ func insertTagMigrationFixture(t *testing.T, db *sql.DB) {
 			t.Fatalf("insert fixture: %v\nstatement: %s", err, stmt)
 		}
 	}
+}
+
+func prepareLegacyTagMigration(t *testing.T) *sql.DB {
+	t.Helper()
+	db := openTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+	for _, stmt := range []string{
+		`DROP INDEX tag_repository_id_name_active`,
+		`DROP INDEX tag_repository_id_name_lifetime_end_ms`,
+		`CREATE UNIQUE INDEX tag_repository_id_name_lifetime_end_ms
+		 ON tag (repository_id, name, lifetime_end_ms)`,
+	} {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("prepare legacy tag indexes: %v\nstatement: %s", err, stmt)
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`UPDATE alembic_version SET version_num = ?`, BridgeTargetVersion,
+	); err != nil {
+		t.Fatalf("stamp bridge version: %v", err)
+	}
+	return db
 }
 
 func assertTagIndexes(t *testing.T, db *sql.DB, wantActiveUnique bool) {

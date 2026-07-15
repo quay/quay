@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/require"
 
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
@@ -36,6 +39,104 @@ func setupStoreWithOptions(t *testing.T, opts ...metastore.SQLiteStoreOption) oc
 		t.Fatal(err)
 	}
 	return store
+}
+
+func setupConcurrentStores(t *testing.T, nowMs func() int64) (first, second *metastore.SQLiteStore, lockDB *sql.DB) {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "quay.db")
+	firstDB, err := dbcore.Setup(t.Context(), dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = firstDB.Close() })
+	secondDB, err := dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = secondDB.Close() })
+	lockDB, err = dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = lockDB.Close() })
+
+	first, err = metastore.NewSQLiteStore(t.Context(), firstDB, metastore.WithNowFunc(nowMs))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err = metastore.NewSQLiteStore(t.Context(), secondDB, metastore.WithNowFunc(nowMs))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return first, second, lockDB
+}
+
+type concurrentTagOperationResult struct {
+	name string
+	err  error
+}
+
+func holdWriterLock(t *testing.T, db *sql.DB) *sql.Tx {
+	t.Helper()
+	tx, err := db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("begin writer lock transaction: %v", err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback() })
+	if _, err := tx.ExecContext(t.Context(),
+		`UPDATE alembic_version SET version_num = version_num`,
+	); err != nil {
+		t.Fatalf("acquire writer lock: %v", err)
+	}
+	return tx
+}
+
+func assertTagOperationsBlocked(
+	t *testing.T,
+	stores []*metastore.SQLiteStore,
+	results <-chan concurrentTagOperationResult,
+) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		for _, store := range stores {
+			if store.DB().Stats().InUse != 1 {
+				return false
+			}
+		}
+		return true
+	}, time.Second, time.Millisecond, "store operations did not check out their database connections")
+
+	select {
+	case result := <-results:
+		t.Fatalf("%s returned before the writer lock was released: %v", result.name, result.err)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func collectTagOperationResults(
+	t *testing.T,
+	stores []*metastore.SQLiteStore,
+	results <-chan concurrentTagOperationResult,
+) {
+	t.Helper()
+	for range stores {
+		select {
+		case result := <-results:
+			if result.err != nil {
+				t.Errorf("%s: %v", result.name, result.err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("tag operation did not complete after the writer lock was released")
+		}
+	}
+	require.Eventually(t, func() bool {
+		for _, store := range stores {
+			if store.DB().Stats().InUse != 0 {
+				return false
+			}
+		}
+		return true
+	}, time.Second, time.Millisecond, "tag operations did not release their database connections")
 }
 
 func TestEnsureRepository(t *testing.T) {
@@ -330,6 +431,46 @@ func TestPutManifest_TagRetargetAvoidsExpiredTimestampCollision(t *testing.T) {
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
 
+func TestPutManifest_TagRetargetClampsBackwardClock(t *testing.T) {
+	now := int64(40_000)
+	store := setupStoreWithNow(t, func() int64 { return now })
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i, dgst := range []digest.Digest{
+		digest.FromString("backward-retarget-v1"),
+		digest.FromString("backward-retarget-v2"),
+	} {
+		if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+			Tag:       "latest",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			now--
+		}
+	}
+
+	rows := getTagRows(t, store.(*metastore.SQLiteStore), repoID, "latest")
+	if len(rows) != 2 {
+		t.Fatalf("tag rows = %d, want 2", len(rows))
+	}
+	if !rows[0].lifetimeEndMs.Valid || rows[0].lifetimeEndMs.Int64 != 40_000 {
+		t.Fatalf("expired tag end = %v, want 40000", rows[0].lifetimeEndMs)
+	}
+	if rows[1].lifetimeStartMs != 40_000 {
+		t.Fatalf("replacement tag start = %d, want 40000", rows[1].lifetimeStartMs)
+	}
+	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "latest")
+}
+
 func TestPutManifest_IndexWithChildren(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -447,6 +588,101 @@ func TestPutTag(t *testing.T) {
 	}
 }
 
+func TestPutTag_ConcurrentStoresSerializeRetargets(t *testing.T) {
+	first, second, lockDB := setupConcurrentStores(t, func() int64 { return 60_000 })
+	ctx := t.Context()
+
+	repoID, err := first.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digests := []digest.Digest{digest.FromString("concurrent-put-one"), digest.FromString("concurrent-put-two")}
+	for _, dgst := range digests {
+		if _, err := first.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	writerLock := holdWriterLock(t, lockDB)
+	stores := []*metastore.SQLiteStore{first, second}
+	names := []string{"first PutTag", "second PutTag"}
+	results := make(chan concurrentTagOperationResult, len(stores))
+	for i, store := range stores {
+		dgst := digests[i]
+		name := names[i]
+		go func() {
+			_, err := store.PutTag(ctx, repoID, oci.TagRecord{Name: "latest", Digest: dgst})
+			results <- concurrentTagOperationResult{name: name, err: err}
+		}()
+	}
+	assertTagOperationsBlocked(t, stores, results)
+	require.NoError(t, writerLock.Rollback())
+	collectTagOperationResults(t, stores, results)
+
+	if rows := getTagRows(t, first, repoID, "latest"); len(rows) != 2 {
+		t.Fatalf("tag rows = %d, want 2", len(rows))
+	}
+	assertActiveTagCount(t, first, repoID, "latest", 1)
+	assertTagIntervalsValid(t, first, repoID, "latest")
+}
+
+func TestPutAndDeleteTag_ConcurrentStoresSerialize(t *testing.T) {
+	first, second, lockDB := setupConcurrentStores(t, func() int64 { return 70_000 })
+	ctx := t.Context()
+
+	repoID, err := first.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest1 := digest.FromString("concurrent-delete-one")
+	digest2 := digest.FromString("concurrent-delete-two")
+	for _, dgst := range []digest.Digest{digest1, digest2} {
+		if _, err := first.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := first.PutTag(ctx, repoID, oci.TagRecord{Name: "latest", Digest: digest1}); err != nil {
+		t.Fatal(err)
+	}
+
+	writerLock := holdWriterLock(t, lockDB)
+	stores := []*metastore.SQLiteStore{first, second}
+	results := make(chan concurrentTagOperationResult, len(stores))
+	go func() {
+		_, err := first.PutTag(ctx, repoID, oci.TagRecord{Name: "latest", Digest: digest2})
+		results <- concurrentTagOperationResult{name: "PutTag", err: err}
+	}()
+	go func() {
+		results <- concurrentTagOperationResult{name: "DeleteTag", err: second.DeleteTag(ctx, repoID, "latest")}
+	}()
+	assertTagOperationsBlocked(t, stores, results)
+	require.NoError(t, writerLock.Rollback())
+	collectTagOperationResults(t, stores, results)
+
+	rows := getTagRows(t, first, repoID, "latest")
+	if len(rows) != 2 {
+		t.Fatalf("tag rows = %d, want 2", len(rows))
+	}
+	active := 0
+	for _, row := range rows {
+		if !row.lifetimeEndMs.Valid {
+			active++
+		}
+	}
+	if active > 1 {
+		t.Fatalf("active tag rows = %d, want at most 1", active)
+	}
+	assertTagIntervalsValid(t, first, repoID, "latest")
+}
+
 func TestDeleteTag(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -512,6 +748,39 @@ func TestDeleteTagAvoidsExpiredTimestampCollision(t *testing.T) {
 
 	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 0)
 	assertExpiredTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 2)
+	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
+}
+
+func TestDeleteTagClampsBackwardClock(t *testing.T) {
+	now := int64(50_000)
+	store := setupStoreWithNow(t, func() int64 { return now })
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    digest.FromString("backward-delete"),
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+		Tag:       "removeme",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	now--
+	if err := store.DeleteTag(ctx, repoID, "removeme"); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := getTagRows(t, store.(*metastore.SQLiteStore), repoID, "removeme")
+	if len(rows) != 1 {
+		t.Fatalf("tag rows = %d, want 1", len(rows))
+	}
+	if !rows[0].lifetimeEndMs.Valid || rows[0].lifetimeEndMs.Int64 != 50_000 {
+		t.Fatalf("expired tag end = %v, want 50000", rows[0].lifetimeEndMs)
+	}
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 }
 
@@ -581,6 +850,87 @@ func TestListReferrers_WithSubject(t *testing.T) {
 	}
 	if refs[0].Size <= 0 {
 		t.Errorf("size = %d, want > 0", refs[0].Size)
+	}
+}
+
+func TestPutManifest_ReferrerProtectionUsesFullDigestIdentity(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("shared-subject")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    subjectDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	sharedPrefix := strings.Repeat("a", 12)
+	referrerDigests := []digest.Digest{
+		digest.NewDigestFromEncoded(digest.SHA256, sharedPrefix+strings.Repeat("1", 52)),
+		digest.NewDigestFromEncoded(digest.SHA256, sharedPrefix+strings.Repeat("2", 52)),
+	}
+	for _, referrerDgst := range referrerDigests {
+		record := oci.ManifestRecord{
+			Digest:    referrerDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+			Subject:   subjectDgst,
+		}
+		if _, err := store.PutManifest(ctx, repoID, record); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Retrying the same referrer must keep its existing protection row.
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    referrerDigests[0],
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+		Subject:   subjectDgst,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := store.(*metastore.SQLiteStore).DB().QueryContext(ctx,
+		`SELECT t.name, m.digest
+		 FROM tag AS t
+		 JOIN manifest AS m ON m.id = t.manifest_id
+		 WHERE t.repository_id = ? AND t.hidden = 1 AND t.lifetime_end_ms IS NULL
+		 ORDER BY t.name`, repoID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	want := map[string]string{
+		"$referrer-sha256-" + referrerDigests[0].Encoded(): referrerDigests[0].String(),
+		"$referrer-sha256-" + referrerDigests[1].Encoded(): referrerDigests[1].String(),
+	}
+	got := make(map[string]string)
+	for rows.Next() {
+		var name, manifestDigest string
+		if err := rows.Scan(&name, &manifestDigest); err != nil {
+			t.Fatal(err)
+		}
+		got[name] = manifestDigest
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("active hidden protection rows = %v, want %v", got, want)
+	}
+	for name, manifestDigest := range want {
+		if got[name] != manifestDigest {
+			t.Errorf("protection row %q points to %q, want %q", name, got[name], manifestDigest)
+		}
 	}
 }
 

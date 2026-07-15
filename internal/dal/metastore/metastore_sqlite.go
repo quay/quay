@@ -211,10 +211,10 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 		return fmt.Errorf("set manifest subject %s: %w", m.Subject, err)
 	}
 	if _, err := q.InsertHiddenTag(ctx, daldb.InsertHiddenTagParams{
-		Name:            "$referrer-" + m.Digest.Encoded()[:12],
+		Name:            "$referrer-" + m.Digest.Algorithm().String() + "-" + m.Digest.Encoded(),
 		RepositoryID:    repoID,
 		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
-		LifetimeStartMs: time.Now().UnixMilli(),
+		LifetimeStartMs: s.nowMs(),
 		TagKindID:       s.tagKindTag,
 	}); err != nil {
 		return fmt.Errorf("insert hidden referrer tag: %w", err)
@@ -427,6 +427,9 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 	if activeTag.ManifestID.Valid && activeTag.ManifestID.Int64 == manifestID {
 		return activeTag.ID, nil
 	}
+	if now < activeTag.LifetimeStartMs {
+		now = activeTag.LifetimeStartMs
+	}
 
 	if err := s.expireActiveTag(ctx, q, activeTag.ID, now); err != nil {
 		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
@@ -486,7 +489,11 @@ func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) e
 		return fmt.Errorf("lookup active tag %q: %w", tag, err)
 	}
 
-	if err := s.expireActiveTag(ctx, q, activeTag.ID, s.nowMs()); err != nil {
+	now := s.nowMs()
+	if now < activeTag.LifetimeStartMs {
+		now = activeTag.LifetimeStartMs
+	}
+	if err := s.expireActiveTag(ctx, q, activeTag.ID, now); err != nil {
 		return fmt.Errorf("expire tag %q: %w", tag, err)
 	}
 
