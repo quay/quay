@@ -63,6 +63,7 @@ from endpoints.exception import (
     NotFound,
     Unauthorized,
 )
+from util.metrics.prometheus import spam_ingress_decisions
 from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX
 from util.parsing import truthy_bool
 
@@ -85,7 +86,7 @@ def _check_spam_ingress(namespace, repository, description, visibility, action):
 
     try:
         decision = spam_ingress.evaluate_description(context, app.config)
-    except Exception:
+    except spam_ingress.SpamIngressUnavailable:
         if app.config.get("SPAM_DETECTION_FAIL_OPEN", True):
             logger.exception(
                 "Spam detection ingress classifier unavailable; allowing %s for %s/%s",
@@ -93,6 +94,7 @@ def _check_spam_ingress(namespace, repository, description, visibility, action):
                 namespace,
                 repository,
             )
+            spam_ingress_decisions.labels(action=action, outcome="fail_open").inc()
             return
 
         logger.exception(
@@ -101,6 +103,26 @@ def _check_spam_ingress(namespace, repository, description, visibility, action):
             namespace,
             repository,
         )
+        spam_ingress_decisions.labels(action=action, outcome="fail_closed").inc()
+        raise InvalidRequest("Repository description could not be evaluated")
+    except Exception:
+        if app.config.get("SPAM_DETECTION_FAIL_OPEN", True):
+            logger.exception(
+                "Unexpected spam detection ingress error; allowing %s for %s/%s",
+                action,
+                namespace,
+                repository,
+            )
+            spam_ingress_decisions.labels(action=action, outcome="fail_open").inc()
+            return
+
+        logger.exception(
+            "Unexpected spam detection ingress error; rejecting %s for %s/%s",
+            action,
+            namespace,
+            repository,
+        )
+        spam_ingress_decisions.labels(action=action, outcome="fail_closed").inc()
         raise InvalidRequest("Repository description could not be evaluated")
 
     logger.info(
@@ -116,9 +138,15 @@ def _check_spam_ingress(namespace, repository, description, visibility, action):
         decision.reason,
     )
 
-    if decision.allowed or app.config.get("SPAM_DETECTION_DRY_RUN", True):
+    if decision.allowed:
+        spam_ingress_decisions.labels(action=action, outcome="allowed").inc()
         return
 
+    if app.config.get("SPAM_DETECTION_DRY_RUN", True):
+        spam_ingress_decisions.labels(action=action, outcome="dry_run").inc()
+        return
+
+    spam_ingress_decisions.labels(action=action, outcome="blocked").inc()
     raise InvalidRequest("Repository description was rejected by spam detection")
 
 

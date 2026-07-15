@@ -16,6 +16,7 @@ from data.database import (
 from data.model import spam_ingress
 from data.registry_model import registry_model
 from data.users import UserAuthentication, UserManager
+from endpoints.api import repository as repository_endpoint
 from endpoints.api.repository import (
     Repository,
     RepositoryList,
@@ -23,6 +24,7 @@ from endpoints.api.repository import (
     RepositoryTrust,
 )
 from endpoints.api.test.shared import conduct_api_call
+from endpoints.exception import InvalidRequest
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
 from test.fixtures import *
@@ -346,6 +348,134 @@ def test_update_repository_spam_detection_enforcement_rejects_description(app):
     context = mock_evaluate.call_args[0][0]
     assert context.visibility == expected_visibility
     assert context.action == "update"
+
+
+def test_update_repository_spam_detection_disabled_does_not_evaluate(app):
+    updated_description = "casino bonus https://spam.example"
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", False)):
+        with patch("endpoints.api.repository.spam_ingress.evaluate_description") as mock_evaluate:
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {"description": updated_description}
+                conduct_api_call(cl, Repository, "PUT", params, body, 200)
+
+    assert model.repository.get_repository("devtable", "simple").description == updated_description
+    mock_evaluate.assert_not_called()
+
+
+def test_update_repository_spam_detection_dry_run_allows_rejected_description(app):
+    decision = spam_ingress.SpamIngressDecision(
+        allowed=False,
+        score=0.99,
+        reason="score_exceeded_threshold",
+        classifier_version="test-v1",
+    )
+    updated_description = "casino bonus https://spam.example"
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": True,
+                "SPAM_DETECTION_FAIL_OPEN": True,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                return_value=decision,
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"repository": "devtable/simple"}
+                    body = {"description": updated_description}
+                    conduct_api_call(cl, Repository, "PUT", params, body, 200)
+
+    assert model.repository.get_repository("devtable", "simple").description == updated_description
+
+
+@pytest.mark.parametrize(
+    ("dry_run", "expected_outcome", "should_reject"),
+    [
+        (True, "dry_run", False),
+        (False, "blocked", True),
+    ],
+)
+def test_spam_ingress_records_enforcement_metric(dry_run, expected_outcome, should_reject, app):
+    decision = spam_ingress.SpamIngressDecision(
+        allowed=False,
+        score=0.99,
+        reason="score_exceeded_threshold",
+        classifier_version="test-v1",
+    )
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(realapp.config, {"SPAM_DETECTION_DRY_RUN": dry_run}):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                return_value=decision,
+            ):
+                with patch("endpoints.api.repository.spam_ingress_decisions.labels") as labels:
+                    with app.app_context():
+                        if should_reject:
+                            with pytest.raises(InvalidRequest):
+                                repository_endpoint._check_spam_ingress(
+                                    "devtable",
+                                    "simple",
+                                    "casino https://spam.example",
+                                    "public",
+                                    "update",
+                                )
+                        else:
+                            repository_endpoint._check_spam_ingress(
+                                "devtable",
+                                "simple",
+                                "casino https://spam.example",
+                                "public",
+                                "update",
+                            )
+
+    labels.assert_called_once_with(action="update", outcome=expected_outcome)
+    labels.return_value.inc.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("fail_open", "expected_outcome", "should_reject"),
+    [
+        (True, "fail_open", False),
+        (False, "fail_closed", True),
+    ],
+)
+def test_spam_ingress_records_classifier_failure_metric(
+    fail_open, expected_outcome, should_reject, app
+):
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(realapp.config, {"SPAM_DETECTION_FAIL_OPEN": fail_open}):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                side_effect=spam_ingress.SpamIngressUnavailable("missing artifact"),
+            ):
+                with patch("endpoints.api.repository.spam_ingress_decisions.labels") as labels:
+                    with app.app_context():
+                        if should_reject:
+                            with pytest.raises(InvalidRequest):
+                                repository_endpoint._check_spam_ingress(
+                                    "devtable",
+                                    "simple",
+                                    "casino https://spam.example",
+                                    "public",
+                                    "create",
+                                )
+                        else:
+                            repository_endpoint._check_spam_ingress(
+                                "devtable",
+                                "simple",
+                                "casino https://spam.example",
+                                "public",
+                                "create",
+                            )
+
+    labels.assert_called_once_with(action="create", outcome=expected_outcome)
+    labels.return_value.inc.assert_called_once_with()
 
 
 @pytest.mark.parametrize(

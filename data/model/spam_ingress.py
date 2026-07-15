@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INGRESS_THRESHOLD = 0.9
 DEFAULT_TOKEN_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+HYPERLINK_PATTERN = re.compile(r"\bhttps?://[^\s<>()]+", re.IGNORECASE)
 REQUIRED_ARTIFACT_FIELDS = {
     "version": str,
     "training_corpus_version": str,
@@ -152,6 +153,11 @@ def clear_classifier_cache():
 
 
 def evaluate_description(context, config):
+    if not HYPERLINK_PATTERN.search(context.description or ""):
+        return SpamIngressDecision(
+            allowed=True,
+            reason="hyperlink_required",
+        )
     classifier = _get_classifier(config)
     return classifier.classify(context)
 

@@ -51,7 +51,7 @@ def test_bayesian_classifier_rejects_matching_spam_artifact(tmp_path):
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",
         repository="spamrepo",
-        description="casino casino bonus",
+        description="casino casino bonus https://spam.example",
         visibility="public",
         action="create",
     )
@@ -79,7 +79,7 @@ def test_classifier_version_mismatch_raises_unavailable(tmp_path):
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",
         repository="spamrepo",
-        description="casino",
+        description="casino https://spam.example",
     )
 
     with pytest.raises(spam_ingress.SpamIngressUnavailable):
@@ -102,7 +102,7 @@ def test_classifier_checksum_mismatch_raises_unavailable(tmp_path):
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",
         repository="spamrepo",
-        description="casino",
+        description="casino https://spam.example",
     )
 
     with pytest.raises(spam_ingress.SpamIngressUnavailable):
@@ -124,7 +124,7 @@ def test_custom_token_pattern_raises_unavailable(tmp_path):
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",
         repository="spamrepo",
-        description="casino",
+        description="casino https://spam.example",
     )
 
     with pytest.raises(spam_ingress.SpamIngressUnavailable):
@@ -145,7 +145,7 @@ def test_missing_required_artifact_field_raises_unavailable(tmp_path):
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",
         repository="spamrepo",
-        description="casino",
+        description="casino https://spam.example",
     )
 
     with pytest.raises(spam_ingress.SpamIngressUnavailable):
@@ -156,3 +156,88 @@ def test_missing_required_artifact_field_raises_unavailable(tmp_path):
                 "SPAM_DETECTION_CLASSIFIER_SHA256": artifact_sha,
             },
         )
+
+
+def test_high_scoring_description_without_hyperlink_is_allowed():
+    context = spam_ingress.SpamIngressContext(
+        namespace="devtable",
+        repository="spamrepo",
+        description="casino casino bonus",
+        visibility="public",
+        action="create",
+    )
+
+    decision = spam_ingress.evaluate_description(context, {})
+
+    assert decision.allowed
+    assert decision.score is None
+    assert decision.reason == "hyperlink_required"
+
+
+def test_visibility_specific_thresholds_change_decision(tmp_path):
+    spam_ingress.clear_classifier_cache()
+    artifact_path, artifact_sha = _write_artifact(
+        tmp_path,
+        _artifact(
+            token_spam_counts={"borderline": 19},
+            token_ham_counts={"borderline": 1},
+            spam_token_total=100,
+            ham_token_total=100,
+            vocabulary_size=1,
+        ),
+    )
+    config = {
+        "SPAM_DETECTION_CLASSIFIER_PATH": str(artifact_path),
+        "SPAM_DETECTION_CLASSIFIER_SHA256": artifact_sha,
+    }
+
+    public = spam_ingress.evaluate_description(
+        spam_ingress.SpamIngressContext(
+            namespace="devtable",
+            repository="spamrepo",
+            description="borderline https://spam.example",
+            visibility="public",
+        ),
+        config,
+    )
+    private = spam_ingress.evaluate_description(
+        spam_ingress.SpamIngressContext(
+            namespace="devtable",
+            repository="spamrepo",
+            description="borderline https://spam.example",
+            visibility="private",
+        ),
+        config,
+    )
+
+    assert not public.allowed
+    assert private.allowed
+    assert public.score == private.score
+
+
+def test_repository_name_can_contribute_to_classification(tmp_path):
+    spam_ingress.clear_classifier_cache()
+    artifact_path, artifact_sha = _write_artifact(
+        tmp_path,
+        _artifact(
+            feature_config={
+                "token_pattern": spam_ingress.DEFAULT_TOKEN_PATTERN,
+                "include_repository_name": True,
+            }
+        ),
+    )
+
+    decision = spam_ingress.evaluate_description(
+        spam_ingress.SpamIngressContext(
+            namespace="devtable",
+            repository="casino",
+            description="https://spam.example",
+            visibility="public",
+        ),
+        {
+            "SPAM_DETECTION_CLASSIFIER_PATH": str(artifact_path),
+            "SPAM_DETECTION_CLASSIFIER_SHA256": artifact_sha,
+        },
+    )
+
+    assert not decision.allowed

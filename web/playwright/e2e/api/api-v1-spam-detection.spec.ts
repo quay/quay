@@ -85,14 +85,25 @@ test.describe(
 
       const org = await superuserApi.organization('spamingress');
       const spamRepoName = uniqueName('spamrepo');
+      const noLinkRepoName = uniqueName('nolinkrepo');
       const hamRepoName = uniqueName('hamrepo');
+
+      const noLink = await adminClient.post('/api/v1/repository', {
+        repo_kind: 'image',
+        namespace: org.name,
+        visibility: 'public',
+        repository: noLinkRepoName,
+        description: 'free casino bonus crypto gift cards click now',
+      });
+      expect(noLink.status()).toBe(201);
 
       const rejected = await adminClient.post('/api/v1/repository', {
         repo_kind: 'image',
         namespace: org.name,
         visibility: 'public',
         repository: spamRepoName,
-        description: 'free casino bonus crypto gift cards click now',
+        description:
+          'free casino bonus crypto gift cards click now https://spam.example',
       });
       expect(rejected.status()).toBe(400);
 
@@ -108,10 +119,19 @@ test.describe(
       const update = await adminClient.put(
         `/api/v1/repository/${org.name}/${hamRepoName}`,
         {
-          description: 'free casino bonus crypto gift cards click now',
+          description:
+            'free casino bonus crypto gift cards click now https://spam.example',
         },
       );
       expect(update.status()).toBe(400);
+
+      const unchanged = await adminClient.get(
+        `/api/v1/repository/${org.name}/${hamRepoName}`,
+      );
+      expect(unchanged.status()).toBe(200);
+      expect((await unchanged.json()).description).toBe(
+        'trusted base image for python applications',
+      );
     });
   },
 );
