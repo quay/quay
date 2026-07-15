@@ -221,10 +221,18 @@ export default function NamespaceNotifications({
         <Thead>
           <Tr>
             <Th />
-            <Th sort={getSortableSort(0)}>Title</Th>
-            <Th sort={getSortableSort(1)}>Event</Th>
-            <Th sort={getSortableSort(2)}>Method</Th>
-            <Th sort={getSortableSort(3)}>Status</Th>
+            <Th modifier="nowrap" sort={getSortableSort(0)}>
+              Title
+            </Th>
+            <Th modifier="nowrap" sort={getSortableSort(1)}>
+              Event
+            </Th>
+            <Th modifier="nowrap" sort={getSortableSort(2)}>
+              Method
+            </Th>
+            <Th modifier="nowrap" sort={getSortableSort(3)}>
+              Status
+            </Th>
             <Th />
           </Tr>
         </Thead>
