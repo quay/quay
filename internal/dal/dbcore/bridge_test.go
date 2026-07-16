@@ -296,31 +296,8 @@ func TestBridgeToRoot_RestoresForeignKeysAfterFailureAndCancellation(t *testing.
 }
 
 func TestRunBridge_CreatesBridgeTables(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenSQLite(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
+	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
 	ctx := t.Context()
-	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
-		t.Fatalf("InitDatabase: %v", err)
-	}
-
-	for _, table := range []string{
-		"tagpullstatistics",
-		"manifestpullstatistics",
-		"orgmirrorconfig",
-		"orgmirrorrepository",
-		"namespaceimmutabilitypolicy",
-		"repositoryimmutabilitypolicy",
-		"organizationcontactemail",
-	} {
-		if _, err := db.ExecContext(ctx, "DROP TABLE "+table); err != nil {
-			t.Fatalf("drop %s: %v", table, err)
-		}
-	}
 	if _, err := db.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
 		t.Fatalf("stamp old version: %v", err)
 	}

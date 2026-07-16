@@ -53,10 +53,51 @@ func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 	}
 }
 
-func TestKnownOMRVersions_ContainsSkippedAlembicRevisions(t *testing.T) {
-	for _, revision := range []string{"c3d4e5f6a7b8", "b1a79fa8e630", "d064a4f00d4a"} {
-		if !knownOMRVersions[revision] {
-			t.Errorf("knownOMRVersions is missing %s", revision)
+func TestRunBridge_ResumesFromAlembicRevisions(t *testing.T) {
+	for _, revision := range []string{
+		"b1a79fa8e630",
+		"d064a4f00d4a",
+		"b30800b1d271",
+		"6715e4719375",
+		generatedSchemaVersion,
+	} {
+		t.Run(revision, func(t *testing.T) {
+			db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+			if err := ApplyMigrations(
+				t.Context(), db, BridgeTargetVersion, revision, &bytes.Buffer{},
+			); err != nil {
+				t.Fatalf("prepare revision %s: %v", revision, err)
+			}
+
+			if err := RunBridge(t.Context(), db, &bytes.Buffer{}); err != nil {
+				t.Fatalf("RunBridge from %s: %v", revision, err)
+			}
+
+			assertBridgeSchemaConverged(t, db)
+			assertSchemaVersion(t, db, TargetVersion)
+			assertSingleVersionMarker(t, db)
+		})
+	}
+}
+
+func TestAlembicRevisionsAreChainableMigrations(t *testing.T) {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, revision := range []string{
+		"c3d4e5f6a7b8",
+		"b1a79fa8e630",
+		"d064a4f00d4a",
+		"b30800b1d271",
+		"6715e4719375",
+		generatedSchemaVersion,
+	} {
+		if _, ok := catalog.migrationsByRevision[revision]; !ok {
+			t.Errorf("migration catalog is missing Alembic revision %s", revision)
+		}
+		if knownOMRVersions[revision] {
+			t.Errorf("Alembic revision %s should route through the migration catalog", revision)
 		}
 	}
 }
@@ -102,9 +143,9 @@ func assertBridgeSchemaConverged(t *testing.T, db *sql.DB) {
 	for _, column := range []struct {
 		name, wantType string
 	}{
-		{name: oauthCreatedColumn, wantType: sqliteDateTimeType},
-		{name: oauthLastAccessedColumn, wantType: sqliteDateTimeType},
-		{name: oauthDisplayNameColumn, wantType: sqliteVarchar255Type},
+		{name: "created", wantType: "DATETIME"},
+		{name: "last_accessed", wantType: "DATETIME"},
+		{name: "display_name", wantType: "VARCHAR(255)"},
 	} {
 		var gotType string
 		var notNull int
@@ -119,7 +160,37 @@ func assertBridgeSchemaConverged(t *testing.T, db *sql.DB) {
 		}
 	}
 
-	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
+	for _, table := range []string{"namespacenotification", "quotanotificationstate"} {
+		var count int
+		if err := db.QueryRowContext(ctx,
+			`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table,
+		).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 1 {
+			t.Errorf("table %s count = %d, want 1", table, count)
+		}
+	}
+
+	for _, event := range []string{"quota_warning", "quota_error"} {
+		var count int
+		if err := db.QueryRowContext(ctx,
+			`SELECT count(*) FROM externalnotificationevent WHERE name = ?`, event,
+		).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 1 {
+			t.Errorf("externalnotificationevent %q count = %d, want 1", event, count)
+		}
+	}
+
+	for _, kind := range []string{
+		"create_oauth_api_token",
+		"revoke_oauth_api_token",
+		"create_namespace_notification",
+		"delete_namespace_notification",
+		"reset_namespace_notification",
+	} {
 		var count int
 		if err := db.QueryRowContext(ctx,
 			`SELECT count(*) FROM logentrykind WHERE name = ?`, kind,

@@ -45,7 +45,7 @@ func TestSetup_ExistingDB(t *testing.T) {
 	}
 }
 
-func TestSetup_ExistingBridgeTargetDB(t *testing.T) {
+func TestSetup_ExistingGeneratedSchemaDB(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := OpenSQLite(dbPath)
 	if err != nil {
@@ -68,8 +68,8 @@ func TestSetup_ExistingBridgeTargetDB(t *testing.T) {
 	); err != nil {
 		t.Fatalf("create old unique history index: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, BridgeTargetVersion); err != nil {
-		t.Fatalf("stamp bridge version: %v", err)
+	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, generatedSchemaVersion); err != nil {
+		t.Fatalf("stamp generated schema version: %v", err)
 	}
 
 	if err := ensureSchema(ctx, db, dbPath); err != nil {

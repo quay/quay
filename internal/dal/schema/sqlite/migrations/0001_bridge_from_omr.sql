@@ -1,6 +1,6 @@
--- revision: 9fa37f66a9b6
+-- revision: c3d4e5f6a7b8
 -- Bridge migration: brings any OMR v2.0.x SQLite database to the
--- Go migration chain's bridge root. All statements are idempotent.
+-- stable root of the revision-aware Go migration chain. All statements are idempotent.
 
 -- ============================================================
 -- SECTION 1: New tables
@@ -104,33 +104,6 @@ CREATE TABLE IF NOT EXISTS organizationcontactemail (
 	CONSTRAINT fk_organizationcontactemail_organization_id_user FOREIGN KEY(organization_id) REFERENCES user (id)
 );
 
-CREATE TABLE IF NOT EXISTS namespacenotification (
-	id INTEGER NOT NULL,
-	uuid VARCHAR(255) NOT NULL,
-	namespace_id INTEGER NOT NULL,
-	event_id INTEGER NOT NULL,
-	method_id INTEGER NOT NULL,
-	title VARCHAR(255),
-	config_json TEXT NOT NULL,
-	event_config_json TEXT DEFAULT '{}' NOT NULL,
-	number_of_failures INTEGER DEFAULT '0' NOT NULL,
-	last_ran_ms BIGINT,
-	CONSTRAINT pk_namespacenotification PRIMARY KEY (id),
-	CONSTRAINT fk_namespacenotification_namespace_id FOREIGN KEY(namespace_id) REFERENCES user (id),
-	CONSTRAINT fk_namespacenotification_event_id FOREIGN KEY(event_id) REFERENCES externalnotificationevent (id),
-	CONSTRAINT fk_namespacenotification_method_id FOREIGN KEY(method_id) REFERENCES externalnotificationmethod (id)
-);
-
-CREATE TABLE IF NOT EXISTS quotanotificationstate (
-	id INTEGER NOT NULL,
-	namespace_id INTEGER NOT NULL,
-	threshold_percent INTEGER NOT NULL,
-	last_notified_at DATETIME,
-	cleared BOOLEAN DEFAULT (1) NOT NULL,
-	CONSTRAINT pk_quotanotificationstate PRIMARY KEY (id),
-	CONSTRAINT fk_quotanotificationstate_namespace_id FOREIGN KEY(namespace_id) REFERENCES user (id)
-);
-
 -- ============================================================
 -- SECTION 2: Indexes on new tables
 -- ============================================================
@@ -153,10 +126,6 @@ CREATE INDEX IF NOT EXISTS repositoryimmutabilitypolicy_namespace_id ON reposito
 CREATE UNIQUE INDEX IF NOT EXISTS repositoryimmutabilitypolicy_uuid ON repositoryimmutabilitypolicy (uuid);
 CREATE UNIQUE INDEX IF NOT EXISTS organizationcontactemail_organization_id ON organizationcontactemail (organization_id);
 CREATE INDEX IF NOT EXISTS organizationcontactemail_contact_email ON organizationcontactemail (contact_email);
-CREATE INDEX IF NOT EXISTS namespacenotification_uuid ON namespacenotification (uuid);
-CREATE INDEX IF NOT EXISTS namespacenotification_namespace_id ON namespacenotification (namespace_id);
-CREATE INDEX IF NOT EXISTS quotanotificationstate_namespace_id ON quotanotificationstate (namespace_id);
-CREATE UNIQUE INDEX IF NOT EXISTS quotanotificationstate_namespace_threshold ON quotanotificationstate (namespace_id, threshold_percent);
 
 -- ============================================================
 -- SECTION 3: Indexes on existing tables
@@ -205,13 +174,6 @@ INSERT OR IGNORE INTO logentrykind (name) VALUES ('delete_immutability_policy');
 INSERT OR IGNORE INTO logentrykind (name) VALUES ('org_mirror_repo_creation_failed');
 INSERT OR IGNORE INTO logentrykind (name) VALUES ('tag_made_immutable_by_policy');
 INSERT OR IGNORE INTO logentrykind (name) VALUES ('tags_made_immutable_by_policy');
-INSERT OR IGNORE INTO logentrykind (name) VALUES ('create_namespace_notification');
-INSERT OR IGNORE INTO logentrykind (name) VALUES ('delete_namespace_notification');
-INSERT OR IGNORE INTO logentrykind (name) VALUES ('reset_namespace_notification');
-
-INSERT OR IGNORE INTO externalnotificationevent (name) VALUES ('quota_warning');
-INSERT OR IGNORE INTO externalnotificationevent (name) VALUES ('quota_error');
-
 -- ============================================================
 -- SECTION 6: Data migration
 -- ============================================================

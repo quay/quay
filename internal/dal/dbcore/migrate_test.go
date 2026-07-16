@@ -13,6 +13,8 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
+const generatedSchemaVersion = "9fa37f66a9b6"
+
 func TestInitDatabase(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := OpenSQLite(dbPath)
@@ -33,8 +35,8 @@ func TestInitDatabase(t *testing.T) {
 		t.Errorf("expected summary with table count, got: %s", output)
 	}
 	for _, expected := range []string{
-		"Found 1 migration file(s)",
-		"Applying: 0002_tag_active_unique_index.sql",
+		"Found 6 migration file(s)",
+		"Applying: 0007_tag_active_unique_index.sql",
 		"Migration complete: 1 migration(s) applied",
 	} {
 		if !strings.Contains(output, expected) {
@@ -71,13 +73,18 @@ func TestInitDatabase(t *testing.T) {
 	assertTagIndexes(t, db)
 }
 
-func TestListMigrations_ReportsSupportedTwoFileChain(t *testing.T) {
+func TestListMigrations_ReportsSupportedMigrationChain(t *testing.T) {
 	var output bytes.Buffer
 	ListMigrations(&output)
 
 	const expected = "Pending migrations:\n" +
 		"  - 0001_bridge_from_omr.sql\n" +
-		"  - 0002_tag_active_unique_index.sql\n"
+		"  - 0002_user_email_partial_indexes.sql\n" +
+		"  - 0003_oauth_api_token_metadata.sql\n" +
+		"  - 0004_oauth_token_display_name.sql\n" +
+		"  - 0005_namespace_notification_tables.sql\n" +
+		"  - 0006_namespace_notification_log_kinds.sql\n" +
+		"  - 0007_tag_active_unique_index.sql\n"
 	if output.String() != expected {
 		t.Fatalf("ListMigrations output:\n%s\nwant:\n%s", output.String(), expected)
 	}
@@ -102,14 +109,14 @@ func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
 	); err != nil {
 		t.Fatalf("create old unique history index: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, BridgeTargetVersion); err != nil {
-		t.Fatalf("stamp bridge version: %v", err)
+	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, generatedSchemaVersion); err != nil {
+		t.Fatalf("stamp generated schema version: %v", err)
 	}
 
 	insertTagMigrationFixture(t, db)
 
 	var buf bytes.Buffer
-	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &buf); err != nil {
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &buf); err != nil {
 		t.Fatalf("ApplyMigrations: %v\n%s", err, buf.String())
 	}
 
@@ -214,7 +221,7 @@ func TestApplyMigrations_NormalizesReferrerProtectionNames(t *testing.T) {
 		}
 	}
 
-	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &bytes.Buffer{}); err != nil {
 		t.Fatalf("ApplyMigrations: %v", err)
 	}
 
@@ -289,7 +296,7 @@ func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
 		}
 	}
 
-	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &bytes.Buffer{}); err != nil {
 		t.Fatalf("ApplyMigrations: %v", err)
 	}
 
@@ -327,7 +334,7 @@ func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
 		t.Fatalf("InitDatabase: %v", err)
 	}
 
-	for _, column := range []string{oauthCreatedColumn, oauthLastAccessedColumn} {
+	for _, column := range []string{"created", "last_accessed"} {
 		var count int
 		err := db.QueryRowContext(ctx,
 			"SELECT count(*) FROM pragma_table_info('oauthaccesstoken') WHERE name=?", column,
@@ -351,7 +358,7 @@ func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
 		t.Errorf("expected oauth access token last_accessed index columns application_id,last_accessed; got %s", indexedColumns)
 	}
 
-	for _, kind := range []string{createOAuthAPILogKind, revokeOAuthAPILogKind} {
+	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
 		var count int
 		err := db.QueryRowContext(ctx,
 			"SELECT count(*) FROM logentrykind WHERE name=?", kind,
@@ -567,11 +574,11 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load embedded migration catalog: %v", err)
 	}
-	if len(catalog.migrations) != 2 {
-		t.Fatalf("embedded migration count = %d, want 2", len(catalog.migrations))
+	if len(catalog.migrations) != 7 {
+		t.Fatalf("embedded migration count = %d, want 7", len(catalog.migrations))
 	}
-	if catalog.chainableCount() != 1 {
-		t.Fatalf("chainable migration count = %d, want 1", catalog.chainableCount())
+	if catalog.chainableCount() != 6 {
+		t.Fatalf("chainable migration count = %d, want 6", catalog.chainableCount())
 	}
 	if catalog.root.filename != "0001_bridge_from_omr.sql" || catalog.root.revision != BridgeTargetVersion {
 		t.Fatalf("bridge root = %s (%s), want 0001_bridge_from_omr.sql (%s)",
@@ -603,8 +610,86 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embedded seed version %q has no route to %q: %v", seedVersion, TargetVersion, err)
 	}
-	if len(plan) != 1 || plan[0].filename != "0002_tag_active_unique_index.sql" {
-		t.Fatalf("embedded seed route = %#v, want only 0002_tag_active_unique_index.sql", plan)
+	if seedVersion != generatedSchemaVersion {
+		t.Fatalf("embedded seed version = %q, want %q", seedVersion, generatedSchemaVersion)
+	}
+	if len(plan) != 1 || plan[0].filename != "0007_tag_active_unique_index.sql" {
+		t.Fatalf("embedded seed route = %#v, want only 0007_tag_active_unique_index.sql", plan)
+	}
+}
+
+func TestEmbeddedAlembicRevisionRoutes(t *testing.T) {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		t.Fatalf("load embedded migration catalog: %v", err)
+	}
+
+	tests := []struct {
+		from string
+		want []string
+	}{
+		{
+			from: "c3d4e5f6a7b8",
+			want: []string{
+				"0002_user_email_partial_indexes.sql",
+				"0003_oauth_api_token_metadata.sql",
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "b1a79fa8e630",
+			want: []string{
+				"0003_oauth_api_token_metadata.sql",
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "d064a4f00d4a",
+			want: []string{
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "b30800b1d271",
+			want: []string{
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "6715e4719375",
+			want: []string{
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{from: generatedSchemaVersion, want: []string{"0007_tag_active_unique_index.sql"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.from, func(t *testing.T) {
+			plan, err := catalog.plan(tt.from, TargetVersion)
+			if err != nil {
+				t.Fatalf("plan from %s: %v", tt.from, err)
+			}
+			got := make([]string, len(plan))
+			for i, migration := range plan {
+				got[i] = migration.filename
+			}
+			if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("route from %s = %v, want %v", tt.from, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -615,9 +700,10 @@ func TestInitDatabase_MigrationFailureRestoresForeignKeysAndLeavesSeedVersionRet
 
 	failingFS := testMigrationFS(map[string]string{
 		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
-		"0002.sql": testMigrationSQL(
+		"0002.sql": testMigrationSQL(generatedSchemaVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL(
 			TargetVersion,
-			BridgeTargetVersion,
+			generatedSchemaVersion,
 			"CREATE TABLE recovered (id INTEGER); CREATE TABLE broken (",
 		),
 	})
@@ -637,13 +723,14 @@ func TestInitDatabase_MigrationFailureRestoresForeignKeysAndLeavesSeedVersionRet
 	if err != nil {
 		t.Fatal(err)
 	}
-	if seedVersion != BridgeTargetVersion {
-		t.Fatalf("version = %q, want retryable seed version %q", seedVersion, BridgeTargetVersion)
+	if seedVersion != generatedSchemaVersion {
+		t.Fatalf("version = %q, want retryable seed version %q", seedVersion, generatedSchemaVersion)
 	}
 
 	retryFS := testMigrationFS(map[string]string{
 		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
-		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, "CREATE TABLE recovered (id INTEGER);"),
+		"0002.sql": testMigrationSQL(generatedSchemaVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL(TargetVersion, generatedSchemaVersion, "CREATE TABLE recovered (id INTEGER);"),
 	})
 	if err := applyMigrationsWithFS(
 		ctx, db, retryFS, seedVersion, TargetVersion, &bytes.Buffer{},
@@ -653,7 +740,7 @@ func TestInitDatabase_MigrationFailureRestoresForeignKeysAndLeavesSeedVersionRet
 }
 
 func TestInitDatabase_InvalidSeedRouteDoesNotCommitSchema(t *testing.T) {
-	versionSeed := fmt.Sprintf("INSERT INTO alembic_version VALUES('%s');", BridgeTargetVersion)
+	versionSeed := fmt.Sprintf("INSERT INTO alembic_version VALUES('%s');", generatedSchemaVersion)
 	tests := []struct {
 		name    string
 		seedSQL string
@@ -859,9 +946,9 @@ func prepareLegacyTagMigration(t *testing.T) *sql.DB {
 		}
 	}
 	if _, err := db.ExecContext(ctx,
-		`UPDATE alembic_version SET version_num = ?`, BridgeTargetVersion,
+		`UPDATE alembic_version SET version_num = ?`, generatedSchemaVersion,
 	); err != nil {
-		t.Fatalf("stamp bridge version: %v", err)
+		t.Fatalf("stamp generated schema version: %v", err)
 	}
 	return db
 }

@@ -16,16 +16,17 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
-// BridgeTargetVersion is the Alembic HEAD revision produced by the OMR bridge
-// before Go-only SQLite migrations are applied.
-const BridgeTargetVersion = "9fa37f66a9b6"
+// BridgeTargetVersion is the stable Alembic revision produced by the OMR
+// squash bridge before revision-aware SQLite migrations are applied.
+const BridgeTargetVersion = "c3d4e5f6a7b8"
 
 // TargetVersion is the SQLite schema revision this binary expects.
 const TargetVersion = "a2fc72f380b7"
 
-// InitDatabase creates a fresh SQLite database from the generated bridge DDL
-// and seed data, then applies Go-only migrations. It returns an error if the
-// database file already contains tables (use Upgrade for existing databases).
+// InitDatabase creates a fresh SQLite database from the generated DDL and seed
+// data, then applies migrations after the generated schema revision. It
+// returns an error if the database file already contains tables (use Upgrade
+// for existing databases).
 func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 	catalog, err := loadEmbeddedMigrationCatalog()
 	if err != nil {
