@@ -18,6 +18,8 @@ func newInstallCmd() *Command {
 	sslCert := fs.String("ssl-cert", "", "path to TLS certificate (PEM)")
 	sslKey := fs.String("ssl-key", "", "path to TLS private key (PEM)")
 	sslSkipHostnameVerification := fs.Bool("ssl-skip-hostname-verification", false, "allow TLS certificate hostname to differ from -hostname")
+	initUser := fs.String("init-user", "admin", "admin username for initial setup")
+	initPassword := fs.String("init-password", "", "admin password (auto-generated if not set)")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
 	image := fs.String("image", installer.DefaultImage, "container image to use")
 
@@ -43,6 +45,8 @@ func newInstallCmd() *Command {
 				SSLCert:                     *sslCert,
 				SSLKey:                      *sslKey,
 				SSLSkipHostnameVerification: *sslSkipHostnameVerification,
+				InitUser:                    *initUser,
+				InitPassword:                *initPassword,
 				ImageArchive:                *imageArchive,
 				Image:                       *image,
 			})

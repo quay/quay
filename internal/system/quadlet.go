@@ -10,11 +10,12 @@ const registryContainerPort = "8443"
 
 // QuadletSpec describes a Quadlet container unit.
 type QuadletSpec struct {
-	Image      string
-	DataDir    string
-	Hostname   string
-	Port       string
-	ConfigPath string
+	Image         string
+	DataDir       string
+	Hostname      string
+	Port          string
+	ConfigPath    string
+	AdminUsername string
 }
 
 // QuadletManager handles Quadlet .container files.
@@ -47,6 +48,9 @@ func (q *QuadletManager) Install(service string, spec *QuadletSpec) error {
 	serveCommand := fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
 	if spec.ConfigPath != "" {
 		serveCommand = fmt.Sprintf("serve --config %s", spec.ConfigPath)
+	}
+	if spec.AdminUsername != "" && spec.AdminUsername != "admin" {
+		serveCommand += fmt.Sprintf(" --admin-username %s", spec.AdminUsername)
 	}
 
 	content := fmt.Sprintf(`[Unit]

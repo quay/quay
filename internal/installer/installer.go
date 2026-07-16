@@ -41,6 +41,8 @@ type Config struct {
 	SSLCert                     string
 	SSLKey                      string
 	SSLSkipHostnameVerification bool
+	InitUser                    string
+	InitPassword                string
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -197,12 +199,19 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef s
 		}
 	}
 
+	if cfg.InitPassword != "" {
+		if err := inst.writeInitPassword(cfg.DataDir, cfg.InitPassword); err != nil {
+			return fmt.Errorf("write init password: %w", err)
+		}
+	}
+
 	spec := system.QuadletSpec{
-		Image:      imageRef,
-		DataDir:    cfg.DataDir,
-		Hostname:   cfg.Hostname,
-		Port:       cfg.Port,
-		ConfigPath: cfg.ConfigPath,
+		Image:         imageRef,
+		DataDir:       cfg.DataDir,
+		Hostname:      cfg.Hostname,
+		Port:          cfg.Port,
+		ConfigPath:    cfg.ConfigPath,
+		AdminUsername: cfg.InitUser,
 	}
 	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
 		return fmt.Errorf("install quadlet: %w", err)
@@ -296,6 +305,19 @@ func healthServerName(cert *x509.Certificate) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("certificate has no usable DNS or IP subject alternative name")
+}
+
+func (inst *Installer) writeInitPassword(dataDir, password string) error {
+	authDir := filepath.Join(dataDir, "auth")
+	if err := inst.fs.MkdirAll(authDir, 0o750); err != nil {
+		return fmt.Errorf("create auth directory: %w", err)
+	}
+	passPath := filepath.Join(authDir, "admin-password")
+	if err := inst.fs.WriteFile(passPath, []byte(password), 0o600); err != nil {
+		return fmt.Errorf("write password file: %w", err)
+	}
+	slog.Info("admin password set", "path", passPath)
+	return nil
 }
 
 func (inst *Installer) dumpContainerLogs(ctx context.Context) {
