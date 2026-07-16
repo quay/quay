@@ -471,6 +471,48 @@ func TestListTags_RollbackDeleteThenRecreateClampsToHistory(t *testing.T) {
 	require.Equal(t, recreatedDigest, activeDigest)
 }
 
+func TestTagReadsPreferLatestInsertionAcrossClockRollback(t *testing.T) {
+	now := int64(500)
+	store, cleanup := testStore(t, metastore.WithNowFunc(func() int64 { return now }))
+	defer cleanup()
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "ns", Name: "rollback-insertion"})
+	require.NoError(t, err)
+	oldDigest := digest.FromString("rollback-insertion-old")
+	oldManifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: oldDigest, MediaType: "application/vnd.oci.image.manifest.v1+json", Content: []byte(`{}`),
+	})
+	require.NoError(t, err)
+	newDigest := digest.FromString("rollback-insertion-new")
+	newManifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: newDigest, MediaType: "application/vnd.oci.image.manifest.v1+json", Content: []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	_, err = store.DB().ExecContext(ctx, `
+		INSERT INTO tag (
+			name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
+		)
+		SELECT 'latest', ?, ?, 500, 500, id FROM tagkind WHERE name = 'tag'
+	`, repoID, oldManifestID)
+	require.NoError(t, err)
+	_, err = store.DB().ExecContext(ctx, `
+		INSERT INTO tag (
+			name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id
+		)
+		SELECT 'latest', ?, ?, 300, id FROM tagkind WHERE name = 'tag'
+	`, repoID, newManifestID)
+	require.NoError(t, err)
+
+	got, err := store.GetTagDigest(ctx, repoID, "latest")
+	require.NoError(t, err)
+	require.Equal(t, newDigest, got)
+	tags, err := store.ListTags(ctx, repoID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"latest"}, tags)
+}
+
 func TestListTags_UsesCurrentLifetimeInterval(t *testing.T) {
 	const futureStart = int64(120_000)
 	now := futureStart

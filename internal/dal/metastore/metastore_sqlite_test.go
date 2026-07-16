@@ -784,6 +784,45 @@ func TestDeleteTagClampsBackwardClock(t *testing.T) {
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 }
 
+func TestPutManifest_TagRecreateClampsToExpiredEndAfterBackwardClock(t *testing.T) {
+	now := int64(100)
+	store := setupStoreWithNow(t, func() int64 { return now })
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: digest.FromString("rollback-recreate-first"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content: []byte(`{}`), Tag: "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	now = 300
+	if err := store.DeleteTag(ctx, repoID, "latest"); err != nil {
+		t.Fatal(err)
+	}
+
+	now = 200
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: digest.FromString("rollback-recreate-second"), MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content: []byte(`{}`), Tag: "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := getTagRows(t, store.(*metastore.SQLiteStore), repoID, "latest")
+	if len(rows) != 2 {
+		t.Fatalf("tag rows = %d, want 2", len(rows))
+	}
+	if rows[1].lifetimeStartMs != 300 {
+		t.Fatalf("recreated tag start = %d, want prior end 300", rows[1].lifetimeStartMs)
+	}
+	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "latest")
+}
+
 func TestListReferrers_Empty(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -1136,9 +1175,16 @@ func assertExpiredTagCount(t *testing.T, s *metastore.SQLiteStore, repoID int64,
 
 func assertTagIntervalsValid(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
 	t.Helper()
-	for _, row := range getTagRows(t, s, repoID, tag) {
+	rows := getTagRows(t, s, repoID, tag)
+	for i, row := range rows {
 		if row.lifetimeEndMs.Valid && row.lifetimeEndMs.Int64 < row.lifetimeStartMs {
 			t.Fatalf("tag row %d has invalid interval: start=%d end=%d", row.id, row.lifetimeStartMs, row.lifetimeEndMs.Int64)
+		}
+		if i > 0 && rows[i-1].lifetimeEndMs.Valid && rows[i-1].lifetimeEndMs.Int64 > row.lifetimeStartMs {
+			t.Fatalf(
+				"tag rows %d and %d overlap: prior end=%d current start=%d",
+				rows[i-1].id, row.id, rows[i-1].lifetimeEndMs.Int64, row.lifetimeStartMs,
+			)
 		}
 	}
 }

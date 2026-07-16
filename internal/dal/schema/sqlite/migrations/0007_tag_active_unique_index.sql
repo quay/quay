@@ -33,22 +33,24 @@ WHERE protection.hidden = 1
 	AND protection.lifetime_end_ms IS NULL
 	AND protection.name LIKE '$referrer-%';
 
+-- Keep the most recently inserted active row. IDs are monotonic even when the
+-- wall clock moves backward; clamp loser intervals so end never precedes start.
 WITH ranked AS MATERIALIZED (
 	SELECT
 		id,
 		row_number() OVER (
 			PARTITION BY repository_id, name
-			ORDER BY lifetime_start_ms DESC, id DESC
+			ORDER BY id DESC
 		) AS active_rank,
 		first_value(lifetime_start_ms) OVER (
 			PARTITION BY repository_id, name
-			ORDER BY lifetime_start_ms DESC, id DESC
+			ORDER BY id DESC
 		) AS winner_start_ms
 	FROM tag
 	WHERE lifetime_end_ms IS NULL
 )
 UPDATE tag
-SET lifetime_end_ms = ranked.winner_start_ms
+SET lifetime_end_ms = max(tag.lifetime_start_ms, ranked.winner_start_ms)
 FROM ranked
 WHERE tag.id = ranked.id
 	AND ranked.active_rank > 1;

@@ -3,6 +3,7 @@ package dbcore
 import (
 	"bytes"
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -54,23 +55,31 @@ func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 }
 
 func TestRunBridge_ResumesFromAlembicRevisions(t *testing.T) {
-	for _, revision := range []string{
-		"b1a79fa8e630",
-		"d064a4f00d4a",
-		"b30800b1d271",
-		"6715e4719375",
-		generatedSchemaVersion,
+	for _, tt := range []struct {
+		revision       string
+		remainingCount int
+	}{
+		{revision: "b1a79fa8e630", remainingCount: 5},
+		{revision: "d064a4f00d4a", remainingCount: 4},
+		{revision: "b30800b1d271", remainingCount: 3},
+		{revision: "6715e4719375", remainingCount: 2},
+		{revision: generatedSchemaVersion, remainingCount: 1},
 	} {
-		t.Run(revision, func(t *testing.T) {
+		t.Run(tt.revision, func(t *testing.T) {
 			db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
 			if err := ApplyMigrations(
-				t.Context(), db, BridgeTargetVersion, revision, &bytes.Buffer{},
+				t.Context(), db, BridgeTargetVersion, tt.revision, &bytes.Buffer{},
 			); err != nil {
-				t.Fatalf("prepare revision %s: %v", revision, err)
+				t.Fatalf("prepare revision %s: %v", tt.revision, err)
 			}
 
-			if err := RunBridge(t.Context(), db, &bytes.Buffer{}); err != nil {
-				t.Fatalf("RunBridge from %s: %v", revision, err)
+			var output bytes.Buffer
+			if err := RunBridge(t.Context(), db, &output); err != nil {
+				t.Fatalf("RunBridge from %s: %v", tt.revision, err)
+			}
+			wantCount := fmt.Sprintf("Found %d migration file(s)", tt.remainingCount)
+			if !strings.Contains(output.String(), wantCount) {
+				t.Fatalf("RunBridge from %s output missing %q:\n%s", tt.revision, wantCount, output.String())
 			}
 
 			assertBridgeSchemaConverged(t, db)

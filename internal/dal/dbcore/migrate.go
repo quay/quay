@@ -90,7 +90,7 @@ func initDatabaseWithSources(
 	}
 	foreignKeysDisabled = false
 
-	if err := applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w); err != nil {
+	if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
 		return fmt.Errorf("apply Go-only migrations: %w", err)
 	}
 
@@ -504,10 +504,6 @@ func (catalog *migrationCatalog) plan(currentVersion, targetVersion string) ([]m
 	return plan, nil
 }
 
-func (catalog *migrationCatalog) chainableCount() int {
-	return len(catalog.migrations) - 1
-}
-
 // ApplyMigrations reads embedded SQL migration files and applies the revision
 // chain needed to bring the database from currentVersion to targetVersion.
 // Each non-bridge migration must contain "-- revision: <id>" and
@@ -545,13 +541,11 @@ func applyMigrationsWithCatalog(
 	if err != nil {
 		return err
 	}
-	return applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w)
+	return applyMigrationPlan(ctx, db, plan, w)
 }
 
-func applyMigrationPlan(
-	ctx context.Context, db *sql.DB, plan []migrationInfo, migrationCount int, w io.Writer,
-) error {
-	fmt.Fprintf(w, "Found %d migration file(s)\n", migrationCount)
+func applyMigrationPlan(ctx context.Context, db *sql.DB, plan []migrationInfo, w io.Writer) error {
+	fmt.Fprintf(w, "Found %d migration file(s)\n", len(plan))
 	for _, info := range plan {
 		fmt.Fprintf(w, "Applying: %s (revision %s)\n", info.filename, info.revision)
 

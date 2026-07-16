@@ -4,17 +4,19 @@ VALUES (?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: GetActiveTag :one
+-- Tag IDs preserve insertion order even when the wall clock moves backward.
 SELECT id, manifest_id, lifetime_start_ms
 FROM tag
 WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
-ORDER BY lifetime_start_ms DESC, id DESC
+ORDER BY id DESC
 LIMIT 1;
 
--- name: GetLatestTagStart :one
-SELECT lifetime_start_ms
+-- name: GetLatestTagInterval :one
+-- Tag IDs preserve insertion order even when the wall clock moves backward.
+SELECT lifetime_start_ms, lifetime_end_ms
 FROM tag
 WHERE repository_id = ? AND name = ?
-ORDER BY lifetime_start_ms DESC, id DESC
+ORDER BY id DESC
 LIMIT 1;
 
 -- name: ExpireTagByID :execresult
@@ -29,7 +31,7 @@ WITH ranked_tags AS (
   SELECT name, lifetime_start_ms, lifetime_end_ms,
          row_number() OVER (
            PARTITION BY repository_id, name
-           ORDER BY lifetime_start_ms DESC, id DESC
+           ORDER BY id DESC
          ) AS row_num
   FROM tag
   WHERE repository_id = ? AND hidden = 0
@@ -52,7 +54,7 @@ WITH latest_tag AS (
   SELECT t.manifest_id, t.lifetime_start_ms, t.lifetime_end_ms
   FROM tag t
   WHERE t.repository_id = ? AND t.name = ?
-  ORDER BY t.lifetime_start_ms DESC, t.id DESC
+  ORDER BY t.id DESC
   LIMIT 1
 )
 SELECT m.digest

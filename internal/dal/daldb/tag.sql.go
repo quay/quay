@@ -37,7 +37,7 @@ const getActiveTag = `-- name: GetActiveTag :one
 SELECT id, manifest_id, lifetime_start_ms
 FROM tag
 WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
-ORDER BY lifetime_start_ms DESC, id DESC
+ORDER BY id DESC
 LIMIT 1
 `
 
@@ -52,6 +52,7 @@ type GetActiveTagRow struct {
 	LifetimeStartMs int64         `json:"lifetime_start_ms"`
 }
 
+// Tag IDs preserve insertion order even when the wall clock moves backward.
 func (q *Queries) GetActiveTag(ctx context.Context, arg GetActiveTagParams) (GetActiveTagRow, error) {
 	row := q.db.QueryRowContext(ctx, getActiveTag, arg.RepositoryID, arg.Name)
 	var i GetActiveTagRow
@@ -59,24 +60,30 @@ func (q *Queries) GetActiveTag(ctx context.Context, arg GetActiveTagParams) (Get
 	return i, err
 }
 
-const getLatestTagStart = `-- name: GetLatestTagStart :one
-SELECT lifetime_start_ms
+const getLatestTagInterval = `-- name: GetLatestTagInterval :one
+SELECT lifetime_start_ms, lifetime_end_ms
 FROM tag
 WHERE repository_id = ? AND name = ?
-ORDER BY lifetime_start_ms DESC, id DESC
+ORDER BY id DESC
 LIMIT 1
 `
 
-type GetLatestTagStartParams struct {
+type GetLatestTagIntervalParams struct {
 	RepositoryID int64  `json:"repository_id"`
 	Name         string `json:"name"`
 }
 
-func (q *Queries) GetLatestTagStart(ctx context.Context, arg GetLatestTagStartParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getLatestTagStart, arg.RepositoryID, arg.Name)
-	var lifetime_start_ms int64
-	err := row.Scan(&lifetime_start_ms)
-	return lifetime_start_ms, err
+type GetLatestTagIntervalRow struct {
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+// Tag IDs preserve insertion order even when the wall clock moves backward.
+func (q *Queries) GetLatestTagInterval(ctx context.Context, arg GetLatestTagIntervalParams) (GetLatestTagIntervalRow, error) {
+	row := q.db.QueryRowContext(ctx, getLatestTagInterval, arg.RepositoryID, arg.Name)
+	var i GetLatestTagIntervalRow
+	err := row.Scan(&i.LifetimeStartMs, &i.LifetimeEndMs)
+	return i, err
 }
 
 const getLiveTagDigest = `-- name: GetLiveTagDigest :one
@@ -84,7 +91,7 @@ WITH latest_tag AS (
   SELECT t.manifest_id, t.lifetime_start_ms, t.lifetime_end_ms
   FROM tag t
   WHERE t.repository_id = ? AND t.name = ?
-  ORDER BY t.lifetime_start_ms DESC, t.id DESC
+  ORDER BY t.id DESC
   LIMIT 1
 )
 SELECT m.digest
@@ -118,7 +125,7 @@ WITH ranked_tags AS (
   SELECT name, lifetime_start_ms, lifetime_end_ms,
          row_number() OVER (
            PARTITION BY repository_id, name
-           ORDER BY lifetime_start_ms DESC, id DESC
+           ORDER BY id DESC
          ) AS row_num
   FROM tag
   WHERE repository_id = ? AND hidden = 0

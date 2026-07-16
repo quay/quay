@@ -103,7 +103,7 @@ func runBridgeWithCatalog(ctx context.Context, db *sql.DB, catalog *migrationCat
 			return fmt.Errorf("plan SQLite migrations: %w", err)
 		}
 		fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", ver, TargetVersion)
-		if err := applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w); err != nil {
+		if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
 			return fmt.Errorf("apply SQLite migrations: %w", err)
 		}
 		return nil
@@ -124,7 +124,7 @@ func runBridgeWithCatalog(ctx context.Context, db *sql.DB, catalog *migrationCat
 	}
 
 	fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", catalog.root.revision, TargetVersion)
-	if err := applyMigrationPlan(ctx, db, plan, catalog.chainableCount(), w); err != nil {
+	if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
 		return fmt.Errorf("apply SQLite migrations: %w", err)
 	}
 	return nil
@@ -146,16 +146,26 @@ func bridgeToRootWithApply(
 ) (retErr error) {
 	fmt.Fprintf(w, "Bridging schema from %s to %s\n", currentVersion, bridgeRoot.revision)
 
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire bridge connection: %w", err)
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close bridge connection: %w", err))
+		}
+	}()
+
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
 	}
 	defer func() {
-		if _, err := db.ExecContext(context.WithoutCancel(ctx), "PRAGMA foreign_keys = ON"); err != nil {
+		if _, err := conn.ExecContext(context.WithoutCancel(ctx), "PRAGMA foreign_keys = ON"); err != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("re-enable foreign keys: %w", err))
 		}
 	}()
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}

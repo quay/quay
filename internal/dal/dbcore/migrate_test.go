@@ -35,7 +35,7 @@ func TestInitDatabase(t *testing.T) {
 		t.Errorf("expected summary with table count, got: %s", output)
 	}
 	for _, expected := range []string{
-		"Found 6 migration file(s)",
+		"Found 1 migration file(s)",
 		"Applying: 0007_tag_active_unique_index.sql",
 		"Migration complete: 1 migration(s) applied",
 	} {
@@ -286,9 +286,9 @@ func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
 		        (203, 'latest', 21, 201, 200, 1),
 		        (204, 'stable', 21, 201, 10, 1),
 		        (205, 'stable', 21, 202, 20, 1),
-		        (206, 'latest', 22, 203, 500, 1),
-		        (207, 'latest', 22, 204, 400, 1),
-		        (208, 'latest', 22, 204, 500, 1)`,
+			        (206, 'latest', 22, 203, 500, 1),
+			        (207, 'latest', 22, 204, 400, 1),
+			        (208, 'latest', 22, 204, 300, 1)`,
 	}
 	for _, stmt := range statements {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
@@ -307,7 +307,7 @@ func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
 		204: {Int64: 20, Valid: true},
 		205: {},
 		206: {Int64: 500, Valid: true},
-		207: {Int64: 500, Valid: true},
+		207: {Int64: 400, Valid: true},
 		208: {},
 	}
 	for id, wantEnd := range wantEnds {
@@ -318,6 +318,16 @@ func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
 		if gotEnd != wantEnd {
 			t.Errorf("tag %d lifetime_end_ms = %v, want %v", id, gotEnd, wantEnd)
 		}
+	}
+
+	var activeRollbackID int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT id FROM tag WHERE repository_id = 22 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeRollbackID); err != nil {
+		t.Fatal(err)
+	}
+	if activeRollbackID != 208 {
+		t.Fatalf("rollback-clock active row = %d, want latest insertion 208", activeRollbackID)
 	}
 }
 
@@ -576,9 +586,6 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	}
 	if len(catalog.migrations) != 7 {
 		t.Fatalf("embedded migration count = %d, want 7", len(catalog.migrations))
-	}
-	if catalog.chainableCount() != 6 {
-		t.Fatalf("chainable migration count = %d, want 6", catalog.chainableCount())
 	}
 	if catalog.root.filename != "0001_bridge_from_omr.sql" || catalog.root.revision != BridgeTargetVersion {
 		t.Fatalf("bridge root = %s (%s), want 0001_bridge_from_omr.sql (%s)",

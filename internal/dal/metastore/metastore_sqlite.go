@@ -419,7 +419,7 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 		Name:         tag,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		latestStart, latestErr := q.GetLatestTagStart(ctx, daldb.GetLatestTagStartParams{
+		latestTag, latestErr := q.GetLatestTagInterval(ctx, daldb.GetLatestTagIntervalParams{
 			RepositoryID: repoID,
 			Name:         tag,
 		})
@@ -427,10 +427,13 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 			return s.insertTag(ctx, q, repoID, manifestID, tag, now)
 		}
 		if latestErr != nil {
-			return 0, fmt.Errorf("lookup latest tag start %q: %w", tag, latestErr)
+			return 0, fmt.Errorf("lookup latest tag interval %q: %w", tag, latestErr)
 		}
-		if now < latestStart {
-			now = latestStart
+		if now < latestTag.LifetimeStartMs {
+			now = latestTag.LifetimeStartMs
+		}
+		if latestTag.LifetimeEndMs.Valid && now < latestTag.LifetimeEndMs.Int64 {
+			now = latestTag.LifetimeEndMs.Int64
 		}
 		return s.insertTag(ctx, q, repoID, manifestID, tag, now)
 	}

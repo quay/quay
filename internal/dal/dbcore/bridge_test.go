@@ -295,6 +295,43 @@ func TestBridgeToRoot_RestoresForeignKeysAfterFailureAndCancellation(t *testing.
 	}
 }
 
+func TestBridgeToRoot_PinsForeignKeyPragmaToTransactionConnection(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	db.SetMaxOpenConns(2)
+	db.SetMaxIdleConns(0)
+
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE alembic_version (version_num TEXT NOT NULL);
+		INSERT INTO alembic_version VALUES ('old_revision');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	err := bridgeToRootWithApply(
+		ctx,
+		db,
+		"old_revision",
+		migrationInfo{revision: BridgeTargetVersion},
+		&bytes.Buffer{},
+		func(ctx context.Context, tx *sql.Tx, _ string) error {
+			var foreignKeys int
+			if err := tx.QueryRowContext(ctx, `PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
+				return err
+			}
+			if foreignKeys != 0 {
+				return fmt.Errorf("transaction foreign_keys = %d, want 0", foreignKeys)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertForeignKeysEnabled(t, db)
+}
+
 func TestRunBridge_CreatesBridgeTables(t *testing.T) {
 	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
 	ctx := t.Context()
