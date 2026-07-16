@@ -30,6 +30,7 @@ type Config struct {
 	ImageArchive string
 	Image        string
 	ConfigPath   string
+	Port         string
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -71,6 +72,10 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("nil installer config")
 	}
 
+	if cfg.Port == "" {
+		cfg.Port = "8443"
+	}
+
 	imageRef, err := inst.resolveImage(ctx, cfg.ImageArchive, cfg.Image)
 	if err != nil {
 		return fmt.Errorf("image resolution: %w", err)
@@ -86,7 +91,7 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		}
 	}
 
-	healthURL := fmt.Sprintf("https://%s:8443/healthz", cfg.Hostname)
+	healthURL := fmt.Sprintf("https://%s:%s/healthz", cfg.Hostname, cfg.Port)
 	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, 30*time.Second); err != nil {
@@ -95,7 +100,7 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	}
 
 	credPath := filepath.Join(cfg.DataDir, "credentials")
-	slog.Info("registry running", "url", fmt.Sprintf("https://%s:8443", cfg.Hostname), "credentials", credPath)
+	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", cfg.Hostname, cfg.Port), "credentials", credPath)
 	return nil
 }
 
@@ -149,7 +154,7 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef s
 		Image:      imageRef,
 		DataDir:    cfg.DataDir,
 		Hostname:   cfg.Hostname,
-		Port:       "8443",
+		Port:       cfg.Port,
 		ConfigPath: cfg.ConfigPath,
 	}
 	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
