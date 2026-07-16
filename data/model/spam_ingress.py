@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INGRESS_THRESHOLD = 0.9
 DEFAULT_TOKEN_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+DEFAULT_CLASSIFICATION_WINDOW_TOKENS = 128
+DEFAULT_CLASSIFICATION_WINDOW_STRIDE = 64
+MAX_CLASSIFICATION_WINDOW_TOKENS = 4096
 HYPERLINK_PATTERN = re.compile(r"\bhttps?://[^\s<>()]+", re.IGNORECASE)
 REQUIRED_ARTIFACT_FIELDS = {
     "version": str,
@@ -74,6 +77,24 @@ class BayesianSpamClassifier:
             raise SpamIngressUnavailable("Custom spam classifier token patterns are not supported")
         self._token_pattern = re.compile(token_pattern, re.IGNORECASE)
         self._include_repository_name = feature_config.get("include_repository_name", False)
+        self._window_tokens = _feature_config_int(
+            feature_config,
+            "classification_window_tokens",
+            DEFAULT_CLASSIFICATION_WINDOW_TOKENS,
+        )
+        self._window_stride = _feature_config_int(
+            feature_config,
+            "classification_window_stride",
+            DEFAULT_CLASSIFICATION_WINDOW_STRIDE,
+        )
+        if self._window_tokens > MAX_CLASSIFICATION_WINDOW_TOKENS:
+            raise SpamIngressUnavailable(
+                f"classification_window_tokens must be {MAX_CLASSIFICATION_WINDOW_TOKENS} or fewer"
+            )
+        if self._window_stride > self._window_tokens:
+            raise SpamIngressUnavailable(
+                "classification_window_stride must not exceed classification_window_tokens"
+            )
 
         if self._spam_total is None:
             self._spam_total = sum(self._spam_counts.values())
@@ -89,7 +110,10 @@ class BayesianSpamClassifier:
 
     def classify(self, context):
         tokens = self._tokens(context)
-        spam_score = self._posterior_spam_probability(tokens)
+        spam_score = max(
+            self._posterior_spam_probability(window)
+            for _, window in self._classification_windows(tokens)
+        )
         threshold = self._threshold_for_visibility(context.visibility)
         allowed = spam_score < threshold
 
@@ -122,6 +146,16 @@ class BayesianSpamClassifier:
             return 1 / (1 + math.exp(log_ham - log_spam))
         return math.exp(log_spam - log_ham) / (1 + math.exp(log_spam - log_ham))
 
+    def _classification_windows(self, tokens):
+        if len(tokens) <= self._window_tokens:
+            return [(0, tokens)]
+
+        last_start = len(tokens) - self._window_tokens
+        starts = list(range(0, last_start + 1, self._window_stride))
+        if starts[-1] != last_start:
+            starts.append(last_start)
+        return [(start, tokens[start : start + self._window_tokens]) for start in starts]
+
     def _threshold_for_visibility(self, visibility):
         if visibility and visibility in self._thresholds:
             return float(self._thresholds[visibility])
@@ -143,6 +177,13 @@ def _validate_artifact_schema(artifact):
         raise SpamIngressUnavailable("Classifier token totals must be non-negative")
     if artifact["vocabulary_size"] <= 0:
         raise SpamIngressUnavailable("Classifier vocabulary size must be greater than zero")
+
+
+def _feature_config_int(feature_config, field, default):
+    value = feature_config.get(field, default)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise SpamIngressUnavailable(f"{field} must be a positive integer")
+    return value
 
 
 _CLASSIFIER_CACHE: Dict[Tuple[str, int, int], BayesianSpamClassifier] = {}

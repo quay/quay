@@ -70,6 +70,48 @@ def test_bayesian_classifier_rejects_matching_spam_artifact(tmp_path):
     assert decision.classifier_version == "test-v1"
 
 
+def test_windowed_scoring_prevents_link_padding_from_diluting_spam(tmp_path):
+    spam_ingress.clear_classifier_cache()
+    artifact_path, artifact_sha = _write_artifact(tmp_path, _artifact())
+    context = spam_ingress.SpamIngressContext(
+        namespace="devtable",
+        repository="spamrepo",
+        description="casino " * 128 + "project " * 512 + "https://spam.example",
+        visibility="public",
+        action="create",
+    )
+
+    decision = spam_ingress.evaluate_description(
+        context,
+        {
+            "SPAM_DETECTION_CLASSIFIER_PATH": str(artifact_path),
+            "SPAM_DETECTION_CLASSIFIER_SHA256": artifact_sha,
+        },
+    )
+
+    assert not decision.allowed
+    assert decision.score > 0.99
+
+
+@pytest.mark.parametrize(
+    "feature_config",
+    [
+        {"classification_window_tokens": 0},
+        {"classification_window_tokens": 64, "classification_window_stride": 65},
+        {"classification_window_tokens": 4097},
+    ],
+)
+def test_invalid_classification_window_config_raises_unavailable(feature_config):
+    configured = {
+        "token_pattern": spam_ingress.DEFAULT_TOKEN_PATTERN,
+        "include_repository_name": False,
+        **feature_config,
+    }
+
+    with pytest.raises(spam_ingress.SpamIngressUnavailable, match="classification_window"):
+        spam_ingress.BayesianSpamClassifier(_artifact(feature_config=configured))
+
+
 def test_classifier_version_mismatch_raises_unavailable(tmp_path):
     spam_ingress.clear_classifier_cache()
     artifact_path, artifact_sha = _write_artifact(
