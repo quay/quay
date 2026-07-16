@@ -75,6 +75,9 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	if cfg.Port == "" {
 		cfg.Port = "8443"
 	}
+	if err := ValidatePort(cfg.Port); err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
 
 	imageRef, err := inst.resolveImage(ctx, cfg.ImageArchive, cfg.Image)
 	if err != nil {
