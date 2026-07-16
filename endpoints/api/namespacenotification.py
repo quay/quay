@@ -11,6 +11,7 @@ from data.model import InvalidNotificationException
 from endpoints.api import (
     ApiResource,
     InvalidRequest,
+    allow_if_global_readonly_superuser,
     allow_if_superuser_with_full_access,
     log_action,
     nickname,
@@ -60,6 +61,17 @@ def _notification_view(notification):
 def _check_org_admin(orgname):
     permission = AdministerOrganizationPermission(orgname)
     if permission.can() or allow_if_superuser_with_full_access():
+        return
+    raise Unauthorized()
+
+
+def _check_org_read(orgname):
+    permission = AdministerOrganizationPermission(orgname)
+    if (
+        permission.can()
+        or allow_if_global_readonly_superuser()
+        or allow_if_superuser_with_full_access()
+    ):
         return
     raise Unauthorized()
 
@@ -126,7 +138,7 @@ class OrgNamespaceNotificationList(ApiResource):
 
     @nickname("listOrgNotifications")
     def get(self, orgname):
-        _check_org_admin(orgname)
+        _check_org_read(orgname)
 
         try:
             model.organization.get_organization(orgname)
@@ -188,7 +200,7 @@ class OrgNamespaceNotificationList(ApiResource):
 class OrgNamespaceNotification(ApiResource):
     @nickname("getOrgNotification")
     def get(self, orgname, uuid):
-        _check_org_admin(orgname)
+        _check_org_read(orgname)
         found = _get_or_404(uuid)
         if found.namespace.username != orgname:
             raise NotFound()

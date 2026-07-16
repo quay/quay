@@ -363,3 +363,133 @@ class TestAuditLogging:
                 call_args = mock_log.call_args
                 assert call_args[0][0] == "delete_namespace_notification"
                 assert call_args[0][1] == "buynlarge"
+
+
+class TestGlobalReadOnlySuperuserOrgNotifications:
+    """
+    Test that global readonly superusers can read org notifications
+    but are blocked from write operations (PROJQUAY-12233).
+    """
+
+    ORG_NAME = "readonly_notif_testorg"
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        """Configure feature flags and create a test org for readonly superuser tests."""
+        import features
+
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": True,
+                "FEATURE_QUOTA_NOTIFICATIONS": True,
+            }
+        )
+
+        randomuser = model.user.get_user("randomuser")
+        try:
+            model.organization.get_organization(self.ORG_NAME)
+        except model.InvalidOrganizationException:
+            model.organization.create_organization(
+                self.ORG_NAME, "readonly_notif_test@test.com", randomuser
+            )
+        yield
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": True,
+                "FEATURE_QUOTA_NOTIFICATIONS": True,
+            }
+        )
+
+    def test_readonly_superuser_can_list_notifications(self, app):
+        """Global readonly superusers should be able to list org notifications."""
+        notif = _create_notification(self.ORG_NAME)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                OrgNamespaceNotificationList,
+                "GET",
+                {"orgname": self.ORG_NAME},
+                None,
+                200,
+            )
+            notifications = resp.json["notifications"]
+            assert len(notifications) >= 1
+            uuids = [n["uuid"] for n in notifications]
+            assert notif.uuid in uuids
+        notif.delete_instance()
+
+    def test_readonly_superuser_can_get_notification(self, app):
+        """Global readonly superusers should be able to get a specific org notification."""
+        notif = _create_notification(self.ORG_NAME)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                OrgNamespaceNotification,
+                "GET",
+                {"orgname": self.ORG_NAME, "uuid": notif.uuid},
+                None,
+                200,
+            )
+            assert resp.json["uuid"] == notif.uuid
+            assert resp.json["event"] == "quota_warning"
+        notif.delete_instance()
+
+    def test_readonly_superuser_cannot_create_notification(self, app):
+        """Global readonly superusers should be blocked from creating org notifications."""
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            body = {
+                "event": "quota_warning",
+                "method": "email",
+                "config": {"email": "test@example.com"},
+                "eventConfig": {},
+                "title": "Should Be Blocked",
+            }
+            conduct_api_call(
+                cl,
+                OrgNamespaceNotificationList,
+                "POST",
+                {"orgname": self.ORG_NAME},
+                body,
+                403,
+            )
+
+    def test_readonly_superuser_cannot_delete_notification(self, app):
+        """Global readonly superusers should be blocked from deleting org notifications."""
+        notif = _create_notification(self.ORG_NAME)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            conduct_api_call(
+                cl,
+                OrgNamespaceNotification,
+                "DELETE",
+                {"orgname": self.ORG_NAME, "uuid": notif.uuid},
+                None,
+                403,
+            )
+        notif.delete_instance()
+
+    def test_superuser_full_access_can_list_notifications(self, app):
+        """Superusers with full access should be able to list org notifications."""
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                OrgNamespaceNotificationList,
+                "GET",
+                {"orgname": self.ORG_NAME},
+                None,
+                200,
+            )
+            assert "notifications" in resp.json
+
+    def test_non_admin_non_superuser_is_denied(self, app):
+        """Non-admin, non-superuser users should be denied access."""
+        with client_with_identity("freshuser", app) as cl:
+            conduct_api_call(
+                cl,
+                OrgNamespaceNotificationList,
+                "GET",
+                {"orgname": self.ORG_NAME},
+                None,
+                403,
+            )
