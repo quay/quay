@@ -36,7 +36,7 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 		Flags:    fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
 			if *hostname == "" {
-				detected, err := detectHostname()
+				detected, err := detectHostname(ctx)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error: could not auto-detect hostname: %v\nProvide -hostname explicitly.\n", err)
 					cmd.Usage(os.Stderr)
@@ -96,8 +96,8 @@ func readInitPassword(r io.Reader) (string, error) {
 	return password, nil
 }
 
-func detectHostname() (string, error) {
-	out, err := exec.Command("hostname", "-f").Output()
+func detectHostname(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "hostname", "-f").Output()
 	if err != nil {
 		return "", fmt.Errorf("'hostname -f' failed: %w", err)
 	}
