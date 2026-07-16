@@ -4,10 +4,13 @@ package installer
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -32,6 +35,9 @@ type Config struct {
 	Image        string
 	ConfigPath   string
 	Port         string
+	SSLCert      string
+	SSLKey       string
+	SSLCheckSkip bool
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -174,6 +180,12 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef s
 		}
 	}
 
+	if cfg.SSLCert != "" {
+		if err := inst.copyUserTLS(cfg); err != nil {
+			return fmt.Errorf("TLS certificate setup: %w", err)
+		}
+	}
+
 	spec := system.QuadletSpec{
 		Image:      imageRef,
 		DataDir:    cfg.DataDir,
@@ -237,4 +249,82 @@ func (inst *Installer) dumpContainerLogs(ctx context.Context) {
 	slog.Info("dumping container logs for diagnostics")
 	_ = inst.runner.Run(ctx, "podman", "logs", quadletServiceName)
 	_ = inst.runner.Run(ctx, "systemctl", "status", quadletServiceName)
+}
+
+// ValidateSSLFlags checks that -ssl-cert and -ssl-key are either both provided
+// or both absent. Returns an error if only one is set.
+func ValidateSSLFlags(sslCert, sslKey string) error {
+	if (sslCert == "") != (sslKey == "") {
+		return fmt.Errorf("-ssl-cert and -ssl-key must both be provided")
+	}
+	return nil
+}
+
+// copyUserTLS validates and copies user-provided TLS cert/key into the data
+// directory so the serve process uses them instead of auto-generating.
+func (inst *Installer) copyUserTLS(cfg *Config) error {
+	certData, err := inst.fs.ReadFile(cfg.SSLCert)
+	if err != nil {
+		return fmt.Errorf("read certificate: %w", err)
+	}
+	keyData, err := inst.fs.ReadFile(cfg.SSLKey)
+	if err != nil {
+		return fmt.Errorf("read key: %w", err)
+	}
+
+	if _, err := tls.X509KeyPair(certData, keyData); err != nil {
+		return fmt.Errorf("certificate/key pair invalid: %w", err)
+	}
+
+	if !cfg.SSLCheckSkip {
+		cert, err := parseCertPEM(certData)
+		if err != nil {
+			return fmt.Errorf("parse certificate: %w", err)
+		}
+		if err := verifyCertHostname(cert, cfg.Hostname); err != nil {
+			return fmt.Errorf("certificate hostname check failed (use -ssl-check-skip to override): %w", err)
+		}
+	}
+
+	certDst := filepath.Join(cfg.DataDir, "ssl.cert")
+	if err := inst.fs.WriteFile(certDst, certData, 0o600); err != nil {
+		return fmt.Errorf("write certificate: %w", err)
+	}
+	keyDst := filepath.Join(cfg.DataDir, "ssl.key")
+	if err := inst.fs.WriteFile(keyDst, keyData, 0o600); err != nil {
+		return fmt.Errorf("write key: %w", err)
+	}
+
+	slog.Info("user-provided TLS certificate installed", "cert", certDst, "key", keyDst)
+	return nil
+}
+
+func parseCertPEM(data []byte) (*x509.Certificate, error) {
+	var block *pem.Block
+	rest := data
+	for {
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			return nil, fmt.Errorf("no CERTIFICATE block found in PEM data")
+		}
+		if block.Type == "CERTIFICATE" {
+			break
+		}
+	}
+	return x509.ParseCertificate(block.Bytes)
+}
+
+func verifyCertHostname(cert *x509.Certificate, hostname string) error {
+	if ip := net.ParseIP(hostname); ip != nil {
+		for _, certIP := range cert.IPAddresses {
+			if certIP.Equal(ip) {
+				return nil
+			}
+		}
+		return fmt.Errorf("certificate does not contain IP SAN for %s", hostname)
+	}
+	if err := cert.VerifyHostname(hostname); err != nil {
+		return fmt.Errorf("hostname %q not in certificate SANs: %w", hostname, err)
+	}
+	return nil
 }
