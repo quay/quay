@@ -54,6 +54,35 @@ func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 	}
 }
 
+func TestApplyMigrations_UserEmailBackfillAllowsDuplicateOrganizationEmails(t *testing.T) {
+	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+	ctx := t.Context()
+
+	if _, err := db.ExecContext(ctx, `
+		UPDATE organizationcontactemail
+		SET contact_email = 'shared@example.com'
+		WHERE organization_id IN (1, 4)
+	`); err != nil {
+		t.Fatalf("set shared organization contact email: %v", err)
+	}
+
+	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, "b1a79fa8e630", &bytes.Buffer{}); err != nil {
+		t.Fatalf("apply user email migration: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM "user"
+		WHERE organization = true AND email = 'shared@example.com'
+	`).Scan(&count); err != nil {
+		t.Fatalf("count organizations with shared email: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("organizations with shared email = %d, want 2", count)
+	}
+}
+
 func TestRunBridge_ResumesFromAlembicRevisions(t *testing.T) {
 	for _, tt := range []struct {
 		revision       string
