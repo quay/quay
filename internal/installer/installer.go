@@ -89,7 +89,7 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	healthURL := fmt.Sprintf("https://%s:8443/healthz", cfg.Hostname)
 	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
 	slog.Info("waiting for registry to start")
-	if err := inst.waitForHealth(ctx, healthURL, certPath, 30*time.Second); err != nil {
+	if err := inst.waitForHealth(ctx, healthURL, certPath, 2*time.Minute); err != nil {
 		inst.dumpContainerLogs(ctx)
 		return fmt.Errorf("health check: %w", err)
 	}
