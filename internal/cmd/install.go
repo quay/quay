@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/quay/quay/internal/installer"
@@ -18,7 +19,7 @@ func newInstallCmd() *Command {
 
 func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *installer.Config) int) *Command {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
+	hostname := fs.String("hostname", "", "server hostname for TLS and config (auto-detected if not set)")
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
 	port := fs.String("port", "", "HTTPS port for the registry (default 8443; an existing port is preserved on upgrade)")
 	sslCert := fs.String("ssl-cert", "", "path to TLS certificate (PEM)")
@@ -35,9 +36,14 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 		Flags:    fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
 			if *hostname == "" {
-				fmt.Fprintln(os.Stderr, "error: -hostname is required")
-				cmd.Usage(os.Stderr)
-				return 1
+				detected, err := detectHostname()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: could not auto-detect hostname: %v\nProvide -hostname explicitly.\n", err)
+					cmd.Usage(os.Stderr)
+					return 1
+				}
+				slog.Info("auto-detected hostname", "hostname", detected)
+				*hostname = detected
 			}
 			if err := installer.ValidateSSLFlags(*sslCert, *sslKey); err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
@@ -88,6 +94,18 @@ func readInitPassword(r io.Reader) (string, error) {
 		return "", err
 	}
 	return password, nil
+}
+
+func detectHostname() (string, error) {
+	out, err := exec.Command("hostname", "-f").Output()
+	if err != nil {
+		return "", fmt.Errorf("'hostname -f' failed: %w", err)
+	}
+	fqdn := strings.TrimSpace(string(out))
+	if fqdn == "" {
+		return "", fmt.Errorf("'hostname -f' returned empty output")
+	}
+	return fqdn, nil
 }
 
 func runInstall(ctx context.Context, cfg *installer.Config) int {
