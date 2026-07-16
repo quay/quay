@@ -370,6 +370,53 @@ describe('UseLogDescriptions', () => {
     });
   });
 
+  describe('namespace notification events', () => {
+    it('create_namespace_notification', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.create_namespace_notification({
+          event: 'quota_warning',
+          method: 'webhook',
+          namespace: 'myorg',
+        }),
+      );
+      expect(text).toContain('Add notification of event');
+      expect(text).toContain('quota_warning');
+      expect(text).toContain('webhook');
+      expect(text).toContain('myorg');
+    });
+
+    it('delete_namespace_notification', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.delete_namespace_notification({
+          event: 'quota_error',
+          method: 'email',
+          namespace: 'testns',
+        }),
+      );
+      expect(text).toContain('Delete notification of event');
+      expect(text).toContain('quota_error');
+      expect(text).toContain('email');
+      expect(text).toContain('testns');
+    });
+
+    it('reset_namespace_notification', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.reset_namespace_notification({
+          event: 'quota_warning',
+          method: 'slack',
+          namespace: 'prodns',
+        }),
+      );
+      expect(text).toContain('Re-enable notification of event');
+      expect(text).toContain('quota_warning');
+      expect(text).toContain('slack');
+      expect(text).toContain('prodns');
+    });
+  });
+
   describe('build events', () => {
     it('build_dockerfile without trigger', () => {
       const desc = getDescriptions();
