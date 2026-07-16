@@ -333,7 +333,7 @@ func TestBridgeToRoot_PinsForeignKeyPragmaToTransactionConnection(t *testing.T) 
 }
 
 func TestRunBridge_CreatesBridgeTables(t *testing.T) {
-	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+	db := openBridgeFixture(t)
 	ctx := t.Context()
 	if _, err := db.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
 		t.Fatalf("stamp old version: %v", err)

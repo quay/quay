@@ -10,7 +10,7 @@ import (
 )
 
 func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
-	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+	db := openBridgeFixture(t)
 	for _, index := range []string{
 		"namespaceautoprunepolicy_namespace_id",
 		"repositoryautoprunepolicy_repository_id",
@@ -55,7 +55,7 @@ func TestRunBridge_RepairsHistoricalC3SchemaConvergence(t *testing.T) {
 }
 
 func TestApplyMigrations_UserEmailBackfillAllowsDuplicateOrganizationEmails(t *testing.T) {
-	db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+	db := openBridgeFixture(t)
 	ctx := t.Context()
 
 	if _, err := db.ExecContext(ctx, `
@@ -95,7 +95,7 @@ func TestRunBridge_ResumesFromAlembicRevisions(t *testing.T) {
 		{revision: generatedSchemaVersion, remainingCount: 1},
 	} {
 		t.Run(tt.revision, func(t *testing.T) {
-			db := openBridgeFixture(t, "sqlite_c3d4e5f6a7b8_minimal.sql")
+			db := openBridgeFixture(t)
 			if err := ApplyMigrations(
 				t.Context(), db, BridgeTargetVersion, tt.revision, &bytes.Buffer{},
 			); err != nil {
@@ -140,12 +140,12 @@ func TestAlembicRevisionsAreChainableMigrations(t *testing.T) {
 	}
 }
 
-func openBridgeFixture(t *testing.T, filename string) *sql.DB {
+func openBridgeFixture(t *testing.T) *sql.DB {
 	t.Helper()
 	db := openTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
 
-	fixtureSQL, err := os.ReadFile("testdata/" + filename)
+	fixtureSQL, err := os.ReadFile("testdata/sqlite_c3d4e5f6a7b8_minimal.sql")
 	if err != nil {
 		t.Fatalf("read historical fixture: %v", err)
 	}
