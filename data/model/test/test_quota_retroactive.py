@@ -1,5 +1,4 @@
 import json
-from decimal import Decimal
 from unittest.mock import call, patch
 
 import pytest
