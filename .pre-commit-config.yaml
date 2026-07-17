@@ -20,7 +20,7 @@ repos:
     hooks:
     -   id: requirements-pinned
         name: Check requirements.txt is pinned
-        entry: bash -euo pipefail -c 'while IFS= read -r i; do case "$i" in ""|\\#*|-r*|--*) continue;; esac; if [[ "$i" != *"=="* && "$i" != *"@"* ]]; then echo "$i is not pinned"; exit 1; fi; done < requirements.txt'
+        entry: bash -euo pipefail -c 'while IFS= read -r i; do case "$i" in ""|"#"*|-r*|--*) continue;; esac; if [[ "$i" != *"=="* && "$i" != *"@"* ]]; then echo "$i is not pinned"; exit 1; fi; done < requirements.txt'
         language: system
         files: requirements.txt
         pass_filenames: false

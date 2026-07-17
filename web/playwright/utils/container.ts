@@ -21,7 +21,7 @@ const execFileAsync = promisify(execFile);
 const REGISTRY_HOST = new URL(API_URL).host;
 
 const BUSYBOX_IMAGE =
-  'quay.io/prometheus/busybox@sha256:467c84e76e5bd720ffd3cb86c11e421e2489ef20868114ba58cd0a9e02e70a9d';
+  'quay.io/prometheus/busybox@sha256:0a95bb8f4faff91409f980e9a497e48a3bddc6ba093c493a042fd4748d3edbf5';
 
 type ToolAvailability = {
   skopeo: boolean;
