@@ -271,6 +271,19 @@ test.describe(
             },
           )
           .toBe(3);
+
+        // Filtered referrer queries must return only the requested artifact
+        // type and use a cache entry distinct from the unfiltered result.
+        const filtered = await request.get(
+          `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}?artifactType=${encodeURIComponent('application/spdx+json')}`,
+          {headers: {authorization: `Bearer ${v2Token}`}},
+        );
+        expect(filtered.status()).toBe(200);
+        const filteredBody = await filtered.json();
+        expect(filteredBody.manifests).toHaveLength(1);
+        expect(filteredBody.manifests[0].artifactType).toBe(
+          'application/spdx+json',
+        );
       } finally {
         await request.dispose();
       }

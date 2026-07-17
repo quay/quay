@@ -1481,13 +1481,11 @@ def test_lookup_repository_cache_stale_after_delete_without_invalidation(
 def _create_oci_manifest_with_blobs(org_name, repo_name, config_content=None):
     """Helper to create an OCI manifest with populated blobs."""
     if config_content is None:
-        config_content = json.dumps(
-            {
-                "config": {},
-                "rootfs": {"type": "layers", "diff_ids": []},
-                "history": [],
-            }
-        )
+        config_content = json.dumps({"config": {}, "rootfs": {"type": "layers", "diff_ids": []}})
+    config = json.loads(config_content)
+    config.setdefault("architecture", "amd64")
+    config.setdefault("os", "linux")
+    config_content = json.dumps(config)
     _, config_digest = _populate_blob_with_content(config_content, org_name, repo_name)
     blob_content = "layer-" + sha256_digest(config_content.encode())[:8]
     _, blob_digest = _populate_blob_with_content(blob_content, org_name, repo_name)
