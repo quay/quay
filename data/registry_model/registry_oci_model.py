@@ -284,13 +284,34 @@ class OCIModel(RegistryDataInterface):
         self, model_cache, repository_ref, manifest, artifact_type=None
     ):
         def load_referrers():
-            return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
+            cacheable_referrers = []
+            for referrer in self.lookup_referrers_for_manifest(
+                repository_ref, manifest, artifact_type
+            ):
+                referrer_dict = referrer.asdict()
+                referrer_dict["internal_manifest_bytes"] = referrer_dict[
+                    "internal_manifest_bytes"
+                ].as_unicode()
+                referrer_dict["inputs"]["repository"] = referrer_dict["inputs"][
+                    "repository"
+                ].asdict()
+                referrer_dict["inputs"]["legacy_id_handler"] = None
+                referrer_dict["inputs"]["legacy_image_handler"] = None
+                cacheable_referrers.append(referrer_dict)
+            return cacheable_referrers
 
         referrers_cache_key = cache_key.for_manifest_referrers(
-            repository_ref, manifest.digest, model_cache.cache_config, artifact_type=artifact_type
+            repository_ref._db_id,
+            manifest.digest,
+            model_cache.cache_config,
+            artifact_type=artifact_type,
         )
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
+            for referrer_dict in result:
+                referrer_dict["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
+                    referrer_dict["internal_manifest_bytes"]
+                )
             return [Manifest.from_dict(referrer_dict) for referrer_dict in result]
         except FromDictionaryException:
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
@@ -518,6 +539,28 @@ class OCIModel(RegistryDataInterface):
 
         return Tag.for_tag(tag, self._legacy_image_id_handler)
 
+    def _invalidate_referrers_cache_for_manifest(
+        self, repository_ref, manifest_interface_instance, model_cache
+    ):
+        if model_cache is None or manifest_interface_instance.subject is None:
+            return
+
+        subject_digest = manifest_interface_instance.subject.digest
+        unfiltered_key = cache_key.for_manifest_referrers(
+            repository_ref._db_id, subject_digest, model_cache.cache_config
+        )
+        model_cache.invalidate(unfiltered_key)
+
+        artifact_type = manifest_interface_instance.artifact_type
+        if artifact_type is not None:
+            filtered_key = cache_key.for_manifest_referrers(
+                repository_ref._db_id,
+                subject_digest,
+                model_cache.cache_config,
+                artifact_type=artifact_type,
+            )
+            model_cache.invalidate(filtered_key)
+
     def create_manifest_and_retarget_tag(
         self,
         repository_ref,
@@ -526,6 +569,7 @@ class OCIModel(RegistryDataInterface):
         storage,
         raise_on_error=False,
         verify_quota=False,
+        model_cache=None,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -616,6 +660,10 @@ class OCIModel(RegistryDataInterface):
             )
             if tag is None:
                 return (None, None)
+
+            self._invalidate_referrers_cache_for_manifest(
+                repository_ref, manifest_interface_instance, model_cache
+            )
 
             return (
                 wrapped_manifest,
@@ -882,27 +930,9 @@ class OCIModel(RegistryDataInterface):
             if created_manifest is None:
                 return None
 
-            # Invalidate the referrers cache for the subject digest so that
-            # subsequent lookups return the newly attached referrer immediately.
-            if model_cache is not None and manifest_interface_instance.subject is not None:
-                subject_digest = manifest_interface_instance.subject.digest
-                # Invalidate the unfiltered referrers cache entry.
-                unfiltered_key = cache_key.for_manifest_referrers(
-                    repository_ref, subject_digest, model_cache.cache_config
-                )
-                model_cache.invalidate(unfiltered_key)
-
-                # Invalidate the artifact-type-filtered cache entry so that
-                # queries with ?artifactType=<type> also see the new referrer.
-                manifest_artifact_type = manifest_interface_instance.artifact_type
-                if manifest_artifact_type is not None:
-                    filtered_key = cache_key.for_manifest_referrers(
-                        repository_ref,
-                        subject_digest,
-                        model_cache.cache_config,
-                        artifact_type=manifest_artifact_type,
-                    )
-                    model_cache.invalidate(filtered_key)
+            self._invalidate_referrers_cache_for_manifest(
+                repository_ref, manifest_interface_instance, model_cache
+            )
 
             return Manifest.for_manifest(created_manifest.manifest, self._legacy_image_id_handler)
 

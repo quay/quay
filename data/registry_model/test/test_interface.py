@@ -42,7 +42,7 @@ from image.docker.schema1 import (
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
-from image.oci.manifest import OCIManifestBuilder
+from image.oci.manifest import OCIManifest, OCIManifestBuilder
 from image.shared.types import ManifestImageLayer
 from test.fixtures import *
 from util.bytes import Bytes
@@ -1541,9 +1541,13 @@ def test_referrers_cache_invalidated_on_push(initialized_db, registry_model):
     )
     manifest_b = builder_b.build()
 
-    # Push the referrer with model_cache so the cache is invalidated.
-    created_b = registry_model.create_manifest_with_temp_tag(
-        repository_ref, manifest_b, 300, storage, model_cache=test_cache
+    # Push the referrer by tag with model_cache so the cache is invalidated.
+    created_b, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref,
+        manifest_b,
+        "referrer-tag",
+        storage,
+        model_cache=test_cache,
     )
     assert created_b is not None
 
@@ -1591,6 +1595,16 @@ def test_referrers_cache_artifact_type_isolation(initialized_db, registry_model)
         manifest_a.media_type,
     )
     manifest_b = builder_b.build()
+    artifact_type = "application/vnd.example.signature"
+    manifest_b_dict = json.loads(manifest_b.bytes.as_unicode())
+    manifest_b_dict["artifactType"] = artifact_type
+    manifest_b = OCIManifest(Bytes.for_string_or_unicode(json.dumps(manifest_b_dict)))
+
+    # Prime the matching filtered cache before the referrer is pushed.
+    filtered_before = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert filtered_before == []
 
     registry_model.create_manifest_with_temp_tag(
         repository_ref, manifest_b, 300, storage, model_cache=test_cache
@@ -1601,6 +1615,13 @@ def test_referrers_cache_artifact_type_isolation(initialized_db, registry_model)
         test_cache, repository_ref, created_a
     )
     assert len(unfiltered) == 1
+
+    # Query with the matching artifactType — the filtered cache must have
+    # been invalidated along with the unfiltered entry.
+    filtered_match = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert len(filtered_match) == 1
 
     # Query with a non-matching artifactType — should return empty.
     filtered_miss = registry_model.lookup_cached_referrers_for_manifest(

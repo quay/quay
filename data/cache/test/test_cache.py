@@ -2,6 +2,7 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
+from redis import RedisError
 from redis.cluster import ClusterNode, RedisCluster
 
 from data.cache import (
@@ -10,7 +11,7 @@ from data.cache import (
     NoopDataModelCache,
     RedisDataModelCache,
 )
-from data.cache.cache_key import CacheKey
+from data.cache.cache_key import CacheKey, for_manifest_referrers
 from data.cache.redis_cache import (
     REDIS_DRIVERS,
     ReadEndpointSupportedRedis,
@@ -135,6 +136,18 @@ def test_memcache_should_cache():
         assert cache.retrieve(key, lambda: {"a": 2345}, should_cache=sc) == {"a": 2345}
 
 
+def test_manifest_referrers_cache_key_scopes_and_sanitizes_artifact_type():
+    unfiltered = for_manifest_referrers(14, "sha256:subject", TEST_CACHE_CONFIG)
+    filtered = for_manifest_referrers(
+        14, "sha256:subject", TEST_CACHE_CONFIG, artifact_type="application/example"
+    )
+
+    assert unfiltered.key == "manifest_referrers__14_sha256:subject"
+    assert filtered.key.startswith("manifest_referrers__14_sha256:subject_artifact_type_")
+    assert "application/example" not in filtered.key
+    assert len(filtered.key.rsplit("_", 1)[-1]) == 64
+
+
 def test_redis_cache():
     global DATA
     DATA = {}
@@ -144,6 +157,16 @@ def test_redis_cache():
 
     assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
     assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+
+
+def test_redis_cache_invalidation_ignores_redis_errors():
+    client = MagicMock()
+    client.delete.side_effect = RedisError("connection lost")
+    cache = RedisDataModelCache(TEST_CACHE_CONFIG, client)
+
+    cache.invalidate(CacheKey("foo", "60m"))
+
+    client.delete.assert_called_once_with("foo")
 
 
 @pytest.mark.parametrize(

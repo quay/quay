@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from collections import namedtuple
 
@@ -97,5 +98,6 @@ def for_manifest_referrers(repository_id, manifest_digest, cache_config, artifac
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
     key = f"manifest_referrers__{repository_id}_{manifest_digest}"
     if artifact_type is not None:
-        key = f"{key}_{artifact_type}"
+        artifact_type_hash = hashlib.sha256(artifact_type.encode("utf-8")).hexdigest()
+        key = f"{key}_artifact_type_{artifact_type_hash}"
     return CacheKey(key, cache_ttl)
