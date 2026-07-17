@@ -1,6 +1,7 @@
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
-from data.model import InvalidProxyCacheConfigException
+from data.model import DataModelException, InvalidProxyCacheConfigException
 from data.model.organization import get_organization
+from util.security.ssrf import validate_external_registry_url
 
 
 def has_proxy_cache_config(org_name):
@@ -18,10 +19,20 @@ def create_proxy_cache_config(
     upstream_registry_password=None,
     expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
     insecure=False,
+    allowed_hosts=None,
 ):
     """
     Creates proxy cache configuration for the given organization name
     """
+    hostname = upstream_registry.split("/", 1)[0]
+    scheme = "http" if insecure else "https"
+    try:
+        validate_external_registry_url(
+            f"{scheme}://{hostname}", resolve_dns=False, allowed_hosts=allowed_hosts or []
+        )
+    except ValueError as e:
+        raise DataModelException(str(e))
+
     org = get_organization(org_name)
 
     new_entry = ProxyCacheConfig.create(
