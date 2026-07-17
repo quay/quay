@@ -184,6 +184,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Generate TLS certificate for registry tests
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout local-dev/stack/ssl.key \
+            -out local-dev/stack/ssl.cert \
+            -days 1 \
+            -subj '/CN=localhost' \
+            -addext 'subjectAltName=DNS:localhost'
+          {
+            echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/local-dev/stack/ssl.cert"
+            echo "REACT_QUAY_APP_API_URL=https://localhost:8443"
+            echo "PLAYWRIGHT_BASE_URL=https://localhost:8443"
+          } >> "$GITHUB_ENV"
+
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
         with:
@@ -199,6 +213,12 @@ jobs:
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
             DEFAULT_UI: react
+            SERVER_HOSTNAME: localhost:8443
+            EXTERNAL_TLS_TERMINATION: false
+            PREFERRED_URL_SCHEME: https
+            SSL_ECDH_CURVES:
+              - X25519
+              - prime256v1
             AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0
             SSRF_ALLOWED_HOSTS:
               - host.containers.internal
@@ -281,6 +301,12 @@ jobs:
 
       - name: Install regctl for CLI interop tests
         uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
+
+      - name: Wait for HTTPS Quay listener
+        run: |
+          curl --fail --silent --show-error --retry 90 --retry-delay 2 \
+            --retry-all-errors --cacert local-dev/stack/ssl.cert \
+            https://localhost:8443/health/instance > /dev/null
 
       - name: Run Database auth tests (React + Legacy UI)
         env:

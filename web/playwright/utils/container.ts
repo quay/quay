@@ -20,6 +20,14 @@ const execFileAsync = promisify(execFile);
 // Extract registry host from API_URL (e.g., 'localhost:8080')
 const REGISTRY_HOST = new URL(API_URL).host;
 
+type RegistryOptions = {
+  registryUrl?: string;
+};
+
+function registryHost(registryUrl = API_URL): string {
+  return new URL(registryUrl).host;
+}
+
 const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 
 type ToolAvailability = {
@@ -31,27 +39,41 @@ type ToolAvailability = {
 
 let toolAvailabilityPromise: Promise<ToolAvailability> | null = null;
 
-function targetImage(namespace: string, repo: string, tag: string): string {
-  return `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+function targetImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  registryUrl = API_URL,
+): string {
+  return `${registryHost(registryUrl)}/${namespace}/${repo}:${tag}`;
 }
 
-function registryAuthConfig(username: string, password: string): string {
+function registryAuthConfig(
+  username: string,
+  password: string,
+  registryUrl = API_URL,
+): string {
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
-  return `${JSON.stringify({auths: {[REGISTRY_HOST]: {auth}}})}\n`;
+  return `${JSON.stringify({auths: {[registryHost(registryUrl)]: {auth}}})}\n`;
 }
 
 async function withRegistryAuthFile<T>(
   username: string,
   password: string,
   operation: (authFile: string) => Promise<T>,
+  registryUrl = API_URL,
 ): Promise<T> {
   const authDir = await mkdtemp(path.join(os.tmpdir(), 'quay-registry-auth-'));
   const authFile = path.join(authDir, 'auth.json');
 
   try {
-    await writeFile(authFile, registryAuthConfig(username, password), {
-      mode: 0o600,
-    });
+    await writeFile(
+      authFile,
+      registryAuthConfig(username, password, registryUrl),
+      {
+        mode: 0o600,
+      },
+    );
     return await operation(authFile);
   } finally {
     await rm(authDir, {recursive: true, force: true});
@@ -62,14 +84,19 @@ function withRegistryAuthFileSync<T>(
   username: string,
   password: string,
   operation: (authFile: string) => T,
+  registryUrl = API_URL,
 ): T {
   const authDir = mkdtempSync(path.join(os.tmpdir(), 'quay-registry-auth-'));
   const authFile = path.join(authDir, 'auth.json');
 
   try {
-    writeFileSync(authFile, registryAuthConfig(username, password), {
-      mode: 0o600,
-    });
+    writeFileSync(
+      authFile,
+      registryAuthConfig(username, password, registryUrl),
+      {
+        mode: 0o600,
+      },
+    );
     return operation(authFile);
   } finally {
     rmSync(authDir, {recursive: true, force: true});
@@ -252,21 +279,26 @@ export async function pushImage(
   tag: string,
   username: string,
   password: string,
+  options: RegistryOptions = {},
 ): Promise<void> {
-  const image = targetImage(namespace, repo, tag);
+  const image = targetImage(namespace, repo, tag, options.registryUrl);
 
-  await withRegistryAuthFile(username, password, (authFile) =>
-    retryOperation(() =>
-      skopeoCopy([
-        '--override-os=linux',
-        '--override-arch=amd64',
-        `docker://${BUSYBOX_IMAGE}`,
-        `docker://${image}`,
-        '--dest-tls-verify=false',
-        '--dest-authfile',
-        authFile,
-      ]),
-    ),
+  await withRegistryAuthFile(
+    username,
+    password,
+    (authFile) =>
+      retryOperation(() =>
+        skopeoCopy([
+          '--override-os=linux',
+          '--override-arch=amd64',
+          `docker://${BUSYBOX_IMAGE}`,
+          `docker://${image}`,
+          '--dest-tls-verify=false',
+          '--dest-authfile',
+          authFile,
+        ]),
+      ),
+    options.registryUrl,
   );
 }
 
@@ -322,19 +354,24 @@ export async function pullImage(
   tag: string,
   username: string,
   password: string,
+  options: RegistryOptions = {},
 ): Promise<void> {
-  const image = targetImage(namespace, repo, tag);
+  const image = targetImage(namespace, repo, tag, options.registryUrl);
   const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'quay-pull-img-'));
 
   try {
-    await withRegistryAuthFile(username, password, (authFile) =>
-      skopeoCopy([
-        `docker://${image}`,
-        `oci:${tmpDir}:${tag}`,
-        '--src-tls-verify=false',
-        '--src-authfile',
-        authFile,
-      ]),
+    await withRegistryAuthFile(
+      username,
+      password,
+      (authFile) =>
+        skopeoCopy([
+          `docker://${image}`,
+          `oci:${tmpDir}:${tag}`,
+          '--src-tls-verify=false',
+          '--src-authfile',
+          authFile,
+        ]),
+      options.registryUrl,
     );
   } finally {
     await rm(tmpDir, {recursive: true, force: true});

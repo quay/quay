@@ -1,4 +1,7 @@
+import shutil
 from pathlib import Path
+
+from conf.init import nginx_conf_create
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -14,6 +17,48 @@ def test_nginx_maps_bootstrap_renewal_location_from_original_remote_addr():
     assert "127.0.0.1 local;" in http_base
     assert "::1 local;" in http_base
     assert r"~*^::ffff:127\.0\.0\.1$ local;" in http_base
+
+
+def test_nginx_renders_configured_ecdh_curves_for_all_tls_listeners(tmp_path, monkeypatch):
+    nginx_dir = tmp_path / "nginx"
+    stack_dir = tmp_path / "stack"
+    nginx_dir.mkdir()
+    stack_dir.mkdir()
+    (stack_dir / "ssl.key").touch()
+    shutil.copy(ROOT / "conf/nginx/nginx.conf.jnj", nginx_dir / "nginx.conf.jnj")
+
+    monkeypatch.setattr(nginx_conf_create, "QUAYCONF_DIR", str(tmp_path))
+    monkeypatch.setattr(nginx_conf_create, "STATIC_DIR", "/static")
+
+    nginx_conf_create.generate_nginx_config(
+        {"SSL_ECDH_CURVES": ["X25519MLKEM768", "X25519", "prime256v1"]}
+    )
+
+    rendered = (nginx_dir / "nginx.conf").read_text()
+    assert "ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;" in rendered
+    assert rendered.count("listen 8443 ssl") == 1
+    assert rendered.count("listen 7443 ssl") == 1
+    assert rendered.count("listen 55443 ssl") == 1
+
+
+def test_nginx_omits_ecdh_curve_directive_when_unset(tmp_path, monkeypatch):
+    nginx_dir = tmp_path / "nginx"
+    stack_dir = tmp_path / "stack"
+    nginx_dir.mkdir()
+    stack_dir.mkdir()
+    (stack_dir / "ssl.key").touch()
+    shutil.copy(ROOT / "conf/nginx/nginx.conf.jnj", nginx_dir / "nginx.conf.jnj")
+
+    monkeypatch.setattr(nginx_conf_create, "QUAYCONF_DIR", str(tmp_path))
+    monkeypatch.setattr(nginx_conf_create, "STATIC_DIR", "/static")
+
+    nginx_conf_create.generate_nginx_config({})
+
+    rendered = (nginx_dir / "nginx.conf").read_text()
+    assert "ssl_ecdh_curve" not in rendered
+    assert rendered.count("listen 8443 ssl") == 1
+    assert rendered.count("listen 7443 ssl") == 1
+    assert rendered.count("listen 55443 ssl") == 1
 
 
 def test_nginx_passes_bootstrap_renewal_location_only_to_renew_endpoint():
