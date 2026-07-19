@@ -11,7 +11,7 @@ import (
 	distauth "github.com/distribution/distribution/v3/registry/auth"
 )
 
-func newTestController(t *testing.T, access []ResourceActions) (*Controller, string) {
+func newTestController(t *testing.T, access []ResourceActions) (controller *Controller, raw string) {
 	t.Helper()
 	signer, verifier := newTestPair(t)
 	claims := validTestClaims()
@@ -20,7 +20,7 @@ func newTestController(t *testing.T, access []ResourceActions) (*Controller, str
 	if err != nil {
 		t.Fatal(err)
 	}
-	controller, err := NewController(ControllerConfig{
+	controller, err = NewController(ControllerConfig{
 		Realm: "https://registry.example.com:8443/v2/auth", Service: "registry.example.com:8443",
 		LibraryNamespace: "library", Verifier: verifier,
 	})
@@ -36,7 +36,7 @@ func repositoryAccess(name, action string) distauth.Access {
 
 func TestControllerChallengesAreDeterministic(t *testing.T) {
 	controller, _ := newTestController(t, []ResourceActions{})
-	req := httptest.NewRequest(http.MethodGet, "/v2/acme/image/manifests/latest", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/image/manifests/latest", http.NoBody)
 	_, err := controller.Authorized(req,
 		repositoryAccess("z/repo", "push"), repositoryAccess("a/repo", "pull"), repositoryAccess("z/repo", "pull"),
 	)
@@ -81,7 +81,7 @@ func TestControllerInvalidAndInsufficientScope(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/v2/", http.NoBody)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
 			req.Header.Set("Authorization", "Bearer "+tt.token)
 			_, err := controller.Authorized(req, tt.access)
 			var challenge distauth.Challenge
@@ -102,7 +102,7 @@ func TestControllerExactWildcardAndLibraryGrants(t *testing.T) {
 		{Type: "repository", Name: "acme/image", Actions: []string{"*"}},
 		{Type: "repository", Name: "library/busybox", Actions: []string{"pull"}},
 	})
-	req := httptest.NewRequest(http.MethodGet, "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+raw)
 	grant, err := controller.Authorized(req,
 		repositoryAccess("acme/image", "delete"), repositoryAccess("busybox", "pull"),
@@ -118,13 +118,14 @@ func TestControllerExactWildcardAndLibraryGrants(t *testing.T) {
 func TestControllerConcurrentAuthorization(t *testing.T) {
 	controller, raw := newTestController(t, []ResourceActions{{Type: "repository", Name: "acme/image", Actions: []string{"pull"}}})
 	const workers = 64
+	ctx := t.Context()
 	var wg sync.WaitGroup
 	errs := make(chan error, workers)
 	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			req := httptest.NewRequest(http.MethodGet, "/v2/acme/image/manifests/latest", http.NoBody)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v2/acme/image/manifests/latest", http.NoBody)
 			req.Header.Set("Authorization", "Bearer "+raw)
 			_, err := controller.Authorized(req, repositoryAccess("acme/image", "pull"))
 			errs <- err

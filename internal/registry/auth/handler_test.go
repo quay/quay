@@ -24,7 +24,7 @@ type tokenResponse struct {
 func newTestHandler(t *testing.T, anonymous bool, authenticate AuthenticateFunc, resolver GrantResolver) (*Handler, TokenVerifier) {
 	t.Helper()
 	signer, verifier := newTestPair(t)
-	handler, err := NewHandler(HandlerConfig{
+	handler, err := NewHandler(&HandlerConfig{
 		Service: "registry.example.com:8443", LibraryNamespace: "library", AnonymousAccess: anonymous,
 		Lifetime: 5 * time.Minute, Signer: signer, Authenticate: authenticate, ResolveGrants: resolver,
 		Now: func() time.Time { return testNow },
@@ -56,7 +56,7 @@ func TestHandlerIssuesDownscopedToken(t *testing.T) {
 		"scope":         {"repository:acme/image:pull,push", "repository:acme/image:pull"},
 		"offline_token": {"true"},
 	}
-	req := httptest.NewRequest(http.MethodGet, "/v2/auth?"+query.Encode(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/auth?"+query.Encode(), http.NoBody)
 	req.SetBasicAuth("user", "password")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -94,7 +94,7 @@ func TestHandlerInvalidCredentialsNeverBecomeAnonymous(t *testing.T) {
 		return nil, nil
 	}
 	handler, _ := newTestHandler(t, true, authenticate, resolver)
-	req := httptest.NewRequest(http.MethodGet, "/v2/auth?service=registry.example.com%3A8443&scope=repository%3Apublic%2Frepo%3Apull", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/auth?service=registry.example.com%3A8443&scope=repository%3Apublic%2Frepo%3Apull", http.NoBody)
 	req.SetBasicAuth("user", "wrong")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -124,7 +124,7 @@ func TestHandlerAnonymousEmptyAndPublicScopes(t *testing.T) {
 		"/v2/auth?service=registry.example.com%3A8443&scope=repository%3Apublic%2Frepo%3Apull",
 		"/v2/auth?service=registry.example.com%3A8443&scope=repository%3Aprivate%2Frepo%3Apull",
 	} {
-		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, http.NoBody)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -160,7 +160,7 @@ func TestHandlerRejectsProtocolErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, tt.path, http.NoBody)
 			if tt.name != "missing credentials" {
 				req.SetBasicAuth("user", "password")
 			}
@@ -188,7 +188,7 @@ func TestHandlerRejectsExcessiveScopesBeforeResolution(t *testing.T) {
 	for i := 0; i <= maximumScopeCount; i++ {
 		query.Add("scope", "repository:acme/repo"+strconv.Itoa(i)+":pull")
 	}
-	request := httptest.NewRequest(http.MethodGet, "/v2/auth?"+query.Encode(), http.NoBody)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/auth?"+query.Encode(), http.NoBody)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 
@@ -206,7 +206,7 @@ func TestHandlerRejectsOversizedQueryBeforeResolution(t *testing.T) {
 		},
 	)
 	path := "/v2/auth?service=registry.example.com%3A8443&padding=" + strings.Repeat("x", maximumTokenQueryBytes)
-	request := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, http.NoBody)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 
@@ -221,7 +221,7 @@ func TestHandlerResolverFailure(t *testing.T) {
 			return nil, errors.New("database failed")
 		},
 	)
-	req := httptest.NewRequest(http.MethodGet, "/v2/auth?service=registry.example.com%3A8443", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/auth?service=registry.example.com%3A8443", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 	if w.Code != http.StatusInternalServerError {

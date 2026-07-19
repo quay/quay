@@ -51,7 +51,7 @@ func NewController(cfg ControllerConfig) (*Controller, error) {
 // Authorized verifies the bearer token and checks exact requested resources
 // and actions. A granted wildcard action satisfies every requested action.
 func (c *Controller) Authorized(req *http.Request, requested ...distauth.Access) (*distauth.Grant, error) {
-	challenge := &bearerChallenge{
+	challenge := &bearerChallengeError{
 		realm: c.realm, service: c.service, scopes: challengeScopes(requested), err: errTokenRequired,
 	}
 
@@ -91,7 +91,7 @@ func (c *Controller) Authorized(req *http.Request, requested ...distauth.Access)
 		resource.Name = c.normalizeResourceName(resource.Type, resource.Name)
 		actions := granted[resource]
 		_, exact := actions[item.Action]
-		_, wildcard := actions["*"]
+		_, wildcard := actions[wildcardAction]
 		if !exact && !wildcard {
 			challenge.err = errInsufficientScope
 			return nil, challenge
@@ -117,6 +117,16 @@ func (c *Controller) Authorized(req *http.Request, requested ...distauth.Access)
 	}, nil
 }
 
+// AuthorizeRepository checks one repository action without exposing
+// Distribution auth types to protocol handlers.
+func (c *Controller) AuthorizeRepository(req *http.Request, name, action string) error {
+	_, err := c.Authorized(req, distauth.Access{
+		Resource: distauth.Resource{Type: repositoryResourceType, Name: name},
+		Action:   action,
+	})
+	return err
+}
+
 func (c *Controller) normalizeResourceName(resourceType, name string) string {
 	if resourceType == repositoryResourceType && !strings.Contains(name, "/") {
 		return c.libraryNamespace + "/" + name
@@ -124,26 +134,26 @@ func (c *Controller) normalizeResourceName(resourceType, name string) string {
 	return name
 }
 
-type bearerChallenge struct {
+type bearerChallengeError struct {
 	realm   string
 	service string
 	scopes  string
 	err     error
 }
 
-var _ distauth.Challenge = (*bearerChallenge)(nil)
+var _ distauth.Challenge = (*bearerChallengeError)(nil)
 
-func (c *bearerChallenge) Error() string { return c.err.Error() }
+func (c *bearerChallengeError) Error() string { return c.err.Error() }
 
-func (c *bearerChallenge) SetHeaders(_ *http.Request, response http.ResponseWriter) {
+func (c *bearerChallengeError) SetHeaders(_ *http.Request, response http.ResponseWriter) {
 	value := "Bearer realm=" + strconv.Quote(c.realm) + ",service=" + strconv.Quote(c.service)
 	if c.scopes != "" {
 		value += ",scope=" + strconv.Quote(c.scopes)
 	}
-	switch c.err {
-	case ErrInvalidToken:
+	switch {
+	case errors.Is(c.err, ErrInvalidToken):
 		value += `,error="invalid_token"`
-	case errInsufficientScope:
+	case errors.Is(c.err, errInsufficientScope):
 		value += `,error="insufficient_scope"`
 	}
 	response.Header().Set("WWW-Authenticate", value)

@@ -240,7 +240,7 @@ func TestTokenHandlerAcceptsExistingHumanAndMigratedRobotCredentials(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := registryauth.NewHandler(registryauth.HandlerConfig{
+	handler, err := registryauth.NewHandler(&registryauth.HandlerConfig{
 		Service: "registry.example.com", LibraryNamespace: "library", AnonymousAccess: true,
 		Lifetime: 5 * time.Minute, Signer: signer, ResolveGrants: resolver.Resolve,
 		Authenticate: func(ctx context.Context, username, secret string) (registryauth.Identity, bool) {
@@ -266,7 +266,7 @@ func TestTokenHandlerAcceptsExistingHumanAndMigratedRobotCredentials(t *testing.
 		{"invalid robot", "acme+writer", "wrong", "", http.StatusUnauthorized},
 	} {
 		t.Run(credentials.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet,
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
 				"/v2/auth?service="+url.QueryEscape("registry.example.com"), http.NoBody)
 			request.SetBasicAuth(credentials.username, credentials.password)
 			response := httptest.NewRecorder()

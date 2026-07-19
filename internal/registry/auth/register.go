@@ -21,13 +21,13 @@ const (
 // a controller, key, database handle, or other runtime dependency globally.
 var (
 	registerOnce sync.Once
-	registerErr  error
+	errRegister  error
 )
 
 // RegisterDistributionAdapter registers the stateless quaytoken adapter once.
 func RegisterDistributionAdapter() error {
 	registerOnce.Do(func() {
-		registerErr = distauth.Register(DistributionBackendName, distauth.InitFunc(func(options map[string]interface{}) (distauth.AccessController, error) {
+		errRegister = distauth.Register(DistributionBackendName, distauth.InitFunc(func(options map[string]interface{}) (distauth.AccessController, error) {
 			controller, ok := options[DistributionControllerOption].(*Controller)
 			if !ok || controller == nil {
 				return nil, fmt.Errorf("%q must be set to *auth.Controller", DistributionControllerOption)
@@ -35,5 +35,5 @@ func RegisterDistributionAdapter() error {
 			return controller, nil
 		}))
 	})
-	return registerErr
+	return errRegister
 }

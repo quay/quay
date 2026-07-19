@@ -37,7 +37,10 @@ type Handler struct {
 }
 
 // NewHandler constructs a token exchange handler.
-func NewHandler(cfg HandlerConfig) (*Handler, error) {
+func NewHandler(cfg *HandlerConfig) (*Handler, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("nil handler config")
+	}
 	if cfg.Service == "" || cfg.LibraryNamespace == "" || cfg.Signer == nil || cfg.ResolveGrants == nil {
 		return nil, fmt.Errorf("service, library namespace, signer, and grant resolver are required")
 	}

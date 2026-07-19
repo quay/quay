@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	distauth "github.com/distribution/distribution/v3/registry/auth"
 	"github.com/opencontainers/go-digest"
 
 	"github.com/quay/quay/internal/oci"
@@ -76,22 +75,21 @@ func (m *mockStore) CleanExpiredUploadedBlobs(context.Context) error { return ni
 // --- tests ---
 
 type accessControllerStub struct {
-	err        error
-	lastAccess []distauth.Access
+	err            error
+	lastRepository string
+	lastAction     string
 }
 
-func (s *accessControllerStub) Authorized(_ *http.Request, access ...distauth.Access) (*distauth.Grant, error) {
-	s.lastAccess = access
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &distauth.Grant{User: distauth.UserInfo{Name: "test-user"}}, nil
+func (s *accessControllerStub) AuthorizeRepository(_ *http.Request, name, action string) error {
+	s.lastRepository = name
+	s.lastAction = action
+	return s.err
 }
 
-type challengeStub struct{}
+type challengeStubError struct{}
 
-func (challengeStub) Error() string { return "authorization required" }
-func (challengeStub) SetHeaders(_ *http.Request, w http.ResponseWriter) {
+func (challengeStubError) Error() string { return "authorization required" }
+func (challengeStubError) SetHeaders(_ *http.Request, w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", `Bearer realm="https://registry.example/v2/auth",service="registry.example"`)
 }
 
@@ -118,7 +116,7 @@ func TestNewReferrersHandlerUsesSharedController(t *testing.T) {
 }
 
 func TestReferrersAuthorizationChallengeSetsBearerHeader(t *testing.T) {
-	controller := &accessControllerStub{err: challengeStub{}}
+	controller := &accessControllerStub{err: challengeStubError{}}
 	handler := NewReferrersHandler(&mockStore{repoID: 10}, controller, &ReferrersConfig{LibrarySupport: true})
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/private/referrers/"+subjectDgst.String(), http.NoBody)
@@ -132,9 +130,8 @@ func TestReferrersAuthorizationChallengeSetsBearerHeader(t *testing.T) {
 	if got := w.Header().Get("WWW-Authenticate"); got != `Bearer realm="https://registry.example/v2/auth",service="registry.example"` {
 		t.Fatalf("challenge = %q", got)
 	}
-	if len(controller.lastAccess) != 1 || controller.lastAccess[0].Type != "repository" ||
-		controller.lastAccess[0].Name != "acme/private" || controller.lastAccess[0].Action != "pull" {
-		t.Fatalf("access = %#v", controller.lastAccess)
+	if controller.lastRepository != "acme/private" || controller.lastAction != "pull" {
+		t.Fatalf("repository = %q, action = %q", controller.lastRepository, controller.lastAction)
 	}
 }
 

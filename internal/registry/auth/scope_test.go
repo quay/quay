@@ -37,6 +37,7 @@ func TestParseScopesRejectsMalformedValues(t *testing.T) {
 	tests := []string{
 		"repository", "repository::pull", "repository:acme/repo:",
 		"repository:acme//repo:pull", "repository:other.example:8443/acme/repo:pull",
+		"repository:acme/Repo:pull",
 		"repository:acme/repo:scan", "repository:acme/repo:pull,",
 		"registry:catalog:pull", "artifact:acme/repo:pull",
 	}

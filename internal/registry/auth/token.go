@@ -17,6 +17,8 @@ import (
 
 const (
 	es256Algorithm       = "ES256"
+	algorithmHeader      = "alg"
+	keyIDHeader          = "kid"
 	maximumClockSkew     = 5 * time.Second
 	minimumTokenLifetime = 60 * time.Second
 )
@@ -91,7 +93,7 @@ func (s *es256Signer) Sign(claims *Claims) (string, error) {
 	if s == nil || s.key == nil || claims == nil {
 		return "", fmt.Errorf("invalid signer or claims")
 	}
-	header, err := json.Marshal(map[string]string{"alg": es256Algorithm, "kid": s.keyID})
+	header, err := json.Marshal(map[string]string{algorithmHeader: es256Algorithm, keyIDHeader: s.keyID})
 	if err != nil {
 		return "", fmt.Errorf("marshal registry token header: %w", err)
 	}
@@ -117,71 +119,100 @@ func (s *es256Signer) Sign(claims *Claims) (string, error) {
 func (v *es256Verifier) KeyID() string { return v.keyID }
 
 func (v *es256Verifier) Verify(raw string) (*Claims, error) {
-	if v == nil || v.key == nil || !validProtectedHeader(raw, v.keyID) {
+	payload, ok := v.verifySignedPayload(raw)
+	if !ok {
 		return nil, ErrInvalidToken
+	}
+	claims, ok := decodeClaims(payload)
+	if !ok || !validAccess(claims.Access) || !v.validClaims(claims) {
+		return nil, ErrInvalidToken
+	}
+	return claims, nil
+}
+
+func (v *es256Verifier) verifySignedPayload(raw string) ([]byte, bool) {
+	if v == nil || v.key == nil || !validProtectedHeader(raw, v.keyID) {
+		return nil, false
 	}
 	parts := splitCompactToken(raw)
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, false
 	}
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
 	coordinateSize := (v.key.Curve.Params().BitSize + 7) / 8
 	if err != nil || len(signature) != coordinateSize*2 {
-		return nil, ErrInvalidToken
+		return nil, false
 	}
 	digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
 	r := new(big.Int).SetBytes(signature[:coordinateSize])
 	signatureS := new(big.Int).SetBytes(signature[coordinateSize:])
 	if !ecdsa.Verify(v.key, digest[:], r, signatureS) {
-		return nil, ErrInvalidToken
+		return nil, false
 	}
+	return payload, true
+}
 
+func decodeClaims(payload []byte) (*Claims, bool) {
 	var claims Claims
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&claims); err != nil || claims.Access == nil {
-		return nil, ErrInvalidToken
+		return nil, false
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, ErrInvalidToken
+		return nil, false
 	}
-	for _, item := range claims.Access {
-		if item.Type == "" || item.Name == "" || item.Actions == nil {
-			return nil, ErrInvalidToken
-		}
-		switch item.Type {
-		case repositoryResourceType:
-			if !validRepositoryName(item.Name) {
-				return nil, ErrInvalidToken
-			}
-		case registryResourceType:
-			if !validToken(item.Name) {
-				return nil, ErrInvalidToken
-			}
-		default:
-			return nil, ErrInvalidToken
-		}
-		for _, action := range item.Actions {
-			if !validScopeAction(action) || item.Type == registryResourceType && action != "*" {
-				return nil, ErrInvalidToken
-			}
+	return &claims, true
+}
+
+func validAccess(access []ResourceActions) bool {
+	for _, item := range access {
+		if item.Type == "" || item.Name == "" || item.Actions == nil || !validAccessResource(item) || !validAccessActions(item) {
+			return false
 		}
 	}
-	if !v.validClaims(&claims) {
-		return nil, ErrInvalidToken
+	return true
+}
+
+func validAccessResource(item ResourceActions) bool {
+	switch item.Type {
+	case repositoryResourceType:
+		return validRepositoryName(item.Name)
+	case registryResourceType:
+		return validToken(item.Name)
+	default:
+		return false
 	}
-	return &claims, nil
+}
+
+func validAccessActions(item ResourceActions) bool {
+	for _, action := range item.Actions {
+		if !validScopeAction(action) || item.Type == registryResourceType && action != wildcardAction {
+			return false
+		}
+	}
+	return true
 }
 
 func (v *es256Verifier) validClaims(claims *Claims) bool {
+	if !v.validRequiredClaims(claims) {
+		return false
+	}
+	return v.validClaimTimes(claims)
+}
+
+func (v *es256Verifier) validRequiredClaims(claims *Claims) bool {
 	if claims.Issuer != v.issuer || claims.Audience != v.audience || claims.Subject == "" || claims.JWTID == "" {
 		return false
 	}
 	if claims.IssuedAt <= 0 || claims.NotBefore <= 0 || claims.Expiration <= 0 {
 		return false
 	}
+	return true
+}
 
+func (v *es256Verifier) validClaimTimes(claims *Claims) bool {
 	now := v.now().UTC()
 	issuedAt := time.Unix(claims.IssuedAt, 0)
 	notBefore := time.Unix(claims.NotBefore, 0)
@@ -212,10 +243,10 @@ func validProtectedHeader(raw, expectedKeyID string) bool {
 		return false
 	}
 	var algorithm, keyID string
-	if err := json.Unmarshal(header["alg"], &algorithm); err != nil || algorithm != es256Algorithm {
+	if err := json.Unmarshal(header[algorithmHeader], &algorithm); err != nil || algorithm != es256Algorithm {
 		return false
 	}
-	if err := json.Unmarshal(header["kid"], &keyID); err != nil || keyID != expectedKeyID {
+	if err := json.Unmarshal(header[keyIDHeader], &keyID); err != nil || keyID != expectedKeyID {
 		return false
 	}
 	for _, attackerSelectable := range []string{"jwk", "x5c", "x5u", "jku", "crit"} {
@@ -250,7 +281,7 @@ func rfc7638Thumbprint(key *ecdsa.PublicKey) string {
 	coordinateSize := (key.Curve.Params().BitSize + 7) / 8
 	x := key.X.FillBytes(make([]byte, coordinateSize))
 	y := key.Y.FillBytes(make([]byte, coordinateSize))
-	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":"%s","y":"%s"}`,
+	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":%q,"y":%q}`,
 		base64.RawURLEncoding.EncodeToString(x), base64.RawURLEncoding.EncodeToString(y))
 	digest := sha256.Sum256([]byte(canonical))
 	return base64.RawURLEncoding.EncodeToString(digest[:])

@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	distauth "github.com/distribution/distribution/v3/registry/auth"
 	"github.com/opencontainers/go-digest"
 
 	"github.com/quay/quay/internal/oci"
@@ -35,12 +34,17 @@ type ReferrersConfig struct {
 // ReferrersHandler serves the OCI referrers API.
 type ReferrersHandler struct {
 	store      oci.MetadataStore
-	controller distauth.AccessController
+	controller RepositoryAccessController
 	config     ReferrersConfig
 }
 
+// RepositoryAccessController authorizes one action against a repository.
+type RepositoryAccessController interface {
+	AuthorizeRepository(req *http.Request, name, action string) error
+}
+
 // NewReferrersHandler creates a handler for GET /v2/{name}/referrers/{digest}.
-func NewReferrersHandler(store oci.MetadataStore, controller distauth.AccessController, cfg *ReferrersConfig) *ReferrersHandler {
+func NewReferrersHandler(store oci.MetadataStore, controller RepositoryAccessController, cfg *ReferrersConfig) *ReferrersHandler {
 	config := ReferrersConfig{}
 	if cfg != nil {
 		config = *cfg
@@ -81,7 +85,7 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authorize(r, namespace, repo); err != nil {
-		var challenge distauth.Challenge
+		var challenge authenticationChallenge
 		if errors.As(err, &challenge) {
 			challenge.SetHeaders(r, w)
 			writeOCIError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
@@ -157,11 +161,12 @@ func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) er
 	if h.controller == nil {
 		return fmt.Errorf("nil access controller")
 	}
-	_, err := h.controller.Authorized(r, distauth.Access{
-		Resource: distauth.Resource{Type: "repository", Name: namespace + "/" + repo},
-		Action:   "pull",
-	})
-	return err
+	return h.controller.AuthorizeRepository(r, namespace+"/"+repo, "pull")
+}
+
+type authenticationChallenge interface {
+	error
+	SetHeaders(*http.Request, http.ResponseWriter)
 }
 
 type ociIndex struct {

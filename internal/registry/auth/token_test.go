@@ -48,7 +48,7 @@ func TestES256SignVerifyAndRFC7638KeyID(t *testing.T) {
 
 	concrete := signer.(*es256Signer)
 	size := (concrete.key.Curve.Params().BitSize + 7) / 8
-	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":"%s","y":"%s"}`,
+	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":%q,"y":%q}`,
 		base64.RawURLEncoding.EncodeToString(concrete.key.X.FillBytes(make([]byte, size))),
 		base64.RawURLEncoding.EncodeToString(concrete.key.Y.FillBytes(make([]byte, size))))
 	digest := sha256.Sum256([]byte(canonical))
@@ -145,7 +145,7 @@ func TestVerifierRejectsInvalidClaims(t *testing.T) {
 	}
 }
 
-func compactUnsigned(t *testing.T, header any, claims any) string {
+func compactUnsigned(t *testing.T, header, claims any) string {
 	t.Helper()
 	headerJSON, err := json.Marshal(header)
 	if err != nil {

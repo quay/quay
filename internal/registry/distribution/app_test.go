@@ -54,7 +54,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tokenHandler, err := registryauth.NewHandler(registryauth.HandlerConfig{
+	tokenHandler, err := registryauth.NewHandler(&registryauth.HandlerConfig{
 		Service: "registry.example.com:8443", LibraryNamespace: "library", AnonymousAccess: true,
 		Lifetime: 5 * time.Minute, Signer: signer,
 		ResolveGrants: func(_ context.Context, _ registryauth.Identity, scopes []registryauth.Scope) ([]registryauth.ResourceActions, error) {
@@ -80,7 +80,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 	mux.Handle("/v2/auth", tokenHandler)
 	mux.Handle("/", registry.Handler())
 
-	challengeRequest := httptest.NewRequest(http.MethodGet, "/v2/", http.NoBody)
+	challengeRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
 	challengeResponse := httptest.NewRecorder()
 	mux.ServeHTTP(challengeResponse, challengeRequest)
 	if challengeResponse.Code != http.StatusUnauthorized {
@@ -91,7 +91,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 		t.Fatalf("challenge = %q", challenge)
 	}
 
-	directBasic := httptest.NewRequest(http.MethodGet, "/v2/", http.NoBody)
+	directBasic := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
 	directBasic.SetBasicAuth("user", "password")
 	directBasicResponse := httptest.NewRecorder()
 	mux.ServeHTTP(directBasicResponse, directBasic)
@@ -101,7 +101,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 
 	exchangeURL := "/v2/auth?service=" + url.QueryEscape("registry.example.com:8443") +
 		"&scope=" + url.QueryEscape("repository:public/repo:pull")
-	exchangeRequest := httptest.NewRequest(http.MethodGet, exchangeURL, http.NoBody)
+	exchangeRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, exchangeURL, http.NoBody)
 	exchangeResponse := httptest.NewRecorder()
 	mux.ServeHTTP(exchangeResponse, exchangeRequest)
 	if exchangeResponse.Code != http.StatusOK {
@@ -114,7 +114,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	retryRequest := httptest.NewRequest(http.MethodGet, "/v2/", http.NoBody)
+	retryRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
 	retryRequest.Header.Set("Authorization", "Bearer "+tokenBody.Token)
 	retryResponse := httptest.NewRecorder()
 	mux.ServeHTTP(retryResponse, retryRequest)
@@ -128,7 +128,7 @@ func TestRegistryBearerChallengeExchangeAndRetry(t *testing.T) {
 	referrers := registryhandler.NewReferrersHandler(store, controller, &registryhandler.ReferrersConfig{
 		LibraryNamespace: "library", LibrarySupport: true,
 	})
-	referrersRequest := httptest.NewRequest(http.MethodGet,
+	referrersRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
 		"/v2/public/repo/referrers/"+digest.FromString("subject").String(), http.NoBody)
 	referrersRequest.Header.Set("Authorization", "Bearer "+tokenBody.Token)
 	referrersResponse := httptest.NewRecorder()

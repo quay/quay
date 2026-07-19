@@ -10,6 +10,10 @@ const (
 	repositoryResourceType = "repository"
 	registryResourceType   = "registry"
 	maximumScopeCount      = 100
+	repositoryPullAction   = "pull"
+	repositoryPushAction   = "push"
+	repositoryDeleteAction = "delete"
+	wildcardAction         = "*"
 )
 
 // ParseScopes parses repeated and whitespace-separated scope parameters,
@@ -86,6 +90,18 @@ func parseScope(raw, service, libraryNamespace string) (Scope, error) {
 		return Scope{}, fmt.Errorf("invalid scope %q", raw)
 	}
 
+	name, err := normalizeScopeName(resourceType, name, service, libraryNamespace)
+	if err != nil {
+		return Scope{}, err
+	}
+	parsedActions, err := parseScopeActions(resourceType, actionList)
+	if err != nil {
+		return Scope{}, err
+	}
+	return Scope{Type: resourceType, Name: name, Actions: parsedActions}, nil
+}
+
+func normalizeScopeName(resourceType, name, service, libraryNamespace string) (string, error) {
 	switch resourceType {
 	case repositoryResourceType:
 		name = strings.TrimPrefix(name, service+"/")
@@ -93,25 +109,29 @@ func parseScope(raw, service, libraryNamespace string) (Scope, error) {
 			name = libraryNamespace + "/" + name
 		}
 		if !validRepositoryName(name) {
-			return Scope{}, fmt.Errorf("invalid repository scope name %q", name)
+			return "", fmt.Errorf("invalid repository scope name %q", name)
 		}
+		return name, nil
 	case registryResourceType:
 		if !validToken(name) {
-			return Scope{}, fmt.Errorf("invalid registry scope name %q", name)
+			return "", fmt.Errorf("invalid registry scope name %q", name)
 		}
+		return name, nil
 	default:
-		return Scope{}, fmt.Errorf("unsupported scope resource type %q", resourceType)
+		return "", fmt.Errorf("unsupported scope resource type %q", resourceType)
 	}
+}
 
+func parseScopeActions(resourceType, actionList string) ([]string, error) {
 	actions := strings.Split(actionList, ",")
 	seen := make(map[string]struct{}, len(actions))
 	parsedActions := make([]string, 0, len(actions))
 	for _, action := range actions {
 		if !validScopeAction(action) {
-			return Scope{}, fmt.Errorf("invalid scope action %q", action)
+			return nil, fmt.Errorf("invalid scope action %q", action)
 		}
-		if resourceType == registryResourceType && action != "*" {
-			return Scope{}, fmt.Errorf("invalid registry scope action %q", action)
+		if resourceType == registryResourceType && action != wildcardAction {
+			return nil, fmt.Errorf("invalid registry scope action %q", action)
 		}
 		if _, ok := seen[action]; ok {
 			continue
@@ -121,12 +141,12 @@ func parseScope(raw, service, libraryNamespace string) (Scope, error) {
 	}
 	sort.Strings(parsedActions)
 
-	return Scope{Type: resourceType, Name: name, Actions: parsedActions}, nil
+	return parsedActions, nil
 }
 
 func validScopeAction(action string) bool {
 	switch action {
-	case "pull", "push", "delete", "*":
+	case repositoryPullAction, repositoryPushAction, repositoryDeleteAction, wildcardAction:
 		return true
 	default:
 		return false
@@ -146,6 +166,9 @@ func validRepositoryName(name string) bool {
 			return false
 		}
 		for _, r := range part {
+			if r >= 'A' && r <= 'Z' {
+				return false
+			}
 			if !isAlphaNumeric(r) && r != '.' && r != '_' && r != '-' {
 				return false
 			}

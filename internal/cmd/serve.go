@@ -7,7 +7,6 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,7 +22,6 @@ import (
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
 	"github.com/quay/quay/internal/registry"
-	registryauth "github.com/quay/quay/internal/registry/auth"
 	"github.com/quay/quay/internal/registry/distribution"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/repository"
@@ -87,60 +85,22 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 	credentialVerifier := auth.NewDatabaseVerifier(db, databaseVerifierConfig)
 	superUsersFullAccess := featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess)
-	anonymousAccess := resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess
-
-	grantResolver, err := distribution.NewGrantResolver(db, distribution.GrantResolverConfig{
-		LibraryNamespace: resolved.Config.LibraryNamespace, SuperUsers: resolved.Config.SuperUsers,
+	registryAuthentication, err := distribution.NewAuthentication(db, credentialVerifier, &distribution.AuthenticationConfig{
+		Scheme: resolved.Config.PreferredURLScheme, Service: resolved.Config.ServerHostname,
+		LibraryNamespace:     resolved.Config.LibraryNamespace,
+		AnonymousAccess:      featureEnabledByDefault(resolved.Config.FeatureAnonymousAccess),
+		MaxTokenFreshness:    time.Duration(resolved.Config.RegistryJWTAuthMaxFreshS) * time.Second,
+		SuperUsers:           resolved.Config.SuperUsers,
 		SuperUsersFullAccess: superUsersFullAccess,
 	})
 	if err != nil {
-		slog.Error("registry grant resolver setup error", "err", err)
-		return 1
-	}
-	maxFresh := time.Duration(resolved.Config.RegistryJWTAuthMaxFreshS) * time.Second
-	tokenLifetime := min(5*time.Minute, maxFresh)
-	signer, verifier, err := registryauth.NewES256Pair(registryauth.ES256Config{
-		Issuer: registryauth.Issuer, Audience: resolved.Config.ServerHostname,
-		MaxFresh: maxFresh, ClockSkew: 5 * time.Second,
-	})
-	if err != nil {
-		slog.Error("registry token key setup error", "err", err)
-		return 1
-	}
-	realm := (&url.URL{
-		Scheme: resolved.Config.PreferredURLScheme,
-		Host:   resolved.Config.ServerHostname,
-		Path:   "/v2/auth",
-	}).String()
-	accessController, err := registryauth.NewController(registryauth.ControllerConfig{
-		Realm: realm, Service: resolved.Config.ServerHostname,
-		LibraryNamespace: resolved.Config.LibraryNamespace, Verifier: verifier,
-	})
-	if err != nil {
-		slog.Error("registry access controller setup error", "err", err)
-		return 1
-	}
-	tokenHandler, err := registryauth.NewHandler(registryauth.HandlerConfig{
-		Service: resolved.Config.ServerHostname, LibraryNamespace: resolved.Config.LibraryNamespace,
-		AnonymousAccess: anonymousAccess, Lifetime: tokenLifetime, Signer: signer,
-		Authenticate: func(ctx context.Context, username, secret string) (registryauth.Identity, bool) {
-			result := credentialVerifier.Verify(ctx, auth.Credentials{Username: username, Secret: secret})
-			if !result.Authenticated {
-				return registryauth.Identity{}, false
-			}
-			principal := result.Principal
-			return registryauth.Identity{Subject: principal.Username, Principal: &principal}, true
-		},
-		ResolveGrants: grantResolver.Resolve,
-	})
-	if err != nil {
-		slog.Error("registry token handler setup error", "err", err)
+		slog.Error("registry authentication setup error", "err", err)
 		return 1
 	}
 
 	reg, err := distribution.NewRegistry(ctx, &distribution.Config{
 		StoragePath: resolved.StoragePath, ListenAddr: addr, Store: store, BlobLocker: blobLocks,
-		LibraryNamespace: resolved.Config.LibraryNamespace, AccessController: accessController,
+		LibraryNamespace: resolved.Config.LibraryNamespace, AccessController: registryAuthentication.Controller,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)
@@ -173,12 +133,12 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 
 	distHandler := registrymw.SubjectHeaderMiddleware(reg.Handler())
 
-	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
+	referrersEnabled := featureEnabledByDefault(resolved.Config.FeatureReferrersAPI)
 	v2Handler := distHandler
 	if referrersEnabled {
-		referrersHandler := registry.NewReferrersHandler(store, accessController, &registry.ReferrersConfig{
+		referrersHandler := registry.NewReferrersHandler(store, registryAuthentication.Controller, &registry.ReferrersConfig{
 			LibraryNamespace: resolved.Config.LibraryNamespace,
-			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+			LibrarySupport:   featureEnabledByDefault(resolved.Config.FeatureLibrarySupport),
 		})
 		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
 	}
@@ -187,7 +147,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
-	mux.Handle("/v2/auth", tokenHandler)
+	mux.Handle("/v2/auth", registryAuthentication.TokenHandler)
 	mux.Handle("/", v2Handler)
 
 	srv, err := server.New(ctx, mux, &server.Config{
@@ -251,4 +211,8 @@ func healthHandler(db *sql.DB) http.Handler {
 
 func featureEnabled(configured *bool) bool {
 	return configured != nil && *configured
+}
+
+func featureEnabledByDefault(configured *bool) bool {
+	return configured == nil || *configured
 }

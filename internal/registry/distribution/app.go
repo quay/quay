@@ -65,7 +65,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 			"quay": configuration.Parameters{
 				"rootdirectory": cfg.StoragePath,
 			},
-			"delete": configuration.Parameters{
+			repositoryDeleteAction: configuration.Parameters{
 				"enabled": true,
 			},
 		},
