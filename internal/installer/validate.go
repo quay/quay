@@ -3,6 +3,7 @@ package installer
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -30,6 +31,26 @@ func ValidateHostname(hostname string) error {
 				return fmt.Errorf("label %q contains invalid character %q", label, c)
 			}
 		}
+	}
+	return nil
+}
+
+// ValidatePort checks that port is a decimal integer in the range 1–65535.
+func ValidatePort(port string) error {
+	if port == "" {
+		return fmt.Errorf("not a valid number: %q", port)
+	}
+	for _, c := range port {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("not a valid number: %q", port)
+		}
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("not a valid number: %q", port)
+	}
+	if n < 1 || n > 65535 {
+		return fmt.Errorf("out of range (1-65535): %d", n)
 	}
 	return nil
 }

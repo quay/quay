@@ -51,6 +51,26 @@ func TestQuadletInstallUsesDefaultServeArgsWithoutConfigPath(t *testing.T) {
 	}
 }
 
+func TestQuadletInstallMapsCustomHostPortToRegistryPort(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+
+	err := manager.Install("quay", &QuadletSpec{
+		Image:    "localhost/quay:test",
+		DataDir:  "/var/lib/quay",
+		Hostname: "localhost",
+		Port:     "9443",
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	content := readQuadletTestFile(t, env.QuadletPath("quay"))
+	if !strings.Contains(content, "PublishPort=9443:8443") {
+		t.Fatalf("quadlet does not map the custom host port to the registry port:\n%s", content)
+	}
+}
+
 func readQuadletTestFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Clean(path))

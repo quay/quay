@@ -20,6 +20,7 @@ const (
 	// DefaultImage is the default container image for the registry.
 	DefaultImage = "quay.io/quay/quay-mirror:latest"
 
+	defaultPort        = "8443"
 	quadletServiceName = "quay"
 )
 
@@ -30,6 +31,7 @@ type Config struct {
 	ImageArchive string
 	Image        string
 	ConfigPath   string
+	Port         string
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -71,32 +73,59 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("nil installer config")
 	}
 
-	imageRef, err := inst.resolveImage(ctx, cfg.ImageArchive, cfg.Image)
+	upgrading := inst.quadlet.Exists(quadletServiceName)
+	port, err := inst.resolvePort(cfg.Port, upgrading)
+	if err != nil {
+		return fmt.Errorf("resolve port: %w", err)
+	}
+	resolvedCfg := *cfg
+	resolvedCfg.Port = port
+
+	imageRef, err := inst.resolveImage(ctx, resolvedCfg.ImageArchive, resolvedCfg.Image)
 	if err != nil {
 		return fmt.Errorf("image resolution: %w", err)
 	}
 
-	if inst.quadlet.Exists(quadletServiceName) {
-		if err := inst.upgrade(ctx, imageRef); err != nil {
+	if upgrading {
+		if err := inst.upgrade(ctx, imageRef, port); err != nil {
 			return fmt.Errorf("upgrade: %w", err)
 		}
 	} else {
-		if err := inst.freshInstall(ctx, cfg, imageRef); err != nil {
+		if err := inst.freshInstall(ctx, &resolvedCfg, imageRef); err != nil {
 			return fmt.Errorf("install: %w", err)
 		}
 	}
 
-	healthURL := fmt.Sprintf("https://%s:8443/healthz", cfg.Hostname)
-	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
+	healthURL := fmt.Sprintf("https://%s:%s/healthz", resolvedCfg.Hostname, port)
+	certPath := filepath.Join(resolvedCfg.DataDir, "ssl.cert")
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, 30*time.Second); err != nil {
 		inst.dumpContainerLogs(ctx)
 		return fmt.Errorf("health check: %w", err)
 	}
 
-	credPath := filepath.Join(cfg.DataDir, "credentials")
-	slog.Info("registry running", "url", fmt.Sprintf("https://%s:8443", cfg.Hostname), "credentials", credPath)
+	credPath := filepath.Join(resolvedCfg.DataDir, "credentials")
+	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath)
 	return nil
+}
+
+func (inst *Installer) resolvePort(requestedPort string, upgrading bool) (string, error) {
+	port := requestedPort
+	if port == "" {
+		if upgrading {
+			var err error
+			port, err = inst.quadlet.HostPort(quadletServiceName)
+			if err != nil {
+				return "", fmt.Errorf("determine existing port: %w", err)
+			}
+		} else {
+			port = defaultPort
+		}
+	}
+	if err := ValidatePort(port); err != nil {
+		return "", err
+	}
+	return port, nil
 }
 
 func (inst *Installer) resolveImage(ctx context.Context, archive, image string) (string, error) {
@@ -116,7 +145,7 @@ func (inst *Installer) resolveImage(ctx context.Context, archive, image string) 
 	return image, nil
 }
 
-func (inst *Installer) upgrade(ctx context.Context, imageRef string) error {
+func (inst *Installer) upgrade(ctx context.Context, imageRef, port string) error {
 	slog.Info("existing installation detected, upgrading")
 
 	slog.Info("stopping registry")
@@ -124,7 +153,7 @@ func (inst *Installer) upgrade(ctx context.Context, imageRef string) error {
 		return fmt.Errorf("stop service: %w", err)
 	}
 
-	if err := inst.quadlet.UpdateImage(quadletServiceName, imageRef); err != nil {
+	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, imageRef, port); err != nil {
 		return fmt.Errorf("update quadlet: %w", err)
 	}
 	slog.Info("updated quadlet", "path", inst.env.QuadletPath(quadletServiceName))
@@ -149,7 +178,7 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef s
 		Image:      imageRef,
 		DataDir:    cfg.DataDir,
 		Hostname:   cfg.Hostname,
-		Port:       "8443",
+		Port:       cfg.Port,
 		ConfigPath: cfg.ConfigPath,
 	}
 	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
