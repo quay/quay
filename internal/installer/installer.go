@@ -4,6 +4,7 @@ package installer
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -15,10 +16,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/certs"
+	"github.com/quay/quay/internal/config"
+	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/system"
 )
 
@@ -26,8 +31,9 @@ const (
 	// DefaultImage is the default container image for the registry.
 	DefaultImage = "quay.io/quay/quay-mirror:latest"
 
-	defaultPort        = "8443"
-	quadletServiceName = "quay"
+	defaultPort         = "8443"
+	defaultInitUsername = "admin"
+	quadletServiceName  = "quay"
 )
 
 // Config holds the parameters for an install or upgrade operation.
@@ -43,6 +49,7 @@ type Config struct {
 	SSLSkipHostnameVerification bool
 	InitUser                    string
 	InitPassword                string
+	InitPasswordSet             bool
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -77,6 +84,23 @@ func New(stderr io.Writer) (*Installer, error) {
 	}, nil
 }
 
+// Initialize performs the one-shot initialization used by both `quay init`
+// and `quay install`, without starting a long-running server or container.
+func Initialize(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	resolvedCfg := *cfg
+	if resolvedCfg.InitUser == "" {
+		resolvedCfg.InitUser = defaultInitUsername
+	}
+	if err := validateInitConfig(&resolvedCfg); err != nil {
+		return fmt.Errorf("initial administrator: %w", err)
+	}
+	inst := &Installer{fs: system.OSFS{}}
+	return inst.initialize(ctx, &resolvedCfg)
+}
+
 // Run performs an install or upgrade based on whether a Quadlet unit already
 // exists.
 func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
@@ -84,13 +108,24 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("nil installer config")
 	}
 
+	resolvedCfg := *cfg
+	if resolvedCfg.InitUser == "" {
+		resolvedCfg.InitUser = defaultInitUsername
+	}
+	if err := validateInitConfig(&resolvedCfg); err != nil {
+		return fmt.Errorf("initial administrator: %w", err)
+	}
+
 	upgrading := inst.quadlet.Exists(quadletServiceName)
 	port, err := inst.resolvePort(cfg.Port, upgrading)
 	if err != nil {
 		return fmt.Errorf("resolve port: %w", err)
 	}
-	resolvedCfg := *cfg
 	resolvedCfg.Port = port
+
+	if err := inst.initialize(ctx, &resolvedCfg); err != nil {
+		return fmt.Errorf("initialize registry: %w", err)
+	}
 
 	imageRef, err := inst.resolveImage(ctx, resolvedCfg.ImageArchive, resolvedCfg.Image)
 	if err != nil {
@@ -115,7 +150,7 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("health check: %w", err)
 	}
 
-	credPath := filepath.Join(resolvedCfg.DataDir, "credentials")
+	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
 	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath)
 	return nil
 }
@@ -187,31 +222,18 @@ func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port 
 }
 
 func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef string) error {
-	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
-		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
-			return fmt.Errorf("create directory %s: %w", dir, err)
-		}
-	}
-
 	if cfg.SSLCert != "" {
 		if err := inst.copyUserTLS(cfg); err != nil {
 			return fmt.Errorf("TLS certificate setup: %w", err)
 		}
 	}
 
-	if cfg.InitPassword != "" {
-		if err := inst.writeInitPassword(cfg.DataDir, cfg.InitPassword); err != nil {
-			return fmt.Errorf("write init password: %w", err)
-		}
-	}
-
 	spec := system.QuadletSpec{
-		Image:         imageRef,
-		DataDir:       cfg.DataDir,
-		Hostname:      cfg.Hostname,
-		Port:          cfg.Port,
-		ConfigPath:    cfg.ConfigPath,
-		AdminUsername: cfg.InitUser,
+		Image:      imageRef,
+		DataDir:    cfg.DataDir,
+		Hostname:   cfg.Hostname,
+		Port:       cfg.Port,
+		ConfigPath: cfg.ConfigPath,
 	}
 	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
 		return fmt.Errorf("install quadlet: %w", err)
@@ -307,16 +329,190 @@ func healthServerName(cert *x509.Certificate) (string, error) {
 	return "", fmt.Errorf("certificate has no usable DNS or IP subject alternative name")
 }
 
-func (inst *Installer) writeInitPassword(dataDir, password string) error {
-	authDir := filepath.Join(dataDir, "auth")
-	if err := inst.fs.MkdirAll(authDir, 0o750); err != nil {
-		return fmt.Errorf("create auth directory: %w", err)
+func validateInitConfig(cfg *Config) error {
+	if err := ValidateInitUsername(cfg.InitUser); err != nil {
+		return fmt.Errorf("invalid username %q: %w", cfg.InitUser, err)
 	}
-	passPath := filepath.Join(authDir, "admin-password")
-	if err := inst.fs.WriteFile(passPath, []byte(password), 0o600); err != nil {
-		return fmt.Errorf("write password file: %w", err)
+	if cfg.InitPasswordSet || cfg.InitPassword != "" {
+		if err := ValidateInitPassword(cfg.InitPassword); err != nil {
+			return fmt.Errorf("invalid password: %w", err)
+		}
 	}
-	slog.Info("admin password set", "path", passPath)
+	return nil
+}
+
+func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
+	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
+		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
+			return fmt.Errorf("create directory %s: %w", dir, err)
+		}
+	}
+
+	dbPath, runtimeCfg, err := resolveInitDatabase(cfg)
+	if err != nil {
+		return err
+	}
+
+	db, err := dbcore.Setup(ctx, dbPath)
+	if err != nil {
+		return fmt.Errorf("database setup: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	hasUsers, err := bootstrap.HasUsers(ctx, db)
+	if err != nil {
+		return err
+	}
+	if hasUsers {
+		if cfg.InitPasswordSet || cfg.InitPassword != "" {
+			return fmt.Errorf("registry is already initialized; supplied password was not applied and existing credentials are unchanged")
+		}
+		slog.Info("initial administrator already provisioned")
+		return nil
+	}
+
+	if runtimeCfg != nil && !slices.Contains(runtimeCfg.SuperUsers, cfg.InitUser) {
+		return fmt.Errorf("initial username %q is not listed in SUPER_USERS", cfg.InitUser)
+	}
+
+	password, err := inst.prepareInitialPassword(cfg)
+	if err != nil {
+		return err
+	}
+	created, err := bootstrap.AdminUser(ctx, db, cfg.InitUser, password)
+	if err != nil {
+		return fmt.Errorf("create initial administrator: %w", err)
+	}
+	if !created {
+		return fmt.Errorf("initial administrator was created concurrently; credentials were not changed")
+	}
+	return nil
+}
+
+func resolveInitDatabase(cfg *Config) (string, *config.Config, error) {
+	dbPath := filepath.Join(cfg.DataDir, "quay.db")
+	if cfg.ConfigPath == "" {
+		return dbPath, nil, nil
+	}
+
+	hostConfigPath, err := hostDataPath(cfg.DataDir, cfg.ConfigPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve config path: %w", err)
+	}
+	resolved, err := config.Resolve(hostConfigPath, cfg.DataDir, cfg.Hostname)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve config: %w", err)
+	}
+	dbPath, err = hostDataPath(cfg.DataDir, resolved.DBPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve database path: %w", err)
+	}
+	return dbPath, resolved.Config, nil
+}
+
+func hostDataPath(dataDir, path string) (string, error) {
+	if path == "/data" {
+		return dataDir, nil
+	}
+	if relative, ok := strings.CutPrefix(path, "/data/"); ok {
+		cleaned := filepath.Clean(relative)
+		if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+			return "", fmt.Errorf("path %q escapes /data", path)
+		}
+		return filepath.Join(dataDir, cleaned), nil
+	}
+	return path, nil
+}
+
+func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
+	authDir := filepath.Join(cfg.DataDir, "auth")
+	if err := inst.secureAuthDir(authDir); err != nil {
+		return "", err
+	}
+
+	passwordPath := filepath.Join(authDir, "admin-password")
+	info, err := inst.fs.Lstat(passwordPath)
+	switch {
+	case err == nil && !info.Mode().IsRegular():
+		return "", fmt.Errorf("credential destination %s is not a regular file", passwordPath)
+	case err != nil && !errors.Is(err, os.ErrNotExist):
+		return "", fmt.Errorf("inspect credential destination: %w", err)
+	}
+
+	provided := cfg.InitPasswordSet || cfg.InitPassword != ""
+	if err == nil && !provided {
+		if info.Mode().Perm() != 0o600 {
+			return "", fmt.Errorf("existing credential file %s has unsafe permissions %04o", passwordPath, info.Mode().Perm())
+		}
+		data, readErr := inst.fs.ReadFile(passwordPath)
+		if readErr != nil {
+			return "", fmt.Errorf("read existing credential file: %w", readErr)
+		}
+		password := string(data)
+		if validateErr := ValidateInitPassword(password); validateErr != nil {
+			return "", fmt.Errorf("existing credential file is invalid; retry with -init-password-stdin: %w", validateErr)
+		}
+		return password, nil
+	}
+
+	password := cfg.InitPassword
+	if !provided {
+		password = rand.Text()
+	}
+	if err := ValidateInitPassword(password); err != nil {
+		return "", fmt.Errorf("invalid password: %w", err)
+	}
+	if err := inst.atomicWriteCredential(authDir, passwordPath, []byte(password)); err != nil {
+		return "", err
+	}
+	slog.Info("admin password saved", "path", passwordPath)
+	return password, nil
+}
+
+func (inst *Installer) secureAuthDir(authDir string) error {
+	info, err := inst.fs.Lstat(authDir)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if err := inst.fs.MkdirAll(authDir, 0o700); err != nil {
+			return fmt.Errorf("create auth directory: %w", err)
+		}
+	case err != nil:
+		return fmt.Errorf("inspect auth directory: %w", err)
+	case !info.IsDir():
+		return fmt.Errorf("auth destination %s is not a directory", authDir)
+	}
+	if err := inst.fs.Chmod(authDir, 0o700); err != nil {
+		return fmt.Errorf("secure auth directory: %w", err)
+	}
+	return nil
+}
+
+func (inst *Installer) atomicWriteCredential(dir, destination string, data []byte) (retErr error) {
+	stagingDir, err := inst.fs.MkdirTemp(dir, ".credential-")
+	if err != nil {
+		return fmt.Errorf("create credential staging directory: %w", err)
+	}
+	stagedPath := filepath.Join(stagingDir, "admin-password")
+	defer func() {
+		if err := inst.fs.Remove(stagedPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			retErr = errors.Join(retErr, fmt.Errorf("remove staged credential: %w", err))
+		}
+		if err := inst.fs.Remove(stagingDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+			retErr = errors.Join(retErr, fmt.Errorf("remove credential staging directory: %w", err))
+		}
+	}()
+	if err := inst.fs.Chmod(stagingDir, 0o700); err != nil {
+		return fmt.Errorf("secure credential staging directory: %w", err)
+	}
+	if err := inst.fs.WriteFile(stagedPath, data, 0o600); err != nil {
+		return fmt.Errorf("stage credential: %w", err)
+	}
+	if err := inst.fs.Chmod(stagedPath, 0o600); err != nil {
+		return fmt.Errorf("secure staged credential: %w", err)
+	}
+	if err := inst.fs.Rename(stagedPath, destination); err != nil {
+		return fmt.Errorf("install credential: %w", err)
+	}
 	return nil
 }
 

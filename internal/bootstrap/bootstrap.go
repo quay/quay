@@ -3,13 +3,9 @@ package bootstrap
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -17,28 +13,46 @@ import (
 	"github.com/quay/quay/internal/dal/daldb"
 )
 
-// AdminUser creates the initial admin user if no users exist in the database.
-// It returns true if a user was created, false if users already exist.
-// authDir is the directory where the admin-password file is stored.
-func AdminUser(ctx context.Context, db *sql.DB, username, authDir string) (bool, error) {
+// HasUsers reports whether the database already contains a login user.
+func HasUsers(ctx context.Context, db *sql.DB) (bool, error) {
 	q := daldb.New(db)
-
 	count, err := q.CountUsers(ctx)
 	if err != nil {
 		return false, fmt.Errorf("count users: %w", err)
 	}
-	if count > 0 {
-		return false, nil
-	}
+	return count > 0, nil
+}
 
-	if err := os.MkdirAll(authDir, 0o750); err != nil {
-		return false, fmt.Errorf("create auth dir: %w", err)
-	}
-
-	passFile := filepath.Join(authDir, "admin-password")
-	password, err := readOrGeneratePassword(passFile)
+// RequireAdminUser verifies that install-time provisioning has created a user
+// and returns the first login username for standalone default authorization.
+func RequireAdminUser(ctx context.Context, db *sql.DB) (string, error) {
+	var username string
+	err := db.QueryRowContext(ctx, `
+		SELECT username FROM "user"
+		WHERE organization = 0 AND robot = 0
+		ORDER BY id LIMIT 1
+	`).Scan(&username)
 	if err != nil {
-		return false, fmt.Errorf("password: %w", err)
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("database has no users; run `quay init` or `quay install` to provision the initial administrator")
+		}
+		return "", fmt.Errorf("find initial administrator: %w", err)
+	}
+	return username, nil
+}
+
+// AdminUser creates the initial admin user if no users exist in the database.
+// It returns true if a user was created, false if users already exist. Password
+// generation and persistence belong to the one-shot installer, not the server.
+func AdminUser(ctx context.Context, db *sql.DB, username, password string) (bool, error) {
+	q := daldb.New(db)
+
+	hasUsers, err := HasUsers(ctx, db)
+	if err != nil {
+		return false, err
+	}
+	if hasUsers {
+		return false, nil
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -57,24 +71,5 @@ func AdminUser(ctx context.Context, db *sql.DB, username, authDir string) (bool,
 	}
 
 	slog.Info("admin user created", "username", username)
-	slog.Info("password saved", "path", passFile)
 	return true, nil
-}
-
-func readOrGeneratePassword(passFile string) (string, error) {
-	data, err := os.ReadFile(passFile) //nolint:gosec // known path in data dir
-	if err == nil {
-		pass := strings.TrimSpace(string(data))
-		if pass != "" {
-			return pass, nil
-		}
-	}
-
-	pass := rand.Text()
-
-	if err := os.WriteFile(passFile, []byte(pass), 0o600); err != nil {
-		return "", fmt.Errorf("write credentials file: %w", err)
-	}
-
-	return pass, nil
 }

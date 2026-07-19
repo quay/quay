@@ -10,10 +10,246 @@ import (
 	"testing"
 
 	"github.com/quay/quay/internal/certs"
+	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/system"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func TestInitializeCreatesCustomAdminSecurely(t *testing.T) {
+	dataDir := t.TempDir()
+	require.NoError(t, Initialize(t.Context(), &Config{
+		DataDir:         dataDir,
+		Hostname:        "registry.example.com",
+		InitUser:        "custom-admin",
+		InitPassword:    "  chosen password  ",
+		InitPasswordSet: true,
+	}))
+
+	db, err := dbcore.OpenSQLite(filepath.Join(dataDir, "quay.db"))
+	require.NoError(t, err)
+	defer db.Close()
+	user, err := daldb.New(db).GetUserByUsername(t.Context(), "custom-admin")
+	require.NoError(t, err)
+	require.NoError(t, bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash.String),
+		[]byte("  chosen password  "),
+	))
+
+	passwordPath := filepath.Join(dataDir, "auth", "admin-password")
+	assert.Equal(t, []byte("  chosen password  "), mustReadFile(t, passwordPath))
+	passwordInfo, err := os.Stat(passwordPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), passwordInfo.Mode().Perm())
+	authInfo, err := os.Stat(filepath.Dir(passwordPath))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), authInfo.Mode().Perm())
+}
+
+func TestInitializeIsIdempotentForExistingDatabase(t *testing.T) {
+	dataDir := t.TempDir()
+	first := &Config{
+		DataDir:         dataDir,
+		InitUser:        "first-admin",
+		InitPassword:    "first-password",
+		InitPasswordSet: true,
+	}
+	require.NoError(t, Initialize(t.Context(), first))
+	passwordPath := filepath.Join(dataDir, "auth", "admin-password")
+	originalCredential := mustReadFile(t, passwordPath)
+
+	require.NoError(t, Initialize(t.Context(), &Config{
+		DataDir:  dataDir,
+		InitUser: "second-admin",
+	}))
+	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
+
+	err := Initialize(t.Context(), &Config{
+		DataDir:         dataDir,
+		InitUser:        "first-admin",
+		InitPassword:    "replacement-password",
+		InitPasswordSet: true,
+	})
+	require.ErrorContains(t, err, "registry is already initialized")
+	require.ErrorContains(t, err, "supplied password was not applied")
+	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
+
+	db, err := dbcore.OpenSQLite(filepath.Join(dataDir, "quay.db"))
+	require.NoError(t, err)
+	defer db.Close()
+	queries := daldb.New(db)
+	_, err = queries.GetUserByUsername(t.Context(), "first-admin")
+	require.NoError(t, err)
+	_, err = queries.GetUserByUsername(t.Context(), "second-admin")
+	require.Error(t, err)
+}
+
+func TestUpgradePreservesConfigBasedServeCommand(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image:      "localhost/quay:old",
+		DataDir:    "/var/lib/quay",
+		Hostname:   "registry.example.com",
+		Port:       "8443",
+		ConfigPath: "/data/config.yaml",
+	}))
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", "9443"))
+
+	content := string(mustReadFile(t, env.QuadletPath(quadletServiceName)))
+	assert.Contains(t, content, "Exec=serve --config /data/config.yaml")
+	assert.Contains(t, content, "Image=localhost/quay:new")
+	assert.Contains(t, content, "PublishPort=9443:8443")
+}
+
+func TestInitializeValidatesBeforeFilesystemChanges(t *testing.T) {
+	root := t.TempDir()
+	tests := []struct {
+		name     string
+		username string
+		password string
+		wantErr  string
+	}{
+		{name: "username", username: "bad user", password: "valid-password", wantErr: "invalid username"},
+		{name: "password length", username: "admin", password: string(make([]byte, 73)), wantErr: "must not exceed 72 bytes"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dataDir := filepath.Join(root, test.name)
+			err := Initialize(t.Context(), &Config{
+				DataDir:         dataDir,
+				InitUser:        test.username,
+				InitPassword:    test.password,
+				InitPasswordSet: true,
+			})
+			require.ErrorContains(t, err, test.wantErr)
+			_, statErr := os.Stat(dataDir)
+			assert.ErrorIs(t, statErr, os.ErrNotExist)
+		})
+	}
+}
+
+func TestInitializeCredentialDestinationSafety(t *testing.T) {
+	t.Run("rejects symlink", func(t *testing.T) {
+		dataDir := initializedEmptyDataDir(t)
+		authDir := filepath.Join(dataDir, "auth")
+		require.NoError(t, os.Mkdir(authDir, 0o700))
+		target := filepath.Join(t.TempDir(), "target")
+		require.NoError(t, os.WriteFile(target, []byte("unchanged"), 0o600))
+		require.NoError(t, os.Symlink(target, filepath.Join(authDir, "admin-password")))
+
+		err := Initialize(t.Context(), &Config{
+			DataDir: dataDir, InitUser: "admin",
+			InitPassword: "replacement-password", InitPasswordSet: true,
+		})
+		require.ErrorContains(t, err, "is not a regular file")
+		assert.Equal(t, []byte("unchanged"), mustReadFile(t, target))
+	})
+
+	t.Run("rejects unsafe existing generated credential", func(t *testing.T) {
+		dataDir := initializedEmptyDataDir(t)
+		authDir := filepath.Join(dataDir, "auth")
+		require.NoError(t, os.Mkdir(authDir, 0o700))
+		passwordPath := filepath.Join(authDir, "admin-password")
+		require.NoError(t, os.WriteFile(passwordPath, []byte("existing-password"), 0o644))
+
+		err := Initialize(t.Context(), &Config{DataDir: dataDir, InitUser: "admin"})
+		require.ErrorContains(t, err, "unsafe permissions")
+		assert.Equal(t, []byte("existing-password"), mustReadFile(t, passwordPath))
+	})
+
+	t.Run("atomically replaces failed bootstrap password", func(t *testing.T) {
+		dataDir := initializedEmptyDataDir(t)
+		authDir := filepath.Join(dataDir, "auth")
+		require.NoError(t, os.Mkdir(authDir, 0o750))
+		passwordPath := filepath.Join(authDir, "admin-password")
+		require.NoError(t, os.WriteFile(passwordPath, []byte(string(make([]byte, 73))), 0o644))
+
+		require.NoError(t, Initialize(t.Context(), &Config{
+			DataDir: dataDir, InitUser: "admin",
+			InitPassword: "corrected-password", InitPasswordSet: true,
+		}))
+		assert.Equal(t, []byte("corrected-password"), mustReadFile(t, passwordPath))
+		info, err := os.Stat(passwordPath)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	})
+}
+
+func TestInitializeUsesMountedConfigDatabase(t *testing.T) {
+	dataDir := t.TempDir()
+	configPath := filepath.Join(dataDir, "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`
+SERVER_HOSTNAME: registry.example.com
+PREFERRED_URL_SCHEME: https
+DB_URI: sqlite:////data/custom.db
+DISTRIBUTED_STORAGE_CONFIG:
+  default:
+    - LocalStorage
+    - storage_path: /data/storage
+SUPER_USERS:
+  - custom-admin
+`), 0o600))
+
+	require.NoError(t, Initialize(t.Context(), &Config{
+		DataDir:         dataDir,
+		ConfigPath:      "/data/config.yaml",
+		InitUser:        "custom-admin",
+		InitPassword:    "chosen-password",
+		InitPasswordSet: true,
+	}))
+	_, err := os.Stat(filepath.Join(dataDir, "custom.db"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(dataDir, "quay.db"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestInitializeRequiresConfiguredSuperuserForExplicitConfig(t *testing.T) {
+	dataDir := t.TempDir()
+	configPath := filepath.Join(dataDir, "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`
+SERVER_HOSTNAME: registry.example.com
+PREFERRED_URL_SCHEME: https
+DB_URI: sqlite:////data/quay.db
+DISTRIBUTED_STORAGE_CONFIG:
+  default:
+    - LocalStorage
+    - storage_path: /data/storage
+SUPER_USERS:
+  - configured-admin
+`), 0o600))
+
+	err := Initialize(t.Context(), &Config{
+		DataDir:         dataDir,
+		ConfigPath:      "/data/config.yaml",
+		InitUser:        "different-admin",
+		InitPassword:    "chosen-password",
+		InitPasswordSet: true,
+	})
+	require.ErrorContains(t, err, `initial username "different-admin" is not listed in SUPER_USERS`)
+	_, statErr := os.Stat(filepath.Join(dataDir, "auth", "admin-password"))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func initializedEmptyDataDir(t *testing.T) string {
+	t.Helper()
+	dataDir := t.TempDir()
+	db, err := dbcore.Setup(t.Context(), filepath.Join(dataDir, "quay.db"))
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
+	return dataDir
+}
 
 func TestUpgradeUsesEffectivePort(t *testing.T) {
 	tests := []struct {

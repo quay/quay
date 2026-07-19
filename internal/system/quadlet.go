@@ -10,12 +10,11 @@ const registryContainerPort = "8443"
 
 // QuadletSpec describes a Quadlet container unit.
 type QuadletSpec struct {
-	Image         string
-	DataDir       string
-	Hostname      string
-	Port          string
-	ConfigPath    string
-	AdminUsername string
+	Image      string
+	DataDir    string
+	Hostname   string
+	Port       string
+	ConfigPath string
 }
 
 // QuadletManager handles Quadlet .container files.
@@ -45,13 +44,7 @@ func (q *QuadletManager) Install(service string, spec *QuadletSpec) error {
 		return fmt.Errorf("nil quadlet spec")
 	}
 
-	serveCommand := fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
-	if spec.ConfigPath != "" {
-		serveCommand = fmt.Sprintf("serve --config %s", spec.ConfigPath)
-	}
-	if spec.AdminUsername != "" && spec.AdminUsername != "admin" {
-		serveCommand += fmt.Sprintf(" --admin-username %s", spec.AdminUsername)
-	}
+	serveCommand := quadletServeCommand(spec)
 
 	content := fmt.Sprintf(`[Unit]
 Description=Quay OCI Registry
@@ -72,6 +65,13 @@ WantedBy=default.target
 		return fmt.Errorf("write quadlet: %w", err)
 	}
 	return nil
+}
+
+func quadletServeCommand(spec *QuadletSpec) string {
+	if spec.ConfigPath != "" {
+		return fmt.Sprintf("serve --config %s", spec.ConfigPath)
+	}
+	return fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
 }
 
 // HostPort returns the host port published by an existing Quadlet file.
@@ -143,6 +143,5 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 	if !foundPort {
 		return fmt.Errorf("no PublishPort= directive found in %s", path)
 	}
-
 	return q.fs.WriteFile(path, []byte(strings.Join(updated, "\n")+"\n"), 0o600)
 }

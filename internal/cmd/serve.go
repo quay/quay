@@ -7,7 +7,6 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -36,19 +35,18 @@ func newServeCmd() *Command {
 	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
 	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
 	addr := fs.String("addr", ":8443", "listen address")
-	adminUsername := fs.String("admin-username", "admin", "admin username (first run only)")
 
 	return &Command{
 		Name:     "serve",
 		Synopsis: "Start the OCI container registry",
 		Flags:    fs,
 		Run: func(ctx context.Context, _ *Command, _ []string) int {
-			return runServe(ctx, *configPath, *dataDir, *hostname, *addr, *adminUsername)
+			return runServe(ctx, *configPath, *dataDir, *hostname, *addr)
 		},
 	}
 }
 
-func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUsername string) int {
+func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) int {
 	resolved, err := config.Resolve(configPath, dataDir, hostname)
 	if err != nil {
 		slog.Error("config error", "err", err)
@@ -69,11 +67,12 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	}
 	blobLocks := oci.NewBlobLockSet()
 
-	authDir := filepath.Join(resolved.DataDir, "auth")
-	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
-		slog.Error("bootstrap admin user error", "err", err)
+	adminUsername, err := bootstrap.RequireAdminUser(ctx, db)
+	if err != nil {
+		slog.Error("registry is not initialized", "err", err)
 		return 1
 	}
+	configureStandaloneSuperuser(resolved, adminUsername)
 
 	featureUserLastAccessed := featureEnabled(resolved.Config.FeatureUserLastAccessed)
 	lastAccessedUpdateThresholdSeconds := resolved.Config.LastAccessedUpdateThresholdS
@@ -187,6 +186,12 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	)
 
 	return srv.ListenAndServe(ctx)
+}
+
+func configureStandaloneSuperuser(resolved *config.Resolved, username string) {
+	if !resolved.FromFile {
+		resolved.Config.SuperUsers = []string{username}
+	}
 }
 
 func healthHandler(db *sql.DB) http.Handler {

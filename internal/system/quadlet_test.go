@@ -71,67 +71,23 @@ func TestQuadletInstallMapsCustomHostPortToRegistryPort(t *testing.T) {
 	}
 }
 
-func TestQuadletInstallAdminUsername(t *testing.T) {
+func TestQuadletInstallDoesNotPersistBootstrapCredentials(t *testing.T) {
 	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
 	manager := NewQuadletManager(OSFS{}, env)
 
 	err := manager.Install("quay", &QuadletSpec{
-		Image:         "localhost/quay:test",
-		DataDir:       "/var/lib/quay",
-		Hostname:      "localhost",
-		Port:          "8443",
-		AdminUsername: "myuser",
+		Image:    "localhost/quay:test",
+		DataDir:  "/var/lib/quay",
+		Hostname: "localhost",
+		Port:     "8443",
 	})
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}
 
 	content := readQuadletTestFile(t, env.QuadletPath("quay"))
-	if !strings.Contains(content, "--admin-username myuser") {
-		t.Fatalf("quadlet does not include admin-username:\n%s", content)
-	}
-}
-
-func TestQuadletInstallAdminUsernameDefaultOmitted(t *testing.T) {
-	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
-	manager := NewQuadletManager(OSFS{}, env)
-
-	err := manager.Install("quay", &QuadletSpec{
-		Image:         "localhost/quay:test",
-		DataDir:       "/var/lib/quay",
-		Hostname:      "localhost",
-		Port:          "8443",
-		AdminUsername: "admin",
-	})
-	if err != nil {
-		t.Fatalf("Install: %v", err)
-	}
-
-	content := readQuadletTestFile(t, env.QuadletPath("quay"))
-	if strings.Contains(content, "--admin-username") {
-		t.Fatalf("quadlet should not include --admin-username when set to default:\n%s", content)
-	}
-}
-
-func TestQuadletInstallConfigPathWithAdminUsername(t *testing.T) {
-	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
-	manager := NewQuadletManager(OSFS{}, env)
-
-	err := manager.Install("quay", &QuadletSpec{
-		Image:         "localhost/quay:test",
-		DataDir:       "/var/lib/quay",
-		Hostname:      "localhost",
-		Port:          "8443",
-		ConfigPath:    "/data/config.yaml",
-		AdminUsername: "custom",
-	})
-	if err != nil {
-		t.Fatalf("Install: %v", err)
-	}
-
-	content := readQuadletTestFile(t, env.QuadletPath("quay"))
-	if !strings.Contains(content, "Exec=serve --config /data/config.yaml --admin-username custom") {
-		t.Fatalf("quadlet should combine config path and admin-username:\n%s", content)
+	if strings.Contains(content, "admin-username") || strings.Contains(content, "admin-password") {
+		t.Fatalf("quadlet should not contain bootstrap credentials:\n%s", content)
 	}
 }
 
