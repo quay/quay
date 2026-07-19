@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"strings"
 )
 
@@ -71,7 +72,7 @@ func quadletServeCommand(spec *QuadletSpec) string {
 	if spec.ConfigPath != "" {
 		return fmt.Sprintf("serve --config %s --hostname %s", spec.ConfigPath, spec.Hostname)
 	}
-	return fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
+	return fmt.Sprintf("serve --data-dir /data --hostname %s", net.JoinHostPort(spec.Hostname, spec.Port))
 }
 
 // HostPort returns the host port published by an existing Quadlet file.
@@ -122,7 +123,11 @@ func (q *QuadletManager) Hostname(service string) (string, error) {
 			if i+1 >= len(fields) || fields[i+1] == "" {
 				return "", fmt.Errorf("invalid hostname flag in Exec= directive in %s", path)
 			}
-			return fields[i+1], nil
+			hostname := fields[i+1]
+			if host, _, err := net.SplitHostPort(hostname); err == nil {
+				return host, nil
+			}
+			return hostname, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -161,6 +166,8 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 		case strings.HasPrefix(line, "PublishPort="):
 			updated = append(updated, "PublishPort="+hostPort+":"+registryContainerPort)
 			foundPort = true
+		case strings.HasPrefix(line, "Exec="):
+			updated = append(updated, updatePublishedPort(line, hostPort))
 		default:
 			updated = append(updated, line)
 		}
@@ -175,4 +182,20 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 		return fmt.Errorf("no PublishPort= directive found in %s", path)
 	}
 	return q.fs.WriteFile(path, []byte(strings.Join(updated, "\n")+"\n"), 0o600)
+}
+
+func updatePublishedPort(line, hostPort string) string {
+	fields := strings.Fields(strings.TrimPrefix(line, "Exec="))
+	for i := 0; i+1 < len(fields); i++ {
+		if fields[i] != "--hostname" {
+			continue
+		}
+		hostname := fields[i+1]
+		if host, _, err := net.SplitHostPort(hostname); err == nil {
+			hostname = host
+		}
+		fields[i+1] = net.JoinHostPort(hostname, hostPort)
+		break
+	}
+	return "Exec=" + strings.Join(fields, " ")
 }

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,6 +23,7 @@ import (
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
 	"github.com/quay/quay/internal/registry"
+	registryauth "github.com/quay/quay/internal/registry/auth"
 	"github.com/quay/quay/internal/registry/distribution"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/repository"
@@ -33,7 +35,7 @@ func newServeCmd() *Command {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
 	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
-	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
+	hostname := fs.String("hostname", "localhost", "public registry hostname, including a non-default port")
 	addr := fs.String("addr", ":8443", "listen address")
 
 	return &Command{
@@ -83,24 +85,62 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		FeatureUserLastAccessed:        featureUserLastAccessed,
 		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
 	}
+	credentialVerifier := auth.NewDatabaseVerifier(db, databaseVerifierConfig)
 	superUsersFullAccess := featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess)
+	anonymousAccess := resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess
+
+	grantResolver, err := distribution.NewGrantResolver(db, distribution.GrantResolverConfig{
+		LibraryNamespace: resolved.Config.LibraryNamespace, SuperUsers: resolved.Config.SuperUsers,
+		SuperUsersFullAccess: superUsersFullAccess,
+	})
+	if err != nil {
+		slog.Error("registry grant resolver setup error", "err", err)
+		return 1
+	}
+	maxFresh := time.Duration(resolved.Config.RegistryJWTAuthMaxFreshS) * time.Second
+	tokenLifetime := min(5*time.Minute, maxFresh)
+	signer, verifier, err := registryauth.NewES256Pair(registryauth.ES256Config{
+		Issuer: registryauth.Issuer, Audience: resolved.Config.ServerHostname,
+		MaxFresh: maxFresh, ClockSkew: 5 * time.Second,
+	})
+	if err != nil {
+		slog.Error("registry token key setup error", "err", err)
+		return 1
+	}
+	realm := (&url.URL{
+		Scheme: resolved.Config.PreferredURLScheme,
+		Host:   resolved.Config.ServerHostname,
+		Path:   "/v2/auth",
+	}).String()
+	accessController, err := registryauth.NewController(registryauth.ControllerConfig{
+		Realm: realm, Service: resolved.Config.ServerHostname,
+		LibraryNamespace: resolved.Config.LibraryNamespace, Verifier: verifier,
+	})
+	if err != nil {
+		slog.Error("registry access controller setup error", "err", err)
+		return 1
+	}
+	tokenHandler, err := registryauth.NewHandler(registryauth.HandlerConfig{
+		Service: resolved.Config.ServerHostname, LibraryNamespace: resolved.Config.LibraryNamespace,
+		AnonymousAccess: anonymousAccess, Lifetime: tokenLifetime, Signer: signer,
+		Authenticate: func(ctx context.Context, username, secret string) (registryauth.Identity, bool) {
+			result := credentialVerifier.Verify(ctx, auth.Credentials{Username: username, Secret: secret})
+			if !result.Authenticated {
+				return registryauth.Identity{}, false
+			}
+			principal := result.Principal
+			return registryauth.Identity{Subject: principal.Username, Principal: &principal}, true
+		},
+		ResolveGrants: grantResolver.Resolve,
+	})
+	if err != nil {
+		slog.Error("registry token handler setup error", "err", err)
+		return 1
+	}
 
 	reg, err := distribution.NewRegistry(ctx, &distribution.Config{
-		StoragePath:                        resolved.StoragePath,
-		Hostname:                           resolved.Config.ServerHostname,
-		ListenAddr:                         addr,
-		DB:                                 db,
-		Store:                              store,
-		BlobLocker:                         blobLocks,
-		LibraryNamespace:                   resolved.Config.LibraryNamespace,
-		AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess,
-		DatabaseSecretKey:                  resolved.Config.DatabaseSecretKey,
-		RobotsDisallow:                     resolved.Config.RobotsDisallow,
-		RobotsWhitelist:                    resolved.Config.RobotsWhitelist,
-		FeatureUserLastAccessed:            featureUserLastAccessed,
-		LastAccessedUpdateThresholdSeconds: lastAccessedUpdateThresholdSeconds,
-		SuperUsers:                         resolved.Config.SuperUsers,
-		SuperUsersFullAccess:               superUsersFullAccess,
+		StoragePath: resolved.StoragePath, ListenAddr: addr, Store: store, BlobLocker: blobLocks,
+		LibraryNamespace: resolved.Config.LibraryNamespace, AccessController: accessController,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)
@@ -121,7 +161,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 
 	api, err := apiv1.New(apiv1.Config{
-		Authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(db, databaseVerifierConfig)),
+		Authenticator: auth.NewBasicAuthenticator(credentialVerifier),
 		Realm:         resolved.Config.ServerHostname,
 	},
 		repositoryapi.NewModule(repositoryService),
@@ -136,17 +176,9 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
 	v2Handler := distHandler
 	if referrersEnabled {
-		referrersHandler := registry.NewReferrersHandler(db, store, &registry.ReferrersConfig{
-			LibraryNamespace:                   resolved.Config.LibraryNamespace,
-			AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
-			LibrarySupport:                     resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
-			DatabaseSecretKey:                  databaseVerifierConfig.DatabaseSecretKey,
-			RobotsDisallow:                     databaseVerifierConfig.RobotsDisallow,
-			RobotsWhitelist:                    databaseVerifierConfig.RobotsWhitelist,
-			FeatureUserLastAccessed:            databaseVerifierConfig.FeatureUserLastAccessed,
-			LastAccessedUpdateThresholdSeconds: databaseVerifierConfig.LastAccessedUpdateThresholdSec,
-			SuperUsers:                         resolved.Config.SuperUsers,
-			SuperUsersFullAccess:               superUsersFullAccess,
+		referrersHandler := registry.NewReferrersHandler(store, accessController, &registry.ReferrersConfig{
+			LibraryNamespace: resolved.Config.LibraryNamespace,
+			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
 		})
 		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
 	}
@@ -155,6 +187,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
+	mux.Handle("/v2/auth", tokenHandler)
 	mux.Handle("/", v2Handler)
 
 	srv, err := server.New(ctx, mux, &server.Config{

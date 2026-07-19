@@ -54,8 +54,15 @@ func TestParseDefaults(t *testing.T) {
 	assert.Equal(t, "http", cfg.PreferredURLScheme)
 	assert.Equal(t, "Red Hat Quay", cfg.RegistryTitle)
 	assert.Equal(t, "Database", cfg.AuthenticationType)
+	assert.Equal(t, DefaultRegistryJWTAuthMaxFreshS, cfg.RegistryJWTAuthMaxFreshS)
 	require.NotNil(t, cfg.FeatureDirectLogin)
 	assert.True(t, *cfg.FeatureDirectLogin)
+}
+
+func TestParseRegistryJWTAuthMaxFreshOverride(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\nREGISTRY_JWT_AUTH_MAX_FRESH_S: 120\n"))
+	require.NoError(t, err)
+	assert.Equal(t, 120, cfg.RegistryJWTAuthMaxFreshS)
 }
 
 func TestParseRobotAuthConfig(t *testing.T) {
@@ -89,10 +96,13 @@ func TestParseRobotAuthDefaults(t *testing.T) {
 }
 
 func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {
-	cfg := NewDefault("localhost", "/data/storage")
+	cfg := NewDefault("localhost:8443", "/data/storage")
 
+	assert.Equal(t, "localhost:8443", cfg.ServerHostname)
 	assert.Equal(t, "Database", cfg.AuthenticationType)
+	assert.Equal(t, DefaultLibraryNamespace, cfg.LibraryNamespace)
 	assert.Equal(t, []string{"admin"}, cfg.SuperUsers)
+	assert.Equal(t, DefaultRegistryJWTAuthMaxFreshS, cfg.RegistryJWTAuthMaxFreshS)
 	require.NotNil(t, cfg.FeatureSuperUsers)
 	assert.True(t, *cfg.FeatureSuperUsers)
 	require.NotNil(t, cfg.FeatureSuperUsersFullAccess)

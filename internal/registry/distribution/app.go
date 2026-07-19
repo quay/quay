@@ -3,7 +3,6 @@ package distribution
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -12,32 +11,23 @@ import (
 
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
+	registryauth "github.com/quay/quay/internal/registry/auth"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 )
 
 // Config holds the parameters needed to construct the distribution registry.
 type Config struct {
-	StoragePath                        string
-	Hostname                           string
-	ListenAddr                         string
-	DB                                 *sql.DB
-	Store                              oci.MetadataStore
-	BlobLocker                         oci.BlobLocker
-	LibraryNamespace                   string
-	AnonymousAccess                    *bool
-	DatabaseSecretKey                  string
-	RobotsDisallow                     bool
-	RobotsWhitelist                    []string
-	FeatureUserLastAccessed            bool
-	LastAccessedUpdateThresholdSeconds int
-	SuperUsers                         []string
-	SuperUsersFullAccess               bool
+	StoragePath      string
+	ListenAddr       string
+	Store            oci.MetadataStore
+	BlobLocker       oci.BlobLocker
+	LibraryNamespace string
+	AccessController *registryauth.Controller
 }
 
 // Registry wraps the distribution registry handler.
 type Registry struct {
 	handler http.Handler
-	db      *sql.DB
 }
 
 // NewRegistry creates the distribution registry with metadata middleware.
@@ -51,8 +41,8 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	if cfg.Store == nil {
 		return nil, fmt.Errorf("nil metastore store")
 	}
-	if cfg.DB == nil {
-		return nil, fmt.Errorf("nil database")
+	if cfg.AccessController == nil {
+		return nil, fmt.Errorf("nil access controller")
 	}
 
 	libraryNamespace := cfg.LibraryNamespace
@@ -64,6 +54,9 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 
 	if err := registrymw.Register(cfg.Store, cfg.BlobLocker, libraryNamespace); err != nil {
 		return nil, fmt.Errorf("register middleware: %w", err)
+	}
+	if err := registryauth.RegisterDistributionAdapter(); err != nil {
+		return nil, fmt.Errorf("register token access controller: %w", err)
 	}
 
 	distCfg := &configuration.Configuration{
@@ -77,18 +70,8 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 			},
 		},
 		Auth: configuration.Auth{
-			"quaydb": configuration.Parameters{
-				authOptionRealm:                      cfg.Hostname,
-				"db":                                 cfg.DB,
-				"libraryNamespace":                   libraryNamespace,
-				authOptionAnonAccess:                 anonymousAccessEnabled(cfg.AnonymousAccess),
-				"databaseSecretKey":                  cfg.DatabaseSecretKey,
-				"robotsDisallow":                     cfg.RobotsDisallow,
-				"robotsWhitelist":                    cfg.RobotsWhitelist,
-				"featureUserLastAccessed":            cfg.FeatureUserLastAccessed,
-				"lastAccessedUpdateThresholdSeconds": cfg.LastAccessedUpdateThresholdSeconds,
-				"superUsers":                         cfg.SuperUsers,
-				"superUsersFullAccess":               cfg.SuperUsersFullAccess,
+			registryauth.DistributionBackendName: configuration.Parameters{
+				registryauth.DistributionControllerOption: cfg.AccessController,
 			},
 		},
 	}
@@ -97,10 +80,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr
-	return &Registry{
-		handler: handlers.NewApp(ctx, distCfg),
-		db:      cfg.DB,
-	}, nil
+	return &Registry{handler: handlers.NewApp(ctx, distCfg)}, nil
 }
 
 // Handler returns the HTTP handler for the registry.
@@ -111,11 +91,4 @@ func (a *Registry) Handler() http.Handler {
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
 	return nil
-}
-
-func anonymousAccessEnabled(configured *bool) bool {
-	if configured == nil {
-		return true
-	}
-	return *configured
 }

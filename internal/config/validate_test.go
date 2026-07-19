@@ -93,6 +93,15 @@ func TestValidateInvalidAuthenticationType(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "AUTHENTICATION_TYPE"), "expected error for invalid AUTHENTICATION_TYPE")
 }
 
+func TestValidateRegistryJWTAuthMaxFreshMinimum(t *testing.T) {
+	yaml := minimalValidYAML + "\nREGISTRY_JWT_AUTH_MAX_FRESH_S: 59\n"
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "REGISTRY_JWT_AUTH_MAX_FRESH_S"))
+}
+
 func TestValidateInvalidTagExpiration(t *testing.T) {
 	yaml := strings.Replace(minimalValidYAML, "DEFAULT_TAG_EXPIRATION: 2w", "DEFAULT_TAG_EXPIRATION: forever", 1)
 	cfg, err := Parse([]byte(yaml))

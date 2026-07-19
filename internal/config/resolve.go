@@ -118,10 +118,12 @@ func NewDefault(hostname, storagePath string) *Config {
 		Server: Server{
 			ServerHostname:     hostname,
 			PreferredURLScheme: "https",
+			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
-			AuthenticationType: "Database",
-			SuperUsers:         []string{"admin"},
+			AuthenticationType:       "Database",
+			SuperUsers:               []string{"admin"},
+			RegistryJWTAuthMaxFreshS: DefaultRegistryJWTAuthMaxFreshS,
 		},
 		Features: Features{
 			FeatureSuperUsers:           boolPtr(true),

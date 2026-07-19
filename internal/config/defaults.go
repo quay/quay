@@ -8,6 +8,7 @@ const (
 	DefaultTagExpiration                = "2w"
 	DefaultLibraryNamespace             = "library"
 	DefaultLastAccessedUpdateThresholdS = 60
+	DefaultRegistryJWTAuthMaxFreshS     = 3660
 )
 
 // newDefaultConfig returns a Config pre-populated with Quay's documented
@@ -22,7 +23,8 @@ func newDefaultConfig() Config {
 			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
-			AuthenticationType: DefaultAuthenticationType,
+			AuthenticationType:       DefaultAuthenticationType,
+			RegistryJWTAuthMaxFreshS: DefaultRegistryJWTAuthMaxFreshS,
 		},
 		Storage: Storage{
 			DefaultTagExpiration: DefaultTagExpiration,

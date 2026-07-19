@@ -262,6 +262,7 @@ var goOnlyFields = map[string]bool{
 	"LAST_ACCESSED_UPDATE_THRESHOLD_S": true,
 	"SECRET_KEY":                       true,
 	"LIBRARY_NAMESPACE":                true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"REGISTRY_JWT_AUTH_MAX_FRESH_S":    true, // Python runtime setting is not exposed in CONFIG_SCHEMA
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

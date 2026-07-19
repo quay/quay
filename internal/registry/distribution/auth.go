@@ -1,340 +1,193 @@
 package distribution
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
-	"net/http"
+	"slices"
+	"sort"
 	"strings"
 
-	distauth "github.com/distribution/distribution/v3/registry/auth"
-	"github.com/quay/quay/internal/auth"
+	quayauth "github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/dal/daldb"
-	"github.com/quay/quay/internal/oci"
+	registryauth "github.com/quay/quay/internal/registry/auth"
 	repo "github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
-)
-
-func init() {
-	if err := distauth.Register("quaydb", distauth.InitFunc(newAccessController)); err != nil {
-		slog.Error("failed to register quaydb auth", "err", err)
-	}
-}
-
-type accessController struct {
-	authenticator    *auth.BasicAuthenticator
-	authorizer       *repositorydal.Authorizer
-	queries          *daldb.Queries
-	realm            string
-	libraryNamespace string
-	anonymousAccess  bool
-}
-
-var (
-	_ distauth.AccessController = &accessController{}
-	_ oci.Authenticator         = &accessController{}
 )
 
 const (
 	repositoryPushAction   = "push"
 	repositoryDeleteAction = "delete"
-	registryResourceType   = "registry"
-	registryCatalogName    = "catalog"
-	registryCatalogAction  = "*"
-	authOptionRealm        = "realm"
-	authOptionAnonAccess   = "anonymousAccess"
+	repositoryAdminAction  = "*"
 )
 
-func newAccessController(options map[string]interface{}) (distauth.AccessController, error) {
-	realm, ok := options[authOptionRealm].(string)
-	if !ok || realm == "" {
-		return nil, fmt.Errorf("%q must be set for quaydb access controller", authOptionRealm)
-	}
+// GrantResolverConfig configures Quay repository authorization for registry
+// token issuance.
+type GrantResolverConfig struct {
+	LibraryNamespace     string
+	SuperUsers           []string
+	SuperUsersFullAccess bool
+}
 
-	db, ok := options["db"].(*sql.DB)
-	if !ok || db == nil {
-		return nil, fmt.Errorf(`"db" must be set to *sql.DB for quaydb access controller`)
-	}
+// GrantResolver maps Quay repository RBAC to downscoped registry token grants.
+// It performs no credential or JWT work.
+type GrantResolver struct {
+	authorizer       *repositorydal.Authorizer
+	queries          *daldb.Queries
+	libraryNamespace string
+}
 
-	libraryNamespace, _ := options["libraryNamespace"].(string)
+// NewGrantResolver constructs a DB-backed registry grant resolver.
+func NewGrantResolver(db *sql.DB, cfg GrantResolverConfig) (*GrantResolver, error) {
+	if db == nil {
+		return nil, fmt.Errorf("nil database")
+	}
+	libraryNamespace := cfg.LibraryNamespace
 	if libraryNamespace == "" {
 		libraryNamespace = defaultLibraryNamespace
 	}
-
-	anonymousAccess, ok := options[authOptionAnonAccess].(bool)
-	if !ok {
-		anonymousAccess = true
-	}
-
-	databaseSecretKey, _ := options["databaseSecretKey"].(string)
-	robotsDisallow, _ := options["robotsDisallow"].(bool)
-	robotsWhitelist, _ := options["robotsWhitelist"].([]string)
-	featureUserLastAccessed, _ := options["featureUserLastAccessed"].(bool)
-	lastAccessedUpdateThresholdSeconds, _ := options["lastAccessedUpdateThresholdSeconds"].(int)
-	superUsers, _ := options["superUsers"].([]string)
-	superUsersFullAccess, _ := options["superUsersFullAccess"].(bool)
-
-	verifier := auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
-		DatabaseSecretKey:              databaseSecretKey,
-		RobotsDisallow:                 robotsDisallow,
-		RobotsWhitelist:                robotsWhitelist,
-		FeatureUserLastAccessed:        featureUserLastAccessed,
-		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
-	})
-
-	return &accessController{
-		authenticator: auth.NewBasicAuthenticator(verifier),
+	return &GrantResolver{
 		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
-			SuperUsers:           superUsers,
-			SuperUsersFullAccess: superUsersFullAccess,
+			SuperUsers: cfg.SuperUsers, SuperUsersFullAccess: cfg.SuperUsersFullAccess,
 		}),
 		queries:          daldb.New(db),
-		realm:            realm,
 		libraryNamespace: libraryNamespace,
-		anonymousAccess:  anonymousAccess,
 	}, nil
 }
 
-func (ac *accessController) Authorized(req *http.Request, access ...distauth.Access) (*distauth.Grant, error) {
-	result := ac.authenticator.Authenticate(req)
-	// Only missing credentials may fall back to anonymous public pulls. Invalid
-	// credentials must fail instead of silently becoming anonymous.
-	if !result.Authenticated && !result.Presented && ac.canAnonymousPull(req, access) {
-		return &distauth.Grant{User: distauth.UserInfo{Name: auth.AnonymousPrincipal().Username}}, nil
+// Resolve returns the requested/allowed action intersection. Permission denial
+// produces an empty action list; only lookup failures are returned as errors.
+func (r *GrantResolver) Resolve(ctx context.Context, identity registryauth.Identity, scopes []registryauth.Scope) ([]registryauth.ResourceActions, error) {
+	principal, err := r.principal(identity)
+	if err != nil {
+		return nil, err
 	}
 
-	if !result.Authenticated && !result.Presented {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrInvalidCredential,
+	grants := make([]registryauth.ResourceActions, 0, len(scopes))
+	for _, scope := range scopes {
+		grant := registryauth.ResourceActions{Type: scope.Type, Name: scope.Name, Actions: []string{}}
+		if scope.Type == repositoryResourceType {
+			grant.Actions, err = r.resolveRepositoryActions(ctx, principal, scope)
+			if err != nil {
+				return nil, err
+			}
 		}
+		grants = append(grants, grant)
 	}
-	if !result.Authenticated {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrAuthenticationFailure,
-		}
-	}
-
-	if err := ac.authorizeDistributionAccess(req, &result.Principal, access); err != nil {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrAuthenticationFailure,
-		}
-	}
-
-	return &distauth.Grant{User: distauth.UserInfo{Name: result.Principal.Username}}, nil
+	return grants, nil
 }
 
-func (ac *accessController) Authenticate(r *http.Request, access ...oci.Access) (*oci.Grant, error) {
-	result := ac.authenticator.Authenticate(r)
-	// Only missing credentials may fall back to anonymous public pulls. Invalid
-	// credentials must fail instead of silently becoming anonymous.
-	if !result.Authenticated && !result.Presented && ac.canAnonymousOCIPull(r, access) {
-		return &oci.Grant{User: oci.User{Name: auth.AnonymousPrincipal().Username}}, nil
+func (r *GrantResolver) principal(identity registryauth.Identity) (*quayauth.Principal, error) {
+	if identity.Anonymous {
+		return quayauth.AnonymousPrincipal(), nil
 	}
-
-	if !result.Authenticated {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   oci.ErrUnauthorized,
-		}
+	principal, ok := identity.Principal.(*quayauth.Principal)
+	if !ok || principal == nil || principal.IsAnonymous() || principal.Username != identity.Subject {
+		return nil, fmt.Errorf("invalid authenticated principal")
 	}
-
-	if err := ac.authorizeOCIAccess(r, &result.Principal, access); err != nil {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   oci.ErrUnauthorized,
-		}
-	}
-
-	return &oci.Grant{User: oci.User{Name: result.Principal.Username}}, nil
+	return principal, nil
 }
 
-func (ac *accessController) canAnonymousPull(req *http.Request, access []distauth.Access) bool {
-	if !ac.anonymousAccess || len(access) == 0 {
-		return false
+func (r *GrantResolver) resolveRepositoryActions(ctx context.Context, principal *quayauth.Principal, scope registryauth.Scope) ([]string, error) {
+	repositoryRecord, err := r.resolveRepository(ctx, scope.Name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			exists, existsErr := r.repositoryExists(ctx, scope.Name)
+			if existsErr != nil {
+				return nil, existsErr
+			}
+			if exists {
+				return []string{}, nil
+			}
+			return r.resolveMissingRepositoryActions(ctx, principal, scope)
+		}
+		return nil, err
+	}
+	if repositoryRecord.KindID != repo.KindImage {
+		return []string{}, nil
 	}
 
-	for _, item := range access {
-		if item.Type != repositoryResourceType || item.Action != repositoryPullAction {
-			return false
+	allowedActions := make([]string, 0, len(scope.Actions))
+	for _, action := range scope.Actions {
+		var allowed bool
+		switch action {
+		case repositoryPullAction:
+			allowed, err = r.authorizer.CanPullRepository(ctx, principal, &repositoryRecord)
+		case repositoryPushAction, repositoryDeleteAction:
+			allowed, err = r.authorizer.CanPushRepository(ctx, principal, &repositoryRecord)
+		case repositoryAdminAction:
+			if repositoryRecord.State != repo.StateNormal || !repositoryRecord.NamespaceEnabled {
+				continue
+			}
+			allowed, err = r.authorizer.CanAdminRepository(ctx, principal, &repositoryRecord)
+		default:
+			return nil, fmt.Errorf("unsupported repository action %q", action)
 		}
-		if !ac.repositoryIsPublic(req, item.Name) {
-			return false
+		if err != nil {
+			return nil, err
+		}
+		if allowed {
+			allowedActions = append(allowedActions, action)
 		}
 	}
-	return true
+	sort.Strings(allowedActions)
+	return allowedActions, nil
 }
 
-func (ac *accessController) canAnonymousOCIPull(req *http.Request, access []oci.Access) bool {
-	if !ac.anonymousAccess || len(access) == 0 {
-		return false
-	}
-
-	for _, item := range access {
-		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
-		if !ok || resourceType != repositoryResourceType || item.Action != repositoryPullAction {
-			return false
-		}
-		if !ac.repositoryIsPublic(req, resourceName) {
-			return false
-		}
-	}
-	return true
-}
-
-func (ac *accessController) repositoryIsPublic(req *http.Request, name string) bool {
-	namespace, repository, ok := ac.repositoryParts(name)
+func (r *GrantResolver) repositoryExists(ctx context.Context, name string) (bool, error) {
+	namespace, repository, ok := r.repositoryParts(name)
 	if !ok {
-		return false
+		return false, fmt.Errorf("invalid repository name %q", name)
 	}
-
-	isPublic, err := ac.queries.RepositoryIsPublicByNamespaceName(req.Context(), daldb.RepositoryIsPublicByNamespaceNameParams{
+	_, err := r.queries.GetRepositoryByNamespaceName(ctx, daldb.GetRepositoryByNamespaceNameParams{
 		Username: namespace,
 		Name:     repository,
 	})
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return false, err
+}
+
+func (r *GrantResolver) resolveMissingRepositoryActions(ctx context.Context, principal *quayauth.Principal, scope registryauth.Scope) ([]string, error) {
+	namespace, _, ok := r.repositoryParts(scope.Name)
+	if !ok {
+		return nil, fmt.Errorf("invalid repository name %q", scope.Name)
+	}
+	requestedPull := slices.Contains(scope.Actions, repositoryPullAction)
+	requestedPush := slices.Contains(scope.Actions, repositoryPushAction)
+	if !requestedPull && !requestedPush {
+		return []string{}, nil
+	}
+	canCreate, err := r.authorizer.CanCreateRepository(ctx, principal, namespace)
 	if err != nil {
-		slog.Debug("anonymous repository visibility lookup failed", "repository", name, "err", err)
-		return false
+		return nil, err
+	}
+	if !canCreate {
+		return []string{}, nil
 	}
 
-	return isPublic != 0
+	allowedActions := make([]string, 0, 2)
+	for _, action := range scope.Actions {
+		if action == repositoryPullAction || action == repositoryPushAction {
+			allowedActions = append(allowedActions, action)
+		}
+	}
+	sort.Strings(allowedActions)
+	return allowedActions, nil
 }
 
-func (ac *accessController) authorizeDistributionAccess(req *http.Request, principal *auth.Principal, access []distauth.Access) error {
-	if len(access) == 0 {
-		return nil
-	}
-
-	for _, item := range access {
-		switch item.Type {
-		case repositoryResourceType:
-			if err := ac.authorizeRepositoryAccess(req, principal, item, access); err != nil {
-				return err
-			}
-		case registryResourceType:
-			if item.Name == registryCatalogName && item.Action == registryCatalogAction {
-				return fmt.Errorf("registry catalog is not supported by quaydb auth")
-			}
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
-		default:
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
-		}
-	}
-
-	return nil
-}
-
-func (ac *accessController) authorizeOCIAccess(req *http.Request, principal *auth.Principal, access []oci.Access) error {
-	if len(access) == 0 {
-		return nil
-	}
-
-	distributionAccess := make([]distauth.Access, 0, len(access))
-	for _, item := range access {
-		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
-		if !ok {
-			return fmt.Errorf("invalid OCI access resource %q", item.Resource)
-		}
-		distributionAccess = append(distributionAccess, distauth.Access{
-			Resource: distauth.Resource{
-				Type: resourceType,
-				Name: resourceName,
-			},
-			Action: item.Action,
-		})
-	}
-
-	return ac.authorizeDistributionAccess(req, principal, distributionAccess)
-}
-
-func (ac *accessController) authorizeRepositoryAccess(req *http.Request, principal *auth.Principal, item distauth.Access, access []distauth.Access) error {
-	repositoryRecord, err := ac.resolveRepository(req, item.Name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ac.authorizeMissingRepositoryAccess(req, principal, item, access)
-		}
-		return err
-	}
-	if repositoryRecord.KindID != repo.KindImage {
-		return fmt.Errorf("repository %q is not an image repository", item.Name)
-	}
-
-	var allowed bool
-	switch item.Action {
-	case repositoryPullAction:
-		allowed, err = ac.authorizer.CanPullRepository(req.Context(), principal, &repositoryRecord)
-	case repositoryPushAction, repositoryDeleteAction:
-		allowed, err = ac.authorizer.CanPushRepository(req.Context(), principal, &repositoryRecord)
-	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
-	}
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return fmt.Errorf("repository action %q denied for %s", item.Action, principal.Username)
-	}
-
-	return nil
-}
-
-func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, principal *auth.Principal, item distauth.Access, access []distauth.Access) error {
-	switch item.Action {
-	case repositoryPullAction:
-		if accessIncludesRepositoryAction(access, item.Name, repositoryPushAction) {
-			return nil
-		}
-		namespace, _, ok := ac.repositoryParts(item.Name)
-		if !ok {
-			return fmt.Errorf("invalid repository name %q", item.Name)
-		}
-		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
-		if err != nil {
-			return err
-		}
-		if allowed {
-			return nil
-		}
-		return sql.ErrNoRows
-	case repositoryPushAction:
-		namespace, _, ok := ac.repositoryParts(item.Name)
-		if !ok {
-			return fmt.Errorf("invalid repository name %q", item.Name)
-		}
-		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
-		if err != nil {
-			return err
-		}
-		if !allowed {
-			return fmt.Errorf("repository create denied for %s", principal.Username)
-		}
-		return nil
-	case repositoryDeleteAction:
-		return sql.ErrNoRows
-	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
-	}
-}
-
-func accessIncludesRepositoryAction(access []distauth.Access, name, action string) bool {
-	for _, item := range access {
-		if item.Type == repositoryResourceType && item.Name == name && item.Action == action {
-			return true
-		}
-	}
-	return false
-}
-
-func (ac *accessController) resolveRepository(req *http.Request, name string) (repo.Repository, error) {
-	namespace, repository, ok := ac.repositoryParts(name)
+func (r *GrantResolver) resolveRepository(ctx context.Context, name string) (repo.Repository, error) {
+	namespace, repository, ok := r.repositoryParts(name)
 	if !ok {
 		return repo.Repository{}, fmt.Errorf("invalid repository name %q", name)
 	}
 
-	row, err := ac.queries.GetRepositoryAccessByNamespaceName(req.Context(), daldb.GetRepositoryAccessByNamespaceNameParams{
+	row, err := r.queries.GetRepositoryAccessByNamespaceName(ctx, daldb.GetRepositoryAccessByNamespaceNameParams{
 		Username: namespace,
 		Name:     repository,
 	})
@@ -355,30 +208,14 @@ func (ac *accessController) resolveRepository(req *http.Request, name string) (r
 	}, nil
 }
 
-func (ac *accessController) repositoryParts(name string) (namespace, repository string, ok bool) {
+func (r *GrantResolver) repositoryParts(name string) (namespace, repository string, ok bool) {
 	namespace, repository, ok = strings.Cut(name, "/")
 	if !ok {
-		namespace = ac.libraryNamespace
+		namespace = r.libraryNamespace
 		repository = name
 	}
 	if namespace == "" || repository == "" {
 		return "", "", false
 	}
 	return namespace, repository, true
-}
-
-// challenge implements auth.Challenge for Basic auth 401 responses.
-type challenge struct {
-	realm string
-	err   error
-}
-
-var _ distauth.Challenge = challenge{}
-
-func (ch challenge) SetHeaders(_ *http.Request, w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", fmt.Sprintf("Basic realm=%q", ch.realm))
-}
-
-func (ch challenge) Error() string {
-	return fmt.Sprintf("basic authentication challenge for realm %q: %s", ch.realm, ch.err)
 }
