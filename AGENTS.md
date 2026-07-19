@@ -42,6 +42,8 @@ make types-test                      # Type checking (mypy)
 - `auth/` - Authentication & authorization
 - `storage/` - Storage backends (S3, Azure, Swift, local)
 - `web/` - React frontend (see `web/AGENTS.md`)
+- `internal/installer/` - Go installer CLI (install/upgrade orchestration) -- see `agent_docs/installer.md`
+- `internal/system/` - Quadlet/systemd integration, container port constants -- see `agent_docs/installer.md`
 
 ## Documentation by Task
 
@@ -59,6 +61,7 @@ make types-test                      # Type checking (mypy)
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
+| Installer CLI, Quadlet, systemd | `agent_docs/installer.md` |
 
 ## Universal Conventions
 
@@ -127,5 +130,6 @@ Use this low-token routing map before opening broader docs:
 - Workers: `workers/`
 - Storage: `storage/`
 - React UI: `web/AGENTS.md`
+- Installer/Quadlet: `internal/installer/`, `internal/system/`, `agent_docs/installer.md`
 
 Guardrails: add tests for behavior changes, generate Alembic revisions instead of hand-writing IDs, and keep secrets out of config and fixtures.
