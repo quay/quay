@@ -52,7 +52,7 @@ jobs:
           POSTGRES_PASSWORD: "password"
           POSTGRES_DB: "quay"
       redis:
-        image: redis:7.4
+        image: redis:8.8
       mysql:
         image: mysql:5.7
         env:
