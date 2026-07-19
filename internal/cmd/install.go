@@ -17,7 +17,7 @@ func newInstallCmd() *Command {
 	port := fs.String("port", "", "HTTPS port for the registry (default 8443; an existing port is preserved on upgrade)")
 	sslCert := fs.String("ssl-cert", "", "path to TLS certificate (PEM)")
 	sslKey := fs.String("ssl-key", "", "path to TLS private key (PEM)")
-	sslCheckSkip := fs.Bool("ssl-check-skip", false, "skip hostname verification on TLS certificate")
+	sslSkipHostnameVerification := fs.Bool("ssl-skip-hostname-verification", false, "allow TLS certificate hostname to differ from -hostname")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
 	image := fs.String("image", installer.DefaultImage, "container image to use")
 
@@ -37,14 +37,14 @@ func newInstallCmd() *Command {
 				return 1
 			}
 			return runInstall(ctx, &installer.Config{
-				Hostname:     *hostname,
-				DataDir:      *dataDir,
-				Port:         *port,
-				SSLCert:      *sslCert,
-				SSLKey:       *sslKey,
-				SSLCheckSkip: *sslCheckSkip,
-				ImageArchive: *imageArchive,
-				Image:        *image,
+				Hostname:                    *hostname,
+				DataDir:                     *dataDir,
+				Port:                        *port,
+				SSLCert:                     *sslCert,
+				SSLKey:                      *sslKey,
+				SSLSkipHostnameVerification: *sslSkipHostnameVerification,
+				ImageArchive:                *imageArchive,
+				Image:                       *image,
 			})
 		},
 	}

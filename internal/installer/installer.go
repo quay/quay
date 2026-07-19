@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/quay/quay/internal/certs"
@@ -31,15 +32,15 @@ const (
 
 // Config holds the parameters for an install or upgrade operation.
 type Config struct {
-	Hostname     string
-	DataDir      string
-	ImageArchive string
-	Image        string
-	ConfigPath   string
-	Port         string
-	SSLCert      string
-	SSLKey       string
-	SSLCheckSkip bool
+	Hostname                    string
+	DataDir                     string
+	ImageArchive                string
+	Image                       string
+	ConfigPath                  string
+	Port                        string
+	SSLCert                     string
+	SSLKey                      string
+	SSLSkipHostnameVerification bool
 }
 
 // Installer orchestrates fresh installs and upgrades of the registry
@@ -107,7 +108,7 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	healthURL := fmt.Sprintf("https://%s:%s/healthz", resolvedCfg.Hostname, port)
 	certPath := filepath.Join(resolvedCfg.DataDir, "ssl.cert")
 	slog.Info("waiting for registry to start")
-	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLCheckSkip, 30*time.Second); err != nil {
+	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second); err != nil {
 		inst.dumpContainerLogs(ctx)
 		return fmt.Errorf("health check: %w", err)
 	}
@@ -261,34 +262,40 @@ func healthTLSConfig(caCert []byte, skipHostname bool) (*tls.Config, error) {
 
 	tlsCfg := certs.SecureTLSConfig()
 	tlsCfg.RootCAs = pool
-	if !skipHostname {
-		return tlsCfg, nil
-	}
-
-	// Disable the standard verifier only so hostname matching can be omitted.
-	// VerifyConnection still validates the presented chain against the supplied
-	// certificate pool and for server-auth usage.
-	tlsCfg.InsecureSkipVerify = true //nolint:gosec // custom verification below preserves certificate trust
-	tlsCfg.VerifyConnection = func(state tls.ConnectionState) error {
-		if len(state.PeerCertificates) == 0 {
-			return fmt.Errorf("server did not provide a certificate")
-		}
-
-		intermediates := x509.NewCertPool()
-		for _, cert := range state.PeerCertificates[1:] {
-			intermediates.AddCert(cert)
-		}
-		_, err := state.PeerCertificates[0].Verify(x509.VerifyOptions{
-			Roots:         pool,
-			Intermediates: intermediates,
-			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		})
+	if skipHostname {
+		cert, err := parseCertPEM(caCert)
 		if err != nil {
-			return fmt.Errorf("verify server certificate: %w", err)
+			return nil, err
 		}
-		return nil
+		serverName, err := healthServerName(cert)
+		if err != nil {
+			return nil, err
+		}
+		// A non-empty ServerName prevents net/http from substituting the URL
+		// hostname. Standard TLS verification remains enabled against an identity
+		// declared by the installed certificate and the pinned certificate pool.
+		tlsCfg.ServerName = serverName
 	}
 	return tlsCfg, nil
+}
+
+func healthServerName(cert *x509.Certificate) (string, error) {
+	for _, dnsName := range cert.DNSNames {
+		candidate := dnsName
+		if strings.HasPrefix(candidate, "*.") {
+			candidate = "health-check." + strings.TrimPrefix(candidate, "*.")
+		}
+		if err := cert.VerifyHostname(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	for _, ip := range cert.IPAddresses {
+		candidate := ip.String()
+		if err := cert.VerifyHostname(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("certificate has no usable DNS or IP subject alternative name")
 }
 
 func (inst *Installer) dumpContainerLogs(ctx context.Context) {
@@ -322,13 +329,13 @@ func (inst *Installer) copyUserTLS(cfg *Config) error {
 		return fmt.Errorf("certificate/key pair invalid: %w", err)
 	}
 
-	if !cfg.SSLCheckSkip {
+	if !cfg.SSLSkipHostnameVerification {
 		cert, err := parseCertPEM(certData)
 		if err != nil {
 			return fmt.Errorf("parse certificate: %w", err)
 		}
 		if err := verifyCertHostname(cert, cfg.Hostname); err != nil {
-			return fmt.Errorf("certificate hostname check failed (use -ssl-check-skip to override): %w", err)
+			return fmt.Errorf("certificate hostname check failed (use -ssl-skip-hostname-verification to override): %w", err)
 		}
 	}
 

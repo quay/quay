@@ -281,19 +281,25 @@ func TestHealthTLSConfigSkipsOnlyHostnameVerification(t *testing.T) {
 
 	skipConfig, err := healthTLSConfig(mustReadFile(t, serverCertPath), true)
 	require.NoError(t, err)
-	assert.True(t, skipConfig.InsecureSkipVerify)
-	require.NotNil(t, skipConfig.VerifyConnection)
-	require.NoError(t, skipConfig.VerifyConnection(tls.ConnectionState{
-		PeerCertificates: []*x509.Certificate{serverCert},
-	}))
+	assert.False(t, skipConfig.InsecureSkipVerify)
+	assert.Equal(t, "registry.example.com", skipConfig.ServerName)
+	_, err = serverCert.Verify(x509.VerifyOptions{
+		Roots:     skipConfig.RootCAs,
+		DNSName:   skipConfig.ServerName,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	require.NoError(t, err)
 
 	untrustedDir := t.TempDir()
 	untrustedCertPath, _ := generateTLSFiles(t, untrustedDir)
 	untrustedConfig, err := healthTLSConfig(mustReadFile(t, untrustedCertPath), true)
 	require.NoError(t, err)
-	require.Error(t, untrustedConfig.VerifyConnection(tls.ConnectionState{
-		PeerCertificates: []*x509.Certificate{serverCert},
-	}))
+	_, err = serverCert.Verify(x509.VerifyOptions{
+		Roots:     untrustedConfig.RootCAs,
+		DNSName:   untrustedConfig.ServerName,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	require.Error(t, err)
 }
 
 func TestCopyUserTLSReplacesPermissiveKeyWithSecureMode(t *testing.T) {
