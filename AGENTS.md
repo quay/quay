@@ -63,6 +63,7 @@ make types-test                      # Type checking (mypy)
 ## Universal Conventions
 
 1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. Always run relevant tests before committing.
+   **Security-sensitive functions:** Methods that handle credentials, TLS certificates, private keys, file permissions, or authentication tokens require direct test coverage even if they compose individually-tested pieces. The composition may introduce emergent security properties (atomicity, rollback, permission enforcement, attack surface) that subcomponent tests cannot verify. For file-writing functions, include test cases for: (a) correct file permissions, (b) behavior when destination is a symlink or directory, (c) rollback when a partial write fails. See `TestCopyUserTLSRejectsUnsafeDestinations` and `TestCopyUserTLSRollsBackPairWhenKeyReplacementFails` in `internal/installer/installer_test.go` for examples.
 2. **Formatting:** Rely on pre-commit hook to format code on commit
 3. **No secrets:** Never commit credentials, API keys, or sensitive config
 4. **Imports:** Follow existing import ordering patterns in each file
