@@ -107,6 +107,9 @@ func TestUpgradeInstallsReplacementTLS(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, newCertData, mustReadFile(t, filepath.Join(dataDir, "ssl.cert")))
 	assert.Equal(t, newKeyData, mustReadFile(t, filepath.Join(dataDir, "ssl.key")))
+	keyInfo, err := os.Stat(filepath.Join(dataDir, "ssl.key"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), keyInfo.Mode().Perm())
 	assert.Equal(t, []string{"stop:quay", "daemon-reload", "start:quay"}, services.calls)
 }
 

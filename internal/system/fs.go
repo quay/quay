@@ -19,6 +19,8 @@ type FileSystem interface {
 // OSFS implements FileSystem using the real filesystem.
 type OSFS struct{}
 
+var _ FileSystem = OSFS{}
+
 // ReadFile delegates to os.ReadFile.
 func (OSFS) ReadFile(path string) ([]byte, error) { return os.ReadFile(path) } //nolint:gosec // paths from known locations
 
