@@ -37,6 +37,14 @@ func ValidateHostname(hostname string) error {
 
 // ValidatePort checks that port is a decimal integer in the range 1–65535.
 func ValidatePort(port string) error {
+	if port == "" {
+		return fmt.Errorf("not a valid number: %q", port)
+	}
+	for _, c := range port {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("not a valid number: %q", port)
+		}
+	}
 	n, err := strconv.Atoi(port)
 	if err != nil {
 		return fmt.Errorf("not a valid number: %q", port)

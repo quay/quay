@@ -14,7 +14,7 @@ func newInstallCmd() *Command {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
-	port := fs.String("port", "8443", "HTTPS port for the registry")
+	port := fs.String("port", "", "HTTPS port for the registry (default 8443; an existing port is preserved on upgrade)")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
 	image := fs.String("image", installer.DefaultImage, "container image to use")
 
