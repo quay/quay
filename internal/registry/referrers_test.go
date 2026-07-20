@@ -2,17 +2,23 @@ package registry
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/registry/jwtauth"
 	_ "modernc.org/sqlite"
 )
 
@@ -198,6 +204,75 @@ func TestReferrers_AuthenticatedUserWithPullPermissionAllowed(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
+}
+
+func TestReferrers_BearerPullTokenAllowed(t *testing.T) {
+	handler, service := newBearerReferrersTestHandler(t, false, nil)
+	raw, _, err := service.Issue("admin", []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: "acme/private", Actions: []string{jwtauth.PullAction},
+	}})
+	require.NoError(t, err)
+	req := newReferrersRequest(t, "acme/private")
+	req.Header.Set("Authorization", "Bearer "+raw)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+}
+
+func TestReferrers_BearerChallenges(t *testing.T) {
+	handler, service := newBearerReferrersTestHandler(t, false, nil)
+	pushToken, _, err := service.Issue("admin", []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: "acme/private", Actions: []string{jwtauth.PushAction},
+	}})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name          string
+		authorization string
+		wantChallenge string
+	}{
+		{
+			name:          "missing token",
+			wantChallenge: `Bearer realm="https://registry.example.com:8443/v2/auth",service="registry.example.com:8443",scope="repository:acme/private:pull"`,
+		},
+		{
+			name:          "invalid token",
+			authorization: "Bearer not-a-jwt",
+			wantChallenge: `Bearer realm="https://registry.example.com:8443/v2/auth",service="registry.example.com:8443",scope="repository:acme/private:pull",error="invalid_token"`,
+		},
+		{
+			name:          "insufficient scope",
+			authorization: "Bearer " + pushToken,
+			wantChallenge: `Bearer realm="https://registry.example.com:8443/v2/auth",service="registry.example.com:8443",scope="repository:acme/private:pull",error="insufficient_scope"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := newReferrersRequest(t, "acme/private")
+			if tt.authorization != "" {
+				req.Header.Set("Authorization", tt.authorization)
+			}
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+			assert.Equal(t, tt.wantChallenge, w.Header().Get("WWW-Authenticate"))
+		})
+	}
+}
+
+func TestReferrers_BearerAllowsDirectAnonymousPublicPull(t *testing.T) {
+	handler, _ := newBearerReferrersTestHandler(t, true, map[string]bool{"repository:public/publicrepo": true})
+	req := newReferrersRequest(t, "public/publicrepo")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 }
 
 func TestReferrers_EmptyList(t *testing.T) {
@@ -452,4 +527,88 @@ func TestReferrers_NestedRepoName(t *testing.T) {
 	if repo != "team/image" {
 		t.Errorf("repo = %q, want %q", repo, "team/image")
 	}
+}
+
+const (
+	referrersTestRealm   = "https://registry.example.com:8443/v2/auth"
+	referrersTestService = "registry.example.com:8443"
+)
+
+type referrersBearerAuthenticator struct {
+	service         *jwtauth.Service
+	anonymousAccess bool
+	publicResources map[string]bool
+}
+
+func (a *referrersBearerAuthenticator) Authenticate(r *http.Request, access ...oci.Access) (*oci.Grant, error) {
+	required := make([]jwtauth.ResourceActions, 0, len(access))
+	for _, item := range access {
+		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
+		if !ok {
+			return nil, referrersBearerChallengeError{err: jwtauth.ErrInvalidToken, access: required}
+		}
+		required = append(required, jwtauth.ResourceActions{
+			Type: resourceType, Name: resourceName, Actions: []string{item.Action},
+		})
+	}
+
+	header := strings.TrimSpace(r.Header.Get("Authorization"))
+	if header == "" {
+		if a.anonymousAccess && len(access) > 0 {
+			for _, item := range access {
+				if item.Action != jwtauth.PullAction || !a.publicResources[item.Resource] {
+					return nil, referrersBearerChallengeError{err: jwtauth.ErrMissingToken, access: required}
+				}
+			}
+			return &oci.Grant{User: oci.User{Name: jwtauth.AnonymousSubject}}, nil
+		}
+		return nil, referrersBearerChallengeError{err: jwtauth.ErrMissingToken, access: required}
+	}
+	raw, ok := strings.CutPrefix(header, "Bearer ")
+	if !ok {
+		return nil, referrersBearerChallengeError{err: jwtauth.ErrInvalidToken, access: required}
+	}
+	claims, err := a.service.Authorize(strings.TrimSpace(raw), required)
+	if err != nil {
+		return nil, referrersBearerChallengeError{err: err, access: required}
+	}
+	return &oci.Grant{User: oci.User{Name: claims.Subject}}, nil
+}
+
+type referrersBearerChallengeError struct {
+	err    error
+	access []jwtauth.ResourceActions
+}
+
+func (c referrersBearerChallengeError) Error() string { return c.err.Error() }
+
+func (c referrersBearerChallengeError) SetHeaders(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", jwtauth.ChallengeValue(
+		referrersTestRealm, referrersTestService, c.access, c.err,
+	))
+}
+
+func newBearerReferrersTestHandler(t *testing.T, anonymous bool, publicResources map[string]bool) (*ReferrersHandler, *jwtauth.Service) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	service, err := jwtauth.New(key, jwtauth.Config{Audience: referrersTestService})
+	require.NoError(t, err)
+	return &ReferrersHandler{
+		store: &mockStore{repoID: 10},
+		bearerAuth: &referrersBearerAuthenticator{
+			service: service, anonymousAccess: anonymous, publicResources: publicResources,
+		},
+		config: ReferrersConfig{
+			LibraryNamespace: "library", AnonymousAccess: anonymous, LibrarySupport: true,
+			TokenRealm: referrersTestRealm, TokenService: referrersTestService,
+		},
+	}, service
+}
+
+func newReferrersRequest(t *testing.T, name string) *http.Request {
+	t.Helper()
+	return httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "/v2/"+name+"/referrers/"+digest.FromString("subject").String(), http.NoBody,
+	)
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
 )
@@ -40,6 +41,10 @@ func (m *Migrator) validate(ctx context.Context) error {
 	}
 	slog.Info("source schema version", "version", ver)
 
+	if err := m.validateRegistryJWTSource(ctx); err != nil {
+		return err
+	}
+
 	if m.Source.ConfigDir != "" {
 		certPath := filepath.Join(m.Source.ConfigDir, "ssl.cert")
 		keyPath := filepath.Join(m.Source.ConfigDir, "ssl.key")
@@ -63,6 +68,23 @@ func (m *Migrator) validate(ctx context.Context) error {
 	}
 
 	slog.Info("validation passed")
+	return nil
+}
+
+func (m *Migrator) validateRegistryJWTSource(ctx context.Context) error {
+	if m.Source.ConfigDir == "" {
+		return fmt.Errorf("source config directory not detected — provide -source-certs with config.yaml, quay.pem, and quay.kid")
+	}
+	sourcePath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	sourceCfg, err := config.Load(sourcePath)
+	if err != nil {
+		return fmt.Errorf("load source config for registry JWT key validation: %w", err)
+	}
+	key, _, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
+	if err != nil {
+		return fmt.Errorf("registry JWT key validation: %w", err)
+	}
+	m.sourceRegistryJWTKey = key
 	return nil
 }
 

@@ -26,7 +26,7 @@ func TestQuadletInstallUsesConfigPathWhenProvided(t *testing.T) {
 	}
 
 	content := readQuadletTestFile(t, env.QuadletPath("quay"))
-	if !strings.Contains(content, "Exec=serve --config /data/config.yaml --hostname localhost") {
+	if !strings.Contains(content, "Exec=serve --config /data/config.yaml --hostname localhost:8443\n") {
 		t.Fatalf("quadlet does not use config path:\n%s", content)
 	}
 	if strings.Contains(content, "--data-dir") {
@@ -49,7 +49,7 @@ func TestQuadletInstallUsesDefaultServeArgsWithoutConfigPath(t *testing.T) {
 	}
 
 	content := readQuadletTestFile(t, env.QuadletPath("quay"))
-	if !strings.Contains(content, "Exec=serve --data-dir /data --hostname localhost") {
+	if !strings.Contains(content, "Exec=serve --data-dir /data --hostname localhost:8443\n") {
 		t.Fatalf("quadlet does not use default serve args:\n%s", content)
 	}
 }
@@ -71,6 +71,29 @@ func TestQuadletInstallMapsCustomHostPortToRegistryPort(t *testing.T) {
 	content := readQuadletTestFile(t, env.QuadletPath("quay"))
 	if !strings.Contains(content, "PublishPort=9443:8443") {
 		t.Fatalf("quadlet does not map the custom host port to the registry port:\n%s", content)
+	}
+	if !strings.Contains(content, "Exec=serve --data-dir /data --hostname localhost:9443\n") {
+		t.Fatalf("quadlet does not pass the public host port to serve:\n%s", content)
+	}
+}
+
+func TestQuadletServeCommandIncludesPublicPort(t *testing.T) {
+	tests := []struct {
+		name, hostname, port, want string
+	}{
+		{
+			name: "dns", hostname: "registry.example.com", port: "9443",
+			want: "serve --data-dir /data --hostname registry.example.com:9443",
+		},
+		{
+			name: "ipv6", hostname: "2001:db8::1", port: "9443",
+			want: "serve --data-dir /data --hostname [2001:db8::1]:9443",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, quadletServeCommand(&QuadletSpec{Hostname: tt.hostname, Port: tt.port}))
+		})
 	}
 }
 
@@ -125,6 +148,45 @@ func TestQuadletHostnameWithConfigPath(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "registry.example.com", hostname)
+}
+
+func TestQuadletConfigPath(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+	require.NoError(t, manager.Install("quay", &QuadletSpec{
+		Image: "localhost/quay:test", DataDir: "/var/lib/quay", Hostname: "registry.example.com",
+		Port: "8443", ConfigPath: "/data/config.yaml",
+	}))
+
+	configPath, err := manager.ConfigPath("quay")
+
+	require.NoError(t, err)
+	assert.Equal(t, "/data/config.yaml", configPath)
+}
+
+func TestQuadletUpdateImageAndPortUpdatesAdvertisedHostname(t *testing.T) {
+	tests := []struct {
+		name, hostname, want string
+	}{
+		{name: "DNS", hostname: "registry.example.com", want: "registry.example.com:9443"},
+		{name: "IPv6", hostname: "2001:db8::1", want: "[2001:db8::1]:9443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+			manager := NewQuadletManager(OSFS{}, env)
+			require.NoError(t, manager.Install("quay", &QuadletSpec{
+				Image: "localhost/quay:old", DataDir: "/var/lib/quay", Hostname: tt.hostname, Port: "8443",
+			}))
+
+			require.NoError(t, manager.UpdateImageAndPort("quay", "localhost/quay:new", "9443"))
+
+			content := readQuadletTestFile(t, env.QuadletPath("quay"))
+			assert.Contains(t, content, "Image=localhost/quay:new")
+			assert.Contains(t, content, "PublishPort=9443:8443")
+			assert.Contains(t, content, "--hostname "+tt.want)
+		})
+	}
 }
 
 func readQuadletTestFile(t *testing.T, path string) string {

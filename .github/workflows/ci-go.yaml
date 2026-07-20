@@ -380,6 +380,11 @@ jobs:
           echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
             > ~/.docker/config.json
 
+      - name: Install registry test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
       - name: Install oc-mirror
         run: |
           curl -fsSL -o /tmp/oc-mirror.tar.gz \
@@ -432,8 +437,6 @@ jobs:
 
       - name: Verify mirrored repositories
         run: |
-          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
-
           expected_repos=(
             projectquay/quay
             projectquay/quay-builder
@@ -447,11 +450,12 @@ jobs:
 
           for repo in "${expected_repos[@]}"; do
             safe_repo="${repo//\//-}"
-            curl -fs -u "admin:$PASSWORD" \
-              "https://localhost:8443/v2/${repo}/tags/list" \
+            skopeo list-tags --authfile "$HOME/.docker/config.json" \
+              "docker://localhost:8443/${repo}" \
               | tee "/tmp/tags-${safe_repo}.json"
             jq -e --arg repo "$repo" \
-              '.name == $repo and (.tags | type == "array") and (.tags | length > 0)' \
+              '.Repository == ("localhost:8443/" + $repo)
+                and (.Tags | type == "array") and (.Tags | length > 0)' \
               "/tmp/tags-${safe_repo}.json"
           done
           echo "All repositories verified"
@@ -508,7 +512,7 @@ jobs:
       - name: Install migration test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y sqlite3
+          sudo apt-get install -y skopeo sqlite3
 
       - name: Download and install old OMR
         run: |
@@ -670,9 +674,8 @@ jobs:
             local body="$4"
             local url="https://localhost:8443/v2/${repo}/manifests/${ref}"
 
-            # Go Quay accepts Basic auth directly. Python Quay returns a
-            # Bearer challenge, which podman follows automatically; reproduce
-            # that token flow here so curl can capture source manifests too.
+            # Registry clients follow the Bearer challenge automatically;
+            # reproduce that token flow here so curl can capture manifests.
             if curl -skf -D "$headers" -o "$body" \
               -u init:testpassword123 \
               -H "$ACCEPT_HEADER" \
@@ -936,10 +939,10 @@ jobs:
           verify_manifest_digest init/test-index latest "$INDEX_DIGEST"
           verify_manifest_digest init/test-image robot-source "$ROBOT_SOURCE_DIGEST"
 
-          curl -fsS -u init:testpassword123 \
-            https://localhost:8443/v2/init/shared/tags/list \
+          skopeo list-tags --creds init:testpassword123 \
+            docker://localhost:8443/init/shared \
             | tee /tmp/e2e-migrate-state/shared-tags.json
-          jq -e '.tags | index("v1") and index("v2")' /tmp/e2e-migrate-state/shared-tags.json
+          jq -e '.Tags | index("v1") and index("v2")' /tmp/e2e-migrate-state/shared-tags.json
 
           sudo podman pull "localhost:8443/init/test-image@${TEST_IMAGE_DIGEST}"
           sudo podman pull localhost:8443/init/test-image:v1
@@ -1030,7 +1033,9 @@ jobs:
           sudo find /var/lib/quay -maxdepth 4 -type f -printf '%p %s bytes\n' > /tmp/e2e-migrate-diagnostics/data-files.txt 2>&1 || true
           sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' > /tmp/e2e-migrate-diagnostics/target-integrity-latest.txt 2>&1 || true
           sudo sqlite3 /var/lib/quay/quay.db "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'index') ORDER BY type, name;" > /tmp/e2e-migrate-diagnostics/target-schema-objects.txt 2>&1 || true
-          curl -kfsS -u init:testpassword123 https://localhost:8443/v2/init/shared/tags/list > /tmp/e2e-migrate-diagnostics/shared-tags-latest.json 2>&1 || true
+          skopeo list-tags --creds init:testpassword123 \
+            docker://localhost:8443/init/shared \
+            > /tmp/e2e-migrate-diagnostics/shared-tags-latest.json 2>&1 || true
           curl -kfsS https://localhost:8443/healthz > /tmp/e2e-migrate-diagnostics/healthz.txt 2>&1 || true
           ss -tlnp > /tmp/e2e-migrate-diagnostics/ports.txt 2>&1 || true
 

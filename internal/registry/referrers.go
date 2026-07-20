@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -41,12 +42,16 @@ type ReferrersConfig struct {
 	LastAccessedUpdateThresholdSeconds int
 	SuperUsers                         []string
 	SuperUsersFullAccess               bool
+	Authenticator                      oci.Authenticator
+	TokenRealm                         string
+	TokenService                       string
 }
 
 // ReferrersHandler serves the OCI referrers API.
 type ReferrersHandler struct {
 	store         oci.MetadataStore
 	authenticator *auth.BasicAuthenticator
+	bearerAuth    oci.Authenticator
 	authorizer    *repositorydal.Authorizer
 	queries       *daldb.Queries
 	config        ReferrersConfig
@@ -74,8 +79,9 @@ func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg *ReferrersConf
 			SuperUsers:           config.SuperUsers,
 			SuperUsersFullAccess: config.SuperUsersFullAccess,
 		}),
-		queries: daldb.New(db),
-		config:  config,
+		queries:    daldb.New(db),
+		bearerAuth: config.Authenticator,
+		config:     config,
 	}
 }
 
@@ -106,8 +112,20 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.authorize(r, namespace, repo) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="quay"`)
+	allowed, authErr := h.authorize(r, namespace, repo)
+	if !allowed {
+		var challenge oci.AuthChallenge
+		switch {
+		case errors.As(authErr, &challenge):
+			challenge.SetHeaders(w)
+		case h.config.TokenRealm != "" && h.config.TokenService != "":
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf(
+				`Bearer realm=%q,service=%q,scope=%q`,
+				h.config.TokenRealm, h.config.TokenService, "repository:"+name+":pull",
+			))
+		default:
+			w.Header().Set("WWW-Authenticate", `Basic realm="quay"`)
+		}
 		writeOCIError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 		return
 	}
@@ -173,16 +191,23 @@ func (h *ReferrersHandler) splitName(name string) (namespace, repo string) {
 	return name[:i], name[i+1:]
 }
 
-func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bool {
+func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) (bool, error) {
+	if h.bearerAuth != nil {
+		_, err := h.bearerAuth.Authenticate(r, oci.Access{
+			Resource: "repository:" + namespace + "/" + repo,
+			Action:   "pull",
+		})
+		return err == nil, err
+	}
 	if h.authenticator == nil {
-		return h.config.AnonymousAccess
+		return h.config.AnonymousAccess, nil
 	}
 	result := h.authenticator.Authenticate(r)
 	if result.Authenticated {
-		return h.canPullRepository(r, &result.Principal, namespace, repo)
+		return h.canPullRepository(r, &result.Principal, namespace, repo), nil
 	}
 	if result.Presented {
-		return false
+		return false, oci.ErrUnauthorized
 	}
 	if h.config.AnonymousAccess && h.queries != nil {
 		isPublic, err := h.queries.RepositoryIsPublicByNamespaceName(r.Context(), daldb.RepositoryIsPublicByNamespaceNameParams{
@@ -190,10 +215,10 @@ func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bo
 			Name:     repo,
 		})
 		if err == nil && isPublic != 0 {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, oci.ErrUnauthorized
 }
 
 func (h *ReferrersHandler) canPullRepository(r *http.Request, principal *auth.Principal, namespace, repoName string) bool {

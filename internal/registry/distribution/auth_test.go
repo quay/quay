@@ -1,8 +1,11 @@
 package distribution
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/distribution/distribution/v3/registry/auth"
 	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/registry/jwtauth"
 	_ "modernc.org/sqlite"
 )
 
@@ -256,47 +260,96 @@ func newTestController(t *testing.T, db *sql.DB) auth.AccessController {
 
 func newTestControllerWithAnonymousAccess(t *testing.T, db *sql.DB, anonymousAccess bool) auth.AccessController {
 	t.Helper()
-	ac, err := newAccessController(map[string]interface{}{
+	return newPolicyTestController(t, map[string]interface{}{
 		authOptionRealm:      "test-realm",
 		"db":                 db,
 		authOptionAnonAccess: anonymousAccess,
 	})
-	if err != nil {
-		t.Fatalf("new access controller: %v", err)
-	}
-	return ac
 }
 
 func newTestControllerWithRobotAuth(t *testing.T, db *sql.DB) auth.AccessController {
 	t.Helper()
-	ac, err := newAccessController(map[string]interface{}{
-		authOptionRealm:                      "test-realm",
-		"db":                                 db,
-		authOptionAnonAccess:                 true,
-		"databaseSecretKey":                  "test1234",
-		"featureUserLastAccessed":            true,
-		"lastAccessedUpdateThresholdSeconds": 0,
+	return newPolicyTestController(t, map[string]interface{}{
+		authOptionRealm:       "test-realm",
+		"db":                  db,
+		authOptionAnonAccess:  true,
+		authOptionDatabaseKey: "test1234",
+		authOptionLastAccess:  true,
+		authOptionLastAccessS: 0,
 	})
-	if err != nil {
-		t.Fatalf("new access controller: %v", err)
-	}
-	return ac
 }
 
 func newTestControllerWithSuperUserFullAccess(t *testing.T, db *sql.DB) auth.AccessController {
 	t.Helper()
-	ac, err := newAccessController(map[string]interface{}{
+	return newPolicyTestController(t, map[string]interface{}{
 		authOptionRealm:        "test-realm",
 		"db":                   db,
 		authOptionAnonAccess:   true,
 		"superUsers":           []string{"admin"},
 		"superUsersFullAccess": true,
 	})
+}
+
+type policyTestController struct{ *accessController }
+
+func newPolicyTestController(t *testing.T, options map[string]interface{}) auth.AccessController {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatalf("generate test JWT key: %v", err)
+	}
+	service, err := jwtauth.New(key, jwtauth.Config{Audience: "test-service"})
+	if err != nil {
+		t.Fatalf("new test JWT service: %v", err)
+	}
+	options[authOptionService] = "test-service"
+	options[authOptionJWTService] = service
+	controllerInterface, err := newAccessController(options)
 	if err != nil {
 		t.Fatalf("new access controller: %v", err)
 	}
-	return ac
+	controller, ok := controllerInterface.(*accessController)
+	if !ok {
+		t.Fatalf("unexpected access controller type %T", controllerInterface)
+	}
+	return &policyTestController{accessController: controller}
 }
+
+func (tc *policyTestController) Authorized(req *http.Request, access ...auth.Access) (*auth.Grant, error) {
+	result := tc.authenticator.Authenticate(req)
+	if !result.Authenticated && !result.Presented && tc.canAnonymousPull(req, access) {
+		return &auth.Grant{User: auth.UserInfo{Name: "anonymous"}}, nil
+	}
+	if !result.Authenticated {
+		return nil, testBasicChallengeError{realm: tc.realm, err: auth.ErrAuthenticationFailure}
+	}
+	if err := tc.authorizeDistributionAccess(req, &result.Principal, access); err != nil {
+		return nil, testBasicChallengeError{realm: tc.realm, err: auth.ErrAuthenticationFailure}
+	}
+	return &auth.Grant{User: auth.UserInfo{Name: result.Principal.Username}}, nil
+}
+
+func (tc *policyTestController) Authenticate(req *http.Request, access ...oci.Access) (*oci.Grant, error) {
+	result := tc.authenticator.Authenticate(req)
+	if !result.Authenticated && !result.Presented && tc.canAnonymousOCIPull(req, access) {
+		return &oci.Grant{User: oci.User{Name: "anonymous"}}, nil
+	}
+	if !result.Authenticated || tc.authorizeOCIAccess(req, &result.Principal, access) != nil {
+		return nil, testBasicChallengeError{realm: tc.realm, err: oci.ErrUnauthorized}
+	}
+	return &oci.Grant{User: oci.User{Name: result.Principal.Username}}, nil
+}
+
+type testBasicChallengeError struct {
+	realm string
+	err   error
+}
+
+func (ch testBasicChallengeError) SetHeaders(_ *http.Request, w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf("Basic realm=%q", ch.realm))
+}
+
+func (ch testBasicChallengeError) Error() string { return ch.err.Error() }
 
 func seedRobotPermission(t *testing.T, db *sql.DB, robotUsername, roleName string) {
 	t.Helper()
@@ -807,7 +860,7 @@ func TestAuthorized_RobotWriteCanPullAndPush(t *testing.T) {
 func TestAuthenticate_InvalidRobotCredentialsDoNotFallBackToAnonymous(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
-	ac, ok := newTestControllerWithRobotAuth(t, db).(*accessController)
+	ac, ok := newTestControllerWithRobotAuth(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}
@@ -825,7 +878,7 @@ func TestAuthenticate_InvalidRobotCredentialsDoNotFallBackToAnonymous(t *testing
 func TestAuthenticate_ValidUserCannotPullPrivateRepositoryWithoutPermission(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
-	ac, ok := newTestController(t, db).(*accessController)
+	ac, ok := newTestController(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}
@@ -843,7 +896,7 @@ func TestAuthenticate_ValidUserCannotPullPrivateRepositoryWithoutPermission(t *t
 func TestAuthenticate_ValidUserCannotPushRepositoryWithoutPermission(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
-	ac, ok := newTestController(t, db).(*accessController)
+	ac, ok := newTestController(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}
@@ -861,7 +914,7 @@ func TestAuthenticate_ValidUserCannotPushRepositoryWithoutPermission(t *testing.
 func TestAuthenticate_ValidRobotCannotPullPrivateRepositoryWithoutPermission(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
-	ac, ok := newTestControllerWithRobotAuth(t, db).(*accessController)
+	ac, ok := newTestControllerWithRobotAuth(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}
@@ -880,7 +933,7 @@ func TestAuthenticate_ValidRobotCannotPushPrivateRepositoryWithReadOnlyPermissio
 	db := setupTestDB(t)
 	defer db.Close()
 	seedRobotPermission(t, db, "acme+reader", "read")
-	ac, ok := newTestControllerWithRobotAuth(t, db).(*accessController)
+	ac, ok := newTestControllerWithRobotAuth(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}
@@ -899,7 +952,7 @@ func TestAuthenticate_ValidRobotCanPushPrivateRepositoryWithWritePermission(t *t
 	db := setupTestDB(t)
 	defer db.Close()
 	seedRobotPermission(t, db, "acme+writer", "write")
-	ac, ok := newTestControllerWithRobotAuth(t, db).(*accessController)
+	ac, ok := newTestControllerWithRobotAuth(t, db).(*policyTestController)
 	if !ok {
 		t.Fatal("expected concrete accessController")
 	}

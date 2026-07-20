@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,6 +27,7 @@ import (
 	"github.com/quay/quay/internal/registry"
 	"github.com/quay/quay/internal/registry/distribution"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
+	"github.com/quay/quay/internal/registry/jwtauth"
 	"github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
 	"github.com/quay/quay/internal/server"
@@ -33,7 +37,7 @@ func newServeCmd() *Command {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
 	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
-	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
+	hostname := fs.String("hostname", "localhost:8443", "public registry hostname, including port when non-default")
 	addr := fs.String("addr", ":8443", "listen address")
 
 	return &Command{
@@ -83,11 +87,18 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		FeatureUserLastAccessed:        featureUserLastAccessed,
 		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
 	}
-	superUsersFullAccess := featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess)
+	superUsersFullAccess := superUsersHaveFullAccess(resolved.Config)
+	publicHostname := resolved.Config.ServerHostname
+	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
+	if err != nil {
+		slog.Error("registry token service error", "err", err)
+		return 1
+	}
 
 	reg, err := distribution.NewRegistry(ctx, &distribution.Config{
 		StoragePath:                        resolved.StoragePath,
-		Hostname:                           resolved.Config.ServerHostname,
+		Hostname:                           publicHostname,
+		TokenRealm:                         tokenRealm,
 		ListenAddr:                         addr,
 		DB:                                 db,
 		Store:                              store,
@@ -101,6 +112,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		LastAccessedUpdateThresholdSeconds: lastAccessedUpdateThresholdSeconds,
 		SuperUsers:                         resolved.Config.SuperUsers,
 		SuperUsersFullAccess:               superUsersFullAccess,
+		JWTService:                         jwtService,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)
@@ -122,7 +134,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 
 	api, err := apiv1.New(apiv1.Config{
 		Authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(db, databaseVerifierConfig)),
-		Realm:         resolved.Config.ServerHostname,
+		Realm:         publicHostname,
 	},
 		repositoryapi.NewModule(repositoryService),
 	)
@@ -147,6 +159,9 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 			LastAccessedUpdateThresholdSeconds: databaseVerifierConfig.LastAccessedUpdateThresholdSec,
 			SuperUsers:                         resolved.Config.SuperUsers,
 			SuperUsersFullAccess:               superUsersFullAccess,
+			Authenticator:                      reg.Authenticator(),
+			TokenRealm:                         tokenRealm,
+			TokenService:                       publicHostname,
 		})
 		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
 	}
@@ -155,11 +170,12 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
+	mux.Handle("/v2/auth", reg.TokenHandler())
 	mux.Handle("/", v2Handler)
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,
-		Hostname:        resolved.Config.ServerHostname,
+		Hostname:        registryTLSHostname(resolved.Config.ServerHostname),
 		PreferredScheme: resolved.Config.PreferredURLScheme,
 		CertDir:         resolved.DataDir,
 	})
@@ -186,6 +202,28 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	)
 
 	return srv.ListenAndServe(ctx)
+}
+
+func registryTLSHostname(publicHostname string) string {
+	if host, _, err := net.SplitHostPort(publicHostname); err == nil {
+		return strings.Trim(host, "[]")
+	}
+	return strings.Trim(publicHostname, "[]")
+}
+
+func loadRegistryTokenService(resolved *config.Resolved) (*jwtauth.Service, string, error) {
+	publicHostname := resolved.Config.ServerHostname
+	service, err := jwtauth.LoadOrCreate(resolved.DataDir, jwtauth.Config{
+		Issuer:   resolved.Config.InstanceServiceKeyService,
+		Audience: publicHostname,
+		MaxAge:   time.Duration(resolved.Config.RegistryJWTAuthMaxFreshS) * time.Second,
+	})
+	realm := fmt.Sprintf("%s://%s/v2/auth", resolved.Config.PreferredURLScheme, publicHostname)
+	return service, realm, err
+}
+
+func superUsersHaveFullAccess(cfg *config.Config) bool {
+	return featureEnabled(cfg.FeatureSuperUsers) && featureEnabled(cfg.FeatureSuperUsersFullAccess)
 }
 
 func configureStandaloneSuperuser(resolved *config.Resolved, username string) {
