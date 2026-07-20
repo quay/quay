@@ -20,7 +20,7 @@ export function useMarketplaceSubscriptions(
     ['subscriptions', {type: 'user'}],
     () => fetchMarketplaceSubscriptions(),
     {
-      enabled: config?.features?.RH_MARKETPLACE,
+      enabled: !!config?.features?.RH_MARKETPLACE,
     },
   );
 
@@ -29,10 +29,11 @@ export function useMarketplaceSubscriptions(
     error: errorFetchingOrgSubs,
     data: orgSubscriptions,
   } = useQuery(
-    ['subscriptions', {type: 'org'}],
+    ['subscriptions', {type: 'org', org: organizationName}],
     () => fetchMarketplaceSubscriptions(organizationName),
     {
-      enabled: config?.features?.RH_MARKETPLACE && organizationName != userName,
+      enabled:
+        !!config?.features?.RH_MARKETPLACE && organizationName != userName,
     },
   );
 
