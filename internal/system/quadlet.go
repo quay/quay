@@ -69,7 +69,7 @@ WantedBy=default.target
 
 func quadletServeCommand(spec *QuadletSpec) string {
 	if spec.ConfigPath != "" {
-		return fmt.Sprintf("serve --config %s", spec.ConfigPath)
+		return fmt.Sprintf("serve --config %s --hostname %s", spec.ConfigPath, spec.Hostname)
 	}
 	return fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
 }
@@ -98,6 +98,37 @@ func (q *QuadletManager) HostPort(service string) (string, error) {
 		return "", fmt.Errorf("scan quadlet: %w", err)
 	}
 	return "", fmt.Errorf("no PublishPort= directive found in %s", path)
+}
+
+// Hostname returns the hostname passed to serve by an existing Quadlet file.
+func (q *QuadletManager) Hostname(service string) (string, error) {
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read quadlet: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		command, found := strings.CutPrefix(scanner.Text(), "Exec=")
+		if !found {
+			continue
+		}
+		fields := strings.Fields(command)
+		for i, field := range fields {
+			if field != "--hostname" {
+				continue
+			}
+			if i+1 >= len(fields) || fields[i+1] == "" {
+				return "", fmt.Errorf("invalid hostname flag in Exec= directive in %s", path)
+			}
+			return fields[i+1], nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan quadlet: %w", err)
+	}
+	return "", fmt.Errorf("no hostname flag found in Exec= directive in %s", path)
 }
 
 // UpdateImage replaces the image while retaining the existing published host port.
