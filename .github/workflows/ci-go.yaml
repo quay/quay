@@ -160,6 +160,7 @@ jobs:
 
           mkdir -p /tmp/oci-conformance-logs
           sudo bin/quay install \
+            -hostname=localhost \
             -data-dir=/var/lib/quay \
             -image-archive=/tmp/quay-mirror.tar \
             2>&1 | tee /tmp/oci-conformance-logs/install.log
@@ -360,6 +361,7 @@ jobs:
       - name: Install registry
         run: |
           sudo bin/quay install \
+            -hostname=localhost \
             -data-dir=/var/lib/quay \
             -image-archive=/tmp/quay-mirror.tar
 
