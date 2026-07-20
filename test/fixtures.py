@@ -7,7 +7,7 @@ import sys
 from collections import namedtuple
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import psycopg2
+import psycopg2  # type: ignore[import]
 import pytest
 from filelock import FileLock
 from flask import Flask, jsonify
@@ -17,7 +17,7 @@ from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
 from peewee import InternalError, SqliteDatabase
-from psycopg2 import sql
+from psycopg2 import sql  # type: ignore[import]
 
 import features
 
@@ -117,7 +117,7 @@ def _database_uri_for_schema(db_uri, schema):
     """Add a PostgreSQL search path for the isolated test schema."""
     parsed = urlsplit(db_uri)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    query["options"] = "-c search_path={}".format(schema)
+    query["options"] = "-c search_path={},public".format(schema)
     return urlunsplit(
         (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
     )
@@ -172,7 +172,7 @@ def _init_db_path_real_db(db_uri):
     connection_args = {
         "threadlocals": True,
         "autorollback": True,
-        "options": "-c search_path={}".format(schema),
+        "options": "-c search_path={},public".format(schema),
     }
     configure(
         {
@@ -272,7 +272,7 @@ def appconfig(database_uri):
             "threadlocals": True,
             "autorollback": True,
             **(
-                {"options": "-c search_path={}".format(_test_database_schema())}
+                {"options": "-c search_path={},public".format(_test_database_schema())}
                 if database_uri.startswith("postgresql")
                 else {}
             ),

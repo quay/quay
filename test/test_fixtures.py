@@ -27,4 +27,4 @@ def test_database_uri_for_schema_sets_postgresql_search_path():
     isolated_uri = _database_uri_for_schema(uri, "quay_test_gw0")
 
     assert "connect_timeout=5" in isolated_uri
-    assert "options=-c+search_path%3Dquay_test_gw0" in isolated_uri
+    assert "options=-c+search_path%3Dquay_test_gw0%2Cpublic" in isolated_uri
