@@ -70,7 +70,7 @@ test.describe(
           expect(webhook?.body).toHaveProperty('event_data');
 
           // PROJQUAY-12230: verify numeric fields are serialized correctly
-          // (Decimal from PostgreSQL must be cast to int before json.dumps)
+          // (Decimal from PostgreSQL SUM()/BigIntegerField must be cast to int before json.dumps)
           expect(typeof webhook?.body?.limit_bytes).toBe('number');
           expect(typeof webhook?.body?.usage_bytes).toBe('number');
           expect(typeof webhook?.body?.usage_percent).toBe('number');
