@@ -105,40 +105,56 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         secscan_v2_cycle_duration.observe(cycle_duration)
         logger.debug("Indexing cycle complete: %d manifests in %.1fs", len(claimed), cycle_duration)
 
+    def _scan_conditions(self, reindex_threshold, stale_threshold, indexer_hash):
+        conditions = (ManifestSecurityStatus.index_status == IndexStatus.PENDING) | (
+            (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
+            & (ManifestSecurityStatus.last_indexed < stale_threshold)
+        )
+
+        conditions |= (
+            (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+            & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+        )
+        conditions |= (
+            (
+                ManifestSecurityStatus.index_status.not_in(
+                    [
+                        IndexStatus.MANIFEST_UNSUPPORTED,
+                        IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                        IndexStatus.IN_PROGRESS,
+                    ]
+                )
+            )
+            & (ManifestSecurityStatus.indexer_hash != indexer_hash)
+            & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+        )
+
+        return conditions
+
     def _find_and_claim_batch(self, batch_size, reindex_threshold, stale_threshold, indexer_hash):
         max_retries = self.app.config.get(
             "SECURITY_SCANNER_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
         )
+        conditions = self._scan_conditions(reindex_threshold, stale_threshold, indexer_hash)
+
+        candidate_ids = [
+            row.id
+            for row in ManifestSecurityStatus.select(
+                ManifestSecurityStatus.id, can_use_read_replica=True
+            )
+            .where(conditions)
+            .order_by(ManifestSecurityStatus.last_indexed.desc())
+            .limit(batch_size)
+        ]
+
+        if not candidate_ids:
+            return []
 
         with db_transaction():
-            conditions = (ManifestSecurityStatus.index_status == IndexStatus.PENDING) | (
-                (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
-                & (ManifestSecurityStatus.last_indexed < stale_threshold)
-            )
-
-            conditions |= (
-                (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
-                & (ManifestSecurityStatus.last_indexed < reindex_threshold)
-            )
-            conditions |= (
-                (
-                    ManifestSecurityStatus.index_status.not_in(
-                        [
-                            IndexStatus.MANIFEST_UNSUPPORTED,
-                            IndexStatus.MANIFEST_LAYER_TOO_LARGE,
-                            IndexStatus.IN_PROGRESS,
-                        ]
-                    )
-                )
-                & (ManifestSecurityStatus.indexer_hash != indexer_hash)
-                & (ManifestSecurityStatus.last_indexed < reindex_threshold)
-            )
-
             query = (
                 ManifestSecurityStatus.select()
-                .where(conditions)
+                .where(ManifestSecurityStatus.id.in_(candidate_ids) & conditions)
                 .order_by(ManifestSecurityStatus.last_indexed.desc())
-                .limit(batch_size)
             )
 
             rows = list(db_for_update(query, skip_locked=True))
