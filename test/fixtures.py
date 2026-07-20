@@ -133,6 +133,13 @@ def _create_test_schema(db_uri, schema):
             identifier = sql.Identifier(schema)
             cursor.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(identifier))
             cursor.execute(sql.SQL("CREATE SCHEMA {}").format(identifier))
+            cursor.execute(
+                sql.SQL(
+                    "CREATE TABLE {}.alembic_version "
+                    "(version_num VARCHAR(32) NOT NULL, "
+                    "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+                ).format(identifier)
+            )
     finally:
         connection.close()
 
