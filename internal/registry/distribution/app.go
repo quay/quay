@@ -106,13 +106,9 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		"superUsers":           cfg.SuperUsers,
 		"superUsersFullAccess": cfg.SuperUsersFullAccess,
 	}
-	controllerInterface, err := newAccessController(authOptions)
+	controller, err := newAccessController(authOptions)
 	if err != nil {
 		return nil, fmt.Errorf("create registry access controller: %w", err)
-	}
-	controller, ok := controllerInterface.(*accessController)
-	if !ok {
-		return nil, fmt.Errorf("unexpected registry access controller type %T", controllerInterface)
 	}
 	tokenHandler, err := newTokenHandler(
 		controller.authenticator,

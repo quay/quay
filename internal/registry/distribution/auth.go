@@ -19,9 +19,13 @@ import (
 )
 
 func init() {
-	if err := distauth.Register("quaydb", distauth.InitFunc(newAccessController)); err != nil {
+	if err := distauth.Register("quaydb", distauth.InitFunc(accessControllerFactory)); err != nil {
 		slog.Error("failed to register quaydb auth", "err", err)
 	}
+}
+
+func accessControllerFactory(options map[string]interface{}) (distauth.AccessController, error) {
+	return newAccessController(options)
 }
 
 type accessController struct {
@@ -56,7 +60,7 @@ const (
 	authOptionLastAccessS  = "lastAccessedUpdateThresholdSeconds"
 )
 
-func newAccessController(options map[string]interface{}) (distauth.AccessController, error) {
+func newAccessController(options map[string]interface{}) (*accessController, error) {
 	if controller, ok := options[authOptionController].(*accessController); ok && controller != nil {
 		return controller, nil
 	}

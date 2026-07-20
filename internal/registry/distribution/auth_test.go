@@ -304,13 +304,9 @@ func newPolicyTestController(t *testing.T, options map[string]interface{}) auth.
 	}
 	options[authOptionService] = "test-service"
 	options[authOptionJWTService] = service
-	controllerInterface, err := newAccessController(options)
+	controller, err := newAccessController(options)
 	if err != nil {
 		t.Fatalf("new access controller: %v", err)
-	}
-	controller, ok := controllerInterface.(*accessController)
-	if !ok {
-		t.Fatalf("unexpected access controller type %T", controllerInterface)
 	}
 	return &policyTestController{accessController: controller}
 }

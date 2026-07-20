@@ -314,7 +314,7 @@ func newBearerTestComponents(t *testing.T, db *sql.DB, anonymous bool) (*TokenHa
 	require.NoError(t, err)
 	service, err := jwtauth.New(key, jwtauth.Config{Audience: testTokenService})
 	require.NoError(t, err)
-	controllerInterface, err := newAccessController(map[string]interface{}{
+	controller, err := newAccessController(map[string]interface{}{
 		authOptionRealm:       "https://registry.example.com:8443/v2/auth",
 		authOptionService:     testTokenService,
 		authOptionJWTService:  service,
@@ -325,8 +325,6 @@ func newBearerTestComponents(t *testing.T, db *sql.DB, anonymous bool) (*TokenHa
 		authOptionLastAccessS: 0,
 	})
 	require.NoError(t, err)
-	controller, ok := controllerInterface.(*accessController)
-	require.True(t, ok)
 	handler, err := newTokenHandler(
 		controller.authenticator,
 		controllerTokenPolicy{controller: controller},
