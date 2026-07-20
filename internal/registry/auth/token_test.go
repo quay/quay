@@ -29,9 +29,12 @@ func newTestPair(t *testing.T) (TokenSigner, TokenVerifier) {
 
 func validTestClaims() *Claims {
 	return &Claims{
-		Issuer: Issuer, Subject: "acme+robot", Audience: "registry.example.com:8443",
-		IssuedAt: testNow.Unix(), NotBefore: testNow.Unix(), Expiration: testNow.Add(5 * time.Minute).Unix(),
-		JWTID: "test-jti", Access: []ResourceActions{{Type: "repository", Name: "acme/image", Actions: []string{"pull"}}},
+		Claims: jwt.Claims{
+			Issuer: Issuer, Subject: "acme+robot", Audience: jwt.Audience{"registry.example.com:8443"},
+			IssuedAt: jwt.NewNumericDate(testNow), NotBefore: jwt.NewNumericDate(testNow),
+			Expiry: jwt.NewNumericDate(testNow.Add(5 * time.Minute)), ID: "test-jti",
+		},
+		Access: []ResourceActions{{Type: "repository", Name: "acme/image", Actions: []string{"pull"}}},
 	}
 }
 
@@ -71,6 +74,14 @@ func TestES256SignVerifyAndRFC7638KeyID(t *testing.T) {
 	}
 	if len(header) != 2 {
 		t.Fatalf("unexpected protected headers: %#v", header)
+	}
+	payloadJSON, _ := base64.RawURLEncoding.DecodeString(parts[1])
+	var payload map[string]any
+	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if audience, ok := payload["aud"].(string); !ok || audience != "registry.example.com:8443" {
+		t.Fatalf("audience = %#v, want a single JSON string", payload["aud"])
 	}
 }
 
@@ -142,23 +153,55 @@ func TestVerifierRejectsUnknownClaims(t *testing.T) {
 	}
 }
 
+func TestVerifierRejectsAudienceArray(t *testing.T) {
+	signer, verifier := newTestPair(t)
+	payload, err := json.Marshal(validTestClaims())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		t.Fatal(err)
+	}
+	claims["aud"] = []string{"registry.example.com:8443"}
+	raw := signTestClaims(t, signer.(*es256Signer), claims, nil)
+	if _, err := verifier.Verify(raw); err == nil {
+		t.Fatal("expected array audience to fail")
+	}
+}
+
 func TestVerifierRejectsInvalidClaims(t *testing.T) {
 	tests := map[string]func(*Claims){
-		"issuer":        func(c *Claims) { c.Issuer = "other" },
-		"audience":      func(c *Claims) { c.Audience = "other" },
-		"subject":       func(c *Claims) { c.Subject = "" },
-		"jti":           func(c *Claims) { c.JWTID = "" },
-		"issued at":     func(c *Claims) { c.IssuedAt = 0 },
-		"not before":    func(c *Claims) { c.NotBefore = 0 },
-		"expiration":    func(c *Claims) { c.Expiration = 0 },
-		"expired":       func(c *Claims) { c.Expiration = testNow.Add(-6 * time.Second).Unix() },
-		"future issued": func(c *Claims) { c.IssuedAt = testNow.Add(6 * time.Second).Unix(); c.NotBefore = c.IssuedAt },
-		"not yet valid": func(c *Claims) { c.NotBefore = testNow.Add(6 * time.Second).Unix() },
-		"overlong":      func(c *Claims) { c.Expiration = testNow.Add(11 * time.Minute).Unix() },
-		"stale": func(c *Claims) {
-			c.IssuedAt = testNow.Add(-11 * time.Minute).Unix()
+		"issuer":   func(c *Claims) { c.Issuer = "other" },
+		"audience": func(c *Claims) { c.Audience = jwt.Audience{"other"} },
+		"extra audience": func(c *Claims) {
+			c.Audience = jwt.Audience{"registry.example.com:8443", "other"}
+		},
+		"subject": func(c *Claims) { c.Subject = "" },
+		"jti":     func(c *Claims) { c.ID = "" },
+		"missing issued at": func(c *Claims) {
+			c.IssuedAt = nil
+		},
+		"missing not before": func(c *Claims) {
+			c.NotBefore = nil
+		},
+		"missing expiration": func(c *Claims) {
+			c.Expiry = nil
+		},
+		"issued at":  func(c *Claims) { c.IssuedAt = numericDate(0) },
+		"not before": func(c *Claims) { c.NotBefore = numericDate(0) },
+		"expiration": func(c *Claims) { c.Expiry = numericDate(0) },
+		"expired":    func(c *Claims) { c.Expiry = jwt.NewNumericDate(testNow.Add(-6 * time.Second)) },
+		"future issued": func(c *Claims) {
+			c.IssuedAt = jwt.NewNumericDate(testNow.Add(6 * time.Second))
 			c.NotBefore = c.IssuedAt
-			c.Expiration = testNow.Add(time.Minute).Unix()
+		},
+		"not yet valid": func(c *Claims) { c.NotBefore = jwt.NewNumericDate(testNow.Add(6 * time.Second)) },
+		"overlong":      func(c *Claims) { c.Expiry = jwt.NewNumericDate(testNow.Add(11 * time.Minute)) },
+		"stale": func(c *Claims) {
+			c.IssuedAt = jwt.NewNumericDate(testNow.Add(-11 * time.Minute))
+			c.NotBefore = c.IssuedAt
+			c.Expiry = jwt.NewNumericDate(testNow.Add(time.Minute))
 		},
 		"missing access":  func(c *Claims) { c.Access = nil },
 		"bad access type": func(c *Claims) { c.Access[0].Type = "" },
@@ -179,6 +222,43 @@ func TestVerifierRejectsInvalidClaims(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestVerifierAcceptsConfiguredClockSkew(t *testing.T) {
+	tests := map[string]func(*Claims){
+		"recently expired": func(c *Claims) {
+			c.IssuedAt = jwt.NewNumericDate(testNow.Add(-5 * time.Minute))
+			c.NotBefore = c.IssuedAt
+			c.Expiry = jwt.NewNumericDate(testNow.Add(-5 * time.Second))
+		},
+		"future issued": func(c *Claims) {
+			c.IssuedAt = jwt.NewNumericDate(testNow.Add(5 * time.Second))
+			c.NotBefore = c.IssuedAt
+			c.Expiry = jwt.NewNumericDate(testNow.Add(5 * time.Minute))
+		},
+		"not yet valid": func(c *Claims) {
+			c.NotBefore = jwt.NewNumericDate(testNow.Add(5 * time.Second))
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			signer, verifier := newTestPair(t)
+			claims := validTestClaims()
+			mutate(claims)
+			raw, err := signer.Sign(claims)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := verifier.Verify(raw); err != nil {
+				t.Fatalf("expected token within configured skew to pass: %v", err)
+			}
+		})
+	}
+}
+
+func numericDate(seconds int64) *jwt.NumericDate {
+	value := jwt.NumericDate(seconds)
+	return &value
 }
 
 func compactUnsigned(t *testing.T, header, claims any) string {

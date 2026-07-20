@@ -148,6 +148,15 @@ func decodeClaims(payload []byte) (*Claims, bool) {
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return nil, false
 	}
+	// jwt.Audience accepts both RFC 7519 forms. Registry tokens are emitted and
+	// accepted with exactly one string audience, so preserve that wire contract.
+	var wire struct {
+		Audience json.RawMessage `json:"aud"`
+	}
+	var audience string
+	if err := json.Unmarshal(payload, &wire); err != nil || json.Unmarshal(wire.Audience, &audience) != nil {
+		return nil, false
+	}
 	return &claims, true
 }
 
@@ -181,17 +190,22 @@ func validAccessActions(item ResourceActions) bool {
 }
 
 func (v *es256Verifier) validClaims(claims *Claims) bool {
-	if !v.validRequiredClaims(claims) {
+	if !v.validRequiredClaims(claims) || claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      v.issuer,
+		AnyAudience: jwt.Audience{v.audience},
+		Time:        v.now().UTC(),
+	}, v.clockSkew) != nil {
 		return false
 	}
 	return v.validClaimTimes(claims)
 }
 
 func (v *es256Verifier) validRequiredClaims(claims *Claims) bool {
-	if claims.Issuer != v.issuer || claims.Audience != v.audience || claims.Subject == "" || claims.JWTID == "" {
+	if claims.Subject == "" || claims.ID == "" || len(claims.Audience) != 1 {
 		return false
 	}
-	if claims.IssuedAt <= 0 || claims.NotBefore <= 0 || claims.Expiration <= 0 {
+	if claims.IssuedAt == nil || claims.NotBefore == nil || claims.Expiry == nil ||
+		*claims.IssuedAt <= 0 || *claims.NotBefore <= 0 || *claims.Expiry <= 0 {
 		return false
 	}
 	return true
@@ -199,12 +213,9 @@ func (v *es256Verifier) validRequiredClaims(claims *Claims) bool {
 
 func (v *es256Verifier) validClaimTimes(claims *Claims) bool {
 	now := v.now().UTC()
-	issuedAt := time.Unix(claims.IssuedAt, 0)
-	notBefore := time.Unix(claims.NotBefore, 0)
-	expires := time.Unix(claims.Expiration, 0)
-	if issuedAt.After(now.Add(v.clockSkew)) || now.Before(notBefore.Add(-v.clockSkew)) || now.After(expires.Add(v.clockSkew)) {
-		return false
-	}
+	issuedAt := claims.IssuedAt.Time()
+	notBefore := claims.NotBefore.Time()
+	expires := claims.Expiry.Time()
 	if expires.Before(issuedAt) || expires.Equal(issuedAt) || expires.Sub(issuedAt) > v.maxFresh {
 		return false
 	}

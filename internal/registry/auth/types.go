@@ -4,7 +4,11 @@
 // and repository authorization through the function types defined here.
 package auth
 
-import "context"
+import (
+	"context"
+
+	"github.com/go-jose/go-jose/v4/jwt"
+)
 
 const (
 	// AnonymousSubject matches the subject used by Python Quay registry tokens.
@@ -47,16 +51,11 @@ type ResourceActions struct {
 	Actions []string `json:"actions"`
 }
 
-// Claims is the complete JWT claim set issued by Go OMR.
+// Claims is the complete JWT claim set issued by Go OMR. Standard claims use
+// go-jose's types and validation; Access is the Docker Distribution extension.
 type Claims struct {
-	Issuer     string            `json:"iss"`
-	Subject    string            `json:"sub"`
-	Audience   string            `json:"aud"`
-	Expiration int64             `json:"exp"`
-	NotBefore  int64             `json:"nbf"`
-	IssuedAt   int64             `json:"iat"`
-	JWTID      string            `json:"jti"`
-	Access     []ResourceActions `json:"access"`
+	jwt.Claims
+	Access []ResourceActions `json:"access"`
 }
 
 // TokenSigner signs algorithm-neutral registry claims.

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 const maximumTokenQueryBytes = 64 << 10
@@ -109,9 +111,12 @@ func (h *Handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		return
 	}
 	claims := &Claims{
-		Issuer: Issuer, Subject: identity.Subject, Audience: h.service,
-		IssuedAt: now.Unix(), NotBefore: now.Unix(), Expiration: now.Add(h.lifetime).Unix(),
-		JWTID: jti, Access: access,
+		Claims: jwt.Claims{
+			Issuer: Issuer, Subject: identity.Subject, Audience: jwt.Audience{h.service},
+			IssuedAt: jwt.NewNumericDate(now), NotBefore: jwt.NewNumericDate(now),
+			Expiry: jwt.NewNumericDate(now.Add(h.lifetime)), ID: jti,
+		},
+		Access: access,
 	}
 	token, err := h.signer.Sign(claims)
 	if err != nil {
