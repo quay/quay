@@ -153,6 +153,29 @@ test.describe(
       await expect(vulnRows.first()).toBeVisible();
     });
 
+    test('security status API returns valid scan status', async ({
+      userContext,
+    }) => {
+      const api = new ApiClient(userContext.request);
+      const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      const digest = tags.tags[0].manifest_digest;
+
+      const sec = await api.getManifestSecurity(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+      );
+
+      expect(sec.status).toBeDefined();
+      expect(['queued', 'scanned', 'failed', 'unsupported']).toContain(
+        sec.status,
+      );
+
+      if (sec.status === 'scanned') {
+        expect(sec.data).toBeDefined();
+      }
+    });
+
     test('packages tab supports filtering', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
