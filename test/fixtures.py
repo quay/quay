@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from collections import namedtuple
+from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg2  # type: ignore[import]
@@ -125,12 +126,15 @@ def _database_uri_for_schema(db_uri, schema):
 
 def _create_test_schema(db_uri, schema):
     """Create a clean schema for one pytest-xdist worker."""
-    with psycopg2.connect(db_uri) as connection:
+    connection = psycopg2.connect(db_uri)
+    try:
         connection.autocommit = True
         with connection.cursor() as cursor:
             identifier = sql.Identifier(schema)
             cursor.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(identifier))
             cursor.execute(sql.SQL("CREATE SCHEMA {}").format(identifier))
+    finally:
+        connection.close()
 
 
 def _init_db_path_real_db(db_uri):
@@ -166,7 +170,9 @@ def _init_db_path_real_db(db_uri):
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         check=True,
+        cwd=Path(__file__).resolve().parents[1],
         env=migration_environment,
+        timeout=300,
     )
 
     connection_args = {
@@ -267,7 +273,6 @@ def appconfig(database_uri):
         "DEBUG": True,
         "DB_URI": database_uri,
         "SECRET_KEY": "superdupersecret!!!1",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
         "DB_CONNECTION_ARGS": {
             "threadlocals": True,
             "autorollback": True,
