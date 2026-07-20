@@ -858,6 +858,11 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
             "x-example": 30,
         },
+        "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
+            "type": "number",
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 3.",
+            "x-example": 3,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",

@@ -1243,7 +1243,7 @@ def test_batch_preemption_check(initialized_db, set_secscan_config):
     secscan._secscan_api.index = count_index
 
     # Run indexing
-    secscan._index(simple_iterator(), reindex_threshold)
+    secscan._index(simple_iterator(), reindex_threshold, "abc")
 
     # Verify that recently indexed manifests were skipped
     # We expect: 3 skipped (recently indexed), rest processed
@@ -1316,7 +1316,7 @@ def test_batched_iterator_with_preemption_check(initialized_db, set_secscan_conf
     secscan._secscan_api.index = counting_index
 
     # Run indexing
-    secscan._index(test_iterator(), reindex_threshold)
+    secscan._index(test_iterator(), reindex_threshold, "test")
 
     # Verify that batching worked - some manifests were skipped
     # We marked 10 as recently indexed, so they should be skipped
@@ -1346,7 +1346,7 @@ def test_batch_preemption_empty_and_edge_cases(initialized_db, set_secscan_confi
     secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     # Should not crash with empty iterator
-    secscan._index(empty_iterator(), reindex_threshold)
+    secscan._index(empty_iterator(), reindex_threshold, "test")
 
     # Test 2: Single manifest
     manifests = list(Manifest.select().limit(1))
@@ -1359,7 +1359,7 @@ def test_batch_preemption_empty_and_edge_cases(initialized_db, set_secscan_confi
             {"err": None, "state": IndexReportState.Index_Finished},
             "test",
         )
-        secscan._index(single_iterator(), reindex_threshold)
+        secscan._index(single_iterator(), reindex_threshold, "test")
 
         # Verify it was processed (may be marked as unsupported if it's a manifest list)
         assert (
@@ -1444,7 +1444,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             last_indexed=reindex_threshold - timedelta(seconds=100),
-            metadata_json={"retry_count": 3},
+            metadata_json={"retry_count": 3, "last_failed_hash": "abc"},
         )
 
     for i in range(3, 6):
@@ -1456,7 +1456,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             last_indexed=reindex_threshold - timedelta(seconds=100),
-            metadata_json={"retry_count": 1},
+            metadata_json={"retry_count": 1, "last_failed_hash": "abc"},
         )
 
     from threading import Event
@@ -1472,8 +1472,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
         {"err": None, "state": IndexReportState.Index_Finished},
         "abc",
     )
-
-    secscan._index(test_iterator(), reindex_threshold)
+    secscan._index(test_iterator(), reindex_threshold, "abc")
 
     exhausted_ids = {manifests[i].id for i in range(3)}
     for mss in ManifestSecurityStatus.select().where(
@@ -1489,9 +1488,10 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
         assert mss.index_status == IndexStatus.COMPLETED
 
 
-def test_api_failure_increments_retry_count(initialized_db, set_secscan_config):
+def test_api_failure_does_not_increment_retry_count(initialized_db, set_secscan_config):
     """
-    Test that APIRequestFailure increments retry_count in metadata_json.
+    Test that APIRequestFailure does not increment retry_count since transport
+    failures are transient and should not count against the retry limit.
     """
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -1502,7 +1502,7 @@ def test_api_failure_increments_retry_count(initialized_db, set_secscan_config):
 
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
-        assert mss.metadata_json.get("retry_count") == 1
+        assert mss.metadata_json.get("retry_count") is None
 
 
 def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
@@ -1610,7 +1610,7 @@ def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
         "test",
     )
 
-    secscan._index(test_iterator(), reindex_threshold)
+    secscan._index(test_iterator(), reindex_threshold, "test")
 
     # Verify that recently indexed manifests still have original hash
     # (they were skipped, so hash wasn't updated)

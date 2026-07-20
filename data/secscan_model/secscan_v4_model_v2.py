@@ -107,10 +107,10 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             return
 
         for candidate in claimed_new:
-            self._index_manifest_by_id(candidate.id, candidate.repository_id)
+            self._index_manifest_by_id(candidate.id, candidate.repository_id, indexer_hash)
 
         for mss_row in claimed_mss:
-            self._index_manifest_by_id(mss_row.manifest_id, mss_row.repository_id)
+            self._index_manifest_by_id(mss_row.manifest_id, mss_row.repository_id, indexer_hash)
 
         cycle_duration = time.monotonic() - cycle_start
         secscan_v2_cycle_duration.observe(cycle_duration)
@@ -120,7 +120,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
     def _find_and_claim_batch(self, batch_size, reindex_threshold, stale_threshold, indexer_hash):
         max_retries = self.app.config.get(
-            "SECURITY_SCANNER_V2_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
+            "SECURITY_SCANNER_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
         )
 
         with db_transaction():
@@ -164,10 +164,11 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             eligible = []
             exhausted_ids = []
             for r in rows:
-                if (
-                    r.index_status == IndexStatus.FAILED
-                    and (r.metadata_json or {}).get("retry_count", 0) >= max_retries
-                ):
+                metadata = r.metadata_json or {}
+                retry_count = metadata.get("retry_count", 0)
+                if metadata.get("last_failed_hash") != indexer_hash:
+                    retry_count = 0
+                if r.index_status == IndexStatus.FAILED and retry_count >= max_retries:
                     exhausted_ids.append(r.id)
                 else:
                     eligible.append(r)
@@ -226,12 +227,17 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
         return claimed
 
-    def _index_manifest_by_id(self, manifest_id, repository_id):
+    def _index_manifest_by_id(self, manifest_id, repository_id, current_indexer_hash):
         try:
             candidate = Manifest.get(Manifest.id == manifest_id)
         except Manifest.DoesNotExist:
             logger.warning("Manifest %d no longer exists, skipping", manifest_id)
-            self._mark_failed(manifest_id, "manifest_deleted", {"error": "manifest not found"})
+            self._mark_failed(
+                manifest_id,
+                "manifest_deleted",
+                {"error": "manifest not found"},
+                current_indexer_hash,
+            )
             return
 
         manifest = ManifestDataType.for_manifest(candidate, None)
@@ -275,7 +281,15 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             logger.exception("Failed to index: invalid content sent")
             return
         except APIRequestFailure as ex:
-            self._mark_failed(candidate.id, "api_failure", {"error": str(ex)})
+            ManifestSecurityStatus.update(
+                index_status=IndexStatus.FAILED,
+                indexer_hash="api_failure",
+                error_json={"error": str(ex)},
+                last_indexed=datetime.utcnow(),
+            ).where(
+                ManifestSecurityStatus.manifest == candidate.id,
+                ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+            ).execute()
             secscan_v2_scan_result.labels(result="api_error").inc()
             logger.exception("Failed to index: security scanner API error")
             return
@@ -298,6 +312,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 candidate.id,
                 "unknown_state",
                 {"error": "unknown_state", "state": report.get("state")},
+                current_indexer_hash,
             )
             secscan_v2_scan_result.labels(result="failed").inc()
             logger.warning(
@@ -312,9 +327,13 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             try:
                 mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
                 old_metadata = mss.metadata_json or {}
-                metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
+                if old_metadata.get("last_failed_hash") != current_indexer_hash:
+                    metadata["retry_count"] = 1
+                else:
+                    metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
             except ManifestSecurityStatus.DoesNotExist:
                 metadata["retry_count"] = 1
+            metadata["last_failed_hash"] = current_indexer_hash
 
         with db_transaction():
             ManifestSecurityStatus.delete().where(
@@ -420,13 +439,17 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 metadata_json={},
             )
 
-    def _mark_failed(self, manifest_id, indexer_hash, error_json):
+    def _mark_failed(self, manifest_id, indexer_hash, error_json, current_indexer_hash):
         try:
             mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest_id)
             metadata = mss.metadata_json or {}
-            metadata["retry_count"] = metadata.get("retry_count", 0) + 1
+            if metadata.get("last_failed_hash") != current_indexer_hash:
+                metadata["retry_count"] = 1
+            else:
+                metadata["retry_count"] = metadata.get("retry_count", 0) + 1
         except ManifestSecurityStatus.DoesNotExist:
             metadata = {"retry_count": 1}
+        metadata["last_failed_hash"] = current_indexer_hash
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.FAILED,
