@@ -1590,7 +1590,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         super_secret_password = "pa'ssword"
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
+        redactor.write(self._make_bind_trace_pprint("uid=user,dc=example", super_secret_password))
         output = buf.getvalue()
 
         self.assertNotIn(super_secret_password, output)
