@@ -18,7 +18,7 @@ from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
 from peewee import InternalError, SqliteDatabase
-from psycopg2 import sql  # type: ignore[import]
+from psycopg2 import sql
 
 import features
 
