@@ -40,6 +40,7 @@ from util.secscan.validator import V4SecurityConfigValidator
 logger = logging.getLogger(__name__)
 
 DEFAULT_REINDEX_THRESHOLD = 86400
+DEFAULT_MAX_SCAN_RETRIES = 3
 STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
 
@@ -118,6 +119,10 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         )
 
     def _find_and_claim_batch(self, batch_size, reindex_threshold, stale_threshold, indexer_hash):
+        max_retries = self.app.config.get(
+            "SECURITY_SCANNER_V2_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
+        )
+
         with db_transaction():
             query = (
                 ManifestSecurityStatus.select()
@@ -150,6 +155,16 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             )
 
             rows = list(db_for_update(query, skip_locked=True))
+
+            if not rows:
+                return []
+
+            rows = [
+                r
+                for r in rows
+                if r.index_status != IndexStatus.FAILED
+                or (r.metadata_json or {}).get("retry_count", 0) < max_retries
+            ]
 
             if not rows:
                 return []
@@ -282,6 +297,15 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             )
             return
 
+        metadata = {}
+        if index_status == IndexStatus.FAILED:
+            try:
+                mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                old_metadata = mss.metadata_json or {}
+                metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
+            except ManifestSecurityStatus.DoesNotExist:
+                metadata["retry_count"] = 1
+
         with db_transaction():
             ManifestSecurityStatus.delete().where(
                 ManifestSecurityStatus.manifest == candidate
@@ -293,7 +317,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 index_status=index_status,
                 indexer_hash=state,
                 indexer_version=IndexerVersion.V4,
-                metadata_json={},
+                metadata_json=metadata,
             )
 
         result_label = "completed" if index_status == IndexStatus.COMPLETED else "failed"
@@ -387,10 +411,18 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             )
 
     def _mark_failed(self, manifest_id, indexer_hash, error_json):
+        try:
+            mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest_id)
+            metadata = mss.metadata_json or {}
+            metadata["retry_count"] = metadata.get("retry_count", 0) + 1
+        except ManifestSecurityStatus.DoesNotExist:
+            metadata = {"retry_count": 1}
+
         ManifestSecurityStatus.update(
             index_status=IndexStatus.FAILED,
             indexer_hash=indexer_hash,
             error_json=error_json,
+            metadata_json=metadata,
             last_indexed=datetime.utcnow(),
         ).where(
             ManifestSecurityStatus.manifest == manifest_id,

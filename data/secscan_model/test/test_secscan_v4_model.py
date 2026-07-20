@@ -1423,6 +1423,134 @@ def test_deduplicate_recent_vs_full_catalog(initialized_db, set_secscan_config):
         )
 
 
+def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_config):
+    """
+    Test that manifests with retry_count >= max_retries are skipped during indexing.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    reindex_threshold = datetime.utcnow() - timedelta(
+        seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"]
+    )
+
+    manifests = list(Manifest.select().limit(6))
+    assert len(manifests) >= 6
+
+    for i in range(3):
+        ManifestSecurityStatus.create(
+            manifest=manifests[i],
+            repository=manifests[i].repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=reindex_threshold - timedelta(seconds=100),
+            metadata_json={"retry_count": 3},
+        )
+
+    for i in range(3, 6):
+        ManifestSecurityStatus.create(
+            manifest=manifests[i],
+            repository=manifests[i].repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=reindex_threshold - timedelta(seconds=100),
+            metadata_json={"retry_count": 1},
+        )
+
+    from threading import Event
+
+    def test_iterator():
+        for m in manifests:
+            yield m, Event(), len(manifests)
+
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    secscan._index(test_iterator(), reindex_threshold)
+
+    exhausted_ids = {manifests[i].id for i in range(3)}
+    for mss in ManifestSecurityStatus.select().where(
+        ManifestSecurityStatus.manifest_id.in_(list(exhausted_ids))
+    ):
+        assert mss.index_status == IndexStatus.FAILED
+        assert mss.metadata_json.get("retry_count") == 3
+
+
+def test_api_failure_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that APIRequestFailure increments retry_count in metadata_json.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.side_effect = APIRequestFailure("connection refused")
+
+    secscan.perform_indexing(batch_size=100)
+
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.FAILED
+        assert mss.metadata_json.get("retry_count") == 1
+
+
+def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that Index_Error response increments retry_count in metadata_json.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "something went wrong", "state": IndexReportState.Index_Error},
+        "abc",
+    )
+
+    secscan.perform_indexing(batch_size=100)
+
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1
+
+
+def test_successful_indexing_resets_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that successful indexing resets metadata_json (clears retry_count).
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    for manifest in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow()
+            - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+            metadata_json={"retry_count": 2},
+        )
+
+    secscan.perform_indexing(batch_size=100)
+
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.COMPLETED:
+            assert mss.metadata_json == {}
+
+
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
     """
     Integration test verifying that batch preemption checking actually reduces
