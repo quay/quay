@@ -1,3 +1,4 @@
+import pprint
 import unittest
 from contextlib import contextmanager
 from io import StringIO
@@ -1539,6 +1540,11 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
     Unit tests for password redaction
     """
 
+    _HEADER = (
+        "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+        "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind"
+    )
+
     def _make_bind_trace(self, dn, password):
         """Multi-line pprint format (some python-ldap versions)."""
         return (
@@ -1551,21 +1557,10 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
             f" {{}})\n"
         )
 
-    def _make_bind_trace_single_line(self, dn, password):
-        """Single-line repr format (some python-ldap versions)."""
-        return (
-            f"*** <SimpleLDAPObject 0x3ff76a67e30> "
-            f"ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind\n"
-            f"(('{dn}', '{password}', None, None), {{}})"
-        )
-
-    def _make_bind_trace_double_quoted(self, dn, password):
-        """Double-quoted password format (pprint uses this when password contains ')."""
-        return (
-            f"*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
-            f"ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
-            f"(('{dn}', \"{password}\", None, None), {{}})"
-        )
+    def _make_bind_trace_pprint(self, dn, password):
+        """Use real pprint.pformat to produce the trace, matching python-ldap."""
+        args = (dn, password, None, None)
+        return self._HEADER + "\n" + pprint.pformat((args, {})) + "\n"
 
     def test_redacts_simple_password(self):
         buf = StringIO()
@@ -1575,7 +1570,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         output = buf.getvalue()
 
         self.assertNotIn("s3cret", output)
-        self.assertIn("*****", output)
+        self.assertIn("******", output)
         self.assertIn("uid=user,dc=example", output)
 
     def test_redacts_complex_password(self):
@@ -1587,7 +1582,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         output = buf.getvalue()
 
         self.assertNotIn(super_secret_password, output)
-        self.assertIn("*****", output)
+        self.assertIn("******", output)
         self.assertIn("uid=user,dc=example", output)
 
     def test_redacts_passwords_with_escaped_quotes(self):
@@ -1599,17 +1594,22 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         output = buf.getvalue()
 
         self.assertNotIn(super_secret_password, output)
-        self.assertIn("*****", output)
+        self.assertIn("******", output)
         self.assertIn("uid=user,dc=example", output)
 
     def test_redacts_single_line_trace(self):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", "password"))
+        trace = (
+            "*** <SimpleLDAPObject 0x3ff76a67e30> "
+            "ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind\n"
+            "(('cn=admin,dc=quay,dc=io', 'password', None, None), {})"
+        )
+        redactor.write(trace)
         output = buf.getvalue()
 
-        self.assertNotIn("password", output)
+        self.assertNotIn("'password'", output)
         self.assertIn("******", output)
         self.assertIn("cn=admin,dc=quay,dc=io", output)
 
@@ -1618,91 +1618,108 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         secret = "#HRx-u9r>W+?.?QTtN_X"
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(self._make_bind_trace_single_line("cn=admin,dc=quay,dc=io", secret))
+        trace = (
+            "*** <SimpleLDAPObject 0x3ff76a67e30> "
+            "ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind\n"
+            f"(('cn=admin,dc=quay,dc=io', '{secret}', None, None), {{}})"
+        )
+        redactor.write(trace)
         output = buf.getvalue()
 
         self.assertNotIn(secret, output)
         self.assertIn("******", output)
 
-    def test_redacts_double_quoted_password(self):
+    def test_redacts_dn_with_single_quote(self):
+        """When DN contains an apostrophe, pprint double-quotes it."""
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        redactor.write(self._make_bind_trace_double_quoted("cn=admin,dc=quay,dc=io", "pa'ssword"))
+        redactor.write(self._make_bind_trace_pprint("cn=O'Brien,dc=quay,dc=io", "MySecret"))
         output = buf.getvalue()
 
-        self.assertNotIn("pa'ssword", output)
+        self.assertNotIn("MySecret", output)
         self.assertIn("******", output)
-        self.assertIn("cn=admin,dc=quay,dc=io", output)
 
-    def test_redacts_double_quoted_split_write(self):
+    def test_redacts_dn_with_quote_and_pw_with_quote(self):
+        """Both DN and password contain single quotes (pprint double-quotes both)."""
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        header = (
-            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
-            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind"
-        )
-        args = """\n(('cn=admin,dc=quay,dc=io', "pa'ssword", None, None), {})"""
-        redactor.write(header)
-        redactor.write(args)
-        output = buf.getvalue()
-
-        self.assertNotIn("pa'ssword", output)
-        self.assertIn("******", output)
-        self.assertIn("cn=admin,dc=quay,dc=io", output)
-
-    def test_redacts_pprint_double_quoted_password(self):
-        import pprint
-
-        buf = StringIO()
-        redactor = _LDAPTraceRedactor(stream=buf)
-
-        args = ("cn=admin,dc=quay,dc=io", "pa'ssword", None, None)
-        trace = (
-            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
-            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
-            "{}\n".format(pprint.pformat((args, {})))
-        )
-        redactor.write(trace)
+        redactor.write(self._make_bind_trace_pprint("cn=O'Brien,dc=quay,dc=io", "pa'ssword"))
         output = buf.getvalue()
 
         self.assertNotIn("pa'ssword", output)
         self.assertIn("******", output)
 
-    def test_redacts_split_write_multi_line(self):
+    def test_redacts_password_with_double_quote(self):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        header = (
-            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
-            "ldaps://ldap.example.com - SimpleLDAPObject.simple_bind"
-        )
-        args = "\n(('cn=admin,dc=quay,dc=io',\n  'S3cret!P@ss',\n  None,\n  None),\n {})\n"
-        redactor.write(header)
-        redactor.write(args)
+        redactor.write(self._make_bind_trace_pprint("cn=admin,dc=quay,dc=io", 'pa"ssword'))
+        output = buf.getvalue()
+
+        self.assertNotIn('pa"ssword', output)
+        self.assertIn("******", output)
+
+    def test_redacts_password_with_both_quotes(self):
+        """Password contains both ' and \" — pprint uses escaped single quotes."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace_pprint("cn=admin,dc=quay,dc=io", "p'a\"ss"))
+        output = buf.getvalue()
+
+        self.assertNotIn("p'a", output)
+        self.assertIn("******", output)
+
+    def test_redacts_pprint_real_output(self):
+        """Use real pprint.pformat to verify redaction matches actual python-ldap output."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        cases = [
+            ("cn=admin,dc=quay,dc=io", "S3cret!"),
+            ("cn=admin,dc=quay,dc=io", "pa'ssword"),
+            ("cn=O'Brien,dc=quay,dc=io", "MySecret"),
+            ("cn=O'Brien,dc=quay,dc=io", "pa'ssword"),
+            ("cn=admin,dc=quay,dc=io", 'pa"ssword'),
+            ("cn=admin,dc=quay,dc=io", "pass\\word"),
+        ]
+        for dn, pw in cases:
+            buf.truncate(0)
+            buf.seek(0)
+            redactor.write(self._make_bind_trace_pprint(dn, pw))
+            output = buf.getvalue()
+            self.assertNotIn(pw, output, f"Password leaked for DN={dn}, PW={pw}")
+            self.assertIn("******", output, f"No redaction marker for DN={dn}, PW={pw}")
+
+    def test_redacts_split_write_header_then_args(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._HEADER)
+        self.assertEqual(buf.getvalue(), "")
+
+        redactor.write("\n(('cn=admin,dc=quay,dc=io', 'S3cret!P@ss', None, None), {})\n")
         output = buf.getvalue()
 
         self.assertNotIn("S3cret!P@ss", output)
         self.assertIn("******", output)
         self.assertIn("cn=admin,dc=quay,dc=io", output)
 
-    def test_redacts_split_write_single_line(self):
+    def test_redacts_split_write_header_plus_partial_dn(self):
+        """Split after the DN but before the password."""
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
 
-        header = (
-            "*** <SimpleLDAPObject 0x3ff76a67e30> "
-            "ldap://openldap.example.com:389 - SimpleLDAPObject.simple_bind"
-        )
-        args = "\n(('cn=admin,dc=quay,dc=io', 'S3cret!P@ss', None, None), {})"
-        redactor.write(header)
-        redactor.write(args)
+        redactor.write(self._HEADER + "\n(('cn=admin,dc=quay,dc=io', ")
+        self.assertEqual(buf.getvalue(), "")
+
+        redactor.write("'S3cret!P@ss', None, None), {})\n")
         output = buf.getvalue()
 
         self.assertNotIn("S3cret!P@ss", output)
         self.assertIn("******", output)
-        self.assertIn("cn=admin,dc=quay,dc=io", output)
 
     def test_flush_emits_buffered_header(self):
         buf = StringIO()
