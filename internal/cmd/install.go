@@ -18,7 +18,7 @@ func newInstallCmd() *Command {
 
 func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *installer.Config) int) *Command {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
+	hostname := fs.String("hostname", "", "server hostname for TLS and config (auto-detected for new installations; preserved on upgrade)")
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
 	port := fs.String("port", "", "HTTPS port for the registry (default 8443; an existing port is preserved on upgrade)")
 	sslCert := fs.String("ssl-cert", "", "path to TLS certificate (PEM)")
@@ -34,11 +34,6 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 		Synopsis: "Set up or upgrade registry (Quadlet service)",
 		Flags:    fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
-			if *hostname == "" {
-				fmt.Fprintln(os.Stderr, "error: -hostname is required")
-				cmd.Usage(os.Stderr)
-				return 1
-			}
 			if err := installer.ValidateSSLFlags(*sslCert, *sslKey); err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
 				cmd.Usage(os.Stderr)
@@ -91,11 +86,6 @@ func readInitPassword(r io.Reader) (string, error) {
 }
 
 func runInstall(ctx context.Context, cfg *installer.Config) int {
-	if err := installer.ValidateHostname(cfg.Hostname); err != nil {
-		slog.Error("invalid hostname", "err", err)
-		return 1
-	}
-
 	inst, err := installer.New(os.Stderr)
 	if err != nil {
 		slog.Error("installer setup failed", "err", err)

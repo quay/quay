@@ -107,9 +107,138 @@ func TestUpgradePreservesConfigBasedServeCommand(t *testing.T) {
 	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", "9443"))
 
 	content := string(mustReadFile(t, env.QuadletPath(quadletServiceName)))
-	assert.Contains(t, content, "Exec=serve --config /data/config.yaml")
+	assert.Contains(t, content, "Exec=serve --config /data/config.yaml --hostname registry.example.com")
 	assert.Contains(t, content, "Image=localhost/quay:new")
 	assert.Contains(t, content, "PublishPort=9443:8443")
+}
+
+func TestResolveHostnameForFreshInstall(t *testing.T) {
+	tests := []struct {
+		name      string
+		detected  string
+		detectErr error
+		want      string
+		wantErr   string
+	}{
+		{
+			name:     "fully qualified hostname",
+			detected: "registry.example.com\n",
+			want:     "registry.example.com",
+		},
+		{
+			name:     "empty hostname",
+			detected: "  \n",
+			wantErr:  "system hostname is empty",
+		},
+		{
+			name:     "single-label hostname",
+			detected: "registry",
+			wantErr:  "is not a fully qualified domain name",
+		},
+		{
+			name:     "IP address",
+			detected: "192.0.2.10",
+			wantErr:  "is not a fully qualified domain name",
+		},
+		{
+			name:     "invalid hostname",
+			detected: "registry_.example.com",
+			wantErr:  "invalid system hostname",
+		},
+		{
+			name:      "detection failure",
+			detectErr: errors.New("host identity unavailable"),
+			wantErr:   "auto-detect system hostname: host identity unavailable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inst := &Installer{hostname: func(context.Context) (string, error) {
+				return tt.detected, tt.detectErr
+			}}
+
+			got, err := inst.resolveHostname(t.Context(), "", false)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestResolveHostnamePreservesExplicitSingleLabel(t *testing.T) {
+	detected := false
+	inst := &Installer{hostname: func(context.Context) (string, error) {
+		detected = true
+		return "ignored.example.com", nil
+	}}
+
+	got, err := inst.resolveHostname(t.Context(), "registry", false)
+
+	require.NoError(t, err)
+	assert.Equal(t, "registry", got)
+	assert.False(t, detected)
+}
+
+func TestResolveHostnameHonorsCancellationBeforeDetection(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	detected := false
+	inst := &Installer{hostname: func(context.Context) (string, error) {
+		detected = true
+		return "registry.example.com", nil
+	}}
+
+	_, err := inst.resolveHostname(ctx, "", false)
+
+	require.ErrorIs(t, err, context.Canceled)
+	assert.False(t, detected)
+}
+
+func TestResolveHostnamePreservesUpgradeHostname(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image:    "localhost/quay:old",
+		DataDir:  "/var/lib/quay",
+		Hostname: "installed.example.com",
+		Port:     "8443",
+	}))
+	detected := false
+	inst := &Installer{
+		quadlet: quadlet,
+		hostname: func(context.Context) (string, error) {
+			detected = true
+			return "machine.example.com", nil
+		},
+	}
+
+	got, err := inst.resolveHostname(t.Context(), "", true)
+
+	require.NoError(t, err)
+	assert.Equal(t, "installed.example.com", got)
+	assert.False(t, detected)
+}
+
+func TestRunStopsBeforeInstallationWhenHostnameDetectionFails(t *testing.T) {
+	root := t.TempDir()
+	dataDir := filepath.Join(root, "registry-data")
+	env := &system.Env{Mode: system.UserMode, HomeDir: filepath.Join(root, "home")}
+	inst := &Installer{
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		hostname: func(context.Context) (string, error) {
+			return "", errors.New("host identity unavailable")
+		},
+	}
+
+	err := inst.Run(t.Context(), &Config{DataDir: dataDir})
+
+	require.ErrorContains(t, err, "resolve hostname: auto-detect system hostname: host identity unavailable")
+	_, statErr := os.Stat(dataDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
 func TestInitializeValidatesBeforeFilesystemChanges(t *testing.T) {
@@ -363,7 +492,7 @@ func TestRunReportsQuadletPortResolutionErrors(t *testing.T) {
 	quadlet := system.NewQuadletManager(system.OSFS{}, env)
 	quadletPath := env.QuadletPath(quadletServiceName)
 	require.NoError(t, os.MkdirAll(filepath.Dir(quadletPath), 0o755))
-	require.NoError(t, os.WriteFile(quadletPath, []byte("[Container]\nImage=localhost/quay:test\n"), 0o600))
+	require.NoError(t, os.WriteFile(quadletPath, []byte("[Container]\nImage=localhost/quay:test\nExec=serve --data-dir /data --hostname registry.example.com\n"), 0o600))
 
 	inst := &Installer{quadlet: quadlet}
 	err := inst.Run(t.Context(), &Config{})

@@ -55,12 +55,13 @@ type Config struct {
 // Installer orchestrates fresh installs and upgrades of the registry
 // as a Quadlet systemd service.
 type Installer struct {
-	images  system.ImageLoader
-	runner  system.CommandRunner
-	systemd system.ServiceManager
-	quadlet *system.QuadletManager
-	env     *system.Env
-	fs      system.FileSystem
+	images   system.ImageLoader
+	runner   system.CommandRunner
+	systemd  system.ServiceManager
+	quadlet  *system.QuadletManager
+	env      *system.Env
+	fs       system.FileSystem
+	hostname func(context.Context) (string, error)
 }
 
 // New detects the runtime environment and creates an Installer with the
@@ -75,12 +76,13 @@ func New(stderr io.Writer) (*Installer, error) {
 	fs := system.OSFS{}
 
 	return &Installer{
-		images:  system.NewPodmanLoader(runner),
-		runner:  runner,
-		systemd: system.NewSystemdManager(runner, env),
-		quadlet: system.NewQuadletManager(fs, env),
-		env:     env,
-		fs:      fs,
+		images:   system.NewPodmanLoader(runner),
+		runner:   runner,
+		systemd:  system.NewSystemdManager(runner, env),
+		quadlet:  system.NewQuadletManager(fs, env),
+		env:      env,
+		fs:       fs,
+		hostname: detectSystemHostname,
 	}, nil
 }
 
@@ -117,6 +119,12 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	}
 
 	upgrading := inst.quadlet.Exists(quadletServiceName)
+	hostname, err := inst.resolveHostname(ctx, cfg.Hostname, upgrading)
+	if err != nil {
+		return fmt.Errorf("resolve hostname: %w", err)
+	}
+	resolvedCfg.Hostname = hostname
+
 	port, err := inst.resolvePort(cfg.Port, upgrading)
 	if err != nil {
 		return fmt.Errorf("resolve port: %w", err)
@@ -153,6 +161,71 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
 	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath)
 	return nil
+}
+
+func (inst *Installer) resolveHostname(ctx context.Context, requestedHostname string, upgrading bool) (string, error) {
+	if requestedHostname != "" {
+		if err := ValidateHostname(requestedHostname); err != nil {
+			return "", fmt.Errorf("invalid hostname %q: %w", requestedHostname, err)
+		}
+		return requestedHostname, nil
+	}
+
+	if upgrading {
+		hostname, err := inst.quadlet.Hostname(quadletServiceName)
+		if err != nil {
+			return "", fmt.Errorf("determine existing hostname: %w; provide -hostname explicitly", err)
+		}
+		if err := ValidateHostname(hostname); err != nil {
+			return "", fmt.Errorf("invalid existing hostname %q: %w", hostname, err)
+		}
+		slog.Info("preserving existing hostname", "hostname", hostname)
+		return hostname, nil
+	}
+
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	detect := inst.hostname
+	if detect == nil {
+		detect = detectSystemHostname
+	}
+	hostname, err := detect(ctx)
+	if err != nil {
+		return "", fmt.Errorf("auto-detect system hostname: %w; provide -hostname explicitly", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" {
+		return "", fmt.Errorf("system hostname is empty; provide -hostname explicitly")
+	}
+	if net.ParseIP(hostname) != nil || !strings.Contains(hostname, ".") {
+		return "", fmt.Errorf("system hostname %q is not a fully qualified domain name; provide -hostname explicitly", hostname)
+	}
+	if err := ValidateHostname(hostname); err != nil {
+		return "", fmt.Errorf("invalid system hostname %q: %w; provide -hostname explicitly", hostname, err)
+	}
+	slog.Info("auto-detected hostname", "hostname", hostname)
+	return hostname, nil
+}
+
+func detectSystemHostname(ctx context.Context) (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", fmt.Errorf("read configured hostname: %w", err)
+	}
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" || strings.Contains(hostname, ".") {
+		return hostname, nil
+	}
+
+	fqdn, err := net.DefaultResolver.LookupCNAME(ctx, hostname)
+	if err != nil {
+		return "", fmt.Errorf("resolve fully qualified hostname for %q: %w", hostname, err)
+	}
+	return strings.TrimSuffix(fqdn, "."), nil
 }
 
 func (inst *Installer) resolvePort(requestedPort string, upgrading bool) (string, error) {
