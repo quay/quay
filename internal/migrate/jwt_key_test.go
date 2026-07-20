@@ -1,11 +1,13 @@
 package migrate
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -270,11 +272,17 @@ func TestImportRegistryJWTKeyReplacesMismatchedKeyDuringResume(t *testing.T) {
 	targetPath := filepath.Join(fixture.targetDir, jwtauth.KeyFileName)
 	require.NoError(t, jwtauth.WritePrivateKey(targetPath, otherKey))
 	migrator := &Migrator{DataDir: fixture.targetDir, Source: OMRSource{ConfigDir: fixture.configDir}}
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
 	require.NoError(t, migrator.importRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.cfg, true))
 	loaded, err := jwtauth.LoadPrivateKey(targetPath)
 	require.NoError(t, err)
 	assert.True(t, jwtauth.PublicKeysEqual(&fixture.key.PublicKey, &loaded.PublicKey))
+	assert.Contains(t, logs.String(), "replacing mismatched target registry JWT signing key during migration resume")
+	assert.Contains(t, logs.String(), targetPath)
 }
 
 func newRegistryKeyFixture(t *testing.T) *registryKeyFixture {

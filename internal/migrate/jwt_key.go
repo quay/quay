@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,7 @@ func (m *Migrator) importRegistryJWTSigningKey(ctx context.Context, targetDBPath
 			if !replace {
 				return fmt.Errorf("existing native registry JWT key does not match the approved source key")
 			}
+			slog.Warn("replacing mismatched target registry JWT signing key during migration resume", "path", targetPath)
 			if err := jwtauth.ReplacePrivateKey(targetPath, key); err != nil {
 				return fmt.Errorf("replace source registry JWT key during resume: %w", err)
 			}

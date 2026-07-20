@@ -783,6 +783,21 @@ jobs:
           echo "$SOURCE_DB" | tee /tmp/e2e-migrate-state/source-db-path.txt
           sudo test -f "$SOURCE_DB"
 
+          if ! source_key_fingerprint=$(sudo podman exec quay-app \
+            cat /quay-registry/conf/stack/quay.pem \
+            | openssl pkey -pubout -outform DER \
+            | sha256sum \
+            | awk '{print $1}'); then
+            echo "FAIL: source registry JWT key could not be read or parsed"
+            exit 1
+          fi
+          if [ -z "$source_key_fingerprint" ]; then
+            echo "FAIL: source registry JWT key fingerprint was not captured"
+            exit 1
+          fi
+          printf '%s\n' "$source_key_fingerprint" \
+            | tee /tmp/e2e-migrate-state/source-jwt-key-fingerprint.txt
+
           sudo sqlite3 "$SOURCE_DB" 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/source-integrity.txt
           grep -qx ok /tmp/e2e-migrate-state/source-integrity.txt
 
@@ -816,6 +831,21 @@ jobs:
 
           curl -fs https://localhost:8443/healthz
           echo "Health check passed"
+
+          source_key_fingerprint=$(cat /tmp/e2e-migrate-state/source-jwt-key-fingerprint.txt)
+          if ! target_key_fingerprint=$(sudo openssl pkey \
+            -in /var/lib/quay/registry-jwt.pem \
+            -pubout -outform DER \
+            | sha256sum \
+            | awk '{print $1}'); then
+            echo "FAIL: target registry JWT key could not be read or parsed"
+            exit 1
+          fi
+          if [ "$target_key_fingerprint" != "$source_key_fingerprint" ]; then
+            echo "FAIL: registry JWT signing key changed during migration"
+            exit 1
+          fi
+          echo "Registry JWT signing key continuity verified"
 
           sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/target-integrity.txt
           grep -qx ok /tmp/e2e-migrate-state/target-integrity.txt

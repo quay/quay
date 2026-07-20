@@ -88,6 +88,11 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 	superUsersFullAccess := superUsersHaveFullAccess(resolved.Config)
 	publicHostname := resolved.Config.ServerHostname
+	tlsHostname, err := registryTLSHostname(publicHostname)
+	if err != nil {
+		slog.Error("invalid registry hostname", "hostname", publicHostname, "err", err)
+		return 1
+	}
 	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
 	if err != nil {
 		slog.Error("registry token service error", "err", err)
@@ -168,7 +173,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,
-		Hostname:        registryTLSHostname(resolved.Config.ServerHostname),
+		Hostname:        tlsHostname,
 		PreferredScheme: resolved.Config.PreferredURLScheme,
 		CertDir:         resolved.DataDir,
 	})
@@ -197,7 +202,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	return srv.ListenAndServe(ctx)
 }
 
-func registryTLSHostname(publicHostname string) string {
+func registryTLSHostname(publicHostname string) (string, error) {
 	return system.HostnameWithoutPort(publicHostname)
 }
 

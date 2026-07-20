@@ -189,6 +189,12 @@ func TestQuadletUpdateImageAndPortUpdatesAdvertisedHostname(t *testing.T) {
 	}
 }
 
+func TestUpdateServeHostnameRejectsMalformedHostname(t *testing.T) {
+	_, _, err := updateServeHostname("serve --data-dir /data --hostname registry].example.com", "9443")
+
+	assert.ErrorContains(t, err, "invalid hostname flag")
+}
+
 func readQuadletTestFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Clean(path))
