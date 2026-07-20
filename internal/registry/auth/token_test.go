@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 var testNow = time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
@@ -80,7 +83,7 @@ func TestES256KeyIDsDifferAcrossProcessKeys(t *testing.T) {
 }
 
 func TestVerifierRejectsWrongKeyAndMalformedAlgorithms(t *testing.T) {
-	signer, _ := newTestPair(t)
+	signer, verifier := newTestPair(t)
 	_, otherVerifier := newTestPair(t)
 	raw, err := signer.Sign(validTestClaims())
 	if err != nil {
@@ -98,11 +101,44 @@ func TestVerifierRejectsWrongKeyAndMalformedAlgorithms(t *testing.T) {
 		compactUnsigned(t, map[string]any{"alg": "ES256", "kid": "unknown"}, validTestClaims()),
 		compactUnsigned(t, map[string]any{"alg": "ES256", "kid": signer.KeyID(), "jwk": map[string]string{"kty": "EC"}}, validTestClaims()),
 	}
-	_, verifier := newTestPair(t)
 	for _, token := range malformed {
 		if _, err := verifier.Verify(token); err == nil {
 			t.Fatalf("expected malformed token %q to fail", token)
 		}
+	}
+}
+
+func TestVerifierRejectsSignedAttackerSelectableHeaders(t *testing.T) {
+	signer, verifier := newTestPair(t)
+	concrete := signer.(*es256Signer)
+	tests := map[string]any{
+		"jwk":  jose.JSONWebKey{Key: &concrete.key.PublicKey},
+		"x5c":  []string{},
+		"x5u":  "https://attacker.example/cert.pem",
+		"jku":  "https://attacker.example/jwks.json",
+		"crit": []string{},
+	}
+	for name, value := range tests {
+		t.Run(name, func(t *testing.T) {
+			raw := signTestClaims(t, concrete, validTestClaims(), map[jose.HeaderKey]any{
+				jose.HeaderKey(name): value,
+			})
+			if _, err := verifier.Verify(raw); err == nil {
+				t.Fatal("expected attacker-selectable header to fail")
+			}
+		})
+	}
+}
+
+func TestVerifierRejectsUnknownClaims(t *testing.T) {
+	signer, verifier := newTestPair(t)
+	claims := struct {
+		*Claims
+		Unexpected bool `json:"unexpected"`
+	}{Claims: validTestClaims(), Unexpected: true}
+	raw := signTestClaims(t, signer.(*es256Signer), claims, nil)
+	if _, err := verifier.Verify(raw); err == nil {
+		t.Fatal("expected unknown claim to fail")
 	}
 }
 
@@ -157,4 +193,22 @@ func compactUnsigned(t *testing.T, header, claims any) string {
 	}
 	return base64.RawURLEncoding.EncodeToString(headerJSON) + "." +
 		base64.RawURLEncoding.EncodeToString(claimsJSON) + "." + base64.RawURLEncoding.EncodeToString(make([]byte, 64))
+}
+
+func signTestClaims(t *testing.T, signer *es256Signer, claims any, headers map[jose.HeaderKey]any) string {
+	t.Helper()
+	options := &jose.SignerOptions{}
+	options.WithHeader(jose.HeaderKey("kid"), signer.keyID)
+	for name, value := range headers {
+		options.WithHeader(name, value)
+	}
+	joseSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: signer.key}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := jwt.Signed(joseSigner).Claims(claims).Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

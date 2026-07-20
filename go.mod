@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/distribution/distribution/v3 v3.0.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.48.1
 )

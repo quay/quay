@@ -2,23 +2,23 @@ package auth
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
+	"strings"
 	"time"
+
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 const (
-	es256Algorithm       = "ES256"
-	algorithmHeader      = "alg"
-	keyIDHeader          = "kid"
 	maximumClockSkew     = 5 * time.Second
 	minimumTokenLifetime = 60 * time.Second
 )
@@ -36,8 +36,9 @@ type ES256Config struct {
 }
 
 type es256Signer struct {
-	key   *ecdsa.PrivateKey
-	keyID string
+	key        *ecdsa.PrivateKey
+	keyID      string
+	joseSigner jose.Signer
 }
 
 type es256Verifier struct {
@@ -70,13 +71,28 @@ func NewES256Pair(cfg ES256Config) (TokenSigner, TokenVerifier, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("generate ES256 key: %w", err)
 	}
-	keyID := rfc7638Thumbprint(&privateKey.PublicKey)
+	thumbprint, err := (&jose.JSONWebKey{Key: &privateKey.PublicKey}).Thumbprint(crypto.SHA256)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate ES256 key ID: %w", err)
+	}
+	keyID := base64.RawURLEncoding.EncodeToString(thumbprint)
 	if keyID == "" {
-		return nil, nil, fmt.Errorf("generate ES256 key ID")
+		return nil, nil, fmt.Errorf("generate ES256 key ID: empty thumbprint")
+	}
+	joseSigner, err := jose.NewSigner(jose.SigningKey{
+		Algorithm: jose.ES256,
+		Key: jose.JSONWebKey{
+			Key:       privateKey,
+			KeyID:     keyID,
+			Algorithm: string(jose.ES256),
+		},
+	}, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create ES256 signer: %w", err)
 	}
 	publicKey := privateKey.PublicKey
 
-	return &es256Signer{key: privateKey, keyID: keyID}, &es256Verifier{
+	return &es256Signer{key: privateKey, keyID: keyID, joseSigner: joseSigner}, &es256Verifier{
 		key:       &publicKey,
 		keyID:     keyID,
 		issuer:    cfg.Issuer,
@@ -90,37 +106,28 @@ func NewES256Pair(cfg ES256Config) (TokenSigner, TokenVerifier, error) {
 func (s *es256Signer) KeyID() string { return s.keyID }
 
 func (s *es256Signer) Sign(claims *Claims) (string, error) {
-	if s == nil || s.key == nil || claims == nil {
+	if s == nil || s.key == nil || s.joseSigner == nil || claims == nil {
 		return "", fmt.Errorf("invalid signer or claims")
 	}
-	header, err := json.Marshal(map[string]string{algorithmHeader: es256Algorithm, keyIDHeader: s.keyID})
-	if err != nil {
-		return "", fmt.Errorf("marshal registry token header: %w", err)
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
-		return "", fmt.Errorf("marshal registry claims: %w", err)
-	}
-	encodedHeader := base64.RawURLEncoding.EncodeToString(header)
-	encodedPayload := base64.RawURLEncoding.EncodeToString(payload)
-	signingInput := encodedHeader + "." + encodedPayload
-	digest := sha256.Sum256([]byte(signingInput))
-	r, signatureS, err := ecdsa.Sign(rand.Reader, s.key, digest[:])
+	raw, err := jwt.Signed(s.joseSigner).Claims(claims).Serialize()
 	if err != nil {
 		return "", fmt.Errorf("sign registry claims: %w", err)
 	}
-	coordinateSize := (s.key.Curve.Params().BitSize + 7) / 8
-	signature := make([]byte, coordinateSize*2)
-	r.FillBytes(signature[:coordinateSize])
-	signatureS.FillBytes(signature[coordinateSize:])
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature), nil
+	return raw, nil
 }
 
 func (v *es256Verifier) KeyID() string { return v.keyID }
 
 func (v *es256Verifier) Verify(raw string) (*Claims, error) {
-	payload, ok := v.verifySignedPayload(raw)
-	if !ok {
+	if v == nil || v.key == nil {
+		return nil, ErrInvalidToken
+	}
+	token, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{jose.ES256})
+	if err != nil || len(token.Headers) != 1 || !validProtectedHeader(raw, token.Headers[0], v.keyID) {
+		return nil, ErrInvalidToken
+	}
+	var payload json.RawMessage
+	if err := token.Claims(v.key, &payload); err != nil {
 		return nil, ErrInvalidToken
 	}
 	claims, ok := decodeClaims(payload)
@@ -128,29 +135,6 @@ func (v *es256Verifier) Verify(raw string) (*Claims, error) {
 		return nil, ErrInvalidToken
 	}
 	return claims, nil
-}
-
-func (v *es256Verifier) verifySignedPayload(raw string) ([]byte, bool) {
-	if v == nil || v.key == nil || !validProtectedHeader(raw, v.keyID) {
-		return nil, false
-	}
-	parts := splitCompactToken(raw)
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, false
-	}
-	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
-	coordinateSize := (v.key.Curve.Params().BitSize + 7) / 8
-	if err != nil || len(signature) != coordinateSize*2 {
-		return nil, false
-	}
-	digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
-	r := new(big.Int).SetBytes(signature[:coordinateSize])
-	signatureS := new(big.Int).SetBytes(signature[coordinateSize:])
-	if !ecdsa.Verify(v.key, digest[:], r, signatureS) {
-		return nil, false
-	}
-	return payload, true
 }
 
 func decodeClaims(payload []byte) (*Claims, bool) {
@@ -229,60 +213,28 @@ func (v *es256Verifier) validClaimTimes(claims *Claims) bool {
 	return now.Sub(issuedAt) <= v.maxFresh+v.clockSkew
 }
 
-func validProtectedHeader(raw, expectedKeyID string) bool {
-	parts := splitCompactToken(raw)
-	if parts == nil {
+func validProtectedHeader(raw string, header jose.Header, expectedKeyID string) bool {
+	if header.Algorithm != string(jose.ES256) || header.KeyID != expectedKeyID {
 		return false
 	}
-	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	// go-jose intentionally hides the raw x5c field after parsing. Inspect the
+	// protected object so even empty attacker-selectable key headers are rejected.
+	encodedHeader, _, ok := strings.Cut(raw, ".")
+	if !ok {
+		return false
+	}
+	headerBytes, err := base64.RawURLEncoding.DecodeString(encodedHeader)
 	if err != nil {
 		return false
 	}
-	var header map[string]json.RawMessage
-	if err := json.Unmarshal(headerBytes, &header); err != nil {
-		return false
-	}
-	var algorithm, keyID string
-	if err := json.Unmarshal(header[algorithmHeader], &algorithm); err != nil || algorithm != es256Algorithm {
-		return false
-	}
-	if err := json.Unmarshal(header[keyIDHeader], &keyID); err != nil || keyID != expectedKeyID {
+	var protected map[string]json.RawMessage
+	if err := json.Unmarshal(headerBytes, &protected); err != nil {
 		return false
 	}
 	for _, attackerSelectable := range []string{"jwk", "x5c", "x5u", "jku", "crit"} {
-		if _, ok := header[attackerSelectable]; ok {
+		if _, ok := protected[attackerSelectable]; ok {
 			return false
 		}
 	}
 	return true
-}
-
-func splitCompactToken(raw string) []string {
-	parts := make([]string, 0, 3)
-	start := 0
-	for i := 0; i < len(raw); i++ {
-		if raw[i] != '.' {
-			continue
-		}
-		parts = append(parts, raw[start:i])
-		start = i + 1
-	}
-	parts = append(parts, raw[start:])
-	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-		return nil
-	}
-	return parts
-}
-
-func rfc7638Thumbprint(key *ecdsa.PublicKey) string {
-	if key == nil || key.Curve != elliptic.P256() || key.X == nil || key.Y == nil {
-		return ""
-	}
-	coordinateSize := (key.Curve.Params().BitSize + 7) / 8
-	x := key.X.FillBytes(make([]byte, coordinateSize))
-	y := key.Y.FillBytes(make([]byte, coordinateSize))
-	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":%q,"y":%q}`,
-		base64.RawURLEncoding.EncodeToString(x), base64.RawURLEncoding.EncodeToString(y))
-	digest := sha256.Sum256([]byte(canonical))
-	return base64.RawURLEncoding.EncodeToString(digest[:])
 }
