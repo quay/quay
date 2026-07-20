@@ -21,6 +21,7 @@ import (
 const (
 	maximumClockSkew     = 5 * time.Second
 	minimumTokenLifetime = 60 * time.Second
+	jsonWebKeyHeader     = "jwk"
 )
 
 // ErrInvalidToken is returned for every malformed or invalid bearer token.
@@ -123,7 +124,7 @@ func (v *es256Verifier) Verify(raw string) (*Claims, error) {
 		return nil, ErrInvalidToken
 	}
 	token, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{jose.ES256})
-	if err != nil || len(token.Headers) != 1 || !validProtectedHeader(raw, token.Headers[0], v.keyID) {
+	if err != nil || len(token.Headers) != 1 || !validProtectedHeader(raw, &token.Headers[0], v.keyID) {
 		return nil, ErrInvalidToken
 	}
 	var payload json.RawMessage
@@ -213,8 +214,8 @@ func (v *es256Verifier) validClaimTimes(claims *Claims) bool {
 	return now.Sub(issuedAt) <= v.maxFresh+v.clockSkew
 }
 
-func validProtectedHeader(raw string, header jose.Header, expectedKeyID string) bool {
-	if header.Algorithm != string(jose.ES256) || header.KeyID != expectedKeyID {
+func validProtectedHeader(raw string, header *jose.Header, expectedKeyID string) bool {
+	if header == nil || header.Algorithm != string(jose.ES256) || header.KeyID != expectedKeyID {
 		return false
 	}
 	// go-jose intentionally hides the raw x5c field after parsing. Inspect the
@@ -231,7 +232,7 @@ func validProtectedHeader(raw string, header jose.Header, expectedKeyID string) 
 	if err := json.Unmarshal(headerBytes, &protected); err != nil {
 		return false
 	}
-	for _, attackerSelectable := range []string{"jwk", "x5c", "x5u", "jku", "crit"} {
+	for _, attackerSelectable := range []string{jsonWebKeyHeader, "x5c", "x5u", "jku", "crit"} {
 		if _, ok := protected[attackerSelectable]; ok {
 			return false
 		}

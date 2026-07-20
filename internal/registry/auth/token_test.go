@@ -99,7 +99,7 @@ func TestVerifierRejectsWrongKeyAndMalformedAlgorithms(t *testing.T) {
 		compactUnsigned(t, map[string]any{"alg": "RS256", "kid": signer.KeyID()}, validTestClaims()),
 		compactUnsigned(t, map[string]any{"alg": "ES256"}, validTestClaims()),
 		compactUnsigned(t, map[string]any{"alg": "ES256", "kid": "unknown"}, validTestClaims()),
-		compactUnsigned(t, map[string]any{"alg": "ES256", "kid": signer.KeyID(), "jwk": map[string]string{"kty": "EC"}}, validTestClaims()),
+		compactUnsigned(t, map[string]any{"alg": "ES256", "kid": signer.KeyID(), jsonWebKeyHeader: map[string]string{"kty": "EC"}}, validTestClaims()),
 	}
 	for _, token := range malformed {
 		if _, err := verifier.Verify(token); err == nil {
@@ -112,11 +112,11 @@ func TestVerifierRejectsSignedAttackerSelectableHeaders(t *testing.T) {
 	signer, verifier := newTestPair(t)
 	concrete := signer.(*es256Signer)
 	tests := map[string]any{
-		"jwk":  jose.JSONWebKey{Key: &concrete.key.PublicKey},
-		"x5c":  []string{},
-		"x5u":  "https://attacker.example/cert.pem",
-		"jku":  "https://attacker.example/jwks.json",
-		"crit": []string{},
+		jsonWebKeyHeader: jose.JSONWebKey{Key: &concrete.key.PublicKey},
+		"x5c":            []string{},
+		"x5u":            "https://attacker.example/cert.pem",
+		"jku":            "https://attacker.example/jwks.json",
+		"crit":           []string{},
 	}
 	for name, value := range tests {
 		t.Run(name, func(t *testing.T) {
