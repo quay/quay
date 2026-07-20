@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 
 test.describe(
   'Namespace Notifications',
@@ -366,6 +366,39 @@ test.describe(
       // Flowdock and HipChat should NOT be listed
       await expect(authenticatedPage.getByText('Flowdock')).not.toBeVisible();
       await expect(authenticatedPage.getByText('HipChat')).not.toBeVisible();
+    });
+
+    test('table column headers are not truncated', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const orgName = uniqueName('nsnotifcol');
+      const org = await api.organization(orgName);
+      const title = uniqueName('col-test');
+
+      await api.namespaceNotification(
+        org.name,
+        'quota_warning',
+        'webhook',
+        {url: 'https://example.com/hook'},
+        {},
+        title,
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Notifications').click();
+
+      const table = authenticatedPage.getByTestId('ns-notifications-table');
+      await expect(table).toBeVisible();
+
+      const headers = table.locator('thead th');
+      await expect(headers.filter({hasText: 'Title'})).toBeVisible();
+      await expect(headers.filter({hasText: 'Event'})).toBeVisible();
+      await expect(headers.filter({hasText: 'Method'})).toBeVisible();
+      await expect(headers.filter({hasText: 'Status'})).toBeVisible();
+
+      await expect(headers.filter({hasText: /^Ti\.\.\.$/})).toHaveCount(0);
+      await expect(headers.filter({hasText: /^S\.\.\.$/})).toHaveCount(0);
     });
 
     test('form validation — submit disabled without required fields', async ({
