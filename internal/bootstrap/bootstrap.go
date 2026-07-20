@@ -68,7 +68,9 @@ func AdminUser(ctx context.Context, db *sql.DB, username, password string) (bool
 		PasswordHash: sql.NullString{String: string(hash), Valid: true},
 		Email:        email,
 	}); err != nil {
-		return false, fmt.Errorf("create user: %w", err)
+		// Driver errors can include bound values, so do not propagate the
+		// password-derived hash to command-level logs.
+		return false, errors.New("create initial administrator")
 	}
 
 	slog.Info("admin user created", "username", username)
