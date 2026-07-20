@@ -55,6 +55,21 @@ func TestTokenHandlerRobotCredentialsAndDownscoping(t *testing.T) {
 	assert.ErrorIs(t, err, jwtauth.ErrInsufficientScope)
 }
 
+func TestTokenHandlerWildcardDownscopesToPull(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	seedRobotPermission(t, db, "acme+reader", "read")
+	handler, service, _ := newBearerTestComponents(t, db, true)
+
+	raw := requestToken(t, handler, "acme+reader", "hello world", "repository:acme/private:*", http.StatusOK)
+	claims, err := service.Validate(raw)
+
+	require.NoError(t, err)
+	assert.Equal(t, []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: "acme/private", Actions: []string{jwtauth.PullAction},
+	}}, claims.Access)
+}
+
 func TestTokenHandlerAnonymousAccess(t *testing.T) {
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })

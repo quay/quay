@@ -241,6 +241,27 @@ func TestImportRegistryJWTKeyRejectsMismatchedExistingNativeKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "existing native registry JWT key does not match")
 }
 
+func TestImportRegistryJWTKeyDoesNotReplaceKeyAfterLoadFailure(t *testing.T) {
+	fixture := newRegistryKeyFixture(t)
+	require.NoError(t, os.MkdirAll(fixture.targetDir, 0o750))
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	targetPath := filepath.Join(fixture.targetDir, jwtauth.KeyFileName)
+	require.NoError(t, jwtauth.WritePrivateKey(targetPath, otherKey))
+	original, err := os.ReadFile(targetPath)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(targetPath, 0o640))
+	migrator := &Migrator{DataDir: fixture.targetDir, Source: OMRSource{ConfigDir: fixture.configDir}}
+
+	err = migrator.importRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.cfg, true)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "insecure permissions")
+	remaining, readErr := os.ReadFile(targetPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, original, remaining)
+}
+
 func TestImportRegistryJWTKeyReplacesMismatchedKeyDuringResume(t *testing.T) {
 	fixture := newRegistryKeyFixture(t)
 	require.NoError(t, os.MkdirAll(fixture.targetDir, 0o750))

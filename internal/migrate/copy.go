@@ -135,9 +135,9 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 		}
 	}
 
-	_, configuredPort, err := net.SplitHostPort(sourceCfg.ServerHostname)
-	if err != nil || configuredPort == "" {
-		configuredPort = "8443"
+	configuredPort, err := runtimeServerHostnamePort(sourceCfg.ServerHostname)
+	if err != nil {
+		return err
 	}
 	publicHostname := net.JoinHostPort(m.Source.Hostname, configuredPort)
 	runtimeCfg := map[string]any{

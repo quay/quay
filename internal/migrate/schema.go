@@ -134,13 +134,17 @@ func runtimeConfigPort(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("load runtime config: %w", err)
 	}
-	_, port, err := net.SplitHostPort(cfg.ServerHostname)
+	return runtimeServerHostnamePort(cfg.ServerHostname)
+}
+
+func runtimeServerHostnamePort(serverHostname string) (string, error) {
+	_, port, err := net.SplitHostPort(serverHostname)
 	if err != nil {
-		hostname := strings.Trim(cfg.ServerHostname, "[]")
-		if net.ParseIP(hostname) != nil || !strings.Contains(cfg.ServerHostname, ":") {
+		hostname := strings.Trim(serverHostname, "[]")
+		if net.ParseIP(hostname) != nil || !strings.Contains(serverHostname, ":") {
 			return "8443", nil
 		}
-		return "", fmt.Errorf("parse runtime SERVER_HOSTNAME %q: %w", cfg.ServerHostname, err)
+		return "", fmt.Errorf("parse runtime SERVER_HOSTNAME %q: %w", serverHostname, err)
 	}
 	if port == "" {
 		return "8443", nil

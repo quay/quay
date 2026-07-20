@@ -7,9 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,6 +29,7 @@ import (
 	"github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
 	"github.com/quay/quay/internal/server"
+	"github.com/quay/quay/internal/system"
 )
 
 func newServeCmd() *Command {
@@ -199,10 +198,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 }
 
 func registryTLSHostname(publicHostname string) string {
-	if host, _, err := net.SplitHostPort(publicHostname); err == nil {
-		return strings.Trim(host, "[]")
-	}
-	return strings.Trim(publicHostname, "[]")
+	return system.HostnameWithoutPort(publicHostname)
 }
 
 func loadRegistryTokenService(resolved *config.Resolved) (*jwtauth.Service, string, error) {

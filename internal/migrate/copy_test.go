@@ -205,6 +205,50 @@ func TestWriteRuntimeConfigPreservesSourcePort(t *testing.T) {
 	assert.Equal(t, "registry.example.com:9443", runtimeCfg.ServerHostname)
 }
 
+func TestWriteRuntimeConfigDefaultsPortForBareSourceHostname(t *testing.T) {
+	tests := []struct {
+		name, sourceHostname string
+	}{
+		{name: "DNS", sourceHostname: "old.example.com"},
+		{name: "IPv4", sourceHostname: "192.0.2.1"},
+		{name: "IPv6", sourceHostname: "2001:db8::1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configDir := t.TempDir()
+			writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"), 0o600)
+			targetDir := t.TempDir()
+			migrator := &Migrator{
+				DataDir: targetDir,
+				Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+			}
+
+			err := migrator.writeRuntimeConfig(config.NewDefault(tt.sourceHostname, "/old/storage"))
+
+			require.NoError(t, err)
+			runtimeCfg, err := config.Load(filepath.Join(targetDir, runtimeConfigFile))
+			require.NoError(t, err)
+			assert.Equal(t, "registry.example.com:8443", runtimeCfg.ServerHostname)
+		})
+	}
+}
+
+func TestWriteRuntimeConfigRejectsMalformedSourceHostname(t *testing.T) {
+	configDir := t.TempDir()
+	writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"), 0o600)
+	targetDir := t.TempDir()
+	migrator := &Migrator{
+		DataDir: targetDir,
+		Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+	}
+
+	err := migrator.writeRuntimeConfig(config.NewDefault("old.example.com:9443:extra", "/old/storage"))
+
+	require.ErrorContains(t, err, "parse runtime SERVER_HOSTNAME")
+	_, statErr := os.Stat(filepath.Join(targetDir, runtimeConfigFile))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
 func TestCopyData_Idempotent(t *testing.T) {
 	srcDir := t.TempDir()
 	dbDir := t.TempDir()

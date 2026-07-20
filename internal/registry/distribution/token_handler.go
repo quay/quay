@@ -202,8 +202,12 @@ func (h *TokenHandler) downscope(r *http.Request, principal *auth.Principal, req
 		for _, action := range grant.Actions {
 			if action == jwtauth.WildcardAction {
 				pullErr := h.policy.AuthorizeRepositoryAccess(r, principal, repositoryAccessItem(grant.Name, repositoryPullAction), pullContext)
-				if pullErr == nil && pushAllowed {
-					allowed.Actions = append(allowed.Actions, jwtauth.WildcardAction)
+				if pullErr == nil {
+					allowedAction := repositoryPullAction
+					if pushAllowed {
+						allowedAction = jwtauth.WildcardAction
+					}
+					allowed.Actions = append(allowed.Actions, allowedAction)
 				}
 				continue
 			}

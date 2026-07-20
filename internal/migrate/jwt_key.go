@@ -49,13 +49,7 @@ func (m *Migrator) importRegistryJWTSigningKey(ctx context.Context, targetDBPath
 		return nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
-		if _, statErr := os.Lstat(targetPath); !replace || statErr != nil {
-			return err
-		}
-		if err := jwtauth.ReplacePrivateKey(targetPath, key); err != nil {
-			return fmt.Errorf("replace source registry JWT key during resume: %w", err)
-		}
-		return nil
+		return err
 	}
 	if err := jwtauth.WritePrivateKey(targetPath, key); err != nil {
 		return fmt.Errorf("import source registry JWT key: %w", err)

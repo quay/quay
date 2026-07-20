@@ -124,11 +124,7 @@ func (q *QuadletManager) Hostname(service string) (string, error) {
 			if i+1 >= len(fields) || fields[i+1] == "" {
 				return "", fmt.Errorf("invalid hostname flag in Exec= directive in %s", path)
 			}
-			hostname := fields[i+1]
-			if host, _, err := net.SplitHostPort(hostname); err == nil {
-				return strings.Trim(host, "[]"), nil
-			}
-			return hostname, nil
+			return HostnameWithoutPort(fields[i+1]), nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -236,11 +232,8 @@ func updateServeHostname(command, hostPort string) (updated string, found bool, 
 		if i+1 >= len(fields) || fields[i+1] == "" {
 			return "", false, fmt.Errorf("invalid hostname flag in Exec= directive")
 		}
-		hostname := fields[i+1]
-		if host, _, err := net.SplitHostPort(hostname); err == nil {
-			hostname = host
-		}
-		fields[i+1] = net.JoinHostPort(strings.Trim(hostname, "[]"), hostPort)
+		hostname := HostnameWithoutPort(fields[i+1])
+		fields[i+1] = net.JoinHostPort(hostname, hostPort)
 		return strings.Join(fields, " "), true, nil
 	}
 	return command, false, nil
