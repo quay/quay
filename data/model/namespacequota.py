@@ -383,7 +383,7 @@ def maybe_trigger_retroactive_notification(
             return
 
         usage_bytes = get_namespace_size(namespace_name)
-        quota_limit_bytes = quota.limit_bytes
+        quota_limit_bytes = int(quota.limit_bytes)
         bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
 
         if usage_bytes <= bytes_allowed:
