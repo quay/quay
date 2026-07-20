@@ -47,7 +47,7 @@ export default function MarketplaceDetails(props: MarketplaceDetailsProps) {
       }
     }
     props.updateTotalPrivate(marketplaceTotalPrivate);
-  });
+  }, [loading, error, orgSubscriptions, userSubscriptions]);
 
   const handleModalToggle = (modalType: string) => {
     setModalType(modalType);
