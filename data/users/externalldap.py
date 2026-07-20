@@ -52,24 +52,31 @@ class _LDAPTraceRedactor:
     """
     Wraps the LDAP output for password redaction when USERS_DEBUG is set.
 
-    python-ldap normally emits the ``simple_bind`` header and its argument
-    tuple in a single ``write()`` call.  However, to guard against future
-    library changes or intermediary wrappers that might split the trace
-    across two calls, this class buffers any write that ends with a
-    ``simple_bind`` header so the password can still be redacted when the
-    argument tuple arrives in the next write.
+    python-ldap emits ``simple_bind`` traces via ``pprint.pformat``.  The
+    DN and password may be single- or double-quoted depending on their
+    content (e.g. a DN containing ``'`` is double-quoted by pprint).
+
+    To guard against split writes (where the header and argument tuple
+    arrive in separate ``write()`` calls), this class buffers any data
+    that contains a ``simple_bind`` header until the full bind tuple
+    (ending with ``None, None), {``) is received.
     """
 
-    _BIND_PW_SINGLE_RE = re.compile(
-        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*')((?:\\.|[^'\\])*)(')",
-    )
+    _PY_STR = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
 
-    _BIND_PW_DOUBLE_RE = re.compile(
-        r'(SimpleLDAPObject\.simple_bind\s*\n\(\(\'[^\']*\',\s*")((?:\\.|[^"\\])*)(")',
+    _BIND_PW_RE = re.compile(
+        r"(SimpleLDAPObject\.simple_bind\s*\n"
+        r"\(\(" + _PY_STR + r",\s*)"
+        r"(" + _PY_STR + r")"
+        r"(\s*,\s*None\s*,\s*None\))",
     )
 
     _BIND_HEADER_RE = re.compile(
-        r"SimpleLDAPObject\.simple_bind\s*$",
+        r"SimpleLDAPObject\.simple_bind",
+    )
+
+    _BIND_TUPLE_COMPLETE_RE = re.compile(
+        r"None\s*,\s*None\)\s*,\s*\{",
     )
 
     def __init__(self, stream=None):
@@ -78,14 +85,12 @@ class _LDAPTraceRedactor:
 
     @classmethod
     def _redact(cls, data):
-        data = cls._BIND_PW_SINGLE_RE.sub(r"\1******\3", data)
-        data = cls._BIND_PW_DOUBLE_RE.sub(r"\1******\3", data)
-        return data
+        return cls._BIND_PW_RE.sub(r"\1'******'\3", data)
 
     def write(self, data):
         data = self._buf + data
         self._buf = ""
-        if self._BIND_HEADER_RE.search(data):
+        if self._BIND_HEADER_RE.search(data) and not self._BIND_TUPLE_COMPLETE_RE.search(data):
             self._buf = data
             return
         self._stream.write(self._redact(data))
