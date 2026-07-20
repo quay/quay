@@ -31,3 +31,40 @@ func TestValidatePort(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateInitUsername(t *testing.T) {
+	tests := []struct {
+		username string
+		wantErr  bool
+	}{
+		{"admin", false},
+		{"custom-admin", false},
+		{"custom_admin.example", false},
+		{"a", true},
+		{"Admin", true},
+		{"bad user", true},
+		{"bad\nuser", true},
+		{"-admin", true},
+		{"admin-", true},
+	}
+	for _, test := range tests {
+		t.Run(test.username, func(t *testing.T) {
+			err := ValidateInitUsername(test.username)
+			if (err != nil) != test.wantErr {
+				t.Errorf("ValidateInitUsername(%q) error = %v, wantErr %v", test.username, err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateInitPassword(t *testing.T) {
+	if err := ValidateInitPassword(" leading and trailing "); err != nil {
+		t.Fatalf("whitespace should be preserved and accepted: %v", err)
+	}
+	if err := ValidateInitPassword(""); err == nil {
+		t.Fatal("empty password should be rejected")
+	}
+	if err := ValidateInitPassword(string(make([]byte, 73))); err == nil {
+		t.Fatal("password over bcrypt limit should be rejected")
+	}
+}

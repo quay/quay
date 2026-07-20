@@ -71,6 +71,26 @@ func TestQuadletInstallMapsCustomHostPortToRegistryPort(t *testing.T) {
 	}
 }
 
+func TestQuadletInstallDoesNotPersistBootstrapCredentials(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+
+	err := manager.Install("quay", &QuadletSpec{
+		Image:    "localhost/quay:test",
+		DataDir:  "/var/lib/quay",
+		Hostname: "localhost",
+		Port:     "8443",
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	content := readQuadletTestFile(t, env.QuadletPath("quay"))
+	if strings.Contains(content, "admin-username") || strings.Contains(content, "admin-password") {
+		t.Fatalf("quadlet should not contain bootstrap credentials:\n%s", content)
+	}
+}
+
 func readQuadletTestFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Clean(path))
