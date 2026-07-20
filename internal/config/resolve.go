@@ -14,6 +14,7 @@ type Resolved struct {
 	DataDir     string
 	StoragePath string
 	DBPath      string
+	FromFile    bool
 }
 
 // Resolve loads and resolves a complete configuration. If configPath is
@@ -44,7 +45,7 @@ func resolveFromFile(configPath string) (*Resolved, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Resolved{Config: cfg, DataDir: filepath.Dir(dbPath), StoragePath: storagePath, DBPath: dbPath}, nil
+	return &Resolved{Config: cfg, DataDir: filepath.Dir(dbPath), StoragePath: storagePath, DBPath: dbPath, FromFile: true}, nil
 }
 
 func resolveFromDefaults(dataDir, hostname string) (*Resolved, error) {

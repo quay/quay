@@ -24,6 +24,7 @@ func Run(args []string) int {
 		Flags:    fs,
 		Subcommands: []*Command{
 			newInstallCmd(),
+			newInitCmd(),
 			newConfigCmd(),
 			newServeCmd(),
 			newMigrateCmd(),

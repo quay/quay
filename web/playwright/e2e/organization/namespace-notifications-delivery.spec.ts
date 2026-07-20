@@ -74,6 +74,7 @@ test.describe(
           expect(typeof webhook?.body?.limit_bytes).toBe('number');
           expect(typeof webhook?.body?.usage_bytes).toBe('number');
           expect(typeof webhook?.body?.usage_percent).toBe('number');
+          expect(typeof webhook?.body?.threshold_percent).toBe('number');
         } finally {
           await receiver.stop();
         }

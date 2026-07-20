@@ -3,8 +3,15 @@ package installer
 import (
 	"fmt"
 	"net"
+	"regexp"
+	"strconv"
 	"strings"
 )
+
+// MaxInitPasswordBytes is bcrypt's maximum accepted password length.
+const MaxInitPasswordBytes int64 = 72
+
+var usernamePattern = regexp.MustCompile(`^[a-z0-9]+(?:[._-][a-z0-9]+)*$`)
 
 // ValidateHostname checks that hostname is a valid DNS name or IP address.
 func ValidateHostname(hostname string) error {
@@ -30,6 +37,49 @@ func ValidateHostname(hostname string) error {
 				return fmt.Errorf("label %q contains invalid character %q", label, c)
 			}
 		}
+	}
+	return nil
+}
+
+// ValidatePort checks that port is a decimal integer in the range 1–65535.
+func ValidatePort(port string) error {
+	if port == "" {
+		return fmt.Errorf("not a valid number: %q", port)
+	}
+	for _, c := range port {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("not a valid number: %q", port)
+		}
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("not a valid number: %q", port)
+	}
+	if n < 1 || n > 65535 {
+		return fmt.Errorf("out of range (1-65535): %d", n)
+	}
+	return nil
+}
+
+// ValidateInitUsername applies Quay's product username contract.
+func ValidateInitUsername(username string) error {
+	if len(username) < 2 || len(username) > 255 {
+		return fmt.Errorf("must be between 2 and 255 characters")
+	}
+	if !usernamePattern.MatchString(username) {
+		return fmt.Errorf("must match %s", usernamePattern.String())
+	}
+	return nil
+}
+
+// ValidateInitPassword enforces bcrypt's input limit without normalizing any
+// caller-supplied bytes.
+func ValidateInitPassword(password string) error {
+	if password == "" {
+		return fmt.Errorf("must not be empty")
+	}
+	if len([]byte(password)) > int(MaxInitPasswordBytes) {
+		return fmt.Errorf("must not exceed %d bytes", MaxInitPasswordBytes)
 	}
 	return nil
 }
