@@ -3,6 +3,7 @@ import os
 import pytest
 
 from data.database import db
+from test.fixtures import *
 from test.fixtures import _database_uri_for_schema, _test_database_schema
 
 
