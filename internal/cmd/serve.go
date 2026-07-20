@@ -148,21 +148,15 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
 	v2Handler := distHandler
 	if referrersEnabled {
-		referrersHandler := registry.NewReferrersHandler(db, store, &registry.ReferrersConfig{
-			LibraryNamespace:                   resolved.Config.LibraryNamespace,
-			AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess == nil || *resolved.Config.FeatureAnonymousAccess,
-			LibrarySupport:                     resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
-			DatabaseSecretKey:                  databaseVerifierConfig.DatabaseSecretKey,
-			RobotsDisallow:                     databaseVerifierConfig.RobotsDisallow,
-			RobotsWhitelist:                    databaseVerifierConfig.RobotsWhitelist,
-			FeatureUserLastAccessed:            databaseVerifierConfig.FeatureUserLastAccessed,
-			LastAccessedUpdateThresholdSeconds: databaseVerifierConfig.LastAccessedUpdateThresholdSec,
-			SuperUsers:                         resolved.Config.SuperUsers,
-			SuperUsersFullAccess:               superUsersFullAccess,
-			Authenticator:                      reg.Authenticator(),
-			TokenRealm:                         tokenRealm,
-			TokenService:                       publicHostname,
+		referrersHandler, err := registry.NewReferrersHandler(store, &registry.ReferrersConfig{
+			LibraryNamespace: resolved.Config.LibraryNamespace,
+			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+			Authenticator:    reg.Authenticator(),
 		})
+		if err != nil {
+			slog.Error("referrers handler setup error", "err", err)
+			return 1
+		}
 		v2Handler = registry.WrapWithReferrers(referrersHandler, distHandler)
 	}
 
