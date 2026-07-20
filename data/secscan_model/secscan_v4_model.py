@@ -493,10 +493,19 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ManifestSecurityStatus.manifest_id.in_(candidate_ids),
                 ManifestSecurityStatus.index_status == IndexStatus.FAILED,
             )
+            exhausted_manifest_ids = []
             for row in retry_exhausted_query:
                 metadata = row.metadata_json or {}
                 if metadata.get("retry_count", 0) >= max_retries:
                     preempted_ids.add(row.manifest_id)
+                    exhausted_manifest_ids.append(row.manifest_id)
+
+            if exhausted_manifest_ids:
+                ManifestSecurityStatus.update(
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest_id.in_(exhausted_manifest_ids),
+                ).execute()
 
             return preempted_ids
 

@@ -1482,6 +1482,12 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
         assert mss.index_status == IndexStatus.FAILED
         assert mss.metadata_json.get("retry_count") == 3
 
+    under_limit_ids = {manifests[i].id for i in range(3, 6)}
+    for mss in ManifestSecurityStatus.select().where(
+        ManifestSecurityStatus.manifest_id.in_(list(under_limit_ids))
+    ):
+        assert mss.index_status == IndexStatus.COMPLETED
+
 
 def test_api_failure_increments_retry_count(initialized_db, set_secscan_config):
     """
@@ -1513,9 +1519,12 @@ def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
 
     secscan.perform_indexing(batch_size=100)
 
+    failed_count = 0
     for mss in ManifestSecurityStatus.select():
         if mss.index_status == IndexStatus.FAILED:
             assert mss.metadata_json.get("retry_count") == 1
+            failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
 def test_successful_indexing_resets_retry_count(initialized_db, set_secscan_config):
@@ -1546,9 +1555,12 @@ def test_successful_indexing_resets_retry_count(initialized_db, set_secscan_conf
 
     secscan.perform_indexing(batch_size=100)
 
+    completed_count = 0
     for mss in ManifestSecurityStatus.select():
         if mss.index_status == IndexStatus.COMPLETED:
             assert mss.metadata_json == {}
+            completed_count += 1
+    assert completed_count > 0, "Expected at least one COMPLETED manifest"
 
 
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):

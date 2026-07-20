@@ -159,25 +159,35 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             if not rows:
                 return []
 
-            rows = [
-                r
-                for r in rows
-                if r.index_status != IndexStatus.FAILED
-                or (r.metadata_json or {}).get("retry_count", 0) < max_retries
-            ]
+            now = datetime.utcnow()
 
-            if not rows:
+            eligible = []
+            exhausted_ids = []
+            for r in rows:
+                if (
+                    r.index_status == IndexStatus.FAILED
+                    and (r.metadata_json or {}).get("retry_count", 0) >= max_retries
+                ):
+                    exhausted_ids.append(r.id)
+                else:
+                    eligible.append(r)
+
+            if exhausted_ids:
+                ManifestSecurityStatus.update(
+                    last_indexed=now,
+                ).where(ManifestSecurityStatus.id.in_(exhausted_ids)).execute()
+
+            if not eligible:
                 return []
 
-            row_ids = [r.id for r in rows]
-            now = datetime.utcnow()
+            row_ids = [r.id for r in eligible]
             ManifestSecurityStatus.update(
                 index_status=IndexStatus.IN_PROGRESS,
                 indexer_hash="in_progress_v2",
                 last_indexed=now,
             ).where(ManifestSecurityStatus.id.in_(row_ids)).execute()
 
-            return rows
+            return eligible
 
     def _claim_unindexed_manifests(self, batch_size):
         candidates = list(
