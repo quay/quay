@@ -4,6 +4,7 @@ package bootstrap
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -57,7 +58,7 @@ func AdminUser(ctx context.Context, db *sql.DB, username, password string) (bool
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return false, fmt.Errorf("hash password: %w", err)
+		return false, errors.New("hash initial administrator password")
 	}
 
 	email := fmt.Sprintf("%s@localhost", username)

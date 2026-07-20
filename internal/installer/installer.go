@@ -465,7 +465,6 @@ func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
 	if err := inst.atomicWriteCredential(authDir, passwordPath, []byte(password)); err != nil {
 		return "", err
 	}
-	slog.Info("admin password saved", "path", passwordPath)
 	return password, nil
 }
 
