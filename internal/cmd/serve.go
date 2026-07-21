@@ -88,11 +88,6 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 	superUsersFullAccess := superUsersHaveFullAccess(resolved.Config)
 	publicHostname := resolved.Config.ServerHostname
-	tlsHostname, err := registryTLSHostname(publicHostname)
-	if err != nil {
-		slog.Error("invalid registry hostname", "hostname", publicHostname, "err", err)
-		return 1
-	}
 	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
 	if err != nil {
 		slog.Error("registry token service error", "err", err)
@@ -171,12 +166,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	mux.Handle("/v2/auth", reg.TokenHandler())
 	mux.Handle("/", v2Handler)
 
-	srv, err := server.New(ctx, mux, &server.Config{
-		ListenAddr:      addr,
-		Hostname:        tlsHostname,
-		PreferredScheme: resolved.Config.PreferredURLScheme,
-		CertDir:         resolved.DataDir,
-	})
+	srv, err := newRegistryServer(ctx, mux, resolved, addr)
 	if err != nil {
 		slog.Error("server build error", "err", err)
 		return 1
@@ -204,6 +194,19 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 
 func registryTLSHostname(publicHostname string) (string, error) {
 	return system.HostnameWithoutPort(publicHostname)
+}
+
+func newRegistryServer(ctx context.Context, handler http.Handler, resolved *config.Resolved, addr string) (*server.Server, error) {
+	tlsHostname, err := registryTLSHostname(resolved.Config.ServerHostname)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registry hostname %q: %w", resolved.Config.ServerHostname, err)
+	}
+	return server.New(ctx, handler, &server.Config{
+		ListenAddr:      addr,
+		Hostname:        tlsHostname,
+		PreferredScheme: resolved.Config.PreferredURLScheme,
+		CertDir:         resolved.DataDir,
+	})
 }
 
 func loadRegistryTokenService(resolved *config.Resolved) (*jwtauth.Service, string, error) {
