@@ -784,7 +784,7 @@ jobs:
           sudo test -f "$SOURCE_DB"
 
           if ! source_key_fingerprint=$(sudo podman exec quay-app \
-            cat /quay-registry/conf/stack/quay.pem \
+            cat /quay-registry/conf/quay.pem \
             | openssl pkey -pubout -outform DER \
             | sha256sum \
             | awk '{print $1}'); then
