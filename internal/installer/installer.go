@@ -130,6 +130,9 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("resolve port: %w", err)
 	}
 	resolvedCfg.Port = port
+	if err := inst.validateUpgradePortChange(cfg.Port, port, upgrading); err != nil {
+		return fmt.Errorf("resolve port: %w", err)
+	}
 
 	if err := inst.initialize(ctx, &resolvedCfg); err != nil {
 		return fmt.Errorf("initialize registry: %w", err)
@@ -245,6 +248,30 @@ func (inst *Installer) resolvePort(requestedPort string, upgrading bool) (string
 		return "", err
 	}
 	return port, nil
+}
+
+func (inst *Installer) validateUpgradePortChange(requestedPort, resolvedPort string, upgrading bool) error {
+	if !upgrading || requestedPort == "" {
+		return nil
+	}
+	existingPort, err := inst.quadlet.HostPort(quadletServiceName)
+	if err != nil {
+		return fmt.Errorf("determine existing port: %w", err)
+	}
+	if existingPort == resolvedPort {
+		return nil
+	}
+	configPath, err := inst.quadlet.ConfigPath(quadletServiceName)
+	if err != nil {
+		return fmt.Errorf("determine existing config path: %w", err)
+	}
+	if configPath != "" {
+		return fmt.Errorf(
+			"cannot change port from %s to %s for a config-backed installation; update SERVER_HOSTNAME in %s first",
+			existingPort, resolvedPort, configPath,
+		)
+	}
+	return nil
 }
 
 func (inst *Installer) resolveImage(ctx context.Context, archive, image string) (string, error) {

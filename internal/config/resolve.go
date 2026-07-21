@@ -127,6 +127,10 @@ func NewDefault(hostname, storagePath string) *Config {
 			FeatureSuperUsers:           boolPtr(true),
 			FeatureSuperUsersFullAccess: boolPtr(true),
 		},
+		Keys: Keys{
+			InstanceServiceKeyService: DefaultInstanceServiceKeyService,
+			RegistryJWTAuthMaxFreshS:  DefaultRegistryJWTAuthMaxFreshS,
+		},
 		Storage: Storage{
 			DistributedStorageConfig: StorageEntries{
 				"default": {

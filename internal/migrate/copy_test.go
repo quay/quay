@@ -2,12 +2,19 @@ package migrate
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/registry/jwtauth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCopyData(t *testing.T) {
@@ -67,6 +74,7 @@ func TestCopyData_WritesRuntimeConfigWithSourceSecrets(t *testing.T) {
 
 	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
 	createCopyTestDB(t, dbPath)
+	seedCopyTestRegistryKey(t, dbPath, srcDir)
 	writeCopyTestFile(t, filepath.Join(srcDir, "config.yaml"), []byte(`
 SERVER_HOSTNAME: old.example.com
 PREFERRED_URL_SCHEME: https
@@ -142,6 +150,12 @@ FEATURE_USER_LAST_ACCESSED: false
 	if cfg.FeatureUserLastAccessed == nil || *cfg.FeatureUserLastAccessed {
 		t.Fatalf("FeatureUserLastAccessed = %#v, want source false", cfg.FeatureUserLastAccessed)
 	}
+	if cfg.ServerHostname != "localhost:8443" {
+		t.Fatalf("ServerHostname = %q, want public hostname with port", cfg.ServerHostname)
+	}
+	if _, err := jwtauth.LoadPrivateKey(filepath.Join(targetDir, jwtauth.KeyFileName)); err != nil {
+		t.Fatalf("load imported registry JWT key: %v", err)
+	}
 }
 
 func TestCopyData_SkipsRuntimeConfigWhenSourceConfigMissing(t *testing.T) {
@@ -170,6 +184,69 @@ func TestCopyData_SkipsRuntimeConfigWhenSourceConfigMissing(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(targetDir, runtimeConfigFile)); !os.IsNotExist(err) {
 		t.Fatalf("runtime config stat err = %v, want not exist", err)
 	}
+}
+
+func TestWriteRuntimeConfigPreservesSourcePort(t *testing.T) {
+	configDir := t.TempDir()
+	writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com:9443\n"), 0o600)
+	targetDir := t.TempDir()
+	migrator := &Migrator{
+		DataDir: targetDir,
+		Source: OMRSource{
+			ConfigDir: configDir,
+			Hostname:  "registry.example.com",
+		},
+	}
+	sourceCfg := config.NewDefault("old.example.com:9443", "/old/storage")
+
+	require.NoError(t, migrator.writeRuntimeConfig(sourceCfg))
+	runtimeCfg, err := config.Load(filepath.Join(targetDir, runtimeConfigFile))
+	require.NoError(t, err)
+	assert.Equal(t, "registry.example.com:9443", runtimeCfg.ServerHostname)
+}
+
+func TestWriteRuntimeConfigDefaultsPortForBareSourceHostname(t *testing.T) {
+	tests := []struct {
+		name, sourceHostname string
+	}{
+		{name: "DNS", sourceHostname: "old.example.com"},
+		{name: "IPv4", sourceHostname: "192.0.2.1"},
+		{name: "IPv6", sourceHostname: "2001:db8::1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configDir := t.TempDir()
+			writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"), 0o600)
+			targetDir := t.TempDir()
+			migrator := &Migrator{
+				DataDir: targetDir,
+				Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+			}
+
+			err := migrator.writeRuntimeConfig(config.NewDefault(tt.sourceHostname, "/old/storage"))
+
+			require.NoError(t, err)
+			runtimeCfg, err := config.Load(filepath.Join(targetDir, runtimeConfigFile))
+			require.NoError(t, err)
+			assert.Equal(t, "registry.example.com:8443", runtimeCfg.ServerHostname)
+		})
+	}
+}
+
+func TestWriteRuntimeConfigRejectsMalformedSourceHostname(t *testing.T) {
+	configDir := t.TempDir()
+	writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"), 0o600)
+	targetDir := t.TempDir()
+	migrator := &Migrator{
+		DataDir: targetDir,
+		Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+	}
+
+	err := migrator.writeRuntimeConfig(config.NewDefault("old.example.com:9443:extra", "/old/storage"))
+
+	require.ErrorContains(t, err, "parse runtime SERVER_HOSTNAME")
+	_, statErr := os.Stat(filepath.Join(targetDir, runtimeConfigFile))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
 func TestCopyData_Idempotent(t *testing.T) {
@@ -295,6 +372,50 @@ func createCopyTestDB(t *testing.T, dbPath string) {
 	if _, err := db.ExecContext(t.Context(), "INSERT INTO copy_test (value) VALUES ('ok')"); err != nil {
 		t.Fatalf("insert row: %v", err)
 	}
+}
+
+func seedCopyTestRegistryKey(t *testing.T, dbPath, configDir string) *rsa.PrivateKey {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate RSA key: %v", err)
+	}
+	kid, err := jwtauth.KeyID(&key.PublicKey)
+	if err != nil {
+		t.Fatalf("key ID: %v", err)
+	}
+	if err := jwtauth.WritePrivateKey(filepath.Join(configDir, legacyPrivateKeyName), key); err != nil {
+		t.Fatalf("write legacy private key: %v", err)
+	}
+	writeCopyTestFile(t, filepath.Join(configDir, legacyKeyIDName), []byte(kid), 0o600)
+
+	db, err := dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open fixture DB: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	for _, statement := range []string{
+		`CREATE TABLE servicekeyapproval (id INTEGER PRIMARY KEY, approval_type TEXT NOT NULL)`,
+		`CREATE TABLE servicekey (id INTEGER PRIMARY KEY, kid TEXT NOT NULL, service TEXT NOT NULL, jwk TEXT NOT NULL, expiration_date DATETIME, approval_id INTEGER)`,
+		`INSERT INTO servicekeyapproval (id, approval_type) VALUES (1, 'automatic')`,
+	} {
+		if _, err := db.ExecContext(t.Context(), statement); err != nil {
+			t.Fatalf("seed service key schema: %v", err)
+		}
+	}
+	jwkBytes, err := json.Marshal(jose.JSONWebKey{
+		Key: &key.PublicKey, KeyID: kid, Algorithm: string(jose.RS256), Use: "sig",
+	})
+	if err != nil {
+		t.Fatalf("marshal public JWK: %v", err)
+	}
+	if _, err := db.ExecContext(t.Context(), `
+		INSERT INTO servicekey (id, kid, service, jwk, expiration_date, approval_id)
+		VALUES (1, ?, 'quay', ?, datetime('now', '+1 hour'), 1)
+	`, kid, string(jwkBytes)); err != nil {
+		t.Fatalf("seed service key: %v", err)
+	}
+	return key
 }
 
 func mkdirCopyTestDir(t *testing.T, path string, perm os.FileMode) {

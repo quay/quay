@@ -258,10 +258,14 @@ var knownUnmapped = map[string]bool{
 // INTERNAL_ONLY_PROPERTIES) that the Go CLI needs but are not part of the
 // public schema.
 var goOnlyFields = map[string]bool{
-	"DATABASE_SECRET_KEY":              true,
-	"LAST_ACCESSED_UPDATE_THRESHOLD_S": true,
-	"SECRET_KEY":                       true,
-	"LIBRARY_NAMESPACE":                true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"DATABASE_SECRET_KEY":               true,
+	"LAST_ACCESSED_UPDATE_THRESHOLD_S":  true,
+	"SECRET_KEY":                        true,
+	"LIBRARY_NAMESPACE":                 true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"INSTANCE_SERVICE_KEY_KID_LOCATION": true,
+	"INSTANCE_SERVICE_KEY_LOCATION":     true,
+	"INSTANCE_SERVICE_KEY_SERVICE":      true,
+	"REGISTRY_JWT_AUTH_MAX_FRESH_S":     true,
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

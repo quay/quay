@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpgradeSchema_AlreadyCurrent(t *testing.T) {
@@ -34,7 +37,30 @@ func TestUpgradeSchema_AlreadyCurrent(t *testing.T) {
 	}
 }
 
-func TestStopOldOMR_ReturnsErrorWhenQuayAppStopFails(t *testing.T) {
+func TestRuntimeConfigPort(t *testing.T) {
+	tests := []struct {
+		name     string
+		hostname string
+		want     string
+	}{
+		{name: "custom port", hostname: "registry.example.com:9443", want: "9443"},
+		{name: "default port", hostname: "registry.example.com", want: "8443"},
+		{name: "IPv6", hostname: "[2001:db8::1]:10443", want: "10443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), runtimeConfigFile)
+			require.NoError(t, os.WriteFile(path, []byte("SERVER_HOSTNAME: \""+tt.hostname+"\"\n"), 0o600))
+
+			port, err := runtimeConfigPort(path)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, port)
+		})
+	}
+}
+
+func TestStopSourceServices_ReturnsErrorWhenQuayAppStopFails(t *testing.T) {
 	runner := &recordingRunner{
 		runErrs: map[string]error{
 			"quay-app.service": errors.New("permission denied"),
@@ -48,19 +74,19 @@ func TestStopOldOMR_ReturnsErrorWhenQuayAppStopFails(t *testing.T) {
 		},
 	}
 
-	err := m.stopOldOMR(t.Context())
+	err := m.stopSourceServices(t.Context())
 	if err == nil {
-		t.Fatal("expected stopOldOMR to fail when quay-app cannot stop")
+		t.Fatal("expected stopSourceServices to fail when quay-app cannot stop")
 	}
 	if !strings.Contains(err.Error(), "quay-app") {
 		t.Fatalf("expected error to mention quay-app, got %v", err)
 	}
 	if len(runner.runCalls) != len(omrServiceNames) {
-		t.Fatalf("expected stopOldOMR to attempt all services, got %d calls", len(runner.runCalls))
+		t.Fatalf("expected stopSourceServices to attempt all services, got %d calls", len(runner.runCalls))
 	}
 }
 
-func TestStopOldOMR_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
+func TestStopSourceServices_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
 	runner := &recordingRunner{
 		runErrs: map[string]error{
 			"quay-redis.service": errors.New("already stopped"),
@@ -75,9 +101,9 @@ func TestStopOldOMR_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
 		},
 	}
 
-	err := m.stopOldOMR(t.Context())
+	err := m.stopSourceServices(t.Context())
 	if err == nil {
-		t.Fatal("expected stopOldOMR to fail when any service cannot stop")
+		t.Fatal("expected stopSourceServices to fail when any service cannot stop")
 	}
 	for _, svc := range []string{"quay-redis", "quay-pod"} {
 		if !strings.Contains(err.Error(), svc) {
@@ -85,11 +111,11 @@ func TestStopOldOMR_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
 		}
 	}
 	if len(runner.runCalls) != len(omrServiceNames) {
-		t.Fatalf("expected stopOldOMR to attempt all services, got %d calls", len(runner.runCalls))
+		t.Fatalf("expected stopSourceServices to attempt all services, got %d calls", len(runner.runCalls))
 	}
 }
 
-func TestStopOldOMR_SkipsWhenNoUnitFilesDetected(t *testing.T) {
+func TestStopSourceServices_SkipsWhenNoUnitFilesDetected(t *testing.T) {
 	runner := &recordingRunner{}
 	m := &Migrator{
 		Runner: runner,
@@ -98,15 +124,15 @@ func TestStopOldOMR_SkipsWhenNoUnitFilesDetected(t *testing.T) {
 		},
 	}
 
-	if err := m.stopOldOMR(t.Context()); err != nil {
-		t.Fatalf("stopOldOMR should skip when no unit files were detected: %v", err)
+	if err := m.stopSourceServices(t.Context()); err != nil {
+		t.Fatalf("stopSourceServices should skip when no unit files were detected: %v", err)
 	}
 	if len(runner.runCalls) != 0 {
 		t.Fatalf("expected no stop calls when no unit files were detected, got %d", len(runner.runCalls))
 	}
 }
 
-func TestStopOldOMR_SucceedsWhenAllStopsSucceed(t *testing.T) {
+func TestStopSourceServices_SucceedsWhenAllStopsSucceed(t *testing.T) {
 	runner := &recordingRunner{}
 	m := &Migrator{
 		Runner: runner,
@@ -116,11 +142,11 @@ func TestStopOldOMR_SucceedsWhenAllStopsSucceed(t *testing.T) {
 		},
 	}
 
-	if err := m.stopOldOMR(t.Context()); err != nil {
-		t.Fatalf("stopOldOMR should succeed when all stop commands succeed: %v", err)
+	if err := m.stopSourceServices(t.Context()); err != nil {
+		t.Fatalf("stopSourceServices should succeed when all stop commands succeed: %v", err)
 	}
 	if len(runner.runCalls) != len(omrServiceNames) {
-		t.Fatalf("expected stopOldOMR to attempt all services, got %d calls", len(runner.runCalls))
+		t.Fatalf("expected stopSourceServices to attempt all services, got %d calls", len(runner.runCalls))
 	}
 }
 

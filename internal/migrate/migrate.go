@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"io"
 	"log/slog"
@@ -53,6 +54,8 @@ type Migrator struct {
 
 	Out    io.Writer
 	Runner system.CommandRunner
+
+	sourceRegistryJWTKey *rsa.PrivateKey
 }
 
 // Run executes the migration phases in order.
@@ -109,7 +112,7 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	if err := m.validate(ctx); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
-	if err := m.stopOldOMR(ctx); err != nil {
+	if err := m.stopSourceServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR: %w", err)
 	}
 	if err := m.copyData(ctx); err != nil {
