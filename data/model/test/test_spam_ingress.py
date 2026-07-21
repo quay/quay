@@ -200,6 +200,26 @@ def test_missing_required_artifact_field_raises_unavailable(tmp_path):
         )
 
 
+def test_integral_float_artifact_counts_are_normalized():
+    classifier = spam_ingress.BayesianSpamClassifier(
+        _artifact(
+            spam_token_total=100.0,
+            ham_token_total=100.0,
+            vocabulary_size=2.0,
+        )
+    )
+
+    assert classifier._spam_total == 100
+    assert classifier._ham_total == 100
+    assert classifier._vocabulary_size == 2
+
+
+@pytest.mark.parametrize("value", [1.5, True])
+def test_non_integral_artifact_counts_raise_unavailable(value):
+    with pytest.raises(spam_ingress.SpamIngressUnavailable, match="must be an integer"):
+        spam_ingress.BayesianSpamClassifier(_artifact(spam_token_total=value))
+
+
 def test_high_scoring_description_without_hyperlink_is_allowed():
     context = spam_ingress.SpamIngressContext(
         namespace="devtable",

@@ -22,15 +22,16 @@ REQUIRED_ARTIFACT_FIELDS = {
     "ham_prior": (int, float),
     "token_spam_counts": dict,
     "token_ham_counts": dict,
-    "spam_token_total": int,
-    "ham_token_total": int,
-    "vocabulary_size": int,
+    "spam_token_total": (int, float),
+    "ham_token_total": (int, float),
+    "vocabulary_size": (int, float),
     "smoothing": (int, float),
     "ingress_threshold": (int, float),
     "ingress_thresholds": dict,
     "feature_config": dict,
     "training_metrics": dict,
 }
+ARTIFACT_INTEGER_FIELDS = ("spam_token_total", "ham_token_total", "vocabulary_size")
 
 
 class SpamIngressUnavailable(Exception):
@@ -63,9 +64,9 @@ class BayesianSpamClassifier:
         self.version = artifact.get("version")
         self._spam_counts = artifact.get("token_spam_counts") or {}
         self._ham_counts = artifact.get("token_ham_counts") or {}
-        self._spam_total = artifact.get("spam_token_total")
-        self._ham_total = artifact.get("ham_token_total")
-        self._vocabulary_size = artifact.get("vocabulary_size")
+        self._spam_total = int(artifact["spam_token_total"])
+        self._ham_total = int(artifact["ham_token_total"])
+        self._vocabulary_size = int(artifact["vocabulary_size"])
         self._smoothing = float(artifact.get("smoothing", 1.0))
         self._spam_prior = float(artifact.get("spam_prior", 0.5))
         self._ham_prior = float(artifact.get("ham_prior", 0.5))
@@ -171,6 +172,15 @@ def _validate_artifact_schema(artifact):
         if not isinstance(artifact[field], expected_type):
             raise SpamIngressUnavailable(
                 f"Spam classifier artifact field has invalid type: {field}"
+            )
+
+    for field in ARTIFACT_INTEGER_FIELDS:
+        value = artifact[field]
+        if isinstance(value, bool) or (
+            isinstance(value, float) and (not math.isfinite(value) or not value.is_integer())
+        ):
+            raise SpamIngressUnavailable(
+                f"Spam classifier artifact field must be an integer: {field}"
             )
 
     if artifact["spam_token_total"] < 0 or artifact["ham_token_total"] < 0:
