@@ -27,13 +27,14 @@ import (
 	"github.com/quay/quay/internal/system"
 )
 
-const (
-	// DefaultImage is the default container image for the registry.
-	DefaultImage = "quay.io/quay/quay-mirror:latest"
+// DefaultImage is the default container image for the registry.
+// Overridden at build time via ldflags for release builds.
+var DefaultImage = "quay.io/quay/quay-mirror:latest"
 
-	defaultPort         = "8443"
+const (
+	defaultPort        = "8443"
 	defaultInitUsername = "admin"
-	quadletServiceName  = "quay"
+	quadletServiceName = "quay"
 )
 
 // Config holds the parameters for an install or upgrade operation.
