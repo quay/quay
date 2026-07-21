@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime
 from email.utils import mktime_tz, parsedate_tz
+from functools import wraps
 
 from flask import request
 from jsonschema import ValidationError
@@ -9,7 +10,7 @@ from jsonschema import ValidationError
 import features
 from app import app
 from data import model
-from data.database import RepoMirrorRuleType
+from data.database import RepoMirrorRuleType, db_transaction
 from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
@@ -25,6 +26,36 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
+from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
+
+SSRF_GENERIC_ERROR = "The provided registry location is not allowed"
+
+
+def _get_ssrf_allowed_hosts():
+    return app.config.get("SSRF_ALLOWED_HOSTS", [])
+
+
+def _validate_external_reference(reference):
+    """Validate a repository mirror source and normalize SSRF errors."""
+    try:
+        validate_external_registry_reference(
+            reference,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+        )
+    except SSRFBlockedError:
+        raise InvalidRequest(SSRF_GENERIC_ERROR)
+    except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
+def _with_db_transaction(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with db_transaction():
+            return func(*args, **kwargs)
+
+    return wrapper
+
 
 common_properties = {
     "is_enabled": {
@@ -294,6 +325,7 @@ class RepoMirrorResource(RepositoryParamResource):
     @require_repo_admin(allow_for_superuser=True)
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
+    @_with_db_transaction
     def post(self, namespace_name, repository_name):
         """
         Create a RepoMirrorConfig for a given Repository.
@@ -319,6 +351,19 @@ class RepoMirrorResource(RepositoryParamResource):
 
         data = request.get_json()
 
+        # Validate the complete request before creating rules or changing permissions.
+        _validate_external_reference(data["external_reference"])
+
+        arch_filter = data.get("architecture_filter")
+        if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+            return {
+                "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+            }, 400
+        try:
+            model.repo_mirror.validate_architecture_filter(arch_filter)
+        except ValidationError as e:
+            return {"detail": str(e)}, 400
+
         if data["skopeo_timeout_interval"] < 300:
             return (
                 {"detail": "Skopeo timeout interval cannot be less than 300 seconds"},
@@ -340,20 +385,15 @@ class RepoMirrorResource(RepositoryParamResource):
         arch_filter = data.pop("architecture_filter", None)
 
         mirror = model.repo_mirror.enable_mirroring_for_repository(
-            repo, root_rule=rule, internal_robot=robot, **data
+            repo,
+            root_rule=rule,
+            internal_robot=robot,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+            **data,
         )
         if mirror:
-            # Set architecture filter if provided
             if arch_filter is not None:
-                if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
-                    return {
-                        "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
-                    }, 400
-                try:
-                    model.repo_mirror.validate_architecture_filter(arch_filter)
-                    model.repo_mirror.set_architecture_filter(repo, arch_filter)
-                except ValidationError as e:
-                    return {"detail": str(e)}, 400
+                model.repo_mirror.set_architecture_filter(repo, arch_filter)
 
             track_and_log(
                 "repo_mirror_config_changed",
@@ -369,6 +409,7 @@ class RepoMirrorResource(RepositoryParamResource):
     @require_repo_admin(allow_for_superuser=True)
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
+    @_with_db_transaction
     def put(self, namespace_name, repository_name):
         """
         Allow users to modifying the repository's mirroring configuration.
@@ -384,6 +425,55 @@ class RepoMirrorResource(RepositoryParamResource):
         mirror = model.repo_mirror.get_mirror(repo)
         if not mirror:
             raise NotFound()
+
+        # Validate and normalize every requested change before applying any update.
+        if "external_reference" in values:
+            _validate_external_reference(values["external_reference"])
+
+        if "sync_start_date" in values:
+            try:
+                values["sync_start_date"] = self._string_to_dt(values["sync_start_date"])
+            except ValueError:
+                return {"detail": "Incorrect DateTime format for sync_start_date."}, 400
+
+        if "skopeo_timeout_interval" in values and values["skopeo_timeout_interval"] < 300:
+            return ({"detail": "Skopeo timeout interval cannot be less than 300 seconds."}, 400)
+
+        if "architecture_filter" in values:
+            arch_filter = values["architecture_filter"]
+            if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+                return {
+                    "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+                }, 400
+            try:
+                model.repo_mirror.validate_architecture_filter(arch_filter)
+            except ValidationError as e:
+                return {"detail": str(e)}, 400
+
+        if "external_registry_password" in values and "external_registry_username" not in values:
+            return (
+                {"detail": "Unable to set a new password without also specifying a username."},
+                400,
+            )
+        if (
+            "external_registry_username" in values
+            and "external_registry_password" in values
+            and values["external_registry_username"] is None
+            and values["external_registry_password"] is not None
+        ):
+            return {"detail": "Unable to delete username while setting a password."}, 400
+
+        if "root_rule" in values:
+            model.repo_mirror.validate_rule(
+                RepoMirrorRuleType.TAG_GLOB_CSV,
+                values["root_rule"]["rule_value"],
+            )
+
+        validated_robot = None
+        if "robot_username" in values:
+            validated_robot = self._validate_robot_for_mirroring(
+                namespace_name, values["robot_username"]
+            )
 
         if "is_enabled" in values:
             if values["is_enabled"] == True:
@@ -404,9 +494,11 @@ class RepoMirrorResource(RepositoryParamResource):
                     )
 
         if "external_reference" in values:
-            if values["external_reference"] == "":
-                return {"detail": "Empty string is an invalid repository location."}, 400
-            if model.repo_mirror.change_remote(repo, values["external_reference"]):
+            if model.repo_mirror.change_remote(
+                repo,
+                values["external_reference"],
+                allowed_hosts=_get_ssrf_allowed_hosts(),
+            ):
                 track_and_log(
                     "repo_mirror_config_changed",
                     wrap_repository(repo),
@@ -416,7 +508,12 @@ class RepoMirrorResource(RepositoryParamResource):
 
         if "robot_username" in values:
             robot_username = values["robot_username"]
-            robot = self._setup_robot_for_mirroring(namespace_name, repository_name, robot_username)
+            robot = self._setup_robot_for_mirroring(
+                namespace_name,
+                repository_name,
+                robot_username,
+                validated_robot=validated_robot,
+            )
             if model.repo_mirror.set_mirroring_robot(repo, robot):
                 track_and_log(
                     "repo_mirror_config_changed",
@@ -426,16 +523,12 @@ class RepoMirrorResource(RepositoryParamResource):
                 )
 
         if "sync_start_date" in values:
-            try:
-                sync_start_date = self._string_to_dt(values["sync_start_date"])
-            except ValueError as e:
-                return {"detail": "Incorrect DateTime format for sync_start_date."}, 400
-            if model.repo_mirror.change_sync_start_date(repo, sync_start_date):
+            if model.repo_mirror.change_sync_start_date(repo, values["sync_start_date"]):
                 track_and_log(
                     "repo_mirror_config_changed",
                     wrap_repository(repo),
                     changed="sync_start_date",
-                    to=sync_start_date,
+                    to=values["sync_start_date"],
                 )
 
         if "sync_interval" in values:
@@ -448,9 +541,6 @@ class RepoMirrorResource(RepositoryParamResource):
                 )
 
         if "skopeo_timeout_interval" in values:
-            if values["skopeo_timeout_interval"] < 300:
-                return ({"detail": "Skopeo timeout interval cannot be less than 300 seconds."}, 400)
-
             if model.repo_mirror.change_skopeo_timeout_interval(
                 repo, values["skopeo_timeout_interval"]
             ):
@@ -463,15 +553,6 @@ class RepoMirrorResource(RepositoryParamResource):
 
         if "architecture_filter" in values:
             arch_filter = values["architecture_filter"]
-            if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
-                return {
-                    "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
-                }, 400
-            try:
-                model.repo_mirror.validate_architecture_filter(arch_filter)
-            except ValidationError as e:
-                return {"detail": str(e)}, 400
-
             if model.repo_mirror.set_architecture_filter(repo, arch_filter or []):
                 track_and_log(
                     "repo_mirror_config_changed",
@@ -483,8 +564,6 @@ class RepoMirrorResource(RepositoryParamResource):
         if "external_registry_username" in values and "external_registry_password" in values:
             username = values["external_registry_username"]
             password = values["external_registry_password"]
-            if username is None and password is not None:
-                return {"detail": "Unable to delete username while setting a password."}, 400
             if model.repo_mirror.change_credentials(repo, username, password):
                 track_and_log(
                     "repo_mirror_config_changed",
@@ -516,13 +595,6 @@ class RepoMirrorResource(RepositoryParamResource):
                     changed="external_registry_username",
                     to=username,
                 )
-
-        # Do not allow specifying a password without setting a username
-        if "external_registry_password" in values and "external_registry_username" not in values:
-            return (
-                {"detail": "Unable to set a new password without also specifying a username."},
-                400,
-            )
 
         if "external_registry_config" in values:
             external_registry_config = values.get("external_registry_config", {})
@@ -581,10 +653,6 @@ class RepoMirrorResource(RepositoryParamResource):
                         )
 
         if "root_rule" in values:
-
-            if values["root_rule"]["rule_kind"] != "tag_glob_csv":
-                raise ValidationError('validation failed: rule_kind must be "tag_glob_csv"')
-
             if model.repo_mirror.change_rule(
                 repo, RepoMirrorRuleType.TAG_GLOB_CSV, values["root_rule"]["rule_value"]
             ):
@@ -607,16 +675,22 @@ class RepoMirrorResource(RepositoryParamResource):
                     "organization-level mirroring is configured"
                 )
 
-    def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
-        """
-        Validate robot exists and give write permissions.
-        """
+    def _validate_robot_for_mirroring(self, namespace_name, robot_username):
         robot = model.user.lookup_robot(robot_username)
         assert robot.robot
 
         namespace, _ = parse_robot_username(robot_username)
         if namespace != namespace_name:
             raise model.DataModelException("Invalid robot")
+        return robot
+
+    def _setup_robot_for_mirroring(
+        self, namespace_name, repo_name, robot_username, validated_robot=None
+    ):
+        """Validate the robot and grant write permission when required."""
+        robot = validated_robot or self._validate_robot_for_mirroring(
+            namespace_name, robot_username
+        )
 
         # Ensure the robot specified has access to the repository. If not, grant it.
         permissions = model.permission.get_user_repository_permissions(

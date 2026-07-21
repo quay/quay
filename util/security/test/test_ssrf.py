@@ -7,7 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+from util.security.ssrf import (
+    SSRFBlockedError,
+    validate_external_registry_reference,
+    validate_external_registry_url,
+)
 
 
 class TestSSRFBlockedError:
@@ -269,6 +273,82 @@ class TestValidateExternalRegistryUrl:
     def test_resolve_dns_false_skips_dns_check(self):
         """With resolve_dns=False, hostnames pass without DNS resolution."""
         validate_external_registry_url("https://registry.example.com", resolve_dns=False)
+
+
+class TestValidateExternalRegistryReference:
+    """Tests for scheme-less repository mirror references."""
+
+    @pytest.mark.parametrize(
+        "reference",
+        [
+            "quay.io/projectquay/quay",
+            "quay.io/Team/Nested.Repository:Tag",
+            "quay.io/team/repository@sha256:abc",
+            "registry.example.com:5000/team/repository",
+            "93.184.216.34/team/repository",
+            "[2606:2800:220:1:248:1893:25c8:1946]/team/repository",
+            "[2606:2800:220:1:248:1893:25c8:1946]:5000/team/repository",
+        ],
+    )
+    def test_valid_references_pass(self, reference):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+            validate_external_registry_reference(reference)
+
+    @pytest.mark.parametrize("reference", [None, "", "   "])
+    def test_empty_reference_rejected(self, reference):
+        with pytest.raises(ValueError, match="required"):
+            validate_external_registry_reference(reference)
+
+    @pytest.mark.parametrize(
+        "reference",
+        [
+            "https://quay.io/project/repository",
+            "quay.io/project repo",
+            "/project/repository",
+            "quay.io?#/project/repository",
+            "quay.io:bad/repository",
+            "quay.io:/repository",
+            "quay.io:70000/repository",
+            "quay.io:0/repository",
+            "[2606:2800:220:1:248:1893:25c8:1946]:/repository",
+            "quay.io/repository?query=value",
+            "quay.io/repository#fragment",
+            "quay.io",
+            "quay.io/",
+            "quay.io\\repository",
+            "quay.io/%2e%2e",
+        ],
+    )
+    def test_malformed_reference_rejected(self, reference):
+        with pytest.raises(ValueError, match="reference"):
+            validate_external_registry_reference(reference, resolve_dns=False)
+
+    @pytest.mark.parametrize(
+        "reference",
+        [
+            "localhost/project/repository",
+            "127.0.0.1/project/repository",
+            "169.254.169.254/latest/meta-data",
+            "10.0.0.1/project/repository",
+            "[::1]:5000/project/repository",
+        ],
+    )
+    def test_blocked_registry_rejected(self, reference):
+        with pytest.raises(SSRFBlockedError):
+            validate_external_registry_reference(reference, resolve_dns=False)
+
+    def test_dns_resolving_to_private_ip_rejected(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with pytest.raises(SSRFBlockedError, match="private or reserved"):
+                validate_external_registry_reference("registry.example.com/team/repository")
+
+    def test_allowlisted_private_registry_passes(self):
+        validate_external_registry_reference(
+            "10.0.0.1/team/repository",
+            allowed_hosts=["10.0.0.0/8"],
+        )
 
 
 class TestSSRFAllowlist:
