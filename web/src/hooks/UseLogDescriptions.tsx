@@ -1023,6 +1023,36 @@ export function useLogDescriptions() {
       return `Re-enable notification of event ${event.title} for repository ${metadata.namespace}/${metadata.repo}`;
     },
 
+    create_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Add notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
+    delete_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Delete notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
+    reset_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Re-enable notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
     regenerate_robot_token: function (metadata: Metadata) {
       return <>Regenerated token for robot {wrapVariable(metadata.robot)}</>;
     },
