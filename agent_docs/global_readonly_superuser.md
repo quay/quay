@@ -82,8 +82,19 @@ curl -s -b cookies.txt -X POST \
   "http://localhost:8080/api/v1/repository"
 ```
 
+## Playwright API E2E Tests
+
+The file `web/playwright/e2e/api/api-v1-readonly-superuser.spec.ts` contains
+comprehensive API-level E2E tests that verify readonly superuser access patterns
+against a running Quay instance. When adding or modifying readonly superuser
+permission checks on API endpoints, add a corresponding section to this spec file
+following the established pattern (GET returns 200, mutation returns 403).
+
+See `web/playwright/AGENTS.md` for Playwright test conventions and fixtures.
+
 ## Adding Global Readonly Support to New Endpoints
 
 1. For read endpoints, add `allow_for_global_readonly_superuser=True` to decorator
 2. For write endpoints, no changes needed (blocked by default)
 3. Add tests in `endpoints/api/test/test_global_readonly_superuser.py`
+4. Add Playwright API E2E tests to `web/playwright/e2e/api/api-v1-readonly-superuser.spec.ts`

@@ -64,6 +64,9 @@ TOKEN=$(curl -s -u username:password \
 3. Create model interface in `*_models_interface.py`
 4. Implement model in `*_models_pre_oci.py`
 5. Add tests in `endpoints/api/test/` or `test/`
+6. If the endpoint uses permission decorators with `allow_for_global_readonly_superuser`,
+   add Playwright API E2E tests to `web/playwright/e2e/api/api-v1-readonly-superuser.spec.ts`
+   (see `agent_docs/global_readonly_superuser.md` for details)
 
 ## Permission Decorators
 
