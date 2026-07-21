@@ -373,47 +373,53 @@ describe('UseLogDescriptions', () => {
   describe('namespace notification events', () => {
     it('create_namespace_notification', () => {
       const desc = getDescriptions();
+      const notificationId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
       const text = renderDescription(
         desc.create_namespace_notification({
           event: 'quota_warning',
           method: 'webhook',
           namespace: 'myorg',
+          notification_id: notificationId,
         }),
       );
-      expect(text).toContain('Add notification of event');
-      expect(text).toContain('quota_warning');
-      expect(text).toContain('webhook');
-      expect(text).toContain('myorg');
+      expect(text).toBe(
+        'Add notification of event quota_warning via webhook for namespace myorg',
+      );
+      expect(text).not.toContain(notificationId);
     });
 
     it('delete_namespace_notification', () => {
       const desc = getDescriptions();
+      const notificationId = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
       const text = renderDescription(
         desc.delete_namespace_notification({
           event: 'quota_error',
           method: 'email',
           namespace: 'testns',
+          notification_id: notificationId,
         }),
       );
-      expect(text).toContain('Delete notification of event');
-      expect(text).toContain('quota_error');
-      expect(text).toContain('email');
-      expect(text).toContain('testns');
+      expect(text).toBe(
+        'Delete notification of event quota_error via email for namespace testns',
+      );
+      expect(text).not.toContain(notificationId);
     });
 
     it('reset_namespace_notification', () => {
       const desc = getDescriptions();
+      const notificationId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
       const text = renderDescription(
         desc.reset_namespace_notification({
           event: 'quota_warning',
           method: 'slack',
           namespace: 'prodns',
+          notification_id: notificationId,
         }),
       );
-      expect(text).toContain('Re-enable notification of event');
-      expect(text).toContain('quota_warning');
-      expect(text).toContain('slack');
-      expect(text).toContain('prodns');
+      expect(text).toBe(
+        'Re-enable notification of event quota_warning via slack for namespace prodns',
+      );
+      expect(text).not.toContain(notificationId);
     });
   });
 
