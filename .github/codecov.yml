@@ -41,6 +41,7 @@ component_management:
     statuses:
       - type: project
         target: auto
+        threshold: 1%
   individual_components:
     - component_id: backend
       name: Backend (Python)
