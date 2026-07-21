@@ -31,6 +31,7 @@ from data.model import DataModelException
 from data.model import repository as repository_model
 from data.model import spam_ingress
 from data.model.org_mirror import is_namespace_org_mirrored
+from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
@@ -75,6 +76,19 @@ MAX_DAYS_IN_3_MONTHS = 92
 def _check_spam_ingress(namespace, repository, description, visibility, action):
     if not features.SPAM_DETECTION:
         return
+
+    if action == "update":
+        repository_ref = registry_model.lookup_repository(namespace, repository)
+        if repository_ref is not None:
+            active_tags, _ = registry_model.lookup_active_repository_tags(repository_ref, None, 1)
+            if active_tags:
+                logger.info(
+                    "Spam detection ingress skipped for tagged repository %s/%s",
+                    namespace,
+                    repository,
+                )
+                spam_ingress_decisions.labels(action=action, outcome="allowed").inc()
+                return
 
     context = spam_ingress.SpamIngressContext(
         namespace=namespace,
