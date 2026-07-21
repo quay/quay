@@ -20,6 +20,8 @@ func TestHostnameWithoutPort(t *testing.T) {
 		{name: "missing closing bracket", hostname: "[2001:db8::1", wantErr: true},
 		{name: "missing opening bracket", hostname: "2001:db8::1]", wantErr: true},
 		{name: "stray bracket", hostname: "registry].example.com", wantErr: true},
+		{name: "stray closing bracket with port", hostname: "registry].example.com:9443", wantErr: true},
+		{name: "stray opening bracket with port", hostname: "registry[.example.com:9443", wantErr: true},
 		{name: "bracketed DNS with port", hostname: "[registry.example.com]:9443", wantErr: true},
 		{name: "invalid bracketed IPv6 with port", hostname: "[2001:db8::zz]:9443", wantErr: true},
 		{name: "non-numeric port", hostname: "registry.example.com:https", wantErr: true},

@@ -18,8 +18,10 @@ func HostnameWithoutPort(hostname string) (string, error) {
 		if host == "" {
 			return "", fmt.Errorf("hostname in %q is empty", hostname)
 		}
-		if strings.HasPrefix(hostname, "[") && !validIPv6Hostname(host) {
-			return "", fmt.Errorf("invalid bracketed IPv6 hostname %q", hostname)
+		if strings.ContainsAny(hostname, "[]") {
+			if !strings.HasPrefix(hostname, "[") || !validIPv6Hostname(host) {
+				return "", fmt.Errorf("invalid bracketed IPv6 hostname %q", hostname)
+			}
 		}
 		if err := validateHostnamePort(port); err != nil {
 			return "", fmt.Errorf("invalid port in hostname %q: %w", hostname, err)
