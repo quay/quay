@@ -276,7 +276,7 @@ Avoid `beforeEach`/`afterEach` with manual `try/catch` cleanup. The `api` fixtur
 - Tests run in parallel - leftover data causes collisions
 - Tests should be independent and repeatable
 - Cleanup prevents database bloat in CI environments
-- Use `uniqueName()` to avoid collisions even if cleanup fails
+- Use `uniqueName()` for resources created via raw API calls to avoid collisions even if cleanup fails. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call
 
 ## Session-Destructive Tests (Logout)
 
@@ -491,5 +491,5 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | **Screenshots** | Configure capture-on-failure in `playwright.config.ts` |
 | **Selectors** | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors |
 | **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
-| **Parallel safety** | Use `uniqueName()` for all created resources; never hard-code entity names |
+| **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
