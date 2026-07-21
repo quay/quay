@@ -305,10 +305,10 @@ type migrationInfo struct {
 }
 
 type migrationCatalog struct {
-	migrations           []migrationInfo
-	root                 migrationInfo
-	migrationsByRevision map[string]migrationInfo
-	migrationsByDown     map[string]migrationInfo
+	// migrations is canonicalized in revision order, from the bridge root to
+	// the terminal revision. revisionIndex provides constant-time plan bounds.
+	migrations    []migrationInfo
+	revisionIndex map[string]int
 }
 
 func loadEmbeddedMigrationCatalog() (*migrationCatalog, error) {
@@ -332,10 +332,9 @@ func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
 		return nil, fmt.Errorf("read migrations directory: %w", err)
 	}
 
-	catalog := &migrationCatalog{
-		migrationsByRevision: make(map[string]migrationInfo),
-		migrationsByDown:     make(map[string]migrationInfo),
-	}
+	migrationsByRevision := make(map[string]migrationInfo)
+	successorByRevision := make(map[string]migrationInfo)
+	var migrations []migrationInfo
 	var roots []migrationInfo
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
@@ -349,7 +348,7 @@ func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
 		if err != nil {
 			return nil, fmt.Errorf("migration %s: %w", entry.Name(), err)
 		}
-		if previous, ok := catalog.migrationsByRevision[info.revision]; ok {
+		if previous, ok := migrationsByRevision[info.revision]; ok {
 			return nil, fmt.Errorf(
 				"duplicate revision %q in %s and %s", info.revision, previous.filename, info.filename,
 			)
@@ -358,118 +357,74 @@ func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
 			return nil, fmt.Errorf("migration %s has self-link revision %q", info.filename, info.revision)
 		}
 
-		catalog.migrations = append(catalog.migrations, info)
-		catalog.migrationsByRevision[info.revision] = info
+		migrations = append(migrations, info)
+		migrationsByRevision[info.revision] = info
 		if info.downRevision == "" {
 			roots = append(roots, info)
 			continue
 		}
-		if previous, ok := catalog.migrationsByDown[info.downRevision]; ok {
+		if previous, ok := successorByRevision[info.downRevision]; ok {
 			return nil, fmt.Errorf(
 				"duplicate down_revision %q in %s and %s",
 				info.downRevision, previous.filename, info.filename,
 			)
 		}
-		catalog.migrationsByDown[info.downRevision] = info
+		successorByRevision[info.downRevision] = info
 	}
 
-	if err := catalog.validateStructure(roots); err != nil {
-		return nil, err
-	}
-	return catalog, nil
-}
-
-func (catalog *migrationCatalog) validateStructure(roots []migrationInfo) error {
-	if len(catalog.migrations) == 0 {
-		return fmt.Errorf("no migration files found")
+	if len(migrations) == 0 {
+		return nil, fmt.Errorf("no migration files found")
 	}
 	if len(roots) != 1 {
-		return fmt.Errorf("migration catalog must contain exactly one bridge root; found %d", len(roots))
+		return nil, fmt.Errorf("migration catalog must contain exactly one bridge root; found %d", len(roots))
 	}
-	catalog.root = roots[0]
-	for _, migration := range catalog.migrations {
+	for _, migration := range migrations {
 		if migration.downRevision == "" {
 			continue
 		}
-		if _, ok := catalog.migrationsByRevision[migration.downRevision]; !ok {
-			return fmt.Errorf(
+		if _, ok := migrationsByRevision[migration.downRevision]; !ok {
+			return nil, fmt.Errorf(
 				"migration %s has dangling down_revision %q",
 				migration.filename, migration.downRevision,
 			)
 		}
 	}
-	if err := catalog.validateAcyclic(); err != nil {
-		return err
-	}
-	if _, err := catalog.terminalRevision(); err != nil {
-		return err
-	}
-	return nil
-}
 
-func (catalog *migrationCatalog) validateAcyclic() error {
-	const (
-		visiting = 1
-		visited  = 2
-	)
-	state := make(map[string]int, len(catalog.migrationsByRevision))
-	var visit func(string) error
-	visit = func(revision string) error {
-		switch state[revision] {
-		case visiting:
-			return fmt.Errorf("migration catalog contains a cycle at revision %q", revision)
-		case visited:
-			return nil
+	ordered := make([]migrationInfo, 0, len(migrations))
+	revisionIndex := make(map[string]int, len(migrations))
+	for current := roots[0]; ; {
+		if _, seen := revisionIndex[current.revision]; seen {
+			return nil, fmt.Errorf("migration catalog contains a cycle at revision %q", current.revision)
 		}
-		state[revision] = visiting
-		migration := catalog.migrationsByRevision[revision]
-		if _, ok := catalog.migrationsByRevision[migration.downRevision]; ok {
-			if err := visit(migration.downRevision); err != nil {
-				return err
-			}
-		}
-		state[revision] = visited
-		return nil
-	}
-	for revision := range catalog.migrationsByRevision {
-		if err := visit(revision); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (catalog *migrationCatalog) terminalRevision() (string, error) {
-	visited := make(map[string]bool, len(catalog.migrationsByRevision))
-	revision := catalog.root.revision
-	for {
-		visited[revision] = true
-		next, ok := catalog.migrationsByDown[revision]
+		revisionIndex[current.revision] = len(ordered)
+		ordered = append(ordered, current)
+		next, ok := successorByRevision[current.revision]
 		if !ok {
 			break
 		}
-		revision = next.revision
+		current = next
 	}
-	if len(visited) != len(catalog.migrationsByRevision) {
-		return "", fmt.Errorf(
-			"migration catalog has %d revision(s) not connected to bridge root %q",
-			len(catalog.migrationsByRevision)-len(visited), catalog.root.revision,
-		)
+	if len(ordered) != len(migrations) {
+		for _, migration := range migrations {
+			if _, connected := revisionIndex[migration.revision]; !connected {
+				// With one root, no dangling parents, and at most one successor,
+				// every disconnected component must contain a cycle.
+				return nil, fmt.Errorf("migration catalog contains a cycle at revision %q", migration.revision)
+			}
+		}
 	}
-	return revision, nil
+	return &migrationCatalog{migrations: ordered, revisionIndex: revisionIndex}, nil
 }
 
 func (catalog *migrationCatalog) validateVersions() error {
-	if catalog.root.revision != BridgeTargetVersion {
+	root := catalog.migrations[0]
+	if root.revision != BridgeTargetVersion {
 		return fmt.Errorf(
 			"bridge root revision %q does not match BridgeTargetVersion %q",
-			catalog.root.revision, BridgeTargetVersion,
+			root.revision, BridgeTargetVersion,
 		)
 	}
-	terminalRevision, err := catalog.terminalRevision()
-	if err != nil {
-		return err
-	}
+	terminalRevision := catalog.migrations[len(catalog.migrations)-1].revision
 	if terminalRevision != TargetVersion {
 		return fmt.Errorf(
 			"migration catalog terminal revision %q does not match TargetVersion %q",
@@ -480,28 +435,21 @@ func (catalog *migrationCatalog) validateVersions() error {
 }
 
 func (catalog *migrationCatalog) plan(currentVersion, targetVersion string) ([]migrationInfo, error) {
-	if _, ok := catalog.migrationsByRevision[targetVersion]; !ok {
+	targetIndex, ok := catalog.revisionIndex[targetVersion]
+	if !ok {
 		return nil, fmt.Errorf("target revision %q is unreachable from %q", targetVersion, currentVersion)
 	}
-	if _, ok := catalog.migrationsByRevision[currentVersion]; !ok {
+	currentIndex, ok := catalog.revisionIndex[currentVersion]
+	if !ok {
 		return nil, fmt.Errorf("current revision %q is not in the migration catalog", currentVersion)
 	}
-
-	var plan []migrationInfo
-	seen := make(map[string]bool)
-	for currentVersion != targetVersion {
-		if seen[currentVersion] {
-			return nil, fmt.Errorf("migration path contains a cycle at revision %q", currentVersion)
-		}
-		seen[currentVersion] = true
-		next, ok := catalog.migrationsByDown[currentVersion]
-		if !ok {
-			return nil, fmt.Errorf("target revision %q is unreachable from %q", targetVersion, currentVersion)
-		}
-		plan = append(plan, next)
-		currentVersion = next.revision
+	if targetIndex < currentIndex {
+		return nil, fmt.Errorf(
+			"target revision %q is unreachable from %q: migrations are forward-only",
+			targetVersion, currentVersion,
+		)
 	}
-	return plan, nil
+	return catalog.migrations[currentIndex+1 : targetIndex+1], nil
 }
 
 // ApplyMigrations reads embedded SQL migration files and applies the revision

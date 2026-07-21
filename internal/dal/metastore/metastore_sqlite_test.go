@@ -668,8 +668,8 @@ func TestPutAndDeleteTag_ConcurrentStoresSerialize(t *testing.T) {
 	collectTagOperationResults(t, stores, results)
 
 	rows := getTagRows(t, first, repoID, "latest")
-	if len(rows) != 2 {
-		t.Fatalf("tag rows = %d, want 2", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("tag rows = %d, want 3", len(rows))
 	}
 	active := 0
 	for _, row := range rows {
@@ -677,8 +677,8 @@ func TestPutAndDeleteTag_ConcurrentStoresSerialize(t *testing.T) {
 			active++
 		}
 	}
-	if active > 1 {
-		t.Fatalf("active tag rows = %d, want at most 1", active)
+	if active != 1 {
+		t.Fatalf("active tag rows = %d, want 1", active)
 	}
 	assertTagIntervalsValid(t, first, repoID, "latest")
 }
@@ -711,6 +711,65 @@ func TestDeleteTag(t *testing.T) {
 	if err := store.DeleteTag(ctx, repoID, "removeme"); err != nil {
 		t.Errorf("expected no-op on already-expired tag, got %v", err)
 	}
+}
+
+func TestPutTag_RetryPreservesLiveFiniteInterval(t *testing.T) {
+	now := int64(200)
+	store := setupStoreWithNow(t, func() int64 { return now }).(*metastore.SQLiteStore)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "finite-retry"})
+	require.NoError(t, err)
+	dgst := digest.FromString("finite-retry")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: dgst, MediaType: "application/vnd.oci.image.manifest.v1+json", Content: []byte(`{}`),
+	})
+	require.NoError(t, err)
+	_, err = store.DB().ExecContext(ctx, `
+		INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+		SELECT 'latest', ?, ?, 100, 300, id FROM tagkind WHERE name = 'tag'
+	`, repoID, manifestID)
+	require.NoError(t, err)
+	finiteTagID := getTagRows(t, store, repoID, "latest")[0].id
+
+	gotID, err := store.PutTag(ctx, repoID, oci.TagRecord{Name: "latest", Digest: dgst})
+	require.NoError(t, err)
+	require.Equal(t, finiteTagID, gotID)
+	rows := getTagRows(t, store, repoID, "latest")
+	require.Len(t, rows, 1)
+	require.Equal(t, int64(300), rows[0].lifetimeEndMs.Int64)
+}
+
+func TestDeleteTag_ExpiresLiveFiniteIntervalAndRecordsTombstone(t *testing.T) {
+	now := int64(200)
+	store := setupStoreWithNow(t, func() int64 { return now }).(*metastore.SQLiteStore)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "finite-delete"})
+	require.NoError(t, err)
+	dgst := digest.FromString("finite-delete")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: dgst, MediaType: "application/vnd.oci.image.manifest.v1+json", Content: []byte(`{}`),
+	})
+	require.NoError(t, err)
+	_, err = store.DB().ExecContext(ctx, `
+		INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+		SELECT 'latest', ?, ?, 100, 300, id FROM tagkind WHERE name = 'tag'
+	`, repoID, manifestID)
+	require.NoError(t, err)
+
+	require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
+	rows := getTagRows(t, store, repoID, "latest")
+	require.Len(t, rows, 2)
+	require.Equal(t, int64(200), rows[0].lifetimeEndMs.Int64)
+	require.False(t, rows[1].manifestID.Valid)
+	require.Equal(t, int64(200), rows[1].lifetimeStartMs)
+	require.False(t, rows[1].lifetimeEndMs.Valid)
+
+	_, err = store.GetTagDigest(ctx, repoID, "latest")
+	require.ErrorIs(t, err, oci.ErrNotExist)
+	require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
+	require.Len(t, getTagRows(t, store, repoID, "latest"), 2)
 }
 
 func TestDeleteTagAvoidsExpiredTimestampCollision(t *testing.T) {
@@ -746,7 +805,7 @@ func TestDeleteTagAvoidsExpiredTimestampCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 0)
+	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 1)
 	assertExpiredTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 2)
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 }
@@ -775,11 +834,14 @@ func TestDeleteTagClampsBackwardClock(t *testing.T) {
 	}
 
 	rows := getTagRows(t, store.(*metastore.SQLiteStore), repoID, "removeme")
-	if len(rows) != 1 {
-		t.Fatalf("tag rows = %d, want 1", len(rows))
+	if len(rows) != 2 {
+		t.Fatalf("tag rows = %d, want 2", len(rows))
 	}
 	if !rows[0].lifetimeEndMs.Valid || rows[0].lifetimeEndMs.Int64 != 50_000 {
 		t.Fatalf("expired tag end = %v, want 50000", rows[0].lifetimeEndMs)
+	}
+	if rows[1].manifestID.Valid || rows[1].lifetimeStartMs != 50_000 || rows[1].lifetimeEndMs.Valid {
+		t.Fatalf("tombstone row = %#v, want open tombstone at 50000", rows[1])
 	}
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 }
@@ -814,11 +876,14 @@ func TestPutManifest_TagRecreateClampsToExpiredEndAfterBackwardClock(t *testing.
 	}
 
 	rows := getTagRows(t, store.(*metastore.SQLiteStore), repoID, "latest")
-	if len(rows) != 2 {
-		t.Fatalf("tag rows = %d, want 2", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("tag rows = %d, want 3", len(rows))
 	}
-	if rows[1].lifetimeStartMs != 300 {
-		t.Fatalf("recreated tag start = %d, want prior end 300", rows[1].lifetimeStartMs)
+	if rows[1].manifestID.Valid || rows[1].lifetimeStartMs != 300 || rows[1].lifetimeEndMs.Int64 != 300 {
+		t.Fatalf("expired tombstone row = %#v, want zero-length tombstone at 300", rows[1])
+	}
+	if rows[2].lifetimeStartMs != 300 {
+		t.Fatalf("recreated tag start = %d, want prior end 300", rows[2].lifetimeStartMs)
 	}
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }

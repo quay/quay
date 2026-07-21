@@ -97,7 +97,7 @@ func runBridgeWithCatalog(ctx context.Context, db *sql.DB, catalog *migrationCat
 		return nil
 	}
 
-	if _, isGoRevision := catalog.migrationsByRevision[ver]; isGoRevision {
+	if _, isGoRevision := catalog.revisionIndex[ver]; isGoRevision {
 		plan, err := catalog.plan(ver, TargetVersion)
 		if err != nil {
 			return fmt.Errorf("plan SQLite migrations: %w", err)
@@ -115,15 +115,16 @@ func runBridgeWithCatalog(ctx context.Context, db *sql.DB, catalog *migrationCat
 				"if you are on OMR v1.3.x, upgrade to OMR v2.0 first", ver)
 	}
 
-	plan, err := catalog.plan(catalog.root.revision, TargetVersion)
+	root := catalog.migrations[0]
+	plan, err := catalog.plan(root.revision, TargetVersion)
 	if err != nil {
 		return fmt.Errorf("plan post-bridge SQLite migrations: %w", err)
 	}
-	if err := bridgeToRoot(ctx, db, ver, catalog.root, w); err != nil {
+	if err := bridgeToRoot(ctx, db, ver, root, w); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", catalog.root.revision, TargetVersion)
+	fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", root.revision, TargetVersion)
 	if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
 		return fmt.Errorf("apply SQLite migrations: %w", err)
 	}

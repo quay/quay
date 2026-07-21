@@ -336,9 +336,12 @@ func TestListTags_RollbackDelete(t *testing.T) {
 	require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
 
 	rows := getTagRows(t, store, repoID, "latest")
-	require.Len(t, rows, 1)
+	require.Len(t, rows, 2)
 	require.Equal(t, tagStart, rows[0].lifetimeStartMs)
 	require.Equal(t, tagStart, rows[0].lifetimeEndMs.Int64)
+	require.False(t, rows[1].manifestID.Valid)
+	require.Equal(t, tagStart, rows[1].lifetimeStartMs)
+	require.False(t, rows[1].lifetimeEndMs.Valid)
 	assertTagIntervalsValid(t, store, repoID, "latest")
 
 	tags, err := store.ListTags(ctx, repoID)
@@ -347,6 +350,39 @@ func TestListTags_RollbackDelete(t *testing.T) {
 
 	now = tagStart
 	tags, err = store.ListTags(ctx, repoID)
+	require.NoError(t, err)
+	require.Empty(t, tags)
+}
+
+func TestTagReads_NormalDeleteThenClockRollbackDoesNotResurrect(t *testing.T) {
+	now := int64(100)
+	store, cleanup := testStore(t, metastore.WithNowFunc(func() int64 { return now }))
+	defer cleanup()
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "ns", Name: "delete-rollback"})
+	require.NoError(t, err)
+	dgst := digest.FromString("delete-rollback")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest: dgst, MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content: []byte(`{}`), Tag: "latest",
+	})
+	require.NoError(t, err)
+
+	now = 300
+	require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
+
+	rows := getTagRows(t, store, repoID, "latest")
+	require.Len(t, rows, 2)
+	require.Equal(t, int64(300), rows[0].lifetimeEndMs.Int64)
+	require.False(t, rows[1].manifestID.Valid)
+	require.Equal(t, int64(300), rows[1].lifetimeStartMs)
+	require.False(t, rows[1].lifetimeEndMs.Valid)
+
+	now = 200
+	_, err = store.GetTagDigest(ctx, repoID, "latest")
+	require.ErrorIs(t, err, oci.ErrNotExist)
+	tags, err := store.ListTags(ctx, repoID)
 	require.NoError(t, err)
 	require.Empty(t, tags)
 }
@@ -379,11 +415,14 @@ func TestListTags_RollbackDeleteDoesNotResurrectHistory(t *testing.T) {
 	require.NoError(t, store.DeleteTag(ctx, repoID, "latest"))
 
 	rows := getTagRows(t, store, repoID, "latest")
-	require.Len(t, rows, 2)
+	require.Len(t, rows, 3)
 	require.Equal(t, int64(100), rows[0].lifetimeStartMs)
 	require.Equal(t, int64(200), rows[0].lifetimeEndMs.Int64)
 	require.Equal(t, int64(200), rows[1].lifetimeStartMs)
 	require.Equal(t, int64(200), rows[1].lifetimeEndMs.Int64)
+	require.False(t, rows[2].manifestID.Valid)
+	require.Equal(t, int64(200), rows[2].lifetimeStartMs)
+	require.False(t, rows[2].lifetimeEndMs.Valid)
 	assertTagIntervalsValid(t, store, repoID, "latest")
 
 	_, err = store.GetTagDigest(ctx, repoID, "latest")
@@ -446,21 +485,24 @@ func TestListTags_RollbackDeleteThenRecreateClampsToHistory(t *testing.T) {
 	require.Equal(t, recreatedDigest, activeDigest)
 
 	rows := getTagRows(t, store, repoID, "latest")
-	require.Len(t, rows, 3)
+	require.Len(t, rows, 4)
 	require.Equal(t, int64(100), rows[0].lifetimeStartMs)
 	require.Equal(t, int64(200), rows[0].lifetimeEndMs.Int64)
 	require.Equal(t, int64(200), rows[1].lifetimeStartMs)
 	require.Equal(t, int64(200), rows[1].lifetimeEndMs.Int64)
+	require.False(t, rows[2].manifestID.Valid)
 	require.Equal(t, int64(200), rows[2].lifetimeStartMs)
-	require.False(t, rows[2].lifetimeEndMs.Valid)
-	activeTagID := rows[2].id
+	require.Equal(t, int64(200), rows[2].lifetimeEndMs.Int64)
+	require.Equal(t, int64(200), rows[3].lifetimeStartMs)
+	require.False(t, rows[3].lifetimeEndMs.Valid)
+	activeTagID := rows[3].id
 	assertTagIntervalsValid(t, store, repoID, "latest")
 
 	_, err = store.PutManifest(ctx, repoID, recreatedRecord)
 	require.NoError(t, err)
 	rows = getTagRows(t, store, repoID, "latest")
-	require.Len(t, rows, 3)
-	require.Equal(t, activeTagID, rows[2].id)
+	require.Len(t, rows, 4)
+	require.Equal(t, activeTagID, rows[3].id)
 
 	now = 200
 	tags, err = store.ListTags(ctx, repoID)

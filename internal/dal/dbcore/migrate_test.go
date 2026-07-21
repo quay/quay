@@ -525,6 +525,41 @@ func TestLoadMigrationCatalog_RejectsInvalidGraphs(t *testing.T) {
 	}
 }
 
+func TestLoadMigrationCatalog_CanonicalizesRevisionOrder(t *testing.T) {
+	catalog, err := loadMigrationCatalog(testMigrationFS(map[string]string{
+		"0001_head.sql":   testMigrationSQL("head", "middle", ""),
+		"0002_middle.sql": testMigrationSQL("middle", "root", ""),
+		"0003_root.sql":   testMigrationSQL("root", "", ""),
+	}))
+	if err != nil {
+		t.Fatalf("load migration catalog: %v", err)
+	}
+
+	want := []string{"root", "middle", "head"}
+	if len(catalog.migrations) != len(want) {
+		t.Fatalf("migration count = %d, want %d", len(catalog.migrations), len(want))
+	}
+	for index, revision := range want {
+		if got := catalog.migrations[index].revision; got != revision {
+			t.Errorf("migration %d revision = %q, want %q", index, got, revision)
+		}
+		if got := catalog.revisionIndex[revision]; got != index {
+			t.Errorf("revision index for %q = %d, want %d", revision, got, index)
+		}
+	}
+
+	plan, err := catalog.plan("root", "head")
+	if err != nil {
+		t.Fatalf("plan root to head: %v", err)
+	}
+	if len(plan) != 2 || plan[0].revision != "middle" || plan[1].revision != "head" {
+		t.Fatalf("plan = %#v, want middle then head", plan)
+	}
+	if _, err := catalog.plan("head", "root"); err == nil || !strings.Contains(err.Error(), "forward-only") {
+		t.Fatalf("backward plan error = %v, want explicit forward-only rejection", err)
+	}
+}
+
 func TestMigrationCatalog_RejectsSuccessorAfterTargetVersion(t *testing.T) {
 	catalog, err := loadMigrationCatalog(testMigrationFS(map[string]string{
 		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
@@ -587,9 +622,10 @@ func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
 	if len(catalog.migrations) != 7 {
 		t.Fatalf("embedded migration count = %d, want 7", len(catalog.migrations))
 	}
-	if catalog.root.filename != "0001_bridge_from_omr.sql" || catalog.root.revision != BridgeTargetVersion {
+	root := catalog.migrations[0]
+	if root.filename != "0001_bridge_from_omr.sql" || root.revision != BridgeTargetVersion {
 		t.Fatalf("bridge root = %s (%s), want 0001_bridge_from_omr.sql (%s)",
-			catalog.root.filename, catalog.root.revision, BridgeTargetVersion)
+			root.filename, root.revision, BridgeTargetVersion)
 	}
 
 	db := openTestDB(t)

@@ -131,7 +131,7 @@ func TestAlembicRevisionsAreChainableMigrations(t *testing.T) {
 		"6715e4719375",
 		generatedSchemaVersion,
 	} {
-		if _, ok := catalog.migrationsByRevision[revision]; !ok {
+		if _, ok := catalog.revisionIndex[revision]; !ok {
 			t.Errorf("migration catalog is missing Alembic revision %s", revision)
 		}
 		if knownOMRVersions[revision] {

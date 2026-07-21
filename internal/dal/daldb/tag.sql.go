@@ -21,7 +21,7 @@ func (q *Queries) DeleteTagsByManifest(ctx context.Context, manifestID sql.NullI
 
 const expireTagByID = `-- name: ExpireTagByID :execresult
 UPDATE tag SET lifetime_end_ms = ?
-WHERE id = ? AND lifetime_end_ms IS NULL
+WHERE id = ?
 `
 
 type ExpireTagByIDParams struct {
@@ -33,56 +33,36 @@ func (q *Queries) ExpireTagByID(ctx context.Context, arg ExpireTagByIDParams) (s
 	return q.db.ExecContext(ctx, expireTagByID, arg.LifetimeEndMs, arg.ID)
 }
 
-const getActiveTag = `-- name: GetActiveTag :one
-SELECT id, manifest_id, lifetime_start_ms
-FROM tag
-WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
-ORDER BY id DESC
-LIMIT 1
-`
-
-type GetActiveTagParams struct {
-	RepositoryID int64  `json:"repository_id"`
-	Name         string `json:"name"`
-}
-
-type GetActiveTagRow struct {
-	ID              int64         `json:"id"`
-	ManifestID      sql.NullInt64 `json:"manifest_id"`
-	LifetimeStartMs int64         `json:"lifetime_start_ms"`
-}
-
-// Tag IDs preserve insertion order even when the wall clock moves backward.
-func (q *Queries) GetActiveTag(ctx context.Context, arg GetActiveTagParams) (GetActiveTagRow, error) {
-	row := q.db.QueryRowContext(ctx, getActiveTag, arg.RepositoryID, arg.Name)
-	var i GetActiveTagRow
-	err := row.Scan(&i.ID, &i.ManifestID, &i.LifetimeStartMs)
-	return i, err
-}
-
-const getLatestTagInterval = `-- name: GetLatestTagInterval :one
-SELECT lifetime_start_ms, lifetime_end_ms
+const getLatestTag = `-- name: GetLatestTag :one
+SELECT id, manifest_id, lifetime_start_ms, lifetime_end_ms
 FROM tag
 WHERE repository_id = ? AND name = ?
 ORDER BY id DESC
 LIMIT 1
 `
 
-type GetLatestTagIntervalParams struct {
+type GetLatestTagParams struct {
 	RepositoryID int64  `json:"repository_id"`
 	Name         string `json:"name"`
 }
 
-type GetLatestTagIntervalRow struct {
+type GetLatestTagRow struct {
+	ID              int64         `json:"id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
 	LifetimeStartMs int64         `json:"lifetime_start_ms"`
 	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
 }
 
 // Tag IDs preserve insertion order even when the wall clock moves backward.
-func (q *Queries) GetLatestTagInterval(ctx context.Context, arg GetLatestTagIntervalParams) (GetLatestTagIntervalRow, error) {
-	row := q.db.QueryRowContext(ctx, getLatestTagInterval, arg.RepositoryID, arg.Name)
-	var i GetLatestTagIntervalRow
-	err := row.Scan(&i.LifetimeStartMs, &i.LifetimeEndMs)
+func (q *Queries) GetLatestTag(ctx context.Context, arg GetLatestTagParams) (GetLatestTagRow, error) {
+	row := q.db.QueryRowContext(ctx, getLatestTag, arg.RepositoryID, arg.Name)
+	var i GetLatestTagRow
+	err := row.Scan(
+		&i.ID,
+		&i.ManifestID,
+		&i.LifetimeStartMs,
+		&i.LifetimeEndMs,
+	)
 	return i, err
 }
 
@@ -122,7 +102,7 @@ func (q *Queries) GetLiveTagDigest(ctx context.Context, arg GetLiveTagDigestPara
 
 const getTagsByRepository = `-- name: GetTagsByRepository :many
 WITH ranked_tags AS (
-  SELECT name, lifetime_start_ms, lifetime_end_ms,
+  SELECT name, manifest_id, lifetime_start_ms, lifetime_end_ms,
          row_number() OVER (
            PARTITION BY repository_id, name
            ORDER BY id DESC
@@ -133,6 +113,7 @@ WITH ranked_tags AS (
 SELECT name
 FROM ranked_tags
 WHERE row_num = 1
+  AND manifest_id IS NOT NULL
   AND (lifetime_end_ms IS NULL OR (lifetime_start_ms <= ? AND lifetime_end_ms > ?))
 ORDER BY name
 `

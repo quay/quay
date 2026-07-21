@@ -409,55 +409,54 @@ func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord)
 	return id, nil
 }
 
-// putTag expires any active tag with the same name, then inserts a new one.
+// putTag expires any live tag with the same name, then inserts a new one.
 // Re-pushing the same manifest digest is idempotent and preserves tag history.
 func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string) (int64, error) {
 	now := s.nowMs()
 
-	activeTag, err := q.GetActiveTag(ctx, daldb.GetActiveTagParams{
+	latestTag, err := q.GetLatestTag(ctx, daldb.GetLatestTagParams{
 		RepositoryID: repoID,
 		Name:         tag,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		latestTag, latestErr := q.GetLatestTagInterval(ctx, daldb.GetLatestTagIntervalParams{
-			RepositoryID: repoID,
-			Name:         tag,
-		})
-		if errors.Is(latestErr, sql.ErrNoRows) {
-			return s.insertTag(ctx, q, repoID, manifestID, tag, now)
-		}
-		if latestErr != nil {
-			return 0, fmt.Errorf("lookup latest tag interval %q: %w", tag, latestErr)
-		}
-		if now < latestTag.LifetimeStartMs {
-			now = latestTag.LifetimeStartMs
-		}
-		if latestTag.LifetimeEndMs.Valid && now < latestTag.LifetimeEndMs.Int64 {
-			now = latestTag.LifetimeEndMs.Int64
-		}
 		return s.insertTag(ctx, q, repoID, manifestID, tag, now)
 	}
 	if err != nil {
-		return 0, fmt.Errorf("lookup active tag %q: %w", tag, err)
+		return 0, fmt.Errorf("lookup latest tag %q: %w", tag, err)
 	}
-	if activeTag.ManifestID.Valid && activeTag.ManifestID.Int64 == manifestID {
-		return activeTag.ID, nil
+	live := tagIntervalLive(latestTag.LifetimeStartMs, latestTag.LifetimeEndMs, now)
+	if live && latestTag.ManifestID.Valid && latestTag.ManifestID.Int64 == manifestID {
+		return latestTag.ID, nil
 	}
-	if now < activeTag.LifetimeStartMs {
-		now = activeTag.LifetimeStartMs
+	if now < latestTag.LifetimeStartMs {
+		now = latestTag.LifetimeStartMs
 	}
-
-	if err := s.expireActiveTag(ctx, q, activeTag.ID, now); err != nil {
-		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
+	if !live && latestTag.LifetimeEndMs.Valid && now < latestTag.LifetimeEndMs.Int64 {
+		now = latestTag.LifetimeEndMs.Int64
+	}
+	if live {
+		if err := s.expireTag(ctx, q, latestTag.ID, now); err != nil {
+			return 0, fmt.Errorf("expire tag %q: %w", tag, err)
+		}
 	}
 	return s.insertTag(ctx, q, repoID, manifestID, tag, now)
 }
 
+func tagIntervalLive(start int64, end sql.NullInt64, now int64) bool {
+	return !end.Valid || (start <= now && now < end.Int64)
+}
+
 func (s *SQLiteStore) insertTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string, now int64) (int64, error) {
+	return s.insertTagEvent(ctx, q, repoID, sql.NullInt64{Int64: manifestID, Valid: true}, tag, now)
+}
+
+func (s *SQLiteStore) insertTagEvent(
+	ctx context.Context, q *daldb.Queries, repoID int64, manifestID sql.NullInt64, tag string, now int64,
+) (int64, error) {
 	id, err := q.InsertTag(ctx, daldb.InsertTagParams{
 		Name:            tag,
 		RepositoryID:    repoID,
-		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		ManifestID:      manifestID,
 		LifetimeStartMs: now,
 		TagKindID:       s.tagKindTag,
 	})
@@ -467,25 +466,26 @@ func (s *SQLiteStore) insertTag(ctx context.Context, q *daldb.Queries, repoID, m
 	return id, nil
 }
 
-func (s *SQLiteStore) expireActiveTag(ctx context.Context, q *daldb.Queries, tagID, now int64) error {
+func (s *SQLiteStore) expireTag(ctx context.Context, q *daldb.Queries, tagID, now int64) error {
 	result, err := q.ExpireTagByID(ctx, daldb.ExpireTagByIDParams{
 		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
 		ID:            tagID,
 	})
 	if err != nil {
-		return fmt.Errorf("expire active tag row %d: %w", tagID, err)
+		return fmt.Errorf("expire tag row %d: %w", tagID, err)
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("expire active tag row %d rows affected: %w", tagID, err)
+		return fmt.Errorf("expire tag row %d rows affected: %w", tagID, err)
 	}
 	if rows != 1 {
-		return fmt.Errorf("expire active tag row %d: updated %d rows", tagID, rows)
+		return fmt.Errorf("expire tag row %d: updated %d rows", tagID, rows)
 	}
 	return nil
 }
 
-// DeleteTag expires the active tag by setting lifetime_end_ms.
+// DeleteTag records a tombstone after expiring the latest live tag. The
+// tombstone remains the latest logical event even if the wall clock rolls back.
 func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -494,7 +494,7 @@ func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) e
 	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 	q := daldb.New(tx)
 
-	activeTag, err := q.GetActiveTag(ctx, daldb.GetActiveTagParams{
+	latestTag, err := q.GetLatestTag(ctx, daldb.GetLatestTagParams{
 		RepositoryID: repoID,
 		Name:         tag,
 	})
@@ -502,15 +502,21 @@ func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) e
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("lookup active tag %q: %w", tag, err)
+		return fmt.Errorf("lookup latest tag %q: %w", tag, err)
 	}
 
 	now := s.nowMs()
-	if now < activeTag.LifetimeStartMs {
-		now = activeTag.LifetimeStartMs
+	if !latestTag.ManifestID.Valid || !tagIntervalLive(latestTag.LifetimeStartMs, latestTag.LifetimeEndMs, now) {
+		return nil
 	}
-	if err := s.expireActiveTag(ctx, q, activeTag.ID, now); err != nil {
+	if now < latestTag.LifetimeStartMs {
+		now = latestTag.LifetimeStartMs
+	}
+	if err := s.expireTag(ctx, q, latestTag.ID, now); err != nil {
 		return fmt.Errorf("expire tag %q: %w", tag, err)
+	}
+	if _, err := s.insertTagEvent(ctx, q, repoID, sql.NullInt64{}, tag, now); err != nil {
+		return fmt.Errorf("insert tag tombstone %q: %w", tag, err)
 	}
 
 	if err := tx.Commit(); err != nil {
