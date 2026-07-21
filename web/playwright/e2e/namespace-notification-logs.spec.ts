@@ -1,4 +1,4 @@
-import {test, expect} from '../fixtures';
+import {test, expect, uniqueName} from '../fixtures';
 
 test.describe(
   'Namespace Notification Log Descriptions',
@@ -8,7 +8,7 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      const org = await api.organization('nslogdesc');
+      const org = await api.organization(uniqueName('nslogdesc'));
 
       // Create a namespace notification — generates create_namespace_notification log
       const notification = await api.namespaceNotification(
