@@ -14,6 +14,7 @@
  * authenticate via V2 bearer tokens.
  */
 
+import {createHash} from 'crypto';
 import path from 'path';
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
@@ -563,6 +564,115 @@ test.describe(
         }
       }
     });
+  },
+);
+
+// ============================================================================
+// V2 Blob Upload Quota Enforcement
+// ============================================================================
+
+test.describe(
+  'V2 Blob Upload Quota Enforcement',
+  {
+    tag: [
+      '@api',
+      '@v2',
+      '@superuser',
+      '@auth:Database',
+      '@feature:QUOTA_MANAGEMENT',
+      '@feature:EDIT_QUOTA',
+    ],
+  },
+  () => {
+    test(
+      'small upload succeeds after an oversized upload is rejected',
+      {tag: '@PROJQUAY-12368'},
+      async ({api, superuserApi, playwright}) => {
+        const username = TEST_USERS.user.username;
+        const password = TEST_USERS.user.password;
+        const org = await api.organization('v2quota');
+        const repo = await api.repository(org.name, 'repo');
+        const quota = await superuserApi.quota(org.name, 5 * 1024);
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Reject',
+          100,
+        );
+
+        const request = await playwright.request.newContext({
+          ignoreHTTPSErrors: true,
+        });
+        try {
+          const scope = `repository:${repo.fullName}:pull,push`;
+          const v2Token = await getV2Token(
+            request,
+            API_URL,
+            username,
+            password,
+            scope,
+          );
+          const headers = {authorization: `Bearer ${v2Token}`};
+          const uploadsUrl = `${API_URL}/v2/${repo.fullName}/blobs/uploads/`;
+
+          const oversizedBlob = Buffer.alloc(6 * 1024, 'x');
+          const oversizedDigest = `sha256:${createHash('sha256')
+            .update(oversizedBlob)
+            .digest('hex')}`;
+          const startResponse = await request.post(uploadsUrl, {headers});
+          expect(startResponse.status()).toBe(202);
+          const rejectedUploadUuid =
+            startResponse.headers()['docker-upload-uuid'];
+          expect(rejectedUploadUuid).toBeTruthy();
+
+          const rejectedUploadUrl = `${uploadsUrl}${rejectedUploadUuid}`;
+          const uploadResponse = await request.patch(rejectedUploadUrl, {
+            headers: {
+              ...headers,
+              'Content-Range': '0-6143',
+              'Content-Type': 'application/octet-stream',
+            },
+            data: oversizedBlob,
+          });
+          expect(uploadResponse.status()).toBe(202);
+
+          const rejectionResponse = await request.put(
+            `${rejectedUploadUrl}?digest=${encodeURIComponent(oversizedDigest)}`,
+            {headers},
+          );
+          expect(rejectionResponse.status()).toBe(403);
+
+          const tinyBlob = Buffer.from('z');
+          const tinyDigest = `sha256:${createHash('sha256')
+            .update(tinyBlob)
+            .digest('hex')}`;
+          const retryStartResponse = await request.post(uploadsUrl, {headers});
+          expect(retryStartResponse.status()).toBe(202);
+          const retryUploadUuid =
+            retryStartResponse.headers()['docker-upload-uuid'];
+          expect(retryUploadUuid).toBeTruthy();
+
+          const retryUploadUrl = `${uploadsUrl}${retryUploadUuid}`;
+          const retryPatchResponse = await request.patch(retryUploadUrl, {
+            headers: {
+              ...headers,
+              'Content-Range': '0-0',
+              'Content-Type': 'application/octet-stream',
+            },
+            data: tinyBlob,
+          });
+          expect(retryPatchResponse.status()).toBe(202);
+
+          const retryPutResponse = await request.put(
+            `${retryUploadUrl}?digest=${encodeURIComponent(tinyDigest)}`,
+            {headers},
+          );
+          expect(retryPutResponse.status()).toBe(201);
+        } finally {
+          await request.dispose();
+        }
+      },
+    );
   },
 );
 
