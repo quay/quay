@@ -29,7 +29,7 @@ func newUninstallCmdWithDeps(stdin io.Reader, uninstall func(context.Context, *u
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
 			if !*autoApprove {
 				if !confirmUninstall(stdin) {
-					slog.Info("uninstall cancelled")
+					slog.Info("uninstall canceled")
 					return 0
 				}
 			}

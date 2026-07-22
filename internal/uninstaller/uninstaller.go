@@ -1,8 +1,11 @@
+// Package uninstaller implements the removal workflow for the registry's
+// Quadlet-based systemd deployment.
 package uninstaller
 
 import (
 	"context"
 	"fmt"
+	"strings"
 	"io"
 	"log/slog"
 	"os"
@@ -48,7 +51,11 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 // reload systemd, conditionally remove data, and disable linger.
 func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
-		slog.Warn("failed to stop service (may already be stopped)", "err", err)
+		if isUnitNotFound(err) {
+			slog.Info("service not running, continuing")
+		} else {
+			return fmt.Errorf("stop service: %w", err)
+		}
 	}
 
 	if err := u.quadlet.Remove(serviceName); err != nil {
@@ -75,4 +82,9 @@ func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 
 	slog.Info("uninstall complete")
 	return nil
+}
+
+func isUnitNotFound(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "not loaded") || strings.Contains(msg, "not found")
 }

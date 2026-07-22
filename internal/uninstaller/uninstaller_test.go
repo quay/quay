@@ -140,6 +140,35 @@ func TestRunContinuesWhenServiceNotRunning(t *testing.T) {
 	assert.Contains(t, services.calls, "daemon-reload")
 }
 
+func TestRunFailsOnUnexpectedStopError(t *testing.T) {
+	dataDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "quay.db"), []byte("data"), 0o600))
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	qm := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: dataDir,
+		Hostname: "localhost", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{
+		stopErr: errors.New("permission denied"),
+	}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: qm,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: dataDir, AutoApprove: true})
+
+	require.ErrorContains(t, err, "stop service")
+	assert.NotContains(t, services.calls, "daemon-reload")
+	_, statErr := os.Stat(filepath.Join(dataDir, "quay.db"))
+	assert.NoError(t, statErr)
+}
+
 func TestRunIsIdempotent(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	services := &recordingServiceManager{}
