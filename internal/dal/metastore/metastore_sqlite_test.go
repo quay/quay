@@ -329,7 +329,7 @@ func TestPutManifest_TagReplace(t *testing.T) {
 	}
 
 	// Exactly one active tag named "latest" should exist.
-	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest", 1)
+	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
 
 func TestPutManifest_SameDigestTagRetryNoop(t *testing.T) {
@@ -371,7 +371,7 @@ func TestPutManifest_SameDigestTagRetryNoop(t *testing.T) {
 	if rows[0].id != firstTagID {
 		t.Fatalf("tag row ID after retry: got %d, want %d", rows[0].id, firstTagID)
 	}
-	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest", 1)
+	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
 
 func TestPutManifest_TagRetargetAvoidsExpiredTimestampCollision(t *testing.T) {
@@ -426,7 +426,7 @@ func TestPutManifest_TagRetargetAvoidsExpiredTimestampCollision(t *testing.T) {
 	if got != dgst3 {
 		t.Fatalf("active tag digest: got %s, want %s", got, dgst3)
 	}
-	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest", 1)
+	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest")
 	assertExpiredTagCount(t, store.(*metastore.SQLiteStore), repoID, "latest", 2)
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
@@ -626,7 +626,7 @@ func TestPutTag_ConcurrentStoresSerializeRetargets(t *testing.T) {
 	if rows := getTagRows(t, first, repoID, "latest"); len(rows) != 2 {
 		t.Fatalf("tag rows = %d, want 2", len(rows))
 	}
-	assertActiveTagCount(t, first, repoID, "latest", 1)
+	assertActiveTagCount(t, first, repoID, "latest")
 	assertTagIntervalsValid(t, first, repoID, "latest")
 }
 
@@ -805,7 +805,7 @@ func TestDeleteTagAvoidsExpiredTimestampCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 1)
+	assertActiveTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 	assertExpiredTagCount(t, store.(*metastore.SQLiteStore), repoID, "removeme", 2)
 	assertTagIntervalsValid(t, store.(*metastore.SQLiteStore), repoID, "removeme")
 }
@@ -1205,10 +1205,10 @@ func getTagRows(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string
 
 func assertActiveTag(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
 	t.Helper()
-	assertActiveTagCount(t, s, repoID, tag, 1)
+	assertActiveTagCount(t, s, repoID, tag)
 }
 
-func assertActiveTagCount(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string, want int) {
+func assertActiveTagCount(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
 	t.Helper()
 	db := s.DB()
 	var count int
@@ -1218,8 +1218,8 @@ func assertActiveTagCount(t *testing.T, s *metastore.SQLiteStore, repoID int64, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if count != want {
-		t.Errorf("active tags named %q: got %d, want %d", tag, count, want)
+	if count != 1 {
+		t.Errorf("active tags named %q: got %d, want 1", tag, count)
 	}
 }
 

@@ -311,6 +311,12 @@ type migrationCatalog struct {
 	revisionIndex map[string]int
 }
 
+type migrationLinks struct {
+	byRevision          map[string]migrationInfo
+	successorByRevision map[string]migrationInfo
+	roots               []migrationInfo
+}
+
 func loadEmbeddedMigrationCatalog() (*migrationCatalog, error) {
 	migrationFS, err := fs.Sub(schema.MigrationFiles, "sqlite/migrations")
 	if err != nil {
@@ -327,15 +333,27 @@ func loadEmbeddedMigrationCatalog() (*migrationCatalog, error) {
 }
 
 func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
+	migrations, err := loadMigrationFiles(migrationFS)
+	if err != nil {
+		return nil, err
+	}
+	if len(migrations) == 0 {
+		return nil, fmt.Errorf("no migration files found")
+	}
+	links, err := linkMigrations(migrations)
+	if err != nil {
+		return nil, err
+	}
+	return orderMigrations(migrations, links)
+}
+
+func loadMigrationFiles(migrationFS fs.FS) ([]migrationInfo, error) {
 	entries, err := fs.ReadDir(migrationFS, ".")
 	if err != nil {
 		return nil, fmt.Errorf("read migrations directory: %w", err)
 	}
 
-	migrationsByRevision := make(map[string]migrationInfo)
-	successorByRevision := make(map[string]migrationInfo)
 	var migrations []migrationInfo
-	var roots []migrationInfo
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
 			continue
@@ -348,41 +366,53 @@ func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
 		if err != nil {
 			return nil, fmt.Errorf("migration %s: %w", entry.Name(), err)
 		}
-		if previous, ok := migrationsByRevision[info.revision]; ok {
-			return nil, fmt.Errorf(
+		migrations = append(migrations, info)
+	}
+	return migrations, nil
+}
+
+func linkMigrations(migrations []migrationInfo) (migrationLinks, error) {
+	links := migrationLinks{
+		byRevision:          make(map[string]migrationInfo, len(migrations)),
+		successorByRevision: make(map[string]migrationInfo, len(migrations)),
+	}
+	for _, info := range migrations {
+		if previous, ok := links.byRevision[info.revision]; ok {
+			return migrationLinks{}, fmt.Errorf(
 				"duplicate revision %q in %s and %s", info.revision, previous.filename, info.filename,
 			)
 		}
 		if info.revision == info.downRevision {
-			return nil, fmt.Errorf("migration %s has self-link revision %q", info.filename, info.revision)
+			return migrationLinks{}, fmt.Errorf(
+				"migration %s has self-link revision %q", info.filename, info.revision,
+			)
 		}
 
-		migrations = append(migrations, info)
-		migrationsByRevision[info.revision] = info
+		links.byRevision[info.revision] = info
 		if info.downRevision == "" {
-			roots = append(roots, info)
+			links.roots = append(links.roots, info)
 			continue
 		}
-		if previous, ok := successorByRevision[info.downRevision]; ok {
-			return nil, fmt.Errorf(
+		if previous, ok := links.successorByRevision[info.downRevision]; ok {
+			return migrationLinks{}, fmt.Errorf(
 				"duplicate down_revision %q in %s and %s",
 				info.downRevision, previous.filename, info.filename,
 			)
 		}
-		successorByRevision[info.downRevision] = info
+		links.successorByRevision[info.downRevision] = info
 	}
+	return links, nil
+}
 
-	if len(migrations) == 0 {
-		return nil, fmt.Errorf("no migration files found")
-	}
-	if len(roots) != 1 {
-		return nil, fmt.Errorf("migration catalog must contain exactly one bridge root; found %d", len(roots))
+func orderMigrations(migrations []migrationInfo, links migrationLinks) (*migrationCatalog, error) {
+	if len(links.roots) != 1 {
+		return nil, fmt.Errorf("migration catalog must contain exactly one bridge root; found %d", len(links.roots))
 	}
 	for _, migration := range migrations {
 		if migration.downRevision == "" {
 			continue
 		}
-		if _, ok := migrationsByRevision[migration.downRevision]; !ok {
+		if _, ok := links.byRevision[migration.downRevision]; !ok {
 			return nil, fmt.Errorf(
 				"migration %s has dangling down_revision %q",
 				migration.filename, migration.downRevision,
@@ -392,13 +422,13 @@ func loadMigrationCatalog(migrationFS fs.FS) (*migrationCatalog, error) {
 
 	ordered := make([]migrationInfo, 0, len(migrations))
 	revisionIndex := make(map[string]int, len(migrations))
-	for current := roots[0]; ; {
+	for current := links.roots[0]; ; {
 		if _, seen := revisionIndex[current.revision]; seen {
 			return nil, fmt.Errorf("migration catalog contains a cycle at revision %q", current.revision)
 		}
 		revisionIndex[current.revision] = len(ordered)
 		ordered = append(ordered, current)
-		next, ok := successorByRevision[current.revision]
+		next, ok := links.successorByRevision[current.revision]
 		if !ok {
 			break
 		}
