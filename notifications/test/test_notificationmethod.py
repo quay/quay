@@ -22,8 +22,7 @@ class TestSlackFormatting:
     def test_bold_tags_have_surrounding_spaces(self):
         method = SlackMethod()
         html = (
-            "Namespace <b>quayqe</b> storage usage has\n"
-            "<b>exceeded</b> its quota limit (110%)."
+            "Namespace <b>quayqe</b> storage usage has\n" "<b>exceeded</b> its quota limit (110%)."
         )
         result = method.format_for_slack(html)
         assert "has *exceeded*" in result
