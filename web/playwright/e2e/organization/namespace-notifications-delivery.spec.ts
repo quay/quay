@@ -354,8 +354,12 @@ test.describe(
           expect(warnHook?.body?.event_data).toHaveProperty(
             'limit_bytes_formatted',
           );
-          expect(warnHook?.body?.event_data.usage_bytes_formatted).toBeTruthy();
-          expect(warnHook?.body?.event_data.limit_bytes_formatted).toBeTruthy();
+          expect(warnHook?.body?.event_data.usage_bytes_formatted).toBe(
+            '819.20 MB',
+          );
+          expect(warnHook?.body?.event_data.limit_bytes_formatted).toBe(
+            '1.00 GB',
+          );
         } finally {
           await receiver.stop();
         }
