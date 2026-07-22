@@ -325,6 +325,44 @@ test.describe(
     );
 
     test(
+      'test notification payload includes formatted byte fields (PROJQUAY-12369)',
+      {tag: '@webhook'},
+      async ({api}) => {
+        test.setTimeout(60_000);
+
+        const org = await api.organization('nsdelivfmt');
+
+        const receiver = new WebhookReceiver();
+        await receiver.start();
+        try {
+          // Test quota_warning sample data
+          const warnNotif = await api.namespaceNotification(
+            org.name,
+            'quota_warning',
+            'webhook',
+            {url: receiver.getUrl()},
+            {},
+            'Format Check Warning',
+          );
+          await api.raw.testNamespaceNotification(org.name, warnNotif.uuid);
+
+          const warnHook = await receiver.waitForWebhook(undefined, 30_000);
+          expect(warnHook).not.toBeNull();
+          expect(warnHook?.body?.event_data).toHaveProperty(
+            'usage_bytes_formatted',
+          );
+          expect(warnHook?.body?.event_data).toHaveProperty(
+            'limit_bytes_formatted',
+          );
+          expect(warnHook?.body?.event_data.usage_bytes_formatted).toBeTruthy();
+          expect(warnHook?.body?.event_data.limit_bytes_formatted).toBeTruthy();
+        } finally {
+          await receiver.stop();
+        }
+      },
+    );
+
+    test(
       'retroactive webhook fires when quota limit is created while already exceeded',
       {
         tag: [
