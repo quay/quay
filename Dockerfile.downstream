@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7 AS base
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1784705586 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
