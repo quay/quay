@@ -3,6 +3,7 @@ package uninstaller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -125,7 +126,7 @@ func TestRunSkipsLingerForRootMode(t *testing.T) {
 func TestRunContinuesWhenServiceNotRunning(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	services := &recordingServiceManager{
-		stopErr: errors.New("unit quay.service not loaded"),
+		stopErr: fmt.Errorf("%w: quay", system.ErrUnitNotFound),
 	}
 	u := &Uninstaller{
 		systemd: services,

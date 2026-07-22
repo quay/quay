@@ -4,8 +4,8 @@ package uninstaller
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 	"io"
 	"log/slog"
 	"os"
@@ -51,7 +51,7 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 // reload systemd, conditionally remove data, and disable linger.
 func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
-		if isUnitNotFound(err) {
+		if errors.Is(err, system.ErrUnitNotFound) {
 			slog.Info("service not running, continuing")
 		} else {
 			return fmt.Errorf("stop service: %w", err)
@@ -82,9 +82,4 @@ func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 
 	slog.Info("uninstall complete")
 	return nil
-}
-
-func isUnitNotFound(err error) bool {
-	msg := err.Error()
-	return strings.Contains(msg, "not loaded") || strings.Contains(msg, "not found")
 }
