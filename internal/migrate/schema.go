@@ -54,7 +54,7 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	return nil
 }
 
-// stopSourceServices stops source systemd services to free port 8443 and flush WAL.
+// stopSourceServices stops source systemd services to free the listen port and flush WAL.
 func (m *Migrator) stopSourceServices(ctx context.Context) error {
 	if m.Runner == nil {
 		slog.Info("no command runner, skipping service stop")
