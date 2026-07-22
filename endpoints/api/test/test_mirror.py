@@ -11,7 +11,11 @@ from data.database import (
     SourceRegistryType,
     Visibility,
 )
-from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
+from endpoints.api.mirror import (
+    RepoMirrorResource,
+    RepoMirrorSyncCancelResource,
+    _validate_external_reference,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -371,6 +375,46 @@ class TestRepoMirrorSSRFProtection:
 
         mirror = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
         assert mirror.external_reference == "10.0.0.1/team/repo"
+
+    def test_create_validates_external_reference_before_transaction(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrftransactionbot", model.user.get_namespace_user("devtable")
+        )
+        transaction_depth = model.db.transaction_depth()
+
+        def validate_before_transaction(reference):
+            assert model.db.transaction_depth() == transaction_depth
+            _validate_external_reference(reference)
+
+        with patch(
+            "endpoints.api.mirror._validate_external_reference",
+            side_effect=validate_before_transaction,
+        ) as validate:
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = self._create_body("quay.io/team/repo", robot.username)
+                conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
+
+        validate.assert_called_once_with("quay.io/team/repo")
+
+    def test_update_validates_external_reference_before_transaction(self, app):
+        _setup_mirror()
+        transaction_depth = model.db.transaction_depth()
+
+        def validate_before_transaction(reference):
+            assert model.db.transaction_depth() == transaction_depth
+            _validate_external_reference(reference)
+
+        with patch(
+            "endpoints.api.mirror._validate_external_reference",
+            side_effect=validate_before_transaction,
+        ) as validate:
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {"external_reference": "quay.io/team/repo"}
+                conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        validate.assert_called_once_with("quay.io/team/repo")
 
     def test_update_with_private_ip_rejected_without_partial_updates(self, app):
         mirror = _setup_mirror()

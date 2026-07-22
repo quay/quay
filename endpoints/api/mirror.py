@@ -2,7 +2,6 @@
 import logging
 from datetime import datetime
 from email.utils import mktime_tz, parsedate_tz
-from functools import wraps
 
 from flask import request
 from jsonschema import ValidationError
@@ -46,15 +45,6 @@ def _validate_external_reference(reference):
         raise InvalidRequest(SSRF_GENERIC_ERROR)
     except ValueError as e:
         raise InvalidRequest(str(e))
-
-
-def _with_db_transaction(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with db_transaction():
-            return func(*args, **kwargs)
-
-    return wrapper
 
 
 common_properties = {
@@ -325,7 +315,6 @@ class RepoMirrorResource(RepositoryParamResource):
     @require_repo_admin(allow_for_superuser=True)
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
-    @_with_db_transaction
     def post(self, namespace_name, repository_name):
         """
         Create a RepoMirrorConfig for a given Repository.
@@ -372,44 +361,44 @@ class RepoMirrorResource(RepositoryParamResource):
 
         data["sync_start_date"] = self._string_to_dt(data["sync_start_date"])
 
-        rule = model.repo_mirror.create_rule(repo, data["root_rule"]["rule_value"])
-        del data["root_rule"]
+        with db_transaction():
+            rule = model.repo_mirror.create_rule(repo, data["root_rule"]["rule_value"])
+            del data["root_rule"]
 
-        # Verify the robot is part of the Repository's namespace
-        robot = self._setup_robot_for_mirroring(
-            namespace_name, repository_name, data["robot_username"]
-        )
-        del data["robot_username"]
-
-        # Extract architecture_filter before passing data to enable_mirroring_for_repository
-        arch_filter = data.pop("architecture_filter", None)
-
-        mirror = model.repo_mirror.enable_mirroring_for_repository(
-            repo,
-            root_rule=rule,
-            internal_robot=robot,
-            allowed_hosts=_get_ssrf_allowed_hosts(),
-            **data,
-        )
-        if mirror:
-            if arch_filter is not None:
-                model.repo_mirror.set_architecture_filter(repo, arch_filter)
-
-            track_and_log(
-                "repo_mirror_config_changed",
-                wrap_repository(repo),
-                changed="external_reference",
-                to=data["external_reference"],
+            # Verify the robot is part of the Repository's namespace
+            robot = self._setup_robot_for_mirroring(
+                namespace_name, repository_name, data["robot_username"]
             )
-            return "", 201
-        else:
-            # TODO: Determine appropriate Response
-            return {"detail": "RepoMirrorConfig already exists for this repository."}, 409
+            del data["robot_username"]
+
+            # Extract architecture_filter before passing data to enable_mirroring_for_repository
+            arch_filter = data.pop("architecture_filter", None)
+
+            mirror = model.repo_mirror.enable_mirroring_for_repository(
+                repo,
+                root_rule=rule,
+                internal_robot=robot,
+                allowed_hosts=_get_ssrf_allowed_hosts(),
+                **data,
+            )
+            if mirror:
+                if arch_filter is not None:
+                    model.repo_mirror.set_architecture_filter(repo, arch_filter)
+
+                track_and_log(
+                    "repo_mirror_config_changed",
+                    wrap_repository(repo),
+                    changed="external_reference",
+                    to=data["external_reference"],
+                )
+                return "", 201
+            else:
+                # TODO: Determine appropriate Response
+                return {"detail": "RepoMirrorConfig already exists for this repository."}, 409
 
     @require_repo_admin(allow_for_superuser=True)
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
-    @_with_db_transaction
     def put(self, namespace_name, repository_name):
         """
         Allow users to modifying the repository's mirroring configuration.
@@ -475,195 +464,196 @@ class RepoMirrorResource(RepositoryParamResource):
                 namespace_name, values["robot_username"]
             )
 
-        if "is_enabled" in values:
-            if values["is_enabled"] == True:
-                if model.repo_mirror.enable_mirror(repo):
+        with db_transaction():
+            if "is_enabled" in values:
+                if values["is_enabled"] == True:
+                    if model.repo_mirror.enable_mirror(repo):
+                        track_and_log(
+                            "repo_mirror_config_changed",
+                            wrap_repository(repo),
+                            changed="is_enabled",
+                            to=True,
+                        )
+                if values["is_enabled"] == False:
+                    if model.repo_mirror.disable_mirror(repo):
+                        track_and_log(
+                            "repo_mirror_config_changed",
+                            wrap_repository(repo),
+                            changed="is_enabled",
+                            to=False,
+                        )
+
+            if "external_reference" in values:
+                if model.repo_mirror.change_remote(
+                    repo,
+                    values["external_reference"],
+                    allowed_hosts=_get_ssrf_allowed_hosts(),
+                ):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="is_enabled",
-                        to=True,
+                        changed="external_reference",
+                        to=values["external_reference"],
                     )
-            if values["is_enabled"] == False:
-                if model.repo_mirror.disable_mirror(repo):
+
+            if "robot_username" in values:
+                robot_username = values["robot_username"]
+                robot = self._setup_robot_for_mirroring(
+                    namespace_name,
+                    repository_name,
+                    robot_username,
+                    validated_robot=validated_robot,
+                )
+                if model.repo_mirror.set_mirroring_robot(repo, robot):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="is_enabled",
-                        to=False,
+                        changed="robot_username",
+                        to=robot_username,
                     )
 
-        if "external_reference" in values:
-            if model.repo_mirror.change_remote(
-                repo,
-                values["external_reference"],
-                allowed_hosts=_get_ssrf_allowed_hosts(),
-            ):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="external_reference",
-                    to=values["external_reference"],
-                )
-
-        if "robot_username" in values:
-            robot_username = values["robot_username"]
-            robot = self._setup_robot_for_mirroring(
-                namespace_name,
-                repository_name,
-                robot_username,
-                validated_robot=validated_robot,
-            )
-            if model.repo_mirror.set_mirroring_robot(repo, robot):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="robot_username",
-                    to=robot_username,
-                )
-
-        if "sync_start_date" in values:
-            if model.repo_mirror.change_sync_start_date(repo, values["sync_start_date"]):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="sync_start_date",
-                    to=values["sync_start_date"],
-                )
-
-        if "sync_interval" in values:
-            if model.repo_mirror.change_sync_interval(repo, values["sync_interval"]):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="sync_interval",
-                    to=values["sync_interval"],
-                )
-
-        if "skopeo_timeout_interval" in values:
-            if model.repo_mirror.change_skopeo_timeout_interval(
-                repo, values["skopeo_timeout_interval"]
-            ):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="skopeo_timeout_interval",
-                    to=values["skopeo_timeout_interval"],
-                )
-
-        if "architecture_filter" in values:
-            arch_filter = values["architecture_filter"]
-            if model.repo_mirror.set_architecture_filter(repo, arch_filter or []):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="architecture_filter",
-                    to=arch_filter,
-                )
-
-        if "external_registry_username" in values and "external_registry_password" in values:
-            username = values["external_registry_username"]
-            password = values["external_registry_password"]
-            if model.repo_mirror.change_credentials(repo, username, password):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="external_registry_username",
-                    to=username,
-                )
-                if password is None:
+            if "sync_start_date" in values:
+                if model.repo_mirror.change_sync_start_date(repo, values["sync_start_date"]):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="external_registry_password",
-                        to=None,
+                        changed="sync_start_date",
+                        to=values["sync_start_date"],
                     )
-                else:
+
+            if "sync_interval" in values:
+                if model.repo_mirror.change_sync_interval(repo, values["sync_interval"]):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="external_registry_password",
-                        to="********",
+                        changed="sync_interval",
+                        to=values["sync_interval"],
                     )
 
-        elif "external_registry_username" in values:
-            username = values["external_registry_username"]
-            if model.repo_mirror.change_username(repo, username):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="external_registry_username",
-                    to=username,
-                )
-
-        if "external_registry_config" in values:
-            external_registry_config = values.get("external_registry_config", {})
-
-            if "verify_tls" in external_registry_config:
-                updates = {"verify_tls": external_registry_config["verify_tls"]}
-                if model.repo_mirror.change_external_registry_config(repo, updates):
+            if "skopeo_timeout_interval" in values:
+                if model.repo_mirror.change_skopeo_timeout_interval(
+                    repo, values["skopeo_timeout_interval"]
+                ):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="verify_tls",
-                        to=external_registry_config["verify_tls"],
+                        changed="skopeo_timeout_interval",
+                        to=values["skopeo_timeout_interval"],
                     )
 
-            if "unsigned_images" in external_registry_config:
-                updates = {"unsigned_images": external_registry_config["unsigned_images"]}
-                if model.repo_mirror.change_external_registry_config(repo, updates):
+            if "architecture_filter" in values:
+                arch_filter = values["architecture_filter"]
+                if model.repo_mirror.set_architecture_filter(repo, arch_filter or []):
                     track_and_log(
                         "repo_mirror_config_changed",
                         wrap_repository(repo),
-                        changed="unsigned_images",
-                        to=external_registry_config["unsigned_images"],
+                        changed="architecture_filter",
+                        to=arch_filter,
                     )
 
-            if "proxy" in external_registry_config:
-                proxy_values = external_registry_config.get("proxy", {})
+            if "external_registry_username" in values and "external_registry_password" in values:
+                username = values["external_registry_username"]
+                password = values["external_registry_password"]
+                if model.repo_mirror.change_credentials(repo, username, password):
+                    track_and_log(
+                        "repo_mirror_config_changed",
+                        wrap_repository(repo),
+                        changed="external_registry_username",
+                        to=username,
+                    )
+                    if password is None:
+                        track_and_log(
+                            "repo_mirror_config_changed",
+                            wrap_repository(repo),
+                            changed="external_registry_password",
+                            to=None,
+                        )
+                    else:
+                        track_and_log(
+                            "repo_mirror_config_changed",
+                            wrap_repository(repo),
+                            changed="external_registry_password",
+                            to="********",
+                        )
 
-                if "http_proxy" in proxy_values:
-                    updates = {"proxy": {"http_proxy": proxy_values["http_proxy"]}}
+            elif "external_registry_username" in values:
+                username = values["external_registry_username"]
+                if model.repo_mirror.change_username(repo, username):
+                    track_and_log(
+                        "repo_mirror_config_changed",
+                        wrap_repository(repo),
+                        changed="external_registry_username",
+                        to=username,
+                    )
+
+            if "external_registry_config" in values:
+                external_registry_config = values.get("external_registry_config", {})
+
+                if "verify_tls" in external_registry_config:
+                    updates = {"verify_tls": external_registry_config["verify_tls"]}
                     if model.repo_mirror.change_external_registry_config(repo, updates):
                         track_and_log(
                             "repo_mirror_config_changed",
                             wrap_repository(repo),
-                            changed="http_proxy",
-                            to=proxy_values["http_proxy"],
+                            changed="verify_tls",
+                            to=external_registry_config["verify_tls"],
                         )
 
-                if "https_proxy" in proxy_values:
-                    updates = {"proxy": {"https_proxy": proxy_values["https_proxy"]}}
+                if "unsigned_images" in external_registry_config:
+                    updates = {"unsigned_images": external_registry_config["unsigned_images"]}
                     if model.repo_mirror.change_external_registry_config(repo, updates):
                         track_and_log(
                             "repo_mirror_config_changed",
                             wrap_repository(repo),
-                            changed="https_proxy",
-                            to=proxy_values["https_proxy"],
+                            changed="unsigned_images",
+                            to=external_registry_config["unsigned_images"],
                         )
 
-                if "no_proxy" in proxy_values:
-                    updates = {"proxy": {"no_proxy": proxy_values["no_proxy"]}}
-                    if model.repo_mirror.change_external_registry_config(repo, updates):
-                        track_and_log(
-                            "repo_mirror_config_changed",
-                            wrap_repository(repo),
-                            changed="no_proxy",
-                            to=proxy_values["no_proxy"],
-                        )
+                if "proxy" in external_registry_config:
+                    proxy_values = external_registry_config.get("proxy", {})
 
-        if "root_rule" in values:
-            if model.repo_mirror.change_rule(
-                repo, RepoMirrorRuleType.TAG_GLOB_CSV, values["root_rule"]["rule_value"]
-            ):
-                track_and_log(
-                    "repo_mirror_config_changed",
-                    wrap_repository(repo),
-                    changed="mirror_rule",
-                    to=values["root_rule"]["rule_value"],
-                )
+                    if "http_proxy" in proxy_values:
+                        updates = {"proxy": {"http_proxy": proxy_values["http_proxy"]}}
+                        if model.repo_mirror.change_external_registry_config(repo, updates):
+                            track_and_log(
+                                "repo_mirror_config_changed",
+                                wrap_repository(repo),
+                                changed="http_proxy",
+                                to=proxy_values["http_proxy"],
+                            )
 
-        return "", 201
+                    if "https_proxy" in proxy_values:
+                        updates = {"proxy": {"https_proxy": proxy_values["https_proxy"]}}
+                        if model.repo_mirror.change_external_registry_config(repo, updates):
+                            track_and_log(
+                                "repo_mirror_config_changed",
+                                wrap_repository(repo),
+                                changed="https_proxy",
+                                to=proxy_values["https_proxy"],
+                            )
+
+                    if "no_proxy" in proxy_values:
+                        updates = {"proxy": {"no_proxy": proxy_values["no_proxy"]}}
+                        if model.repo_mirror.change_external_registry_config(repo, updates):
+                            track_and_log(
+                                "repo_mirror_config_changed",
+                                wrap_repository(repo),
+                                changed="no_proxy",
+                                to=proxy_values["no_proxy"],
+                            )
+
+            if "root_rule" in values:
+                if model.repo_mirror.change_rule(
+                    repo, RepoMirrorRuleType.TAG_GLOB_CSV, values["root_rule"]["rule_value"]
+                ):
+                    track_and_log(
+                        "repo_mirror_config_changed",
+                        wrap_repository(repo),
+                        changed="mirror_rule",
+                        to=values["root_rule"]["rule_value"],
+                    )
+
+            return "", 201
 
     def _reject_if_org_mirror_configured(self, namespace_name):
         """Raise InvalidRequest if the namespace has an org-level mirror config."""
