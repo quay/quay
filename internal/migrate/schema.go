@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -71,22 +70,17 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error {
 		scopeArgs = []string{"--user"}
 	}
 
-	var stopErrs []error
 	for _, svc := range omrServiceNames {
 		args := make([]string, len(scopeArgs), len(scopeArgs)+2)
 		copy(args, scopeArgs)
 		args = append(args, "stop", svc+".service")
 		slog.Info("stopping service", "service", svc)
 		if err := m.Runner.Run(ctx, "systemctl", args...); err != nil {
-			stopErrs = append(stopErrs, fmt.Errorf("stop OMR service %s: %w", svc, err))
 			slog.Warn("failed to stop service (may already be stopped)", "service", svc, "err", err)
 		}
 	}
-	if err := errors.Join(stopErrs...); err != nil {
-		return fmt.Errorf("stop old OMR services: %w", err)
-	}
 
-	slog.Info("old OMR services stopped")
+	slog.Info("old OMR services stopped (or already inactive)")
 	return nil
 }
 
@@ -98,7 +92,7 @@ func (m *Migrator) install(ctx context.Context) error {
 	}
 
 	configPath := ""
-	port := ""
+	port := m.Source.Port
 	runtimeConfigPath := filepath.Join(m.DataDir, runtimeConfigFile)
 	if _, err := os.Stat(runtimeConfigPath); err == nil {
 		configPath = "/data/" + runtimeConfigFile

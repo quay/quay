@@ -418,6 +418,66 @@ func seedCopyTestRegistryKey(t *testing.T, dbPath, configDir string) *rsa.Privat
 	return key
 }
 
+func TestCopyData_CopiesRootCA(t *testing.T) {
+	root := t.TempDir()
+	configDir := filepath.Join(root, "quay-config")
+	caDir := filepath.Join(root, "quay-rootCA")
+	dbDir := t.TempDir()
+
+	mkdirCopyTestDir(t, configDir, 0o750)
+	mkdirCopyTestDir(t, caDir, 0o750)
+
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.cert"), []byte("fake-cert"), 0o644)
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.key"), []byte("fake-key"), 0o600)
+	writeCopyTestFile(t, filepath.Join(caDir, "rootCA.pem"), []byte("fake-root-ca"), 0o644)
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			ConfigDir: configDir,
+			DBPath:    dbPath,
+			RootCADir: caDir,
+		},
+	}
+
+	require.NoError(t, m.copyData(t.Context()))
+
+	data, err := os.ReadFile(filepath.Join(targetDir, "rootCA.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, "fake-root-ca", string(data))
+}
+
+func TestCopyData_SkipsRootCAWhenNotDetected(t *testing.T) {
+	configDir := t.TempDir()
+	dbDir := t.TempDir()
+
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.cert"), []byte("fake-cert"), 0o644)
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.key"), []byte("fake-key"), 0o600)
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			ConfigDir: configDir,
+			DBPath:    dbPath,
+		},
+	}
+
+	require.NoError(t, m.copyData(t.Context()))
+
+	_, err := os.Stat(filepath.Join(targetDir, "rootCA.pem"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func mkdirCopyTestDir(t *testing.T, path string, perm os.FileMode) {
 	t.Helper()
 	if err := os.MkdirAll(path, perm); err != nil {

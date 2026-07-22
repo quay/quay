@@ -23,7 +23,9 @@ type OMRSource struct {
 	ConfigDir   string // path to quay-config/ (config.yaml, ssl.cert, ssl.key)
 	DBPath      string // path to quay_sqlite.db
 	StoragePath string // path to blob storage root
-	Hostname    string // from old config.yaml SERVER_HOSTNAME
+	Hostname    string // from old config.yaml SERVER_HOSTNAME (bare, no port)
+	Port        string // from old config.yaml SERVER_HOSTNAME (empty = default 8443)
+	RootCADir   string // path to quay-rootCA/ directory containing rootCA.pem
 
 	ImageArchive string // container image tar path
 	Image        string // container image ref (alternative)
@@ -167,7 +169,14 @@ func (m *Migrator) printPlan() {
 	fmt.Fprintf(m.Out, "  Config:   %s\n", m.Source.ConfigDir)
 	fmt.Fprintf(m.Out, "  Database: %s\n", m.Source.DBPath)
 	fmt.Fprintf(m.Out, "  Storage:  %s\n", m.Source.StoragePath)
-	fmt.Fprintf(m.Out, "  Hostname: %s\n", m.Source.Hostname)
+	if m.Source.Port != "" {
+		fmt.Fprintf(m.Out, "  Hostname: %s (port %s)\n", m.Source.Hostname, m.Source.Port)
+	} else {
+		fmt.Fprintf(m.Out, "  Hostname: %s\n", m.Source.Hostname)
+	}
+	if m.Source.RootCADir != "" {
+		fmt.Fprintf(m.Out, "  Root CA:  %s\n", m.Source.RootCADir)
+	}
 	if len(m.Source.UnitFiles) > 0 {
 		fmt.Fprintf(m.Out, "  Services: %v (%s scope)\n", m.Source.UnitFiles, m.Source.SystemdScope)
 	}
