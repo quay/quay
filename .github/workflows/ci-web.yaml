@@ -136,9 +136,12 @@ jobs:
           fi
 
           # Directories and patterns that count as "source code" changes
-          # Excludes: tests, docs, config, CI, static assets, agent docs
-          SOURCE_CHANGES=$(echo "$CHANGED_FILES" | grep -cE \
-            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers|web/src)/' \
+          # Excludes: tests, docs, config, CI, static assets, agent docs.
+          # The Python config schema is covered by backend and schema-drift tests;
+          # it has no browser-facing seam for meaningful Playwright coverage.
+          SOURCE_CHANGES=$(echo "$CHANGED_FILES" \
+            | grep -vE '^util/config/schema\.py$' \
+            | grep -cE '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers|web/src)/' \
             || true)
 
           # Subtract files that are themselves tests within source directories
