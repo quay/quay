@@ -452,6 +452,12 @@ class RepoMirrorResource(RepositoryParamResource):
         ):
             return {"detail": "Unable to delete username while setting a password."}, 400
 
+        external_registry_config = values.get("external_registry_config", {})
+        proxy_values = external_registry_config.get("proxy", {})
+        for proxy_key in ("http_proxy", "https_proxy", "no_proxy"):
+            if proxy_key in proxy_values and proxy_values[proxy_key] is not None:
+                return {"detail": "Proxy values can only be cleared."}, 400
+
         if "root_rule" in values:
             model.repo_mirror.validate_rule(
                 RepoMirrorRuleType.TAG_GLOB_CSV,

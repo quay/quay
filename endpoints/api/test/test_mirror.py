@@ -166,23 +166,15 @@ def test_get_mirror(app):
         ("sync_interval", -5, 400),
         ("skopeo_timeout_interval", 3000, 201),
         ("skopeo_timeout_interval", 60, 400),
-        ("https_proxy", "https://proxy.corp.example.com", 201),
+        ("https_proxy", "https://proxy.corp.example.com", 400),
         ("https_proxy", None, 201),
-        (
-            "https_proxy",
-            "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
-        ("http_proxy", "http://proxy.corp.example.com", 201),
+        ("https_proxy", "proxy.example.com; rm -rf /", 400),
+        ("http_proxy", "http://proxy.corp.example.com", 400),
         ("http_proxy", None, 201),
-        (
-            "http_proxy",
-            "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
-        ("no_proxy", "quay.io", 201),
+        ("http_proxy", "proxy.example.com; rm -rf /", 400),
+        ("no_proxy", "quay.io", 400),
         ("no_proxy", None, 201),
-        ("no_proxy", "quay.io; rm -rf /", 201),  # Safe because proxy values are not eval'ed
+        ("no_proxy", "quay.io; rm -rf /", 400),
         ("verify_tls", True, 201),
         ("verify_tls", False, 201),
         ("verify_tls", None, 400),
