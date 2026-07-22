@@ -32,9 +32,9 @@ import (
 var DefaultImage = "quay.io/quay/quay-mirror:latest"
 
 const (
-	defaultPort        = "8443"
+	defaultPort         = "8443"
 	defaultInitUsername = "admin"
-	quadletServiceName = "quay"
+	quadletServiceName  = "quay"
 )
 
 // Config holds the parameters for an install or upgrade operation.
