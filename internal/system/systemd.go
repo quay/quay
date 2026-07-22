@@ -8,6 +8,7 @@ type ServiceManager interface {
 	Start(ctx context.Context, service string) error
 	Stop(ctx context.Context, service string) error
 	EnableLinger(ctx context.Context) error
+	DisableLinger(ctx context.Context) error
 }
 
 // SystemdManager implements ServiceManager using systemctl.
@@ -42,4 +43,12 @@ func (s *SystemdManager) EnableLinger(ctx context.Context) error {
 		return nil
 	}
 	return s.runner.Run(ctx, "loginctl", "enable-linger", s.env.Username)
+}
+
+// DisableLinger disables lingering for the current user in user mode.
+func (s *SystemdManager) DisableLinger(ctx context.Context) error {
+	if s.env.Mode == RootMode || s.env.Username == "" {
+		return nil
+	}
+	return s.runner.Run(ctx, "loginctl", "disable-linger", s.env.Username)
 }

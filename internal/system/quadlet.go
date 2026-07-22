@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -33,6 +34,16 @@ func NewQuadletManager(fs FileSystem, env *Env) *QuadletManager {
 func (q *QuadletManager) Exists(service string) bool {
 	_, err := q.fs.Stat(q.env.QuadletPath(service))
 	return err == nil
+}
+
+// Remove deletes the Quadlet .container file for service. Returns nil
+// if the file does not exist.
+func (q *QuadletManager) Remove(service string) error {
+	err := q.fs.Remove(q.env.QuadletPath(service))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove quadlet: %w", err)
+	}
+	return nil
 }
 
 // Install writes a new Quadlet .container file.
