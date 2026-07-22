@@ -28,7 +28,7 @@ func TestCopyData(t *testing.T) {
 	writeCopyTestFile(t, filepath.Join(srcDir, "ssl.cert"), []byte("fake-cert"), 0o644)
 	writeCopyTestFile(t, filepath.Join(srcDir, "ssl.key"), []byte("fake-key"), 0o600)
 
-	mkdirCopyTestDir(t, filepath.Join(storageDir, "sha256", "ab"), 0o750)
+	mkdirCopyTestDir(t, filepath.Join(storageDir, "sha256", "ab"))
 	writeCopyTestFile(t, filepath.Join(storageDir, "sha256", "ab", "abcdef"), []byte("blob-data"), 0o644)
 
 	targetDir := filepath.Join(t.TempDir(), "target")
@@ -282,7 +282,7 @@ func TestCopyData_RecopiesDatabaseWhenMarkerExists(t *testing.T) {
 	createCopyTestDB(t, dbPath)
 
 	targetDir := filepath.Join(t.TempDir(), "target")
-	mkdirCopyTestDir(t, targetDir, 0o750)
+	mkdirCopyTestDir(t, targetDir)
 	writeCopyTestFile(t, filepath.Join(targetDir, markerFile), []byte("migration in progress\n"), 0o600)
 
 	sourceBytes, err := os.ReadFile(dbPath) //nolint:gosec // test fixture path is under t.TempDir.
@@ -424,8 +424,8 @@ func TestCopyData_CopiesRootCA(t *testing.T) {
 	caDir := filepath.Join(root, "quay-rootCA")
 	dbDir := t.TempDir()
 
-	mkdirCopyTestDir(t, configDir, 0o750)
-	mkdirCopyTestDir(t, caDir, 0o750)
+	mkdirCopyTestDir(t, configDir)
+	mkdirCopyTestDir(t, caDir)
 
 	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
 	createCopyTestDB(t, dbPath)
@@ -478,9 +478,9 @@ func TestCopyData_SkipsRootCAWhenNotDetected(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
-func mkdirCopyTestDir(t *testing.T, path string, perm os.FileMode) {
+func mkdirCopyTestDir(t *testing.T, path string) {
 	t.Helper()
-	if err := os.MkdirAll(path, perm); err != nil {
+	if err := os.MkdirAll(path, 0o750); err != nil {
 		t.Fatalf("mkdir fixture %s: %v", path, err)
 	}
 }

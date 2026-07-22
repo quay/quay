@@ -55,7 +55,7 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 }
 
 // stopSourceServices stops source systemd services to free the listen port and flush WAL.
-func (m *Migrator) stopSourceServices(ctx context.Context) error {
+func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unparam // keeps error return for phase-method consistency
 	if m.Runner == nil {
 		slog.Info("no command runner, skipping service stop")
 		return nil
