@@ -284,6 +284,25 @@ def test_update_robot_is_looked_up_once(app):
     mock_lookup.assert_called_once_with("devtable+dtrobot")
 
 
+def test_update_robot_without_namespace_separator_is_invalid(app):
+    _setup_mirror()
+    robot = model.user.lookup_robot("devtable+dtrobot")
+
+    with patch("endpoints.api.mirror.model.user.lookup_robot", return_value=robot):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            response = conduct_api_call(
+                cl,
+                RepoMirrorResource,
+                "PUT",
+                params,
+                {"robot_username": "dtrobot"},
+                400,
+            )
+
+    assert response.json["message"] == "Invalid robot"
+
+
 @pytest.mark.parametrize(
     "request_body, expected_status",
     [

@@ -669,7 +669,11 @@ class RepoMirrorResource(RepositoryParamResource):
         robot = model.user.lookup_robot(robot_username)
         assert robot.robot
 
-        namespace, _ = parse_robot_username(robot_username)
+        parsed_username = parse_robot_username(robot_username)
+        if parsed_username is None:
+            raise model.DataModelException("Invalid robot")
+
+        namespace, _ = parsed_username
         if namespace != namespace_name:
             raise model.DataModelException("Invalid robot")
         return robot
