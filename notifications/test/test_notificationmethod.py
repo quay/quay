@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -16,6 +14,7 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
 
 
 class TestSlackFormatting:
