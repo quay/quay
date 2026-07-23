@@ -505,6 +505,7 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             if exhausted_manifest_ids:
                 ManifestSecurityStatus.update(
+                    index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
                     last_indexed=datetime.utcnow(),
                 ).where(
                     ManifestSecurityStatus.manifest_id.in_(exhausted_manifest_ids),

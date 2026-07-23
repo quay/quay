@@ -175,6 +175,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
             if exhausted_ids:
                 ManifestSecurityStatus.update(
+                    index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
                     last_indexed=now,
                 ).where(ManifestSecurityStatus.id.in_(exhausted_ids)).execute()
 

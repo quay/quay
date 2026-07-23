@@ -1478,8 +1478,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
     for mss in ManifestSecurityStatus.select().where(
         ManifestSecurityStatus.manifest_id.in_(list(exhausted_ids))
     ):
-        assert mss.index_status == IndexStatus.FAILED
-        assert mss.metadata_json.get("retry_count") == 5
+        assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
 
     under_limit_ids = {manifests[i].id for i in range(3, 6)}
     for mss in ManifestSecurityStatus.select().where(

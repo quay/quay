@@ -219,8 +219,14 @@ class TestFindAndClaimBatch:
                 metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
             )
 
-        claimed = scanner._find_and_claim_batch(50, reindex_threshold, stale_threshold, "abc")
+        manifest_count = Manifest.select().count()
+        claimed = scanner._find_and_claim_batch(
+            manifest_count, reindex_threshold, stale_threshold, "abc"
+        )
         assert len(claimed) == 0
+
+        for mss in ManifestSecurityStatus.select():
+            assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
 
     def test_claims_failed_under_retry_limit(self, initialized_db, scanner):
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
@@ -366,6 +372,9 @@ class TestRetryCountTracking:
 
             claimed = scanner._find_and_claim_batch(10, reindex_threshold, stale_threshold, "abc")
             assert len(claimed) == 0
+
+            mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == m)
+            assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
         finally:
             application.config.pop("SECURITY_SCANNER_MAX_SCAN_RETRIES", None)
 
