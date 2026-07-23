@@ -1,7 +1,5 @@
 import {renderHook, act, waitFor} from '@testing-library/react';
-import React from 'react';
-import {QueryClientProvider} from '@tanstack/react-query';
-import {createTestQueryClient} from 'src/test-utils';
+import {TestWrapper} from 'src/test-utils';
 import {
   useMarketplaceSubscriptions,
   useManageOrgSubscriptions,
@@ -27,15 +25,6 @@ vi.mock('./UseQuayConfig', () => ({
   useQuayConfig: vi.fn(),
 }));
 
-function wrapper({children}: {children: React.ReactNode}) {
-  const [queryClient] = React.useState(() => createTestQueryClient());
-  return React.createElement(
-    QueryClientProvider,
-    {client: queryClient},
-    children,
-  );
-}
-
 describe('UseMarketplaceSubscriptions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,7 +42,7 @@ describe('UseMarketplaceSubscriptions', () => {
 
       const {result} = renderHook(
         () => useMarketplaceSubscriptions('testuser', 'testuser'),
-        {wrapper},
+        {wrapper: TestWrapper},
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -65,13 +54,19 @@ describe('UseMarketplaceSubscriptions', () => {
         features: {RH_MARKETPLACE: false},
       } as ReturnType<typeof useQuayConfig>);
 
-      const {result} = renderHook(
+      const {result, rerender} = renderHook(
         () => useMarketplaceSubscriptions('myorg', 'testuser'),
-        {wrapper},
+        {wrapper: TestWrapper},
       );
+      const initialUserSubscriptions = result.current.userSubscriptions;
+      const initialOrgSubscriptions = result.current.orgSubscriptions;
+
+      rerender();
 
       expect(result.current.userSubscriptions).toEqual([]);
       expect(result.current.orgSubscriptions).toEqual([]);
+      expect(result.current.userSubscriptions).toBe(initialUserSubscriptions);
+      expect(result.current.orgSubscriptions).toBe(initialOrgSubscriptions);
       expect(fetchMarketplaceSubscriptions).not.toHaveBeenCalled();
     });
 
@@ -87,7 +82,7 @@ describe('UseMarketplaceSubscriptions', () => {
 
       const {result} = renderHook(
         () => useMarketplaceSubscriptions('myorg', 'testuser'),
-        {wrapper},
+        {wrapper: TestWrapper},
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -102,7 +97,7 @@ describe('UseMarketplaceSubscriptions', () => {
       const onError = vi.fn();
       const {result} = renderHook(
         () => useManageOrgSubscriptions('myorg', {onSuccess, onError}),
-        {wrapper},
+        {wrapper: TestWrapper},
       );
 
       act(() => {
@@ -126,7 +121,7 @@ describe('UseMarketplaceSubscriptions', () => {
       const onError = vi.fn();
       const {result} = renderHook(
         () => useManageOrgSubscriptions('myorg', {onSuccess, onError}),
-        {wrapper},
+        {wrapper: TestWrapper},
       );
 
       act(() => {
