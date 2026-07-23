@@ -42,8 +42,8 @@ export function useMarketplaceSubscriptions(
       : loadingUserSubs;
 
   return {
-    userSubscriptions: userSubscriptions,
-    orgSubscriptions: orgSubscriptions,
+    userSubscriptions: userSubscriptions ?? [],
+    orgSubscriptions: orgSubscriptions ?? [],
     loading: loading,
     error: errorFetchingUserSubs,
   };

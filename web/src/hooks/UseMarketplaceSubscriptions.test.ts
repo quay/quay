@@ -11,6 +11,7 @@ import {
   setMarketplaceOrgAttachment,
   setMarketplaceOrgRemoval,
 } from 'src/resources/BillingResource';
+import {useQuayConfig} from './UseQuayConfig';
 
 vi.mock('src/resources/BillingResource', () => ({
   fetchMarketplaceSubscriptions: vi.fn(),
@@ -23,9 +24,7 @@ vi.mock('./UseCurrentUser', () => ({
 }));
 
 vi.mock('./UseQuayConfig', () => ({
-  useQuayConfig: vi.fn(() => ({
-    features: {RH_MARKETPLACE: true},
-  })),
+  useQuayConfig: vi.fn(),
 }));
 
 function wrapper({children}: {children: React.ReactNode}) {
@@ -40,6 +39,9 @@ function wrapper({children}: {children: React.ReactNode}) {
 describe('UseMarketplaceSubscriptions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useQuayConfig).mockReturnValue({
+      features: {RH_MARKETPLACE: true},
+    } as ReturnType<typeof useQuayConfig>);
   });
 
   describe('useMarketplaceSubscriptions', () => {
@@ -56,6 +58,21 @@ describe('UseMarketplaceSubscriptions', () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.userSubscriptions).toEqual(mockUserSubs);
+    });
+
+    it('returns empty subscription lists when marketplace is disabled', () => {
+      vi.mocked(useQuayConfig).mockReturnValue({
+        features: {RH_MARKETPLACE: false},
+      } as ReturnType<typeof useQuayConfig>);
+
+      const {result} = renderHook(
+        () => useMarketplaceSubscriptions('myorg', 'testuser'),
+        {wrapper},
+      );
+
+      expect(result.current.userSubscriptions).toEqual([]);
+      expect(result.current.orgSubscriptions).toEqual([]);
+      expect(fetchMarketplaceSubscriptions).not.toHaveBeenCalled();
     });
 
     it('fetches both user and org subscriptions when org differs from user', async () => {
