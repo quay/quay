@@ -114,7 +114,26 @@ func (m *Migrator) copyTLSAndWriteConfig(ctx context.Context, sourceCfg *config.
 		}
 		slog.Info("copied cert", "src", src, "dst", dst)
 	}
+
+	if err := m.copyRootCA(ctx); err != nil {
+		return err
+	}
+
 	return m.writeRuntimeConfig(sourceCfg)
+}
+
+func (m *Migrator) copyRootCA(ctx context.Context) error {
+	if m.Source.RootCADir == "" {
+		slog.Warn("no root CA directory detected; if clients trust a custom CA, back up rootCA.pem manually before cleaning up the old installation")
+		return nil
+	}
+	src := filepath.Join(m.Source.RootCADir, "rootCA.pem")
+	dst := filepath.Join(m.DataDir, "rootCA.pem")
+	if err := copyFileIdempotent(ctx, src, dst, false); err != nil {
+		return fmt.Errorf("copy rootCA.pem: %w", err)
+	}
+	slog.Info("copied root CA", "src", src, "dst", dst)
+	return nil
 }
 
 func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
