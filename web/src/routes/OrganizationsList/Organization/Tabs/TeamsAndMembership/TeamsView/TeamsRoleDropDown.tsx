@@ -66,6 +66,7 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
       <DropdownList>
         {Object.keys(teamPermissions).map((key) => (
           <DropdownItem
+            component="button"
             data-testid={`${props.teamName}-${key}`}
             key={key}
             onClick={() =>
