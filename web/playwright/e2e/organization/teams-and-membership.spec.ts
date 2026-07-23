@@ -272,4 +272,72 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
       team.name,
     );
   });
+
+  // Org-name keyword cases that break getTeamMemberPath when domainRoute's
+  // organization branch is active (current path is /organization/...).
+  // overview/repository/signin substrings on this path do not exercise those
+  // regex branches — see repository-list coverage for the repository branch.
+  const keywordOrgPrefixes = [
+    'testorganization',
+    'organization',
+    'organizationtest2',
+  ] as const;
+
+  for (const orgPrefix of keywordOrgPrefixes) {
+    test(
+      `team and members links stay correct for org name prefix "${orgPrefix}"`,
+      {tag: ['@PROJQUAY-11202']},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization(orgPrefix);
+        const team = await api.team(org.name, 'keywordnav');
+        await api.teamMember(org.name, team.name, TEST_USERS.user.username);
+
+        const expectedTeamPath = `/organization/${org.name}/teams/${team.name}`;
+
+        async function clickTeamLinkAndAssertPath(
+          link: ReturnType<typeof authenticatedPage.getByRole>,
+        ) {
+          const href = await link.getAttribute('href');
+          expect(href, `malformed team link href: ${href}`).toContain(
+            expectedTeamPath,
+          );
+          expect(href).not.toContain(`/organization/${org.name}/organization/`);
+
+          await link.click();
+
+          await expect(authenticatedPage).toHaveURL(
+            (url) => url.pathname === expectedTeamPath,
+          );
+          await expect(
+            authenticatedPage.getByTestId('teamname-title'),
+          ).toContainText(team.name);
+        }
+
+        // Teams view
+        await navigateToTeamsTab(authenticatedPage, org.name);
+        await searchForTeam(authenticatedPage, team.name);
+        await clickTeamLinkAndAssertPath(
+          authenticatedPage.getByRole('link', {name: team.name}),
+        );
+
+        // Members view
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Teamsandmembership`,
+        );
+        await authenticatedPage
+          .getByRole('button', {name: 'Members View'})
+          .click();
+        await authenticatedPage
+          .getByTestId('members-view-search')
+          .fill(TEST_USERS.user.username);
+        await expect(
+          authenticatedPage.locator('.pf-v6-c-pagination__total-items').first(),
+        ).toContainText('1 - 1 of 1', {timeout: 15000});
+
+        await clickTeamLinkAndAssertPath(
+          authenticatedPage.getByRole('link', {name: team.name}),
+        );
+      },
+    );
+  }
 });
