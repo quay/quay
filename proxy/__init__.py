@@ -24,12 +24,19 @@ REGISTRY_URLS = {"docker.io": "registry-1.docker.io"}
 
 
 class UpstreamRegistryError(Exception):
-    def __init__(self, detail):
+    def __init__(self, detail, status_code=None):
+        self.status_code = status_code
         msg = (
             "the requested image may not exist in the upstream registry, or the configured "
             f"Quay organization credentials have insufficient rights to access it ({detail})"
         )
         super().__init__(msg)
+
+
+class UpstreamAuthError(UpstreamRegistryError):
+    """Raised when upstream credentials are rejected (401/403 after retry)."""
+
+    pass
 
 
 def parse_www_auth(value: str) -> dict[str, str]:
@@ -71,8 +78,10 @@ class Proxy:
         self.base_url = url
         self._session = requests.Session()
         self._repo = repository
-        self._authorize(self._credentials(), force_renewal=self._validation)
-        # flag used for validating Proxy cache config before saving to db
+        self._authorized = False
+        if self._validation:
+            self._authorize(self._credentials(), force_renewal=True)
+            self._authorized = True
 
     def get_manifest(
         self, image_ref: str, media_types: list[str] | None = None
@@ -112,6 +121,7 @@ class Proxy:
             },
             allow_redirects=True,
             stream=True,
+            timeout=(5, 120),
         )
         return resp
 
@@ -136,7 +146,13 @@ class Proxy:
         """
         return self._request(self._session.head, *args, **kwargs)
 
+    def _ensure_authorized(self):
+        if not self._authorized:
+            self._authorize(self._credentials())
+            self._authorized = True
+
     def _request(self, request_func, *args, **kwargs) -> requests.Response:
+        self._ensure_authorized()
         resp = self._safe_request(request_func, *args, **kwargs)
         if resp.status_code == 401:
             self._authorize(self._credentials(), force_renewal=True)
@@ -145,10 +161,14 @@ class Proxy:
         if resp.status_code == 401 and self._validation:
             return resp
         if not resp.ok:
-            raise UpstreamRegistryError(resp.status_code)
+            if resp.status_code in (401, 403):
+                raise UpstreamAuthError(resp.status_code, status_code=resp.status_code)
+            raise UpstreamRegistryError(resp.status_code, status_code=resp.status_code)
         return resp
 
     def _safe_request(self, request_func, *args, **kwargs):
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = (5, 30)
         try:
             return request_func(*args, **kwargs)
         except (RequestException, ConnectionError) as e:
@@ -220,8 +240,10 @@ class Proxy:
             return
 
         if not resp.ok:
-            raise UpstreamRegistryError(
-                f"Failed to get token from: '{realm}', with status code: {resp.status_code}"
+            exc_cls = UpstreamAuthError if resp.status_code in (401, 403) else UpstreamRegistryError
+            raise exc_cls(
+                f"Failed to get token from: '{realm}', with status code: {resp.status_code}",
+                status_code=resp.status_code,
             )
 
         resp_json = resp.json()
