@@ -46,7 +46,7 @@ jobs:
     container: docker.io/library/golang:1.25.0
     services:
       postgres:
-        image: postgres:11.5
+        image: postgres:18.4
         env:
           POSTGRES_USER: "user"
           POSTGRES_PASSWORD: "password"
