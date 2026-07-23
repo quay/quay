@@ -471,7 +471,7 @@ def test_spam_ingress_records_enforcement_metric(dry_run, expected_outcome, shou
                                     "simple",
                                     "casino https://spam.example",
                                     "public",
-                                    "update",
+                                    "create",
                                 )
                         else:
                             repository_endpoint._check_spam_ingress(
@@ -479,10 +479,10 @@ def test_spam_ingress_records_enforcement_metric(dry_run, expected_outcome, shou
                                 "simple",
                                 "casino https://spam.example",
                                 "public",
-                                "update",
+                                "create",
                             )
 
-    labels.assert_called_once_with(action="update", outcome=expected_outcome)
+    labels.assert_called_once_with(action="create", outcome=expected_outcome)
     labels.return_value.inc.assert_called_once_with()
 
 
