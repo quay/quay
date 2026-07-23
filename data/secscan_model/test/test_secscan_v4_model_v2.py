@@ -12,6 +12,7 @@ from data.registry_model import registry_model
 from data.secscan_model.secscan_v4_model import IndexReportState
 from data.secscan_model.secscan_v4_model_v2 import V4SecurityScannerV2
 from test.fixtures import *
+from util.secscan.v4.api import Non200ResponseException
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +321,18 @@ class TestRetryCountTracking:
         mss = ManifestSecurityStatus.select().first()
         assert mss.index_status == IndexStatus.FAILED
         assert mss.metadata_json.get("retry_count", 0) == 1
+
+    def test_non200_response_increments_retry_count(self, initialized_db, scanner):
+        mock_response = mock.Mock()
+        mock_response.status_code = 500
+        scanner._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+        scanner.perform_indexing(batch_size=1)
+
+        mss = ManifestSecurityStatus.select().first()
+        assert mss.index_status == IndexStatus.FAILED
+        assert mss.metadata_json.get("retry_count") == 1
+        assert mss.metadata_json.get("last_failed_hash") == "abc"
 
     def test_successful_indexing_resets_retry_count(self, initialized_db, scanner):
         m = Manifest.select().first()

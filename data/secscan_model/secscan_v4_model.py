@@ -52,6 +52,7 @@ from util.secscan.v4.api import (
     ClairSecurityScannerAPI,
     InvalidContentSent,
     LayerTooLargeException,
+    Non200ResponseException,
 )
 from util.secscan.validator import V4SecurityConfigValidator
 
@@ -638,6 +639,36 @@ class V4SecurityScanner(SecurityScannerInterface):
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.exception("Failed to perform indexing, invalid content sent")
+                continue
+            except Non200ResponseException as ex:
+                try:
+                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                    metadata = mss.metadata_json or {}
+                    if metadata.get("last_failed_hash") != current_indexer_hash:
+                        metadata["retry_count"] = 1
+                    else:
+                        metadata["retry_count"] = metadata.get("retry_count", 0) + 1
+                except ManifestSecurityStatus.DoesNotExist:
+                    metadata = {"retry_count": 1}
+                metadata["last_failed_hash"] = current_indexer_hash
+
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="server_error",
+                    error_json={
+                        "error": "non-200 response",
+                        "status_code": ex.response.status_code,
+                    },
+                    metadata_json=metadata,
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
+                logger.exception(
+                    "Failed to perform indexing, security scanner returned %s",
+                    ex.response.status_code,
+                )
                 continue
             except APIRequestFailure as ex:
                 ManifestSecurityStatus.update(

@@ -34,6 +34,7 @@ from util.secscan.v4.api import (
     ClairSecurityScannerAPI,
     InvalidContentSent,
     LayerTooLargeException,
+    Non200ResponseException,
 )
 from util.secscan.validator import V4SecurityConfigValidator
 
@@ -280,6 +281,18 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
             logger.exception("Failed to index: invalid content sent")
+            return
+        except Non200ResponseException as ex:
+            self._mark_failed(
+                candidate.id,
+                "server_error",
+                {"error": "non-200 response", "status_code": ex.response.status_code},
+                current_indexer_hash,
+            )
+            secscan_v2_scan_result.labels(result="api_error").inc()
+            logger.exception(
+                "Failed to index: security scanner returned %s", ex.response.status_code
+            )
             return
         except APIRequestFailure as ex:
             ManifestSecurityStatus.update(

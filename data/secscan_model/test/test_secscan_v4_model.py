@@ -56,7 +56,7 @@ from image.oci import (
 )
 from initdb import create_schema2_or_oci_manifest_for_testing
 from test.fixtures import *
-from util.secscan.v4.api import APIRequestFailure
+from util.secscan.v4.api import APIRequestFailure, Non200ResponseException
 
 logger = logging.getLogger(__name__)
 
@@ -1487,22 +1487,46 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
         assert mss.index_status == IndexStatus.COMPLETED
 
 
-def test_api_failure_does_not_increment_retry_count(initialized_db, set_secscan_config):
+def test_connection_failure_does_not_increment_retry_count(initialized_db, set_secscan_config):
     """
-    Test that APIRequestFailure does not increment retry_count since Clair 5xx
-    and connection errors are not a definitive verdict on the manifest. Only
-    Index_Error and unknown_state report states count toward the retry limit.
+    Test that APIRequestFailure (connection errors, timeouts) does not increment
+    retry_count. These are transient infrastructure errors, not a verdict on the
+    manifest itself.
     """
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
-    secscan._secscan_api.index.side_effect = APIRequestFailure("500 internal server error")
+    secscan._secscan_api.index.side_effect = APIRequestFailure("connection refused")
 
     secscan.perform_indexing(batch_size=100)
 
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
         assert mss.metadata_json.get("retry_count") is None
+
+
+def test_non200_response_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that Non200ResponseException (e.g. Clair 500 for corrupt layers)
+    increments retry_count, since the server processed the request and rejected
+    it — retrying the same manifest will produce the same result.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    secscan._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+    secscan.perform_indexing(batch_size=100)
+
+    failed_count = 0
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1
+            assert mss.metadata_json.get("last_failed_hash") == "abc"
+            failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
 def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
