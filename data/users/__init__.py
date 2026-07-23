@@ -79,6 +79,12 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
         enable_caching = config.get("FEATURE_LDAP_CACHING", False)
         cache_ttl = config.get("LDAP_CACHE_TTL", 5)
 
+        # Connection pooling options
+        connection_pooling = config.get("LDAP_CONNECTION_POOLING", True)
+        pool_size = config.get("LDAP_POOL_SIZE", 10)
+        pool_max_wait = config.get("LDAP_POOL_MAX_WAIT", 5.0)
+        pool_connection_lifetime = config.get("LDAP_POOL_CONNECTION_LIFETIME", 300)
+
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
             ldap_uri,
@@ -101,6 +107,10 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
             ldap_referrals=ldap_referrals,
             enable_caching=enable_caching,
             cache_ttl=cache_ttl,
+            connection_pooling=connection_pooling,
+            pool_size=pool_size,
+            pool_max_wait=pool_max_wait,
+            pool_connection_lifetime=pool_connection_lifetime,
         )
 
     if authentication_type == "JWT":
