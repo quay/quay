@@ -94,6 +94,25 @@ def test_load_security_information_failed_to_index(initialized_db, set_secscan_c
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.FAILED_TO_INDEX
 
 
+def test_load_security_information_scan_retries_exhausted(initialized_db, set_secscan_config):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=repository_ref._db_id,
+        error_json="scan retries exhausted after maximum attempts",
+        index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+        indexer_hash="",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    assert secscan.load_security_information(manifest).status == ScanLookupStatus.FAILED_TO_INDEX
+
+
 def test_load_security_information_api_returns_none(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
