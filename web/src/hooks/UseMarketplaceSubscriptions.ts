@@ -7,10 +7,20 @@ import {
 import {useCurrentUser} from './UseCurrentUser';
 import {useQuayConfig} from './UseQuayConfig';
 
+const EMPTY_USER_SUBSCRIPTIONS: Array<Dict<string>> = [];
+const EMPTY_ORG_SUBSCRIPTIONS: Array<Dict<string>> = [];
+
+type MarketplaceSubscriptionsResult = {
+  userSubscriptions: Array<Dict<string>>;
+  orgSubscriptions: Array<Dict<string>>;
+  loading: boolean;
+  error: boolean;
+};
+
 export function useMarketplaceSubscriptions(
   organizationName: string = null,
   userName: string = null,
-) {
+): MarketplaceSubscriptionsResult {
   const config = useQuayConfig();
   const {
     isLoading: loadingUserSubs,
@@ -42,8 +52,8 @@ export function useMarketplaceSubscriptions(
       : loadingUserSubs;
 
   return {
-    userSubscriptions: userSubscriptions,
-    orgSubscriptions: orgSubscriptions,
+    userSubscriptions: userSubscriptions ?? EMPTY_USER_SUBSCRIPTIONS,
+    orgSubscriptions: orgSubscriptions ?? EMPTY_ORG_SUBSCRIPTIONS,
     loading: loading,
     error: errorFetchingUserSubs,
   };
