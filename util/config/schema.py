@@ -859,9 +859,10 @@ CONFIG_SCHEMA = {
             "x-example": 30,
         },
         "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
-            "type": "number",
-            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 3.",
-            "x-example": 3,
+            "type": "integer",
+            "minimum": 0,
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 5.",
+            "x-example": 5,
         },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
