@@ -2015,6 +2015,7 @@ class IndexStatus(IntEnum):
     Possible statuses of manifest security scan progress.
     """
 
+    SCAN_RETRIES_EXHAUSTED = -4
     MANIFEST_LAYER_TOO_LARGE = -3
     MANIFEST_UNSUPPORTED = -2
     FAILED = -1
