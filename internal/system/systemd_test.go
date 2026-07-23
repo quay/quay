@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os/exec"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 // a shell process that exits with that code.
 func exitError(t *testing.T, code int) *exec.ExitError {
 	t.Helper()
-	cmd := exec.Command("sh", "-c", "exit "+string(rune('0'+code)))
+	cmd := exec.CommandContext(t.Context(), "sh", "-c", fmt.Sprintf("exit %d", code))
 	err := cmd.Run()
 	require.Error(t, err)
 	var exitErr *exec.ExitError
