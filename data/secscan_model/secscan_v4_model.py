@@ -223,7 +223,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         except ManifestSecurityStatus.DoesNotExist:
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
-        if status.index_status == IndexStatus.FAILED:
+        if status.index_status in (IndexStatus.FAILED, IndexStatus.SCAN_RETRIES_EXHAUSTED):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.FAILED_TO_INDEX)
 
         if status.index_status == IndexStatus.MANIFEST_UNSUPPORTED:
