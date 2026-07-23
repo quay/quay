@@ -466,6 +466,46 @@ jobs:
           podman pull "localhost:8443/projectquay/quay:3.13.2"
           echo "Successfully pulled mirrored image"
 
+      - name: Uninstall registry
+        run: |
+          sudo bin/quay uninstall -auto-approve -data-dir=/var/lib/quay
+
+      - name: Verify uninstall cleanup
+        run: |
+          set -euo pipefail
+
+          if sudo test -e /etc/containers/systemd/quay.container; then
+            echo "FAIL: quadlet file still exists"
+            exit 1
+          fi
+          echo "Quadlet file removed"
+
+          if sudo systemctl is-active quay.service 2>/dev/null; then
+            echo "FAIL: quay.service is still active"
+            exit 1
+          fi
+          echo "Service is not active"
+
+          if sudo test -d /var/lib/quay; then
+            echo "FAIL: data directory still exists"
+            exit 1
+          fi
+          echo "Data directory removed"
+
+          if ss -tlnp | grep -q ':8443 '; then
+            echo "FAIL: port 8443 is still listening"
+            exit 1
+          fi
+          echo "Port 8443 is not listening"
+
+          if sudo podman ps --format '{{.Names}}' | grep -q quay; then
+            echo "FAIL: quay container is still running"
+            exit 1
+          fi
+          echo "No quay container running"
+
+          echo "All uninstall assertions passed"
+
       - name: Collect diagnostics
         if: always()
         run: |

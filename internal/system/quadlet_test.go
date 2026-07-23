@@ -195,6 +195,32 @@ func TestUpdateServeHostnameRejectsMalformedHostname(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid hostname flag")
 }
 
+func TestQuadletRemoveDeletesContainerFile(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+	require.NoError(t, manager.Install("quay", &QuadletSpec{
+		Image:    "localhost/quay:test",
+		DataDir:  "/var/lib/quay",
+		Hostname: "localhost",
+		Port:     "8443",
+	}))
+	require.True(t, manager.Exists("quay"))
+
+	err := manager.Remove("quay")
+
+	require.NoError(t, err)
+	assert.False(t, manager.Exists("quay"))
+}
+
+func TestQuadletRemoveReturnsNilWhenFileAbsent(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+
+	err := manager.Remove("quay")
+
+	require.NoError(t, err)
+}
+
 func readQuadletTestFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Clean(path))
