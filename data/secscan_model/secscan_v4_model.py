@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
-DEFAULT_MAX_SCAN_RETRIES = 3
+DEFAULT_MAX_SCAN_RETRIES = 5
 STALE_IN_PROGRESS_HOURS = 6  # Hours before an IN_PROGRESS manifest is considered stale
 TAG_LIMIT = 100
 

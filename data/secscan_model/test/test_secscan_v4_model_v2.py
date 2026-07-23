@@ -216,7 +216,7 @@ class TestFindAndClaimBatch:
                 indexer_hash="abc",
                 indexer_version=IndexerVersion.V4,
                 last_indexed=datetime.utcnow() - timedelta(seconds=600),
-                metadata_json={"retry_count": 3, "last_failed_hash": "abc"},
+                metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
             )
 
         claimed = scanner._find_and_claim_batch(50, reindex_threshold, stale_threshold, "abc")

@@ -40,7 +40,7 @@ from util.secscan.validator import V4SecurityConfigValidator
 logger = logging.getLogger(__name__)
 
 DEFAULT_REINDEX_THRESHOLD = 86400
-DEFAULT_MAX_SCAN_RETRIES = 3
+DEFAULT_MAX_SCAN_RETRIES = 5
 STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
 

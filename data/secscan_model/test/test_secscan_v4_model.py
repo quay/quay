@@ -1444,7 +1444,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             last_indexed=reindex_threshold - timedelta(seconds=100),
-            metadata_json={"retry_count": 3, "last_failed_hash": "abc"},
+            metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
         )
 
     for i in range(3, 6):
@@ -1479,7 +1479,7 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
         ManifestSecurityStatus.manifest_id.in_(list(exhausted_ids))
     ):
         assert mss.index_status == IndexStatus.FAILED
-        assert mss.metadata_json.get("retry_count") == 3
+        assert mss.metadata_json.get("retry_count") == 5
 
     under_limit_ids = {manifests[i].id for i in range(3, 6)}
     for mss in ManifestSecurityStatus.select().where(
@@ -1490,13 +1490,14 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
 
 def test_api_failure_does_not_increment_retry_count(initialized_db, set_secscan_config):
     """
-    Test that APIRequestFailure does not increment retry_count since transport
-    failures are transient and should not count against the retry limit.
+    Test that APIRequestFailure does not increment retry_count since Clair 5xx
+    and connection errors are not a definitive verdict on the manifest. Only
+    Index_Error and unknown_state report states count toward the retry limit.
     """
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
-    secscan._secscan_api.index.side_effect = APIRequestFailure("connection refused")
+    secscan._secscan_api.index.side_effect = APIRequestFailure("500 internal server error")
 
     secscan.perform_indexing(batch_size=100)
 
