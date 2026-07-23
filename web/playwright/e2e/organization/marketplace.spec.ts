@@ -128,6 +128,39 @@ async function mockCommonEndpoints(page: Page): Promise<void> {
 }
 
 test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
+  test(
+    'renders billing information when marketplace is disabled',
+    {tag: '@PROJQUAY-12348'},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('mktdisabled');
+      const pageErrors: Error[] = [];
+      const marketplaceRequests: string[] = [];
+
+      authenticatedPage.on('pageerror', (error) => pageErrors.push(error));
+      authenticatedPage.on('request', (request) => {
+        if (request.url().includes('/marketplace')) {
+          marketplaceRequests.push(request.url());
+        }
+      });
+      await authenticatedPage.route('**/config', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.features.BILLING = true;
+        body.features.RH_MARKETPLACE = false;
+        await route.fulfill({response, body: JSON.stringify(body)});
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Billing information').click();
+
+      await expect(
+        authenticatedPage.getByTestId('billing-invoice-email'),
+      ).toBeVisible();
+      expect(marketplaceRequests).toEqual([]);
+      expect(pageErrors).toEqual([]);
+    },
+  );
+
   test('lists user marketplace subscriptions', async ({authenticatedPage}) => {
     const username = TEST_USERS.user.username;
 
