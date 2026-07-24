@@ -1,5 +1,8 @@
 import pytest
 from playhouse.test_utils import assert_query_count
+from unittest.mock import patch
+
+from features import FeatureNameValue
 
 from data.model.organization import (
     create_organization,
@@ -210,11 +213,13 @@ class TestCreateOrganizationEmail:
         assert org.email == "fallback@example.com"
 
     def test_two_orgs_can_share_same_email(self, initialized_db):
-        """Test that two organizations can have the same email address."""
+        """Test that two organizations can have the same email address when
+        FEATURE_ORG_SHARED_EMAIL is enabled."""
         admin = get_user("devtable")
         shared = "shared@example.com"
-        org1 = create_organization("sharedorg1", shared, admin)
-        org2 = create_organization("sharedorg2", shared, admin)
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org1 = create_organization("sharedorg1", shared, admin)
+            org2 = create_organization("sharedorg2", shared, admin)
         assert org1.email == shared
         assert org2.email == shared
         assert org1.id != org2.id
@@ -227,10 +232,6 @@ class TestCreateOrganizationEmail:
         so the partial unique index fires during INSERT. The fix is to insert
         with a placeholder email, set organization=true, then apply the real email.
         """
-        from unittest.mock import patch
-
-        from features import FeatureNameValue
-
         admin = get_user("devtable")
         user_email = admin.email  # devtable's email
         with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
@@ -262,13 +263,24 @@ class TestCreateOrganizationEmail:
         """Test find_organizations_by_email returns multiple matching orgs."""
         admin = get_user("devtable")
         shared = "shared-find@example.com"
-        org1 = create_organization("findorg2a", shared, admin)
-        org2 = create_organization("findorg2b", shared, admin)
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org1 = create_organization("findorg2a", shared, admin)
+            org2 = create_organization("findorg2b", shared, admin)
         results = list(find_organizations_by_email(shared))
         assert len(results) == 2
         result_ids = {r.id for r in results}
         assert org1.id in result_ids
         assert org2.id in result_ids
+
+    def test_org_to_org_shared_email_blocked_when_flag_off(self, initialized_db):
+        """Test that creating an org with another org's email is blocked when
+        FEATURE_ORG_SHARED_EMAIL is disabled (the default)."""
+        from data.model import InvalidEmailAddressException
+
+        admin = get_user("devtable")
+        create_organization("firstsharedorg", "orgshared@example.com", admin)
+        with pytest.raises(InvalidEmailAddressException):
+            create_organization("secondsharedorg", "orgshared@example.com", admin)
 
     def test_find_organizations_by_email_no_match(self, initialized_db):
         """Test find_organizations_by_email returns empty when no match."""
@@ -283,10 +295,6 @@ class TestCreateOrganizationEmail:
         Regression test for the combined recovery email flow where a single
         email may now match a personal user AND multiple organizations.
         """
-        from unittest.mock import patch
-
-        from features import FeatureNameValue
-
         admin = get_user("devtable")
         shared = admin.email  # e.g. devtable@devtable.com
 
