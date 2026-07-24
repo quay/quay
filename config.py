@@ -521,6 +521,9 @@ class DefaultConfig(ImmutableConfig):
     # Minimum number of seconds before re-indexing a manifest with the security scanner.
     SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
+    # Maximum number of scan retries per indexer hash before a manifest is skipped.
+    SECURITY_SCANNER_MAX_SCAN_RETRIES = 5
+
     # Maximum layer size allowed for indexing.
     SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE = None
 
