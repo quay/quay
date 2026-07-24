@@ -2,5 +2,7 @@
 
 SQL migration files applied by `quay db upgrade`.
 
-Each file must contain a `-- revision: <alembic_id>` comment.
-Files are applied in lexicographic filename order.
+The root file is the idempotent OMR squash bridge and contains a
+`-- revision: <id>` comment. Every later file also contains a
+`-- down_revision: <id>` comment; the Go migration runner follows that graph
+from the database's exact Alembic or Go revision.

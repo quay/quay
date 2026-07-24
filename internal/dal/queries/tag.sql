@@ -1,34 +1,57 @@
--- name: UpsertTag :one
--- KNOWN LIMITATION: ON CONFLICT uses lifetime_end_ms which is nullable.
--- NULL != NULL in SQL, so active tags (lifetime_end_ms IS NULL) never conflict.
--- This inserts duplicates instead of updating. Proper fix requires a partial
--- unique index: CREATE UNIQUE INDEX ON tag (repository_id, name) WHERE lifetime_end_ms IS NULL.
--- Until then, callers should expire the old tag before inserting a new one.
+-- name: InsertTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
 VALUES (?, ?, ?, ?, ?)
-ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
--- name: ExpireActiveTag :execresult
+-- name: GetLatestTag :one
+-- Tag IDs preserve insertion order even when the wall clock moves backward.
+SELECT id, manifest_id, lifetime_start_ms, lifetime_end_ms
+FROM tag
+WHERE repository_id = ? AND name = ?
+ORDER BY id DESC
+LIMIT 1;
+
+-- name: ExpireTagByID :execresult
 UPDATE tag SET lifetime_end_ms = ?
-WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL;
+WHERE id = ?;
 
 -- name: DeleteTagsByManifest :exec
 DELETE FROM tag WHERE manifest_id = ?;
 
 -- name: GetTagsByRepository :many
-SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
-FROM tag
-WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0;
+WITH ranked_tags AS (
+  SELECT name, manifest_id, lifetime_start_ms, lifetime_end_ms,
+         row_number() OVER (
+           PARTITION BY repository_id, name
+           ORDER BY id DESC
+         ) AS row_num
+  FROM tag
+  WHERE repository_id = ? AND hidden = 0
+)
+SELECT name
+FROM ranked_tags
+WHERE row_num = 1
+  AND manifest_id IS NOT NULL
+  AND (lifetime_end_ms IS NULL OR (lifetime_start_ms <= ? AND lifetime_end_ms > ?))
+ORDER BY name;
 
 -- name: InsertHiddenTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
 VALUES (?, ?, ?, ?, ?, 1)
-ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
+ON CONFLICT (repository_id, name) WHERE lifetime_end_ms IS NULL
+DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
--- name: GetActiveTagDigest :one
+-- name: GetLiveTagDigest :one
+WITH latest_tag AS (
+  SELECT t.manifest_id, t.lifetime_start_ms, t.lifetime_end_ms
+  FROM tag t
+  WHERE t.repository_id = ? AND t.name = ?
+  ORDER BY t.id DESC
+  LIMIT 1
+)
 SELECT m.digest
-FROM tag t
+FROM latest_tag t
 JOIN manifest m ON t.manifest_id = m.id
-WHERE t.repository_id = ? AND t.name = ? AND t.lifetime_end_ms IS NULL;
+WHERE t.lifetime_end_ms IS NULL
+   OR (t.lifetime_start_ms <= ? AND t.lifetime_end_ms > ?);

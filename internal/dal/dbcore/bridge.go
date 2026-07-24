@@ -6,14 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"strings"
-
-	"github.com/quay/quay/internal/dal/schema"
 )
 
-// knownOMRVersions lists every Alembic version a supported OMR v2.0.x SQLite
-// database could have. The bridge migration is safe to run from any of these
-// starting points.
+// knownOMRVersions lists supported OMR v2.0.x Alembic revisions older than the
+// bridge root. Revisions at or after the root are represented directly in the
+// embedded migration catalog.
 var knownOMRVersions = map[string]bool{
 	// Quay 3.12.x era (OMR SQLite support introduced)
 	"0cdd1f27a450": true,
@@ -41,11 +40,6 @@ var knownOMRVersions = map[string]bool{
 	"b1c2d3e4f5a6": true,
 	"15f06d00c4b3": true,
 	"414c5e2fc487": true,
-	// Previous target version (systems already bridged once)
-	"b30800b1d271": true,
-	// Quota notification tables
-	"6715e4719375": true,
-	"9fa37f66a9b6": true,
 }
 
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
@@ -70,12 +64,30 @@ var bridgeIndexFixes = []struct {
 }
 
 // RunBridge upgrades an OMR SQLite database to the Go binary's target schema.
-// This is a Go-native squash migration for supported OMR Alembic revisions:
-// the standalone binary intentionally does not ship Python, Alembic, or Quay's
-// Python migration runtime. It validates the starting version, applies column
-// additions and index fixes that SQLite cannot express idempotently, then
-// executes the bridge SQL file.
+// Revisions older than the bridge root first run the Go-native squash bridge;
+// revisions at or after the root follow the embedded revision-aware SQL chain.
+// The standalone binary intentionally does not ship Python, Alembic, or Quay's
+// Python migration runtime.
 func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		return fmt.Errorf("load migration catalog: %w", err)
+	}
+	return runBridgeWithCatalog(ctx, db, catalog, w)
+}
+
+func runBridgeWithFS(ctx context.Context, db *sql.DB, migrationFS fs.FS, w io.Writer) error {
+	catalog, err := loadMigrationCatalog(migrationFS)
+	if err != nil {
+		return fmt.Errorf("load migration catalog: %w", err)
+	}
+	if err := catalog.validateVersions(); err != nil {
+		return fmt.Errorf("validate migration catalog: %w", err)
+	}
+	return runBridgeWithCatalog(ctx, db, catalog, w)
+}
+
+func runBridgeWithCatalog(ctx context.Context, db *sql.DB, catalog *migrationCatalog, w io.Writer) error {
 	ver, err := SchemaVersion(ctx, db)
 	if err != nil {
 		return fmt.Errorf("read schema version: %w", err)
@@ -84,30 +96,90 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		fmt.Fprintf(w, "Schema is current (version %s)\n", ver)
 		return nil
 	}
+
+	if _, isGoRevision := catalog.revisionIndex[ver]; isGoRevision {
+		plan, err := catalog.plan(ver, TargetVersion)
+		if err != nil {
+			return fmt.Errorf("plan SQLite migrations: %w", err)
+		}
+		fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", ver, TargetVersion)
+		if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
+			return fmt.Errorf("apply SQLite migrations: %w", err)
+		}
+		return nil
+	}
+
 	if !knownOMRVersions[ver] {
 		return fmt.Errorf(
 			"unknown schema version %q — this tool supports OMR v2.0.x (SQLite) databases; "+
 				"if you are on OMR v1.3.x, upgrade to OMR v2.0 first", ver)
 	}
 
-	fmt.Fprintf(w, "Bridging schema from %s to %s\n", ver, TargetVersion)
+	root := catalog.migrations[0]
+	plan, err := catalog.plan(root.revision, TargetVersion)
+	if err != nil {
+		return fmt.Errorf("plan post-bridge SQLite migrations: %w", err)
+	}
+	if err := bridgeToRoot(ctx, db, ver, root, w); err != nil {
+		return err
+	}
 
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+	fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", root.revision, TargetVersion)
+	if err := applyMigrationPlan(ctx, db, plan, w); err != nil {
+		return fmt.Errorf("apply SQLite migrations: %w", err)
+	}
+	return nil
+}
+
+func bridgeToRoot(
+	ctx context.Context, db *sql.DB, currentVersion string, bridgeRoot migrationInfo, w io.Writer,
+) error {
+	return bridgeToRootWithApply(ctx, db, currentVersion, bridgeRoot, w, applyBridge)
+}
+
+func bridgeToRootWithApply(
+	ctx context.Context,
+	db *sql.DB,
+	currentVersion string,
+	bridgeRoot migrationInfo,
+	w io.Writer,
+	apply func(context.Context, *sql.Tx, string) error,
+) (retErr error) {
+	fmt.Fprintf(w, "Bridging schema from %s to %s\n", currentVersion, bridgeRoot.revision)
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire bridge connection: %w", err)
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close bridge connection: %w", err))
+		}
+	}()
+
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
 	}
-	defer func() { _, _ = db.ExecContext(ctx, "PRAGMA foreign_keys = ON") }()
+	defer func() {
+		if _, err := conn.ExecContext(context.WithoutCancel(ctx), "PRAGMA foreign_keys = ON"); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("re-enable foreign keys: %w", err))
+		}
+	}()
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := applyBridge(ctx, tx); err != nil {
+	if err := apply(ctx, tx, bridgeRoot.sql); err != nil {
 		return err
 	}
+	if err := verifyForeignKeys(ctx, tx); err != nil {
+		return fmt.Errorf("validate bridge foreign keys: %w", err)
+	}
 
-	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", TargetVersion); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", bridgeRoot.revision); err != nil {
 		return fmt.Errorf("stamp version: %w", err)
 	}
 
@@ -115,13 +187,13 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("commit bridge: %w", err)
 	}
 
-	fmt.Fprintf(w, "Schema bridged to %s\n", TargetVersion)
+	fmt.Fprintf(w, "Schema bridged to %s\n", bridgeRoot.revision)
 	return nil
 }
 
 // applyBridge runs the three bridge steps within the given transaction:
 // column additions, index fixes, and the bridge SQL file.
-func applyBridge(ctx context.Context, tx *sql.Tx) error {
+func applyBridge(ctx context.Context, tx *sql.Tx, bridgeSQL string) error {
 	for _, col := range bridgeColumns {
 		if err := ensureColumn(ctx, tx, col.table, col.column, col.typedef); err != nil {
 			return fmt.Errorf("ensure column %s.%s: %w", col.table, col.column, err)
@@ -134,11 +206,7 @@ func applyBridge(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
-	bridgeSQL, err := schema.MigrationFiles.ReadFile("sqlite/migrations/0001_bridge_from_omr.sql")
-	if err != nil {
-		return fmt.Errorf("read bridge SQL: %w", err)
-	}
-	for _, stmt := range splitStatements(string(bridgeSQL)) {
+	for _, stmt := range splitStatements(bridgeSQL) {
 		trimmed := strings.TrimSpace(stmt)
 		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
 			continue
@@ -147,7 +215,6 @@ func applyBridge(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("execute bridge SQL: %w\nstatement: %s", err, truncate(trimmed, 200))
 		}
 	}
-
 	return nil
 }
 

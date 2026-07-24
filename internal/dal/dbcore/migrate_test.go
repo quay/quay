@@ -2,12 +2,18 @@ package dbcore
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
+
+	"github.com/quay/quay/internal/dal/schema"
 )
+
+const generatedSchemaVersion = "9fa37f66a9b6"
 
 func TestInitDatabase(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
@@ -27,6 +33,18 @@ func TestInitDatabase(t *testing.T) {
 	output := buf.String()
 	if !strings.Contains(output, "tables") {
 		t.Errorf("expected summary with table count, got: %s", output)
+	}
+	for _, expected := range []string{
+		"Found 1 migration file(s)",
+		"Applying: 0007_tag_active_unique_index.sql",
+		"Migration complete: 1 migration(s) applied",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("initialization output missing %q:\n%s", expected, output)
+		}
+	}
+	if strings.Contains(output, "0001_bridge_from_omr.sql") {
+		t.Errorf("initialization unexpectedly applied the OMR bridge root:\n%s", output)
 	}
 
 	// Verify tables were created.
@@ -48,6 +66,268 @@ func TestInitDatabase(t *testing.T) {
 	}
 	if ver == "" {
 		t.Error("expected non-empty alembic version after init")
+	}
+	if ver != TargetVersion {
+		t.Errorf("version = %q, want %q", ver, TargetVersion)
+	}
+	assertTagIndexes(t, db)
+}
+
+func TestListMigrations_ReportsSupportedMigrationChain(t *testing.T) {
+	var output bytes.Buffer
+	ListMigrations(&output)
+
+	const expected = "Pending migrations:\n" +
+		"  - 0001_bridge_from_omr.sql\n" +
+		"  - 0002_user_email_partial_indexes.sql\n" +
+		"  - 0003_oauth_api_token_metadata.sql\n" +
+		"  - 0004_oauth_token_display_name.sql\n" +
+		"  - 0005_namespace_notification_tables.sql\n" +
+		"  - 0006_namespace_notification_log_kinds.sql\n" +
+		"  - 0007_tag_active_unique_index.sql\n"
+	if output.String() != expected {
+		t.Fatalf("ListMigrations output:\n%s\nwant:\n%s", output.String(), expected)
+	}
+}
+
+func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP INDEX tag_repository_id_name_active`); err != nil {
+		t.Fatalf("drop active index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP INDEX tag_repository_id_name_lifetime_end_ms`); err != nil {
+		t.Fatalf("drop history index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx,
+		`CREATE UNIQUE INDEX tag_repository_id_name_lifetime_end_ms ON tag (repository_id, name, lifetime_end_ms)`,
+	); err != nil {
+		t.Fatalf("create old unique history index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, generatedSchemaVersion); err != nil {
+		t.Fatalf("stamp generated schema version: %v", err)
+	}
+
+	insertTagMigrationFixture(t, db)
+
+	var buf bytes.Buffer
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &buf); err != nil {
+		t.Fatalf("ApplyMigrations: %v\n%s", err, buf.String())
+	}
+
+	ver, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion: %v", err)
+	}
+	if ver != TargetVersion {
+		t.Errorf("version = %q, want %q", ver, TargetVersion)
+	}
+	assertTagIndexes(t, db)
+
+	var activeCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM tag WHERE repository_id = 1 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeCount); err != nil {
+		t.Fatalf("count active tags: %v", err)
+	}
+	if activeCount != 1 {
+		t.Fatalf("active tag count = %d, want 1", activeCount)
+	}
+
+	var activeManifestID int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT manifest_id FROM tag WHERE repository_id = 1 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeManifestID); err != nil {
+		t.Fatalf("active manifest: %v", err)
+	}
+	if activeManifestID != 2 {
+		t.Errorf("active manifest_id = %d, want 2", activeManifestID)
+	}
+
+	var expiredEnd, expiredStart int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT lifetime_start_ms, lifetime_end_ms FROM tag WHERE id = 1`,
+	).Scan(&expiredStart, &expiredEnd); err != nil {
+		t.Fatalf("expired duplicate active row: %v", err)
+	}
+	if expiredEnd < expiredStart {
+		t.Fatalf("expired row has invalid interval: start=%d end=%d", expiredStart, expiredEnd)
+	}
+
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+		 VALUES (3, 'latest', 1, 1, 250, 300, 1),
+		        (4, 'latest', 1, 2, 260, 300, 1)`,
+	); err != nil {
+		t.Fatalf("insert duplicate expired history: %v", err)
+	}
+
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (5, 'latest', 1, 1, 400, 1)`,
+	)
+	if err == nil {
+		t.Fatal("expected duplicate active tag insert to fail")
+	}
+}
+
+func TestApplyMigrations_NormalizesReferrerProtectionNames(t *testing.T) {
+	db := prepareLegacyTagMigration(t)
+	ctx := t.Context()
+
+	sharedPrefix := strings.Repeat("a", 12)
+	digest1 := "sha256:" + sharedPrefix + strings.Repeat("1", 52)
+	digest2 := "sha256:" + sharedPrefix + strings.Repeat("2", 52)
+	statements := []struct {
+		query string
+		args  []any
+	}{
+		{
+			query: `INSERT INTO "user" (
+				id, username, email, verified, organization, robot, invoice_email,
+				invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+			) VALUES (11, 'migration-referrers', 'migration-referrers@example.com', 1, 0, 0, 0, 0,
+				'2026-01-01 00:00:00', 1209600, 1)`,
+		},
+		{
+			query: `INSERT INTO repository (
+				id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+			) VALUES (11, 11, 'referrers', 2, '', '', 1)`,
+		},
+		{
+			query: `INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+				VALUES (101, 11, ?, 17, '{}'), (102, 11, ?, 17, '{}'),
+				       (103, 11, 'malformed', 17, '{}')`,
+			args: []any{digest1, digest2},
+		},
+		{
+			query: `INSERT INTO tag (
+				id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden
+			) VALUES (101, '$referrer-aaaaaaaaaaaa', 11, 101, 100, 1, 1),
+			         (102, '$referrer-aaaaaaaaaaaa', 11, 102, 200, 1, 1),
+			         (103, '$referrer-aaaaaaaaaaaa', 11, 101, 300, 1, 1),
+			         (104, '$referrer-broken', 11, 103, 400, 1, 1),
+			         (105, '$referrer-broken', 11, NULL, 500, 1, 1)`,
+		},
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt.query, stmt.args...); err != nil {
+			t.Fatalf("insert migration fixture: %v\nstatement: %s", err, stmt.query)
+		}
+	}
+
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+		t.Fatalf("ApplyMigrations: %v", err)
+	}
+
+	assertActiveProtection := func(name string, manifestID sql.NullInt64) {
+		t.Helper()
+		var gotManifestID sql.NullInt64
+		if err := db.QueryRowContext(ctx,
+			`SELECT manifest_id FROM tag
+			 WHERE repository_id = 11 AND name = ? AND hidden = 1 AND lifetime_end_ms IS NULL`,
+			name,
+		).Scan(&gotManifestID); err != nil {
+			t.Fatalf("active protection %q: %v", name, err)
+		}
+		if gotManifestID != manifestID {
+			t.Fatalf("active protection %q manifest = %v, want %v", name, gotManifestID, manifestID)
+		}
+	}
+	assertActiveProtection("$referrer-sha256-"+sharedPrefix+strings.Repeat("1", 52), sql.NullInt64{Int64: 101, Valid: true})
+	assertActiveProtection("$referrer-sha256-"+sharedPrefix+strings.Repeat("2", 52), sql.NullInt64{Int64: 102, Valid: true})
+	assertActiveProtection("$referrer-$legacy-104", sql.NullInt64{Int64: 103, Valid: true})
+	assertActiveProtection("$referrer-$legacy-105", sql.NullInt64{})
+
+	var duplicateEnd int64
+	if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = 101`).Scan(&duplicateEnd); err != nil {
+		t.Fatalf("expired true retry duplicate: %v", err)
+	}
+	if duplicateEnd != 300 {
+		t.Fatalf("retry duplicate lifetime_end_ms = %d, want 300", duplicateEnd)
+	}
+	var activeHidden int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM tag WHERE repository_id = 11 AND hidden = 1 AND lifetime_end_ms IS NULL`,
+	).Scan(&activeHidden); err != nil {
+		t.Fatal(err)
+	}
+	if activeHidden != 4 {
+		t.Fatalf("active hidden protection rows = %d, want 4", activeHidden)
+	}
+}
+
+func TestApplyMigrations_RanksAllDuplicateActiveTagGroups(t *testing.T) {
+	db := prepareLegacyTagMigration(t)
+	ctx := t.Context()
+
+	statements := []string{
+		`INSERT INTO "user" (
+			id, username, email, verified, organization, robot, invoice_email,
+			invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+		) VALUES (21, 'ranking-one', 'ranking-one@example.com', 1, 0, 0, 0, 0,
+			'2026-01-01 00:00:00', 1209600, 1),
+		         (22, 'ranking-two', 'ranking-two@example.com', 1, 0, 0, 0, 0,
+			'2026-01-01 00:00:00', 1209600, 1)`,
+		`INSERT INTO repository (
+			id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+		) VALUES (21, 21, 'one', 2, '', '', 1), (22, 22, 'two', 2, '', '', 1)`,
+		`INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+		 VALUES (201, 21, 'sha256:201', 17, '{}'), (202, 21, 'sha256:202', 17, '{}'),
+		        (203, 22, 'sha256:203', 17, '{}'), (204, 22, 'sha256:204', 17, '{}')`,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (201, 'latest', 21, 201, 100, 1),
+		        (202, 'latest', 21, 202, 200, 1),
+		        (203, 'latest', 21, 201, 200, 1),
+		        (204, 'stable', 21, 201, 10, 1),
+		        (205, 'stable', 21, 202, 20, 1),
+			        (206, 'latest', 22, 203, 500, 1),
+			        (207, 'latest', 22, 204, 400, 1),
+			        (208, 'latest', 22, 204, 300, 1)`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("insert ranking fixture: %v\nstatement: %s", err, stmt)
+		}
+	}
+
+	if err := ApplyMigrations(ctx, db, generatedSchemaVersion, TargetVersion, &bytes.Buffer{}); err != nil {
+		t.Fatalf("ApplyMigrations: %v", err)
+	}
+
+	wantEnds := map[int64]sql.NullInt64{
+		201: {Int64: 200, Valid: true},
+		202: {Int64: 200, Valid: true},
+		203: {},
+		204: {Int64: 20, Valid: true},
+		205: {},
+		206: {Int64: 500, Valid: true},
+		207: {Int64: 400, Valid: true},
+		208: {},
+	}
+	for id, wantEnd := range wantEnds {
+		var gotEnd sql.NullInt64
+		if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = ?`, id).Scan(&gotEnd); err != nil {
+			t.Fatalf("tag %d lifetime_end_ms: %v", id, err)
+		}
+		if gotEnd != wantEnd {
+			t.Errorf("tag %d lifetime_end_ms = %v, want %v", id, gotEnd, wantEnd)
+		}
+	}
+
+	var activeRollbackID int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT id FROM tag WHERE repository_id = 22 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeRollbackID); err != nil {
+		t.Fatal(err)
+	}
+	if activeRollbackID != 208 {
+		t.Fatalf("rollback-clock active row = %d, want latest insertion 208", activeRollbackID)
 	}
 }
 
@@ -145,7 +425,7 @@ func TestSchemaVersion_EmptyDB(t *testing.T) {
 }
 
 func TestSplitStatements_DropsLineCommentsWithoutDroppingStatements(t *testing.T) {
-	sql := `-- migration metadata
+	migrationSQL := `-- migration metadata
 -- section comment
 CREATE TABLE first (id INTEGER);
 
@@ -153,7 +433,7 @@ CREATE TABLE first (id INTEGER);
 CREATE TABLE second (id INTEGER);
 `
 
-	stmts := splitStatements(sql)
+	stmts := splitStatements(migrationSQL)
 	if len(stmts) != 2 {
 		t.Fatalf("expected 2 statements, got %d: %#v", len(stmts), stmts)
 	}
@@ -163,6 +443,450 @@ CREATE TABLE second (id INTEGER);
 	if !strings.Contains(stmts[1], "CREATE TABLE second") {
 		t.Errorf("second statement was dropped: %#v", stmts)
 	}
+}
+
+func TestLoadMigrationCatalog_RejectsInvalidGraphs(t *testing.T) {
+	tests := []struct {
+		name    string
+		files   map[string]string
+		wantErr string
+	}{
+		{
+			name: "duplicate revisions",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("root", "parent", ""),
+			},
+			wantErr: "duplicate revision",
+		},
+		{
+			name: "duplicate down revisions",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("one", "root", ""),
+				"0003.sql": testMigrationSQL("two", "root", ""),
+			},
+			wantErr: "duplicate down_revision",
+		},
+		{
+			name: "self link",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("self", "self", ""),
+			},
+			wantErr: "self-link",
+		},
+		{
+			name: "cycle",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("one", "two", ""),
+				"0003.sql": testMigrationSQL("two", "one", ""),
+			},
+			wantErr: "cycle",
+		},
+		{
+			name: "dangling parent",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root", "", ""),
+				"0002.sql": testMigrationSQL("orphan", "missing", ""),
+			},
+			wantErr: "dangling down_revision",
+		},
+		{
+			name: "missing bridge root",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("one", "missing", ""),
+			},
+			wantErr: "exactly one bridge root",
+		},
+		{
+			name: "disconnected off-chain root",
+			files: map[string]string{
+				"0001.sql": testMigrationSQL("root-one", "", ""),
+				"0002.sql": testMigrationSQL("one", "root-one", ""),
+				"0003.sql": testMigrationSQL("root-two", "", ""),
+				"0004.sql": testMigrationSQL("two", "root-two", ""),
+			},
+			wantErr: "exactly one bridge root",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadMigrationCatalog(testMigrationFS(tt.files))
+			if err == nil {
+				t.Fatal("expected invalid migration catalog to fail")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %q, want substring %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestLoadMigrationCatalog_CanonicalizesRevisionOrder(t *testing.T) {
+	catalog, err := loadMigrationCatalog(testMigrationFS(map[string]string{
+		"0001_head.sql":   testMigrationSQL("head", "middle", ""),
+		"0002_middle.sql": testMigrationSQL("middle", "root", ""),
+		"0003_root.sql":   testMigrationSQL("root", "", ""),
+	}))
+	if err != nil {
+		t.Fatalf("load migration catalog: %v", err)
+	}
+
+	want := []string{"root", "middle", "head"}
+	if len(catalog.migrations) != len(want) {
+		t.Fatalf("migration count = %d, want %d", len(catalog.migrations), len(want))
+	}
+	for index, revision := range want {
+		if got := catalog.migrations[index].revision; got != revision {
+			t.Errorf("migration %d revision = %q, want %q", index, got, revision)
+		}
+		if got := catalog.revisionIndex[revision]; got != index {
+			t.Errorf("revision index for %q = %d, want %d", revision, got, index)
+		}
+	}
+
+	plan, err := catalog.plan("root", "head")
+	if err != nil {
+		t.Fatalf("plan root to head: %v", err)
+	}
+	if len(plan) != 2 || plan[0].revision != "middle" || plan[1].revision != "head" {
+		t.Fatalf("plan = %#v, want middle then head", plan)
+	}
+	if _, err := catalog.plan("head", "root"); err == nil || !strings.Contains(err.Error(), "forward-only") {
+		t.Fatalf("backward plan error = %v, want explicit forward-only rejection", err)
+	}
+}
+
+func TestMigrationCatalog_RejectsSuccessorAfterTargetVersion(t *testing.T) {
+	catalog, err := loadMigrationCatalog(testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL("unexpected_successor", TargetVersion, ""),
+	}))
+	if err != nil {
+		t.Fatalf("load migration catalog: %v", err)
+	}
+	if err := catalog.validateVersions(); err == nil || !strings.Contains(err.Error(), "terminal revision") {
+		t.Fatalf("error = %v, want terminal revision mismatch", err)
+	}
+}
+
+func TestApplyMigrations_UnreachableTargetDoesNotMutateDatabase(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE alembic_version (version_num TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alembic_version VALUES ('one')`); err != nil {
+		t.Fatal(err)
+	}
+
+	fsys := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL("root", "", ""),
+		"0002.sql": testMigrationSQL("one", "root", "CREATE TABLE already_applied (id INTEGER);"),
+		"0003.sql": testMigrationSQL("head", "one", "CREATE TABLE must_not_exist (id INTEGER);"),
+	})
+	err := applyMigrationsWithFS(ctx, db, fsys, "one", "root", &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "unreachable") {
+		t.Fatalf("error = %v, want unreachable target error", err)
+	}
+
+	version, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "one" {
+		t.Fatalf("version = %q, want one", version)
+	}
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'must_not_exist'`,
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 0 {
+		t.Fatal("migration SQL committed before the complete path was planned")
+	}
+}
+
+func TestEmbeddedSeedVersionHasMigrationRoute(t *testing.T) {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		t.Fatalf("load embedded migration catalog: %v", err)
+	}
+	if len(catalog.migrations) != 7 {
+		t.Fatalf("embedded migration count = %d, want 7", len(catalog.migrations))
+	}
+	root := catalog.migrations[0]
+	if root.filename != "0001_bridge_from_omr.sql" || root.revision != BridgeTargetVersion {
+		t.Fatalf("bridge root = %s (%s), want 0001_bridge_from_omr.sql (%s)",
+			root.filename, root.revision, BridgeTargetVersion)
+	}
+
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE alembic_version (version_num TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range splitStatements(schema.SeedDataSQL) {
+		if strings.HasPrefix(stmt, "INSERT INTO alembic_version") {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				t.Fatalf("execute embedded version seed: %v", err)
+			}
+			break
+		}
+	}
+	seedVersion, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seedVersion == "" {
+		t.Fatal("embedded seed data did not provide a schema version")
+	}
+	plan, err := catalog.plan(seedVersion, TargetVersion)
+	if err != nil {
+		t.Fatalf("embedded seed version %q has no route to %q: %v", seedVersion, TargetVersion, err)
+	}
+	if seedVersion != generatedSchemaVersion {
+		t.Fatalf("embedded seed version = %q, want %q", seedVersion, generatedSchemaVersion)
+	}
+	if len(plan) != 1 || plan[0].filename != "0007_tag_active_unique_index.sql" {
+		t.Fatalf("embedded seed route = %#v, want only 0007_tag_active_unique_index.sql", plan)
+	}
+}
+
+func TestEmbeddedAlembicRevisionRoutes(t *testing.T) {
+	catalog, err := loadEmbeddedMigrationCatalog()
+	if err != nil {
+		t.Fatalf("load embedded migration catalog: %v", err)
+	}
+
+	tests := []struct {
+		from string
+		want []string
+	}{
+		{
+			from: "c3d4e5f6a7b8",
+			want: []string{
+				"0002_user_email_partial_indexes.sql",
+				"0003_oauth_api_token_metadata.sql",
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "b1a79fa8e630",
+			want: []string{
+				"0003_oauth_api_token_metadata.sql",
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "d064a4f00d4a",
+			want: []string{
+				"0004_oauth_token_display_name.sql",
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "b30800b1d271",
+			want: []string{
+				"0005_namespace_notification_tables.sql",
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{
+			from: "6715e4719375",
+			want: []string{
+				"0006_namespace_notification_log_kinds.sql",
+				"0007_tag_active_unique_index.sql",
+			},
+		},
+		{from: generatedSchemaVersion, want: []string{"0007_tag_active_unique_index.sql"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.from, func(t *testing.T) {
+			plan, err := catalog.plan(tt.from, TargetVersion)
+			if err != nil {
+				t.Fatalf("plan from %s: %v", tt.from, err)
+			}
+			got := make([]string, len(plan))
+			for i, migration := range plan {
+				got[i] = migration.filename
+			}
+			if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("route from %s = %v, want %v", tt.from, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInitDatabase_MigrationFailureRestoresForeignKeysAndLeavesSeedVersionRetryable(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+
+	failingFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(generatedSchemaVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL(
+			TargetVersion,
+			generatedSchemaVersion,
+			"CREATE TABLE recovered (id INTEGER); CREATE TABLE broken (",
+		),
+	})
+	err := initDatabaseWithFS(ctx, db, failingFS, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "apply Go-only migrations") {
+		t.Fatalf("error = %v, want migration failure", err)
+	}
+
+	var foreignKeys int
+	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+		t.Fatal(err)
+	}
+	if foreignKeys != 1 {
+		t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+	}
+	seedVersion, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seedVersion != generatedSchemaVersion {
+		t.Fatalf("version = %q, want retryable seed version %q", seedVersion, generatedSchemaVersion)
+	}
+
+	retryFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(generatedSchemaVersion, BridgeTargetVersion, ""),
+		"0003.sql": testMigrationSQL(TargetVersion, generatedSchemaVersion, "CREATE TABLE recovered (id INTEGER);"),
+	})
+	if err := applyMigrationsWithFS(
+		ctx, db, retryFS, seedVersion, TargetVersion, &bytes.Buffer{},
+	); err != nil {
+		t.Fatalf("retry migration from seeded version: %v", err)
+	}
+}
+
+func TestInitDatabase_InvalidSeedRouteDoesNotCommitSchema(t *testing.T) {
+	versionSeed := fmt.Sprintf("INSERT INTO alembic_version VALUES('%s');", generatedSchemaVersion)
+	tests := []struct {
+		name    string
+		seedSQL string
+		wantErr string
+	}{
+		{
+			name:    "missing version marker",
+			seedSQL: strings.Replace(schema.SeedDataSQL, versionSeed, "", 1),
+			wantErr: "read seeded schema version",
+		},
+		{
+			name: "unreachable version marker",
+			seedSQL: strings.Replace(
+				schema.SeedDataSQL,
+				versionSeed,
+				"INSERT INTO alembic_version VALUES('unreachable_seed');",
+				1,
+			),
+			wantErr: "plan Go-only migrations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := openTestDB(t)
+			defer db.Close()
+			ctx := t.Context()
+			catalog, err := loadEmbeddedMigrationCatalog()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = initDatabaseWithSources(
+				ctx, db, catalog, schema.QuaySchemaSQL, tt.seedSQL, &bytes.Buffer{},
+			)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, tt.wantErr)
+			}
+
+			var tableCount int
+			if err := db.QueryRowContext(ctx,
+				"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+			).Scan(&tableCount); err != nil {
+				t.Fatal(err)
+			}
+			if tableCount != 0 {
+				t.Fatalf("schema transaction committed %d tables after seed route failure", tableCount)
+			}
+			var foreignKeys int
+			if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+				t.Fatal(err)
+			}
+			if foreignKeys != 1 {
+				t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+			}
+			if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+				t.Fatalf("retry InitDatabase after seed route failure: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitDatabase_InvalidCatalogDoesNotCommitSchema(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ctx := t.Context()
+
+	invalidFS := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", ""),
+		"0002.sql": testMigrationSQL(TargetVersion, "missing_parent", ""),
+	})
+	err := initDatabaseWithFS(ctx, db, invalidFS, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "dangling down_revision") {
+		t.Fatalf("error = %v, want dangling catalog error", err)
+	}
+
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 0 {
+		t.Fatalf("invalid catalog committed %d tables", tableCount)
+	}
+}
+
+func testMigrationFS(files map[string]string) fstest.MapFS {
+	fsys := make(fstest.MapFS, len(files))
+	for name, contents := range files {
+		fsys[name] = &fstest.MapFile{Data: []byte(contents)}
+	}
+	return fsys
+}
+
+func testMigrationSQL(revision, downRevision, body string) string {
+	var migration strings.Builder
+	fmt.Fprintf(&migration, "-- revision: %s\n", revision)
+	if downRevision != "" {
+		fmt.Fprintf(&migration, "-- down_revision: %s\n", downRevision)
+	}
+	migration.WriteString(body)
+	return migration.String()
 }
 
 func TestIntegrityCheck(t *testing.T) {
@@ -218,5 +942,82 @@ func TestBackupAndClean(t *testing.T) {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("expected %s to exist: %v", p, err)
 		}
+	}
+}
+
+func insertTagMigrationFixture(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := t.Context()
+	statements := []string{
+		`INSERT INTO "user" (
+			id, username, email, verified, organization, robot, invoice_email,
+			invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+		) VALUES (1, 'library', 'library@example.com', 1, 0, 0, 0, 0, '2026-01-01 00:00:00', 1209600, 1)`,
+		`INSERT INTO repository (
+			id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+		) VALUES (1, 1, 'nginx', 2, '', '', 1)`,
+		`INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+		 VALUES (1, 1, 'sha256:111', 17, '{}'),
+		        (2, 1, 'sha256:222', 17, '{}')`,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (1, 'latest', 1, 1, 100, 1),
+		        (2, 'latest', 1, 2, 200, 1)`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("insert fixture: %v\nstatement: %s", err, stmt)
+		}
+	}
+}
+
+func prepareLegacyTagMigration(t *testing.T) *sql.DB {
+	t.Helper()
+	db := openTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+	for _, stmt := range []string{
+		`DROP INDEX tag_repository_id_name_active`,
+		`DROP INDEX tag_repository_id_name_lifetime_end_ms`,
+		`CREATE UNIQUE INDEX tag_repository_id_name_lifetime_end_ms
+		 ON tag (repository_id, name, lifetime_end_ms)`,
+	} {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("prepare legacy tag indexes: %v\nstatement: %s", err, stmt)
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`UPDATE alembic_version SET version_num = ?`, generatedSchemaVersion,
+	); err != nil {
+		t.Fatalf("stamp generated schema version: %v", err)
+	}
+	return db
+}
+
+func assertTagIndexes(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := t.Context()
+
+	var historySQL string
+	if err := db.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'tag_repository_id_name_lifetime_end_ms'`,
+	).Scan(&historySQL); err != nil {
+		t.Fatalf("query history tag index: %v", err)
+	}
+	if strings.Contains(strings.ToUpper(historySQL), "UNIQUE") {
+		t.Fatalf("history tag index should be non-unique: %s", historySQL)
+	}
+
+	var activeSQL string
+	if err := db.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'tag_repository_id_name_active'`,
+	).Scan(&activeSQL); err != nil {
+		t.Fatalf("query active tag index: %v", err)
+	}
+	activeSQLUpper := strings.ToUpper(activeSQL)
+	if !strings.Contains(activeSQLUpper, "UNIQUE") || !strings.Contains(activeSQLUpper, "WHERE LIFETIME_END_MS IS NULL") {
+		t.Fatalf("active tag index should be unique and partial: %s", activeSQL)
 	}
 }

@@ -2,7 +2,9 @@ package dbcore
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -197,32 +199,142 @@ func TestRunBridge_RejectsUnknownVersion(t *testing.T) {
 	}
 }
 
-func TestRunBridge_CreatesBridgeTables(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenSQLite(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestRunBridge_MigratesBridgeRootWithoutOMRBridge(t *testing.T) {
+	db := openTestDB(t)
 	defer db.Close()
 
 	ctx := t.Context()
-	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
-		t.Fatalf("InitDatabase: %v", err)
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE alembic_version (version_num TEXT NOT NULL);
+		CREATE TABLE "user" (id INTEGER PRIMARY KEY, email TEXT NOT NULL, organization BOOLEAN NOT NULL);
+		CREATE TABLE organizationcontactemail (
+			id INTEGER PRIMARY KEY,
+			organization_id INTEGER NOT NULL,
+			contact_email TEXT
+		);
+		CREATE TABLE oauthaccesstoken (id INTEGER PRIMARY KEY, application_id INTEGER NOT NULL);
+		CREATE TABLE logentrykind (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO alembic_version VALUES (?)", BridgeTargetVersion); err != nil {
+		t.Fatal(err)
 	}
 
-	for _, table := range []string{
-		"tagpullstatistics",
-		"manifestpullstatistics",
-		"orgmirrorconfig",
-		"orgmirrorrepository",
-		"namespaceimmutabilitypolicy",
-		"repositoryimmutabilitypolicy",
-		"organizationcontactemail",
-	} {
-		if _, err := db.ExecContext(ctx, "DROP TABLE "+table); err != nil {
-			t.Fatalf("drop %s: %v", table, err)
-		}
+	fsys := testMigrationFS(map[string]string{
+		"0001.sql": testMigrationSQL(BridgeTargetVersion, "", "INVALID BRIDGE SQL;"),
+		"0002.sql": testMigrationSQL(TargetVersion, BridgeTargetVersion, "CREATE TABLE future_applied (id INTEGER);"),
+	})
+	if err := runBridgeWithFS(ctx, db, fsys, &bytes.Buffer{}); err != nil {
+		t.Fatalf("RunBridge from bridge root: %v", err)
 	}
+
+	version, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != TargetVersion {
+		t.Fatalf("version = %q, want %q", version, TargetVersion)
+	}
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'future_applied'`,
+	).Scan(&tableCount); err != nil {
+		t.Fatal(err)
+	}
+	if tableCount != 1 {
+		t.Fatal("future Go-only migration was not applied")
+	}
+}
+
+func TestBridgeToRoot_RestoresForeignKeysAfterFailureAndCancellation(t *testing.T) {
+	tests := []struct {
+		name   string
+		cancel bool
+	}{
+		{name: "failure"},
+		{name: "canceled context", cancel: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := openTestDB(t)
+			defer db.Close()
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			applyErr := errors.New("injected bridge failure")
+			if tt.cancel {
+				applyErr = context.Canceled
+			}
+
+			err := bridgeToRootWithApply(
+				ctx,
+				db,
+				"old_revision",
+				migrationInfo{revision: BridgeTargetVersion},
+				&bytes.Buffer{},
+				func(context.Context, *sql.Tx, string) error {
+					if tt.cancel {
+						cancel()
+					}
+					return applyErr
+				},
+			)
+			if !errors.Is(err, applyErr) {
+				t.Fatalf("error = %v, want %v", err, applyErr)
+			}
+
+			var foreignKeys int
+			if err := db.QueryRowContext(t.Context(), "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+				t.Fatal(err)
+			}
+			if foreignKeys != 1 {
+				t.Fatalf("foreign_keys = %d, want 1", foreignKeys)
+			}
+		})
+	}
+}
+
+func TestBridgeToRoot_PinsForeignKeyPragmaToTransactionConnection(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	db.SetMaxOpenConns(2)
+	db.SetMaxIdleConns(0)
+
+	ctx := t.Context()
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE alembic_version (version_num TEXT NOT NULL);
+		INSERT INTO alembic_version VALUES ('old_revision');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	err := bridgeToRootWithApply(
+		ctx,
+		db,
+		"old_revision",
+		migrationInfo{revision: BridgeTargetVersion},
+		&bytes.Buffer{},
+		func(ctx context.Context, tx *sql.Tx, _ string) error {
+			var foreignKeys int
+			if err := tx.QueryRowContext(ctx, `PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
+				return err
+			}
+			if foreignKeys != 0 {
+				return fmt.Errorf("transaction foreign_keys = %d, want 0", foreignKeys)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertForeignKeysEnabled(t, db)
+}
+
+func TestRunBridge_CreatesBridgeTables(t *testing.T) {
+	db := openBridgeFixture(t)
+	ctx := t.Context()
 	if _, err := db.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
 		t.Fatalf("stamp old version: %v", err)
 	}
