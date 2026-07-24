@@ -62,19 +62,21 @@ make types-test                      # Type checking (mypy)
 
 ## Universal Conventions
 
-1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. Always run relevant tests before committing.
-2. **Formatting:** Rely on pre-commit hook to format code on commit
-3. **No secrets:** Never commit credentials, API keys, or sensitive config
-4. **Imports:** Follow existing import ordering patterns in each file
-5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
-6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. A backend-only change does not require Playwright unless it changes a browser-visible workflow or the requirements explicitly call for E2E coverage. Always run relevant tests before committing.
+2. **Test reporting:** In PR descriptions, report each exact command and its outcome as passed, failed, not run, or infrastructure-blocked. Do not describe an attempted or planned command as having run successfully, and keep infrastructure failures distinct from test failures.
+3. **Formatting:** Rely on pre-commit hook to format code on commit
+4. **No secrets:** Never commit credentials, API keys, or sensitive config
+5. **Imports:** Follow existing import ordering patterns in each file
+6. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
+7. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+8. **Review scope:** Address blocking or explicitly requested review feedback. Non-blocking observations do not authorize unrelated changes. Check equivalent execution paths needed to preserve the fix's invariant, but report other similar occurrences instead of expanding scope without approval.
 
 ## Contributing
 
 ### PR & Commit Format
 
 - **PR title:** `PROJQUAY-XXXXX: type(scope): lowercase description`
-  - Use `NO-ISSUE:` when there is no associated Jira ticket
+  - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `NO-ISSUE: docs(agents): add contributing guide`
