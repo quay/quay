@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from peewee import OperationalError
 
 from app import storage
 from data import model
@@ -1003,12 +1004,26 @@ def test_multiple_policies_for_namespace(initialized_db):
     assert task3.status == "success"
 
 
-def test_multiple_policies_for_repository(initialized_db):
-    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
-        model.autoprune.SKIP_LOCKED = False
+def test_multiple_policies_for_repository(initialized_db, monkeypatch):
+    # Disable SKIP_LOCKED for both MySQL and PostgreSQL to ensure consistent behavior
+    # and prevent deadlocks when multiple workers process the same namespace
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", "") or "postgresql" in os.environ.get(
+        "TEST_DATABASE_URI", ""
+    ):
+        monkeypatch.setattr(model.autoprune, "SKIP_LOCKED", False)
 
+    # Use different namespaces for better test isolation and to prevent deadlocks
+    # when pytest-xdist runs tests in parallel
     repo1 = model.repository.create_repository(
         "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "buynlarge", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo3 = model.repository.create_repository(
+        "freshuser", "repo3", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy1 = model.autoprune.create_repository_autoprune_policy(
@@ -1023,34 +1038,51 @@ def test_multiple_policies_for_repository(initialized_db):
         create_task=True,
     )
 
-    repo1_policy2 = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 3}, create_task=True
+    repo2_policy2 = model.autoprune.create_repository_autoprune_policy(
+        "buynlarge", "repo2", {"method": "number_of_tags", "value": 3}, create_task=True
     )
 
-    repo1_policy3 = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
+    repo3_policy3 = model.autoprune.create_repository_autoprune_policy(
+        "freshuser", "repo3", {"method": "creation_date", "value": "2d"}, create_task=True
     )
 
+    # Create manifests and tags for each repository with appropriate test data
     manifest_repo1 = create_manifest("sellnsmall", repo1)
-
     _create_tags(repo1, manifest_repo1.manifest, 2)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
     _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="1d")
-
     _assert_repo_tag_count(repo1, 7)
+
+    manifest_repo2 = create_manifest("buynlarge", repo2)
+    _create_tags(repo2, manifest_repo2.manifest, 2)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="4d")
+    _create_tags(repo2, manifest_repo2.manifest, 3, start_time_before="1d")
+    _assert_repo_tag_count(repo2, 7)
+
+    manifest_repo3 = create_manifest("freshuser", repo3)
+    _create_tags(repo3, manifest_repo3.manifest, 2)
+    _create_tags(repo3, manifest_repo3.manifest, 2, start_time_before="3d")
+    _create_tags(repo3, manifest_repo3.manifest, 3, start_time_before="1d")
+    _assert_repo_tag_count(repo3, 7)
 
     worker = AutoPruneWorker()
     worker.prune()
 
-    _assert_repo_tag_count(repo1, 3)
+    # Verify pruning results for each repository based on their policies
+    # repo1: creation_date "3d" keeps tags newer than 3d (2 current + 3 at 1d = 5 tags)
+    _assert_repo_tag_count(repo1, 5)
+    # repo2: number_of_tags keeps newest 3 tags
+    _assert_repo_tag_count(repo2, 3)
+    # repo3: creation_date "2d" keeps tags newer than 2d (2 current + 3 at 1d = 5 tags)
+    _assert_repo_tag_count(repo3, 5)
 
     task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy1.namespace_id)
     assert task1.status == "success"
 
-    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy2.namespace_id)
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo2_policy2.namespace_id)
     assert task2.status == "success"
 
-    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy3.namespace_id)
+    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo3_policy3.namespace_id)
     assert task3.status == "success"
 
 
@@ -1317,3 +1349,139 @@ def test_prune_tags_skips_immutable_tags(initialized_db):
     remaining_names = [t.name for t in remaining_tags]
     assert len(remaining_names) == 1
     assert "immutable-1" in remaining_names
+
+
+def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
+    """Test that update_autoprune_task retries on deadlock errors with exponential backoff."""
+    # Setup: create a test task in a dedicated user namespace to reduce conflicts
+    user = model.user.get_user("devtable")
+    existing_task = model.autoprune.fetch_autoprune_task_by_namespace_id(user.id)
+    if existing_task:
+        model.autoprune.delete_autoprune_task(existing_task)
+
+    model.autoprune.create_autoprune_task(user.id)
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(user.id)
+    assert task is not None
+
+    # Store original methods for use in mocks
+    original_save = AutoPruneTaskStatus.save
+    original_get = AutoPruneTaskStatus.get
+
+    # Test Case A: Deadlock on first attempt, success on retry
+    save_calls = [0]
+    sleep_calls = []
+
+    def mock_save_deadlock_once(self, **kwargs):
+        save_calls[0] += 1
+        if save_calls[0] == 1:
+            raise OperationalError("deadlock detected")
+        return original_save(self)
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_deadlock_once)
+    monkeypatch.setattr("data.model.autoprune.time.sleep", lambda x: sleep_calls.append(x))
+
+    model.autoprune.update_autoprune_task(task, "running")
+    assert save_calls[0] == 2
+    assert len(sleep_calls) == 1
+    assert sleep_calls[0] == 0.1
+
+    # Reset state
+    save_calls = [0]
+    sleep_calls = []
+
+    # Test Case B: Multiple retries with exponential backoff
+    def mock_save_deadlock_three_times(self, **kwargs):
+        save_calls[0] += 1
+        if save_calls[0] <= 3:
+            raise OperationalError("deadlock detected")
+        return original_save(self)
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_deadlock_three_times)
+
+    model.autoprune.update_autoprune_task(task, "running")
+    assert save_calls[0] == 4
+    assert len(sleep_calls) == 3
+    assert sleep_calls == [0.1, 0.2, 0.4]
+
+    # Reset state
+    save_calls = [0]
+    sleep_calls = []
+
+    # Test Case C: Max retries exceeded
+    def mock_save_always_deadlock(self, **kwargs):
+        save_calls[0] += 1
+        raise OperationalError("deadlock detected")
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_always_deadlock)
+
+    with pytest.raises(Exception) as exc_info:
+        model.autoprune.update_autoprune_task(task, "success")
+
+    assert "Error updating autoprune task" in str(exc_info.value)
+    assert str(user.id) in str(exc_info.value)
+    assert save_calls[0] == 4
+    assert len(sleep_calls) == 3
+
+    # Reset state
+    save_calls = [0]
+    sleep_calls = []
+
+    # Test Case D: Non-retryable OperationalError
+    def mock_save_connection_lost(self, **kwargs):
+        save_calls[0] += 1
+        raise OperationalError("connection lost")
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_connection_lost)
+
+    with pytest.raises(Exception) as exc_info:
+        model.autoprune.update_autoprune_task(task, "running")
+
+    assert "Error updating autoprune task" in str(exc_info.value)
+    assert save_calls[0] == 1
+    assert len(sleep_calls) == 0
+
+    # Reset state
+    save_calls = [0]
+
+    # Test Case E: DoesNotExist during save
+    def mock_save_does_not_exist(self, **kwargs):
+        save_calls[0] += 1
+        raise AutoPruneTaskStatus.DoesNotExist()
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_does_not_exist)
+
+    result = model.autoprune.update_autoprune_task(task, "running")
+    assert result is None
+    assert save_calls[0] == 1
+
+    # Reset state and refetch task for clean state
+    save_calls = [0]
+    sleep_calls = []
+    get_calls = [0]
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(user.id)
+
+    # Test Case F: DoesNotExist during refetch
+    def mock_save_deadlock_for_refetch(self, **kwargs):
+        save_calls[0] += 1
+        if save_calls[0] == 1:
+            raise OperationalError("deadlock detected")
+        return original_save(self)
+
+    def mock_get_does_not_exist(*args, **kwargs):
+        get_calls[0] += 1
+        raise AutoPruneTaskStatus.DoesNotExist()
+
+    monkeypatch.setattr(AutoPruneTaskStatus, "save", mock_save_deadlock_for_refetch)
+    monkeypatch.setattr(AutoPruneTaskStatus, "get", mock_get_does_not_exist)
+    monkeypatch.setattr("data.model.autoprune.time.sleep", lambda x: sleep_calls.append(x))
+
+    result = model.autoprune.update_autoprune_task(task, "failed")
+    assert result is None
+    assert save_calls[0] == 1
+    assert get_calls[0] == 1
+    assert len(sleep_calls) == 1
+
+    # Cleanup
+    cleanup_task = model.autoprune.fetch_autoprune_task_by_namespace_id(user.id)
+    if cleanup_task:
+        model.autoprune.delete_autoprune_task(cleanup_task)
