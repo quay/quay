@@ -113,6 +113,8 @@ jobs:
         with:
           allowed-skips: >-
             ${{
+              needs.lint-ci.result == 'skipped' && 'lint-ci,' || ''
+            }}${{
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
             }}${{
               needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''
