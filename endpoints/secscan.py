@@ -70,8 +70,8 @@ def secscan_notification():
 @secscan.route("/_backfill_status")
 @anon_allowed
 def manifest_security_backfill_status():
-    manifest_count = Manifest.select().count()
-    mss_count = ManifestSecurityStatus.select().count()
+    manifest_count = Manifest.count()
+    mss_count = ManifestSecurityStatus.count()
 
     if manifest_count == 0:
         percent = 1.0
