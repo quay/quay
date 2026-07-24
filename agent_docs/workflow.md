@@ -60,6 +60,9 @@ Examples:
 - `PROJQUAY-1234: fix(api): add pagination to tag listing`
 - `NO-ISSUE: chore: update dependencies`
 - `[redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination`
+- `PROJQUAY-11588: revert(oauth): revert allow any authenticated user to authorize OAuth apps`
+
+Revert PRs should reference the original PR number in the description body for traceability.
 
 ### Commit Message Format
 
@@ -75,7 +78,7 @@ Examples:
 <type>/projquay-<number>-<kebab-case-description>
 ```
 
-Where `<type>` matches the PR type: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`.
+Where `<type>` matches the PR type: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`, `revert`.
 
 ## Bot Ecosystem
 
