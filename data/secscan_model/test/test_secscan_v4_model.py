@@ -23,6 +23,7 @@ from data.database import (
     db_transaction,
 )
 from data.registry_model import registry_model
+from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model.datatypes import ManifestLayer, RepositoryReference
 from data.secscan_model.datatypes import (
     NVD,
@@ -56,7 +57,7 @@ from image.oci import (
 )
 from initdb import create_schema2_or_oci_manifest_for_testing
 from test.fixtures import *
-from util.secscan.v4.api import APIRequestFailure
+from util.secscan.v4.api import APIRequestFailure, Non200ResponseException
 
 logger = logging.getLogger(__name__)
 
@@ -1243,7 +1244,7 @@ def test_batch_preemption_check(initialized_db, set_secscan_config):
     secscan._secscan_api.index = count_index
 
     # Run indexing
-    secscan._index(simple_iterator(), reindex_threshold)
+    secscan._index(simple_iterator(), reindex_threshold, "abc")
 
     # Verify that recently indexed manifests were skipped
     # We expect: 3 skipped (recently indexed), rest processed
@@ -1316,7 +1317,7 @@ def test_batched_iterator_with_preemption_check(initialized_db, set_secscan_conf
     secscan._secscan_api.index = counting_index
 
     # Run indexing
-    secscan._index(test_iterator(), reindex_threshold)
+    secscan._index(test_iterator(), reindex_threshold, "test")
 
     # Verify that batching worked - some manifests were skipped
     # We marked 10 as recently indexed, so they should be skipped
@@ -1346,7 +1347,7 @@ def test_batch_preemption_empty_and_edge_cases(initialized_db, set_secscan_confi
     secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     # Should not crash with empty iterator
-    secscan._index(empty_iterator(), reindex_threshold)
+    secscan._index(empty_iterator(), reindex_threshold, "test")
 
     # Test 2: Single manifest
     manifests = list(Manifest.select().limit(1))
@@ -1359,7 +1360,7 @@ def test_batch_preemption_empty_and_edge_cases(initialized_db, set_secscan_confi
             {"err": None, "state": IndexReportState.Index_Finished},
             "test",
         )
-        secscan._index(single_iterator(), reindex_threshold)
+        secscan._index(single_iterator(), reindex_threshold, "test")
 
         # Verify it was processed (may be marked as unsupported if it's a manifest list)
         assert (
@@ -1423,6 +1424,170 @@ def test_deduplicate_recent_vs_full_catalog(initialized_db, set_secscan_config):
         )
 
 
+def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_config):
+    """
+    Test that manifests with retry_count >= max_retries are skipped during indexing.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    reindex_threshold = datetime.utcnow() - timedelta(
+        seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"]
+    )
+
+    manifests = list(Manifest.select().limit(6))
+    assert len(manifests) >= 6
+
+    for i in range(3):
+        ManifestSecurityStatus.create(
+            manifest=manifests[i],
+            repository=manifests[i].repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=reindex_threshold - timedelta(seconds=100),
+            metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
+        )
+
+    for i in range(3, 6):
+        ManifestSecurityStatus.create(
+            manifest=manifests[i],
+            repository=manifests[i].repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=reindex_threshold - timedelta(seconds=100),
+            metadata_json={"retry_count": 1, "last_failed_hash": "abc"},
+        )
+
+    from threading import Event
+
+    def test_iterator():
+        for m in manifests:
+            yield m, Event(), len(manifests)
+
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+    secscan._index(test_iterator(), reindex_threshold, "abc")
+
+    exhausted_ids = {manifests[i].id for i in range(3)}
+    for mss in ManifestSecurityStatus.select().where(
+        ManifestSecurityStatus.manifest_id.in_(list(exhausted_ids))
+    ):
+        assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
+
+    under_limit_ids = {manifests[i].id for i in range(3, 6)}
+    for mss in ManifestSecurityStatus.select().where(
+        ManifestSecurityStatus.manifest_id.in_(list(under_limit_ids))
+    ):
+        assert mss.index_status == IndexStatus.COMPLETED
+
+
+def test_connection_failure_does_not_increment_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that APIRequestFailure (connection errors, timeouts) does not increment
+    retry_count. These are transient infrastructure errors, not a verdict on the
+    manifest itself.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.side_effect = APIRequestFailure("connection refused")
+
+    secscan.perform_indexing(batch_size=100)
+
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.FAILED
+        assert mss.metadata_json.get("retry_count") is None
+
+
+def test_non200_response_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that Non200ResponseException (e.g. Clair 500 for corrupt layers)
+    increments retry_count, since the server processed the request and rejected
+    it — retrying the same manifest will produce the same result.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    secscan._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+    secscan.perform_indexing(batch_size=100)
+
+    failed_count = 0
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1
+            assert mss.metadata_json.get("last_failed_hash") == "abc"
+            failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
+
+
+def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that Index_Error response increments retry_count in metadata_json.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "something went wrong", "state": IndexReportState.Index_Error},
+        "abc",
+    )
+
+    secscan.perform_indexing(batch_size=100)
+
+    failed_count = 0
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1
+            failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
+
+
+def test_successful_indexing_resets_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that successful indexing resets metadata_json (clears retry_count).
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    for manifest in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow()
+            - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+            metadata_json={"retry_count": 2},
+        )
+
+    secscan.perform_indexing(batch_size=100)
+
+    completed_count = 0
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.COMPLETED:
+            assert mss.metadata_json == {}
+            completed_count += 1
+    assert completed_count > 0, "Expected at least one COMPLETED manifest"
+
+
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
     """
     Integration test verifying that batch preemption checking actually reduces
@@ -1470,7 +1635,7 @@ def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
         "test",
     )
 
-    secscan._index(test_iterator(), reindex_threshold)
+    secscan._index(test_iterator(), reindex_threshold, "test")
 
     # Verify that recently indexed manifests still have original hash
     # (they were skipped, so hash wasn't updated)
@@ -1485,3 +1650,101 @@ def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
 
     # Most of the 25 recently indexed should still have "test" hash (they were skipped)
     assert still_test_hash >= 20, f"Expected at least 20 skipped manifests, got {still_test_hash}"
+
+
+def test_unknown_state_increments_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that an unknown report state increments retry_count in metadata_json.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": "SomeUnknownState"},
+        "abc",
+    )
+
+    secscan.perform_indexing(batch_size=100)
+
+    failed_count = 0
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1
+            assert mss.metadata_json.get("last_failed_hash") == "abc"
+            failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
+
+
+def test_last_failed_hash_resets_retry_count(initialized_db, set_secscan_config):
+    """
+    Test that retry_count resets to 1 when the indexer hash changes, allowing
+    manifests to get a fresh set of retries after a Clair update.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+
+    manifest = Manifest.select().first()
+
+    # Mark all manifests as COMPLETED so only our target is picked up
+    for m in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=m,
+            repository=m.repository,
+            error_json={},
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash="old_hash",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow(),
+            metadata_json={},
+        )
+
+    # Override the target: COMPLETED with stale hash so it only matches
+    # needs_reindexing_query (not index_error_query which also picks up FAILED)
+    ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == manifest).execute()
+    ManifestSecurityStatus.create(
+        manifest=manifest,
+        repository=manifest.repository,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="old_hash",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow()
+        - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+        metadata_json={"retry_count": 4, "last_failed_hash": "old_hash"},
+    )
+
+    secscan._secscan_api.state.return_value = {"state": "new_hash"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "still broken", "state": IndexReportState.Index_Error},
+        "new_hash",
+    )
+
+    secscan.perform_indexing(batch_size=100)
+
+    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
+    assert mss.metadata_json.get("retry_count") == 1
+    assert mss.metadata_json.get("last_failed_hash") == "new_hash"
+
+
+def test_load_security_information_scan_retries_exhausted(initialized_db, set_secscan_config):
+    """
+    Test that load_security_information returns FAILED_TO_INDEX for manifests
+    with SCAN_RETRIES_EXHAUSTED status.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    manifest = ManifestDataType.for_manifest(Manifest.select().first(), None)
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=manifest.repository._db_id,
+        error_json={},
+        index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
+    )
+
+    result = secscan.load_security_information(manifest)
+    assert result.status == ScanLookupStatus.FAILED_TO_INDEX

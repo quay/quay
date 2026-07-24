@@ -259,7 +259,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             resp = self._perform(actions["Index"](body))
         except BadRequestResponseException as ex:
             raise InvalidContentSent(ex)
-        except (Non200ResponseException, IncompatibleAPIResponse) as ex:
+        except IncompatibleAPIResponse as ex:
             raise APIRequestFailure(ex)
 
         # Required clair indexer hash.

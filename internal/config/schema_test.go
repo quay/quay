@@ -101,6 +101,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_SECURITY_SCANNER_V2":             true,
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
 	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
+	"SECURITY_SCANNER_MAX_SCAN_RETRIES":       true,
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
