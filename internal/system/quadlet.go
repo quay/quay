@@ -53,7 +53,7 @@ After=network-online.target
 
 [Container]
 Image=%s
-Volume=%s:/data:Z
+Volume=%s:/data:Z,U
 PublishPort=%s:%s
 Exec=%s
 
