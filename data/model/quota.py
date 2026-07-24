@@ -418,7 +418,7 @@ def get_namespace_total(namespace_id: int):
         .group_by(ImageStorage.id)
     )
     total = ImageStorage.select(fn.Sum(derived_ns.c.image_size)).from_(derived_ns).scalar()
-    return total if total is not None else 0
+    return int(total) if total is not None else 0
 
 
 def get_repository_total(repository_id: int):
@@ -429,7 +429,7 @@ def get_repository_total(repository_id: int):
         .group_by(ImageStorage.id)
     )
     total = ImageStorage.select(fn.Sum(derived_ns.c.image_size)).from_(derived_ns).scalar()
-    return total if total is not None else 0
+    return int(total) if total is not None else 0
 
 
 def repositories_in_namespace(namespace_id: int):
@@ -564,7 +564,7 @@ def set_registry_size_running(exists=False):
 def sum_registry_size():
     # pylint: disable-next=no-value-for-parameter
     total_size = ImageStorage.select(fn.SUM(ImageStorage.image_size)).scalar()
-    return total_size if total_size is not None else 0
+    return int(total_size) if total_size is not None else 0
 
 
 def update_registry_size(size=0):
