@@ -200,6 +200,126 @@ test('custom login scenario', async ({page, request}) => {
 });
 ```
 
+## Test Fixtures Reference
+
+Fixtures provide pre-configured contexts so tests start with the right
+authentication, API clients, and infrastructure already wired up. Import them
+from `../fixtures` (or `../../fixtures` depending on depth).
+
+### Test-Scoped vs Worker-Scoped
+
+- **Test-scoped** fixtures are created fresh for every `test()` call. Each test
+  gets its own page, API client, or resource — parallel tests never share
+  mutable state.
+- **Worker-scoped** fixtures are created once per Playwright worker and reused
+  across all tests that worker runs. Use these for expensive setup that is safe
+  to share (authenticated browser contexts, cached config). Worker fixtures
+  appear in `test.beforeAll` / `test.afterAll` signatures but cannot be used
+  inside `test()` directly — use the test-scoped wrappers instead (e.g.,
+  `authenticatedPage` wraps `userContext`).
+
+### Pages
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `authenticatedPage` | `Page` | test | Page logged in as the regular test user |
+| `superuserPage` | `Page` | test | Page logged in as the superuser/admin |
+| `readonlyPage` | `Page` | test | Page logged in as the readonly user |
+| `unauthenticatedPage` | `Page` | test | Fresh page with no authentication (anonymous browsing) |
+
+### API Request Contexts
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `authenticatedRequest` | `APIRequestContext` | test | Playwright request context authenticated as regular user |
+| `superuserRequest` | `APIRequestContext` | test | Playwright request context authenticated as superuser |
+
+### API Clients (Auto-Cleanup)
+
+These wrap `ApiClient` in a `TestApi` that tracks every resource created and
+deletes them in reverse order after the test — even on failure.
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `api` | `TestApi` | test | Regular-user API client with auto-cleanup (see [Available `api` Methods](#available-api-methods) below) |
+| `superuserApi` | `TestApi` | test | Superuser API client with auto-cleanup; required for admin-only operations |
+
+### API Clients (Raw, No Browser)
+
+Lightweight clients that skip browser context creation entirely. Use these for
+pure API tests where you don't need a page.
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `adminClient` | `RawApiClient` | test | Superuser-authenticated raw client — no browser overhead |
+| `userClient` | `RawApiClient` | test | Regular-user-authenticated raw client — no browser overhead |
+| `anonClient` | `RawApiClient` | test | Unauthenticated raw client — for testing anonymous access |
+
+### Isolated Environments
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `freshUser` | `{user: CreatedUser; api: TestApi}` | test | Creates a unique temporary user with its own `TestApi` client — no shared namespace state |
+
+The `freshUser` fixture is essential for **test isolation in parallel execution**.
+When tests modify user-level state (e.g., starred repos, notifications, user
+settings), using the shared `api` fixture causes collisions because all tests in
+the same worker share the regular test user's namespace. `freshUser` provisions a
+brand-new user per test so mutations are fully isolated.
+
+```typescript
+import {test, expect} from '../../fixtures';
+
+test('user can star a repository',
+  {tag: ['@superuser']},
+  async ({freshUser}) => {
+    // freshUser.user has .username, .email, .password
+    // freshUser.api is a TestApi scoped to this unique user
+    const org = await freshUser.api.organization('startest');
+    const repo = await freshUser.api.repository(org.name, 'myrepo');
+
+    await freshUser.api.raw.starRepository(`${org.name}/${repo.name}`);
+
+    const starred = await freshUser.api.raw.listStarredRepos();
+    expect(starred).toContainEqual(
+      expect.objectContaining({namespace: org.name, name: repo.name}),
+    );
+    // freshUser.api auto-cleans the repo and org; superuserApi deletes the user
+  },
+);
+```
+
+> **Tag requirement:** Tests using `freshUser` must include `@superuser` because
+> the fixture creates the user via the superuser API.
+
+### Configuration
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `csrfToken` | `string` | test | CSRF token for the regular user session — needed for raw API calls |
+| `quayConfig` | `QuayConfig` | test | Quay feature flags and config settings (test-scoped wrapper around `cachedQuayConfig`) |
+
+### Infrastructure
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `containerAvailable` | `boolean` | test | Whether registry image tooling (skopeo/crane/oras/regctl) is available (test-scoped wrapper around `cachedContainerAvailable`) |
+| `webhook` | `WebhookReceiver` | test | HTTP server that captures webhook callbacks; auto-starts before and auto-stops after each test |
+
+### Browser Contexts (Worker-Scoped)
+
+These are shared across tests in the same worker. Use them in `test.beforeAll`
+for expensive shared setup; in `test()` bodies, use the page fixtures above
+instead.
+
+| Fixture | Type | Scope | Description |
+| ------- | ---- | ----- | ----------- |
+| `userContext` | `BrowserContext` | worker | Browser context pre-authenticated as the regular test user |
+| `superuserContext` | `BrowserContext` | worker | Browser context pre-authenticated as the superuser |
+| `readonlyContext` | `BrowserContext` | worker | Browser context pre-authenticated as the readonly user |
+| `cachedQuayConfig` | `QuayConfig` | worker | Quay config fetched once per worker from `QUAY_CONFIG_JSON` env var |
+| `cachedContainerAvailable` | `boolean` | worker | Registry image tooling availability, checked once per worker |
+
 ## Test Data Creation with the `api` Fixture
 
 The `api` fixture provides methods to create test resources with **automatic cleanup** after each test (even on failure). Resources are deleted in reverse creation order.
