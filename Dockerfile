@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312-minimal:9.8@sha256:2eef57a47c201792a5c6188800c88660a4dcc57b2d60f8874f618e694067d4f9 AS base
+FROM registry.access.redhat.com/ubi9/python-312-minimal:9.8@sha256:fb32c8ad908b78f1595282639a7870028d436579eb73890635b6b867e65faf63 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
