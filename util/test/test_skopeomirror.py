@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 
 import pytest
@@ -8,6 +9,7 @@ from util.repomirror.skopeomirror import (
     AuthContent,
     SkopeoMirror,
     _registry_netloc,
+    _src_dest_authfiles,
     create_authfile_content,
 )
 
@@ -48,6 +50,25 @@ def test_create_authfile_content_empty_when_no_credentials():
         [AuthContent("quay.io", None, None), AuthContent("docker.io", "", "")]
     )
     assert content == {"auths": {}}
+
+
+def test_create_authfile_content_same_registry_overwrites():
+    """Reproduce PROJQUAY-12190: when source and dest are on the same registry,
+    the dict comprehension keeps only the last entry, losing source credentials."""
+    content = create_authfile_content(
+        [
+            AuthContent("quay.example.com", "src_robot", "src_pass"),
+            AuthContent("quay.example.com", "dest_robot", "dest_pass"),
+        ]
+    )
+    auths = content["auths"]
+    # With a single shared authfile keyed by hostname, only one entry survives.
+    # This test documents the bug: two different credentials for the same host
+    # collapse into one.
+    assert len(auths) == 1
+    assert auths["quay.example.com"]["auth"] == base64.b64encode(
+        "dest_robot:dest_pass".encode("utf8")
+    ).decode("utf8")
 
 
 def test_registry_netloc_docker_transport():
@@ -107,3 +128,46 @@ def test_skopeo_command_tags():
     assert result.success
     assert len(result.tags) > 0
     assert result.stderr == ""
+
+
+def test_src_dest_authfiles_yields_two_distinct_paths():
+    """_src_dest_authfiles creates two independent temp files."""
+    with _src_dest_authfiles(
+        [AuthContent("src.example.com", "src_user", "src_pass")],
+        [AuthContent("dest.example.com", "dest_user", "dest_pass")],
+    ) as (src_path, dest_path):
+        assert src_path != dest_path
+        assert os.path.exists(src_path)
+        assert os.path.exists(dest_path)
+
+        with open(src_path) as f:
+            src_content = json.loads(f.read())
+        with open(dest_path) as f:
+            dest_content = json.loads(f.read())
+
+        assert "src.example.com" in src_content["auths"]
+        assert "dest.example.com" not in src_content["auths"]
+        assert "dest.example.com" in dest_content["auths"]
+        assert "src.example.com" not in dest_content["auths"]
+
+
+def test_src_dest_authfiles_same_registry_preserves_both():
+    """When source and dest are on the same registry, each authfile has its own credentials."""
+    with _src_dest_authfiles(
+        [AuthContent("quay.example.com", "src_robot", "src_pass")],
+        [AuthContent("quay.example.com", "dest_robot", "dest_pass")],
+    ) as (src_path, dest_path):
+        with open(src_path) as f:
+            src_content = json.loads(f.read())
+        with open(dest_path) as f:
+            dest_content = json.loads(f.read())
+
+        src_auth = base64.b64decode(
+            src_content["auths"]["quay.example.com"]["auth"]
+        ).decode("utf8")
+        dest_auth = base64.b64decode(
+            dest_content["auths"]["quay.example.com"]["auth"]
+        ).decode("utf8")
+
+        assert src_auth == "src_robot:src_pass"
+        assert dest_auth == "dest_robot:dest_pass"
