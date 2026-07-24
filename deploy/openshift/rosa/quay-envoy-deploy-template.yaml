@@ -139,6 +139,10 @@ objects:
       app: quay-rls
   spec:
     ports:
+    - name: healthcheck
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
     - name: grpc
       protocol: TCP
       port: 8081
@@ -184,10 +188,26 @@ objects:
           image: ${RLS_IMAGE}:${RLS_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
+          - containerPort: 8080
+            name: healthcheck
           - containerPort: 8081
             name: grpc
           - containerPort: 9090
             name: metrics
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           env:
           - name: USE_STATSD
             value: "false"
