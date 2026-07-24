@@ -6,7 +6,6 @@ import {
   ContentVariants,
 } from '@patternfly/react-core';
 import TheBasics from './TheBasics';
-import PackagesTable from './PackagesTable';
 import './css/About.scss';
 
 export const About: React.FC = () => {
@@ -23,7 +22,6 @@ export const About: React.FC = () => {
         className="about-page"
       >
         <TheBasics />
-        <PackagesTable />
       </PageSection>
     </>
   );

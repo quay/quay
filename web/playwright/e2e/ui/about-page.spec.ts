@@ -12,18 +12,12 @@ test.describe('About Page', {tag: ['@ui']}, () => {
   test('displays company information cards', async ({authenticatedPage}) => {
     await authenticatedPage.goto('/about');
 
-    // TheBasics component renders company history cards
     await expect(authenticatedPage.locator('.about-page')).toBeVisible();
-  });
-
-  test('displays packages table', async ({authenticatedPage}) => {
-    await authenticatedPage.goto('/about');
-
-    // PackagesTable renders as a PF grid with packages data
     await expect(
-      authenticatedPage.getByRole('grid', {
-        name: 'Packages and projects table',
-      }),
+      authenticatedPage.getByRole('heading', {name: 'Founded'}),
+    ).toBeVisible();
+    await expect(
+      authenticatedPage.getByText('New York City, NY'),
     ).toBeVisible();
   });
 });
