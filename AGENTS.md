@@ -59,6 +59,7 @@ make types-test                      # Type checking (mypy)
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
+| Side-effect safety (notifications, queues) | `agent_docs/architecture.md` (Side-Effect Safety section) |
 
 ## Universal Conventions
 
@@ -67,7 +68,8 @@ make types-test                      # Type checking (mypy)
 3. **No secrets:** Never commit credentials, API keys, or sensitive config
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
-6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+6. **Side-effect safety:** Notification dispatch, queue operations, and telemetry must never block primary user-facing operations. Wrap in `try/except` with `logger.exception`. See `agent_docs/architecture.md` (Side-Effect Safety section).
+7. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
 
 ## Contributing
 
