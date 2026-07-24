@@ -34,7 +34,7 @@ test.describe(
 
         // Create mirror config
         await client.createMirrorConfig(org.name, repo.name, {
-          external_reference: 'registry.example.io/library/alpine',
+          external_reference: 'quay.io/quay/busybox',
           sync_interval: 3600,
           sync_start_date: '2023-07-10T06:24:00Z',
           root_rule: {

@@ -5,6 +5,7 @@ SSRF prevention utilities for validating user-supplied URLs.
 
 import ipaddress
 import logging
+import re
 from socket import AF_UNSPEC, SOCK_STREAM
 from socket import gaierror as _gaierror
 from socket import getaddrinfo as _getaddrinfo
@@ -64,6 +65,11 @@ BLOCKED_HOSTNAMES = {
 }
 
 ALLOWED_SCHEMES = {"http", "https"}
+
+_REGISTRY_HOSTNAME_RE = re.compile(
+    r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
+)
 
 
 def _is_ip_blocked(ip_str: str) -> bool:
@@ -126,6 +132,86 @@ def _is_allowed(hostname: str, ip_str: Optional[str], allowed_hosts: List[str]) 
             return True
 
     return False
+
+
+def validate_external_registry_reference(
+    reference: str,
+    resolve_dns: bool = True,
+    allowed_hosts: Optional[List[str]] = None,
+) -> None:
+    """
+    Validate a scheme-less container registry reference used by repository mirroring.
+
+    Repository mirror references have the form ``registry[:port]/namespace/repository``.
+    Only the registry authority determines the network destination, so it is normalized
+    to an HTTPS URL before applying the shared SSRF checks.
+
+    Args:
+        reference: Scheme-less external repository reference
+        resolve_dns: Whether to resolve and validate the registry hostname
+        allowed_hosts: Optional hostnames/CIDRs that bypass the blocklist
+
+    Raises:
+        SSRFBlockedError: If the registry destination is blocked
+        ValueError: If the reference is empty or malformed
+    """
+    if not reference or not isinstance(reference, str):
+        raise ValueError("External registry reference is required")
+
+    if not reference.strip():
+        raise ValueError("External registry reference is required")
+
+    if reference != reference.strip() or any(char.isspace() for char in reference):
+        raise ValueError("External registry reference must not include whitespace")
+
+    if "://" in reference:
+        raise ValueError("External registry reference must not include a URL scheme")
+
+    if any(char in reference for char in ("?", "#", "\\", "%")):
+        raise ValueError("External registry reference contains an invalid character")
+
+    reference_parts = reference.split("/", 1)
+    if len(reference_parts) != 2 or not all(reference_parts):
+        raise ValueError("External registry reference must include a repository path")
+
+    registry = reference_parts[0]
+    if registry.startswith("["):
+        bracket_end = registry.find("]")
+        suffix = registry[bracket_end + 1 :] if bracket_end >= 0 else None
+        if bracket_end < 0 or (suffix and not suffix.startswith(":")):
+            raise ValueError("External registry reference contains an invalid registry authority")
+        if suffix == ":":
+            raise ValueError("External registry reference contains an invalid registry port")
+    else:
+        if registry.count(":") > 1:
+            raise ValueError("External registry reference contains an invalid registry authority")
+        if registry.endswith(":"):
+            raise ValueError("External registry reference contains an invalid registry port")
+
+    try:
+        parsed_registry = urlparse(f"https://{registry}")
+        hostname = parsed_registry.hostname
+        port = parsed_registry.port
+    except ValueError:
+        raise ValueError("External registry reference contains an invalid registry authority")
+
+    if parsed_registry.username or parsed_registry.password or not hostname:
+        raise ValueError("External registry reference must include a valid registry hostname")
+
+    if port == 0:
+        raise ValueError("External registry reference contains an invalid registry port")
+
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        if hostname.endswith(".") or not _REGISTRY_HOSTNAME_RE.fullmatch(hostname):
+            raise ValueError("External registry reference must include a valid registry hostname")
+
+    validate_external_registry_url(
+        f"https://{registry}",
+        resolve_dns=resolve_dns,
+        allowed_hosts=allowed_hosts,
+    )
 
 
 def validate_external_registry_url(

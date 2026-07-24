@@ -11,10 +11,22 @@ from data.database import (
     SourceRegistryType,
     Visibility,
 )
-from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
+from endpoints.api.mirror import (
+    RepoMirrorResource,
+    RepoMirrorSyncCancelResource,
+    _validate_external_reference,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
+
+
+@pytest.fixture(autouse=True)
+def _mock_dns_for_ssrf_validation():
+    """Keep mirror endpoint tests independent of external DNS."""
+    with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+        mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        yield mock_dns
 
 
 def _setup_mirror():
@@ -136,7 +148,7 @@ def test_get_mirror(app):
         ("is_enabled", "foo", 400),
         ("external_reference", "example.com/foo/bar", 201),
         ("external_reference", "example.com/foo", 201),
-        ("external_reference", "example.com", 201),
+        ("external_reference", "example.com", 400),
         ("external_registry_username", "newTestUsername", 201),
         ("external_registry_username", None, 201),
         ("external_registry_username", 123, 400),
@@ -154,23 +166,15 @@ def test_get_mirror(app):
         ("sync_interval", -5, 400),
         ("skopeo_timeout_interval", 3000, 201),
         ("skopeo_timeout_interval", 60, 400),
-        ("https_proxy", "https://proxy.corp.example.com", 201),
+        ("https_proxy", "https://proxy.corp.example.com", 400),
         ("https_proxy", None, 201),
-        (
-            "https_proxy",
-            "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
-        ("http_proxy", "http://proxy.corp.example.com", 201),
+        ("https_proxy", "proxy.example.com; rm -rf /", 400),
+        ("http_proxy", "http://proxy.corp.example.com", 400),
         ("http_proxy", None, 201),
-        (
-            "http_proxy",
-            "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
-        ("no_proxy", "quay.io", 201),
+        ("http_proxy", "proxy.example.com; rm -rf /", 400),
+        ("no_proxy", "quay.io", 400),
         ("no_proxy", None, 201),
-        ("no_proxy", "quay.io; rm -rf /", 201),  # Safe because proxy values are not eval'ed
+        ("no_proxy", "quay.io; rm -rf /", 400),
         ("verify_tls", True, 201),
         ("verify_tls", False, 201),
         ("verify_tls", None, 400),
@@ -253,6 +257,44 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json[key] != value
 
 
+def test_update_robot_is_looked_up_once(app):
+    _setup_mirror()
+    lookup_robot = model.user.lookup_robot
+
+    with patch("endpoints.api.mirror.model.user.lookup_robot", wraps=lookup_robot) as mock_lookup:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            conduct_api_call(
+                cl,
+                RepoMirrorResource,
+                "PUT",
+                params,
+                {"robot_username": "devtable+dtrobot"},
+                201,
+            )
+
+    mock_lookup.assert_called_once_with("devtable+dtrobot")
+
+
+def test_update_robot_without_namespace_separator_is_invalid(app):
+    _setup_mirror()
+    robot = model.user.lookup_robot("devtable+dtrobot")
+
+    with patch("endpoints.api.mirror.model.user.lookup_robot", return_value=robot):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            response = conduct_api_call(
+                cl,
+                RepoMirrorResource,
+                "PUT",
+                params,
+                {"robot_username": "dtrobot"},
+                400,
+            )
+
+    assert response.json["message"] == "Invalid robot"
+
+
 @pytest.mark.parametrize(
     "request_body, expected_status",
     [
@@ -287,6 +329,146 @@ def test_change_credentials(request_body, expected_status, app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+
+
+class TestRepoMirrorSSRFProtection:
+    """Repository mirror API rejects internal source registries."""
+
+    def _create_body(self, external_reference, robot_username):
+        return {
+            "external_reference": external_reference,
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": robot_username,
+        }
+
+    def test_create_with_metadata_ip_rejected_before_persistence(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrfcreatebot", model.user.get_namespace_user("devtable")
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            body = self._create_body(
+                "169.254.169.254/latest/meta-data",
+                robot.username,
+            )
+            resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided registry location is not allowed"
+        repo = model.repository.get_repository("devtable", "simple")
+        assert model.repo_mirror.get_mirror(repo) is None
+
+    def test_create_with_hostname_resolving_private_rejected(self, app):
+        robot, _ = model.user.create_robot("ssrfdnsbot", model.user.get_namespace_user("devtable"))
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = self._create_body("registry.example.com/team/repo", robot.username)
+                resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided registry location is not allowed"
+
+    def test_create_with_allowlisted_private_registry_succeeds(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrfallowlistbot", model.user.get_namespace_user("devtable")
+        )
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["10.0.0.0/8"]}):
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = self._create_body("10.0.0.1/team/repo", robot.username)
+                conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
+
+        mirror = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
+        assert mirror.external_reference == "10.0.0.1/team/repo"
+
+    def test_create_validates_external_reference_before_transaction(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrftransactionbot", model.user.get_namespace_user("devtable")
+        )
+        transaction_depth = model.db.transaction_depth()
+
+        def validate_before_transaction(reference):
+            assert model.db.transaction_depth() == transaction_depth
+            _validate_external_reference(reference)
+
+        with patch(
+            "endpoints.api.mirror._validate_external_reference",
+            side_effect=validate_before_transaction,
+        ) as validate:
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = self._create_body("quay.io/team/repo", robot.username)
+                conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
+
+        validate.assert_called_once_with("quay.io/team/repo")
+
+    def test_update_validates_external_reference_before_transaction(self, app):
+        _setup_mirror()
+        transaction_depth = model.db.transaction_depth()
+
+        def validate_before_transaction(reference):
+            assert model.db.transaction_depth() == transaction_depth
+            _validate_external_reference(reference)
+
+        with patch(
+            "endpoints.api.mirror._validate_external_reference",
+            side_effect=validate_before_transaction,
+        ) as validate:
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {"external_reference": "quay.io/team/repo"}
+                conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        validate.assert_called_once_with("quay.io/team/repo")
+
+    def test_update_with_private_ip_rejected_without_partial_updates(self, app):
+        mirror = _setup_mirror()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            body = {
+                "external_reference": "10.0.0.1/team/repo",
+                "sync_interval": mirror.sync_interval + 100,
+            }
+            resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided registry location is not allowed"
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == "quay.io/redhat/quay"
+        assert updated.sync_interval == mirror.sync_interval
+
+    def test_update_valid_reference_with_invalid_date_is_atomic(self, app):
+        mirror = _setup_mirror()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            body = {
+                "external_reference": "registry.example.com/team/repo",
+                "sync_start_date": "not-a-date",
+            }
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 400)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == "quay.io/redhat/quay"
+        assert updated.sync_start_date == mirror.sync_start_date
+
+    def test_update_with_allowlisted_private_registry_succeeds(self, app):
+        mirror = _setup_mirror()
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["10.0.0.0/8"]}):
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {"external_reference": "10.0.0.1/team/repo"}
+                conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == "10.0.0.1/team/repo"
 
 
 def test_cancel_repo_mirroring(app):
