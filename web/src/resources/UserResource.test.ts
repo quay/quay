@@ -166,6 +166,18 @@ describe('UserResource', () => {
       });
       expect(result).toEqual(response);
     });
+
+    it('includes invite_code when provided', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
+
+      await createUser('alice', 'pass123', 'alice@test.com', 'invite456');
+      expect(axios.post).toHaveBeenCalledWith('/api/v1/user/', {
+        username: 'alice',
+        password: 'pass123',
+        email: 'alice@test.com',
+        invite_code: 'invite456',
+      });
+    });
   });
 
   describe('createSuperuserUser', () => {

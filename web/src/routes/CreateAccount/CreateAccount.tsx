@@ -12,7 +12,7 @@ import {
   ValidatedOptions,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
-import {Link} from 'react-router-dom';
+import {Link, useSearchParams} from 'react-router-dom';
 import './CreateAccount.css';
 import {useCreateAccount} from 'src/hooks/UseCreateAccount';
 import {LoginPageLayout} from 'src/components/LoginPageLayout';
@@ -23,6 +23,11 @@ export function CreateAccount() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get('code') || undefined;
+  const signinUrl = inviteCode
+    ? `/signin?code=${encodeURIComponent(inviteCode)}`
+    : '/signin';
 
   const {createAccountWithAutoLogin, isLoading, error, setError} =
     useCreateAccount();
@@ -76,7 +81,12 @@ export function CreateAccount() {
       return;
     }
 
-    const result = await createAccountWithAutoLogin(username, password, email);
+    const result = await createAccountWithAutoLogin(
+      username,
+      password,
+      email,
+      inviteCode,
+    );
     if (result.success && result.awaitingVerification) {
       setAwaitingVerification(true);
     }
@@ -94,6 +104,18 @@ export function CreateAccount() {
 
   const createAccountForm = (
     <>
+      {inviteCode && !awaitingVerification && (
+        <Alert
+          variant="info"
+          isInline
+          title="You've been invited to join a team"
+          style={{marginBottom: '20px'}}
+          data-testid="invite-code-alert"
+        >
+          Create your account to accept the invitation.
+        </Alert>
+      )}
+
       {awaitingVerification && (
         <Alert
           variant="info"
@@ -276,7 +298,7 @@ export function CreateAccount() {
           <div style={{textAlign: 'center', marginTop: '16px'}}>
             Already have an account?{' '}
             <Link
-              to="/signin"
+              to={signinUrl}
               style={{color: 'var(--pf-t--global--text--color--link--default)'}}
             >
               Sign in
@@ -289,7 +311,7 @@ export function CreateAccount() {
         <div style={{textAlign: 'center', marginTop: '16px'}}>
           Already have an account?{' '}
           <Link
-            to="/signin"
+            to={signinUrl}
             style={{color: 'var(--pf-t--global--text--color--link--default)'}}
           >
             Sign in
