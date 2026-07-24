@@ -86,6 +86,12 @@ ui_page_views = Counter(
     labelnames=["ui"],
 )
 
+spam_ingress_decisions = Counter(
+    "quay_spam_ingress_decisions_total",
+    "Repository description spam ingress decisions",
+    labelnames=["action", "outcome"],
+)
+
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
