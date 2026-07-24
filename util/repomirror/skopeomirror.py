@@ -94,6 +94,13 @@ def _authfile(entries: list) -> Iterator[str]:
         yield tmp.name
 
 
+@contextmanager
+def _src_dest_authfiles(src_entries: list, dest_entries: list) -> Iterator[tuple[str, str]]:
+    """Create separate source and destination authfiles, yielding both paths."""
+    with _authfile(src_entries) as src_path, _authfile(dest_entries) as dest_path:
+        yield src_path, dest_path
+
+
 class SkopeoMirror(object):
 
     # No DB calls here: This will be called from a separate worker that has no connection except
@@ -130,13 +137,11 @@ class SkopeoMirror(object):
         logger.debug(
             "Creating mirroring job: upstream image %s, local repository %s", src_image, dest_image
         )
-        with _authfile(
-            [
-                AuthContent(_registry_netloc(src_image), src_username, src_password),
-                AuthContent(_registry_netloc(dest_image), dest_username, dest_password),
-            ]
-        ) as authfile_path:
-            args.extend(["--authfile", authfile_path])
+        with _src_dest_authfiles(
+            [AuthContent(_registry_netloc(src_image), src_username, src_password)],
+            [AuthContent(_registry_netloc(dest_image), dest_username, dest_password)],
+        ) as (src_authfile_path, dest_authfile_path):
+            args.extend(["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path])
             args = args + [quote(src_image), quote(dest_image)]
             return self.run_skopeo(args, proxy, timeout)
 
@@ -250,21 +255,11 @@ class SkopeoMirror(object):
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
-        with _authfile(
-            [
-                AuthContent(
-                    _registry_netloc(src_image_with_digest),
-                    src_username,
-                    src_password,
-                ),
-                AuthContent(
-                    _registry_netloc(dest_image_with_digest),
-                    dest_username,
-                    dest_password,
-                ),
-            ]
-        ) as authfile_path:
-            args.extend(["--authfile", authfile_path])
+        with _src_dest_authfiles(
+            [AuthContent(_registry_netloc(src_image_with_digest), src_username, src_password)],
+            [AuthContent(_registry_netloc(dest_image_with_digest), dest_username, dest_password)],
+        ) as (src_authfile_path, dest_authfile_path):
+            args.extend(["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path])
             args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
             return self.run_skopeo(args, proxy or {}, timeout)
 
