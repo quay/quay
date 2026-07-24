@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Fetch data
-        uses: githubocto/flat@fc34373cc20b987e89d75d96435a9fecd8fb0807 # v3
+        uses: githubocto/flat@cea5ee43fce40ef71501bf5724a00d45db11641d # v3
         with:
           http_url: https://ip-ranges.amazonaws.com/ip-ranges.json
           downloaded_filename: util/ipresolver/aws-ip-ranges.json
