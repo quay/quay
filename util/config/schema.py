@@ -746,6 +746,12 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 5.",
+            "x-example": 5,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
