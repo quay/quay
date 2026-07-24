@@ -357,6 +357,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         parsed,
         expiration_sec,
         storage,
+        model_cache=model_cache,
     )
 
     if manifest is None:
@@ -524,6 +525,7 @@ def _write_manifest(
             raise_on_error=True,
             verify_quota=app.config.get("FEATURE_QUOTA_MANAGEMENT", False)
             and app.config.get("FEATURE_VERIFY_QUOTA", True),
+            model_cache=model_cache,
         )
     except CreateManifestException as cme:
         raise ManifestInvalid(detail={"message": str(cme)})
