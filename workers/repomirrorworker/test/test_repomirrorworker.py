@@ -33,18 +33,27 @@ from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 
 def _assert_skopeo_args(actual_args, expected_args):
-    """Assert skopeo args match, stripping transient --authfile and legacy inline --*-creds pairs."""
+    """Assert skopeo args match, stripping transient authfile and legacy inline --*-creds pairs."""
+    auth_flags = ("--authfile", "--src-authfile", "--dest-authfile", "--src-creds", "--dest-creds", "--creds")
 
     def strip_cred_flags(args):
         a = list(args)
-        for flag in ("--authfile", "--src-creds", "--dest-creds", "--creds"):
+        for flag in auth_flags:
             while flag in a:
                 i = a.index(flag)
                 del a[i : i + 2]
         return a
 
     assert strip_cred_flags(actual_args) == strip_cred_flags(expected_args)
-    assert "--authfile" in actual_args
+
+    is_copy = "copy" in actual_args
+    if is_copy:
+        assert "--src-authfile" in actual_args, "copy commands must use --src-authfile"
+        assert "--dest-authfile" in actual_args, "copy commands must use --dest-authfile"
+        assert "--authfile" not in actual_args, "copy commands must not use shared --authfile"
+    else:
+        assert "--authfile" in actual_args, "non-copy commands must use --authfile"
+
     for legacy in ("--src-creds", "--dest-creds", "--creds"):
         assert legacy not in actual_args
 
