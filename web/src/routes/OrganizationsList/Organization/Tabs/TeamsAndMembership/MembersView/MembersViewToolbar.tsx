@@ -41,14 +41,14 @@ export default function MembersViewToolbar(props: MembersViewToolbarProps) {
           </FlexItem>
         </Flex>
         {!isReadOnlySuperUser && (
-        <ToolbarItem>
-          <Button
-            onClick={() => props.handleModalToggle()}
-            data-testid="create-new-team-button"
-          >
-            Create new team
-          </Button>
-        </ToolbarItem>
+          <ToolbarItem>
+            <Button
+              onClick={() => props.handleModalToggle()}
+              data-testid="create-new-team-button"
+            >
+              Create new team
+            </Button>
+          </ToolbarItem>
         )}
         <ToolbarPagination
           itemsList={props.allItems}

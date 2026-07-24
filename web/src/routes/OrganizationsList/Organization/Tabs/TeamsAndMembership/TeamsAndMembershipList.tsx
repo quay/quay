@@ -123,7 +123,9 @@ export default function TeamsAndMembershipList() {
           <TeamsViewList
             organizationName={organizationName}
             handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
-            isReadOnly={config?.registry_state === 'readonly' || isReadOnlySuperUser}
+            isReadOnly={
+              config?.registry_state === 'readonly' || isReadOnlySuperUser
+            }
             isAdmin={organization.is_admin}
           >
             {viewToggle}

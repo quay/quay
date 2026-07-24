@@ -276,11 +276,13 @@ export default function NamespaceNotifications({
                 )}
               </Td>
               <Td data-label="kebab">
-                <NamespaceNotificationsKebab
-                  orgname={organizationName}
-                  isUser={isUser}
-                  notification={notification}
-                />
+                {!isReadOnlySuperUser && (
+                  <NamespaceNotificationsKebab
+                    orgname={organizationName}
+                    isUser={isUser}
+                    notification={notification}
+                  />
+                )}
               </Td>
             </Tr>
             <Tr isExpanded={isExpanded(notification.uuid)}>

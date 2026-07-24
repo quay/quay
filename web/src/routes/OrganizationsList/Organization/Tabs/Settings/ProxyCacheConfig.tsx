@@ -373,7 +373,9 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           </Button>
 
           <Button
-            isDisabled={isReadOnlySuperUser || !fetchedProxyCacheConfig?.upstream_registry}
+            isDisabled={
+              isReadOnlySuperUser || !fetchedProxyCacheConfig?.upstream_registry
+            }
             id="delete-proxy-cache"
             data-testid="delete-proxy-cache-btn"
             variant="danger"

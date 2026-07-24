@@ -700,18 +700,20 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                     {formatDate(robotAccount.created)}
                   </Td>
                   <Td data-label="kebab">
-                    <RobotAccountKebab
-                      robotAccount={robotAccount}
-                      namespace={props.organizationName}
-                      setError={setErr}
-                      deleteModal={bulkDeleteRobotAccountModal}
-                      deleteKebabIsOpen={isDeleteModalOpen}
-                      setDeleteModalOpen={setDeleteModalOpen}
-                      setSelectedRobotAccount={setRobotForDeletion}
-                      onSetRepoPermsClick={fetchReposModal}
-                      robotAccountRepos={robotAccount.repositories}
-                      onSetRobotFederationClick={robotFederationModal}
-                    />
+                    {!isReadOnlySuperUser && (
+                      <RobotAccountKebab
+                        robotAccount={robotAccount}
+                        namespace={props.organizationName}
+                        setError={setErr}
+                        deleteModal={bulkDeleteRobotAccountModal}
+                        deleteKebabIsOpen={isDeleteModalOpen}
+                        setDeleteModalOpen={setDeleteModalOpen}
+                        setSelectedRobotAccount={setRobotForDeletion}
+                        onSetRepoPermsClick={fetchReposModal}
+                        robotAccountRepos={robotAccount.repositories}
+                        onSetRobotFederationClick={robotFederationModal}
+                      />
+                    )}
                   </Td>
                 </Tr>
                 {robotAccount.description ? (
