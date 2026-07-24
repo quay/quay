@@ -59,6 +59,7 @@ make types-test                      # Type checking (mypy)
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
+| Go auth/authz, security review | `agent_docs/go_security.md` |
 
 ## Universal Conventions
 
