@@ -714,7 +714,10 @@ def delete_tag(repository_id, tag_name):
     if features.IMMUTABLE_TAGS and tag.immutable:
         raise ImmutableTagException(tag_name, "delete", repository_id)
 
-    return _delete_tag(tag, get_epoch_timestamp_ms())
+    deleted = _delete_tag(tag, get_epoch_timestamp_ms())
+    if deleted is not None:
+        reset_referrer_manifest_expiration(deleted.repository, deleted.manifest)
+    return deleted
 
 
 def _delete_tag(tag, now_ms, expire_cosign=True):
@@ -793,6 +796,9 @@ def delete_tags_for_manifest(manifest):
                 now_ms,
                 subject_manifest=subject_tag.manifest,
             )
+
+    if tags:
+        reset_referrer_manifest_expiration(tags[0].repository, tags[0].manifest)
 
     return tags
 
@@ -1120,7 +1126,55 @@ def remove_tag_from_timemachine(
     if updated and include_submanifests:
         reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
+    if updated:
+        reset_referrer_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
+
     return updated
+
+
+def reset_referrer_manifest_expiration(repository_id, manifest, expiration=None):
+    """
+    Expires $temp-* hidden tags on referrer manifests whose subject
+    is the given manifest's digest, allowing GC to reclaim them.
+    Only acts when the subject manifest has no remaining live, visible tags.
+    """
+    now_ms = get_epoch_timestamp_ms()
+    expiry_ms = now_ms if expiration is None else expiration
+
+    try:
+        manifest_digest = manifest.digest
+    except AttributeError:
+        manifest_digest = Manifest.select(Manifest.digest).where(Manifest.id == manifest).scalar()
+        if manifest_digest is None:
+            return
+
+    # Materialize referrer IDs to avoid IN (SELECT...) in UPDATE,
+    # which triggers the transitive-modification guard in GC tests.
+    referrer_ids = [
+        row.id
+        for row in Manifest.select(Manifest.id).where(
+            Manifest.repository == repository_id,
+            Manifest.subject == manifest_digest,
+        )
+    ]
+    if not referrer_ids:
+        return
+
+    live_tags_subquery = Tag.select(Tag.id).where(
+        Tag.repository == repository_id,
+        Tag.manifest == manifest,
+        Tag.hidden == False,
+        (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+    )
+
+    Tag.update(lifetime_end_ms=expiry_ms).where(
+        Tag.repository == repository_id,
+        Tag.manifest.in_(referrer_ids),
+        Tag.name.startswith("$temp-"),
+        Tag.hidden == True,
+        (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > expiry_ms),
+        ~fn.EXISTS(live_tags_subquery),
+    ).execute()
 
 
 def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
