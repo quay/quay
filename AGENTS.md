@@ -78,7 +78,6 @@ make types-test                      # Type checking (mypy)
 - **PR title:** `{PROJQUAY|QUAYIO}-XXXXX: type(scope): lowercase description`
   - Valid Jira prefixes: `PROJQUAY` (standard, used for most Quay work) and `QUAYIO` (for Quay.io-specific cross-project tickets). Use whichever prefix matches the Jira ticket assigned to the work.
   - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
-  - For backport PRs targeting a `redhat-X.Y` branch, prefix the title with `[redhat-X.Y] ` (e.g., `[redhat-3.12] PROJQUAY-12345: fix(api): backport pagination fix`).
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
