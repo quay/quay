@@ -37,12 +37,14 @@ import {useQueryClient} from '@tanstack/react-query';
 import {deleteOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
 import {CreateRobotModalWrapper} from './CreateRobotModalWrapper';
 import {useSearchParams} from 'react-router-dom';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface OrgMirroringProps {
   orgName: string;
 }
 
 export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const {addAlert} = useUI();
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
@@ -304,7 +306,9 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="submit"
             isDisabled={
-              !formHook.isValid || (configHook.config && !formHook.isDirty)
+              isReadOnlySuperUser ||
+              !formHook.isValid ||
+              (configHook.config && !formHook.isDirty)
             }
             data-testid="submit-button"
           >
@@ -318,6 +322,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
               data-testid="delete-mirror-button"
+              isDisabled={isReadOnlySuperUser}
             >
               Delete Mirror Configuration
             </Button>

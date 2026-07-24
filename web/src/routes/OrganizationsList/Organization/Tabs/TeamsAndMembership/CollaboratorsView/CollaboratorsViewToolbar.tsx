@@ -12,10 +12,12 @@ import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {IMembers} from 'src/resources/MembersResource';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function CollaboratorsViewToolbar(
   props: CollaboratorsViewToolbarProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   return (
     <Toolbar>
       <ToolbarContent>
@@ -40,6 +42,7 @@ export default function CollaboratorsViewToolbar(
             />
           </FlexItem>
         </Flex>
+        {!isReadOnlySuperUser && (
         <ToolbarItem>
           <Button
             onClick={() => props.handleModalToggle()}
@@ -48,6 +51,7 @@ export default function CollaboratorsViewToolbar(
             Create new team
           </Button>
         </ToolbarItem>
+        )}
         <ToolbarPagination
           itemsList={props.allItems}
           perPage={props.perPage}

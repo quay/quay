@@ -19,6 +19,7 @@ import Empty from 'src/components/empty/Empty';
 import {KeyIcon} from '@patternfly/react-icons';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export const oauthApplicationColumnName = {
   name: 'Application Name',
@@ -28,6 +29,7 @@ export const oauthApplicationColumnName = {
 const OAuthApplicationsList: React.FC<OAuthApplicationsListProps> = (
   props,
 ): React.ReactElement => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [createModalIsOpen, setCreateModalIsOpen] = useState<boolean>(false);
   const [bulkDeleteModalIsOpen, setBulkDeleteModalIsOpen] =
     useState<boolean>(false);
@@ -185,12 +187,14 @@ const OAuthApplicationsList: React.FC<OAuthApplicationsListProps> = (
           icon={KeyIcon}
           body="The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access Quay Container Registry data on behalf of the customers. More information about the Quay Container Registry API can be found by contacting support."
           button={
-            <Button
-              onClick={() => setCreateModalIsOpen(true)}
-              data-testid="create-oauth-application-button"
-            >
-              Create new application
-            </Button>
+            !isReadOnlySuperUser ? (
+              <Button
+                onClick={() => setCreateModalIsOpen(true)}
+                data-testid="create-oauth-application-button"
+              >
+                Create new application
+              </Button>
+            ) : undefined
           }
         />
       </>

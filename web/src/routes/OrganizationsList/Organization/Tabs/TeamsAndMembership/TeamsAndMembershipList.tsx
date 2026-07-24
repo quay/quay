@@ -17,6 +17,7 @@ import {validateTeamName} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export enum TableModeType {
   Teams = 'Teams',
@@ -33,6 +34,7 @@ export default function TeamsAndMembershipList() {
   const {organizationName} = useParams();
   const config = useQuayConfig();
   const {organization} = useOrganization(organizationName);
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
 
   const [tableMode, setTableMode] = useState<TableModeType>(
     TableModeType.Teams,
@@ -121,7 +123,7 @@ export default function TeamsAndMembershipList() {
           <TeamsViewList
             organizationName={organizationName}
             handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
-            isReadOnly={config?.registry_state === 'readonly'}
+            isReadOnly={config?.registry_state === 'readonly' || isReadOnlySuperUser}
             isAdmin={organization.is_admin}
           >
             {viewToggle}
