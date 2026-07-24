@@ -101,7 +101,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   // Create dropdown options for robot selector
   const robotOptions = [
     <React.Fragment key="dropdown-options">
-      {!robotsDisallowed && (
+      {!robotsDisallowed && !isReadOnlySuperUser && (
         <>
           <SelectOption
             key="create-robot"
@@ -202,7 +202,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           isSyncingNow={configHook.isSyncingNow}
           isCancellingSync={configHook.isCancellingSync}
           isOrgSyncing={configHook.isOrgSyncing}
-          onSyncNow={async () => {
+          onSyncNow={isReadOnlySuperUser ? undefined : async () => {
             try {
               await configHook.handleSyncNow();
               addAlert({
@@ -217,7 +217,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               });
             }
           }}
-          onToggleEnabled={async (checked, onChange) => {
+          onToggleEnabled={isReadOnlySuperUser ? undefined : async (checked, onChange) => {
             try {
               await configHook.handleToggleEnabled(checked);
               onChange(checked);
@@ -255,7 +255,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           config={configHook.config}
           isVerifying={configHook.isVerifying}
           isCancellingSync={configHook.isCancellingSync}
-          onCancelSync={async () => {
+          onCancelSync={isReadOnlySuperUser ? undefined : async () => {
             try {
               await configHook.handleCancelSync();
               addAlert({
@@ -270,7 +270,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               });
             }
           }}
-          onVerifyConnection={async () => {
+          onVerifyConnection={isReadOnlySuperUser ? undefined : async () => {
             try {
               const result = await configHook.handleVerifyConnection();
               if (result.success) {

@@ -62,7 +62,7 @@ export default function AutoPruning(props: AutoPruning) {
 
   useEffect(() => {
     if (successFetchingPolicies) {
-      if (nsPolicies.length == 0) {
+      if (nsPolicies.length == 0 && !isReadOnlySuperUser) {
         addNewPolicy(true);
         return;
       }
@@ -153,6 +153,7 @@ export default function AutoPruning(props: AutoPruning) {
   };
 
   const onSave = (method, value, uuid, tagPattern, tagPatternMatches) => {
+    if (isReadOnlySuperUser) return;
     if (method == AutoPruneMethod.NONE && !isNullOrUndefined(uuid)) {
       deletePolicy(uuid);
       return;
