@@ -50,6 +50,25 @@ def test_create_authfile_content_empty_when_no_credentials():
     assert content == {"auths": {}}
 
 
+def test_create_authfile_content_same_registry_overwrites():
+    """Reproduce PROJQUAY-12190: when source and dest are on the same registry,
+    the dict comprehension keeps only the last entry, losing source credentials."""
+    content = create_authfile_content(
+        [
+            AuthContent("quay.example.com", "src_robot", "src_pass"),
+            AuthContent("quay.example.com", "dest_robot", "dest_pass"),
+        ]
+    )
+    auths = content["auths"]
+    # With a single shared authfile keyed by hostname, only one entry survives.
+    # This test documents the bug: two different credentials for the same host
+    # collapse into one.
+    assert len(auths) == 1
+    assert auths["quay.example.com"]["auth"] == base64.b64encode(
+        "dest_robot:dest_pass".encode("utf8")
+    ).decode("utf8")
+
+
 def test_registry_netloc_docker_transport():
     assert _registry_netloc("docker://quay.io/repo:tag") == "quay.io"
     assert _registry_netloc("docker://registry.example.com/repo:tag") == "registry.example.com"
