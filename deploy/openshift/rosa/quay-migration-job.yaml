@@ -68,13 +68,13 @@ parameters:
     displayName: name
     description: Base name for ServiceAccount and Job resources
   - name: IMAGE
-    value: ""
     displayName: quay image
     description: quay docker image
+    required: true
   - name: IMAGE_TAG
-    value: ""
     displayName: quay version
-    description: quay version which defaults to latest
+    description: quay version tag (required)
+    required: true
 
   # Service Account
   - name: SERVICE_ACCOUNT_ANNOTATIONS
@@ -120,8 +120,8 @@ parameters:
 
   ## Quay Configuration
   - name: QUAY_CONFIG_SECRET
-    value: ""
     displayName: quay configuration secret
+    required: true
   - name: DEBUGLOG
     value: "false"
     displayName: debug log
