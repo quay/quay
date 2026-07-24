@@ -37,12 +37,14 @@ import {useQueryClient} from '@tanstack/react-query';
 import {deleteOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
 import {CreateRobotModalWrapper} from './CreateRobotModalWrapper';
 import {useSearchParams} from 'react-router-dom';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface OrgMirroringProps {
   orgName: string;
 }
 
 export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const {addAlert} = useUI();
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
@@ -99,7 +101,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   // Create dropdown options for robot selector
   const robotOptions = [
     <React.Fragment key="dropdown-options">
-      {!robotsDisallowed && (
+      {!robotsDisallowed && !isReadOnlySuperUser && (
         <>
           <SelectOption
             key="create-robot"
@@ -200,7 +202,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           isSyncingNow={configHook.isSyncingNow}
           isCancellingSync={configHook.isCancellingSync}
           isOrgSyncing={configHook.isOrgSyncing}
-          onSyncNow={async () => {
+          onSyncNow={isReadOnlySuperUser ? undefined : async () => {
             try {
               await configHook.handleSyncNow();
               addAlert({
@@ -215,7 +217,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               });
             }
           }}
-          onToggleEnabled={async (checked, onChange) => {
+          onToggleEnabled={isReadOnlySuperUser ? undefined : async (checked, onChange) => {
             try {
               await configHook.handleToggleEnabled(checked);
               onChange(checked);
@@ -253,7 +255,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           config={configHook.config}
           isVerifying={configHook.isVerifying}
           isCancellingSync={configHook.isCancellingSync}
-          onCancelSync={async () => {
+          onCancelSync={isReadOnlySuperUser ? undefined : async () => {
             try {
               await configHook.handleCancelSync();
               addAlert({
@@ -268,7 +270,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               });
             }
           }}
-          onVerifyConnection={async () => {
+          onVerifyConnection={isReadOnlySuperUser ? undefined : async () => {
             try {
               const result = await configHook.handleVerifyConnection();
               if (result.success) {
@@ -304,7 +306,9 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="submit"
             isDisabled={
-              !formHook.isValid || (configHook.config && !formHook.isDirty)
+              isReadOnlySuperUser ||
+              !formHook.isValid ||
+              (configHook.config && !formHook.isDirty)
             }
             data-testid="submit-button"
           >
@@ -318,6 +322,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
               data-testid="delete-mirror-button"
+              isDisabled={isReadOnlySuperUser}
             >
               Delete Mirror Configuration
             </Button>

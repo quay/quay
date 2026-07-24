@@ -18,6 +18,7 @@ import {
 import ReadonlyAutoprunePolicy from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruningReadonlyPolicy';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
 import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
@@ -29,6 +30,7 @@ export const shorthandTimeUnits = {
 };
 
 export default function AutoPruning(props: AutoPruning) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [policies, setPolicies] = useState([]);
   const {addAlert} = useUI();
   const config = useQuayConfig();
@@ -60,7 +62,7 @@ export default function AutoPruning(props: AutoPruning) {
 
   useEffect(() => {
     if (successFetchingPolicies) {
-      if (nsPolicies.length == 0) {
+      if (nsPolicies.length == 0 && !isReadOnlySuperUser) {
         addNewPolicy(true);
         return;
       }
@@ -151,6 +153,7 @@ export default function AutoPruning(props: AutoPruning) {
   };
 
   const onSave = (method, value, uuid, tagPattern, tagPatternMatches) => {
+    if (isReadOnlySuperUser) return;
     if (method == AutoPruneMethod.NONE && !isNullOrUndefined(uuid)) {
       deletePolicy(uuid);
       return;
@@ -213,9 +216,11 @@ export default function AutoPruning(props: AutoPruning) {
         />
       ))}
       <br />
-      <Button variant="primary" type="submit" onClick={() => addNewPolicy()}>
-        Add Policy
-      </Button>
+      {!isReadOnlySuperUser && (
+        <Button variant="primary" type="submit" onClick={() => addNewPolicy()}>
+          Add Policy
+        </Button>
+      )}
     </>
   );
 }

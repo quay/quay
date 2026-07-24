@@ -52,6 +52,7 @@ import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {RobotFederationModal} from 'src/components/modals/RobotFederationModal';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export const RepoPermissionDropdownItems = [
   {
@@ -112,6 +113,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     useState<boolean>(false);
 
   const {addAlert} = useUI();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const quayConfig = useQuayConfig();
   const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
@@ -495,7 +497,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
             : 'Either no robot accounts exist yet or you may not have permission to view any. If you have the permissions, you may create robot accounts in this repository.'
         }
         button={
-          !robotsDisallowed ? (
+          !robotsDisallowed && !isReadOnlySuperUser ? (
             <ToolbarButton
               id=""
               buttonValue="Create robot account"
@@ -545,10 +547,10 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           pageModal={createRobotModal}
           isModalOpen={isCreateRobotModalOpen}
           setModalOpen={setCreateRobotModalOpen}
-          hideCreateButton={robotsDisallowed}
+          hideCreateButton={robotsDisallowed || isReadOnlySuperUser}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={kebabItems}
+          kebabItems={isReadOnlySuperUser ? [] : kebabItems}
           deleteModal={bulkDeleteRobotAccountModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           setDeleteModalOpen={setDeleteModalOpen}
@@ -698,18 +700,20 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                     {formatDate(robotAccount.created)}
                   </Td>
                   <Td data-label="kebab">
-                    <RobotAccountKebab
-                      robotAccount={robotAccount}
-                      namespace={props.organizationName}
-                      setError={setErr}
-                      deleteModal={bulkDeleteRobotAccountModal}
-                      deleteKebabIsOpen={isDeleteModalOpen}
-                      setDeleteModalOpen={setDeleteModalOpen}
-                      setSelectedRobotAccount={setRobotForDeletion}
-                      onSetRepoPermsClick={fetchReposModal}
-                      robotAccountRepos={robotAccount.repositories}
-                      onSetRobotFederationClick={robotFederationModal}
-                    />
+                    {!isReadOnlySuperUser && (
+                      <RobotAccountKebab
+                        robotAccount={robotAccount}
+                        namespace={props.organizationName}
+                        setError={setErr}
+                        deleteModal={bulkDeleteRobotAccountModal}
+                        deleteKebabIsOpen={isDeleteModalOpen}
+                        setDeleteModalOpen={setDeleteModalOpen}
+                        setSelectedRobotAccount={setRobotForDeletion}
+                        onSetRepoPermsClick={fetchReposModal}
+                        robotAccountRepos={robotAccount.repositories}
+                        onSetRobotFederationClick={robotFederationModal}
+                      />
+                    )}
                   </Td>
                 </Tr>
                 {robotAccount.description ? (
