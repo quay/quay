@@ -21,6 +21,8 @@ class OIDCUsers(FederatedUsers):
         login_scopes,
         preferred_group_claim_name,
         requires_email=True,
+        oidc_superuser_group=None,
+        oidc_global_readonly_superuser_group=None,
     ):
         super(OIDCUsers, self).__init__("oidc", requires_email)
         self._client_id = client_id
@@ -30,6 +32,8 @@ class OIDCUsers(FederatedUsers):
         self._login_scopes = login_scopes
         self._preferred_group_claim_name = preferred_group_claim_name
         self._requires_email = requires_email
+        self._oidc_superuser_group = oidc_superuser_group
+        self._oidc_global_readonly_superuser_group = oidc_global_readonly_superuser_group
 
     def service_metadata(self):
         for service in app.oauth_login.services:
@@ -196,6 +200,52 @@ class OIDCUsers(FederatedUsers):
                     f"External OIDC Group Sync: Exception occurred for user {user_obj.username} when removing membership from quay team: {user_team.name} as {err}"
                 )
         return
+
+    def sync_superuser_status(self, user_groups, user_obj):
+        """
+        Syncs superuser and global readonly superuser status based on OIDC group membership.
+        Registers or deregisters the user via the shared ConfigUserManager arrays.
+        """
+        if not user_obj or user_groups is None:
+            return
+
+        try:
+            if self._oidc_superuser_group:
+                if user_groups and self._oidc_superuser_group in user_groups:
+                    logger.debug(
+                        "OIDC superuser sync: granting superuser to %s (member of %s)",
+                        user_obj.username,
+                        self._oidc_superuser_group,
+                    )
+                    app.usermanager.register_superuser(user_obj.username)
+                else:
+                    logger.debug(
+                        "OIDC superuser sync: revoking superuser from %s (not member of %s)",
+                        user_obj.username,
+                        self._oidc_superuser_group,
+                    )
+                    app.usermanager.deregister_superuser(user_obj.username)
+
+            if self._oidc_global_readonly_superuser_group:
+                if user_groups and self._oidc_global_readonly_superuser_group in user_groups:
+                    logger.debug(
+                        "OIDC superuser sync: granting global readonly superuser to %s (member of %s)",
+                        user_obj.username,
+                        self._oidc_global_readonly_superuser_group,
+                    )
+                    app.usermanager.register_global_readonly_superuser(user_obj.username)
+                else:
+                    logger.debug(
+                        "OIDC superuser sync: revoking global readonly superuser from %s (not member of %s)",
+                        user_obj.username,
+                        self._oidc_global_readonly_superuser_group,
+                    )
+                    app.usermanager.deregister_global_readonly_superuser(user_obj.username)
+        except Exception:
+            logger.exception(
+                "OIDC superuser sync: failed to sync superuser status for %s",
+                user_obj.username,
+            )
 
     def sync_user_groups(self, user_groups, user_obj, login_service):
         if not user_obj:
