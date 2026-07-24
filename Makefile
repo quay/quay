@@ -458,6 +458,7 @@ GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
 GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/cmd.version=$(GO_VERSION)")
+GO_BUILD_TAGS ?=
 
 SCHEMA_DIR := internal/dal/schema
 SCHEMA_TMP := /tmp/quay-schema-tmp
@@ -510,14 +511,18 @@ go-schema-check:
 	  (echo "ERROR: Generated Go code is out of date. Run 'make go-schema' and commit." && exit 1)
 	@echo "All checks passed."
 
-.PHONY: go-build go-test go-fmt go-vet go-clean
+.PHONY: go-build go-build-fips go-test go-fmt go-vet go-clean
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
-	go build $(GO_LDFLAGS) -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+	go build $(GO_LDFLAGS) $(if $(GO_BUILD_TAGS),-tags='$(GO_BUILD_TAGS)',) -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+
+go-build-fips:
+	@mkdir -p $(GO_BUILD_DIR)
+	GOFIPS140=latest go build $(GO_LDFLAGS) -tags='noresumabledigest' -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
 
 go-test:
-	go test -cover -race ./...
+	go test -cover -race $(if $(GO_BUILD_TAGS),-tags='$(GO_BUILD_TAGS)',) ./...
 
 go-fmt:
 	go fmt ./...
