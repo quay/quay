@@ -24,6 +24,7 @@ from azure.storage.blob import (
     generate_blob_sas,
 )
 
+import features
 from storage.basestorage import BaseStorage
 from util.registry.filelike import READ_UNTIL_END, LimitingStream
 
@@ -264,7 +265,12 @@ class AzureStorage(BaseStorage):
 
                 try:
                     # TODO (kleesc): Look at doing this multithreaded
-                    self._blob(upload_blob_path).stage_block(block_id, buf, validate_content=True)
+                    # In FIPS mode, disable MD5 content validation as MD5 is not FIPS-compliant.
+                    # HTTPS transport already provides integrity verification.
+                    validate_content = not getattr(features, "FIPS", False)
+                    self._blob(upload_blob_path).stage_block(
+                        block_id, buf, validate_content=validate_content
+                    )
                 except AzureError as ae:
                     raise IOError(
                         "Exception when trying to stream_upload_chunk block %s for %s",

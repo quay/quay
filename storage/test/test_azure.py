@@ -11,6 +11,8 @@ import pytest
 from azure.storage.blob import BlobServiceClient
 from httmock import HTTMock, urlmatch
 
+import features
+from features import FeatureNameValue
 from storage.azurestorage import AZURE_STORAGE_URL_STRING, AzureStorage
 
 
@@ -264,3 +266,41 @@ def test_copy_to():
         ):
             s.copy_to(s2, "hello")
             assert s2.exists("hello")
+
+
+def test_chunked_upload_fips_mode():
+    """Test chunked upload works with FIPS mode enabled (no MD5 validation)."""
+    # Store original value if it exists
+    original_fips = getattr(features, "FIPS", None)
+    try:
+        # Set FIPS mode enabled
+        features.FIPS = FeatureNameValue("FIPS", True)
+
+        with (
+            fake_azure_storage() as s,
+            patch(
+                "storage.azurestorage.generate_blob_sas",
+                return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+            ),
+        ):
+            string_data = b"test data for fips mode"
+            uuid, metadata = s.initiate_chunked_upload()
+
+            fp = io.BytesIO()
+            fp.write(string_data)
+            fp.seek(0)
+
+            total_bytes_written, metadata, error = s.stream_upload_chunk(uuid, 0, -1, fp, metadata)
+            assert total_bytes_written == len(string_data)
+            assert metadata
+            assert not error
+
+            s.complete_chunked_upload(uuid, "fips_chunked", metadata)
+            assert s.get_content("fips_chunked") == string_data
+    finally:
+        # Restore original value
+        if original_fips is None:
+            if hasattr(features, "FIPS"):
+                delattr(features, "FIPS")
+        else:
+            features.FIPS = original_fips
