@@ -505,6 +505,8 @@ class QuotaWarningEvent(NotificationEvent):
                 "usage_bytes": 858993459,
                 "limit_bytes": 1073741824,
                 "usage_percent": 80,
+                "usage_bytes_formatted": "819.20 MB",
+                "limit_bytes_formatted": "1.00 GB",
             },
         )
 
@@ -531,5 +533,7 @@ class QuotaErrorEvent(NotificationEvent):
                 "usage_bytes": 1127428915,
                 "limit_bytes": 1073741824,
                 "usage_percent": 105,
+                "usage_bytes_formatted": "1.05 GB",
+                "limit_bytes_formatted": "1.00 GB",
             },
         )

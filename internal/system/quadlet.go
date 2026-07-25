@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"strings"
 )
 
@@ -68,10 +69,11 @@ WantedBy=default.target
 }
 
 func quadletServeCommand(spec *QuadletSpec) string {
+	publicHostname := net.JoinHostPort(strings.Trim(spec.Hostname, "[]"), spec.Port)
 	if spec.ConfigPath != "" {
-		return fmt.Sprintf("serve --config %s --hostname %s", spec.ConfigPath, spec.Hostname)
+		return fmt.Sprintf("serve --config %s --hostname %s", spec.ConfigPath, publicHostname)
 	}
-	return fmt.Sprintf("serve --data-dir /data --hostname %s", spec.Hostname)
+	return fmt.Sprintf("serve --data-dir /data --hostname %s", publicHostname)
 }
 
 // HostPort returns the host port published by an existing Quadlet file.
@@ -122,13 +124,50 @@ func (q *QuadletManager) Hostname(service string) (string, error) {
 			if i+1 >= len(fields) || fields[i+1] == "" {
 				return "", fmt.Errorf("invalid hostname flag in Exec= directive in %s", path)
 			}
-			return fields[i+1], nil
+			hostname, err := HostnameWithoutPort(fields[i+1])
+			if err != nil {
+				return "", fmt.Errorf("invalid hostname flag in Exec= directive in %s: %w", path, err)
+			}
+			return hostname, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return "", fmt.Errorf("scan quadlet: %w", err)
 	}
 	return "", fmt.Errorf("no hostname flag found in Exec= directive in %s", path)
+}
+
+// ConfigPath returns the configuration path passed to serve, or an empty
+// string when the existing Quadlet uses command-line defaults.
+func (q *QuadletManager) ConfigPath(service string) (string, error) {
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read quadlet: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		command, found := strings.CutPrefix(scanner.Text(), "Exec=")
+		if !found {
+			continue
+		}
+		fields := strings.Fields(command)
+		for i, field := range fields {
+			if field != "--config" {
+				continue
+			}
+			if i+1 >= len(fields) || fields[i+1] == "" {
+				return "", fmt.Errorf("invalid config flag in Exec= directive in %s", path)
+			}
+			return fields[i+1], nil
+		}
+		return "", nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan quadlet: %w", err)
+	}
+	return "", fmt.Errorf("no Exec= directive found in %s", path)
 }
 
 // UpdateImage replaces the image while retaining the existing published host port.
@@ -151,6 +190,7 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 	var updated []string
 	foundImage := false
 	foundPort := false
+	foundHostname := false
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -161,6 +201,13 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 		case strings.HasPrefix(line, "PublishPort="):
 			updated = append(updated, "PublishPort="+hostPort+":"+registryContainerPort)
 			foundPort = true
+		case strings.HasPrefix(line, "Exec="):
+			command, found, err := updateServeHostname(strings.TrimPrefix(line, "Exec="), hostPort)
+			if err != nil {
+				return fmt.Errorf("update quadlet: %w", err)
+			}
+			updated = append(updated, "Exec="+command)
+			foundHostname = foundHostname || found
 		default:
 			updated = append(updated, line)
 		}
@@ -174,5 +221,27 @@ func (q *QuadletManager) UpdateImageAndPort(service, newImage, hostPort string) 
 	if !foundPort {
 		return fmt.Errorf("no PublishPort= directive found in %s", path)
 	}
+	if !foundHostname {
+		return fmt.Errorf("no hostname flag found in Exec= directive in %s", path)
+	}
 	return q.fs.WriteFile(path, []byte(strings.Join(updated, "\n")+"\n"), 0o600)
+}
+
+func updateServeHostname(command, hostPort string) (updated string, found bool, updateErr error) {
+	fields := strings.Fields(command)
+	for i, field := range fields {
+		if field != "--hostname" {
+			continue
+		}
+		if i+1 >= len(fields) || fields[i+1] == "" {
+			return "", false, fmt.Errorf("invalid hostname flag in Exec= directive")
+		}
+		hostname, err := HostnameWithoutPort(fields[i+1])
+		if err != nil {
+			return "", false, fmt.Errorf("invalid hostname flag in Exec= directive: %w", err)
+		}
+		fields[i+1] = net.JoinHostPort(hostname, hostPort)
+		return strings.Join(fields, " "), true, nil
+	}
+	return command, false, nil
 }

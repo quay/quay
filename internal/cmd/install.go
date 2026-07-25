@@ -27,7 +27,6 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 	initUser := fs.String("init-user", "admin", "admin username for initial setup")
 	initPasswordStdin := fs.Bool("init-password-stdin", false, "read the initial admin password from stdin")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
-	image := fs.String("image", installer.DefaultImage, "container image to use")
 
 	return &Command{
 		Name:     "install",
@@ -59,7 +58,7 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 				InitPassword:                initPassword,
 				InitPasswordSet:             *initPasswordStdin,
 				ImageArchive:                *imageArchive,
-				Image:                       *image,
+				Image:                       installer.DefaultImage,
 			})
 		},
 	}

@@ -429,6 +429,21 @@ func TestUpgradeUsesEffectivePort(t *testing.T) {
 	}
 }
 
+func TestValidateUpgradePortChangeRejectsConfigBackedInstall(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:old", DataDir: "/var/lib/quay", Hostname: "registry.example.com",
+		Port: "8443", ConfigPath: "/data/config.yaml",
+	}))
+	inst := &Installer{quadlet: quadlet}
+
+	err := inst.validateUpgradePortChange("9443", "9443", true)
+
+	require.ErrorContains(t, err, "cannot change port from 8443 to 9443")
+	assert.ErrorContains(t, err, "update SERVER_HOSTNAME in /data/config.yaml first")
+}
+
 func TestUpgradeInstallsReplacementTLS(t *testing.T) {
 	dataDir := t.TempDir()
 	oldCert, oldKey := generateTLSFiles(t, dataDir)

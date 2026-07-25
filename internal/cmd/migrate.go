@@ -15,7 +15,6 @@ func newMigrateCmd() *Command {
 	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
 	dataDir := fs.String("data-dir", "/var/lib/quay", "target directory for new installation")
 	hostname := fs.String("hostname", "", "server hostname (auto-detected from old config)")
-	image := fs.String("image", installer.DefaultImage, "container image reference")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (auto-detected)")
 
 	sourceRoot := fs.String("source-root", "", "old quay-install directory")
@@ -35,7 +34,7 @@ func newMigrateCmd() *Command {
 			return runMigrate(ctx, &migrate.Migrator{
 				DataDir:       *dataDir,
 				Hostname:      *hostname,
-				Image:         *image,
+				Image:         installer.DefaultImage,
 				ImageArchive:  *imageArchive,
 				SourceRoot:    *sourceRoot,
 				SourceDB:      *sourceDB,

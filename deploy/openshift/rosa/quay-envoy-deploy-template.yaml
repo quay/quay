@@ -59,7 +59,11 @@ objects:
           app: quay-envoy
       spec:
         nodeSelector:
-          part-of: quay
+          workload: envoy
+        tolerations:
+        - key: workload
+          value: envoy
+          effect: NoSchedule
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
@@ -118,6 +122,15 @@ objects:
               path: ssl.cert
             - key: ssl.key
               path: ssl.key
+- apiVersion: policy/v1
+  kind: PodDisruptionBudget
+  metadata:
+    name: quay-envoy-pdb
+  spec:
+    maxUnavailable: 1
+    selector:
+      matchLabels:
+        app: quay-envoy
 - apiVersion: v1
   kind: Service
   metadata:
@@ -126,6 +139,10 @@ objects:
       app: quay-rls
   spec:
     ports:
+    - name: healthcheck
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
     - name: grpc
       protocol: TCP
       port: 8081
@@ -161,16 +178,36 @@ objects:
           app: quay-rls
       spec:
         nodeSelector:
-          part-of: quay
+          workload: envoy
+        tolerations:
+        - key: workload
+          value: envoy
+          effect: NoSchedule
         containers:
         - name: quay-rls
           image: ${RLS_IMAGE}:${RLS_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
+          - containerPort: 8080
+            name: healthcheck
           - containerPort: 8081
             name: grpc
           - containerPort: 9090
             name: metrics
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           env:
           - name: USE_STATSD
             value: "false"
@@ -214,6 +251,15 @@ objects:
         - name: config
           configMap:
             name: ${{RLS_CONFIG_CONFIGMAP}}
+- apiVersion: policy/v1
+  kind: PodDisruptionBudget
+  metadata:
+    name: quay-rls-pdb
+  spec:
+    maxUnavailable: 1
+    selector:
+      matchLabels:
+        app: quay-rls
 parameters:
 - name: ENVOY_IMAGE
   value: "docker.io/envoyproxy/envoy"
@@ -222,7 +268,7 @@ parameters:
   value: "v1.35-latest"
   displayName: Envoy image tag
 - name: ENVOY_REPLICAS
-  value: "1"
+  value: "2"
   displayName: Number of Envoy replicas
 - name: ENVOY_CPU_REQUEST
   value: "500m"
@@ -249,7 +295,7 @@ parameters:
   value: "latest"
   displayName: Rate limit service image tag
 - name: RLS_REPLICAS
-  value: "1"
+  value: "2"
   displayName: Number of RLS replicas
 - name: RLS_CPU_REQUEST
   value: "100m"

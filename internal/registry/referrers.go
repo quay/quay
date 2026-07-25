@@ -2,9 +2,9 @@
 package registry
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -12,11 +12,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	"github.com/quay/quay/internal/auth"
-	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/oci"
-	"github.com/quay/quay/internal/repository"
-	repositorydal "github.com/quay/quay/internal/repository/dal"
 )
 
 const (
@@ -31,52 +27,31 @@ var (
 
 // ReferrersConfig holds the configuration for the referrers handler.
 type ReferrersConfig struct {
-	LibraryNamespace                   string
-	AnonymousAccess                    bool
-	LibrarySupport                     bool
-	DatabaseSecretKey                  string
-	RobotsDisallow                     bool
-	RobotsWhitelist                    []string
-	FeatureUserLastAccessed            bool
-	LastAccessedUpdateThresholdSeconds int
-	SuperUsers                         []string
-	SuperUsersFullAccess               bool
+	LibraryNamespace string
+	LibrarySupport   bool
+	Authenticator    oci.Authenticator
 }
 
 // ReferrersHandler serves the OCI referrers API.
 type ReferrersHandler struct {
 	store         oci.MetadataStore
-	authenticator *auth.BasicAuthenticator
-	authorizer    *repositorydal.Authorizer
-	queries       *daldb.Queries
+	authenticator oci.Authenticator
 	config        ReferrersConfig
 }
 
 // NewReferrersHandler creates a handler for GET /v2/{name}/referrers/{digest}.
-func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg *ReferrersConfig) *ReferrersHandler {
-	config := ReferrersConfig{}
-	if cfg != nil {
-		config = *cfg
+func NewReferrersHandler(store oci.MetadataStore, cfg *ReferrersConfig) (*ReferrersHandler, error) {
+	if store == nil {
+		return nil, fmt.Errorf("nil metadata store")
 	}
+	if cfg == nil || cfg.Authenticator == nil {
+		return nil, fmt.Errorf("referrers authenticator is required")
+	}
+	config := *cfg
 	if config.LibraryNamespace == "" {
 		config.LibraryNamespace = defaultLibraryNamespace
 	}
-	return &ReferrersHandler{
-		store: store,
-		authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
-			DatabaseSecretKey:              config.DatabaseSecretKey,
-			RobotsDisallow:                 config.RobotsDisallow,
-			RobotsWhitelist:                config.RobotsWhitelist,
-			FeatureUserLastAccessed:        config.FeatureUserLastAccessed,
-			LastAccessedUpdateThresholdSec: config.LastAccessedUpdateThresholdSeconds,
-		})),
-		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
-			SuperUsers:           config.SuperUsers,
-			SuperUsersFullAccess: config.SuperUsersFullAccess,
-		}),
-		queries: daldb.New(db),
-		config:  config,
-	}
+	return &ReferrersHandler{store: store, authenticator: config.Authenticator, config: config}, nil
 }
 
 // Matches reports whether the request targets the referrers endpoint.
@@ -106,8 +81,11 @@ func (h *ReferrersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.authorize(r, namespace, repo) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="quay"`)
+	if authErr := h.authorize(r, namespace, repo); authErr != nil {
+		var challenge oci.AuthChallenge
+		if errors.As(authErr, &challenge) {
+			challenge.SetHeaders(w)
+		}
 		writeOCIError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 		return
 	}
@@ -173,60 +151,12 @@ func (h *ReferrersHandler) splitName(name string) (namespace, repo string) {
 	return name[:i], name[i+1:]
 }
 
-func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) bool {
-	if h.authenticator == nil {
-		return h.config.AnonymousAccess
-	}
-	result := h.authenticator.Authenticate(r)
-	if result.Authenticated {
-		return h.canPullRepository(r, &result.Principal, namespace, repo)
-	}
-	if result.Presented {
-		return false
-	}
-	if h.config.AnonymousAccess && h.queries != nil {
-		isPublic, err := h.queries.RepositoryIsPublicByNamespaceName(r.Context(), daldb.RepositoryIsPublicByNamespaceNameParams{
-			Username: namespace,
-			Name:     repo,
-		})
-		if err == nil && isPublic != 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func (h *ReferrersHandler) canPullRepository(r *http.Request, principal *auth.Principal, namespace, repoName string) bool {
-	if h.queries == nil || h.authorizer == nil {
-		return false
-	}
-
-	row, err := h.queries.GetRepositoryAccessByNamespaceName(r.Context(), daldb.GetRepositoryAccessByNamespaceNameParams{
-		Username: namespace,
-		Name:     repoName,
+func (h *ReferrersHandler) authorize(r *http.Request, namespace, repo string) error {
+	_, err := h.authenticator.Authenticate(r, oci.Access{
+		Resource: "repository:" + namespace + "/" + repo,
+		Action:   "pull",
 	})
-	if err != nil {
-		slog.Debug("referrers repository lookup failed", "namespace", namespace, "repository", repoName, "err", err)
-		return false
-	}
-
-	repo := repository.Repository{
-		ID: row.ID,
-		Ref: repository.Ref{
-			Namespace: row.Namespace,
-			Name:      row.Name,
-		},
-		Visibility:       repository.Visibility(row.Visibility),
-		State:            row.State,
-		KindID:           row.KindID,
-		NamespaceEnabled: row.NamespaceEnabled,
-	}
-	allowed, err := h.authorizer.CanPullRepository(r.Context(), principal, &repo)
-	if err != nil {
-		slog.Debug("referrers pull authorization failed", "namespace", namespace, "repository", repoName, "err", err)
-		return false
-	}
-	return allowed
+	return err
 }
 
 type ociIndex struct {

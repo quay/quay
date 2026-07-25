@@ -6,27 +6,35 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
 	distauth "github.com/distribution/distribution/v3/registry/auth"
 	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/registry/jwtauth"
 	repo "github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
 )
 
 func init() {
-	if err := distauth.Register("quaydb", distauth.InitFunc(newAccessController)); err != nil {
+	if err := distauth.Register("quaydb", distauth.InitFunc(accessControllerFactory)); err != nil {
 		slog.Error("failed to register quaydb auth", "err", err)
 	}
 }
 
+func accessControllerFactory(options map[string]interface{}) (distauth.AccessController, error) {
+	return newAccessController(options)
+}
+
 type accessController struct {
 	authenticator    *auth.BasicAuthenticator
+	jwtService       registryTokenService
 	authorizer       *repositorydal.Authorizer
 	queries          *daldb.Queries
 	realm            string
+	service          string
 	libraryNamespace string
 	anonymousAccess  bool
 }
@@ -43,13 +51,30 @@ const (
 	registryCatalogName    = "catalog"
 	registryCatalogAction  = "*"
 	authOptionRealm        = "realm"
+	authOptionService      = "service"
 	authOptionAnonAccess   = "anonymousAccess"
+	authOptionJWTService   = "jwtService"
+	authOptionController   = "controller"
+	authOptionDatabaseKey  = "databaseSecretKey"
+	authOptionLastAccess   = "featureUserLastAccessed"
+	authOptionLastAccessS  = "lastAccessedUpdateThresholdSeconds"
 )
 
-func newAccessController(options map[string]interface{}) (distauth.AccessController, error) {
+func newAccessController(options map[string]interface{}) (*accessController, error) {
+	if controller, ok := options[authOptionController].(*accessController); ok && controller != nil {
+		return controller, nil
+	}
 	realm, ok := options[authOptionRealm].(string)
 	if !ok || realm == "" {
 		return nil, fmt.Errorf("%q must be set for quaydb access controller", authOptionRealm)
+	}
+	service, _ := options[authOptionService].(string)
+	jwtService, _ := options[authOptionJWTService].(registryTokenService)
+	if jwtService == nil {
+		return nil, fmt.Errorf("%q must be set for quaydb bearer access controller", authOptionJWTService)
+	}
+	if service == "" {
+		return nil, fmt.Errorf("%q must be set for quaydb bearer access controller", authOptionService)
 	}
 
 	db, ok := options["db"].(*sql.DB)
@@ -67,11 +92,11 @@ func newAccessController(options map[string]interface{}) (distauth.AccessControl
 		anonymousAccess = true
 	}
 
-	databaseSecretKey, _ := options["databaseSecretKey"].(string)
+	databaseSecretKey, _ := options[authOptionDatabaseKey].(string)
 	robotsDisallow, _ := options["robotsDisallow"].(bool)
 	robotsWhitelist, _ := options["robotsWhitelist"].([]string)
-	featureUserLastAccessed, _ := options["featureUserLastAccessed"].(bool)
-	lastAccessedUpdateThresholdSeconds, _ := options["lastAccessedUpdateThresholdSeconds"].(int)
+	featureUserLastAccessed, _ := options[authOptionLastAccess].(bool)
+	lastAccessedUpdateThresholdSeconds, _ := options[authOptionLastAccessS].(int)
 	superUsers, _ := options["superUsers"].([]string)
 	superUsersFullAccess, _ := options["superUsersFullAccess"].(bool)
 
@@ -85,71 +110,135 @@ func newAccessController(options map[string]interface{}) (distauth.AccessControl
 
 	return &accessController{
 		authenticator: auth.NewBasicAuthenticator(verifier),
+		jwtService:    jwtService,
 		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
 			SuperUsers:           superUsers,
 			SuperUsersFullAccess: superUsersFullAccess,
 		}),
 		queries:          daldb.New(db),
 		realm:            realm,
+		service:          service,
 		libraryNamespace: libraryNamespace,
 		anonymousAccess:  anonymousAccess,
 	}, nil
 }
 
 func (ac *accessController) Authorized(req *http.Request, access ...distauth.Access) (*distauth.Grant, error) {
-	result := ac.authenticator.Authenticate(req)
-	// Only missing credentials may fall back to anonymous public pulls. Invalid
-	// credentials must fail instead of silently becoming anonymous.
-	if !result.Authenticated && !result.Presented && ac.canAnonymousPull(req, access) {
-		return &distauth.Grant{User: distauth.UserInfo{Name: auth.AnonymousPrincipal().Username}}, nil
-	}
-
-	if !result.Authenticated && !result.Presented {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrInvalidCredential,
-		}
-	}
-	if !result.Authenticated {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrAuthenticationFailure,
-		}
-	}
-
-	if err := ac.authorizeDistributionAccess(req, &result.Principal, access); err != nil {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   distauth.ErrAuthenticationFailure,
-		}
-	}
-
-	return &distauth.Grant{User: distauth.UserInfo{Name: result.Principal.Username}}, nil
+	return ac.authorizedBearer(req, access)
 }
 
 func (ac *accessController) Authenticate(r *http.Request, access ...oci.Access) (*oci.Grant, error) {
-	result := ac.authenticator.Authenticate(r)
-	// Only missing credentials may fall back to anonymous public pulls. Invalid
-	// credentials must fail instead of silently becoming anonymous.
-	if !result.Authenticated && !result.Presented && ac.canAnonymousOCIPull(r, access) {
+	return ac.authenticateBearer(r, access)
+}
+
+func (ac *accessController) authorizedBearer(req *http.Request, access []distauth.Access) (*distauth.Grant, error) {
+	rawToken, headerPresent, tokenErr := bearerToken(req)
+	if !headerPresent && ac.canAnonymousPull(req, access) {
+		return &distauth.Grant{User: distauth.UserInfo{Name: auth.AnonymousPrincipal().Username}}, nil
+	}
+	if tokenErr != nil {
+		return nil, ac.distributionChallenge(access, tokenErr)
+	}
+
+	claims, err := ac.jwtService.Authorize(rawToken, jwtAccessFromDistribution(access))
+	if err != nil {
+		return nil, ac.distributionChallenge(access, err)
+	}
+	resources := make([]distauth.Resource, 0, len(claims.Access))
+	for _, grant := range claims.Access {
+		resources = append(resources, distauth.Resource{Type: grant.Type, Name: grant.Name})
+	}
+	return &distauth.Grant{
+		User:      distauth.UserInfo{Name: claims.Subject},
+		Resources: resources,
+	}, nil
+}
+
+func (ac *accessController) authenticateBearer(r *http.Request, access []oci.Access) (*oci.Grant, error) {
+	rawToken, headerPresent, tokenErr := bearerToken(r)
+	if !headerPresent && ac.canAnonymousOCIPull(r, access) {
 		return &oci.Grant{User: oci.User{Name: auth.AnonymousPrincipal().Username}}, nil
 	}
+	challengeAccess := distributionAccessFromOCI(access)
+	if tokenErr != nil {
+		return nil, ac.ociChallenge(challengeAccess, tokenErr)
+	}
+	claims, err := ac.jwtService.Authorize(rawToken, jwtAccessFromDistribution(challengeAccess))
+	if err != nil {
+		return nil, ac.ociChallenge(challengeAccess, err)
+	}
+	return &oci.Grant{User: oci.User{Name: claims.Subject}}, nil
+}
 
-	if !result.Authenticated {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   oci.ErrUnauthorized,
+func bearerToken(r *http.Request) (raw string, headerPresent bool, err error) {
+	header := strings.TrimSpace(r.Header.Get("Authorization"))
+	if header == "" {
+		return "", false, jwtauth.ErrMissingToken
+	}
+	scheme, token, ok := strings.Cut(header, " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
+		return "", true, jwtauth.ErrMissingToken
+	}
+	if strings.TrimSpace(token) == "" {
+		return "", true, jwtauth.ErrInvalidToken
+	}
+	return strings.TrimSpace(token), true, nil
+}
+
+func distributionAccessFromOCI(access []oci.Access) []distauth.Access {
+	converted := make([]distauth.Access, 0, len(access))
+	for _, item := range access {
+		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
+		if !ok {
+			resourceType = ""
+			resourceName = item.Resource
+		}
+		converted = append(converted, distauth.Access{
+			Resource: distauth.Resource{Type: resourceType, Name: resourceName},
+			Action:   item.Action,
+		})
+	}
+	return converted
+}
+
+func jwtAccessFromDistribution(access []distauth.Access) []jwtauth.ResourceActions {
+	grants := make([]jwtauth.ResourceActions, 0, len(access))
+	for _, item := range access {
+		action := item.Action
+		if action == repositoryDeleteAction {
+			action = repositoryPushAction
+		}
+		found := false
+		for i := range grants {
+			if grants[i].Type == item.Type && grants[i].Name == item.Name {
+				if !slices.Contains(grants[i].Actions, action) {
+					grants[i].Actions = append(grants[i].Actions, action)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			grants = append(grants, jwtauth.ResourceActions{
+				Type: item.Type, Name: item.Name, Actions: []string{action},
+			})
 		}
 	}
+	return grants
+}
 
-	if err := ac.authorizeOCIAccess(r, &result.Principal, access); err != nil {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   oci.ErrUnauthorized,
-		}
+func (ac *accessController) distributionChallenge(access []distauth.Access, err error) distauth.Challenge {
+	return bearerDistributionChallengeError{
+		realm: ac.realm, service: ac.service,
+		access: jwtAccessFromDistribution(access), err: err,
 	}
+}
 
-	return &oci.Grant{User: oci.User{Name: result.Principal.Username}}, nil
+func (ac *accessController) ociChallenge(access []distauth.Access, err error) error {
+	return bearerOCIChallengeError{
+		realm: ac.realm, service: ac.service,
+		access: jwtAccessFromDistribution(access), err: err,
+	}
 }
 
 func (ac *accessController) canAnonymousPull(req *http.Request, access []distauth.Access) bool {
@@ -367,18 +456,32 @@ func (ac *accessController) repositoryParts(name string) (namespace, repository 
 	return namespace, repository, true
 }
 
-// challenge implements auth.Challenge for Basic auth 401 responses.
-type challenge struct {
-	realm string
-	err   error
+type bearerDistributionChallengeError struct {
+	realm   string
+	service string
+	access  []jwtauth.ResourceActions
+	err     error
 }
 
-var _ distauth.Challenge = challenge{}
+var _ distauth.Challenge = bearerDistributionChallengeError{}
 
-func (ch challenge) SetHeaders(_ *http.Request, w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", fmt.Sprintf("Basic realm=%q", ch.realm))
+func (ch bearerDistributionChallengeError) SetHeaders(_ *http.Request, w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", jwtauth.ChallengeValue(ch.realm, ch.service, ch.access, ch.err))
 }
 
-func (ch challenge) Error() string {
-	return fmt.Sprintf("basic authentication challenge for realm %q: %s", ch.realm, ch.err)
+func (ch bearerDistributionChallengeError) Error() string { return ch.err.Error() }
+
+type bearerOCIChallengeError struct {
+	realm   string
+	service string
+	access  []jwtauth.ResourceActions
+	err     error
 }
+
+var _ oci.AuthChallenge = bearerOCIChallengeError{}
+
+func (ch bearerOCIChallengeError) SetHeaders(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", jwtauth.ChallengeValue(ch.realm, ch.service, ch.access, ch.err))
+}
+
+func (ch bearerOCIChallengeError) Error() string { return ch.err.Error() }

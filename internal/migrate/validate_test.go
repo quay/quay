@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ func TestValidateSource_ValidDB(t *testing.T) {
 
 	certDir := t.TempDir()
 	writeSelfSignedCert(t, certDir)
+	seedExistingSchemaRegistryKey(t, dbPath, certDir)
 
 	storageDir := t.TempDir()
 	os.MkdirAll(filepath.Join(storageDir, "sha256", "ab"), 0o750)
@@ -92,6 +94,45 @@ func TestValidateSource_RejectsInvalidHostnameWhenInstalling(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid hostname")
 	}
+}
+
+func TestValidateSource_RequiresRegistryJWTContinuityMaterial(t *testing.T) {
+	t.Run("config directory", func(t *testing.T) {
+		m := validInstallMigrator(t)
+		m.Source.ConfigDir = ""
+
+		err := m.validate(t.Context())
+
+		if err == nil || !strings.Contains(err.Error(), "source config directory not detected") {
+			t.Fatalf("validate error = %v, want missing source config directory", err)
+		}
+	})
+
+	t.Run("config file", func(t *testing.T) {
+		m := validInstallMigrator(t)
+		if err := os.Remove(filepath.Join(m.Source.ConfigDir, runtimeConfigFile)); err != nil {
+			t.Fatalf("remove source config: %v", err)
+		}
+
+		err := m.validate(t.Context())
+
+		if err == nil || !strings.Contains(err.Error(), "load source config for registry JWT key validation") {
+			t.Fatalf("validate error = %v, want missing source config", err)
+		}
+	})
+
+	t.Run("signing key", func(t *testing.T) {
+		m := validInstallMigrator(t)
+		if err := os.Remove(filepath.Join(m.Source.ConfigDir, legacyPrivateKeyName)); err != nil {
+			t.Fatalf("remove source signing key: %v", err)
+		}
+
+		err := m.validate(t.Context())
+
+		if err == nil || !strings.Contains(err.Error(), "registry JWT key validation") {
+			t.Fatalf("validate error = %v, want missing signing key", err)
+		}
+	})
 }
 
 func TestValidateTarget_NotEmpty(t *testing.T) {
@@ -156,6 +197,7 @@ func validInstallMigrator(t *testing.T) *Migrator {
 
 	certDir := t.TempDir()
 	writeSelfSignedCert(t, certDir)
+	seedExistingSchemaRegistryKey(t, dbPath, certDir)
 
 	storageDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(storageDir, "sha256", "ab"), 0o750); err != nil {

@@ -2,18 +2,18 @@ package registry
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/quay/quay/internal/oci"
-	_ "modernc.org/sqlite"
 )
 
 // --- mock store ---
@@ -77,132 +77,83 @@ func (m *mockStore) CleanExpiredUploadedBlobs(context.Context) error { return ni
 
 // --- tests ---
 
-func newTestHandler(store oci.MetadataStore) *ReferrersHandler {
-	return &ReferrersHandler{
-		store:  store,
-		config: ReferrersConfig{LibraryNamespace: "library", AnonymousAccess: true, LibrarySupport: true},
-	}
-}
-
-func TestNewReferrersHandlerConstructsDatabaseVerifier(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	defer db.Close()
-
-	handler := NewReferrersHandler(db, &mockStore{}, &ReferrersConfig{
-		AnonymousAccess:                    true,
-		LibrarySupport:                     true,
-		DatabaseSecretKey:                  "test1234",
-		RobotsDisallow:                     true,
-		RobotsWhitelist:                    []string{"acme+deploy"},
-		FeatureUserLastAccessed:            true,
-		LastAccessedUpdateThresholdSeconds: 60,
-	})
-
-	if handler == nil {
-		t.Fatal("expected handler")
-	}
-	if handler.authenticator == nil {
-		t.Fatal("expected database-backed authenticator")
-	}
-	if handler.queries == nil {
-		t.Fatal("expected database queries")
-	}
-	if handler.config.LibraryNamespace != defaultLibraryNamespace {
-		t.Fatalf("library namespace = %q, want default %q", handler.config.LibraryNamespace, defaultLibraryNamespace)
-	}
-}
-
-func setupReferrersAuthDB(t *testing.T) *sql.DB {
+func newTestHandler(t *testing.T, store oci.MetadataStore) *ReferrersHandler {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-
-	statements := []string{
-		`CREATE TABLE "user" (id INTEGER PRIMARY KEY, uuid VARCHAR(36), username VARCHAR(255) NOT NULL, password_hash VARCHAR(255), email VARCHAR(255) NOT NULL, verified INTEGER NOT NULL DEFAULT 0, organization INTEGER NOT NULL DEFAULT 0, robot INTEGER NOT NULL DEFAULT 0, enabled INTEGER NOT NULL DEFAULT 1, last_accessed DATETIME)`,
-		`CREATE TABLE visibility (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
-		`CREATE TABLE repository (id INTEGER PRIMARY KEY, namespace_user_id INTEGER, name VARCHAR(255) NOT NULL, visibility_id INTEGER NOT NULL, kind_id INTEGER NOT NULL DEFAULT 1, state INTEGER NOT NULL DEFAULT 0)`,
-		`CREATE TABLE role (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
-		`CREATE TABLE teamrole (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL)`,
-		`CREATE TABLE team (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL, organization_id INTEGER NOT NULL, role_id INTEGER NOT NULL, description TEXT NOT NULL)`,
-		`CREATE TABLE teammember (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, team_id INTEGER NOT NULL)`,
-		`CREATE TABLE repositorypermission (id INTEGER PRIMARY KEY, team_id INTEGER, user_id INTEGER, repository_id INTEGER NOT NULL, role_id INTEGER NOT NULL)`,
-		`CREATE TABLE repomirrorconfig (id INTEGER PRIMARY KEY, repository_id INTEGER NOT NULL, internal_robot_id INTEGER)`,
-		`CREATE TABLE orgmirrorconfig (id INTEGER PRIMARY KEY, organization_id INTEGER NOT NULL, internal_robot_id INTEGER)`,
-		`CREATE TABLE orgmirrorrepository (id INTEGER PRIMARY KEY, org_mirror_config_id INTEGER NOT NULL, repository_id INTEGER)`,
-		`INSERT INTO visibility (id, name) VALUES (1, 'public'), (2, 'private')`,
-		`INSERT INTO role (id, name) VALUES (1, 'read'), (2, 'write'), (3, 'admin')`,
-		`INSERT INTO teamrole (id, name) VALUES (1, 'admin'), (2, 'creator'), (3, 'member')`,
-		`INSERT INTO "user" (id, uuid, username, password_hash, email, verified, organization, robot, enabled) VALUES (2, 'org-acme', 'acme', NULL, 'acme@example.com', 1, 1, 0, 1)`,
-		`INSERT INTO repository (id, namespace_user_id, name, visibility_id, kind_id, state) VALUES (10, 2, 'private', 2, 1, 0)`,
-	}
-	for _, stmt := range statements {
-		if _, err := db.ExecContext(t.Context(), stmt); err != nil {
-			t.Fatalf("exec %q: %v", stmt, err)
-		}
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.MinCost)
-	if err != nil {
-		t.Fatalf("bcrypt: %v", err)
-	}
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO "user" (id, uuid, username, password_hash, email, verified, organization, robot, enabled) VALUES (1, 'user-admin', 'admin', ?, 'admin@example.com', 1, 0, 0, 1)`, string(hash)); err != nil {
-		t.Fatalf("insert admin: %v", err)
-	}
-	return db
+	handler, err := NewReferrersHandler(store, &ReferrersConfig{
+		LibraryNamespace: "library",
+		LibrarySupport:   true,
+		Authenticator:    &recordingReferrersAuthenticator{},
+	})
+	require.NoError(t, err)
+	return handler
 }
 
-func TestReferrers_AuthenticatedUserRequiresPullPermission(t *testing.T) {
-	db := setupReferrersAuthDB(t)
-	defer db.Close()
+func TestNewReferrersHandlerRequiresDependencies(t *testing.T) {
+	authenticator := &recordingReferrersAuthenticator{}
+	handler, err := NewReferrersHandler(&mockStore{}, &ReferrersConfig{Authenticator: authenticator})
+	require.NoError(t, err)
+	assert.Equal(t, defaultLibraryNamespace, handler.config.LibraryNamespace)
+	assert.Same(t, authenticator, handler.authenticator)
 
-	handler := NewReferrersHandler(db, &mockStore{repoID: 10}, &ReferrersConfig{
-		AnonymousAccess: false,
-		LibrarySupport:  true,
+	_, err = NewReferrersHandler(nil, &ReferrersConfig{Authenticator: authenticator})
+	assert.ErrorContains(t, err, "nil metadata store")
+	_, err = NewReferrersHandler(&mockStore{}, nil)
+	assert.ErrorContains(t, err, "authenticator is required")
+	_, err = NewReferrersHandler(&mockStore{}, &ReferrersConfig{})
+	assert.ErrorContains(t, err, "authenticator is required")
+}
+
+func TestReferrersDelegatesPullAuthorization(t *testing.T) {
+	authenticator := &recordingReferrersAuthenticator{}
+	handler, err := NewReferrersHandler(&mockStore{repoID: 10}, &ReferrersConfig{
+		LibrarySupport: true,
+		Authenticator:  authenticator,
 	})
-	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/private/referrers/"+subjectDgst.String(), http.NoBody)
-	req.SetBasicAuth("admin", "correct-password")
+	require.NoError(t, err)
+	req := newReferrersRequest(t, "acme/private")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
-	}
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, []oci.Access{{Resource: "repository:acme/private", Action: "pull"}}, authenticator.access)
 }
 
-func TestReferrers_AuthenticatedUserWithPullPermissionAllowed(t *testing.T) {
-	db := setupReferrersAuthDB(t)
-	defer db.Close()
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO repositorypermission (id, user_id, repository_id, role_id) VALUES (1, 1, 10, 1)`); err != nil {
-		t.Fatalf("insert permission: %v", err)
-	}
-
-	handler := NewReferrersHandler(db, &mockStore{repoID: 10}, &ReferrersConfig{
-		AnonymousAccess: false,
-		LibrarySupport:  true,
+func TestReferrersPropagatesAuthenticatorChallenge(t *testing.T) {
+	const challenge = `Bearer realm="https://registry.example.com:8443/v2/auth",service="registry.example.com:8443",scope="repository:acme/private:pull"`
+	authenticator := &recordingReferrersAuthenticator{err: referrersAuthChallengeError{value: challenge}}
+	handler, err := NewReferrersHandler(&mockStore{repoID: 10}, &ReferrersConfig{
+		LibrarySupport: true,
+		Authenticator:  authenticator,
 	})
-	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/acme/private/referrers/"+subjectDgst.String(), http.NoBody)
-	req.SetBasicAuth("admin", "correct-password")
+	require.NoError(t, err)
+	req := newReferrersRequest(t, "acme/private")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	assert.Equal(t, challenge, w.Header().Get("WWW-Authenticate"))
+}
+
+func TestReferrersDoesNotSynthesizeLegacyChallenge(t *testing.T) {
+	handler, err := NewReferrersHandler(&mockStore{repoID: 10}, &ReferrersConfig{
+		LibrarySupport: true,
+		Authenticator:  &recordingReferrersAuthenticator{err: errors.New("access denied")},
+	})
+	require.NoError(t, err)
+	req := newReferrersRequest(t, "acme/private")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	assert.Empty(t, w.Header().Get("WWW-Authenticate"))
 }
 
 func TestReferrers_EmptyList(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject-manifest")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -245,7 +196,7 @@ func TestReferrers_WithResults(t *testing.T) {
 			},
 		},
 	}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject-manifest")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -281,7 +232,7 @@ func TestReferrers_WithResults(t *testing.T) {
 
 func TestReferrers_ArtifactTypeFilter(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String()+"?artifactType=application/vnd.example.sbom.v1", http.NoBody)
@@ -302,7 +253,7 @@ func TestReferrers_ArtifactTypeFilter(t *testing.T) {
 
 func TestReferrers_NoFilterHeader_WhenNoFilter(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -317,7 +268,7 @@ func TestReferrers_NoFilterHeader_WhenNoFilter(t *testing.T) {
 
 func TestReferrers_InvalidDigest(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/notadigest", http.NoBody)
 	w := httptest.NewRecorder()
@@ -333,7 +284,7 @@ func TestReferrers_RepoNotFound(t *testing.T) {
 	store := &mockStore{
 		repoErr: fmt.Errorf("get repository test: %w", oci.ErrNotExist),
 	}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -350,7 +301,7 @@ func TestReferrers_RepoLookupError(t *testing.T) {
 	store := &mockStore{
 		repoErr: fmt.Errorf("db connection refused"),
 	}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -364,7 +315,7 @@ func TestReferrers_RepoLookupError(t *testing.T) {
 }
 
 func TestReferrers_Matches(t *testing.T) {
-	handler := newTestHandler(&mockStore{})
+	handler := newTestHandler(t, &mockStore{})
 	dgst := digest.FromString("test")
 
 	tests := []struct {
@@ -407,7 +358,7 @@ func TestReferrers_MultipleReferrers(t *testing.T) {
 			},
 		},
 	}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	subjectDgst := digest.FromString("subject")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
@@ -430,7 +381,7 @@ func TestReferrers_MultipleReferrers(t *testing.T) {
 
 func TestReferrers_LibraryNamespace(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	ns, repo := handler.splitName("myimage")
 	if ns != "library" {
@@ -443,7 +394,7 @@ func TestReferrers_LibraryNamespace(t *testing.T) {
 
 func TestReferrers_NestedRepoName(t *testing.T) {
 	store := &mockStore{repoID: 1}
-	handler := newTestHandler(store)
+	handler := newTestHandler(t, store)
 
 	ns, repo := handler.splitName("org/team/image")
 	if ns != "org" {
@@ -452,4 +403,32 @@ func TestReferrers_NestedRepoName(t *testing.T) {
 	if repo != "team/image" {
 		t.Errorf("repo = %q, want %q", repo, "team/image")
 	}
+}
+
+type recordingReferrersAuthenticator struct {
+	access []oci.Access
+	err    error
+}
+
+func (a *recordingReferrersAuthenticator) Authenticate(_ *http.Request, access ...oci.Access) (*oci.Grant, error) {
+	a.access = append([]oci.Access(nil), access...)
+	if a.err != nil {
+		return nil, a.err
+	}
+	return &oci.Grant{User: oci.User{Name: "test-user"}}, nil
+}
+
+type referrersAuthChallengeError struct{ value string }
+
+func (c referrersAuthChallengeError) Error() string { return "authentication required" }
+
+func (c referrersAuthChallengeError) SetHeaders(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", c.value)
+}
+
+func newReferrersRequest(t *testing.T, name string) *http.Request {
+	t.Helper()
+	return httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "/v2/"+name+"/referrers/"+digest.FromString("subject").String(), http.NoBody,
+	)
 }
