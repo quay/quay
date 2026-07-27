@@ -1457,6 +1457,11 @@ def test_retry_limit_skips_exhausted_manifests(initialized_db, set_secscan_confi
     manifests = list(Manifest.select().limit(6))
     assert len(manifests) >= 6
 
+    manifest_ids = [m.id for m in manifests]
+    ManifestSecurityStatus.delete().where(
+        ManifestSecurityStatus.manifest_id.in_(manifest_ids)
+    ).execute()
+
     for i in range(3):
         ManifestSecurityStatus.create(
             manifest=manifests[i],
@@ -1587,6 +1592,7 @@ def test_successful_indexing_resets_retry_count(initialized_db, set_secscan_conf
     )
 
     for manifest in Manifest.select():
+        ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == manifest).execute()
         ManifestSecurityStatus.create(
             manifest=manifest,
             repository=manifest.repository,
@@ -1709,6 +1715,7 @@ def test_last_failed_hash_resets_retry_count(initialized_db, set_secscan_config)
 
     # Mark all manifests as COMPLETED so only our target is picked up
     for m in Manifest.select():
+        ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == m).execute()
         ManifestSecurityStatus.create(
             manifest=m,
             repository=m.repository,
@@ -1757,6 +1764,9 @@ def test_load_security_information_scan_retries_exhausted(initialized_db, set_se
     secscan._secscan_api = mock.Mock()
 
     manifest = ManifestDataType.for_manifest(Manifest.select().first(), None)
+    ManifestSecurityStatus.delete().where(
+        ManifestSecurityStatus.manifest == manifest._db_id
+    ).execute()
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
         repository=manifest.repository._db_id,

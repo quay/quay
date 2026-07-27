@@ -299,6 +299,13 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def pending_query():
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(ManifestSecurityStatus.index_status == IndexStatus.PENDING)
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -319,6 +326,13 @@ class V4SecurityScanner(SecurityScannerInterface):
         iterator = itertools.chain(
             yield_random_entries(
                 not_indexed_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                pending_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -480,7 +494,11 @@ class V4SecurityScanner(SecurityScannerInterface):
                     & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
                 )
                 | (
-                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    (
+                        ManifestSecurityStatus.index_status.not_in(
+                            [IndexStatus.IN_PROGRESS, IndexStatus.PENDING]
+                        )
+                    )
                     & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
                 ),
             )

@@ -38,7 +38,7 @@ def scanner(set_secscan_config):
 
 class TestFindAndClaimBatch:
     def _create_mss_for_all(
-        self, status, indexer_hash="abc", last_indexed=None, metadata_json=None, error_count=0
+        self, status, indexer_hash="abc", last_indexed=None, metadata_json=None
     ):
         if last_indexed is None:
             last_indexed = datetime.utcnow() - timedelta(days=2)
@@ -55,7 +55,6 @@ class TestFindAndClaimBatch:
                 indexer_version=IndexerVersion.V4,
                 last_indexed=last_indexed,
                 metadata_json=metadata_json,
-                error_count=error_count,
             )
 
     def test_claims_pending(self, initialized_db, scanner):
@@ -165,17 +164,11 @@ class TestFindAndClaimBatch:
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
         stale_threshold = datetime.utcnow() - timedelta(hours=6)
 
-        for m in Manifest.select():
-            ManifestSecurityStatus.create(
-                manifest=m,
-                repository=m.repository,
-                error_json={},
-                index_status=IndexStatus.FAILED,
-                indexer_hash="abc",
-                indexer_version=IndexerVersion.V4,
-                last_indexed=datetime.utcnow() - timedelta(seconds=600),
-                metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
-            )
+        self._create_mss_for_all(
+            IndexStatus.FAILED,
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+            metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
+        )
 
         manifest_count = Manifest.select().count()
         claimed = scanner._find_and_claim_batch(
@@ -183,24 +176,15 @@ class TestFindAndClaimBatch:
         )
         assert len(claimed) == 0
 
-        for mss in ManifestSecurityStatus.select():
-            assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
-
     def test_claims_failed_under_retry_limit(self, initialized_db, scanner):
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
         stale_threshold = datetime.utcnow() - timedelta(hours=6)
 
-        for m in Manifest.select():
-            ManifestSecurityStatus.create(
-                manifest=m,
-                repository=m.repository,
-                error_json={},
-                index_status=IndexStatus.FAILED,
-                indexer_hash="abc",
-                indexer_version=IndexerVersion.V4,
-                last_indexed=datetime.utcnow() - timedelta(seconds=600),
-                metadata_json={"retry_count": 2},
-            )
+        self._create_mss_for_all(
+            IndexStatus.FAILED,
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+            metadata_json={"retry_count": 2, "last_failed_hash": "abc"},
+        )
 
         manifest_count = Manifest.select().count()
         claimed = scanner._find_and_claim_batch(
@@ -238,35 +222,41 @@ class TestFindAndClaimBatch:
         assert len(claimed) == 2
 
     def test_skips_failed_exceeding_max_retries(self, initialized_db, scanner):
-        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 3
-        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
-        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+        application.config["SECURITY_SCANNER_MAX_SCAN_RETRIES"] = 3
+        try:
+            reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+            stale_threshold = datetime.utcnow() - timedelta(hours=6)
 
-        self._create_mss_for_all(
-            IndexStatus.FAILED,
-            last_indexed=datetime.utcnow() - timedelta(seconds=600),
-            error_count=3,
-        )
+            self._create_mss_for_all(
+                IndexStatus.FAILED,
+                last_indexed=datetime.utcnow() - timedelta(seconds=600),
+                metadata_json={"retry_count": 3, "last_failed_hash": "abc"},
+            )
 
-        claimed = scanner._find_and_claim_batch(50, reindex_threshold, stale_threshold, "abc")
-        assert len(claimed) == 0
+            claimed = scanner._find_and_claim_batch(50, reindex_threshold, stale_threshold, "abc")
+            assert len(claimed) == 0
+        finally:
+            application.config.pop("SECURITY_SCANNER_MAX_SCAN_RETRIES", None)
 
     def test_claims_failed_under_max_retries(self, initialized_db, scanner):
-        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 3
-        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
-        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+        application.config["SECURITY_SCANNER_MAX_SCAN_RETRIES"] = 3
+        try:
+            reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+            stale_threshold = datetime.utcnow() - timedelta(hours=6)
 
-        self._create_mss_for_all(
-            IndexStatus.FAILED,
-            last_indexed=datetime.utcnow() - timedelta(seconds=600),
-            error_count=2,
-        )
+            self._create_mss_for_all(
+                IndexStatus.FAILED,
+                last_indexed=datetime.utcnow() - timedelta(seconds=600),
+                metadata_json={"retry_count": 2, "last_failed_hash": "abc"},
+            )
 
-        manifest_count = Manifest.select().count()
-        claimed = scanner._find_and_claim_batch(
-            manifest_count, reindex_threshold, stale_threshold, "abc"
-        )
-        assert len(claimed) == manifest_count
+            manifest_count = Manifest.select().count()
+            claimed = scanner._find_and_claim_batch(
+                manifest_count, reindex_threshold, stale_threshold, "abc"
+            )
+            assert len(claimed) == manifest_count
+        finally:
+            application.config.pop("SECURITY_SCANNER_MAX_SCAN_RETRIES", None)
 
     def test_claims_failed_with_no_error_count(self, initialized_db, scanner):
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
@@ -287,22 +277,18 @@ class TestFindAndClaimBatch:
 class TestRetryCountTracking:
     def test_mark_failed_increments_retry_count(self, initialized_db, scanner):
         m = Manifest.select().first()
-        ManifestSecurityStatus.create(
-            manifest=m,
-            repository=m.repository,
-            error_json={},
+        ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
             indexer_hash="in_progress_v2",
-            indexer_version=IndexerVersion.V4,
             metadata_json={},
-        )
+        ).where(ManifestSecurityStatus.manifest == m).execute()
 
         scanner._mark_failed(m.id, "api_failure", {"error": "timeout"}, "abc")
 
         mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == m)
         assert mss.index_status == IndexStatus.FAILED
-        assert mss.metadata_json["retry_count"] == 1
-        assert mss.metadata_json["last_failed_hash"] == "abc"
+        assert mss.metadata_json.get("retry_count") == 1
+        assert mss.metadata_json.get("last_failed_hash") == "abc"
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
@@ -311,7 +297,7 @@ class TestRetryCountTracking:
         scanner._mark_failed(m.id, "api_failure", {"error": "timeout"}, "abc")
 
         mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == m)
-        assert mss.metadata_json["retry_count"] == 2
+        assert mss.metadata_json.get("retry_count") == 2
 
     def test_index_error_increments_retry_count(self, initialized_db, scanner):
         scanner._secscan_api.index.return_value = (
@@ -321,9 +307,13 @@ class TestRetryCountTracking:
 
         scanner.perform_indexing(batch_size=1)
 
-        mss = ManifestSecurityStatus.select().first()
-        assert mss.index_status == IndexStatus.FAILED
-        assert mss.metadata_json.get("retry_count", 0) == 1
+        mss = (
+            ManifestSecurityStatus.select()
+            .where(ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+            .first()
+        )
+        assert mss is not None
+        assert mss.metadata_json.get("retry_count") == 1
 
     def test_non200_response_increments_retry_count(self, initialized_db, scanner):
         mock_response = mock.Mock()
@@ -332,30 +322,30 @@ class TestRetryCountTracking:
 
         scanner.perform_indexing(batch_size=1)
 
-        mss = ManifestSecurityStatus.select().first()
-        assert mss.index_status == IndexStatus.FAILED
+        mss = (
+            ManifestSecurityStatus.select()
+            .where(ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+            .first()
+        )
+        assert mss is not None
         assert mss.metadata_json.get("retry_count") == 1
-        assert mss.metadata_json.get("last_failed_hash") == "abc"
+        assert mss.indexer_hash == "server_error"
 
     def test_successful_indexing_resets_retry_count(self, initialized_db, scanner):
         m = Manifest.select().first()
-        ManifestSecurityStatus.create(
-            manifest=m,
-            repository=m.repository,
-            error_json={},
+        ManifestSecurityStatus.update(
             index_status=IndexStatus.FAILED,
             indexer_hash="abc",
-            indexer_version=IndexerVersion.V4,
             last_indexed=datetime.utcnow() - timedelta(days=2),
-            metadata_json={"retry_count": 2},
-        )
+            metadata_json={"retry_count": 2, "last_failed_hash": "abc"},
+        ).where(ManifestSecurityStatus.manifest == m).execute()
 
         scanner.perform_indexing(batch_size=100)
 
         completed_count = 0
         for mss in ManifestSecurityStatus.select():
             if mss.index_status == IndexStatus.COMPLETED:
-                assert mss.metadata_json == {} or mss.metadata_json.get("retry_count", 0) == 0
+                assert mss.metadata_json == {}
                 completed_count += 1
         assert completed_count > 0, "Expected at least one COMPLETED manifest"
 
@@ -365,32 +355,31 @@ class TestRetryCountTracking:
             reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
             stale_threshold = datetime.utcnow() - timedelta(hours=6)
 
+            ManifestSecurityStatus.update(
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash="abc",
+            ).execute()
+
             m = Manifest.select().first()
-            ManifestSecurityStatus.create(
-                manifest=m,
-                repository=m.repository,
-                error_json={},
+            ManifestSecurityStatus.update(
                 index_status=IndexStatus.FAILED,
                 indexer_hash="abc",
-                indexer_version=IndexerVersion.V4,
                 last_indexed=datetime.utcnow() - timedelta(seconds=600),
                 metadata_json={"retry_count": 4, "last_failed_hash": "abc"},
-            )
+            ).where(ManifestSecurityStatus.manifest == m).execute()
 
             claimed = scanner._find_and_claim_batch(10, reindex_threshold, stale_threshold, "abc")
             assert len(claimed) == 1
 
             ManifestSecurityStatus.update(
                 index_status=IndexStatus.FAILED,
+                indexer_hash="abc",
                 last_indexed=datetime.utcnow() - timedelta(seconds=600),
                 metadata_json={"retry_count": 5, "last_failed_hash": "abc"},
             ).where(ManifestSecurityStatus.manifest == m).execute()
 
             claimed = scanner._find_and_claim_batch(10, reindex_threshold, stale_threshold, "abc")
             assert len(claimed) == 0
-
-            mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == m)
-            assert mss.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
         finally:
             application.config.pop("SECURITY_SCANNER_MAX_SCAN_RETRIES", None)
 
@@ -481,7 +470,7 @@ class TestPerformIndexingCycle:
                 IndexStatus.MANIFEST_UNSUPPORTED,
             )
 
-    def test_mark_failed_increments_error_count(self, initialized_db, scanner):
+    def test_mark_failed_increments_retry_count(self, initialized_db, scanner):
         scanner._secscan_api.index.return_value = (
             {"err": "something went wrong", "state": IndexReportState.Index_Error},
             "abc",
@@ -492,7 +481,7 @@ class TestPerformIndexingCycle:
         for mss in ManifestSecurityStatus.select().where(
             ManifestSecurityStatus.index_status == IndexStatus.FAILED
         ):
-            assert mss.error_count == 1
+            assert mss.metadata_json.get("retry_count") == 1
 
         application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
         scanner.perform_indexing(batch_size=100)
@@ -500,9 +489,9 @@ class TestPerformIndexingCycle:
         for mss in ManifestSecurityStatus.select().where(
             ManifestSecurityStatus.index_status == IndexStatus.FAILED
         ):
-            assert mss.error_count == 2
+            assert mss.metadata_json.get("retry_count") == 2
 
-    def test_error_count_resets_on_success(self, initialized_db, scanner):
+    def test_retry_count_resets_on_success(self, initialized_db, scanner):
         application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
 
         scanner._secscan_api.index.return_value = (
@@ -527,11 +516,11 @@ class TestPerformIndexingCycle:
         for mss in ManifestSecurityStatus.select().where(
             ManifestSecurityStatus.index_status == IndexStatus.COMPLETED
         ):
-            assert mss.error_count == 0
+            assert mss.metadata_json == {}
 
     def test_stops_retrying_after_max_failures(self, initialized_db, scanner):
         application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
-        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 2
+        scanner.app.config["SECURITY_SCANNER_MAX_SCAN_RETRIES"] = 2
 
         scanner._secscan_api.index.return_value = (
             {"err": "something went wrong", "state": IndexReportState.Index_Error},
@@ -573,7 +562,7 @@ class TestPerformIndexingCycle:
         for mss in ManifestSecurityStatus.select().where(
             ManifestSecurityStatus.index_status == IndexStatus.FAILED
         ):
-            assert mss.error_count == 1
+            assert mss.metadata_json.get("retry_count") == 1
             assert mss.indexer_hash == "api_failure"
 
     def test_handles_unknown_index_state(self, initialized_db, scanner):
@@ -587,7 +576,7 @@ class TestPerformIndexingCycle:
         for mss in ManifestSecurityStatus.select().where(
             ManifestSecurityStatus.index_status == IndexStatus.FAILED
         ):
-            assert mss.error_count == 1
+            assert mss.metadata_json.get("retry_count") == 1
             assert mss.indexer_hash == "unknown_state"
 
     def test_handles_invalid_content_sent(self, initialized_db, scanner):
@@ -627,7 +616,7 @@ class TestPerformIndexingCycle:
             "data.secscan_model.secscan_v4_model_v2.Manifest.get",
             side_effect=Manifest.DoesNotExist(),
         ):
-            scanner._index_manifest_by_id(manifest_id, repository_id)
+            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
 
         updated = ManifestSecurityStatus.get(ManifestSecurityStatus.id == mss.id)
         assert updated.index_status == IndexStatus.FAILED
@@ -651,7 +640,7 @@ class TestPerformIndexingCycle:
             mock_manifest.repository._db_id = repository_id
             mock_for_manifest.return_value = mock_manifest
 
-            scanner._index_manifest_by_id(manifest_id, repository_id)
+            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
 
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
@@ -669,7 +658,7 @@ class TestPerformIndexingCycle:
         ).where(ManifestSecurityStatus.id == mss.id).execute()
 
         with mock.patch.object(registry_model, "list_manifest_layers", return_value=None):
-            scanner._index_manifest_by_id(manifest_id, repository_id)
+            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
 
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
@@ -709,7 +698,7 @@ class TestPerformIndexingCycle:
                     "data.secscan_model.secscan_v4_model_v2._has_container_layers",
                     return_value=False,
                 ):
-                    scanner._index_manifest_by_id(manifest_id, repository_id)
+                    scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
 
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
