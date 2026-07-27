@@ -85,7 +85,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		libraryNamespace = defaultLibraryNamespace
 	}
 
-	local.RegisterMetadataStore(cfg.Store)
+	local.Register()
 
 	if err := registrymw.Register(cfg.Store, cfg.BlobLocker, libraryNamespace); err != nil {
 		return nil, fmt.Errorf("register middleware: %w", err)
@@ -123,9 +123,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	distCfg := &configuration.Configuration{
 		Catalog: configuration.Catalog{MaxEntries: 1000},
 		Storage: configuration.Storage{
-			"quay": configuration.Parameters{
-				"rootdirectory": cfg.StoragePath,
-			},
+			local.Name(): local.Parameters(cfg.StoragePath, cfg.Store),
 			"delete": configuration.Parameters{
 				"enabled": true,
 			},

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/distribution/distribution/v3/configuration"
 	storagedriver "github.com/distribution/distribution/v3/registry/storage/driver"
 	"github.com/distribution/distribution/v3/registry/storage/driver/base"
 	"github.com/distribution/distribution/v3/registry/storage/driver/factory"
@@ -12,41 +13,43 @@ import (
 	"github.com/quay/quay/internal/oci"
 )
 
-var (
-	metaMu         sync.RWMutex
-	registeredMeta oci.MetadataStore
+const (
+	driverName             = "quay"
+	rootDirectoryParameter = "rootdirectory"
+	metastoreParameter     = "metastore"
 )
 
-// RegisterMetadataStore sets the MetadataStore used when the factory creates
-// a DistDriver. Must be called before distribution creates the storage driver.
-func RegisterMetadataStore(meta oci.MetadataStore) {
-	if meta == nil {
-		panic("RegisterMetadataStore called with nil")
-	}
-	metaMu.Lock()
-	defer metaMu.Unlock()
-	if registeredMeta != nil {
-		panic("RegisterMetadataStore called twice")
-	}
-	registeredMeta = meta
+var registerFactory = sync.OnceFunc(func() {
+	factory.Register(driverName, &quayDriverFactory{})
+})
+
+// Register makes the stateless Quay storage factory available to distribution.
+// It is safe to call multiple times and concurrently.
+func Register() {
+	registerFactory()
 }
 
-func init() {
-	factory.Register("quay", &quayDriverFactory{})
+// Name returns the name used to register the storage driver with distribution.
+func Name() string { return driverName }
+
+// Parameters builds distribution parameters for the local Quay driver.
+func Parameters(rootDir string, meta oci.MetadataStore) configuration.Parameters {
+	return configuration.Parameters{
+		rootDirectoryParameter: rootDir,
+		metastoreParameter:     meta,
+	}
 }
 
 type quayDriverFactory struct{}
 
 func (f *quayDriverFactory) Create(ctx context.Context, params map[string]interface{}) (storagedriver.StorageDriver, error) {
-	rootDir, ok := params["rootdirectory"].(string)
+	rootDir, ok := params[rootDirectoryParameter].(string)
 	if !ok || rootDir == "" {
 		return nil, fmt.Errorf("quay storage driver: rootdirectory parameter required")
 	}
-	metaMu.RLock()
-	meta := registeredMeta
-	metaMu.RUnlock()
-	if meta == nil {
-		return nil, fmt.Errorf("quay storage driver: metastore not registered (call RegisterMetadataStore first)")
+	meta, ok := params[metastoreParameter].(oci.MetadataStore)
+	if !ok || meta == nil {
+		return nil, fmt.Errorf("quay storage driver: metastore parameter must implement oci.MetadataStore")
 	}
 	blobs, err := New(rootDir)
 	if err != nil {
