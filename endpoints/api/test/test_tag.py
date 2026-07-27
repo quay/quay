@@ -94,12 +94,12 @@ def test_move_tag(manifest_exists, test_tag, expected_status, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "simple", 5),  # +2 for converting object to and from json
-        ("devtable", "history", 5),  # +2 for converting object to and from json
-        ("devtable", "complex", 5),  # +2 for converting object to and from json
-        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
-        ("buynlarge", "orgrepo", 5),  # +2 for permissions checks (uses UNION).
-        ("buynlarge", "anotherorgrepo", 5),  # +2 for permissions checks (uses UNION).
+        ("devtable", "simple", 7),  # +2 cosign signature lookup; +2 json convert
+        ("devtable", "history", 7),
+        ("devtable", "complex", 7),
+        ("devtable", "gargantuan", 7),
+        ("buynlarge", "orgrepo", 7),  # +2 permissions (UNION); +2 cosign
+        ("buynlarge", "anotherorgrepo", 7),
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
@@ -119,7 +119,7 @@ def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
+        ("devtable", "gargantuan", 7),
     ],
 )
 def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
@@ -141,6 +141,166 @@ def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
     with client_with_identity("devtable", app) as cl:
         params["filter_tag_name"] = "random"
         resp = conduct_api_call(cl, ListRepositoryTags, "get", params, None, expected_code=400)
+
+
+def test_list_repo_tags_includes_cosign_signature_fields(app):
+    """List tags enriches responses with cosign v2 .sig signature metadata."""
+    import json
+
+    from app import storage
+    from data.database import ImageStorageLocation
+    from data.model.blob import store_blob_record_and_temp_link
+    from data.model.oci.manifest import get_or_create_manifest
+    from data.model.oci.tag import retarget_tag
+    from data.model.repository import create_repository
+    from data.model.storage import get_layer_path
+    from digest.digest_tools import sha256_digest
+    from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+    from util.bytes import Bytes
+
+    def populate_blob(namespace, repo_name, content):
+        content = Bytes.for_string_or_unicode(content).as_encoded_str()
+        digest = str(sha256_digest(content))
+        location = ImageStorageLocation.get(name="local_us")
+        blob = store_blob_record_and_temp_link(
+            namespace, repo_name, digest, location, len(content), 120
+        )
+        storage.put_content(["local_us"], get_layer_path(blob), content)
+        return blob, digest
+
+    def create_schema2_manifest(repository, differentiation_field):
+        layer_json = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        )
+        _, config_digest = populate_blob(
+            repository.namespace_user.username, repository.name, layer_json
+        )
+        remote_digest = sha256_digest(b"something" + differentiation_field.encode("utf-8"))
+        builder = DockerSchema2ManifestBuilder()
+        builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+        builder.add_layer(remote_digest, 1234, urls=["http://hello/world" + differentiation_field])
+        manifest = builder.build()
+        created = get_or_create_manifest(repository, manifest, storage, raise_on_error=True)
+        assert created
+        return created.manifest
+
+    repository = create_repository("devtable", "cosignapitags", None)
+    image_manifest = create_schema2_manifest(repository, "img")
+    sig_manifest = create_schema2_manifest(repository, "sig")
+
+    retarget_tag("latest", image_manifest.id, is_reversion=False)
+    hex_digest = image_manifest.digest.split(":", 1)[1]
+    sig_tag_name = "sha256-%s.sig" % hex_digest
+    created_sig_tag = retarget_tag(sig_tag_name, sig_manifest.id, is_reversion=False)
+    assert created_sig_tag is not None
+
+    params = {
+        "repository": "devtable/cosignapitags",
+        "onlyActiveTags": True,
+        "specificTag": "latest",
+    }
+    with client_with_identity("devtable", app) as cl:
+        tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+    assert len(tags) == 1
+    assert tags[0]["name"] == "latest"
+    assert tags[0]["cosign_signature_tag"] == sig_tag_name
+    assert tags[0]["cosign_signature_manifest_digest"] == sig_manifest.digest
+
+
+def test_list_repo_tags_includes_cosign_referrer_fields(app):
+    """List tags enriches Cosign v3 referrer signatures without cosign_signature_tag."""
+    import json
+    import random
+    import string
+
+    from app import storage
+    from data.database import ImageStorageLocation
+    from data.database import Manifest as ManifestTable
+    from data.model.blob import store_blob_record_and_temp_link
+    from data.model.oci.manifest import (
+        COSIGN_SIGNATURE_ARTIFACT_TYPES,
+        get_or_create_manifest,
+    )
+    from data.model.oci.tag import retarget_tag
+    from data.model.repository import create_repository
+    from data.model.storage import get_layer_path
+    from digest.digest_tools import sha256_digest
+    from image.oci.manifest import OCIManifestBuilder
+    from util.bytes import Bytes
+
+    def populate_blob(namespace, repo_name, content):
+        content = Bytes.for_string_or_unicode(content).as_encoded_str()
+        digest = str(sha256_digest(content))
+        location = ImageStorageLocation.get(name="local_us")
+        blob = store_blob_record_and_temp_link(
+            namespace, repo_name, digest, location, len(content), 120
+        )
+        storage.put_content(["local_us"], get_layer_path(blob), content)
+        return blob, digest
+
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    def create_oci_manifest(repository, differentiation_field, subject=None):
+        config_json = json.dumps(
+            {
+                "os": "linux",
+                "architecture": "amd64",
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        )
+        _, config_digest = populate_blob(
+            repository.namespace_user.username, repository.name, config_json
+        )
+        random_data = generate_random_data_for_layer() + differentiation_field
+        _, random_digest = populate_blob(
+            repository.namespace_user.username, repository.name, random_data
+        )
+        builder = OCIManifestBuilder()
+        builder.set_config_digest(config_digest, len(config_json.encode("utf-8")))
+        builder.add_layer(random_digest, len(random_data.encode("utf-8")))
+        if subject is not None:
+            builder.set_subject(
+                subject.digest,
+                len(subject.bytes.as_encoded_str()),
+                subject.media_type,
+            )
+        manifest = builder.build()
+        created = get_or_create_manifest(repository, manifest, storage, raise_on_error=True)
+        assert created
+        return created.manifest, manifest
+
+    repository = create_repository("devtable", "cosignapireferrer", None)
+    image_manifest, image_interface = create_oci_manifest(repository, "img")
+    referrer_db, _ = create_oci_manifest(repository, "sig", subject=image_interface)
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == referrer_db.id
+    ).execute()
+
+    retarget_tag("referrer-latest", image_manifest.id, is_reversion=False)
+
+    params = {
+        "repository": "devtable/cosignapireferrer",
+        "onlyActiveTags": True,
+        "specificTag": "referrer-latest",
+    }
+    with client_with_identity("devtable", app) as cl:
+        tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+    assert len(tags) == 1
+    assert tags[0]["name"] == "referrer-latest"
+    assert tags[0]["cosign_signature_manifest_digest"] == referrer_db.digest
+    assert tags[0].get("cosign_signature_tag") is None
 
 
 # Tag Immutability Tests
