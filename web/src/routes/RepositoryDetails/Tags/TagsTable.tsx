@@ -41,6 +41,7 @@ import {useTagPullStatistics} from 'src/hooks/UseTags';
 import TagExpiration from './TagsTableExpiration';
 import {useManifestTracks, TrackEntry} from './useManifestTracks';
 import ManifestTrackCell from './ManifestTrackCell';
+import {isCosignSigned} from 'src/libs/cosign';
 import './Tags.css';
 
 function SubRow(props: SubRowProps) {
@@ -242,7 +243,7 @@ function TagsTableRow(props: RowProps) {
           >
             {tag.name}
           </Link>
-          {tag.cosign_signature_tag && (
+          {isCosignSigned(tag) && (
             <Tooltip content="This tag has been signed via cosign.">
               <ShieldAltIcon
                 style={{marginLeft: '8px'}}
@@ -401,7 +402,7 @@ function TagsTableRow(props: RowProps) {
             ) : isErrorPullStats ? (
               '-'
             ) : (
-              pullStatistics?.tag_pull_count ?? 0
+              (pullStatistics?.tag_pull_count ?? 0)
             )}
           </Td>
         </Conditional>
@@ -496,7 +497,7 @@ function TagsTableRow(props: RowProps) {
                   setCache={props.setLabelCache}
                 />
               </div>
-              {tag.cosign_signature_tag && (
+              {isCosignSigned(tag) && (
                 <div className="expanded-row-section">
                   <Tooltip content="Cosign Signature">
                     <ShieldAltIcon style={{marginRight: '8px'}} />
@@ -504,17 +505,26 @@ function TagsTableRow(props: RowProps) {
                   <Tooltip content="The artifact containing the cosign signature for this tag">
                     <span className="manifest-link">
                       <span className="id-label">cosign</span>{' '}
-                      <Link
-                        to={getTagDetailPath(
-                          location.pathname,
-                          props.org,
-                          props.repo,
-                          tag.cosign_signature_tag,
-                          new Map([['tab', 'layers']]),
-                        )}
-                      >
-                        {tag.cosign_signature_tag}
-                      </Link>
+                      {tag.cosign_signature_tag ? (
+                        <Link
+                          to={getTagDetailPath(
+                            location.pathname,
+                            props.org,
+                            props.repo,
+                            tag.cosign_signature_tag,
+                            new Map([['tab', 'layers']]),
+                          )}
+                        >
+                          {tag.cosign_signature_tag}
+                        </Link>
+                      ) : (
+                        <span>
+                          {tag.cosign_signature_manifest_digest.substring(
+                            'sha256:'.length,
+                            'sha256:'.length + 12,
+                          )}
+                        </span>
+                      )}
                     </span>
                   </Tooltip>
                 </div>
