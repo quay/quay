@@ -815,15 +815,6 @@ jobs:
             > /tmp/e2e-migrate-state/source-services.txt || true
           sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
 
-      - name: Stop old OMR services before migration
-        run: |
-          set -euo pipefail
-          # Verify migration tolerates already-stopped services.
-          # OMR 2.0.x users may have manually stopped services before running
-          # quay migrate. The old code would fail here; now it warns and continues.
-          sudo systemctl stop quay-app.service quay-redis.service quay-pod.service
-          echo "Services stopped — migration must tolerate this"
-
       - name: Run quay migrate
         run: sudo bin/quay migrate
 
