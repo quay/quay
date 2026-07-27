@@ -49,31 +49,6 @@ case "$QUAYENTRY" in
         echo "Entering shell mode"
         exec /bin/bash
         ;;
-    "config")
-        echo ""; echo "Startup timestamp: "; date; echo ""
-        if [ -z "${QUAY_SERVICES}" ]; then
-            echo "Running all default config services"
-        else
-            echo "Running services ${QUAY_SERVICES}"
-        fi
-        if [ $CONFIG_APP_PASSWORD = "\"\"" ]; then
-            CONFIG_APP_PASSWORD=$2
-        fi
-        : "${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}"
-        export CONFIG_APP_PASSWORD="${CONFIG_APP_PASSWORD}"
-
-        if [ $OPERATOR_ENDPOINT = "\"\"" ]; then
-            if [ -n "$3" ]; then
-                OPERATOR_ENDPOINT=$3
-            fi
-        fi
-        export OPERATOR_ENDPOINT="${OPERATOR_ENDPOINT}"
-
-        "${QUAYPATH}/conf/init/certs_install.sh" || exit
-        "${QUAYPATH}/conf/init/client_certs.sh" || exit
-        "${QUAYPATH}/conf/init/supervisord_conf_create.sh" config || exit
-        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
-        ;;
     "migrate")
         echo ""; echo "Startup timestamp: "; date; echo ""
         : "${MIGRATION_VERSION:=$2}"
