@@ -1,5 +1,9 @@
 import {Tag} from 'src/resources/TagResource';
-import {isCosignSignatureTag, enrichTagsWithCosignData} from './cosign';
+import {
+  isCosignSignatureTag,
+  isCosignSigned,
+  enrichTagsWithCosignData,
+} from './cosign';
 
 const digest =
   'sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
@@ -59,6 +63,34 @@ describe('isCosignSignatureTag', () => {
   });
 });
 
+describe('isCosignSigned', () => {
+  it('is true when signature digest is set (cosign v3 referrer)', () => {
+    expect(
+      isCosignSigned(
+        makeTag({
+          cosign_signature_manifest_digest:
+            'sha256:9999991234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is true when signature tag is set (cosign v2)', () => {
+    expect(
+      isCosignSigned(
+        makeTag({
+          cosign_signature_tag:
+            'sha256-abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890.sig',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when neither field is set', () => {
+    expect(isCosignSigned(makeTag({}))).toBe(false);
+  });
+});
+
 describe('enrichTagsWithCosignData', () => {
   const hexDigest =
     'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
@@ -82,6 +114,25 @@ describe('enrichTagsWithCosignData', () => {
     const enriched = result.find((t) => t.name === 'latest');
     expect(enriched?.cosign_signature_tag).toBe(sigTagName);
     expect(enriched?.cosign_signature_manifest_digest).toBe(sigManifestDigest);
+  });
+
+  it('does not overwrite API-provided cosign fields', () => {
+    const apiDigest =
+      'sha256:1111111234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+    const signedTag = makeTag({
+      name: 'latest',
+      manifest_digest: signedDigest,
+      cosign_signature_manifest_digest: apiDigest,
+    });
+    const sigTag = makeTag({
+      name: sigTagName,
+      manifest_digest: sigManifestDigest,
+    });
+
+    const result = enrichTagsWithCosignData([signedTag, sigTag]);
+    const enriched = result.find((t) => t.name === 'latest');
+    expect(enriched?.cosign_signature_manifest_digest).toBe(apiDigest);
+    expect(enriched?.cosign_signature_tag).toBeUndefined();
   });
 
   it('does not enrich tags without signatures', () => {
