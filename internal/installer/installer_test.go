@@ -539,6 +539,10 @@ func (r *recordingServiceManager) EnableLinger(context.Context) error {
 	return nil
 }
 
+func (r *recordingServiceManager) DisableLinger(context.Context) error {
+	return nil
+}
+
 var _ system.ServiceManager = (*recordingServiceManager)(nil)
 
 func TestValidateSSLFlags(t *testing.T) {
