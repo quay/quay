@@ -141,7 +141,9 @@ class SkopeoMirror(object):
             [AuthContent(_registry_netloc(src_image), src_username, src_password)],
             [AuthContent(_registry_netloc(dest_image), dest_username, dest_password)],
         ) as (src_authfile_path, dest_authfile_path):
-            args.extend(["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path])
+            args.extend(
+                ["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path]
+            )
             args = args + [quote(src_image), quote(dest_image)]
             return self.run_skopeo(args, proxy, timeout)
 
@@ -259,7 +261,9 @@ class SkopeoMirror(object):
             [AuthContent(_registry_netloc(src_image_with_digest), src_username, src_password)],
             [AuthContent(_registry_netloc(dest_image_with_digest), dest_username, dest_password)],
         ) as (src_authfile_path, dest_authfile_path):
-            args.extend(["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path])
+            args.extend(
+                ["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path]
+            )
             args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
             return self.run_skopeo(args, proxy or {}, timeout)
 
