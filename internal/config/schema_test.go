@@ -94,6 +94,7 @@ var knownUnmapped = map[string]bool{
 
 	// Security scanner extras
 	"FEATURE_SECURITY_NOTIFICATIONS":          true,
+	"SECURITY_SCANNER_MAX_SCAN_RETRIES":       true,
 	"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": true,
 	"SECURITY_SCANNER_V4_PSK":                 true,
 	"SECURITY_SCANNER_V4_MANIFEST_CLEANUP":    true,
