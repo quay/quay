@@ -162,12 +162,10 @@ def test_src_dest_authfiles_same_registry_preserves_both():
         with open(dest_path) as f:
             dest_content = json.loads(f.read())
 
-        src_auth = base64.b64decode(
-            src_content["auths"]["quay.example.com"]["auth"]
-        ).decode("utf8")
-        dest_auth = base64.b64decode(
-            dest_content["auths"]["quay.example.com"]["auth"]
-        ).decode("utf8")
+        src_auth = base64.b64decode(src_content["auths"]["quay.example.com"]["auth"]).decode("utf8")
+        dest_auth = base64.b64decode(dest_content["auths"]["quay.example.com"]["auth"]).decode(
+            "utf8"
+        )
 
         assert src_auth == "src_robot:src_pass"
         assert dest_auth == "dest_robot:dest_pass"

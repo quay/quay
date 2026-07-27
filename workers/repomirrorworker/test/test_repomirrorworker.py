@@ -34,7 +34,14 @@ from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 def _assert_skopeo_args(actual_args, expected_args):
     """Assert skopeo args match, stripping transient authfile and legacy inline --*-creds pairs."""
-    auth_flags = ("--authfile", "--src-authfile", "--dest-authfile", "--src-creds", "--dest-creds", "--creds")
+    auth_flags = (
+        "--authfile",
+        "--src-authfile",
+        "--dest-authfile",
+        "--src-creds",
+        "--dest-creds",
+        "--creds",
+    )
 
     def strip_cred_flags(args):
         a = list(args)
@@ -455,11 +462,11 @@ def test_rollback(
             _assert_skopeo_args(args, skopeo_call["args"])
             assert proxy == {}
 
-            if args[1] == "copy" and args[8].endswith(":updated"):
+            if args[1] == "copy" and args[-2].endswith(":updated"):
                 _create_tag(repo, "updated")
-            elif args[1] == "copy" and args[8].endswith(":created"):
+            elif args[1] == "copy" and args[-2].endswith(":created"):
                 _create_tag(repo, "created")
-            elif args[1] == "copy" and args[8].endswith(":zzerror"):
+            elif args[1] == "copy" and args[-2].endswith(":zzerror"):
                 _create_tag(repo, "zzerror")
 
             return skopeo_call["results"]
