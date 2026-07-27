@@ -283,6 +283,11 @@ jobs:
       - name: Install regctl for CLI interop tests
         uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
 
+      - name: Install cosign for Cosign v3 referrer tests
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.2
+
       - name: Run Database auth tests (React + Legacy UI)
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db

@@ -1,7 +1,11 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
-import {pushImage} from '../../utils/container';
+import {
+  pushImage,
+  isCosignAvailable,
+  cosignSignWithKey,
+} from '../../utils/container';
 
 test.describe(
   'Tags - Show/Hide Signatures',
@@ -148,6 +152,147 @@ test.describe(
       await settingsToggle.click();
       await expect(sigMenuItem.getByRole('checkbox')).not.toBeChecked();
       await settingsToggle.click();
+    });
+
+    test(
+      'shows cosign shield for classic .sig signature tag',
+      {tag: '@PROJQUAY-12113'},
+      async ({authenticatedPage}) => {
+        await authenticatedPage.goto(
+          `/repository/${testRepo.fullName}?tab=tags`,
+        );
+
+        await expect(
+          authenticatedPage.getByRole('link', {name: 'latest'}),
+        ).toBeVisible();
+
+        await expect(
+          authenticatedPage.getByLabel('Cosign signed'),
+        ).toBeVisible();
+      },
+    );
+  },
+);
+
+test.describe(
+  'Tags - Cosign referrer shield',
+  {tag: ['@tags', '@container', '@PROJQUAY-12113']},
+  () => {
+    let testRepo: {namespace: string; name: string; fullName: string};
+
+    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      if (!cachedContainerAvailable) return;
+
+      const cosignAvailable = await isCosignAvailable();
+      if (!cosignAvailable) return;
+
+      const api = new ApiClient(userContext.request);
+      const repoName = uniqueName('cosign-referrer');
+      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+
+      testRepo = {
+        namespace: TEST_USERS.user.username,
+        name: repoName,
+        fullName: `${TEST_USERS.user.username}/${repoName}`,
+      };
+
+      await pushImage(
+        testRepo.namespace,
+        testRepo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      let digest: string | undefined;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const tags = await api.getTags(testRepo.namespace, testRepo.name, {
+          specificTag: 'latest',
+        });
+        if (tags.tags.length > 0) {
+          digest = tags.tags[0].manifest_digest;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!digest) {
+        throw new Error('Pushed tag was not indexed after 10 attempts');
+      }
+
+      // Cosign v3 referrer: sign busybox with a generated key pair (no .sig tag)
+      await cosignSignWithKey(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Wait for tags API enrichment to surface the referrer signature
+      await expect
+        .poll(
+          async () => {
+            const tags = await api.getTags(testRepo.namespace, testRepo.name, {
+              specificTag: 'latest',
+            });
+            const latest = tags.tags[0] as {
+              cosign_signature_manifest_digest?: string;
+              cosign_signature_tag?: string;
+            };
+            if (
+              latest?.cosign_signature_manifest_digest &&
+              !latest.cosign_signature_tag
+            ) {
+              return latest.cosign_signature_manifest_digest;
+            }
+            return null;
+          },
+          {
+            message:
+              'Waiting for referrer-only cosign_signature_manifest_digest (no cosign_signature_tag)',
+            timeout: 15_000,
+            intervals: [500, 1_000, 2_000],
+          },
+        )
+        .not.toBeNull();
+    });
+
+    test.afterAll(async ({userContext}) => {
+      if (!testRepo) return;
+      const api = new ApiClient(userContext.request);
+      try {
+        await api.deleteRepository(testRepo.namespace, testRepo.name);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    test('shows cosign shield for OCI referrer signature without .sig tag', async ({
+      authenticatedPage,
+    }) => {
+      const cosignAvailable = await isCosignAvailable();
+      test.skip(!cosignAvailable, 'cosign v3 CLI required for referrer tests');
+
+      await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'latest'}),
+      ).toBeVisible();
+
+      // Show Signatures so classic .sig tags would be visible if Cosign
+      // used tag-schema storage instead of an OCI referrer.
+      const settingsToggle = authenticatedPage.locator('#tags-settings-toggle');
+      await settingsToggle.click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: /Show Signatures/})
+        .click();
+      await settingsToggle.click();
+
+      await expect(
+        authenticatedPage.getByRole('link', {name: /\.sig$/}),
+      ).not.toBeAttached();
+
+      await expect(authenticatedPage.getByLabel('Cosign signed')).toBeVisible();
     });
   },
 );

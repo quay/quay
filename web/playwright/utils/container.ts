@@ -3,8 +3,8 @@
  *
  * These helpers intentionally avoid podman/docker. OpenShift CI pods can
  * block user namespaces, which makes container runtimes fail even when the
- * binaries are installed. Skopeo, crane, oras, and regctl operate directly
- * against registries and work in restricted pods.
+ * binaries are installed. Skopeo, crane, oras, regctl, and cosign operate
+ * directly against registries and work in restricted pods.
  */
 
 import {execFile, execFileSync, spawn} from 'child_process';
@@ -27,6 +27,7 @@ type ToolAvailability = {
   crane: boolean;
   oras: boolean;
   regctl: boolean;
+  cosign: boolean;
 };
 
 let toolAvailabilityPromise: Promise<ToolAvailability> | null = null;
@@ -132,11 +133,13 @@ async function detectRegistryTools(): Promise<ToolAvailability> {
       commandAvailable('crane', ['version']),
       commandAvailable('oras', ['version']),
       commandAvailable('regctl', ['version']),
-    ]).then(([skopeo, crane, oras, regctl]) => ({
+      commandAvailable('cosign', ['version']),
+    ]).then(([skopeo, crane, oras, regctl, cosign]) => ({
       skopeo,
       crane,
       oras,
       regctl,
+      cosign,
     }));
   }
   return toolAvailabilityPromise;
@@ -472,11 +475,87 @@ export async function pushOCIImage(
 }
 
 /**
+ * Sign an image digest with Cosign v3 using an ephemeral self-managed key pair.
+ *
+ * Keys are created with `cosign generate-key-pair` (see
+ * https://docs.sigstore.dev/cosign/key_management/signing_with_self-managed_keys/).
+ * Uses Cosign's new-bundle format so the signature is stored as an
+ * OCI 1.1 referrer (no classic sha256-<hex>.sig tag). Signing is offline
+ * (--use-signing-config=false --tlog-upload=false) so Rekor/TUF are not required.
+ */
+export async function cosignSignWithKey(
+  namespace: string,
+  repo: string,
+  digest: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  await requireTool('cosign');
+
+  const imageRef = `${REGISTRY_HOST}/${namespace}/${repo}@${digest}`;
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'quay-cosign-'));
+  const keyPrefix = path.join(tmpDir, 'cosign');
+  const keyPath = `${keyPrefix}.key`;
+  const dockerConfigDir = path.join(tmpDir, 'docker');
+
+  try {
+    await mkdir(dockerConfigDir);
+    await writeFile(
+      path.join(dockerConfigDir, 'config.json'),
+      registryAuthConfig(username, password),
+      {mode: 0o600},
+    );
+
+    const cosignEnv = {
+      ...process.env,
+      // Empty password keeps generate-key-pair non-interactive without a
+      // committed secret. These keys exist only for this test run.
+      COSIGN_PASSWORD: '',
+      DOCKER_CONFIG: dockerConfigDir,
+    };
+
+    await execFileAsync(
+      'cosign',
+      ['generate-key-pair', `--output-key-prefix=${keyPrefix}`],
+      {env: cosignEnv},
+    );
+
+    await retryOperation(() =>
+      execFileAsync(
+        'cosign',
+        [
+          'sign',
+          '--yes',
+          '--key',
+          keyPath,
+          '--new-bundle-format=true',
+          '--use-signing-config=false',
+          '--tlog-upload=false',
+          '--allow-insecure-registry',
+          imageRef,
+        ],
+        {env: cosignEnv},
+      ).then(() => undefined),
+    );
+  } finally {
+    await rm(tmpDir, {recursive: true, force: true});
+  }
+}
+
+/**
  * Check if oras CLI is available on the system.
  */
 export async function isOrasAvailable(): Promise<boolean> {
   const tools = await detectRegistryTools();
   return tools.oras;
+}
+
+/**
+ * Check if cosign CLI is available on the system.
+ */
+export async function isCosignAvailable(): Promise<boolean> {
+  const tools = await detectRegistryTools();
+  return tools.cosign;
 }
 
 /**
