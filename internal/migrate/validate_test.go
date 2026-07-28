@@ -52,8 +52,9 @@ func TestValidateSource_ValidDB(t *testing.T) {
 		},
 	}
 
-	if err := m.validate(t.Context()); err != nil {
-		t.Fatalf("validate: %v", err)
+	err = m.validate(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
+		t.Fatalf("validate error = %v, want source rejection", err)
 	}
 }
 
@@ -116,7 +117,7 @@ func TestValidateSource_RequiresRegistryJWTContinuityMaterial(t *testing.T) {
 
 		err := m.validate(t.Context())
 
-		if err == nil || !strings.Contains(err.Error(), "load source config for registry JWT key validation") {
+		if err == nil || !strings.Contains(err.Error(), "read source config") {
 			t.Fatalf("validate error = %v, want missing source config", err)
 		}
 	})
@@ -127,12 +128,146 @@ func TestValidateSource_RequiresRegistryJWTContinuityMaterial(t *testing.T) {
 			t.Fatalf("remove source signing key: %v", err)
 		}
 
-		err := m.validate(t.Context())
+		err := m.validateRegistryJWTSource(t.Context())
 
 		if err == nil || !strings.Contains(err.Error(), "registry JWT key validation") {
-			t.Fatalf("validate error = %v, want missing signing key", err)
+			t.Fatalf("validateRegistryJWTSource error = %v, want missing signing key", err)
 		}
 	})
+}
+
+func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
+	m := validInstallMigrator(t)
+	runner := &recordingRunner{}
+	m.Runner = runner
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+
+	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.migrateData(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
+		t.Fatalf("migrateData error = %v, want unsupported revision", err)
+	}
+	if len(runner.runCalls) != 0 {
+		t.Fatalf("source services were stopped before preflight rejection: %v", runner.runCalls)
+	}
+
+	readOnly, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readOnly.Close()
+	revision, err := dbcore.SchemaVersion(t.Context(), readOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revision != "3f8d7acdf7f9" {
+		t.Errorf("source revision = %q, want unchanged unsupported revision", revision)
+	}
+}
+
+func TestMigrateData_RejectsUnsupportedAuthenticationBeforeStoppingServices(t *testing.T) {
+	for _, provider := range []string{"LDAP", "JWT", "Keystone", "OIDC", "AppToken", "", "Unknown"} {
+		t.Run(provider, func(t *testing.T) {
+			m := validInstallMigrator(t)
+			runner := &recordingRunner{}
+			m.Runner = runner
+			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+
+			configPath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+			configData, err := os.ReadFile(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacement := `AUTHENTICATION_TYPE: "` + provider + `"`
+			configData = []byte(strings.Replace(string(configData), "AUTHENTICATION_TYPE: Database", replacement, 1))
+			if err := os.WriteFile(configPath, configData, 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			err = m.migrateData(t.Context())
+			want := "unsupported authentication provider"
+			if provider == "" {
+				want = "AUTHENTICATION_TYPE must be a non-empty string"
+			}
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("migrateData error = %v, want %q", err, want)
+			}
+			if len(runner.runCalls) != 0 {
+				t.Fatalf("source services were stopped before auth rejection: %v", runner.runCalls)
+			}
+		})
+	}
+}
+
+func TestValidateSource_RejectsMissingAuthenticationType(t *testing.T) {
+	m := validInstallMigrator(t)
+	configPath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configData = []byte(strings.Replace(string(configData), "AUTHENTICATION_TYPE: Database\n", "", 1))
+	if err := os.WriteFile(configPath, configData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.validate(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "AUTHENTICATION_TYPE is missing") {
+		t.Fatalf("validate error = %v, want missing auth type", err)
+	}
+}
+
+func TestValidateSource_ChecksRobotTokenDecryption(t *testing.T) {
+	m := validInstallMigrator(t)
+	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO user (id, username, email, verified, organization, robot, invoice_email, last_invalid_login) VALUES (1, 'owner+robot', 'robot@example.com', 1, 0, 1, 0, datetime('now'))`,
+		`INSERT INTO robotaccounttoken (id, robot_account_id, token) VALUES (1, 1, 'v0$$XTxqlz/Kw8s9WKw+GaSvXFEKgpO/a2cGNhvnozzkaUh4C+FgHqZqnA==')`,
+	} {
+		if _, err := db.ExecContext(t.Context(), statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := m.validateSourceAuth(t.Context(), db); err != nil {
+		t.Fatalf("validateSourceAuth with decryptable token: %v", err)
+	}
+
+	configPath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configData = []byte(strings.Replace(string(configData), "DATABASE_SECRET_KEY: test1234", "DATABASE_SECRET_KEY: wrong-key", 1))
+	if err := os.WriteFile(configPath, configData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.validateSourceAuth(t.Context(), db)
+	if err == nil || !strings.Contains(err.Error(), "robot token cannot be decrypted") {
+		t.Fatalf("validateSourceAuth error = %v, want robot token decryption failure", err)
+	}
 }
 
 func TestValidateTarget_NotEmpty(t *testing.T) {

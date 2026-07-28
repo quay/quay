@@ -88,7 +88,7 @@ func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir st
 		return nil, "", fmt.Errorf("source registry JWT private key does not match key ID %q", kid)
 	}
 
-	db, err := dbcore.OpenSQLite(dbPath)
+	db, err := dbcore.OpenSQLiteReadOnly(dbPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("open source database for registry JWT key validation: %w", err)
 	}

@@ -10,49 +10,8 @@ import (
 	"strings"
 
 	"github.com/quay/quay/internal/config"
-	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
 )
-
-// upgradeSchema opens the copied database, backs it up, and runs the bridge
-// migration to bring it to the Go binary's target schema version.
-func (m *Migrator) upgradeSchema(ctx context.Context) error {
-	dbPath := filepath.Join(m.DataDir, "quay.db")
-
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	defer func() { _ = db.Close() }()
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		return fmt.Errorf("read schema version: %w", err)
-	}
-
-	if ver == dbcore.TargetVersion {
-		slog.Info("schema is current", "version", ver)
-		return nil
-	}
-
-	slog.Info("upgrading schema", "from", ver, "to", dbcore.TargetVersion)
-
-	backupPath, err := dbcore.BackupDatabase(ctx, db, dbPath)
-	if err != nil {
-		return fmt.Errorf("backup: %w", err)
-	}
-	slog.Info("database backup created", "path", backupPath)
-
-	if err := dbcore.RunBridge(ctx, db, m.Out); err != nil {
-		return fmt.Errorf("bridge migration (restore from %s): %w", backupPath, err)
-	}
-
-	if err := dbcore.IntegrityCheck(ctx, db); err != nil {
-		return fmt.Errorf("post-migration integrity check: %w", err)
-	}
-
-	return nil
-}
 
 // stopSourceServices stops source systemd services to free the listen port and flush WAL.
 func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unparam // keeps error return for phase-method consistency

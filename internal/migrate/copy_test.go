@@ -85,7 +85,7 @@ DISTRIBUTED_STORAGE_CONFIG:
     - storage_path: /old/storage
 SECRET_KEY: old-secret
 DATABASE_SECRET_KEY: old-database-secret
-AUTHENTICATION_TYPE: LDAP
+AUTHENTICATION_TYPE: Database
 ROBOTS_DISALLOW: true
 ROBOTS_WHITELIST:
   - init+migratebot
@@ -125,8 +125,8 @@ FEATURE_USER_LAST_ACCESSED: false
 	if cfg.DBURI != "sqlite:////data/quay.db" {
 		t.Fatalf("DBURI = %q, want migrated runtime DB path", cfg.DBURI)
 	}
-	if cfg.AuthenticationType != "LDAP" {
-		t.Fatalf("AuthenticationType = %q, want source authentication type", cfg.AuthenticationType)
+	if cfg.AuthenticationType != "Database" {
+		t.Fatalf("AuthenticationType = %q, want Database", cfg.AuthenticationType)
 	}
 	entry := cfg.DistributedStorageConfig["default"]
 	if entry.Driver != "LocalStorage" || entry.Params["storage_path"] != "/data/storage" {

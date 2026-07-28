@@ -71,6 +71,9 @@ func (m *Migrator) Run(ctx context.Context) error {
 	}
 
 	if m.DryRun {
+		if err := m.validate(ctx); err != nil {
+			return fmt.Errorf("validate: %w", err)
+		}
 		m.printPlan()
 		return nil
 	}
@@ -119,9 +122,6 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	}
 	if err := m.copyData(ctx); err != nil {
 		return fmt.Errorf("copy: %w", err)
-	}
-	if err := m.upgradeSchema(ctx); err != nil {
-		return fmt.Errorf("schema upgrade: %w", err)
 	}
 	return nil
 }
