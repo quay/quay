@@ -77,8 +77,8 @@ objects:
         - name: envoy
           image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
-          command: ["envoy"]
-          args: ["-c", "/etc/envoy/envoy.yaml", "--log-level", "${ENVOY_LOG_LEVEL}"]
+          command: ["/bin/sh", "-c"]
+          args: ["ulimit -n $(ulimit -Hn) && exec envoy -c /etc/envoy/envoy.yaml --log-level ${ENVOY_LOG_LEVEL}"]
           ports:
           - containerPort: 8443
             name: https
