@@ -3,11 +3,25 @@ from datetime import datetime
 import pytest
 
 from data import model
+from data.database import RepoMirrorRule
+from endpoints.api.mirror import (
+    RepoMirrorResource,
+    RepoMirrorSyncCancelResource,
+    _validate_external_reference,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.mirror import RepoMirrorResource
 from endpoints.test.shared import client_with_identity
 
 from test.fixtures import *
+
+
+@pytest.fixture(autouse=True)
+def _mock_dns_for_ssrf_validation():
+    """Keep mirror endpoint tests independent of external DNS."""
+    with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+        mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        yield mock_dns
 
 
 def _setup_mirror():
@@ -79,6 +93,24 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
     assert config.root_rule.rule_value == ["latest", "foo", "bar"]
 
 
+def test_create_mirror_with_invalid_sync_start_date(app):
+    robot, _ = model.user.create_robot("invaliddatebot", model.user.get_namespace_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "not-a-date",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": robot.username,
+        }
+        resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+
+    assert resp.json["detail"] == "Incorrect DateTime format for sync_start_date."
+
+
 def test_get_mirror_does_not_exist(app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
@@ -125,7 +157,7 @@ def test_get_mirror(app):
         ("is_enabled", "foo", 400),
         ("external_reference", "example.com/foo/bar", 201),
         ("external_reference", "example.com/foo", 201),
-        ("external_reference", "example.com", 201),
+        ("external_reference", "example.com", 400),
         ("external_registry_username", "newTestUsername", 201),
         ("external_registry_username", None, 201),
         ("external_registry_username", 123, 400),
@@ -214,6 +246,44 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json["external_registry_config"]["proxy"][key] != value
         else:
             assert resp.json[key] != value
+
+
+def test_update_robot_is_looked_up_once(app):
+    _setup_mirror()
+    lookup_robot = model.user.lookup_robot
+
+    with patch("endpoints.api.mirror.model.user.lookup_robot", wraps=lookup_robot) as mock_lookup:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            conduct_api_call(
+                cl,
+                RepoMirrorResource,
+                "PUT",
+                params,
+                {"robot_username": "devtable+dtrobot"},
+                201,
+            )
+
+    mock_lookup.assert_called_once_with("devtable+dtrobot")
+
+
+def test_update_robot_without_namespace_separator_is_invalid(app):
+    _setup_mirror()
+    robot = model.user.lookup_robot("devtable+dtrobot")
+
+    with patch("endpoints.api.mirror.model.user.lookup_robot", return_value=robot):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            response = conduct_api_call(
+                cl,
+                RepoMirrorResource,
+                "PUT",
+                params,
+                {"robot_username": "dtrobot"},
+                400,
+            )
+
+    assert response.json["message"] == "Invalid robot"
 
 
 @pytest.mark.parametrize(
