@@ -129,14 +129,10 @@ test.describe(
 
       // Navigate to superuser usage logs and verify org_delete entry
       await superuserPage.goto('/usage-logs');
-      await expect(
-        superuserPage.getByTestId('usage-logs-table'),
-      ).toBeVisible();
+      await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
 
       // Filter for the deleted org name to find the audit entry
-      await expect(
-        superuserPage.getByPlaceholder('Filter logs'),
-      ).toBeVisible();
+      await expect(superuserPage.getByPlaceholder('Filter logs')).toBeVisible();
       await superuserPage.getByPlaceholder('Filter logs').fill(org.name);
       await superuserPage.waitForTimeout(500);
 
