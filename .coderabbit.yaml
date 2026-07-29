@@ -49,6 +49,18 @@ reviews:
         - UPDATE statements that touch all rows without batching
         - Missing or incomplete downgrade() implementation
         - Verify down_revision matches the current migration chain head
+        - Verify internal/dal/schema/sqlite/quay_schema.sql reflects the post-migration DDL
+        - Verify internal/dal/schema/sqlite/seed_data.sql stamps the latest migration revision
+
+    - path: "internal/dal/schema/sqlite/migrations/**/*.sql"
+      instructions: |
+        Review SQLite migrations for consistency with the generated schema.
+
+        Check that:
+        - internal/dal/schema/sqlite/quay_schema.sql reflects the post-migration DDL
+        - internal/dal/schema/sqlite/seed_data.sql stamps the latest migration revision
+        - A fresh database created from the generated schema matches one upgraded through
+          every migration; request regenerated files from make go-schema when they drift
 
     - path: "data/model/**/*.py"
       instructions: |

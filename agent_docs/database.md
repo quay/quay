@@ -63,6 +63,20 @@ alembic downgrade -1
 3. Test migrations in both directions
 4. Include data migrations if needed (not just schema)
 
+### Generated Schema Consistency
+
+When adding or modifying Alembic migrations in `data/migrations/versions/` or
+SQLite migrations in `internal/dal/schema/sqlite/migrations/`:
+
+1. Verify that `internal/dal/schema/sqlite/quay_schema.sql` reflects the
+   post-migration DDL. If a migration immediately changes DDL in the generated
+   schema, run `make go-schema` and commit the regenerated files.
+2. Verify that `internal/dal/schema/sqlite/seed_data.sql` stamps the latest
+   migration revision.
+3. Run `make go-schema-check` to confirm that initializing a database from the
+   generated schema produces the same structure as applying all migrations to
+   an empty database.
+
 ## Database Connection
 
 ```python
