@@ -3,14 +3,27 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.21"></a>
+## [v3.12.21] - 2026-07-28
+### PROJQUAY-12121: Chore(Deps)
+- [b3094b3df](https://github.com/quay/quay/commit/b3094b3df6c5edf107256d76c29626a73d45edfe): override brace-expansion to address CVE-2026-13149 ([#6655](https://github.com/quay/quay/issues/6655))
+### [Redhat-3.12] PROJQUAY-12115: Fix(Cve)
+- [830be3607](https://github.com/quay/quay/commit/830be36073e22b0ae0e04fb1b3b57c920abda548): CVE-2026-45822 - decode-uri-component ([#6515](https://github.com/quay/quay/issues/6515))
+### [Redhat-3.12] PROJQUAY-12271: Chore(Deps)
+- [026ed3b14](https://github.com/quay/quay/commit/026ed3b144c37dcd22cde9be5e0869bad9797824): upgrade pyasn1 from 0.6.3 to 0.6.4 to address CVE-2026-59885 ([#6602](https://github.com/quay/quay/issues/6602))
+### [Redhat-3.12] PROJQUAY-12328: Chore(Deps)
+- [86b608cc9](https://github.com/quay/quay/commit/86b608cc97f99c3d67360edbf44001e16ea5f1b1): Bump pillow to 12.3.0 ([#6625](https://github.com/quay/quay/issues/6625))
+
 <a name="v3.12.20"></a>
-## [v3.12.20] - 2026-07-06
+## [v3.12.20] - 2026-07-07
 ### PROJQUAY-11707: Deps
 - [e3e54dcd2](https://github.com/quay/quay/commit/e3e54dcd240cce1def2d2a9629edc494ebc6a215): Bump golang.org/x/net to version 0.55.0 ([#6341](https://github.com/quay/quay/issues/6341))
 ### [Redhat-3.12] NO-ISSUE: Chore(Config-Tool)
 - [9984999b8](https://github.com/quay/quay/commit/9984999b8b5222062ed59b6c37ccfc4b19cf3aaf): update Go base image to 1… ([#6253](https://github.com/quay/quay/issues/6253))
 ### [Redhat-3.12] NO-ISSUE: Ci
 - [558a747fe](https://github.com/quay/quay/commit/558a747feb642654f445a6bc03862f32793faddd): move vpc sg rule cleanup to dedicated workflow job ([#6211](https://github.com/quay/quay/issues/6211))
+### [Redhat-3.12] PROJQUAY-10889: Fix(Proxy)
+- [9daf112bc](https://github.com/quay/quay/commit/9daf112bcb50712679b0c5e24bfff77648d34b5d): prevent SSRF in proxy cache upstream registry configuration ([#6419](https://github.com/quay/quay/issues/6419))
 ### [Redhat-3.12] PROJQUAY-11712: Chore(Deps)
 - [2219c380a](https://github.com/quay/quay/commit/2219c380a422fb2ae66cbb55508bb163cf62a349): update go version to 1.25.0 ([#6311](https://github.com/quay/quay/issues/6311))
 ### [Redhat-3.12] PROJQUAY-11878: Fix(Cve)
@@ -784,6 +797,19 @@
 - [5286c33f8](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd0](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.24"></a>
+## [v3.10.24] - 2026-07-08
+### PROJQUAY-11708: Deps
+- [f4dfd561c](https://github.com/quay/quay/commit/f4dfd561cdee3189d20eb799ba6c1d41a7c72cb4): Bump golang.org/x/net to version 0.55.0 ([#6343](https://github.com/quay/quay/issues/6343))
+### [Redhat-3.10] PROJQUAY-10888: Fix(Proxy)
+- [f3bae1950](https://github.com/quay/quay/commit/f3bae19502a135c62e5b77ad9f8dc12eb282eb54): prevent SSRF in proxy cache upstream registry configuration ([#6421](https://github.com/quay/quay/issues/6421))
+### [Redhat-3.10] PROJQUAY-11712: Chore(Deps)
+- [6cda50f3e](https://github.com/quay/quay/commit/6cda50f3edc434962ea12a045040b90328430e99): update go version to 1.25.0 ([#6310](https://github.com/quay/quay/issues/6310))
+### [Redhat-3.10] PROJQUAY-11871: Fix(Cve)
+- [fe81ea7d7](https://github.com/quay/quay/commit/fe81ea7d70b0126404ac9078e8d4212c1065c149): CVE-2026-12143 - form-data ([#6319](https://github.com/quay/quay/issues/6319))
+### [Redhat-3.10] PROJQUAY-11961: Deps
+- [1d58647d6](https://github.com/quay/quay/commit/1d58647d6c368e0b95356315989f2e4b8c42522a): bump sanitize-html to 2.17.5 ([#6369](https://github.com/quay/quay/issues/6369))
+
 <a name="v3.10.23"></a>
 ## [v3.10.23] - 2026-06-26
 ### PROJQUAY-11613: Fix(Cve)
@@ -1414,6 +1440,27 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.24"></a>
+## [v3.9.24] - 2026-07-14
+### PROJQUAY-11706: Deps
+- [5c3f112c5](https://github.com/quay/quay/commit/5c3f112c5ba781db2d87ec82eaebc0379a4e035d): Bump golang.org/x/net to version 0.55.0 ([#6346](https://github.com/quay/quay/issues/6346))
+### PROJQUAY-12082: Fix(Cve)
+- [9bf0aefa5](https://github.com/quay/quay/commit/9bf0aefa569d97531536c5336a3ba4105bfc5192): CVE-2026-13676 - FastUri ([#6361](https://github.com/quay/quay/issues/6361))
+### [Redhat-3.9] NO-ISSUE: Chore(Config-Tool)
+- [8b9f09246](https://github.com/quay/quay/commit/8b9f092462e14592eae9a87a34c237039cee6eec): update Go base image to 1… ([#6255](https://github.com/quay/quay/issues/6255))
+### [Redhat-3.9] NO-ISSUE: Ci
+- [a34995dc0](https://github.com/quay/quay/commit/a34995dc0e5d9dc7902b97684381541281abdb8b): move vpc sg rule cleanup to dedicated workflow job ([#6288](https://github.com/quay/quay/issues/6288))
+### [Redhat-3.9] PROJQUAY-10894: Fix(Proxy)
+- [4ef68c908](https://github.com/quay/quay/commit/4ef68c9086e1f9ee87a768ee3870d64b82d5beac): prevent SSRF in proxy cache upstream registry configuration ([#6422](https://github.com/quay/quay/issues/6422))
+### [Redhat-3.9] PROJQUAY-11712: Chore(Deps)
+- [56d8e58b9](https://github.com/quay/quay/commit/56d8e58b9e132a948f8633746b62d74d9c2140d3): update go version to 1.25.0 ([#6312](https://github.com/quay/quay/issues/6312))
+### [Redhat-3.9] PROJQUAY-11876: Fix(Cve)
+- [0513ffbfb](https://github.com/quay/quay/commit/0513ffbfbe6482471efdcaa68811892c3f661ada): CVE-2026-12143 - form-data ([#6320](https://github.com/quay/quay/issues/6320))
+### [Redhat-3.9] PROJQUAY-11958: Deps
+- [79449fa82](https://github.com/quay/quay/commit/79449fa82e51c1e88c20c901c1f3df6c1790ab1a): bump sanitize-html to 2.17.5 ([#6370](https://github.com/quay/quay/issues/6370))
+### [Redhat-3.9] PROJQUAY-12114: Fix(Cve)
+- [b1f04cfc7](https://github.com/quay/quay/commit/b1f04cfc7d7ac5968fa5649164956afc6579f1df): CVE-2026-45822 - decode-uri-component ([#6508](https://github.com/quay/quay/issues/6508))
 
 <a name="v3.9.23"></a>
 ## [v3.9.23] - 2026-06-19
@@ -3133,7 +3180,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.20...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.21...HEAD
+[v3.12.21]: https://github.com/quay/quay/compare/v3.12.20...v3.12.21
 [v3.12.20]: https://github.com/quay/quay/compare/v3.12.19...v3.12.20
 [v3.12.19]: https://github.com/quay/quay/compare/v3.12.18...v3.12.19
 [v3.12.18]: https://github.com/quay/quay/compare/v3.12.17...v3.12.18
@@ -3168,7 +3216,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.23...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.24...v3.11.0
+[v3.10.24]: https://github.com/quay/quay/compare/v3.10.23...v3.10.24
 [v3.10.23]: https://github.com/quay/quay/compare/v3.10.22...v3.10.23
 [v3.10.22]: https://github.com/quay/quay/compare/v3.10.21...v3.10.22
 [v3.10.21]: https://github.com/quay/quay/compare/v3.10.20...v3.10.21
@@ -3192,7 +3241,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.23...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.24...v3.10.0
+[v3.9.24]: https://github.com/quay/quay/compare/v3.9.23...v3.9.24
 [v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
 [v3.9.22]: https://github.com/quay/quay/compare/v3.9.21...v3.9.22
 [v3.9.21]: https://github.com/quay/quay/compare/v3.9.20...v3.9.21
