@@ -134,7 +134,6 @@ test.describe(
       // Filter for the deleted org name to find the audit entry
       await expect(superuserPage.getByPlaceholder('Filter logs')).toBeVisible();
       await superuserPage.getByPlaceholder('Filter logs').fill(org.name);
-      await superuserPage.waitForTimeout(500);
 
       await expect(
         superuserPage

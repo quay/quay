@@ -876,6 +876,11 @@ class SuperUserOrganizationManagement(ApiResource):
         Deletes the specified organization.
         """
         if SuperUserPermission().can():
+            try:
+                model.organization.get_organization(name)
+            except model.InvalidOrganizationException:
+                raise NotFound()
+
             log_action("org_delete", name, {"namespace": name})
             pre_oci_model.mark_organization_for_deletion(name)
             return "", 204

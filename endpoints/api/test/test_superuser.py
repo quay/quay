@@ -1,11 +1,14 @@
 import pytest
+from mock import patch
 
+from data import model
 from data.database import DeletedNamespace, User
 from endpoints.api.superuser import (
     SuperUserDumpConfig,
     SuperUserList,
     SuperUserManagement,
     SuperUserOrganizationList,
+    SuperUserOrganizationManagement,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -106,3 +109,28 @@ def test_get_superuserdumpconfig(app):
             result.get("schema", {})["description"]
             result.get("schema", {})["required"]
             raise AttributeError()
+
+
+def test_delete_organization_logs_audit_event(app):
+    admin_user = model.user.get_user("devtable")
+    org = model.organization.create_organization("delauditorg", "delaudit@test.com", admin_user)
+
+    with client_with_identity("devtable", app) as cl:
+        with patch("endpoints.api.superuser.log_action") as mock_log:
+            params = {"name": org.username}
+            conduct_api_call(cl, SuperUserOrganizationManagement, "DELETE", params, None, 204)
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_delete"
+            assert call_args[0][1] == org.username
+            assert call_args[0][2] == {"namespace": org.username}
+
+
+def test_delete_nonexistent_organization_returns_404(app):
+    with client_with_identity("devtable", app) as cl:
+        with patch("endpoints.api.superuser.log_action") as mock_log:
+            params = {"name": "nonexistent_org_xyz"}
+            conduct_api_call(cl, SuperUserOrganizationManagement, "DELETE", params, None, 404)
+
+            mock_log.assert_not_called()
