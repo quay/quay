@@ -7,8 +7,7 @@ import (
 )
 
 // ValidateSourceCompatibility checks a source database without changing it.
-// No external OMR revision is enabled until an artifact-derived fixture
-// validates its schema and migration path.
+// Only the OMR v2.0.11 revision covered by the migration E2E is accepted.
 func ValidateSourceCompatibility(ctx context.Context, db *sql.DB) error {
 	rows, err := db.QueryContext(ctx, "SELECT version_num FROM alembic_version")
 	if err != nil {
@@ -38,10 +37,11 @@ func ValidateSourceCompatibility(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("source database foreign key check: %w", err)
 	}
 
-	return fmt.Errorf(
-		"source revision %q is not currently supported: no OMR source revisions are enabled pending artifact-derived fixture validation",
-		revisions[0],
-	)
+	if revisions[0] != approvedOMRSourceVersion {
+		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", revisions[0], approvedOMRSourceVersion)
+	}
+
+	return nil
 }
 
 func foreignKeyCheck(ctx context.Context, db *sql.DB) error {

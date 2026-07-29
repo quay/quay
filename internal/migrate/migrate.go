@@ -123,6 +123,9 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	if err := m.copyData(ctx); err != nil {
 		return fmt.Errorf("copy: %w", err)
 	}
+	if err := m.upgradeSchema(ctx); err != nil {
+		return fmt.Errorf("schema upgrade: %w", err)
+	}
 	return nil
 }
 

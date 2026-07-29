@@ -29,6 +29,9 @@ func TestValidateSource_ValidDB(t *testing.T) {
 	if err := dbcore.InitDatabase(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
 	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+		t.Fatalf("stamp approved revision: %v", err)
+	}
 	db.Close()
 
 	certDir := t.TempDir()
@@ -52,9 +55,8 @@ func TestValidateSource_ValidDB(t *testing.T) {
 		},
 	}
 
-	err = m.validate(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
-		t.Fatalf("validate error = %v, want source rejection", err)
+	if err := m.validate(t.Context()); err != nil {
+		t.Fatalf("validate: %v", err)
 	}
 }
 
@@ -136,7 +138,7 @@ func TestValidateSource_RequiresRegistryJWTContinuityMaterial(t *testing.T) {
 	})
 }
 
-func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
+func TestMigrateData_UpgradesApprovedSourceAfterStoppingServices(t *testing.T) {
 	m := validInstallMigrator(t)
 	runner := &recordingRunner{}
 	m.Runner = runner
@@ -147,6 +149,44 @@ func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+		t.Fatalf("stamp approved revision: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := m.migrateData(t.Context()); err != nil {
+		t.Fatalf("migrateData: %v", err)
+	}
+	if len(runner.runCalls) != len(omrServiceNames) {
+		t.Fatalf("source services stopped = %v, want %d stops", runner.runCalls, len(omrServiceNames))
+	}
+
+	target, err := dbcore.OpenSQLiteReadOnly(filepath.Join(m.DataDir, "quay.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer target.Close()
+	revision, err := dbcore.SchemaVersion(t.Context(), target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revision != dbcore.TargetVersion {
+		t.Errorf("target revision = %q, want %q", revision, dbcore.TargetVersion)
+	}
+}
+
+func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
+	m := validInstallMigrator(t)
+	runner := &recordingRunner{}
+	m.Runner = runner
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+
+	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "0cdd1f27a450"); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -154,7 +194,7 @@ func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
 	}
 
 	err = m.migrateData(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported OMR source revision") {
 		t.Fatalf("migrateData error = %v, want unsupported revision", err)
 	}
 	if len(runner.runCalls) != 0 {
@@ -170,7 +210,7 @@ func TestMigrateData_RejectsExternalSourceBeforeStoppingServices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if revision != "3f8d7acdf7f9" {
+	if revision != "0cdd1f27a450" {
 		t.Errorf("source revision = %q, want unchanged unsupported revision", revision)
 	}
 }
@@ -327,6 +367,9 @@ func validInstallMigrator(t *testing.T) *Migrator {
 	}
 	if err := dbcore.InitDatabase(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+		t.Fatalf("stamp approved revision: %v", err)
 	}
 	db.Close()
 

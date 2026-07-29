@@ -10,19 +10,29 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
-func TestMigrator_Run_DryRunRejectsCurrentSchema(t *testing.T) {
+func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T) {
 	m := validInstallMigrator(t)
 	m.DryRun = true
 	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
 	runner := &recordingRunner{}
 	m.Runner = runner
 
-	err := m.Run(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
-		t.Fatalf("Run error = %v, want source rejection", err)
+	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if m.Out.(*bytes.Buffer).Len() != 0 {
-		t.Fatalf("dry-run printed a plan after rejected source: %s", m.Out.(*bytes.Buffer).String())
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+		t.Fatalf("stamp approved revision: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := m.Run(t.Context()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if m.Out.(*bytes.Buffer).Len() == 0 {
+		t.Fatal("dry-run did not print a plan")
 	}
 	if len(runner.runCalls) != 0 {
 		t.Fatalf("dry-run stopped source services: %v", runner.runCalls)
@@ -33,6 +43,19 @@ func TestMigrator_Run_DryRunRejectsCurrentSchema(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("dry-run modified target directory: %v", entries)
+	}
+
+	readOnly, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readOnly.Close()
+	revision, err := dbcore.SchemaVersion(t.Context(), readOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revision != "3f8d7acdf7f9" {
+		t.Errorf("source revision = %q, want unchanged approved revision", revision)
 	}
 }
 
@@ -78,7 +101,7 @@ func TestMigrator_Run_DryRunRejectsForwardStampedMinimalSchema(t *testing.T) {
 	}
 
 	err = m.Run(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported OMR source revision") {
 		t.Fatalf("Run error = %v, want forward-stamped schema rejection", err)
 	}
 	if out.Len() != 0 {
@@ -113,7 +136,7 @@ func TestMigrator_Run_DryRunRejectsUnsupportedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "0cdd1f27a450"); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -121,7 +144,7 @@ func TestMigrator_Run_DryRunRejectsUnsupportedRevision(t *testing.T) {
 	}
 
 	err = m.Run(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "no OMR source revisions are enabled") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported OMR source revision") {
 		t.Fatalf("Run error = %v, want unsupported revision", err)
 	}
 	if m.Out.(*bytes.Buffer).Len() != 0 {
@@ -140,7 +163,7 @@ func TestMigrator_Run_DryRunRejectsUnsupportedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if revision != "3f8d7acdf7f9" {
+	if revision != "0cdd1f27a450" {
 		t.Errorf("source revision = %q, want unchanged unsupported revision", revision)
 	}
 }
