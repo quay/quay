@@ -43,6 +43,26 @@ func TestOpenSQLiteReadOnly(t *testing.T) {
 		}
 	})
 
+	t.Run("opens relative paths", func(t *testing.T) {
+		dir := t.TempDir()
+		createMarkerDatabase(t, filepath.Join(dir, "relative.db"), "relative")
+		t.Chdir(dir)
+
+		readOnly, err := OpenSQLiteReadOnly("relative.db")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer readOnly.Close()
+
+		var marker string
+		if err := readOnly.QueryRowContext(t.Context(), "SELECT marker FROM source_marker").Scan(&marker); err != nil {
+			t.Fatal(err)
+		}
+		if marker != "relative" {
+			t.Fatalf("opened marker %q, want relative database", marker)
+		}
+	})
+
 	t.Run("opens paths containing URI delimiters", func(t *testing.T) {
 		dir := t.TempDir()
 		sourcePath := filepath.Join(dir, "source?with#symbols&.db")

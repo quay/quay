@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quay/quay/internal/credentials/encryptedfield"
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
@@ -29,7 +31,7 @@ func TestValidateSource_ValidDB(t *testing.T) {
 	if err := dbcore.InitDatabase(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", dbcore.ApprovedOMRSourceVersion); err != nil {
 		t.Fatalf("stamp approved revision: %v", err)
 	}
 	db.Close()
@@ -148,7 +150,7 @@ func TestMigrateData_UpgradesApprovedSourceAfterStoppingServices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", dbcore.ApprovedOMRSourceVersion); err != nil {
 		t.Fatalf("stamp approved revision: %v", err)
 	}
 	if err := db.Close(); err != nil {
@@ -308,6 +310,9 @@ func TestValidateSource_ChecksRobotTokenDecryption(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "robot token cannot be decrypted") {
 		t.Fatalf("validateSourceAuth error = %v, want robot token decryption failure", err)
 	}
+	if !errors.Is(err, encryptedfield.ErrDecrypt) {
+		t.Fatalf("validateSourceAuth error = %v, want wrapped %v", err, encryptedfield.ErrDecrypt)
+	}
 }
 
 func TestValidateTarget_NotEmpty(t *testing.T) {
@@ -368,7 +373,7 @@ func validInstallMigrator(t *testing.T) *Migrator {
 	if err := dbcore.InitDatabase(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", dbcore.ApprovedOMRSourceVersion); err != nil {
 		t.Fatalf("stamp approved revision: %v", err)
 	}
 	db.Close()

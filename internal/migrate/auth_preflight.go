@@ -84,7 +84,7 @@ func validateRobotTokenContinuity(ctx context.Context, db *sql.DB, databaseSecre
 			return fmt.Errorf("read robot token: %w", err)
 		}
 		if _, err := encryptedfield.Decrypt(databaseSecretKey, encryptedToken); err != nil {
-			return fmt.Errorf("robot token cannot be decrypted with DATABASE_SECRET_KEY")
+			return fmt.Errorf("robot token cannot be decrypted with DATABASE_SECRET_KEY: %w", err)
 		}
 	}
 	if err := rows.Err(); err != nil {

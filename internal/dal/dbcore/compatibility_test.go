@@ -15,7 +15,7 @@ func TestValidateSourceCompatibilityAcceptsApprovedRevision(t *testing.T) {
 	if err := InitDatabase(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", approvedOMRSourceVersion); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", ApprovedOMRSourceVersion); err != nil {
 		t.Fatalf("stamp revision: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func TestValidateSourceCompatibilityRejectsAmbiguousRevision(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), "CREATE TABLE alembic_version (version_num TEXT NOT NULL)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), "INSERT INTO alembic_version VALUES (?), (?)", approvedOMRSourceVersion, TargetVersion); err != nil {
+	if _, err := db.ExecContext(t.Context(), "INSERT INTO alembic_version VALUES (?), (?)", ApprovedOMRSourceVersion, TargetVersion); err != nil {
 		t.Fatal(err)
 	}
 

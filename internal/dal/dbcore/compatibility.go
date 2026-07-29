@@ -29,16 +29,15 @@ func ValidateSourceCompatibility(ctx context.Context, db *sql.DB) error {
 	if len(revisions) != 1 {
 		return fmt.Errorf("source alembic_version must contain exactly one revision, found %d", len(revisions))
 	}
+	if revisions[0] != ApprovedOMRSourceVersion {
+		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", revisions[0], ApprovedOMRSourceVersion)
+	}
 
 	if err := IntegrityCheck(ctx, db); err != nil {
 		return fmt.Errorf("source database integrity check: %w", err)
 	}
 	if err := foreignKeyCheck(ctx, db); err != nil {
 		return fmt.Errorf("source database foreign key check: %w", err)
-	}
-
-	if revisions[0] != approvedOMRSourceVersion {
-		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", revisions[0], approvedOMRSourceVersion)
 	}
 
 	return nil

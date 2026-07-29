@@ -11,9 +11,9 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
-// approvedOMRSourceVersion is the only external OMR revision admitted by
-// migration preflight. Keep this in sync with ValidateSourceCompatibility.
-const approvedOMRSourceVersion = "3f8d7acdf7f9"
+// ApprovedOMRSourceVersion is the only external OMR revision admitted by
+// migration preflight.
+const ApprovedOMRSourceVersion = "3f8d7acdf7f9"
 
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
 // New tables created by the bridge SQL already include all columns.
@@ -44,8 +44,8 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("read schema version: %w", err)
 	}
-	if ver != approvedOMRSourceVersion {
-		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", ver, approvedOMRSourceVersion)
+	if ver != ApprovedOMRSourceVersion {
+		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", ver, ApprovedOMRSourceVersion)
 	}
 
 	fmt.Fprintf(w, "Bridging schema from %s to %s\n", ver, TargetVersion)

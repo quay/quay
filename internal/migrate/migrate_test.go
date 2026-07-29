@@ -21,7 +21,7 @@ func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", "3f8d7acdf7f9"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "UPDATE alembic_version SET version_num = ?", dbcore.ApprovedOMRSourceVersion); err != nil {
 		t.Fatalf("stamp approved revision: %v", err)
 	}
 	if err := db.Close(); err != nil {
@@ -54,7 +54,7 @@ func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if revision != "3f8d7acdf7f9" {
+	if revision != dbcore.ApprovedOMRSourceVersion {
 		t.Errorf("source revision = %q, want unchanged approved revision", revision)
 	}
 }
