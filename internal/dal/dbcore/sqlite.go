@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -54,5 +55,24 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("ping %s: %w", dbPath, err)
 	}
 
+	return db, nil
+}
+
+// OpenSQLiteReadOnly opens an existing SQLite database for source preflight.
+// mode=ro prevents schema or data changes and never creates a missing source.
+func OpenSQLiteReadOnly(dbPath string) (*sql.DB, error) {
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, fmt.Errorf("source database not found: %s: %w", dbPath, err)
+	}
+
+	uri := url.URL{Scheme: "file", Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	db, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		return nil, fmt.Errorf("open %s read-only: %w", dbPath, err)
+	}
+	if err := db.PingContext(context.Background()); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping %s read-only: %w", dbPath, err)
+	}
 	return db, nil
 }

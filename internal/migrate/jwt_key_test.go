@@ -326,7 +326,10 @@ func seedExistingSchemaRegistryKey(t *testing.T, dbPath, configDir string) {
 	require.NoError(t, jwtauth.WritePrivateKey(filepath.Join(configDir, legacyPrivateKeyName), key))
 	writeCopyTestFile(t, filepath.Join(configDir, legacyKeyIDName), []byte(kid), 0o600)
 	writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte(strings.TrimSpace(`
+AUTHENTICATION_TYPE: Database
 SERVER_HOSTNAME: registry.example.com:8443
+SECRET_KEY: test-secret
+DATABASE_SECRET_KEY: test1234
 INSTANCE_SERVICE_KEY_SERVICE: quay
 `)+"\n"), 0o600)
 

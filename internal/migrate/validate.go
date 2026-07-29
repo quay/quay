@@ -15,32 +15,21 @@ import (
 
 const markerFile = ".migration-in-progress"
 
-// validate checks source integrity and target readiness.
+// validate checks source compatibility, authentication policy, and target readiness.
+// All source database checks are read-only and finish before source shutdown.
 func (m *Migrator) validate(ctx context.Context) error {
-	if _, err := os.Stat(m.Source.DBPath); err != nil {
-		return fmt.Errorf("source database not found: %s", m.Source.DBPath)
-	}
-
-	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	db, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
 	if err != nil {
 		return fmt.Errorf("open source database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := dbcore.IntegrityCheck(ctx, db); err != nil {
-		return fmt.Errorf("source database is corrupted — run 'PRAGMA integrity_check' on %s to diagnose: %w",
-			m.Source.DBPath, err)
+	if err := m.validateSourceAuth(ctx, db); err != nil {
+		return fmt.Errorf("source authentication preflight: %w", err)
 	}
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		return fmt.Errorf("read schema version: %w", err)
+	if err := dbcore.ValidateSourceCompatibility(ctx, db); err != nil {
+		return err
 	}
-	if ver == "" {
-		return fmt.Errorf("source database has no alembic version — not a Quay database")
-	}
-	slog.Info("source schema version", "version", ver)
-
 	if err := m.validateRegistryJWTSource(ctx); err != nil {
 		return err
 	}

@@ -71,6 +71,9 @@ func (m *Migrator) Run(ctx context.Context) error {
 	}
 
 	if m.DryRun {
+		if err := m.validate(ctx); err != nil {
+			return fmt.Errorf("validate: %w", err)
+		}
 		m.printPlan()
 		return nil
 	}
