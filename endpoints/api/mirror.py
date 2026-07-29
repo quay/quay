@@ -359,7 +359,10 @@ class RepoMirrorResource(RepositoryParamResource):
                 400,
             )
 
-        data["sync_start_date"] = self._string_to_dt(data["sync_start_date"])
+        try:
+            data["sync_start_date"] = self._string_to_dt(data["sync_start_date"])
+        except ValueError:
+            return {"detail": "Incorrect DateTime format for sync_start_date."}, 400
 
         rule = model.repo_mirror.create_rule(repo, data["root_rule"]["rule_value"])
         del data["root_rule"]

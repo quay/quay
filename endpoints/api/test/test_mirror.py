@@ -102,6 +102,24 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
     assert config.root_rule.rule_value == ["latest", "foo", "bar"]
 
 
+def test_create_mirror_with_invalid_sync_start_date(app):
+    robot, _ = model.user.create_robot("invaliddatebot", model.user.get_namespace_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "not-a-date",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": robot.username,
+        }
+        resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+
+    assert resp.json["detail"] == "Incorrect DateTime format for sync_start_date."
+
+
 def test_get_mirror_does_not_exist(app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
@@ -371,9 +389,7 @@ class TestRepoMirrorSSRFProtection:
         assert model.repo_mirror.get_mirror(repo) is None
         rules = RepoMirrorRule.select().where(RepoMirrorRule.repository == repo)
         assert list(rules) == []
-        permissions = model.permission.get_user_repository_permissions(
-            robot, "devtable", "simple"
-        )
+        permissions = model.permission.get_user_repository_permissions(robot, "devtable", "simple")
         assert next(iter(permissions), None) is None
 
     def test_create_with_hostname_resolving_private_rejected(self, app):
