@@ -54,6 +54,7 @@ make types-test                      # Type checking (mypy)
 | Testing patterns, fixtures | `agent_docs/testing.md` |
 | Architecture, key files | `agent_docs/architecture.md` |
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
+| OIDC superuser group sync | `agent_docs/oidc_superuser_sync.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/MIGRATION.md` |
