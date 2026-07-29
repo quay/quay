@@ -269,6 +269,60 @@ def test_repo_mirror_robot(initialized_db):
     assert model.repo_mirror.robot_has_mirror(mirror.internal_robot)
 
 
+class TestRepoMirrorSSRFProtection:
+    """Data-model validation prevents bypassing the repository mirror API."""
+
+    def _create_args(self):
+        repo = model.repository.get_repository("devtable", "simple")
+        robot = model.user.lookup_robot("devtable+dtrobot")
+        rule = model.repo_mirror.create_rule(repo, ["latest"])
+        return {
+            "repository": repo,
+            "root_rule": rule,
+            "internal_robot": robot,
+            "external_reference": "registry.example.com/team/repository",
+            "sync_interval": 3600,
+            "skopeo_timeout_interval": 300,
+        }
+
+    def test_create_rejects_private_registry(self, initialized_db):
+        args = self._create_args()
+        args["external_reference"] = "169.254.169.254/latest/meta-data"
+
+        with pytest.raises(model.DataModelException, match="private or reserved"):
+            model.repo_mirror.enable_mirroring_for_repository(**args)
+
+        assert model.repo_mirror.get_mirror(args["repository"]) is None
+
+    def test_change_remote_rejects_private_registry(self, initialized_db):
+        mirror, repo = create_mirror_repo_robot(["latest"], repo_name="ssrf_update")
+
+        with pytest.raises(model.DataModelException, match="private or reserved"):
+            model.repo_mirror.change_remote(repo, "10.0.0.1/team/repository")
+
+        updated = model.repo_mirror.get_mirror(repo)
+        assert updated.external_reference == mirror.external_reference
+
+    def test_create_allows_configured_private_registry(self, initialized_db):
+        args = self._create_args()
+        args["external_reference"] = "10.0.0.1/team/repository"
+        args["allowed_hosts"] = ["10.0.0.0/8"]
+
+        mirror = model.repo_mirror.enable_mirroring_for_repository(**args)
+
+        assert mirror.external_reference == "10.0.0.1/team/repository"
+
+    def test_change_remote_allows_configured_private_registry(self, initialized_db):
+        _, repo = create_mirror_repo_robot(["latest"], repo_name="ssrf_allowed_update")
+
+        assert model.repo_mirror.change_remote(
+            repo,
+            "10.0.0.1/team/repository",
+            allowed_hosts=["10.0.0.0/8"],
+        )
+        assert model.repo_mirror.get_mirror(repo).external_reference == ("10.0.0.1/team/repository")
+
+
 class TestArchitectureFilter:
     """Tests for architecture_filter functionality."""
 

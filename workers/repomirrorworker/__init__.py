@@ -52,6 +52,7 @@ from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
+from util.security.ssrf import validate_external_registry_reference
 from workers.repomirrorworker.manifest_utils import (
     ManifestSizeLimitExceeded,
     filter_manifests_by_architecture,
@@ -253,6 +254,38 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     sync_start_time = time.time()
     namespace = mirror.repository.namespace_user.username
     repository_name = mirror.repository.name
+
+    # Re-resolve the source immediately before use to catch persisted blocked
+    # configurations and DNS changes observed before the Skopeo invocation.
+    try:
+        validate_external_registry_reference(
+            mirror.external_reference,
+            resolve_dns=True,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+        )
+    except ValueError:
+        logger.warning(
+            "Repository mirror source validation failed for repository %s/%s",
+            namespace,
+            repository_name,
+        )
+        emit_log(
+            mirror,
+            "repo_mirror_sync_failed",
+            "end",
+            "Source registry location is not allowed",
+            tags="",
+            stdout="Not applicable",
+            stderr="Not applicable",
+        )
+        _update_mirror_metrics_on_failure(
+            namespace,
+            repository_name,
+            "invalid_source_registry",
+            sync_start_time,
+        )
+        release_mirror(mirror, RepoMirrorStatus.FAIL)
+        return RepoMirrorStatus.FAIL
 
     # Set sync status to in_progress (2)
     repo_mirror_last_sync_status.labels(
