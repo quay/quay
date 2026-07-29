@@ -60,10 +60,10 @@ func TestRuntimeConfigPort(t *testing.T) {
 	}
 }
 
-func TestStopSourceServices_ReturnsErrorWhenQuayAppStopFails(t *testing.T) {
+func TestStopSourceServices_SucceedsWhenQuayAppAlreadyStopped(t *testing.T) {
 	runner := &recordingRunner{
 		runErrs: map[string]error{
-			"quay-app.service": errors.New("permission denied"),
+			"quay-app.service": errors.New("Unit quay-app.service not loaded"),
 		},
 	}
 	m := &Migrator{
@@ -74,21 +74,18 @@ func TestStopSourceServices_ReturnsErrorWhenQuayAppStopFails(t *testing.T) {
 		},
 	}
 
-	err := m.stopSourceServices(t.Context())
-	if err == nil {
-		t.Fatal("expected stopSourceServices to fail when quay-app cannot stop")
-	}
-	if !strings.Contains(err.Error(), "quay-app") {
-		t.Fatalf("expected error to mention quay-app, got %v", err)
+	if err := m.stopSourceServices(t.Context()); err != nil {
+		t.Fatalf("stopSourceServices should succeed when services are already stopped: %v", err)
 	}
 	if len(runner.runCalls) != len(omrServiceNames) {
 		t.Fatalf("expected stopSourceServices to attempt all services, got %d calls", len(runner.runCalls))
 	}
 }
 
-func TestStopSourceServices_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
+func TestStopSourceServices_SucceedsWhenAllServicesAlreadyStopped(t *testing.T) {
 	runner := &recordingRunner{
 		runErrs: map[string]error{
+			"quay-app.service":   errors.New("already stopped"),
 			"quay-redis.service": errors.New("already stopped"),
 			"quay-pod.service":   errors.New("already stopped"),
 		},
@@ -101,14 +98,8 @@ func TestStopSourceServices_ReturnsErrorWhenRedisOrPodStopFails(t *testing.T) {
 		},
 	}
 
-	err := m.stopSourceServices(t.Context())
-	if err == nil {
-		t.Fatal("expected stopSourceServices to fail when any service cannot stop")
-	}
-	for _, svc := range []string{"quay-redis", "quay-pod"} {
-		if !strings.Contains(err.Error(), svc) {
-			t.Fatalf("expected error to mention %s, got %v", svc, err)
-		}
+	if err := m.stopSourceServices(t.Context()); err != nil {
+		t.Fatalf("stopSourceServices should succeed even when all services are already stopped: %v", err)
 	}
 	if len(runner.runCalls) != len(omrServiceNames) {
 		t.Fatalf("expected stopSourceServices to attempt all services, got %d calls", len(runner.runCalls))

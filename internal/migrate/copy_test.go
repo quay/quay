@@ -28,7 +28,7 @@ func TestCopyData(t *testing.T) {
 	writeCopyTestFile(t, filepath.Join(srcDir, "ssl.cert"), []byte("fake-cert"), 0o644)
 	writeCopyTestFile(t, filepath.Join(srcDir, "ssl.key"), []byte("fake-key"), 0o600)
 
-	mkdirCopyTestDir(t, filepath.Join(storageDir, "sha256", "ab"), 0o750)
+	mkdirCopyTestDir(t, filepath.Join(storageDir, "sha256", "ab"))
 	writeCopyTestFile(t, filepath.Join(storageDir, "sha256", "ab", "abcdef"), []byte("blob-data"), 0o644)
 
 	targetDir := filepath.Join(t.TempDir(), "target")
@@ -282,7 +282,7 @@ func TestCopyData_RecopiesDatabaseWhenMarkerExists(t *testing.T) {
 	createCopyTestDB(t, dbPath)
 
 	targetDir := filepath.Join(t.TempDir(), "target")
-	mkdirCopyTestDir(t, targetDir, 0o750)
+	mkdirCopyTestDir(t, targetDir)
 	writeCopyTestFile(t, filepath.Join(targetDir, markerFile), []byte("migration in progress\n"), 0o600)
 
 	sourceBytes, err := os.ReadFile(dbPath) //nolint:gosec // test fixture path is under t.TempDir.
@@ -418,9 +418,69 @@ func seedCopyTestRegistryKey(t *testing.T, dbPath, configDir string) *rsa.Privat
 	return key
 }
 
-func mkdirCopyTestDir(t *testing.T, path string, perm os.FileMode) {
+func TestCopyData_CopiesRootCA(t *testing.T) {
+	root := t.TempDir()
+	configDir := filepath.Join(root, "quay-config")
+	caDir := filepath.Join(root, "quay-rootCA")
+	dbDir := t.TempDir()
+
+	mkdirCopyTestDir(t, configDir)
+	mkdirCopyTestDir(t, caDir)
+
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.cert"), []byte("fake-cert"), 0o644)
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.key"), []byte("fake-key"), 0o600)
+	writeCopyTestFile(t, filepath.Join(caDir, "rootCA.pem"), []byte("fake-root-ca"), 0o644)
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			ConfigDir: configDir,
+			DBPath:    dbPath,
+			RootCADir: caDir,
+		},
+	}
+
+	require.NoError(t, m.copyData(t.Context()))
+
+	data, err := os.ReadFile(filepath.Join(targetDir, "rootCA.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, "fake-root-ca", string(data))
+}
+
+func TestCopyData_SkipsRootCAWhenNotDetected(t *testing.T) {
+	configDir := t.TempDir()
+	dbDir := t.TempDir()
+
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.cert"), []byte("fake-cert"), 0o644)
+	writeCopyTestFile(t, filepath.Join(configDir, "ssl.key"), []byte("fake-key"), 0o600)
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			ConfigDir: configDir,
+			DBPath:    dbPath,
+		},
+	}
+
+	require.NoError(t, m.copyData(t.Context()))
+
+	_, err := os.Stat(filepath.Join(targetDir, "rootCA.pem"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func mkdirCopyTestDir(t *testing.T, path string) {
 	t.Helper()
-	if err := os.MkdirAll(path, perm); err != nil {
+	if err := os.MkdirAll(path, 0o750); err != nil {
 		t.Fatalf("mkdir fixture %s: %v", path, err)
 	}
 }

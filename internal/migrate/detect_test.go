@@ -51,24 +51,78 @@ SERVER_HOSTNAME: registry.example.com
 SETUP_COMPLETE: true
 DB_URI: sqlite:////sqlite/quay_sqlite.db
 `
-	hostname, err := extractHostname([]byte(yaml))
+	hostname, port, err := extractHostname([]byte(yaml))
 	if err != nil {
 		t.Fatalf("extractHostname: %v", err)
 	}
 	if hostname != "registry.example.com" {
-		t.Errorf("got %q, want %q", hostname, "registry.example.com")
+		t.Errorf("hostname: got %q, want %q", hostname, "registry.example.com")
+	}
+	if port != "" {
+		t.Errorf("port: got %q, want empty (no port in source)", port)
 	}
 }
 
-func TestExtractHostname_StripsPort(t *testing.T) {
+func TestExtractHostname_SplitsPort(t *testing.T) {
 	yaml := `SERVER_HOSTNAME: localhost:8443
 `
-	hostname, err := extractHostname([]byte(yaml))
+	hostname, port, err := extractHostname([]byte(yaml))
 	if err != nil {
 		t.Fatalf("extractHostname: %v", err)
 	}
 	if hostname != "localhost" {
-		t.Errorf("got %q, want %q", hostname, "localhost")
+		t.Errorf("hostname: got %q, want %q", hostname, "localhost")
+	}
+	if port != "8443" {
+		t.Errorf("port: got %q, want %q", port, "8443")
+	}
+}
+
+func TestExtractHostname_CustomPort(t *testing.T) {
+	yaml := `SERVER_HOSTNAME: myhost:9443
+`
+	hostname, port, err := extractHostname([]byte(yaml))
+	if err != nil {
+		t.Fatalf("extractHostname: %v", err)
+	}
+	if hostname != "myhost" {
+		t.Errorf("hostname: got %q, want %q", hostname, "myhost")
+	}
+	if port != "9443" {
+		t.Errorf("port: got %q, want %q", port, "9443")
+	}
+}
+
+func TestDetectRootCADir(t *testing.T) {
+	root := t.TempDir()
+	configDir := filepath.Join(root, "quay-config")
+	caDir := filepath.Join(root, "quay-rootCA")
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(caDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(caDir, "rootCA.pem"), []byte("fake-ca"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := detectRootCADir(configDir)
+	if got != caDir {
+		t.Errorf("got %q, want %q", got, caDir)
+	}
+}
+
+func TestDetectRootCADir_Missing(t *testing.T) {
+	root := t.TempDir()
+	configDir := filepath.Join(root, "quay-config")
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	got := detectRootCADir(configDir)
+	if got != "" {
+		t.Errorf("got %q, want empty when rootCA.pem does not exist", got)
 	}
 }
 
