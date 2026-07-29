@@ -249,7 +249,7 @@ stderr_events_enabled = true
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s,
   DB_CONNECTION_POOLING=%(ENV_DB_CONNECTION_POOLING_REGISTRY)s
-command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_registry.py registry:application
+command=nice -n 10 gunicorn --timeout={{ gunicorn_registry_timeout|default(300) }} -c %(ENV_QUAYCONF)s/gunicorn_registry.py registry:application
 autostart = {{ config['gunicorn-registry']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -272,7 +272,7 @@ environment=
 command={% if hotreload -%}
   gunicorn --timeout=600 -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
 {% else -%}
-  gunicorn -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
+  gunicorn --timeout={{ gunicorn_web_timeout|default(60) }} -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
 {% endif -%}
 autostart = {{ config['gunicorn-web']['autostart'] }}
 stdout_events_enabled = true

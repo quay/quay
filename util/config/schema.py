@@ -337,6 +337,18 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
             "x-example": True,
         },
+        "GUNICORN_REGISTRY_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "description": "Timeout in seconds for gunicorn-registry workers. Workers that do not respond within this window are killed and restarted. Defaults to 300",
+            "x-example": 300,
+        },
+        "GUNICORN_WEB_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "description": "Timeout in seconds for gunicorn-web workers. Workers that do not respond within this window are killed and restarted. Defaults to 60",
+            "x-example": 60,
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",
