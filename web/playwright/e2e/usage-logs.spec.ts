@@ -329,7 +329,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         const syncStartDate = new Date();
         syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
         await api.raw.createMirrorConfig(org.name, repo.name, {
-          external_reference: 'nonexistent.invalid/nope',
+          external_reference: `quay.io/${org.name}/${repo.name}`,
           sync_interval: 86400,
           sync_start_date: syncStartDate
             .toISOString()
