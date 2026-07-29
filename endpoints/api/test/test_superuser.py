@@ -134,3 +134,21 @@ def test_delete_nonexistent_organization_returns_404(app):
             conduct_api_call(cl, SuperUserOrganizationManagement, "DELETE", params, None, 404)
 
             mock_log.assert_not_called()
+
+
+def test_delete_organization_succeeds(app):
+    admin_user = model.user.get_user("devtable")
+    org = model.organization.create_organization("delcovorg", "delcov@test.com", admin_user)
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"name": org.username}
+        conduct_api_call(cl, SuperUserOrganizationManagement, "DELETE", params, None, 204)
+
+    with pytest.raises(model.InvalidOrganizationException):
+        model.organization.get_organization("delcovorg")
+
+
+def test_delete_nonexistent_organization_no_phantom_log(app):
+    with client_with_identity("devtable", app) as cl:
+        params = {"name": "nonexistent_org_xyz"}
+        conduct_api_call(cl, SuperUserOrganizationManagement, "DELETE", params, None, 404)
