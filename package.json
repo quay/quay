@@ -76,6 +76,7 @@
   },
   "overrides": {
     "form-data": "^2.5.6",
-    "brace-expansion": "^1.1.16"
+    "brace-expansion": "^1.1.16",
+    "js-yaml": "4.3.0"
   }
 }
