@@ -313,6 +313,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                    ManifestSecurityStatus.index_status != IndexStatus.PENDING,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
                     ManifestSecurityStatus.last_indexed < reindex_threshold
                     or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
