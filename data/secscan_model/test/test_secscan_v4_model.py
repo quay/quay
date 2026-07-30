@@ -1702,6 +1702,40 @@ def test_unknown_state_increments_retry_count(initialized_db, set_secscan_config
     assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
+def test_pending_not_picked_up_by_needs_reindexing(initialized_db, set_secscan_config):
+    """
+    Test that PENDING manifests with old last_indexed and empty indexer_hash
+    are only discovered by pending_query, not by needs_reindexing_query.
+
+    Regression test for a timing-dependent bug where the same manifest was
+    indexed twice in one cycle when its last_indexed was older than the
+    reindex threshold.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    secscan._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+    reindex_threshold = application.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
+    old_time = datetime.utcnow() - timedelta(seconds=reindex_threshold + 600)
+
+    ManifestSecurityStatus.update(
+        last_indexed=old_time,
+        indexer_hash="",
+    ).where(ManifestSecurityStatus.index_status == IndexStatus.PENDING).execute()
+
+    secscan.perform_indexing(batch_size=100)
+
+    for mss in ManifestSecurityStatus.select():
+        if mss.index_status == IndexStatus.FAILED:
+            assert mss.metadata_json.get("retry_count") == 1, (
+                f"Manifest {mss.manifest_id} indexed more than once: "
+                f"retry_count={mss.metadata_json.get('retry_count')}"
+            )
+
+
 def test_last_failed_hash_resets_retry_count(initialized_db, set_secscan_config):
     """
     Test that retry_count resets to 1 when the indexer hash changes, allowing
