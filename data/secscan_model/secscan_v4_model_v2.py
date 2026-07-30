@@ -111,9 +111,8 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             & (ManifestSecurityStatus.last_indexed < stale_threshold)
         )
 
-        conditions |= (
-            (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
-            & (ManifestSecurityStatus.last_indexed < reindex_threshold)
+        conditions |= (ManifestSecurityStatus.index_status == IndexStatus.FAILED) & (
+            ManifestSecurityStatus.last_indexed < reindex_threshold
         )
         conditions |= (
             (
