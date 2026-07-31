@@ -10,9 +10,12 @@ from peewee import IntegrityError
 import features
 from data.database import (
     ExternalNotificationEvent,
+    IndexerVersion,
+    IndexStatus,
     Manifest,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Repository,
     RepositoryNotification,
     Tag,
@@ -409,6 +412,16 @@ def _create_manifest(
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)
+
+            ManifestSecurityStatus.create(
+                manifest=manifest.id,
+                repository=repository_id,
+                index_status=IndexStatus.PENDING,
+                indexer_hash="",
+                indexer_version=IndexerVersion.V4,
+                error_json={},
+                metadata_json={},
+            )
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're

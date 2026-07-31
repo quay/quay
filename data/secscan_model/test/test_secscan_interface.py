@@ -33,15 +33,13 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     assert manifest
 
     if indexed_v4:
-        ManifestSecurityStatus.create(
-            manifest=manifest._db_id,
-            repository=repository_ref._db_id,
+        ManifestSecurityStatus.update(
             error_json={},
             index_status=IndexStatus.MANIFEST_UNSUPPORTED,
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             metadata_json={},
-        )
+        ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     result = secscan_model.load_security_information(manifest, True)
 

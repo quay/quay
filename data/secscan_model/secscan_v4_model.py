@@ -238,7 +238,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
             )
 
-        if status.index_status == IndexStatus.IN_PROGRESS:
+        if status.index_status in (IndexStatus.PENDING, IndexStatus.IN_PROGRESS):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         assert status.index_status == IndexStatus.COMPLETED
@@ -299,6 +299,13 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def pending_query():
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(ManifestSecurityStatus.index_status == IndexStatus.PENDING)
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -306,6 +313,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                    ManifestSecurityStatus.index_status != IndexStatus.PENDING,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
                     ManifestSecurityStatus.last_indexed < reindex_threshold
                     or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
@@ -319,6 +327,13 @@ class V4SecurityScanner(SecurityScannerInterface):
         iterator = itertools.chain(
             yield_random_entries(
                 not_indexed_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                pending_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -480,7 +495,11 @@ class V4SecurityScanner(SecurityScannerInterface):
                     & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
                 )
                 | (
-                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    (
+                        ManifestSecurityStatus.index_status.not_in(
+                            [IndexStatus.IN_PROGRESS, IndexStatus.PENDING]
+                        )
+                    )
                     & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
                 ),
             )
