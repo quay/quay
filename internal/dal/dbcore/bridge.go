@@ -15,14 +15,18 @@ import (
 // migration preflight.
 const ApprovedOMRSourceVersion = "3f8d7acdf7f9"
 
+// manifestTable names the manifest table shared by bridgeColumns and tests
+// that check row-count preservation across bridging.
+const manifestTable = "manifest"
+
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
 // New tables created by the bridge SQL already include all columns.
 var bridgeColumns = []struct {
 	table, column, typedef string
 }{
 	{"tag", "immutable", "BOOLEAN DEFAULT (0) NOT NULL"},
-	{"manifest", "artifact_type", "VARCHAR(255)"},
-	{"manifest", "artifact_type_backfilled", "BOOLEAN"},
+	{manifestTable, "artifact_type", "VARCHAR(255)"},
+	{manifestTable, "artifact_type_backfilled", "BOOLEAN"},
 	{"repomirrorconfig", "skopeo_timeout", "BIGINT DEFAULT '300' NOT NULL"},
 	{"repomirrorconfig", "architecture_filter", "TEXT"},
 }
