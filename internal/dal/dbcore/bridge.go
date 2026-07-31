@@ -96,7 +96,7 @@ func applyBridge(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
-	bridgeSQL, err := schema.MigrationFiles.ReadFile("sqlite/migrations/0001_bridge_from_omr.sql")
+	bridgeSQL, err := schema.CompatibilitySQL.ReadFile("sqlite/compatibility/0001_bridge_from_omr.sql")
 	if err != nil {
 		return fmt.Errorf("read bridge SQL: %w", err)
 	}

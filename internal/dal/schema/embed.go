@@ -15,9 +15,10 @@ var QuaySchemaSQL string
 //go:embed sqlite/seed_data.sql
 var SeedDataSQL string
 
-// MigrationFiles contains SQL migration files ordered by filename.
-// Each file must include a "-- revision: <id>" comment identifying
-// the alembic version it transitions to.
+// CompatibilitySQL embeds the OMR/Alembic compatibility SQL used to bridge a
+// supported historical SQLite schema onto this binary's target revision. See
+// internal/dal/dbcore/bridge.go for the explicit accepted source revision
+// and the single compatibility step applied against it.
 //
-//go:embed sqlite/migrations
-var MigrationFiles embed.FS
+//go:embed sqlite/compatibility
+var CompatibilitySQL embed.FS

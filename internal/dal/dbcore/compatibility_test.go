@@ -98,3 +98,37 @@ func TestRunBridgeRejectsUnsupportedRevision(t *testing.T) {
 		t.Fatalf("RunBridge error = %v, want source rejection", err)
 	}
 }
+
+// TestRunBridge_RollsBackSchemaAndVersionTogetherOnFailure proves that a
+// failure partway through the bridge transaction rolls back both the
+// schema/data change and the alembic_version stamp together, atomically,
+// leaving the durable revision unchanged for a safe retry.
+func TestRunBridge_RollsBackSchemaAndVersionTogetherOnFailure(t *testing.T) {
+	db := openCompatibilityTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", ApprovedOMRSourceVersion); err != nil {
+		t.Fatalf("stamp revision: %v", err)
+	}
+	// Drop a table bridgeColumns' ensureColumn targets directly, forcing
+	// applyBridge to fail partway through the transaction.
+	if _, err := db.ExecContext(ctx, `DROP TABLE "tag"`); err != nil {
+		t.Fatalf("drop tag table: %v", err)
+	}
+
+	if err := RunBridge(ctx, db, &bytes.Buffer{}); err == nil {
+		t.Fatal("expected RunBridge to fail")
+	}
+
+	ver, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion after failed bridge: %v", err)
+	}
+	if ver != ApprovedOMRSourceVersion {
+		t.Errorf("alembic_version changed after a failed bridge: got %q, want %q", ver, ApprovedOMRSourceVersion)
+	}
+}
