@@ -183,6 +183,88 @@ func TestIntegrityCheck(t *testing.T) {
 	}
 }
 
+// TestApplyMigrationTx_RollsBackSchemaAndVersionTogether proves that a
+// failure partway through a migration rolls back both the schema/data change
+// and the alembic_version stamp together, atomically.
+func TestApplyMigrationTx_RollsBackSchemaAndVersionTogether(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+
+	before, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion: %v", err)
+	}
+
+	failingSQL := `
+CREATE TABLE rollback_marker (id INTEGER);
+INSERT INTO does_not_exist_xyz (id) VALUES (1);
+`
+	if err := applyMigrationTx(ctx, db, failingSQL, "should-not-persist"); err == nil {
+		t.Fatal("expected applyMigrationTx to fail")
+	}
+
+	var tableCount int
+	if err := db.QueryRowContext(ctx,
+		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='rollback_marker'",
+	).Scan(&tableCount); err != nil {
+		t.Fatalf("check rollback_marker: %v", err)
+	}
+	if tableCount != 0 {
+		t.Error("expected rollback_marker table to be rolled back, but it exists")
+	}
+
+	after, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion after failed migration: %v", err)
+	}
+	if after != before {
+		t.Errorf("alembic_version changed after a failed migration: before=%q after=%q", before, after)
+	}
+}
+
+// TestApplyMigrationTx_RetryAfterFailureSucceeds proves that after a failed
+// migration rolls back, the durable (unchanged) revision can be retried and
+// still reaches the intended target.
+func TestApplyMigrationTx_RetryAfterFailureSucceeds(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+
+	if err := applyMigrationTx(ctx, db, "INSERT INTO does_not_exist_xyz (id) VALUES (1);", "should-not-persist"); err == nil {
+		t.Fatal("expected first attempt to fail")
+	}
+
+	// Retry starts from the still-durable pre-failure revision and succeeds.
+	if err := applyMigrationTx(ctx, db, "CREATE TABLE retry_marker (id INTEGER);", "retried-revision"); err != nil {
+		t.Fatalf("retry after failure: %v", err)
+	}
+
+	ver, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion: %v", err)
+	}
+	if ver != "retried-revision" {
+		t.Errorf("version = %q, want %q", ver, "retried-revision")
+	}
+}
+
 func TestBackupAndClean(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")

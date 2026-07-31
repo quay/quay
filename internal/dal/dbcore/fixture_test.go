@@ -161,6 +161,17 @@ func TestRunBridge_RejectsStructurallyAlteredArtifactFixture(t *testing.T) {
 	if !strings.Contains(err.Error(), "no such table: tag") {
 		t.Errorf("RunBridge error = %v, want it to report the missing tag table", err)
 	}
+
+	// RunBridge disables foreign_keys before its transaction and re-enables
+	// them via a deferred call regardless of outcome; a failed bridge must
+	// not leave enforcement off.
+	var foreignKeysEnabled int
+	if err := db.QueryRowContext(t.Context(), "PRAGMA foreign_keys").Scan(&foreignKeysEnabled); err != nil {
+		t.Fatalf("query foreign_keys pragma: %v", err)
+	}
+	if foreignKeysEnabled != 1 {
+		t.Error("expected foreign_keys to be re-enabled after a failed RunBridge")
+	}
 }
 
 func tableCounts(t *testing.T, db *sql.DB, tables []string) map[string]int {
