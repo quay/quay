@@ -196,6 +196,10 @@ func (ts *mockTagService) Lookup(_ context.Context, _ v1.Descriptor) ([]string, 
 	return nil, nil
 }
 
+func (ts *mockTagService) List(_ context.Context, _ int, _ string) ([]string, error) {
+	return nil, nil
+}
+
 type mockBlobStore struct {
 	distribution.BlobStore
 	putDesc    v1.Descriptor
