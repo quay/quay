@@ -202,7 +202,7 @@ func CleanOldBackups(dbPath string, keep int) error {
 
 // ListMigrations prints the available migration files to w.
 func ListMigrations(w io.Writer) {
-	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	entries, err := schema.CompatibilitySQL.ReadDir("sqlite/compatibility")
 	if err != nil {
 		return
 	}
@@ -226,7 +226,7 @@ func ListMigrations(w io.Writer) {
 // Each migration runs in its own transaction and must contain a
 // "-- revision: <id>" comment identifying the alembic version it produces.
 func ApplyMigrations(ctx context.Context, db *sql.DB, currentVersion, targetVersion string, w io.Writer) error {
-	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	entries, err := schema.CompatibilitySQL.ReadDir("sqlite/compatibility")
 	if err != nil {
 		return fmt.Errorf("read migrations directory: %w", err)
 	}
@@ -247,7 +247,7 @@ func ApplyMigrations(ctx context.Context, db *sql.DB, currentVersion, targetVers
 
 	applied := 0
 	for _, filename := range migrationFiles {
-		sqlBytes, err := schema.MigrationFiles.ReadFile("sqlite/migrations/" + filename)
+		sqlBytes, err := schema.CompatibilitySQL.ReadFile("sqlite/compatibility/" + filename)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", filename, err)
 		}
