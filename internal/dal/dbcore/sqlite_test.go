@@ -3,6 +3,7 @@ package dbcore
 import (
 	"bytes"
 	"database/sql"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -90,9 +91,28 @@ func TestOpenSQLiteReadOnly(t *testing.T) {
 	})
 }
 
+func TestOpenSQLite_PathsContainingURIDelimiters(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "omr?with#symbols&.db")
+
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer db.Close()
+
+	if err := InitDatabase(t.Context(), db, io.Discard); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("expected database created at literal path %q: %v", dbPath, err)
+	}
+}
+
 func createMarkerDatabase(t *testing.T, path, marker string) {
 	t.Helper()
-	uri := url.URL{Scheme: "file", Path: path}
+	uri := url.URL{Scheme: sqliteURIScheme, Path: path}
 	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		t.Fatal(err)
