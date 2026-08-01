@@ -1014,3 +1014,39 @@ func ValidateDefaultAutoPruneKey(input string, field string, fgName string) (boo
 
 	return true, ValidationError{}
 }
+
+// ValidateCacheSizePattern validates that the provided cache size is no larger than 3 MiB. Returns
+// an error otherwise.
+func ValidateCacheSizePattern(input string, field string, fgName string) (bool, ValidationError) {
+	re := regexp.MustCompile(`^[1-3]MiB$`)
+
+	// If the pattern is not matched
+	if !re.MatchString(input) {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be exactly '1MiB', '2MiB' or '3MiB'",
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+}
+
+// ValidateMemcachedInstance validates that the provided settings for a memcached instance are correct and
+// that the connection can be established
+func ValidateMemcachedInstance(hostname string, port int, field string, fgName string) (bool, ValidationError) {
+	endpoint := net.JoinHostPort(hostname, strconv.Itoa(port))
+
+	conn, err := net.DialTimeout("tcp", endpoint, 3*time.Second)
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + ": memcached instance cannot be reached",
+		}
+		return false, newError
+	}
+	defer conn.Close()
+	return true, ValidationError{}
+}

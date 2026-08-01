@@ -5,6 +5,21 @@ BUILDLOGS_REDIS:
   port: 6379
 SECRET_KEY: "40157269433064266822674401740626984898972632465622168464725100311621640999470"
 DATABASE_SECRET_KEY: "81541057085600720484162638317561463611194901378275494293746615390984668417511"
+DATA_MODEL_CACHE_CONFIG:
+  engine: redis
+  redis_config:
+    primary:
+      host: 192.168.250.159
+      port: 6379
+    replica:
+      host: 192.168.250.160
+      port: 6379
+      pass: "supersecretpassword"
+      ssl: true
+  repository_blob_cache_ttl: 120s
+  catalog_page_cache_ttl: 360s
+  active_repo_tags_cache_ttl: 480s
+  value_size_limit: 3MiB
 DB_URI: postgresql://user:pass@192.168.250.159/quay
 DEFAULT_TAG_EXPIRATION: 2w
 DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS: []
