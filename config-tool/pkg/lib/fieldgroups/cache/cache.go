@@ -27,6 +27,13 @@ func NewDataModelCacheStructGroup(fullConfig map[string]any) (*DataModelCacheStr
 		}
 	}
 
+	// if engine is memcached but we don't have an endpoint, exit
+	if cacheStruct.Engine == "memcached" {
+		if _, ok := fullConfig["endpoint"]; !ok {
+			return cacheStruct, errors.New("wrong configuration: caching engine is memcached, but endpoint is missing")
+		}
+	}
+
 	if value, ok := fullConfig["endpoint"]; ok {
 		if cacheStruct.Engine != "memcached" {
 			return cacheStruct, errors.New("wrong configuration: endpoint is only used for memcached model")

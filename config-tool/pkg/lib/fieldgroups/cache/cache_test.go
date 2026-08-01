@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/quay/quay/config-tool/pkg/lib/shared"
@@ -142,6 +141,56 @@ func TestValidateCache(t *testing.T) {
 			},
 			want: "typeError",
 		},
+		{
+			name: "Cache_Test_Missing_Endpoint_When_Engine_Memcached",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine":                    "memcached",
+					"repository_blob_cache_ttl": "60s",
+				},
+			},
+			want: "typeError",
+		},
+		{
+			name: "Cache_Test_Too_Large_Cache_Size",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine":           "inmemory",
+					"value_size_limit": "512MiB",
+				},
+			},
+			want: "invalid",
+		},
+		{
+			name: "Cache_Size_Malformed_Entry",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine":           "inmemory",
+					"value_size_limit": "wrongvalue",
+				},
+			},
+			want: "invalid",
+		},
+		{
+			name: "Cache_Size_Correct_Value",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine":           "inmemory",
+					"value_size_limit": "7MiB",
+				},
+			},
+			want: "valid",
+		},
+		{
+			name: "Cache_Size_Set_In_KiB",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine":           "inmemory",
+					"value_size_limit": "2048KiB",
+				},
+			},
+			want: "invalid",
+		},
 	}
 
 	for _, tt := range tests {
@@ -174,7 +223,9 @@ func TestValidateCache(t *testing.T) {
 
 			if tt.want != received {
 				t.Errorf("Expected %s, received %s", tt.want, received)
-				fmt.Println(validationErrors[0].Message)
+				for _, ve := range validationErrors {
+					t.Logf("validation error: %s", ve.Message)
+				}
 			}
 		})
 	}
