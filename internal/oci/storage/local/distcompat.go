@@ -357,18 +357,36 @@ func (d *DistDriver) statMetadata(ctx context.Context, path string) (storagedriv
 
 // isVirtualDir returns true if the path represents a directory in the
 // virtual filesystem tree that distribution's Walk expects. This includes
-// the repositories root, namespace prefixes, repository dirs, and the
-// _manifests sentinel within each repo.
+// the repositories root, namespace prefixes, repository dirs, the
+// _manifests sentinel within each repo, and individual tag directories.
 func (d *DistDriver) isVirtualDir(ctx context.Context, path string) bool {
 	if strings.HasSuffix(path, "/repositories") || strings.HasSuffix(path, "/repositories/") {
 		return true
 	}
 
-	// _manifests or _manifests/tags under a known repo
 	repo := repoFromPath(path)
+
+	// _manifests or _manifests/tags under a known repo
 	if repo != "" && (strings.HasSuffix(path, "/_manifests") || strings.HasSuffix(path, "/_manifests/tags")) {
 		_, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
 		return err == nil
+	}
+
+	// Individual tag directory (_manifests/tags/<tag>). distribution's
+	// tagStore.List (added in distribution v3.1.x) Walks the tags root and
+	// Stats each child to decide whether it's a leaf; a tag "file" is really
+	// a directory containing current/link and index/ entries, so it must be
+	// reported as a directory here or Walk silently drops every tag as a
+	// "path removed mid-walk".
+	if repo != "" {
+		if tag, ok := tagDirName(path); ok {
+			repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
+			if err != nil {
+				return false
+			}
+			_, err = d.meta.GetTagDigest(ctx, repoID, tag)
+			return err == nil
+		}
 	}
 
 	// The path after /repositories/ might be a complete repo name or just
@@ -635,6 +653,23 @@ func tagFromPath(path string) string {
 		return remainder[:slash]
 	}
 	return remainder
+}
+
+// tagDirName returns the tag name and true if path is exactly a tag
+// directory (".../_manifests/tags/<tag>"), as opposed to the root tags
+// listing directory or a link file beneath a tag
+// (".../tags/<tag>/current/link", ".../tags/<tag>/index/...").
+func tagDirName(path string) (string, bool) {
+	const marker = "/_manifests/tags/"
+	idx := strings.Index(path, marker)
+	if idx < 0 {
+		return "", false
+	}
+	remainder := path[idx+len(marker):]
+	if remainder == "" || strings.Contains(remainder, "/") {
+		return "", false
+	}
+	return remainder, true
 }
 
 // digestFromLinkPath extracts a digest from a link path after a known segment.

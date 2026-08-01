@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 
+	diststorage "github.com/distribution/distribution/v3/registry/storage"
 	storagedriver "github.com/distribution/distribution/v3/registry/storage/driver"
+	"github.com/distribution/reference"
 
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
@@ -405,6 +408,57 @@ func TestDistDriver_ListTags(t *testing.T) {
 	}
 	if len(tags) != 1 || tags[0] != tagsDir+"/v1" {
 		t.Errorf("List(tags) = %v, want [%s/v1]", tags, tagsDir)
+	}
+}
+
+// TestDistDriver_TagServiceList_MatchesUpstreamTagStore is a regression test
+// for the distribution v3.1.x TagService.List method, which Walks the
+// _manifests/tags directory and Stats each child to decide whether it is a
+// leaf. Before isVirtualDir recognized individual tag directories
+// (_manifests/tags/<tag>), Stat returned PathNotFoundError for every tag,
+// Walk treated each as "removed mid-walk", and List silently returned zero
+// tags instead of the full set. All()/Lookup() were unaffected because they
+// call driver.List directly rather than Walk, which is why only paginated
+// tag listing (and everything downstream of it, like OCI conformance's
+// tags/list checks) broke.
+func TestDistDriver_TagServiceList_MatchesUpstreamTagStore(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range []string{"v1", "v2", "v3"} {
+		if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest: digest.FromString(tag), MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content: []byte(`{}`), Tag: tag,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	reg, err := diststorage.NewRegistry(ctx, dd, diststorage.EnableDelete)
+	if err != nil {
+		t.Fatal(err)
+	}
+	named, err := reference.WithName("lib/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, err := reg.Repository(ctx, named)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.Tags(ctx).List(ctx, -1, "")
+	if err != nil && !errors.Is(err, io.EOF) {
+		t.Fatalf("List() error = %v", err)
+	}
+	slices.Sort(got)
+	want := []string{"v1", "v2", "v3"}
+	if !slices.Equal(got, want) {
+		t.Errorf("List() = %v, want %v", got, want)
 	}
 }
 
