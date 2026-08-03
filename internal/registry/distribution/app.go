@@ -87,7 +87,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 
 	local.Register()
 
-	if err := registrymw.Register(cfg.Store, cfg.BlobLocker, libraryNamespace); err != nil {
+	if err := registrymw.Register(); err != nil {
 		return nil, fmt.Errorf("register middleware: %w", err)
 	}
 
@@ -135,7 +135,10 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		},
 	}
 	distCfg.Middleware = map[string][]configuration.Middleware{
-		repositoryResourceType: {{Name: registrymw.Name()}},
+		repositoryResourceType: {{
+			Name:    registrymw.Name(),
+			Options: registrymw.Parameters(cfg.Store, cfg.BlobLocker, libraryNamespace),
+		}},
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr

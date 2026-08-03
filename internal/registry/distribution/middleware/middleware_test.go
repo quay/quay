@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/v3"
+	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
 	diststorage "github.com/distribution/distribution/v3/registry/storage"
 	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
@@ -301,6 +302,83 @@ func newTestRepository(inner distribution.Repository, store oci.MetadataStore) *
 }
 
 // --- tests ---
+
+func TestRegister_IsSafeToCallConcurrently(t *testing.T) {
+	const callers = 20
+	errs := make(chan error, callers)
+	for range callers {
+		go func() {
+			errs <- Register()
+		}()
+	}
+	for range callers {
+		require.NoError(t, <-errs)
+	}
+}
+
+func TestFactory_UsesPerInstanceOptions(t *testing.T) {
+	require.NoError(t, Register())
+
+	storeA := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	storeB := &mockStore{ensureRepoID: 2, putManifestID: 20}
+	lockerA := &trackingBlobLocker{}
+	lockerB := &trackingBlobLocker{}
+	innerA := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-a")},
+	}
+	innerB := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-b")},
+	}
+
+	repoA, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeA, lockerA, "library-a"), innerA)
+	require.NoError(t, err)
+	repoB, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeB, lockerB, "library-b"), innerB)
+	require.NoError(t, err)
+
+	wrappedA, ok := repoA.(*repository)
+	require.True(t, ok)
+	wrappedB, ok := repoB.(*repository)
+	require.True(t, ok)
+	require.Same(t, storeA, wrappedA.store)
+	require.Same(t, lockerA, wrappedA.locker)
+	require.Equal(t, "library-a", wrappedA.libraryNamespace)
+	require.Same(t, storeB, wrappedB.store)
+	require.Same(t, lockerB, wrappedB.locker)
+	require.Equal(t, "library-b", wrappedB.libraryNamespace)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2}`),
+	}
+	serviceA, err := wrappedA.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceA.Put(t.Context(), manifest)
+	require.NoError(t, err)
+	serviceB, err := wrappedB.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceB.Put(t.Context(), manifest)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), storeA.lastRepoID)
+	require.Equal(t, int64(2), storeB.lastRepoID)
+	require.Equal(t, digest.FromString("manifest-a"), storeA.putManifestRec.Digest)
+	require.Equal(t, digest.FromString("manifest-b"), storeB.putManifestRec.Digest)
+}
+
+func TestFactory_RejectsMissingOptions(t *testing.T) {
+	require.NoError(t, Register())
+	inner := &fakeDistRepo{name: namedRef(t)}
+
+	_, err := repositorymiddleware.Get(t.Context(), Name(), nil, inner)
+	require.ErrorContains(t, err, "metastore parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, nil, "library"), inner)
+	require.ErrorContains(t, err, "bloblocker parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, &trackingBlobLocker{}, ""), inner)
+	require.ErrorContains(t, err, "librarynamespace parameter")
+}
 
 func TestManifestPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
