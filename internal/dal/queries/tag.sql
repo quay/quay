@@ -27,6 +27,13 @@ VALUES (?, ?, ?, ?, ?, 1)
 ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
+-- name: HasNonExpiringTagForManifest :one
+-- Returns true if the manifest already has at least one non-expiring tag
+-- (lifetime_end_ms IS NULL). Used to skip creating duplicate protection tags.
+SELECT EXISTS(
+    SELECT 1 FROM tag WHERE manifest_id = ? AND lifetime_end_ms IS NULL
+) AS has_tag;
+
 -- name: GetActiveTagDigest :one
 SELECT m.digest
 FROM tag t

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opencontainers/go-digest"
 
 	"github.com/quay/quay/internal/dal/daldb"
@@ -180,9 +181,17 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 }
 
 // setSubjectAndProtect sets the subject column on a manifest and creates a
-// hidden tag to protect the referrer from GC. Referrer manifests typically
-// have no user-visible tag, so without the hidden tag FindOrphanedManifests
-// would collect them.
+// hidden tag to protect the referrer from GC, unless the manifest already
+// has a non-expiring tag. Referrer manifests typically have no user-visible
+// tag, so without the hidden tag FindOrphanedManifests would collect them.
+//
+// This mirrors Python's create_temporary_tag_if_necessary(skip_expiration=True)
+// (data/model/oci/tag.py): check-before-create avoids duplicate protection
+// tags on repeat pushes, and a random name ("$temp-" + uuid) means nothing
+// relies on ON CONFLICT against the (repository_id, name, lifetime_end_ms)
+// unique index, which never fires when lifetime_end_ms IS NULL (NULL != NULL
+// in SQL) -- that mismatch was the root cause of the duplication bug this
+// replaces.
 func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, m *oci.ManifestRecord) error {
 	if err := q.SetManifestSubject(ctx, daldb.SetManifestSubjectParams{
 		Subject: sql.NullString{String: m.Subject.String(), Valid: true},
@@ -190,14 +199,23 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 	}); err != nil {
 		return fmt.Errorf("set manifest subject %s: %w", m.Subject, err)
 	}
+
+	hasTag, err := q.HasNonExpiringTagForManifest(ctx, sql.NullInt64{Int64: manifestID, Valid: true})
+	if err != nil {
+		return fmt.Errorf("check existing tag for manifest %d: %w", manifestID, err)
+	}
+	if hasTag != 0 {
+		return nil
+	}
+
 	if _, err := q.InsertHiddenTag(ctx, daldb.InsertHiddenTagParams{
-		Name:            "$referrer-" + m.Digest.Encoded()[:12],
+		Name:            "$temp-" + uuid.NewString(),
 		RepositoryID:    repoID,
 		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
 		LifetimeStartMs: time.Now().UnixMilli(),
 		TagKindID:       s.tagKindTag,
 	}); err != nil {
-		return fmt.Errorf("insert hidden referrer tag: %w", err)
+		return fmt.Errorf("insert hidden protection tag: %w", err)
 	}
 	return nil
 }
