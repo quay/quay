@@ -481,6 +481,74 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 });
 ```
 
+## Test Fixtures Reference
+
+Source of truth: `TestFixtures` / `WorkerFixtures` in `web/playwright/fixtures.ts`.
+
+**Scope**
+- **Test-scoped** — created per test; prefer these for isolation and cleanup.
+- **Worker-scoped** — shared across tests in the same worker; use for expensive auth/config setup.
+
+Internal auto-fixtures prefixed with `_` (feature/auth/container skip hooks) are omitted below.
+
+### Pages (test-scoped)
+
+| Fixture | Type | When to use |
+| ------- | ---- | ----------- |
+| `authenticatedPage` | `Page` | Pre-authenticated browser page as a regular user |
+| `superuserPage` | `Page` | Pre-authenticated browser page as a superuser |
+| `readonlyPage` | `Page` | Pre-authenticated browser page as a readonly user |
+| `unauthenticatedPage` | `Page` | Fresh anonymous page (login/logout, public UI) |
+
+### API request contexts (test-scoped)
+
+| Fixture | Type | When to use |
+| ------- | ---- | ----------- |
+| `authenticatedRequest` | `APIRequestContext` | Authed HTTP requests as a regular user |
+| `superuserRequest` | `APIRequestContext` | Authed HTTP requests as a superuser |
+| `csrfToken` | `string` | CSRF token for API calls after login |
+
+### API clients (test-scoped)
+
+| Fixture | Type | When to use |
+| ------- | ---- | ----------- |
+| `api` | `TestApi` | Regular-user API helper with auto-cleanup (preferred for test data) |
+| `superuserApi` | `TestApi` | Superuser API helper with auto-cleanup |
+| `adminClient` | `RawApiClient` | Raw admin/superuser API client — **no browser** |
+| `userClient` | `RawApiClient` | Raw normal-user API client — **no browser** |
+| `anonClient` | `RawApiClient` | Unauthenticated raw API client — **no browser** |
+
+Prefer `adminClient` / `userClient` / `anonClient` for API-only tests to avoid browser overhead.
+
+### Isolated environments & infrastructure (test-scoped)
+
+| Fixture | Type | When to use |
+| ------- | ---- | ----------- |
+| `freshUser` | `{user: CreatedUser; api: TestApi}` | Brand-new user + API client for parallel-safe isolation |
+| `quayConfig` | `QuayConfig` | Features/config for the current test |
+| `containerAvailable` | `boolean` | Whether registry image tooling is available |
+| `webhook` | `WebhookReceiver` | Per-test webhook receiver (auto start/stop) |
+
+### Worker-scoped fixtures
+
+| Fixture | Type | When to use |
+| ------- | ---- | ----------- |
+| `userContext` | `BrowserContext` | Shared regular-user auth context for the worker |
+| `superuserContext` | `BrowserContext` | Shared superuser auth context for the worker |
+| `readonlyContext` | `BrowserContext` | Shared readonly-user auth context for the worker |
+| `cachedQuayConfig` | `QuayConfig` | Quay config fetched once per worker |
+| `cachedContainerAvailable` | `boolean` | Registry tooling check cached once per worker |
+
+### `freshUser` isolation example
+
+```ts
+test('creates org without colliding under parallel workers', async ({freshUser}) => {
+  const orgName = await freshUser.api.organization('iso-org');
+  // freshUser.user is unique to this test; do not share namespaces across tests
+  expect(orgName).toBeTruthy();
+});
+```
+
 ## Common Gotchas
 
 | Issue | What to Know |
