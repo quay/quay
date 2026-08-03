@@ -30,7 +30,7 @@ const (
 )
 
 var registerOnce sync.Once
-var registerErr error
+var errRegister error
 
 // Register makes the stateless metadata-recording middleware factory available
 // to distribution. It must be called before handlers.NewApp so that the
@@ -38,9 +38,9 @@ var registerErr error
 // concurrently.
 func Register() error {
 	registerOnce.Do(func() {
-		registerErr = repositorymiddleware.Register(middlewareName, newRepositoryMiddleware)
+		errRegister = repositorymiddleware.Register(middlewareName, newRepositoryMiddleware)
 	})
-	return registerErr
+	return errRegister
 }
 
 // Name returns the name used to register with distribution. Use this in
