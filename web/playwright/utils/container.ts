@@ -34,6 +34,8 @@ type ToolAvailability = {
 
 let toolAvailabilityPromise: Promise<ToolAvailability> | null = null;
 
+const helmLoggedInRegistries = new Set<string>();
+
 function targetImage(namespace: string, repo: string, tag: string): string {
   return `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
 }
@@ -247,7 +249,9 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(
+              ' ',
+            )} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
@@ -718,10 +722,14 @@ Create a default fully qualified app name.
     // Package the chart
     await execAsync(`helm package ${chartDir}`, {cwd: tmpDir});
 
-    // Login to registry
-    await execAsync(
-      `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure`,
-    );
+    // Login to registry (deduplicate across parallel workers)
+    const loginKey = `helm:${REGISTRY_HOST}:${username}`;
+    if (!helmLoggedInRegistries.has(loginKey)) {
+      await execAsync(
+        `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure`,
+      );
+      helmLoggedInRegistries.add(loginKey);
+    }
 
     // Push the chart (with retries for repo-init race)
     const registryUrl = `oci://${REGISTRY_HOST}`;
