@@ -111,7 +111,7 @@ func TestValidateCache(t *testing.T) {
 								"port": 5432,
 							},
 						},
-						"read_from_replica": true,
+						"read_from_replicas": true,
 					},
 				},
 			},

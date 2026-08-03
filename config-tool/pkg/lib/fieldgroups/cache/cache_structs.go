@@ -24,8 +24,8 @@ type RedisConfigGroup struct {
 	Replica *RedisNodeConfig `default:"" validate:"" json:"replica,omitempty" yaml:"replica,omitempty"`
 
 	// when engine == rediscluster
-	StartupNodes    []RedisNodeConfig `json:"startup_nodes,omitempty" yaml:"startup_nodes,omitempty"`
-	ReadFromReplica bool              `json:"read_from_replica,omitempty" yaml:"read_from_replica,omitempty"`
+	StartupNodes     []RedisNodeConfig `json:"startup_nodes,omitempty" yaml:"startup_nodes,omitempty"`
+	ReadFromReplicas bool              `json:"read_from_replicas,omitempty" yaml:"read_from_replicas,omitempty"`
 }
 
 // RedisNodeConfig contains the redis nodes
