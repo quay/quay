@@ -492,7 +492,7 @@ def test_connect_manifests_properly_deduplicates_child_manifest_entries(initiali
         repository.id,
     )
 
-    # verify that only one child was created
+    # verify that two child manifests were created
     children = ManifestChild.select().where(ManifestChild.manifest == created_index)
     assert children.count() == 2
 
