@@ -749,7 +749,7 @@ def request_authorization_code():
         abort(404)
 
     # check if user is org admin, if not check for user_assignment_id,
-    # then check that user belongs that assignment, if none exit with 401
+    # then check that user belongs that assignment, if none exit with 403
     if (
         not is_org_admin(user, oauth_app.organization)
         and get_token_assignment(assignment_uuid, user, oauth_app.organization) is None

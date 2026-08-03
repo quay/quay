@@ -817,7 +817,7 @@ class OAuthTestCase(EndpointTestCase):
     def test_request_authorization_code_basic_auth(self):
         """
         Verifies that request authorization code does not raise a 500 anymore when basic
-        auth is provided (PROJQUAY-8202).
+        auth is provided.
         """
         org = model.organization.get_organization("buynlarge")
         app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/bah")
