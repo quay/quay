@@ -814,6 +814,65 @@ class OAuthTestCase(EndpointTestCase):
             if r.status_code == 429:
                 break
 
+    def test_request_authorization_code_basic_auth(self):
+        """
+        Verifies that request authorization code does not raise a 500 anymore when basic
+        auth is provided (PROJQUAY-8202).
+        """
+        org = model.organization.get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/bah")
+
+        auth_header = gen_basic_auth("devtable", "password")
+        rv = self.app.get(
+            url_for(
+                "web.request_authorization_code",
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="repo:read",
+                response_type="token",
+            ),
+            headers={"Authorization": auth_header},
+        )
+
+        self.assertEqual(rv.status_code, 200)
+
+    def test_request_authorization_code_basic_auth_invalid_credentials(self):
+        """
+        Verifies that when we have improper credentials that a proper 401 is returned back instead of a 500.
+        """
+        org = model.organization.get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/bah")
+
+        auth_header = gen_basic_auth("randomuserwithoutaccess", "password")
+
+        rv = self.app.get(
+            url_for(
+                "web.request_authorization_code",
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="repo:read",
+                response_type="token",
+            ),
+            headers={"Authorization": auth_header},
+        )
+
+        self.assertEqual(rv.status_code, 401)
+
+        auth_header = gen_basic_auth("devtable", "completelywrongpassword")
+
+        rv = self.app.get(
+            url_for(
+                "web.request_authorization_code",
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="repo:read",
+                response_type="token",
+            ),
+            headers={"Authorization": auth_header},
+        )
+
+        self.assertEqual(rv.status_code, 401)
+
 
 class KeyServerTestCase(EndpointTestCase):
     def _get_test_jwt_payload(self):
