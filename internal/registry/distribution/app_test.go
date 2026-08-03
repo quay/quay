@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/v3/registry/handlers"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quay/quay/internal/oci"
+	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 )
 
 type metadataStoreStub struct {
@@ -35,13 +37,14 @@ func TestNewRegistryPassesStoreToDistributionDriver(t *testing.T) {
 	locker := oci.NewBlobLockSet()
 
 	registry, err := NewRegistry(t.Context(), &Config{
-		StoragePath: t.TempDir(),
-		Hostname:    "registry.example.com",
-		TokenRealm:  "https://registry.example.com/v2/auth",
-		DB:          db,
-		Store:       store,
-		BlobLocker:  locker,
-		JWTService:  &registryTokenServiceStub{},
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry.example.com",
+		TokenRealm:        "https://registry.example.com/v2/auth",
+		DB:                db,
+		Store:             store,
+		BlobLocker:        locker,
+		JWTService:        &registryTokenServiceStub{},
+		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
 
@@ -54,6 +57,41 @@ func TestNewRegistryPassesStoreToDistributionDriver(t *testing.T) {
 	require.Same(t, store, middleware[0].Options["metastore"])
 	require.Same(t, locker, middleware[0].Options["bloblocker"])
 	require.Equal(t, defaultLibraryNamespace, middleware[0].Options["librarynamespace"])
+	require.IsType(t, &registrymw.Metrics{}, middleware[0].Options["metrics"])
+}
+
+// TestNewRegistry_NilMetricsRegistererIsolation verifies that two NewRegistry
+// calls without MetricsRegisterer both succeed. Before this fix, the fallback
+// to prometheus.DefaultRegisterer caused the second call to fail with a
+// duplicate registration error.
+func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	jwt := &registryTokenServiceStub{}
+
+	_, err := NewRegistry(t.Context(), &Config{
+		StoragePath: t.TempDir(),
+		Hostname:    "registry-a.example.com",
+		TokenRealm:  "https://registry-a.example.com/v2/auth",
+		DB:          db,
+		Store:       &metadataStoreStub{},
+		BlobLocker:  oci.NewBlobLockSet(),
+		JWTService:  jwt,
+		// MetricsRegisterer intentionally nil.
+	})
+	require.NoError(t, err)
+
+	_, err = NewRegistry(t.Context(), &Config{
+		StoragePath: t.TempDir(),
+		Hostname:    "registry-b.example.com",
+		TokenRealm:  "https://registry-b.example.com/v2/auth",
+		DB:          db,
+		Store:       &metadataStoreStub{},
+		BlobLocker:  oci.NewBlobLockSet(),
+		JWTService:  jwt,
+		// MetricsRegisterer intentionally nil.
+	})
+	require.NoError(t, err, "second NewRegistry with nil MetricsRegisterer must not fail")
 }
 
 func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
@@ -66,25 +104,27 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 	lockerB := oci.NewBlobLockSet()
 
 	registryA, err := NewRegistry(t.Context(), &Config{
-		StoragePath:      t.TempDir(),
-		Hostname:         "registry-a.example.com",
-		TokenRealm:       "https://registry-a.example.com/v2/auth",
-		DB:               db,
-		Store:            storeA,
-		BlobLocker:       lockerA,
-		LibraryNamespace: "library-a",
-		JWTService:       jwt,
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry-a.example.com",
+		TokenRealm:        "https://registry-a.example.com/v2/auth",
+		DB:                db,
+		Store:             storeA,
+		BlobLocker:        lockerA,
+		LibraryNamespace:  "library-a",
+		JWTService:        jwt,
+		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
 	registryB, err := NewRegistry(t.Context(), &Config{
-		StoragePath:      t.TempDir(),
-		Hostname:         "registry-b.example.com",
-		TokenRealm:       "https://registry-b.example.com/v2/auth",
-		DB:               db,
-		Store:            storeB,
-		BlobLocker:       lockerB,
-		LibraryNamespace: "library-b",
-		JWTService:       jwt,
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry-b.example.com",
+		TokenRealm:        "https://registry-b.example.com/v2/auth",
+		DB:                db,
+		Store:             storeB,
+		BlobLocker:        lockerB,
+		LibraryNamespace:  "library-b",
+		JWTService:        jwt,
+		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
 
@@ -100,4 +140,5 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 	require.Same(t, storeB, optionsB["metastore"])
 	require.Same(t, lockerB, optionsB["bloblocker"])
 	require.Equal(t, "library-b", optionsB["librarynamespace"])
+	require.NotSame(t, optionsA["metrics"], optionsB["metrics"], "each registry must have its own metrics instance")
 }

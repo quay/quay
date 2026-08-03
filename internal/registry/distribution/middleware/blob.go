@@ -23,7 +23,7 @@ type blobStore struct {
 }
 
 func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (_ v1.Descriptor, retErr error) {
-	defer recordOp("blob_put", time.Now(), &retErr)
+	defer bs.repo.metrics.recordOp("blob_put", time.Now(), &retErr)
 
 	expected := digest.FromBytes(p)
 	unlock, err := bs.repo.locker.Lock(ctx, expected)
@@ -47,7 +47,7 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (_ v1.
 }
 
 func (bs *blobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (_ distribution.BlobWriter, retErr error) {
-	defer recordOp("blob_create", time.Now(), &retErr)
+	defer bs.repo.metrics.recordOp("blob_create", time.Now(), &retErr)
 
 	mountLock := &mountLockOption{ctx: ctx, locker: bs.repo.locker}
 	coordinatedOptions := append([]distribution.BlobCreateOption(nil), options...)
@@ -106,7 +106,7 @@ type blobWriter struct {
 }
 
 func (bw *blobWriter) Commit(ctx context.Context, provisional v1.Descriptor) (_ v1.Descriptor, retErr error) { //nolint:gocritic // interface compliance
-	defer recordOp("blob_commit", time.Now(), &retErr)
+	defer bw.bs.repo.metrics.recordOp("blob_commit", time.Now(), &retErr)
 
 	unlock, err := bw.bs.repo.locker.Lock(ctx, provisional.Digest)
 	if err != nil {

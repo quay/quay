@@ -21,7 +21,7 @@ type manifestService struct {
 }
 
 func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (_ digest.Digest, retErr error) {
-	defer recordOp("manifest_put", time.Now(), &retErr)
+	defer ms.repo.metrics.recordOp("manifest_put", time.Now(), &retErr)
 
 	dgst, err := ms.ManifestService.Put(ctx, manifest, options...)
 	if err != nil {
@@ -79,7 +79,7 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 }
 
 func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retErr error) {
-	defer recordOp("manifest_delete", time.Now(), &retErr)
+	defer ms.repo.metrics.recordOp("manifest_delete", time.Now(), &retErr)
 
 	if err := ms.ManifestService.Delete(ctx, dgst); err != nil {
 		return err

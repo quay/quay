@@ -9,6 +9,7 @@ import (
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
@@ -35,6 +36,10 @@ type Config struct {
 	SuperUsers                         []string
 	SuperUsersFullAccess               bool
 	JWTService                         registryTokenService
+	// MetricsRegisterer is the Prometheus registerer for middleware metrics.
+	// When nil, no metrics are recorded. Callers that want per-instance
+	// metrics must provide an explicit registerer (e.g. prometheus.NewRegistry()).
+	MetricsRegisterer prometheus.Registerer
 }
 
 type registryTokenService interface {
@@ -91,6 +96,15 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		return nil, fmt.Errorf("register middleware: %w", err)
 	}
 
+	var metricsOpts []registrymw.Option
+	if cfg.MetricsRegisterer != nil {
+		metrics, err := registrymw.NewMetrics(cfg.MetricsRegisterer)
+		if err != nil {
+			return nil, fmt.Errorf("create middleware metrics: %w", err)
+		}
+		metricsOpts = append(metricsOpts, registrymw.WithMetrics(metrics))
+	}
+
 	authOptions := configuration.Parameters{
 		authOptionRealm:        cfg.TokenRealm,
 		authOptionService:      cfg.Hostname,
@@ -137,7 +151,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	distCfg.Middleware = map[string][]configuration.Middleware{
 		repositoryResourceType: {{
 			Name:    registrymw.Name(),
-			Options: registrymw.Parameters(cfg.Store, cfg.BlobLocker, libraryNamespace),
+			Options: registrymw.Parameters(cfg.Store, cfg.BlobLocker, libraryNamespace, metricsOpts...),
 		}},
 	}
 
