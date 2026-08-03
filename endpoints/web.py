@@ -730,7 +730,10 @@ def request_authorization_code():
     assignment_uuid = request.args.get("assignment_uuid", None)
     format_requested = request.args.get("format", "html").lower()
 
-    if not get_authenticated_user():
+    # get authenticated user
+    user = get_authenticated_user()
+
+    if not user:
         abort(401)
         return
 
@@ -745,15 +748,15 @@ def request_authorization_code():
     if not oauth_app:
         abort(404)
 
-    # check if user is org admin, if not check for user_assignment_id, then check that user belongs that assignment, if none exit with 401
+    # check if user is org admin, if not check for user_assignment_id,
+    # then check that user belongs that assignment, if none exit with 403
     if (
-        not is_org_admin(current_user.db_user(), oauth_app.organization)
-        and get_token_assignment(assignment_uuid, current_user.db_user(), oauth_app.organization)
-        is None
+        not is_org_admin(user, oauth_app.organization)
+        and get_token_assignment(assignment_uuid, user, oauth_app.organization) is None
     ):
         abort(403)
 
-    if not provider.validate_has_scopes(client_id, current_user.db_user().username, scope):
+    if not provider.validate_has_scopes(client_id, user.username, scope):
         if not provider.validate_redirect_uri(client_id, redirect_uri):
             current_app = provider.get_application_for_client_id(client_id)
             if not current_app:
