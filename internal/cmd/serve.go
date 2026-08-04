@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	apiv1 "github.com/quay/quay/internal/api/v1"
@@ -112,6 +113,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		SuperUsers:                         resolved.Config.SuperUsers,
 		SuperUsersFullAccess:               superUsersFullAccess,
 		JWTService:                         jwtService,
+		MetricsRegisterer:                  prometheus.DefaultRegisterer,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)

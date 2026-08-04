@@ -31,7 +31,7 @@ func (ts *tagService) Get(ctx context.Context, tag string) (v1.Descriptor, error
 }
 
 func (ts *tagService) Tag(ctx context.Context, tag string, desc v1.Descriptor) (retErr error) { //nolint:gocritic // interface compliance
-	defer recordOp("tag", time.Now(), &retErr)
+	defer ts.repo.metrics.recordOp("tag", time.Now(), &retErr)
 
 	if err := ts.TagService.Tag(ctx, tag, desc); err != nil {
 		return err
@@ -53,7 +53,7 @@ func (ts *tagService) Tag(ctx context.Context, tag string, desc v1.Descriptor) (
 }
 
 func (ts *tagService) Untag(ctx context.Context, tag string) (retErr error) {
-	defer recordOp("untag", time.Now(), &retErr)
+	defer ts.repo.metrics.recordOp("untag", time.Now(), &retErr)
 
 	if err := ts.TagService.Untag(ctx, tag); err != nil {
 		return err

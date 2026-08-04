@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/v3"
+	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
 	diststorage "github.com/distribution/distribution/v3/registry/storage"
 	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quay/quay/internal/oci"
@@ -297,10 +299,131 @@ func (r *fakeDistRepo) Blobs(_ context.Context) distribution.BlobStore { return 
 func (r *fakeDistRepo) Tags(_ context.Context) distribution.TagService { return r.ts }
 
 func newTestRepository(inner distribution.Repository, store oci.MetadataStore) *repository {
-	return newRepository(inner, store, oci.NewBlobLockSet(), "library")
+	return newRepository(inner, store, oci.NewBlobLockSet(), "library", nil)
+}
+
+func newTestMetrics(t *testing.T) *Metrics {
+	t.Helper()
+	reg := prometheus.NewRegistry()
+	m, err := NewMetrics(reg)
+	require.NoError(t, err)
+	return m
 }
 
 // --- tests ---
+
+func TestRegister_IsSafeToCallConcurrently(t *testing.T) {
+	const callers = 20
+	errs := make(chan error, callers)
+	for range callers {
+		go func() {
+			errs <- Register()
+		}()
+	}
+	for range callers {
+		require.NoError(t, <-errs)
+	}
+}
+
+func TestFactory_UsesPerInstanceOptions(t *testing.T) {
+	require.NoError(t, Register())
+
+	storeA := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	storeB := &mockStore{ensureRepoID: 2, putManifestID: 20}
+	lockerA := &trackingBlobLocker{}
+	lockerB := &trackingBlobLocker{}
+	innerA := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-a")},
+	}
+	innerB := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-b")},
+	}
+
+	metricsA := newTestMetrics(t)
+	metricsB := newTestMetrics(t)
+	repoA, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeA, lockerA, "library-a", WithMetrics(metricsA)), innerA)
+	require.NoError(t, err)
+	repoB, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeB, lockerB, "library-b", WithMetrics(metricsB)), innerB)
+	require.NoError(t, err)
+
+	wrappedA, ok := repoA.(*repository)
+	require.True(t, ok)
+	wrappedB, ok := repoB.(*repository)
+	require.True(t, ok)
+	require.Same(t, storeA, wrappedA.store)
+	require.Same(t, lockerA, wrappedA.locker)
+	require.Equal(t, "library-a", wrappedA.libraryNamespace)
+	require.Same(t, storeB, wrappedB.store)
+	require.Same(t, lockerB, wrappedB.locker)
+	require.Equal(t, "library-b", wrappedB.libraryNamespace)
+	require.Same(t, metricsA, wrappedA.metrics)
+	require.Same(t, metricsB, wrappedB.metrics)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2}`),
+	}
+	serviceA, err := wrappedA.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceA.Put(t.Context(), manifest)
+	require.NoError(t, err)
+	serviceB, err := wrappedB.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceB.Put(t.Context(), manifest)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), storeA.lastRepoID)
+	require.Equal(t, int64(2), storeB.lastRepoID)
+	require.Equal(t, digest.FromString("manifest-a"), storeA.putManifestRec.Digest)
+	require.Equal(t, digest.FromString("manifest-b"), storeB.putManifestRec.Digest)
+}
+
+// TestParameters_BackwardCompatThreeArgs verifies that the original
+// three-argument call to Parameters still compiles and produces valid
+// middleware options with nil metrics (recording disabled).
+func TestParameters_BackwardCompatThreeArgs(t *testing.T) {
+	require.NoError(t, Register())
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	locker := &trackingBlobLocker{}
+	inner := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("compat")},
+	}
+
+	// Three-argument form — no Option values.
+	repo, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(store, locker, "library"), inner)
+	require.NoError(t, err)
+
+	wrapped, ok := repo.(*repository)
+	require.True(t, ok)
+	require.Same(t, store, wrapped.store)
+	require.Same(t, locker, wrapped.locker)
+	require.Nil(t, wrapped.metrics, "3-arg Parameters must yield nil metrics")
+
+	// Operations should succeed without panic despite nil metrics.
+	ms, err := wrapped.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = ms.Put(t.Context(), &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2}`),
+	})
+	require.NoError(t, err)
+}
+
+func TestFactory_RejectsMissingOptions(t *testing.T) {
+	require.NoError(t, Register())
+	inner := &fakeDistRepo{name: namedRef(t)}
+
+	_, err := repositorymiddleware.Get(t.Context(), Name(), nil, inner)
+	require.ErrorContains(t, err, "metastore parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, nil, "library"), inner)
+	require.ErrorContains(t, err, "bloblocker parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, &trackingBlobLocker{}, ""), inner)
+	require.ErrorContains(t, err, "librarynamespace parameter")
+}
 
 func TestManifestPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
@@ -582,7 +705,7 @@ func TestBlobPut_LocksFinalizationThroughMetadata(t *testing.T) {
 		},
 	}
 
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 	_, err := repo.Blobs(t.Context()).Put(t.Context(), "application/octet-stream", content)
 	require.NoError(t, err)
 	require.False(t, locker.isHeld(dgst), "digest lock retained after put")
@@ -599,7 +722,7 @@ func TestBlobPut_RejectsDigestMismatch(t *testing.T) {
 			putDesc: v1.Descriptor{Digest: digest.FromString("wrong-put-digest"), Size: int64(len(content))},
 		},
 	}
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 
 	_, err := repo.Blobs(t.Context()).Put(t.Context(), "application/octet-stream", content)
 	require.ErrorContains(t, err, "blob put digest mismatch")
@@ -626,7 +749,7 @@ func TestBlobCommit_RejectsDigestMismatch(t *testing.T) {
 		name: namedRef(t),
 		bs:   &mockBlobStore{createWr: innerWriter},
 	}
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 	wr, err := repo.Blobs(t.Context()).Create(t.Context())
 	require.NoError(t, err)
 
@@ -657,7 +780,7 @@ func testBlobCommitLocking(t *testing.T, resume bool) {
 	}
 	innerBlobs := &mockBlobStore{createWr: innerWriter, resumeWr: innerWriter}
 	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 	bs := repo.Blobs(t.Context())
 
 	var (
@@ -702,7 +825,7 @@ func TestBlobCreate_MountLocksLinkThroughMetadata(t *testing.T) {
 		},
 	}
 	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 
 	_, err = repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
 	var mounted distribution.ErrBlobMounted
@@ -730,7 +853,7 @@ func TestBlobCreate_MountFallbackReleasesLock(t *testing.T) {
 		},
 	}
 	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
-	repo := newRepository(innerRepo, &mockStore{}, locker, "library")
+	repo := newRepository(innerRepo, &mockStore{}, locker, "library", nil)
 
 	wr, err := repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
 	require.NoError(t, err)
@@ -763,7 +886,7 @@ func TestBlobCreate_MountRejectsDigestMismatch(t *testing.T) {
 		},
 	}
 	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
-	repo := newRepository(innerRepo, store, locker, "library")
+	repo := newRepository(innerRepo, store, locker, "library", nil)
 
 	_, err = repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
 	require.ErrorContains(t, err, "mounted blob digest mismatch")
