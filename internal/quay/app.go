@@ -41,9 +41,12 @@ type App struct {
 
 // New composes the production application handler and starts its background
 // garbage collector.
-func New(ctx context.Context, cfg Config) (app *App, err error) {
+func New(ctx context.Context, cfg *Config) (app *App, err error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("nil context")
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("nil application config")
 	}
 
 	metricsCfg, err := resolveMetrics(cfg)
@@ -108,7 +111,7 @@ func (a *App) Close() error {
 	return a.closeErr
 }
 
-func resolveMetrics(cfg Config) (metricsConfig, error) {
+func resolveMetrics(cfg *Config) (metricsConfig, error) {
 	if cfg.MetricsRegisterer == nil && cfg.MetricsGatherer == nil {
 		registry := prometheus.NewRegistry()
 		return metricsConfig{registerer: registry, gatherer: registry}, nil
