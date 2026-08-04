@@ -26,7 +26,7 @@ type Config struct {
 	Store                              oci.MetadataStore
 	BlobLocker                         oci.BlobLocker
 	LibraryNamespace                   string
-	AnonymousAccess                    *bool
+	AnonymousAccess                    bool
 	DatabaseSecretKey                  string
 	RobotsDisallow                     bool
 	RobotsWhitelist                    []string
@@ -97,7 +97,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		authOptionJWTService:   cfg.JWTService,
 		"db":                   cfg.DB,
 		"libraryNamespace":     libraryNamespace,
-		authOptionAnonAccess:   anonymousAccessEnabled(cfg.AnonymousAccess),
+		authOptionAnonAccess:   cfg.AnonymousAccess,
 		authOptionDatabaseKey:  cfg.DatabaseSecretKey,
 		"robotsDisallow":       cfg.RobotsDisallow,
 		"robotsWhitelist":      cfg.RobotsWhitelist,
@@ -161,11 +161,4 @@ func (a *Registry) Handler() http.Handler {
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
 	return nil
-}
-
-func anonymousAccessEnabled(configured *bool) bool {
-	if configured == nil {
-		return true
-	}
-	return *configured
 }
