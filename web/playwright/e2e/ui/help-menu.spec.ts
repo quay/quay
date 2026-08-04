@@ -9,16 +9,23 @@ test.describe('Help menu', {tag: ['@ui']}, () => {
     await expect(toggle).toBeVisible();
   });
 
-  test('opens dropdown and shows documentation links', async ({
+  test('opens dropdown and shows links', async ({
     authenticatedPage,
+    quayConfig,
   }) => {
     await authenticatedPage.goto('/organization');
     const toggle = authenticatedPage.getByTestId('help-menu-toggle');
     await toggle.click();
 
-    const docLink = authenticatedPage.getByTestId('help-documentation-link');
-    await expect(docLink).toBeVisible();
-    await expect(docLink).toContainText('Documentation');
+    if (quayConfig?.config?.DOCUMENTATION_ROOT) {
+      const docLink = authenticatedPage.getByTestId('help-documentation-link');
+      await expect(docLink).toBeVisible();
+      await expect(docLink).toContainText('Documentation');
+      await expect(docLink).toHaveAttribute(
+        'href',
+        quayConfig.config.DOCUMENTATION_ROOT as string,
+      );
+    }
 
     const apiLink = authenticatedPage.getByTestId('help-api-reference-link');
     await expect(apiLink).toBeVisible();
@@ -47,13 +54,10 @@ test.describe('Help menu', {tag: ['@ui']}, () => {
     const toggle = authenticatedPage.getByTestId('help-menu-toggle');
 
     await toggle.click();
-    await expect(
-      authenticatedPage.getByTestId('help-documentation-link'),
-    ).toBeVisible();
+    const apiLink = authenticatedPage.getByTestId('help-api-reference-link');
+    await expect(apiLink).toBeVisible();
 
     await toggle.click();
-    await expect(
-      authenticatedPage.getByTestId('help-documentation-link'),
-    ).not.toBeVisible();
+    await expect(apiLink).not.toBeVisible();
   });
 });

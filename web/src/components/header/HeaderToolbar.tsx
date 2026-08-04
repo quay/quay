@@ -180,15 +180,17 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       )}
     >
       <DropdownList>
-        <DropdownItem
-          key="documentation"
-          to="https://docs.redhat.com/en/documentation/red_hat_quay/"
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="help-documentation-link"
-        >
-          Documentation
-        </DropdownItem>
+        {quayConfig?.config?.DOCUMENTATION_ROOT && (
+          <DropdownItem
+            key="documentation"
+            to={quayConfig.config.DOCUMENTATION_ROOT}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="help-documentation-link"
+          >
+            Documentation
+          </DropdownItem>
+        )}
         <DropdownItem
           key="api-reference"
           to="/api/v1/discovery"
