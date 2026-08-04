@@ -39,15 +39,16 @@ func newDefaultConfig() Config {
 			DefaultTagExpiration: DefaultTagExpiration,
 		},
 		Features: Features{
-			FeatureDirectLogin:         boolPtr(true),
-			FeatureUserCreation:        boolPtr(true),
-			FeatureAnonymousAccess:     boolPtr(DefaultFeatureAnonymousAccess),
-			FeatureChangeTagExpiration: boolPtr(true),
-			FeatureAppSpecificTokens:   boolPtr(true),
-			FeatureSuperUsers:          boolPtr(DefaultFeatureSuperUsers),
-			FeatureReferrersAPI:        boolPtr(DefaultFeatureReferrersAPI),
-			FeatureLibrarySupport:      boolPtr(DefaultFeatureLibrarySupport),
-			FeatureUserLastAccessed:    boolPtr(DefaultFeatureUserLastAccessed),
+			FeatureDirectLogin:          true,
+			FeatureUserCreation:         true,
+			FeatureAnonymousAccess:      DefaultFeatureAnonymousAccess,
+			FeatureChangeTagExpiration:  true,
+			FeatureAppSpecificTokens:    true,
+			FeatureSuperUsers:           DefaultFeatureSuperUsers,
+			FeatureSuperUsersFullAccess: DefaultFeatureSuperUsersFullAccess,
+			FeatureReferrersAPI:         DefaultFeatureReferrersAPI,
+			FeatureLibrarySupport:       DefaultFeatureLibrarySupport,
+			FeatureUserLastAccessed:     DefaultFeatureUserLastAccessed,
 		},
 		AccessLog: AccessLog{
 			LastAccessedUpdateThresholdS: DefaultLastAccessedUpdateThresholdS,
@@ -57,9 +58,4 @@ func newDefaultConfig() Config {
 			RegistryJWTAuthMaxFreshS:  DefaultRegistryJWTAuthMaxFreshS,
 		},
 	}
-}
-
-// boolPtr returns a pointer to b.
-func boolPtr(b bool) *bool {
-	return &b
 }

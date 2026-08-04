@@ -124,8 +124,8 @@ func NewDefault(hostname, storagePath string) *Config {
 			SuperUsers:         []string{"admin"},
 		},
 		Features: Features{
-			FeatureSuperUsers:           boolPtr(true),
-			FeatureSuperUsersFullAccess: boolPtr(true),
+			FeatureSuperUsers:           true,
+			FeatureSuperUsersFullAccess: true,
 		},
 		Keys: Keys{
 			InstanceServiceKeyService: DefaultInstanceServiceKeyService,

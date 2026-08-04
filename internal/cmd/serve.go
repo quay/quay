@@ -19,7 +19,6 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
-	"github.com/quay/quay/internal/features"
 	"github.com/quay/quay/internal/gc"
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
@@ -78,8 +77,8 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 	configureStandaloneSuperuser(resolved, adminUsername)
 
-	featureSet := features.FromConfig(resolved.Config.Features)
-	featureUserLastAccessed := featureSet.UserLastAccessedEnabled()
+	featureSet := resolved.Config.Features
+	featureUserLastAccessed := featureSet.FeatureUserLastAccessed
 	lastAccessedUpdateThresholdSeconds := resolved.Config.LastAccessedUpdateThresholdS
 	databaseVerifierConfig := auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              resolved.Config.DatabaseSecretKey,
@@ -105,7 +104,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		Store:                              store,
 		BlobLocker:                         blobLocks,
 		LibraryNamespace:                   resolved.Config.LibraryNamespace,
-		AnonymousAccess:                    featureSet.AnonymousAccessEnabled(),
+		AnonymousAccess:                    featureSet.FeatureAnonymousAccess,
 		DatabaseSecretKey:                  resolved.Config.DatabaseSecretKey,
 		RobotsDisallow:                     resolved.Config.RobotsDisallow,
 		RobotsWhitelist:                    resolved.Config.RobotsWhitelist,
@@ -147,10 +146,10 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	distHandler := registrymw.SubjectHeaderMiddleware(reg.Handler())
 
 	v2Handler := distHandler
-	if featureSet.ReferrersAPIEnabled() {
+	if featureSet.FeatureReferrersAPI {
 		referrersHandler, err := registry.NewReferrersHandler(store, &registry.ReferrersConfig{
 			LibraryNamespace: resolved.Config.LibraryNamespace,
-			LibrarySupport:   featureSet.LibrarySupportEnabled(),
+			LibrarySupport:   featureSet.FeatureLibrarySupport,
 			Authenticator:    reg.Authenticator(),
 		})
 		if err != nil {
