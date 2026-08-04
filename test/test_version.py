@@ -21,7 +21,7 @@ def quay_root(tmp_path):
 
 class TestGetVersionNumber:
     def test_explicit_env_takes_precedence(self, quay_root):
-        (quay_root / "BUILD_DATE").write_text("20260803\n")
+        (quay_root / "BUILD_DATE").write_text("202608031425\n")
         with (
             patch.object(_init, "ROOT_DIR", str(quay_root)),
             patch.dict(os.environ, {"QUAY_VERSION": "v3.18.0"}),
@@ -29,13 +29,13 @@ class TestGetVersionNumber:
             assert _init._get_version_number() == "v3.18.0"
 
     def test_nightly_format_when_build_date_exists(self, quay_root):
-        (quay_root / "BUILD_DATE").write_text("20260803\n")
+        (quay_root / "BUILD_DATE").write_text("202608031425\n")
         with (
             patch.object(_init, "ROOT_DIR", str(quay_root)),
             patch.dict(os.environ, {}, clear=False),
         ):
             os.environ.pop("QUAY_VERSION", None)
-            assert _init._get_version_number() == "v3.18.0-nightly-20260803"
+            assert _init._get_version_number() == "v3.18.0-nightly-202608031425"
 
     def test_changelog_fallback_when_no_build_date(self, quay_root):
         with (
