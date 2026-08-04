@@ -220,6 +220,7 @@ COPY --from=build-quaydir /quaydir $QUAYDIR
 # inert at runtime; removing them reduces scanner noise and attack surface.
 RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
 
+ARG BUILD_TIMESTAMP
 RUN date -u +%Y%m%d > $QUAYDIR/BUILD_DATE
 
 EXPOSE 8080 8443 7443 9091 55443
