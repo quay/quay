@@ -43,7 +43,7 @@ type composition struct {
 	blobLocks oci.BlobLocker
 }
 
-func compose(ctx context.Context, cfg Config, resolved *config.Resolved, metricsCfg metricsConfig) (result composition, err error) {
+func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metricsCfg metricsConfig) (result composition, err error) {
 	defer func() {
 		if err != nil {
 			if result.reg != nil {

@@ -18,7 +18,7 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
-func testConfig(t *testing.T) Config {
+func testConfig(t *testing.T) *Config {
 	t.Helper()
 	dataDir := t.TempDir()
 	storagePath := filepath.Join(dataDir, "storage")
@@ -36,7 +36,7 @@ func testConfig(t *testing.T) Config {
 	require.NoError(t, err)
 	require.NoError(t, db.Close())
 
-	return Config{
+	return &Config{
 		Resolved:   resolved,
 		Features:   resolved.Config.Features,
 		ListenAddr: "127.0.0.1:0",
@@ -61,7 +61,7 @@ func TestNewAssemblesTopLevelRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, tt.path, http.NoBody)
 			resp := httptest.NewRecorder()
 			app.Handler().ServeHTTP(resp, req)
 			assert.Equal(t, tt.want, resp.Code)
@@ -70,7 +70,7 @@ func TestNewAssemblesTopLevelRoutes(t *testing.T) {
 }
 
 func TestNewUsesIndependentDefaultMetricsRegistries(t *testing.T) {
-	var configs [2]Config
+	var configs [2]*Config
 	for i := range configs {
 		configs[i] = testConfig(t)
 	}
@@ -109,7 +109,7 @@ func TestNewUsesExplicitMetricsDependencies(t *testing.T) {
 	defer func() { require.NoError(t, app.Close()) }()
 
 	resp := httptest.NewRecorder()
-	app.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	app.Handler().ServeHTTP(resp, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/metrics", http.NoBody))
 	require.Equal(t, http.StatusOK, resp.Code)
 	families, err := registry.Gather()
 	require.NoError(t, err)

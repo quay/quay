@@ -39,7 +39,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		return 1
 	}
 
-	app, err := quay.New(ctx, quay.Config{
+	app, err := quay.New(ctx, &quay.Config{
 		Resolved:          resolved,
 		Features:          resolved.Config.Features,
 		ListenAddr:        addr,
