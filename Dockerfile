@@ -60,6 +60,8 @@ RUN set -ex\
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
+# pyroscope-io depends on py-spy which has no s390x support
+RUN sed -i '/^pyroscope-io/d' requirements.txt
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
