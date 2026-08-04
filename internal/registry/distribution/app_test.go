@@ -58,6 +58,9 @@ func TestNewRegistryPassesStoreToDistributionDriver(t *testing.T) {
 	require.Same(t, locker, middleware[0].Options["bloblocker"])
 	require.Equal(t, defaultLibraryNamespace, middleware[0].Options["librarynamespace"])
 	require.IsType(t, &registrymw.Metrics{}, middleware[0].Options["metrics"])
+	purging, ok := app.Config.Storage["maintenance"]["uploadpurging"].(map[interface{}]interface{})
+	require.True(t, ok)
+	require.Equal(t, false, purging["enabled"])
 }
 
 // TestNewRegistry_NilMetricsRegistererIsolation verifies that two NewRegistry
@@ -142,3 +145,27 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 	require.Equal(t, "library-b", optionsB["librarynamespace"])
 	require.NotSame(t, optionsA["metrics"], optionsB["metrics"], "each registry must have its own metrics instance")
 }
+
+func TestNewRegistryConvertsConstructorPanicsToErrors(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	_, err := NewRegistry(t.Context(), &Config{
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry.example.com",
+		TokenRealm:        "https://registry.example.com/v2/auth",
+		DB:                db,
+		Store:             &metadataStoreStub{},
+		BlobLocker:        oci.NewBlobLockSet(),
+		JWTService:        &registryTokenServiceStub{},
+		MetricsRegisterer: panicRegisterer{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "distribution constructor panicked")
+}
+
+type panicRegisterer struct{}
+
+func (panicRegisterer) Register(prometheus.Collector) error  { panic("test panic") }
+func (panicRegisterer) MustRegister(...prometheus.Collector) { panic("test panic") }
+func (panicRegisterer) Unregister(prometheus.Collector) bool { return false }

@@ -52,6 +52,7 @@ type Registry struct {
 	handler       http.Handler
 	tokenHandler  *TokenHandler
 	authenticator *BearerAuthenticator
+	shutdown      func() error
 	db            *sql.DB
 }
 
@@ -65,7 +66,16 @@ func (a *BearerAuthenticator) Authenticate(r *http.Request, access ...oci.Access
 }
 
 // NewRegistry creates the distribution registry with metadata middleware.
-func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
+// Panics from distribution's constructor are converted into errors so callers
+// can reliably clean up resources acquired before construction.
+func NewRegistry(ctx context.Context, cfg *Config) (registry *Registry, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			registry = nil
+			err = fmt.Errorf("distribution constructor panicked: %v", recovered)
+		}
+	}()
+
 	if cfg == nil {
 		return nil, fmt.Errorf("nil Config")
 	}
@@ -141,6 +151,11 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 			"delete": configuration.Parameters{
 				"enabled": true,
 			},
+			"maintenance": configuration.Parameters{
+				"uploadpurging": map[interface{}]interface{}{
+					"enabled": false,
+				},
+			},
 		},
 		Auth: configuration.Auth{
 			"quaydb": configuration.Parameters{
@@ -156,10 +171,12 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr
+	distApp := handlers.NewApp(ctx, distCfg)
 	return &Registry{
-		handler:       handlers.NewApp(ctx, distCfg),
+		handler:       distApp,
 		tokenHandler:  tokenHandler,
 		authenticator: &BearerAuthenticator{controller: controller},
+		shutdown:      distApp.Shutdown,
 		db:            cfg.DB,
 	}, nil
 }
@@ -177,5 +194,8 @@ func (a *Registry) Handler() http.Handler {
 
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
-	return nil
+	if a == nil || a.shutdown == nil {
+		return nil
+	}
+	return a.shutdown()
 }
