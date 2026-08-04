@@ -141,14 +141,14 @@ FEATURE_USER_LAST_ACCESSED: false
 	if got := cfg.SuperUsers; len(got) != 1 || got[0] != "ops-admin" {
 		t.Fatalf("SuperUsers = %#v, want source superusers", got)
 	}
-	if cfg.FeatureSuperUsers == nil || !*cfg.FeatureSuperUsers {
-		t.Fatalf("FeatureSuperUsers = %#v, want source true", cfg.FeatureSuperUsers)
+	if !cfg.FeatureSuperUsers {
+		t.Fatalf("FeatureSuperUsers = %t, want source true", cfg.FeatureSuperUsers)
 	}
-	if cfg.FeatureSuperUsersFullAccess == nil || !*cfg.FeatureSuperUsersFullAccess {
-		t.Fatalf("FeatureSuperUsersFullAccess = %#v, want source true", cfg.FeatureSuperUsersFullAccess)
+	if !cfg.FeatureSuperUsersFullAccess {
+		t.Fatalf("FeatureSuperUsersFullAccess = %t, want source true", cfg.FeatureSuperUsersFullAccess)
 	}
-	if cfg.FeatureUserLastAccessed == nil || *cfg.FeatureUserLastAccessed {
-		t.Fatalf("FeatureUserLastAccessed = %#v, want source false", cfg.FeatureUserLastAccessed)
+	if cfg.FeatureUserLastAccessed {
+		t.Fatalf("FeatureUserLastAccessed = %t, want source false", cfg.FeatureUserLastAccessed)
 	}
 	if cfg.ServerHostname != "localhost:8443" {
 		t.Fatalf("ServerHostname = %q, want public hostname with port", cfg.ServerHostname)

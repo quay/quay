@@ -78,7 +78,8 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	}
 	configureStandaloneSuperuser(resolved, adminUsername)
 
-	featureUserLastAccessed := featureEnabled(resolved.Config.FeatureUserLastAccessed)
+	featureSet := resolved.Config.Features
+	featureUserLastAccessed := featureSet.FeatureUserLastAccessed
 	lastAccessedUpdateThresholdSeconds := resolved.Config.LastAccessedUpdateThresholdS
 	databaseVerifierConfig := auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              resolved.Config.DatabaseSecretKey,
@@ -87,7 +88,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		FeatureUserLastAccessed:        featureUserLastAccessed,
 		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
 	}
-	superUsersFullAccess := superUsersHaveFullAccess(resolved.Config)
+	superUsersFullAccess := featureSet.HasFullSuperuserAccess()
 	publicHostname := resolved.Config.ServerHostname
 	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
 	if err != nil {
@@ -104,7 +105,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		Store:                              store,
 		BlobLocker:                         blobLocks,
 		LibraryNamespace:                   resolved.Config.LibraryNamespace,
-		AnonymousAccess:                    resolved.Config.FeatureAnonymousAccess,
+		AnonymousAccess:                    featureSet.FeatureAnonymousAccess,
 		DatabaseSecretKey:                  resolved.Config.DatabaseSecretKey,
 		RobotsDisallow:                     resolved.Config.RobotsDisallow,
 		RobotsWhitelist:                    resolved.Config.RobotsWhitelist,
@@ -146,12 +147,11 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 
 	distHandler := registrymw.SubjectHeaderMiddleware(reg.Handler())
 
-	referrersEnabled := resolved.Config.FeatureReferrersAPI == nil || *resolved.Config.FeatureReferrersAPI
 	v2Handler := distHandler
-	if referrersEnabled {
+	if featureSet.FeatureReferrersAPI {
 		referrersHandler, err := registry.NewReferrersHandler(store, &registry.ReferrersConfig{
 			LibraryNamespace: resolved.Config.LibraryNamespace,
-			LibrarySupport:   resolved.Config.FeatureLibrarySupport == nil || *resolved.Config.FeatureLibrarySupport,
+			LibrarySupport:   featureSet.FeatureLibrarySupport,
 			Authenticator:    reg.Authenticator(),
 		})
 		if err != nil {
@@ -222,10 +222,6 @@ func loadRegistryTokenService(resolved *config.Resolved) (*jwtauth.Service, stri
 	return service, realm, err
 }
 
-func superUsersHaveFullAccess(cfg *config.Config) bool {
-	return featureEnabled(cfg.FeatureSuperUsers) && featureEnabled(cfg.FeatureSuperUsersFullAccess)
-}
-
 func configureStandaloneSuperuser(resolved *config.Resolved, username string) {
 	if !resolved.FromFile {
 		resolved.Config.SuperUsers = []string{username}
@@ -252,8 +248,4 @@ func healthHandler(db *sql.DB) http.Handler {
 		w.WriteHeader(code)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
 	})
-}
-
-func featureEnabled(configured *bool) bool {
-	return configured != nil && *configured
 }

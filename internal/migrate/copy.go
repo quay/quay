@@ -176,19 +176,12 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 		"ROBOTS_DISALLOW":                sourceCfg.RobotsDisallow,
 		"ROBOTS_WHITELIST":               sourceCfg.RobotsWhitelist,
 		"SUPER_USERS":                    sourceCfg.SuperUsers,
+		"FEATURE_SUPER_USERS":            sourceCfg.FeatureSuperUsers,
+		"FEATURE_SUPERUSERS_FULL_ACCESS": sourceCfg.FeatureSuperUsersFullAccess,
+		"FEATURE_USER_LAST_ACCESSED":     sourceCfg.FeatureUserLastAccessed,
 		"INSTANCE_SERVICE_KEY_SERVICE":   sourceCfg.InstanceServiceKeyService,
 		"REGISTRY_JWT_AUTH_MAX_FRESH_S":  sourceCfg.RegistryJWTAuthMaxFreshS,
 	}
-	if sourceCfg.FeatureSuperUsers != nil {
-		runtimeCfg["FEATURE_SUPER_USERS"] = *sourceCfg.FeatureSuperUsers
-	}
-	if sourceCfg.FeatureSuperUsersFullAccess != nil {
-		runtimeCfg["FEATURE_SUPERUSERS_FULL_ACCESS"] = *sourceCfg.FeatureSuperUsersFullAccess
-	}
-	if sourceCfg.FeatureUserLastAccessed != nil {
-		runtimeCfg["FEATURE_USER_LAST_ACCESSED"] = *sourceCfg.FeatureUserLastAccessed
-	}
-
 	data, err := yaml.Marshal(runtimeCfg)
 	if err != nil {
 		return fmt.Errorf("marshal runtime config: %w", err)

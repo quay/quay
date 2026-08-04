@@ -54,8 +54,7 @@ func TestParseDefaults(t *testing.T) {
 	assert.Equal(t, "http", cfg.PreferredURLScheme)
 	assert.Equal(t, "Red Hat Quay", cfg.RegistryTitle)
 	assert.Equal(t, "Database", cfg.AuthenticationType)
-	require.NotNil(t, cfg.FeatureDirectLogin)
-	assert.True(t, *cfg.FeatureDirectLogin)
+	assert.True(t, cfg.FeatureDirectLogin)
 }
 
 func TestParseRobotAuthConfig(t *testing.T) {
@@ -72,8 +71,7 @@ LAST_ACCESSED_UPDATE_THRESHOLD_S: 300
 
 	assert.True(t, cfg.RobotsDisallow)
 	assert.Equal(t, []string{"acme+deploy", "mirror+sync"}, cfg.RobotsWhitelist)
-	require.NotNil(t, cfg.FeatureUserLastAccessed)
-	assert.False(t, *cfg.FeatureUserLastAccessed)
+	assert.False(t, cfg.FeatureUserLastAccessed)
 	assert.Equal(t, 300, cfg.LastAccessedUpdateThresholdS)
 }
 
@@ -83,8 +81,12 @@ func TestParseRobotAuthDefaults(t *testing.T) {
 
 	assert.False(t, cfg.RobotsDisallow)
 	assert.Empty(t, cfg.RobotsWhitelist)
-	require.NotNil(t, cfg.FeatureUserLastAccessed)
-	assert.True(t, *cfg.FeatureUserLastAccessed)
+	assert.True(t, cfg.FeatureSuperUsers)
+	assert.False(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureAnonymousAccess)
+	assert.True(t, cfg.FeatureReferrersAPI)
+	assert.True(t, cfg.FeatureLibrarySupport)
+	assert.True(t, cfg.FeatureUserLastAccessed)
 	assert.Equal(t, 60, cfg.LastAccessedUpdateThresholdS)
 }
 
@@ -93,10 +95,12 @@ func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {
 
 	assert.Equal(t, "Database", cfg.AuthenticationType)
 	assert.Equal(t, []string{"admin"}, cfg.SuperUsers)
-	require.NotNil(t, cfg.FeatureSuperUsers)
-	assert.True(t, *cfg.FeatureSuperUsers)
-	require.NotNil(t, cfg.FeatureSuperUsersFullAccess)
-	assert.True(t, *cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureAnonymousAccess)
+	assert.True(t, cfg.FeatureSuperUsers)
+	assert.True(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureReferrersAPI)
+	assert.True(t, cfg.FeatureLibrarySupport)
+	assert.True(t, cfg.FeatureUserLastAccessed)
 }
 
 func TestParseExplicitFalseNotOverridden(t *testing.T) {
@@ -104,8 +108,7 @@ func TestParseExplicitFalseNotOverridden(t *testing.T) {
 	cfg, err := Parse([]byte(yaml))
 	require.NoError(t, err)
 
-	require.NotNil(t, cfg.FeatureDirectLogin)
-	assert.False(t, *cfg.FeatureDirectLogin)
+	assert.False(t, cfg.FeatureDirectLogin)
 }
 
 func TestParseUnknownFields(t *testing.T) {
