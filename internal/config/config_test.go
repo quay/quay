@@ -95,8 +95,12 @@ func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {
 
 	assert.Equal(t, "Database", cfg.AuthenticationType)
 	assert.Equal(t, []string{"admin"}, cfg.SuperUsers)
+	assert.True(t, cfg.FeatureAnonymousAccess)
 	assert.True(t, cfg.FeatureSuperUsers)
 	assert.True(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureReferrersAPI)
+	assert.True(t, cfg.FeatureLibrarySupport)
+	assert.True(t, cfg.FeatureUserLastAccessed)
 }
 
 func TestParseExplicitFalseNotOverridden(t *testing.T) {
