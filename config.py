@@ -534,6 +534,16 @@ class DefaultConfig(ImmutableConfig):
     # How often the Garbage Collection worker runs.
     GARBAGE_COLLECTION_FREQUENCY = 30  # seconds
 
+    # Grace period (seconds) before deleted namespaces are permanently purged by GC.
+    # During this window the data remains in the database and can be recovered via
+    # direct DB operations. 0 means immediate purge (current behavior).
+    NAMESPACE_GC_GRACE_PERIOD_S = 0
+
+    # Allowlist of namespace names that receive the grace period. When non-empty,
+    # only namespaces in this list are protected. When empty, no grace period is
+    # applied (current behavior).
+    NAMESPACE_GC_GRACE_PERIOD_NAMESPACES = []
+
     # How long notifications will try to send before timing out.
     NOTIFICATION_SEND_TIMEOUT = 10
 

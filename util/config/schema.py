@@ -2370,6 +2370,22 @@ CONFIG_SCHEMA = {
         "x-example": 30,
         "x-reference": None,
     },
+    "NAMESPACE_GC_GRACE_PERIOD_S": {
+        "type": "number",
+        "description": "Grace period in seconds before deleted namespaces (orgs/users) are permanently purged by GC. Only applies to namespaces listed in NAMESPACE_GC_GRACE_PERIOD_NAMESPACES. Defaults to 0 (immediate).",
+        "x-example": 1209600,
+        "x-reference": None,
+        "minimum": 0,
+    },
+    "NAMESPACE_GC_GRACE_PERIOD_NAMESPACES": {
+        "type": "array",
+        "description": "Allowlist of namespace names that receive the GC grace period. When empty, no namespaces are protected.",
+        "x-example": ["important-org"],
+        "x-reference": None,
+        "items": {
+            "type": "string",
+        },
+    },
     "GREENLET_TRACING": {
         "type": "boolean",
         "description": "[QUAY.IO] GREENLET_TRACING. Defaults to True",

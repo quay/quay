@@ -238,6 +238,8 @@ var knownUnmapped = map[string]bool{
 	"DISABLE_PUSHES":                                 true,
 	"ENTERPRISE_LOGO_URL":                            true,
 	"EXPIRED_APP_SPECIFIC_TOKEN_GC":                  true,
+	"NAMESPACE_GC_GRACE_PERIOD_S":                    true,
+	"NAMESPACE_GC_GRACE_PERIOD_NAMESPACES":           true,
 	"FRESH_LOGIN_TIMEOUT":                            true,
 	"GLOBAL_READONLY_SUPER_USERS":                    true,
 	"IGNORE_UNKNOWN_MEDIATYPES":                      true,
