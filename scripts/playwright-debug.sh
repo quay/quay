@@ -37,9 +37,13 @@ elif [[ "$INPUT" =~ ^[0-9]+$ ]]; then
     exit 1
   fi
 
+  # Playwright runs as a job inside the reusable ci-web.yaml workflow, which
+  # is called via workflow_call from the top-level "CI" workflow
+  # (sentinel.yaml). Reusable workflow_call-only files have no independent
+  # run history, so we must look up runs of the caller workflow instead.
   RUN_ID=$(gh run list \
     --repo "$DEFAULT_REPO" \
-    --workflow "web-playwright-ci.yaml" \
+    --workflow "sentinel.yaml" \
     --commit "$HEAD_SHA" \
     --json databaseId,conclusion \
     --jq '.[0].databaseId') || {
