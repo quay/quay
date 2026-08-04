@@ -18,10 +18,11 @@ test.describe('Help menu', {tag: ['@ui']}, () => {
     await toggle.click();
 
     if (quayConfig?.config?.DOCUMENTATION_ROOT) {
-      const docLink = authenticatedPage.getByTestId('help-documentation-link');
-      await expect(docLink).toBeVisible();
-      await expect(docLink).toContainText('Documentation');
-      await expect(docLink).toHaveAttribute(
+      const docItem = authenticatedPage.getByTestId('help-documentation-link');
+      await expect(docItem).toBeVisible();
+      await expect(docItem).toContainText('Documentation');
+      const docAnchor = docItem.locator('a');
+      await expect(docAnchor).toHaveAttribute(
         'href',
         quayConfig.config.DOCUMENTATION_ROOT as string,
       );
