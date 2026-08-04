@@ -223,6 +223,7 @@ describe('RepositoryResource', () => {
       const result = await fetchRepositories();
       expect(axios.get).toHaveBeenCalledWith(
         '/api/v1/repository?last_modified=true&public=true',
+        {signal: undefined},
       );
       expect(result).toEqual(repos);
     });

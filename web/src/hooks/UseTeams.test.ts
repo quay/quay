@@ -151,6 +151,11 @@ describe('UseTeams', () => {
       expect(result.current.paginatedTeams).toHaveLength(2);
     });
 
+    it('does not fetch when enabled is false', async () => {
+      renderHook(() => useFetchTeams('myorg', false), {wrapper});
+      expect(fetchTeamsForNamespace).not.toHaveBeenCalled();
+    });
+
     it('filters teams by search query', async () => {
       const mockTeams = [
         {
