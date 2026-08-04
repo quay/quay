@@ -1,7 +1,10 @@
 name: Playwright Report Deploy
 on:
   workflow_run:
-    workflows: ["Playwright E2E Tests"]
+    # "Playwright E2E Tests" now runs as a job inside the reusable ci-web.yaml
+    # workflow, called from the top-level "CI" workflow (sentinel.yaml). Only
+    # "CI" itself is a directly-triggered workflow that can be targeted here.
+    workflows: ["CI"]
     types:
       - completed
 
@@ -19,30 +22,39 @@ jobs:
       contents: read
 
     steps:
+    # The "CI" run may not have executed the Playwright job at all (e.g. a
+    # Go/Python-only PR never calls ci-web.yaml), so no artifacts will exist.
+    # Treat that as a normal skip rather than a failure.
     - name: Download Playwright report artifact
+      id: download-report
       uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: playwright-report
-        workflow: web-playwright-ci.yaml
+        workflow: ci-web.yaml
         run_id: ${{ github.event.workflow_run.id }}
         path: ./playwright-report
+        if_no_artifact_found: ignore
 
     - name: Download PR number
+      id: download-pr-info
       uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: pr-info
-        workflow: web-playwright-ci.yaml
+        workflow: ci-web.yaml
         run_id: ${{ github.event.workflow_run.id }}
         path: ./pr-info
+        if_no_artifact_found: ignore
 
     - name: Read PR number
       id: pr
+      if: steps.download-pr-info.outputs.found_artifact == 'true'
       run: |
         PR_NUMBER=$(cat pr-info/pr_number.txt)
         echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
     - name: Deploy to Surge
       id: deploy
+      if: steps.download-report.outputs.found_artifact == 'true' && steps.download-pr-info.outputs.found_artifact == 'true'
       env:
         PR_NUMBER: ${{ steps.pr.outputs.number }}
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
@@ -53,6 +65,7 @@ jobs:
         echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
 
     - name: Comment PR with report URL
+      if: steps.deploy.outcome == 'success'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         REPORT_URL: ${{ steps.deploy.outputs.url }}
