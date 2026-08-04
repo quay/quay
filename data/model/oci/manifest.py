@@ -235,10 +235,22 @@ def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id
     Connects manifests to a manifest list.
     Raises a _ManifestAlreadyExists if any of the manifest children already exist.
     """
-    children = [
-        dict(manifest=parent, child_manifest=manifest, repository=repository_id)
-        for manifest in manifests
-    ]
+
+    # proxy code will send us a raw list of children, if we have multiple identical entries in the list,
+    # the insert will fail with a unique constraint violation.
+    # we need to make sure that duplicates are removed from the list
+
+    children = []
+    deduped_list = set()
+    for manifest in manifests:
+        if manifest.id not in deduped_list:
+            deduped_list.add(manifest.id)
+            children.append(
+                dict(manifest=parent, child_manifest=manifest, repository=repository_id)
+            )
+    if not children:
+        return
+
     try:
         ManifestChild.insert_many(children).execute()
     except IntegrityError as e:
