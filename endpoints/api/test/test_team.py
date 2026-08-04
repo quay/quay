@@ -7,12 +7,13 @@ from mock import patch
 from data import model
 from endpoints.api import api
 from endpoints.api.organization import Organization
-from endpoints.api.team import OrganizationTeamSyncing, TeamMemberList
+from endpoints.api.team import OrganizationTeam, OrganizationTeamSyncing, TeamMemberList
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 
 SYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "synced"}
 UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}
+NEW_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "apisyncteam"}
 
 
 def test_team_syncing(app):
@@ -38,6 +39,84 @@ def test_team_syncing(app):
                 # Ensure the team is no longer synced.
                 sync_info = model.team.get_team_sync_information(
                     UNSYNCED_TEAM_PARAMS["orgname"], UNSYNCED_TEAM_PARAMS["teamname"]
+                )
+                assert sync_info is None
+
+
+def test_create_team_with_group_dn_enables_sync(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "description": "created with sync",
+                    "group_dn": "cn=AwesomeFolk",
+                }
+                conduct_api_call(cl, OrganizationTeam, "PUT", NEW_TEAM_PARAMS, body)
+
+                sync_info = model.team.get_team_sync_information(
+                    NEW_TEAM_PARAMS["orgname"], NEW_TEAM_PARAMS["teamname"]
+                )
+                assert sync_info is not None
+                assert json.loads(sync_info.config) == {"group_dn": "cn=AwesomeFolk"}
+
+
+def test_update_team_with_group_dn_enables_sync(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "group_dn": "cn=AwesomeFolk",
+                }
+                conduct_api_call(cl, OrganizationTeam, "PUT", UNSYNCED_TEAM_PARAMS, body)
+
+                sync_info = model.team.get_team_sync_information(
+                    UNSYNCED_TEAM_PARAMS["orgname"], UNSYNCED_TEAM_PARAMS["teamname"]
+                )
+                assert sync_info is not None
+                assert json.loads(sync_info.config) == {"group_dn": "cn=AwesomeFolk"}
+
+
+def test_create_team_rejects_multiple_sync_fields(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "group_dn": "cn=AwesomeFolk",
+                    "group_name": "some-oidc-group",
+                }
+                conduct_api_call(
+                    cl, OrganizationTeam, "PUT", NEW_TEAM_PARAMS, body, expected_code=400
+                )
+
+
+def test_update_already_synced_team_rejects_new_group(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "group_dn": "cn=AwesomeFolk",
+                }
+                conduct_api_call(
+                    cl, OrganizationTeam, "PUT", SYNCED_TEAM_PARAMS, body, expected_code=400
+                )
+
+
+def test_create_team_without_sync_fields_unchanged(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "description": "no sync",
+                }
+                conduct_api_call(cl, OrganizationTeam, "PUT", NEW_TEAM_PARAMS, body)
+
+                sync_info = model.team.get_team_sync_information(
+                    NEW_TEAM_PARAMS["orgname"], NEW_TEAM_PARAMS["teamname"]
                 )
                 assert sync_info is None
 
