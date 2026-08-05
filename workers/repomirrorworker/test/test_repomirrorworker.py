@@ -16,7 +16,7 @@ from data.registry_model.datatypes import RepositoryReference
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
-from workers.repomirrorworker import delete_obsolete_tags
+from workers.repomirrorworker import delete_obsolete_tags, perform_mirror
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 
