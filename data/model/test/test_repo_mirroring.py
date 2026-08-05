@@ -265,7 +265,6 @@ def test_repo_mirror_robot(initialized_db):
     assert model.repo_mirror.robot_has_mirror(mirror.internal_robot)
 
 
-
 class TestRepoMirrorSSRFProtection:
     """Data-model validation prevents bypassing the repository mirror API."""
 

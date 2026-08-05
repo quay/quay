@@ -61,7 +61,6 @@ def _assert_skopeo_args(actual_args, expected_args):
         assert legacy not in actual_args
 
 
-
 def disable_existing_mirrors(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
