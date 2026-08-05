@@ -1,5 +1,5 @@
 import json
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -169,6 +169,86 @@ def test_duplicate_robot_creation(app):
             expected_code=400,
         )
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
+
+
+def test_globalreadonlysuperuser_org_robot_list_hides_token(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is None
+
+
+def test_globalreadonlysuperuser_org_robot_list_permissions(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl,
+            OrgRobotList,
+            "GET",
+            {"orgname": "buynlarge", "token": "true", "permissions": "true"},
+            None,
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is None
+            assert "teams" in robot
+            assert "repositories" in robot
+
+
+def test_globalreadonlysuperuser_org_robot_get_hides_token(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl,
+            OrgRobot,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        )
+        assert result.json["name"] == "buynlarge+coolrobot"
+        assert result.json.get("token") is None
+
+
+def test_org_admin_still_sees_robot_token(app):
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is not None
+
+        result = conduct_api_call(
+            cl,
+            OrgRobot,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        )
+        assert result.json["token"] is not None
+
+
+def test_full_access_superuser_sees_robot_token(app):
+    with patch(
+        "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
+    ):
+        with client_with_identity("freshuser", app) as cl:
+            result = conduct_api_call(
+                cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+            )
+            assert result.json["robots"]
+            for robot in result.json["robots"]:
+                assert robot.get("token") is not None
+
+            result = conduct_api_call(
+                cl,
+                OrgRobot,
+                "GET",
+                {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+                None,
+            )
+            assert result.json["token"] is not None
 
 
 def test_robot_federation_create(app):
