@@ -204,6 +204,77 @@ TAG_EXPIRATION_OPTIONS:
 	}
 }
 
+func TestValidateSSLProtocolsTLS13Only(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.3 should be valid")
+}
+
+func TestValidateSSLProtocolsBothVersions(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.2
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.2 + TLSv1.3 should be valid")
+}
+
+func TestValidateSSLProtocolsInvalid(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.1
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.1 should be rejected")
+}
+
+func TestValidateSSLProtocolsInvalidMixed(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+  - SSLv3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "SSL_PROTOCOLS"), "SSLv3 should be rejected even with valid TLSv1.3")
+}
+
+func TestValidateSSLProtocolsEmpty(t *testing.T) {
+	cfg, err := Parse([]byte(minimalValidYAML))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "missing SSL_PROTOCOLS should be valid")
+}
+
+func TestSSLProtocolsParsedIntoConfig(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"TLSv1.3"}, cfg.SSLProtocols)
+	_, hasExtra := cfg.Extra["SSL_PROTOCOLS"]
+	assert.False(t, hasExtra, "SSL_PROTOCOLS should not appear in Extra")
+}
+
 // hasFieldError checks if any validation error has the given field and error severity.
 func hasFieldError(errs []ValidationError, field string) bool {
 	for _, e := range errs {

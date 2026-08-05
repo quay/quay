@@ -208,6 +208,7 @@ func newRegistryServer(ctx context.Context, handler http.Handler, resolved *conf
 		Hostname:        tlsHostname,
 		PreferredScheme: resolved.Config.PreferredURLScheme,
 		CertDir:         resolved.DataDir,
+		SSLProtocols:    resolved.Config.SSLProtocols,
 	})
 }
 
