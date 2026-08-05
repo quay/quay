@@ -84,7 +84,13 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_and_retarget_tag(
-        self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        model_cache=None,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -96,6 +102,9 @@ class RegistryDataInterface(object):
         method will fail and return None.
 
         Returns a reference to the (created manifest, tag) or (None, None) on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
@@ -401,12 +410,15 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage
+        self, repository_ref, manifest_interface_instance, expiration_sec, storage, model_cache=None
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
