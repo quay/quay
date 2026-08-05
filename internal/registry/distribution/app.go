@@ -4,7 +4,9 @@ package distribution
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -53,6 +55,7 @@ type Registry struct {
 	tokenHandler  *TokenHandler
 	authenticator *BearerAuthenticator
 	shutdown      func() error
+	cancel        context.CancelFunc
 	db            *sql.DB
 }
 
@@ -65,14 +68,27 @@ func (a *BearerAuthenticator) Authenticate(r *http.Request, access ...oci.Access
 	return a.controller.Authenticate(r, access...)
 }
 
+type appConstructor func(context.Context, *configuration.Configuration) *handlers.App
+type afterAppConstructor func(*handlers.App)
+
 // NewRegistry creates the distribution registry with metadata middleware.
 // Panics from distribution's constructor are converted into errors so callers
 // can reliably clean up resources acquired before construction.
-func NewRegistry(ctx context.Context, cfg *Config) (registry *Registry, err error) {
+func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
+	return newRegistry(ctx, cfg, handlers.NewApp, func(*handlers.App) {})
+}
+
+func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterApp afterAppConstructor) (registry *Registry, err error) {
+	var (
+		metrics       *registrymw.Metrics
+		storageCloser io.Closer
+		cancel        context.CancelFunc
+		distApp       *handlers.App
+	)
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			registry = nil
-			err = fmt.Errorf("distribution constructor panicked: %v", recovered)
+			err = cleanupConstructorPanic(recovered, distApp, cancel, storageCloser, metrics)
 		}
 	}()
 
@@ -108,7 +124,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (registry *Registry, err erro
 
 	var metricsOpts []registrymw.Option
 	if cfg.MetricsRegisterer != nil {
-		metrics, err := registrymw.NewMetrics(cfg.MetricsRegisterer)
+		metrics, err = registrymw.NewMetrics(cfg.MetricsRegisterer)
 		if err != nil {
 			return nil, fmt.Errorf("create middleware metrics: %w", err)
 		}
@@ -144,10 +160,15 @@ func NewRegistry(ctx context.Context, cfg *Config) (registry *Registry, err erro
 		return nil, err
 	}
 
+	storageParams := local.Parameters(cfg.StoragePath, cfg.Store)
+	local.RegisterCloseRegistrar(storageParams, func(closer io.Closer) {
+		storageCloser = closer
+	})
+
 	distCfg := &configuration.Configuration{
 		Catalog: configuration.Catalog{MaxEntries: 1000},
 		Storage: configuration.Storage{
-			local.Name(): local.Parameters(cfg.StoragePath, cfg.Store),
+			local.Name(): storageParams,
 			"delete": configuration.Parameters{
 				"enabled": true,
 			},
@@ -171,14 +192,35 @@ func NewRegistry(ctx context.Context, cfg *Config) (registry *Registry, err erro
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr
-	distApp := handlers.NewApp(ctx, distCfg)
+	appCtx, appCancel := context.WithCancel(ctx)
+	cancel = appCancel
+	distApp = newApp(appCtx, distCfg)
+	afterApp(distApp)
 	return &Registry{
 		handler:       distApp,
 		tokenHandler:  tokenHandler,
 		authenticator: &BearerAuthenticator{controller: controller},
 		shutdown:      distApp.Shutdown,
+		cancel:        appCancel,
 		db:            cfg.DB,
 	}, nil
+}
+
+func cleanupConstructorPanic(recovered any, distApp *handlers.App, cancel context.CancelFunc, storageCloser io.Closer, metrics *registrymw.Metrics) error {
+	var cleanupErr error
+	if distApp != nil {
+		cleanupErr = errors.Join(cleanupErr, distApp.Shutdown())
+	}
+	if cancel != nil {
+		cancel()
+	}
+	if storageCloser != nil {
+		cleanupErr = errors.Join(cleanupErr, storageCloser.Close())
+	}
+	if metrics != nil {
+		metrics.Unregister()
+	}
+	return errors.Join(fmt.Errorf("distribution constructor panicked: %v", recovered), cleanupErr)
 }
 
 // TokenHandler returns the Docker Registry token exchange endpoint.
@@ -194,7 +236,13 @@ func (a *Registry) Handler() http.Handler {
 
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
-	if a == nil || a.shutdown == nil {
+	if a == nil {
+		return nil
+	}
+	if a.cancel != nil {
+		a.cancel()
+	}
+	if a.shutdown == nil {
 		return nil
 	}
 	return a.shutdown()

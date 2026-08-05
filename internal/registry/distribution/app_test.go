@@ -149,8 +149,10 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 func TestNewRegistryConvertsConstructorPanicsToErrors(t *testing.T) {
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
+	metricsRegistry := prometheus.NewRegistry()
+	var appDone <-chan struct{}
 
-	_, err := NewRegistry(t.Context(), &Config{
+	_, err := newRegistry(t.Context(), &Config{
 		StoragePath:       t.TempDir(),
 		Hostname:          "registry.example.com",
 		TokenRealm:        "https://registry.example.com/v2/auth",
@@ -158,14 +160,20 @@ func TestNewRegistryConvertsConstructorPanicsToErrors(t *testing.T) {
 		Store:             &metadataStoreStub{},
 		BlobLocker:        oci.NewBlobLockSet(),
 		JWTService:        &registryTokenServiceStub{},
-		MetricsRegisterer: panicRegisterer{},
+		MetricsRegisterer: metricsRegistry,
+	}, handlers.NewApp, func(app *handlers.App) {
+		appDone = app.Done()
+		panic("test panic after handler startup")
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "distribution constructor panicked")
+
+	select {
+	case <-appDone:
+	default:
+		t.Fatal("expected constructor context to be canceled during rollback")
+	}
+	families, err := metricsRegistry.Gather()
+	require.NoError(t, err)
+	require.Empty(t, families, "constructor metrics should be unregistered during rollback")
 }
-
-type panicRegisterer struct{}
-
-func (panicRegisterer) Register(prometheus.Collector) error  { panic("test panic") }
-func (panicRegisterer) MustRegister(...prometheus.Collector) { panic("test panic") }
-func (panicRegisterer) Unregister(prometheus.Collector) bool { return false }

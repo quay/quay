@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -14,9 +15,10 @@ import (
 )
 
 const (
-	driverName             = "quay"
-	rootDirectoryParameter = "rootdirectory"
-	metastoreParameter     = "metastore"
+	driverName              = "quay"
+	rootDirectoryParameter  = "rootdirectory"
+	metastoreParameter      = "metastore"
+	closeRegistrarParameter = "quay.driver.close"
 )
 
 var registerFactory = sync.OnceFunc(func() {
@@ -40,6 +42,15 @@ func Parameters(rootDir string, meta oci.MetadataStore) configuration.Parameters
 	}
 }
 
+// RegisterCloseRegistrar arranges for the distribution storage driver to be
+// handed to registrar after the factory creates it. This keeps construction
+// rollback ownership in the caller without introducing package-global state.
+func RegisterCloseRegistrar(params configuration.Parameters, registrar func(io.Closer)) {
+	if registrar != nil {
+		params[closeRegistrarParameter] = registrar
+	}
+}
+
 type quayDriverFactory struct{}
 
 func (f *quayDriverFactory) Create(ctx context.Context, params map[string]interface{}) (storagedriver.StorageDriver, error) {
@@ -55,5 +66,9 @@ func (f *quayDriverFactory) Create(ctx context.Context, params map[string]interf
 	if err != nil {
 		return nil, err
 	}
-	return &base.Base{StorageDriver: NewDistDriver(blobs, meta)}, nil
+	distDriver := NewDistDriver(blobs, meta)
+	if registrar, ok := params[closeRegistrarParameter].(func(io.Closer)); ok {
+		registrar(distDriver)
+	}
+	return &base.Base{StorageDriver: distDriver}, nil
 }
