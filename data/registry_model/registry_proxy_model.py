@@ -10,6 +10,7 @@ from peewee import Select, fn
 
 import features
 from app import app, proxy_cache_blob_queue, storage
+from data import database
 from data.database import ImageStorage, ImageStoragePlacement
 from data.database import Manifest as ManifestTable
 from data.database import ManifestBlob, ManifestChild
@@ -92,13 +93,19 @@ class QueueReader:
         self.q = q
         self.buffer = b""
         self.timeout = timeout
+        # track EOF state
+        self._eof = False
 
     def read(self, size=-1):
+        if self._eof:
+            return b""
+
         if not self.buffer:
             try:
                 # Wait for the generator to provide a chunk
                 chunk = self.q.get(timeout=self.timeout)
                 if chunk is None:  # None is our EOF signal
+                    self._eof = True
                     return b""
                 self.buffer = chunk
             except queue.Empty:
@@ -834,13 +841,31 @@ class ProxyModel(OCIModel):
             read_fp = QueueReader(q)
             uploader = create_blob_upload(repo_ref, storage, settings)
 
+            upload_exception = []
+
+            if uploader is None:
+                logger.warning(
+                    "Could not create blob upload for %s, falling back to deferred download",
+                    blob_digest,
+                )
+                self._queue_blob_for_download(repo_ref, blob_digest)
+                try:
+                    for chunk in resp.iter_content(chunk_size=chunk_size):
+                        yield chunk
+                finally:
+                    resp.close()
+                return
+
             upload_aborted = False
 
             def do_upload():
                 try:
                     uploader.upload_chunk(app.config, read_fp, 0, content_length)
                 except Exception as e:
+                    upload_exception.append(e)
                     logger.debug("Background tee-stream upload ended: %s", e)
+                finally:
+                    database.close_db_filter(None)
 
             upload_thread = threading.Thread(target=do_upload)
             upload_thread.start()
@@ -857,16 +882,46 @@ class ProxyModel(OCIModel):
                             )
                             upload_aborted = True
                             uploader.cancel_upload()
-                            self._queue_blob_for_download(repo_ref, blob_digest)
+                            if upload_exception and isinstance(
+                                upload_exception[0], BlobTooLargeException
+                            ):
+                                logger.warning(
+                                    "Blob %s too large, aborting tee stream upload", blob_digest
+                                )
+                            else:
+                                self._queue_blob_for_download(repo_ref, blob_digest)
+                                logger.warning(
+                                    "Backend too slow, aborting tee stream for blob %s and queueing for later download",
+                                    blob_digest,
+                                )
 
                     # always yield the chunk
                     yield chunk
 
                 if not upload_aborted:
-                    q.put(None)
-                    upload_thread.join(timeout=5)
-                    # commit the blob
-                    uploader.commit_to_blob(app.config, blob_digest)
+                    try:
+                        q.put(None, timeout=5)
+                    except queue.Full:
+                        logger.warning(
+                            "Could not send EOF to upload thread for %s, queueing for re-download",
+                            blob_digest,
+                        )
+                        upload_aborted = True
+                        uploader.cancel_upload()
+                        self._queue_blob_for_download(repo_ref, blob_digest)
+
+                if not upload_aborted:
+                    upload_thread.join(timeout=30)
+                    if upload_thread.is_alive():
+                        logger.warning(
+                            "Upload thread still running for blob %s, queueing for re-download",
+                            blob_digest,
+                        )
+                        uploader.cancel_upload()
+                        self._queue_blob_for_download(repo_ref, blob_digest)
+                    else:
+                        # commit the blob
+                        uploader.commit_to_blob(app.config, blob_digest)
 
             except (BlobDigestMismatchException, BlobUploadException):
                 uploader.cancel_upload()
@@ -909,16 +964,7 @@ class ProxyModel(OCIModel):
             return None
 
         if self._needs_download(repository_ref, blob):
-            try:
-                self._download_blob(repository_ref, blob_digest)
-            except BlobDigestMismatchException:
-                raise UpstreamRegistryError("blob digest mismatch")
-            except BlobTooLargeException as e:
-                raise UpstreamRegistryError(f"blob too large, max allowed is {e.max_allowed}")
-            except BlobRangeMismatchException:
-                raise UpstreamRegistryError("range mismatch")
-            except BlobUploadException:
-                raise UpstreamRegistryError("invalid blob upload")
+            return None
 
         return super().get_repo_blob_by_digest(repository_ref, blob_digest, include_placements)
 

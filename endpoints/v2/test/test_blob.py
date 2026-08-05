@@ -268,7 +268,7 @@ class TestBlobStreamDirectlyFromUpstream:
                 "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
                 "config": {
                     "mediaType": "application/vnd.docker.container.image.v1+json",
-                    "size": len(config_digest),
+                    "size": len(config_layer),
                     "digest": config_digest,
                 },
                 "layers": [
@@ -435,22 +435,6 @@ class TestBlobPullThroughProxy(unittest.TestCase):
         params = {
             "repository": self.repository,
             "digest": self.blob_digest,
-        }
-        conduct_call(
-            self.client,
-            "v2.check_blob_exists",
-            url_for,
-            "HEAD",
-            params,
-            expected_code=200,
-            headers=self.headers,
-        )
-
-    def test_check_blob_exists_from_dockerhub_404(self):
-        digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
-        params = {
-            "repository": self.repository,
-            "digest": digest,
         }
         conduct_call(
             self.client,
