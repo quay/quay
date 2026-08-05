@@ -202,12 +202,13 @@ def _extract_team_sync_config(details):
     return present
 
 
-def _enable_team_sync(orgname, team, config):
+def _validate_team_sync_request(orgname, config, teamname=None):
     """
-    Enable directory sync for a team using the given config.
+    Validate that team sync can be enabled for the given org/config.
 
-    Raises Unauthorized if the caller cannot configure syncing, InvalidRequest if the
-    team is already synced or the group lookup fails.
+    Call this before any team create/update mutations so a failed group lookup does not
+    leave partial team changes persisted. When teamname is provided, also rejects if that
+    team is already synced.
     """
     if not features.TEAM_SYNCING or not authentication.federated_service:
         raise InvalidRequest("Team syncing is not supported on this registry")
@@ -215,7 +216,7 @@ def _enable_team_sync(orgname, team, config):
     if not _syncing_setup_allowed(orgname):
         raise Unauthorized()
 
-    if model.team.get_team_sync_information(orgname, team.name):
+    if teamname and model.team.get_team_sync_information(orgname, teamname):
         raise InvalidRequest(
             "Team is already synced; disable syncing before attaching a different group"
         )
@@ -223,6 +224,18 @@ def _enable_team_sync(orgname, team, config):
     status, err = authentication.check_group_lookup_args(config)
     if not status:
         raise InvalidRequest("Could not sync to group: %s" % err)
+
+
+def _enable_team_sync(orgname, team, config, already_validated=False):
+    """
+    Enable directory sync for a team using the given config.
+
+    Raises Unauthorized if the caller cannot configure syncing, InvalidRequest if the
+    team is already synced or the group lookup fails. When already_validated is True,
+    preflight checks are skipped (caller must have run _validate_team_sync_request).
+    """
+    if not already_validated:
+        _validate_team_sync_request(orgname, config, teamname=team.name)
 
     model.team.set_team_syncing(team, authentication.federated_service, config)
     log_action("enable_team_sync", orgname, {"team": team.name})
@@ -304,19 +317,21 @@ class OrganizationTeam(ApiResource):
             details = request.get_json()
             sync_config = _extract_team_sync_config(details)
 
-            # Validate sync permission before creating a team so we do not leave an
-            # unsynced team behind when the caller cannot enable syncing.
-            if sync_config is not None:
-                if not features.TEAM_SYNCING or not authentication.federated_service:
-                    raise InvalidRequest("Team syncing is not supported on this registry")
-                if not _syncing_setup_allowed(orgname):
-                    raise Unauthorized()
-
             is_existing = False
             try:
                 team = model.team.get_organization_team(orgname, teamname)
                 is_existing = True
             except model.InvalidTeamException:
+                team = None
+
+            # Validate sync config before any team write so a failed group lookup does
+            # not leave a newly created team or partial description/role updates behind.
+            if sync_config is not None:
+                _validate_team_sync_request(
+                    orgname, sync_config, teamname=teamname if is_existing else None
+                )
+
+            if not is_existing:
                 # Create the new team.
                 description = details["description"] if "description" in details else ""
                 role = details["role"] if "role" in details else "member"
@@ -324,8 +339,7 @@ class OrganizationTeam(ApiResource):
                 org = model.organization.get_organization(orgname)
                 team = model.team.create_team(teamname, org, role, description)
                 log_action("org_create_team", orgname, {"team": teamname})
-
-            if is_existing:
+            else:
                 if "description" in details and team.description != details["description"]:
                     team.description = details["description"]
                     team.save()
@@ -348,7 +362,7 @@ class OrganizationTeam(ApiResource):
                         )
 
             if sync_config is not None:
-                _enable_team_sync(orgname, team, sync_config)
+                _enable_team_sync(orgname, team, sync_config, already_validated=True)
 
             return team_view(orgname, team, is_new_team=not is_existing), 200
 
