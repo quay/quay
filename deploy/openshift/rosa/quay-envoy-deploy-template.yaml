@@ -57,6 +57,8 @@ objects:
       metadata:
         labels:
           app: quay-envoy
+        annotations:
+          oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
         nodeSelector:
           workload: envoy
@@ -176,6 +178,8 @@ objects:
       metadata:
         labels:
           app: quay-rls
+        annotations:
+          oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
         nodeSelector:
           workload: envoy
@@ -315,3 +319,6 @@ parameters:
 - name: RLS_LOG_LEVEL
   value: "info"
   displayName: RLS log level
+- name: DYNATRACE_MONITORING
+  value: "false"
+  displayName: Enable Dynatrace OneAgent injection
