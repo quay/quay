@@ -16,8 +16,9 @@ import (
 // Go struct fields. This list should shrink over time as coverage increases.
 var knownUnmapped = map[string]bool{
 	// SSL/TLS
-	"SSL_CIPHERS":   true,
-	"SSL_PROTOCOLS": true,
+	"SSL_CIPHERS":     true,
+	"SSL_PROTOCOLS":   true,
+	"SSL_ECDH_CURVES": true,
 
 	// User-visible
 	"CONTACT_INFO":                 true,
