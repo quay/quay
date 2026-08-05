@@ -542,7 +542,7 @@ class DefaultConfig(ImmutableConfig):
     # Allowlist of namespace names that receive the grace period. When non-empty,
     # only namespaces in this list are protected. When empty, no grace period is
     # applied (current behavior).
-    NAMESPACE_GC_GRACE_PERIOD_NAMESPACES = []
+    NAMESPACE_GC_GRACE_PERIOD_NAMESPACES: list[str] = []
 
     # How long notifications will try to send before timing out.
     NOTIFICATION_SEND_TIMEOUT = 10
