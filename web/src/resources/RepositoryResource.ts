@@ -141,13 +141,33 @@ export async function fetchRepositoriesForNamespace(
   return repos as IRepository[];
 }
 
-export async function fetchRepositories() {
-  // TODO: Add return type to AxiosResponse
-  const response: AxiosResponse = await axios.get(
-    `/api/v1/repository?last_modified=true&public=true`,
-  );
+export async function fetchRepositories(
+  options: FetchRepositoriesOptions = {},
+): Promise<IRepository[]> {
+  const {signal, next_page_token = null, onPartialResult} = options;
+
+  const url = next_page_token
+    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&public=true`
+    : `/api/v1/repository?last_modified=true&public=true`;
+  const response: AxiosResponse = await axios.get(url, {signal});
   assertHttpCode(response.status, 200);
-  return response.data?.repositories as IRepository[];
+
+  const next_page = response.data?.next_page;
+  const repos = response.data?.repositories as IRepository[];
+
+  if (onPartialResult) {
+    onPartialResult(repos);
+  }
+
+  if (next_page) {
+    const rest = await fetchRepositories({
+      signal,
+      next_page_token: next_page,
+      onPartialResult,
+    });
+    return repos.concat(rest);
+  }
+  return repos;
 }
 
 /**

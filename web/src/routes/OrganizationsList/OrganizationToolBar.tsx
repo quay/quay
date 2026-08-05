@@ -25,25 +25,29 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
     <>
       <Toolbar>
         <ToolbarContent>
-          <DropdownCheckbox
-            selectedItems={props.selectedOrganization}
-            deSelectAll={props.setSelectedOrganization}
-            allItemsList={props.organizationsList}
-            itemsPerPageList={props.paginatedOrganizationsList}
-            onItemSelect={props.onSelectOrganization}
-          />
+          {props.isAuthenticated !== false && (
+            <DropdownCheckbox
+              selectedItems={props.selectedOrganization}
+              deSelectAll={props.setSelectedOrganization}
+              allItemsList={props.organizationsList}
+              itemsPerPageList={props.paginatedOrganizationsList}
+              onItemSelect={props.onSelectOrganization}
+            />
+          )}
           <FilterInput
             id="orgslist-search-input"
             searchState={props.search}
             onChange={props.setSearch}
           />
-          <ToolbarButton
-            id="create-organization-button"
-            buttonValue="Create Organization"
-            Modal={props.createOrgModal}
-            isModalOpen={props.isOrganizationModalOpen}
-            setModalOpen={props.setOrganizationModalOpen}
-          />
+          {props.isAuthenticated !== false && (
+            <ToolbarButton
+              id="create-organization-button"
+              buttonValue="Create Organization"
+              Modal={props.createOrgModal}
+              isModalOpen={props.isOrganizationModalOpen}
+              setModalOpen={props.setOrganizationModalOpen}
+            />
+          )}
           {canModify && !props.isExternalAuth && (
             <ToolbarItem>
               <Button
@@ -114,4 +118,5 @@ type OrganizationToolBarProps = {
   paginatedOrganizationsList: any[];
   onSelectOrganization: (Org, rowIndex, isSelecting) => void;
   isExternalAuth: boolean;
+  isAuthenticated?: boolean;
 };
