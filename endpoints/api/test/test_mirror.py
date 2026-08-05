@@ -1,6 +1,5 @@
 from datetime import datetime
 from unittest.mock import patch
-from test.fixtures import *
 
 import pytest
 
@@ -13,6 +12,7 @@ from endpoints.api.mirror import (
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.fixture(autouse=True)

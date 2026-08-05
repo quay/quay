@@ -1,7 +1,6 @@
 import json
 from functools import wraps
 from io import BytesIO
-from test.fixtures import *
 from unittest.mock import patch
 
 import mock
@@ -15,6 +14,7 @@ from data.registry_model import registry_model
 from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
 from data.registry_model.datatypes import RepositoryReference
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import delete_obsolete_tags
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
