@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app import app as quay_app
 from data import model
 from data.database import RepoMirrorRule
 from endpoints.api.mirror import (

@@ -332,16 +332,6 @@ class RepoMirrorResource(RepositoryParamResource):
         # Validate the complete request before creating rules or changing permissions.
         _validate_external_reference(data["external_reference"])
 
-        arch_filter = data.get("architecture_filter")
-        if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
-            return {
-                "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
-            }, 400
-        try:
-            model.repo_mirror.validate_architecture_filter(arch_filter)
-        except ValidationError as e:
-            return {"detail": str(e)}, 400
-
         if data["skopeo_timeout_interval"] < 300:
             return (
                 {"detail": "Skopeo timeout interval cannot be less than 300 seconds"},
@@ -412,17 +402,6 @@ class RepoMirrorResource(RepositoryParamResource):
 
         if "skopeo_timeout_interval" in values and values["skopeo_timeout_interval"] < 300:
             return ({"detail": "Skopeo timeout interval cannot be less than 300 seconds."}, 400)
-
-        if "architecture_filter" in values:
-            arch_filter = values["architecture_filter"]
-            if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
-                return {
-                    "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
-                }, 400
-            try:
-                model.repo_mirror.validate_architecture_filter(arch_filter)
-            except ValidationError as e:
-                return {"detail": str(e)}, 400
 
         if "external_registry_password" in values and "external_registry_username" not in values:
             return (
@@ -629,7 +608,7 @@ class RepoMirrorResource(RepositoryParamResource):
 
         return "", 201
 
-    def _validate_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
+    def _validate_robot_for_mirroring(self, namespace_name, robot_username):
         """
         Validate robot exists and give write permissions.
         """
