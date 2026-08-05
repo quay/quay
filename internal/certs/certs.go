@@ -74,10 +74,17 @@ func GenerateSelfSigned(hostname, certPath, keyPath string) error {
 }
 
 // SecureTLSConfig returns a hardened TLS configuration with ECDHE-only cipher
-// suites and modern curve preferences.
-func SecureTLSConfig() *tls.Config {
+// suites and modern curve preferences. The protocols parameter controls the
+// minimum TLS version: if it contains only "TLSv1.3", MinVersion is set to
+// TLS 1.3; otherwise MinVersion defaults to TLS 1.2.
+func SecureTLSConfig(protocols []string) *tls.Config {
+	minVersion := uint16(tls.VersionTLS12)
+	if len(protocols) > 0 && !slicesContains(protocols, "TLSv1.2") {
+		minVersion = tls.VersionTLS13
+	}
+
 	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
+		MinVersion: minVersion,
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -91,6 +98,15 @@ func SecureTLSConfig() *tls.Config {
 			tls.CurveP256,
 		},
 	}
+}
+
+func slicesContains(ss []string, target string) bool {
+	for _, s := range ss {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }
 
 // FilesExist returns true if both cert and key files exist.

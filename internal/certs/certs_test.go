@@ -99,6 +99,41 @@ func TestFilesExist(t *testing.T) {
 	}
 }
 
+func TestSecureTLSConfig_NilProtocols(t *testing.T) {
+	cfg := SecureTLSConfig(nil)
+	if cfg.MinVersion != tls.VersionTLS12 {
+		t.Fatalf("MinVersion = %d, want TLS 1.2 (%d)", cfg.MinVersion, tls.VersionTLS12)
+	}
+}
+
+func TestSecureTLSConfig_EmptyProtocols(t *testing.T) {
+	cfg := SecureTLSConfig([]string{})
+	if cfg.MinVersion != tls.VersionTLS12 {
+		t.Fatalf("MinVersion = %d, want TLS 1.2 (%d)", cfg.MinVersion, tls.VersionTLS12)
+	}
+}
+
+func TestSecureTLSConfig_TLS12And13(t *testing.T) {
+	cfg := SecureTLSConfig([]string{"TLSv1.2", "TLSv1.3"})
+	if cfg.MinVersion != tls.VersionTLS12 {
+		t.Fatalf("MinVersion = %d, want TLS 1.2 (%d)", cfg.MinVersion, tls.VersionTLS12)
+	}
+}
+
+func TestSecureTLSConfig_TLS13Only(t *testing.T) {
+	cfg := SecureTLSConfig([]string{"TLSv1.3"})
+	if cfg.MinVersion != tls.VersionTLS13 {
+		t.Fatalf("MinVersion = %d, want TLS 1.3 (%d)", cfg.MinVersion, tls.VersionTLS13)
+	}
+}
+
+func TestSecureTLSConfig_TLS12Only(t *testing.T) {
+	cfg := SecureTLSConfig([]string{"TLSv1.2"})
+	if cfg.MinVersion != tls.VersionTLS12 {
+		t.Fatalf("MinVersion = %d, want TLS 1.2 (%d)", cfg.MinVersion, tls.VersionTLS12)
+	}
+}
+
 func loadCert(t *testing.T, certPath, keyPath string) tls.Certificate {
 	t.Helper()
 	certPEM, err := os.ReadFile(certPath)

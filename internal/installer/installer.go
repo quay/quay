@@ -392,7 +392,7 @@ func healthTLSConfig(caCert []byte, skipHostname bool) (*tls.Config, error) {
 		return nil, fmt.Errorf("no certificates found")
 	}
 
-	tlsCfg := certs.SecureTLSConfig()
+	tlsCfg := certs.SecureTLSConfig(nil)
 	tlsCfg.RootCAs = pool
 	if skipHostname {
 		cert, err := parseCertPEM(caCert)
