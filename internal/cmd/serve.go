@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/quay/quay/internal/config"
-	"github.com/quay/quay/internal/quay"
+	"github.com/quay/quay/internal/mirrorregistry"
 	"github.com/quay/quay/internal/server"
 	"github.com/quay/quay/internal/system"
 )
@@ -39,7 +39,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		return 1
 	}
 
-	app, err := quay.New(ctx, &quay.Config{
+	app, err := mirrorregistry.New(ctx, &mirrorregistry.Config{
 		Resolved:          resolved,
 		Features:          resolved.Config.Features,
 		ListenAddr:        addr,

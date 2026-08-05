@@ -1,5 +1,5 @@
-// Package quay composes the runnable Go Quay application.
-package quay
+// Package mirrorregistry composes the runnable mirror-registry application.
+package mirrorregistry
 
 import (
 	"context"
@@ -26,7 +26,7 @@ type Config struct {
 	MetricsGatherer   prometheus.Gatherer
 }
 
-// App is one composed Go Quay HTTP application and its owned resources.
+// App is one composed mirror-registry HTTP application and its owned resources.
 type App struct {
 	handler http.Handler
 	db      *sql.DB

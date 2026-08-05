@@ -1,4 +1,4 @@
-package quay
+package mirrorregistry
 
 import (
 	"context"
