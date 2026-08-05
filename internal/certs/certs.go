@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -79,11 +80,11 @@ func GenerateSelfSigned(hostname, certPath, keyPath string) error {
 // TLS 1.3; otherwise MinVersion defaults to TLS 1.2.
 func SecureTLSConfig(protocols []string) *tls.Config {
 	minVersion := uint16(tls.VersionTLS12)
-	if len(protocols) > 0 && !slicesContains(protocols, "TLSv1.2") {
+	if len(protocols) > 0 && !slices.Contains(protocols, "TLSv1.2") {
 		minVersion = tls.VersionTLS13
 	}
 
-	return &tls.Config{
+	return &tls.Config{ //nolint:gosec // minVersion is always TLS 1.2 or 1.3
 		MinVersion: minVersion,
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -98,15 +99,6 @@ func SecureTLSConfig(protocols []string) *tls.Config {
 			tls.CurveP256,
 		},
 	}
-}
-
-func slicesContains(ss []string, target string) bool {
-	for _, s := range ss {
-		if s == target {
-			return true
-		}
-	}
-	return false
 }
 
 // FilesExist returns true if both cert and key files exist.
