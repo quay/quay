@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from collections import namedtuple
 
@@ -87,9 +88,16 @@ def for_repository_manifest(repository_id, digest, cache_config):
     return CacheKey("repository_manifest__%s_%s" % (repository_id, digest), cache_ttl)
 
 
-def for_manifest_referrers(repository_id, manifest_digest, cache_config):
+def for_manifest_referrers(repository_id, manifest_digest, cache_config, artifact_type=None):
     """
-    Returns a cache key for listing a manifest's referrers
+    Returns a cache key for listing a manifest's referrers.
+
+    When artifact_type is provided, the key is scoped to that type so that
+    filtered and unfiltered queries use separate cache entries.
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
-    return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+    key = f"manifest_referrers__{repository_id}_{manifest_digest}"
+    if artifact_type is not None:
+        artifact_type_hash = hashlib.sha256(artifact_type.encode("utf-8")).hexdigest()
+        key = f"{key}_artifact_type_{artifact_type_hash}"
+    return CacheKey(key, cache_ttl)
