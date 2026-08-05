@@ -9,6 +9,7 @@ from flask import request
 from jsonschema import ValidationError
 
 import features
+from app import app
 from data import model
 from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
@@ -23,7 +24,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import NotFound
+from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
 from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
