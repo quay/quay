@@ -272,7 +272,6 @@ class TestRepoMirrorSSRFProtection:
             "internal_robot": robot,
             "external_reference": "registry.example.com/team/repository",
             "sync_interval": 3600,
-            "skopeo_timeout_interval": 300,
         }
 
     def test_create_rejects_private_registry(self, initialized_db):
