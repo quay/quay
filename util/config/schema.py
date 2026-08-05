@@ -850,6 +850,11 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "SECURITY_SCANNER_V4_INDEXING": {
+            "type": "boolean",
+            "description": "Whether to enable the legacy V4 security scanner indexing operations. When set to False, the old indexing paths are disabled while the V2 indexer and security scan query APIs remain functional. Defaults to True",
+            "x-example": True,
+        },
         "FEATURE_SECURITY_SCANNER_V2": {
             "type": "boolean",
             "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
