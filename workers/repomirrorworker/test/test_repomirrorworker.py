@@ -13,7 +13,7 @@ from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 
-from workers.repomirrorworker import delete_obsolete_tags
+from workers.repomirrorworker import delete_obsolete_tags, perform_mirror
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 from io import BytesIO
 from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
