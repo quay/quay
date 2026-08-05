@@ -1014,3 +1014,67 @@ func ValidateDefaultAutoPruneKey(input string, field string, fgName string) (boo
 
 	return true, ValidationError{}
 }
+
+// ValidateCacheSizePattern validates that the provided cache size is no larger than 10 MiB. Returns
+// an error otherwise.
+func ValidateCacheSizePattern(input string, field string, fgName string) (bool, ValidationError) {
+	re := regexp.MustCompile(`^([0-9]+)(MiB)$`)
+
+	result := re.FindStringSubmatch(input)
+	if len(result) == 0 {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    fmt.Sprintf("%s format invalid, value must conform to regular expression '([0-9]+)MiB'", field),
+		}
+		return false, newError
+	}
+
+	if result[2] != "MiB" {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    fmt.Sprintf("%s cache size must be in MiB", field),
+		}
+		return false, newError
+	}
+
+	numResult, err := strconv.Atoi(result[1])
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    fmt.Sprintf("%s format invalid, value must conform to regular expression '([0-9]+)MiB'", field),
+		}
+		return false, newError
+	}
+
+	if numResult > 10 {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    fmt.Sprintf("%s is invalid: cache size cannot be larger than 10 MiB", field),
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+}
+
+// ValidateMemcachedInstance validates that the provided settings for a memcached instance are correct and
+// that the connection can be established
+func ValidateMemcachedInstance(hostname string, port int, field string, fgName string) (bool, ValidationError) {
+	endpoint := net.JoinHostPort(hostname, strconv.Itoa(port))
+
+	conn, err := net.DialTimeout("tcp", endpoint, 3*time.Second)
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + ": memcached instance cannot be reached, error: " + err.Error(),
+		}
+		return false, newError
+	}
+	defer conn.Close()
+	return true, ValidationError{}
+}
