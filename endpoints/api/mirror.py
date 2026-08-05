@@ -48,7 +48,6 @@ def _validate_external_reference(reference):
         raise InvalidRequest(str(e))
 
 
-
 common_properties = {
     "is_enabled": {
         "type": "boolean",

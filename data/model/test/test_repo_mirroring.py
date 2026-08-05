@@ -315,4 +315,3 @@ class TestRepoMirrorSSRFProtection:
             allowed_hosts=["10.0.0.0/8"],
         )
         assert model.repo_mirror.get_mirror(repo).external_reference == ("10.0.0.1/team/repository")
-
