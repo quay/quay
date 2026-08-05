@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import pytest
 from jsonschema import ValidationError
@@ -15,6 +14,7 @@ from data.model.repo_mirror import (
     update_sync_status_to_cancel,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
+from test.fixtures import *
 
 
 def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=None):
@@ -311,4 +311,3 @@ class TestRepoMirrorSSRFProtection:
             allowed_hosts=["10.0.0.0/8"],
         )
         assert model.repo_mirror.get_mirror(repo).external_reference == ("10.0.0.1/team/repository")
-
