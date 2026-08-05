@@ -624,7 +624,7 @@ class RepoMirrorResource(RepositoryParamResource):
 
         return "", 201
 
-    def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
+    def _validate_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
         """
         Validate robot exists and give write permissions.
         """
