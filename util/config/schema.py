@@ -988,6 +988,13 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable support for repository mirroring. Defaults to False",
             "x-example": False,
         },
+        "SSRF_ALLOWED_HOSTS": {
+            "type": "array",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
+        },
         "REPO_MIRROR_TLS_VERIFY": {
             "type": "boolean",
             "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True",
@@ -1382,13 +1389,6 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Endpoint for internal RH marketplace API",
             "x-example": "https://internal-rh-marketplace-endpoint",
-        },
-        "SSRF_ALLOWED_HOSTS": {
-            "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass URL validation for export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
-            "uniqueItems": True,
-            "items": {"type": "string"},
-            "x-example": ["internal-service.corp.example.com", "10.0.0.0/8"],
         },
     },
 }
