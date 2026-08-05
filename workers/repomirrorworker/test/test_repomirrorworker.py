@@ -18,6 +18,8 @@ from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 from io import BytesIO
 from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
 
+from test.fixtures import *
+
 
 @pytest.fixture(autouse=True)
 def _mock_dns_for_ssrf_validation():
