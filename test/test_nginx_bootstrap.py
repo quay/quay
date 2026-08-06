@@ -19,8 +19,9 @@ def test_nginx_maps_bootstrap_renewal_location_from_original_remote_addr():
 def test_nginx_passes_bootstrap_renewal_location_only_to_renew_endpoint():
     server_base = (ROOT / "conf/nginx/server-base.conf.jnj").read_text()
 
-    assert "location = /api/v1/bootstrap/renew" in server_base
-    assert server_base.index("location = /api/v1/bootstrap/renew") < server_base.index(
+    assert "location = /api/v1/bootstrap/renew/" in server_base
+    assert "return 307 /api/v1/bootstrap/renew;" in server_base
+    assert server_base.index("location = /api/v1/bootstrap/renew/") < server_base.index(
         "location /api/"
     )
     assert server_base.count("proxy_set_header X-Quay-Bootstrap-Renewal-Location") == 1

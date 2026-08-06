@@ -143,6 +143,10 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
 }
 {% endif %}
 
+location = /api/v1/bootstrap/renew/ {
+    return 307 /api/v1/bootstrap/renew;
+}
+
 location = /api/v1/bootstrap/renew {
     proxy_pass   http://web_app_server;
 

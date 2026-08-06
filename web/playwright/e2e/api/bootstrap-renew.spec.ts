@@ -18,8 +18,38 @@ function isProgrammaticBootstrapEnabled(features: unknown): boolean {
 
 test.describe(
   'Bootstrap token renewal API',
-  {tag: ['@api', '@auth:Database', '@PROJQUAY-12148']},
+  {
+    tag: [
+      '@api',
+      '@auth:Database',
+      '@feature:PROGRAMMATIC_BOOTSTRAP',
+      '@PROJQUAY-12443',
+    ],
+  },
   () => {
+    test('redirects trailing slash to canonical renewal endpoint', async ({
+      playwright,
+    }) => {
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+
+      try {
+        const response = await request.post(
+          `${API_URL}${BOOTSTRAP_RENEW_PATH}/`,
+          {
+            maxRedirects: 0,
+            timeout: 10_000,
+          },
+        );
+
+        expect(response.status()).toBe(307);
+        expect(response.headers().location).toBe(BOOTSTRAP_RENEW_PATH);
+      } finally {
+        await request.dispose();
+      }
+    });
+
     test('rejects invalid bearer token without accepting CSRF fallback', async ({
       playwright,
       quayConfig,
