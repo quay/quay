@@ -16,7 +16,7 @@ import (
 	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
-	"github.com/quay/quay/internal/quay"
+	"github.com/quay/quay/internal/mirrorregistry"
 )
 
 const (
@@ -24,12 +24,12 @@ const (
 	e2ePassword = "e2e-password"
 )
 
-// Harness owns one composed Quay application and one in-process HTTP server.
+// Harness owns one composed mirror-registry application and one in-process HTTP server.
 // Every harness has an isolated database, storage directory, signing key, and
 // listener.
 type Harness struct {
 	server   *httptest.Server
-	app      *quay.App
+	app      *mirrorregistry.App
 	client   *http.Client
 	registry *RegistryClient
 
@@ -38,7 +38,7 @@ type Harness struct {
 }
 
 // New provisions an isolated registry and starts it on a loopback ephemeral
-// port. The listener is reserved before quay.New so the token realm and
+// port. The listener is reserved before mirrorregistry.New so the token realm and
 // audience use the actual server address.
 func New(tb testing.TB) *Harness {
 	tb.Helper()
@@ -89,7 +89,7 @@ func New(tb testing.TB) *Harness {
 		t.Fatalf("close bootstrap database: %v", err)
 	}
 
-	app, err := quay.New(ctx, &quay.Config{
+	app, err := mirrorregistry.New(ctx, &mirrorregistry.Config{
 		Resolved:   resolved,
 		Features:   resolved.Config.Features,
 		ListenAddr: addr,

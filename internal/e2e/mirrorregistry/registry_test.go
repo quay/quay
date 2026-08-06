@@ -1,4 +1,4 @@
-package e2e_test
+package mirrorregistry_test
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quay/quay/internal/e2e/internal/e2etest"
+	"github.com/quay/quay/internal/e2e/mirrorregistry/internal/e2etest"
 )
 
 const (
