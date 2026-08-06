@@ -35,7 +35,7 @@ def test_nginx_passes_bootstrap_renewal_location_only_to_renew_endpoint():
 
 def test_nginx_renew_location_repeats_common_proxy_headers():
     server_base = (ROOT / "conf/nginx/server-base.conf.jnj").read_text()
-    renew_block = server_base.split("location = /api/v1/bootstrap/renew", 1)[1].split(
+    renew_block = server_base.split("location = /api/v1/bootstrap/renew {", 1)[1].split(
         "location /api/", 1
     )[0]
 
