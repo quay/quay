@@ -355,6 +355,100 @@ class TestBlobStreamDirectlyFromUpstream:
         locations = [placements.get().location.name]
         assert storage.exists(locations, path), f"blob not found in storage at path {path}"
 
+    def test_too_large_blob_returns_a_400_to_caller(self, client, app):
+        """
+        Tests that when a too large blob exception is raised, we abort the image download and
+        return a 400 to the client.
+        """
+        from data.database import Manifest, MediaType
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        config_layer = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [{}],
+            }
+        )
+        config_digest = str(sha256_digest(config_layer.encode("utf-8")))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(config_layer),
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=self.repo_ref.id,
+            digest=sha256_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        assert manifest
+
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.image_name,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(
+            parsed_manifest, manifest.id, self.repo_ref.id
+        )
+        assert created_blobs
+
+        params = {
+            "repository": self.repository,
+            "digest": digest,
+        }
+
+        proxy_mock = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.headers = {"content-length": str(len(content))}
+        mock_resp.iter_content = lambda chunk_size=64 * 1024: [content]
+        mock_resp.close = MagicMock()
+        proxy_mock.get_blob = MagicMock(return_value=mock_resp)
+
+        with (
+            patch(
+                "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+            ),
+            patch.dict(realapp.config, {"MAXIMUM_LAYER_SIZE": "1M"}),
+        ):
+            conduct_call(
+                self.client,
+                "v2.download_blob",
+                url_for,
+                "GET",
+                params,
+                expected_code=400,
+                headers=self.headers,
+            )
+
 
 @pytest.mark.e2e
 class TestBlobPullThroughProxy(unittest.TestCase):

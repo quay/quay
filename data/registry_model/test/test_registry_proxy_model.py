@@ -2576,6 +2576,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         Tests that get_streamed_proxy_blob does NOT create a queue item if a blob we try to pull is too big.
         """
         from app import app as realapp
+        from data.registry_model.blobuploader import BlobTooLargeException
         from image.docker.schema2.manifest import DockerSchema2Manifest
 
         def mock_upstream_response(content):
@@ -2645,24 +2646,11 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             ) as mock_queue_put,
             patch.dict(realapp.config, {"MAXIMUM_LAYER_SIZE": "1MiB"}),
         ):
-            # conduct call
-            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
-            assert result is not None
-
-            # consuming of content should fail
-            generator, content_length = result
-            chunks = list(generator)
+            with pytest.raises(BlobTooLargeException):
+                # conduct call
+                proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
 
             mock_queue_put.assert_not_called()
-
-            mb = (
-                ManifestBlob.select()
-                .where(ManifestBlob.manifest == manifest.id, ManifestBlob.repository == repo.id)
-                .get()
-            )
-            assert mb
-            ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
-            assert ip.count() == 0
 
     # Note: same rationale as in the previous test, this is expected to fail on PostgreSQL due to thread
     # isolation.
