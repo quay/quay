@@ -17,6 +17,7 @@ const (
 // operations. Create one per registry instance via NewMetrics to keep metric
 // state isolated between instances.
 type Metrics struct {
+	registerer prometheus.Registerer
 	opDuration *prometheus.HistogramVec
 	opTotal    *prometheus.CounterVec
 }
@@ -30,6 +31,7 @@ func NewMetrics(reg prometheus.Registerer) (*Metrics, error) {
 		return nil, errors.New("middleware: nil prometheus.Registerer")
 	}
 	m := &Metrics{
+		registerer: reg,
 		opDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "quay_middleware_operation_duration_seconds",
 			Help:    "Time spent in metastore operations.",
@@ -48,6 +50,15 @@ func NewMetrics(reg prometheus.Registerer) (*Metrics, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// Unregister removes all collectors registered by NewMetrics.
+func (m *Metrics) Unregister() {
+	if m == nil || m.registerer == nil {
+		return
+	}
+	m.registerer.Unregister(m.opDuration)
+	m.registerer.Unregister(m.opTotal)
 }
 
 func (m *Metrics) recordOp(op string, start time.Time, err *error) { //nolint:gocritic // ptr needed for defer

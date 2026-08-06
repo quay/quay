@@ -4,8 +4,11 @@ package distribution
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"sync"
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
@@ -52,7 +55,13 @@ type Registry struct {
 	handler       http.Handler
 	tokenHandler  *TokenHandler
 	authenticator *BearerAuthenticator
+	shutdown      func() error
+	cancel        context.CancelFunc
 	db            *sql.DB
+	metrics       *registrymw.Metrics
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // BearerAuthenticator adapts the concrete Distribution access controller to
@@ -64,8 +73,27 @@ func (a *BearerAuthenticator) Authenticate(r *http.Request, access ...oci.Access
 	return a.controller.Authenticate(r, access...)
 }
 
+type appConstructor func(context.Context, *configuration.Configuration) *handlers.App
+type afterAppConstructor func(*handlers.App)
+
 // NewRegistry creates the distribution registry with metadata middleware.
+// Panics from distribution's constructor are converted into errors so callers
+// can reliably clean up resources acquired before construction.
 func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
+	return newRegistry(ctx, cfg, handlers.NewApp, func(*handlers.App) {})
+}
+
+func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterApp afterAppConstructor) (registry *Registry, err error) {
+	var (
+		metrics       *registrymw.Metrics
+		storageCloser io.Closer
+		cancel        context.CancelFunc
+		distApp       *handlers.App
+	)
+	defer func() {
+		registry, err = finishRegistryConstruction(registry, err, recover(), distApp, cancel, storageCloser, metrics)
+	}()
+
 	if cfg == nil {
 		return nil, fmt.Errorf("nil Config")
 	}
@@ -98,7 +126,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 
 	var metricsOpts []registrymw.Option
 	if cfg.MetricsRegisterer != nil {
-		metrics, err := registrymw.NewMetrics(cfg.MetricsRegisterer)
+		metrics, err = registrymw.NewMetrics(cfg.MetricsRegisterer)
 		if err != nil {
 			return nil, fmt.Errorf("create middleware metrics: %w", err)
 		}
@@ -134,12 +162,22 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		return nil, err
 	}
 
+	storageParams := local.Parameters(cfg.StoragePath, cfg.Store)
+	local.RegisterCloseRegistrar(storageParams, func(closer io.Closer) {
+		storageCloser = closer
+	})
+
 	distCfg := &configuration.Configuration{
 		Catalog: configuration.Catalog{MaxEntries: 1000},
 		Storage: configuration.Storage{
-			local.Name(): local.Parameters(cfg.StoragePath, cfg.Store),
+			local.Name(): storageParams,
 			"delete": configuration.Parameters{
 				"enabled": true,
+			},
+			"maintenance": configuration.Parameters{
+				"uploadpurging": map[interface{}]interface{}{
+					"enabled": false,
+				},
 			},
 		},
 		Auth: configuration.Auth{
@@ -156,12 +194,48 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr
+	appCtx, appCancel := context.WithCancel(ctx)
+	cancel = appCancel
+	distApp = newApp(appCtx, distCfg)
+	afterApp(distApp)
 	return &Registry{
-		handler:       handlers.NewApp(ctx, distCfg),
+		handler:       distApp,
 		tokenHandler:  tokenHandler,
 		authenticator: &BearerAuthenticator{controller: controller},
+		shutdown:      distApp.Shutdown,
+		cancel:        appCancel,
 		db:            cfg.DB,
+		metrics:       metrics,
 	}, nil
+}
+
+// finishRegistryConstruction releases metrics after ordinary construction
+// errors and delegates complete rollback after recovered constructor panics.
+func finishRegistryConstruction(registry *Registry, err error, recovered any, distApp *handlers.App, cancel context.CancelFunc, storageCloser io.Closer, metrics *registrymw.Metrics) (*Registry, error) {
+	if recovered != nil {
+		return nil, cleanupConstructorPanic(recovered, distApp, cancel, storageCloser, metrics)
+	}
+	if err != nil && metrics != nil {
+		metrics.Unregister()
+	}
+	return registry, err
+}
+
+func cleanupConstructorPanic(recovered any, distApp *handlers.App, cancel context.CancelFunc, storageCloser io.Closer, metrics *registrymw.Metrics) error {
+	var cleanupErr error
+	if distApp != nil {
+		cleanupErr = errors.Join(cleanupErr, distApp.Shutdown())
+	}
+	if cancel != nil {
+		cancel()
+	}
+	if storageCloser != nil {
+		cleanupErr = errors.Join(cleanupErr, storageCloser.Close())
+	}
+	if metrics != nil {
+		metrics.Unregister()
+	}
+	return errors.Join(fmt.Errorf("distribution constructor panicked: %v", recovered), cleanupErr)
 }
 
 // TokenHandler returns the Docker Registry token exchange endpoint.
@@ -177,5 +251,19 @@ func (a *Registry) Handler() http.Handler {
 
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
-	return nil
+	if a == nil {
+		return nil
+	}
+	a.closeOnce.Do(func() {
+		if a.cancel != nil {
+			a.cancel()
+		}
+		if a.shutdown != nil {
+			a.closeErr = errors.Join(a.closeErr, a.shutdown())
+		}
+		if a.metrics != nil {
+			a.metrics.Unregister()
+		}
+	})
+	return a.closeErr
 }

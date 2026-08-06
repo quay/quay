@@ -31,6 +31,15 @@ func NewDistDriver(blobs oci.BlobStore, meta oci.MetadataStore) *DistDriver {
 	return &DistDriver{blobs: blobs, meta: meta}
 }
 
+// Close releases resources owned by the blob backend. The metadata store is
+// owned by the caller and is intentionally not closed here.
+func (d *DistDriver) Close() error {
+	if closer, ok := d.blobs.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
 // Name returns the driver identifier registered with distribution's factory.
 func (d *DistDriver) Name() string { return "quay" }
 

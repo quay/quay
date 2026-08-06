@@ -58,6 +58,9 @@ func TestNewRegistryPassesStoreToDistributionDriver(t *testing.T) {
 	require.Same(t, locker, middleware[0].Options["bloblocker"])
 	require.Equal(t, defaultLibraryNamespace, middleware[0].Options["librarynamespace"])
 	require.IsType(t, &registrymw.Metrics{}, middleware[0].Options["metrics"])
+	purging, ok := app.Config.Storage["maintenance"]["uploadpurging"].(map[interface{}]interface{})
+	require.True(t, ok)
+	require.Equal(t, false, purging["enabled"])
 }
 
 // TestNewRegistry_NilMetricsRegistererIsolation verifies that two NewRegistry
@@ -92,6 +95,31 @@ func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
 		// MetricsRegisterer intentionally nil.
 	})
 	require.NoError(t, err, "second NewRegistry with nil MetricsRegisterer must not fail")
+}
+
+func TestNewRegistryReleasesMetricsOnClose(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	metricsRegistry := prometheus.NewRegistry()
+	cfg := &Config{
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry.example.com",
+		TokenRealm:        "https://registry.example.com/v2/auth",
+		DB:                db,
+		Store:             &metadataStoreStub{},
+		BlobLocker:        oci.NewBlobLockSet(),
+		JWTService:        &registryTokenServiceStub{},
+		MetricsRegisterer: metricsRegistry,
+	}
+
+	first, err := NewRegistry(t.Context(), cfg)
+	require.NoError(t, err)
+	require.NoError(t, first.Close())
+	require.NoError(t, first.Close(), "Close must remain idempotent")
+
+	second, err := NewRegistry(t.Context(), cfg)
+	require.NoError(t, err, "closed registry must release its metrics collectors")
+	require.NoError(t, second.Close())
 }
 
 func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
@@ -141,4 +169,36 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 	require.Same(t, lockerB, optionsB["bloblocker"])
 	require.Equal(t, "library-b", optionsB["librarynamespace"])
 	require.NotSame(t, optionsA["metrics"], optionsB["metrics"], "each registry must have its own metrics instance")
+}
+
+func TestNewRegistryConvertsConstructorPanicsToErrors(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	metricsRegistry := prometheus.NewRegistry()
+	var appDone <-chan struct{}
+
+	_, err := newRegistry(t.Context(), &Config{
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry.example.com",
+		TokenRealm:        "https://registry.example.com/v2/auth",
+		DB:                db,
+		Store:             &metadataStoreStub{},
+		BlobLocker:        oci.NewBlobLockSet(),
+		JWTService:        &registryTokenServiceStub{},
+		MetricsRegisterer: metricsRegistry,
+	}, handlers.NewApp, func(app *handlers.App) {
+		appDone = app.Done()
+		panic("test panic after handler startup")
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "distribution constructor panicked")
+
+	select {
+	case <-appDone:
+	default:
+		t.Fatal("expected constructor context to be canceled during rollback")
+	}
+	families, err := metricsRegistry.Gather()
+	require.NoError(t, err)
+	require.Empty(t, families, "constructor metrics should be unregistered during rollback")
 }

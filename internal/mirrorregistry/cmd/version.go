@@ -8,7 +8,7 @@ import (
 
 // version may be overridden via ldflags for tagged releases:
 //
-//	go build -ldflags "-X github.com/quay/quay/internal/cmd.version=v1.0.0"
+//	go build -ldflags "-X github.com/quay/quay/internal/mirrorregistry/cmd.version=v1.0.0"
 var version = ""
 
 func newVersionCmd() *Command {
