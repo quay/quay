@@ -89,6 +89,13 @@ objects:
               ARGS="$ARGS --component-log-level $ENVOY_COMPONENT_LOG_LEVEL"
             fi
             exec envoy $ARGS
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - "/bin/sh"
+                - "-c"
+                - "curl -s -X POST http://localhost:9901/drain_listeners?graceful && sleep 30"
           env:
           - name: ENVOY_LOG_LEVEL
             value: "${ENVOY_LOG_LEVEL}"
