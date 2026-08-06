@@ -42,13 +42,12 @@ def import_yaml(config_obj, config_file):
         if isinstance(c, str):
             raise Exception("Invalid YAML config file: " + str(c))
 
-        for key in c.keys():
-            if key.isupper():
-                config_obj[key] = c[key]
-
-        bootstrap_scope = config_obj.get("BOOTSTRAP_TOKEN_SCOPE")
-        if not isinstance(bootstrap_scope, str):
+        config_updates = {key: value for key, value in c.items() if key.isupper()}
+        bootstrap_scope = config_updates.get("BOOTSTRAP_TOKEN_SCOPE")
+        if "BOOTSTRAP_TOKEN_SCOPE" in config_updates and not isinstance(bootstrap_scope, str):
             raise InvalidConfigException("BOOTSTRAP_TOKEN_SCOPE must be a space-separated string")
+
+        config_obj.update(config_updates)
 
     # if config_obj.get("SETUP_COMPLETE", True):
     #     try:

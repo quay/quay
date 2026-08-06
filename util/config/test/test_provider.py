@@ -14,11 +14,15 @@ def test_import_yaml_rejects_non_string_bootstrap_token_scope(tmp_path, value):
     else:
         config_file.write_text(f"BOOTSTRAP_TOKEN_SCOPE: {value}\n")
 
+    config = {"EXISTING_CONFIG": "preserved"}
+
     with pytest.raises(
         InvalidConfigException,
         match="BOOTSTRAP_TOKEN_SCOPE must be a space-separated string",
     ):
-        import_yaml({}, str(config_file))
+        import_yaml(config, str(config_file))
+
+    assert config == {"EXISTING_CONFIG": "preserved"}
 
 
 def test_import_yaml_accepts_bootstrap_token_scope_string(tmp_path):
