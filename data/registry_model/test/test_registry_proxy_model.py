@@ -2560,6 +2560,12 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
             assert ip.count() == 0
 
+    # Note: storage commitment cannot be verified here because the test fixture wraps all db operations
+    # in a PostgreSQL savepoint that is not visible to the upload thread's connection. However,
+    # tests with a built container and real pull operations show that the issue doesn't exist in
+    # a real world scenario: the blob upload is properly committed making the row visible to the reconnected
+    # connection after CLoseForLongOperations. The test is properly executed in SQLite environment
+    # which does not have such strict savepoint isolation as PostgreSQL does.
     @pytest.mark.xfail(
         bool(os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql")),
         reason="Upload thread cannot see savepoint data under POstgreSQL transaction isolation",
@@ -2658,6 +2664,8 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
             assert ip.count() == 0
 
+    # Note: same rationale as in the previous test, this is expected to fail on PostgreSQL due to thread
+    # isolation.
     @pytest.mark.xfail(
         bool(os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql")),
         reason="Upload thread cannot see savepoint data under POstgreSQL transaction isolation",
