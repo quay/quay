@@ -68,7 +68,7 @@ export default function AutoPruning(props: AutoPruning) {
       }
       setPolicies(nsPolicies);
     }
-  }, [successFetchingPolicies, dataUpdatedAt]);
+  }, [successFetchingPolicies, dataUpdatedAt, isReadOnlySuperUser]);
 
   useEffect(() => {
     if (successCreatePolicy) {
