@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
@@ -57,6 +58,10 @@ type Registry struct {
 	shutdown      func() error
 	cancel        context.CancelFunc
 	db            *sql.DB
+	metrics       *registrymw.Metrics
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // BearerAuthenticator adapts the concrete Distribution access controller to
@@ -86,10 +91,7 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 		distApp       *handlers.App
 	)
 	defer func() {
-		if recovered := recover(); recovered != nil {
-			registry = nil
-			err = cleanupConstructorPanic(recovered, distApp, cancel, storageCloser, metrics)
-		}
+		registry, err = finishRegistryConstruction(registry, err, recover(), distApp, cancel, storageCloser, metrics)
 	}()
 
 	if cfg == nil {
@@ -203,7 +205,20 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 		shutdown:      distApp.Shutdown,
 		cancel:        appCancel,
 		db:            cfg.DB,
+		metrics:       metrics,
 	}, nil
+}
+
+// finishRegistryConstruction releases metrics after ordinary construction
+// errors and delegates complete rollback after recovered constructor panics.
+func finishRegistryConstruction(registry *Registry, err error, recovered any, distApp *handlers.App, cancel context.CancelFunc, storageCloser io.Closer, metrics *registrymw.Metrics) (*Registry, error) {
+	if recovered != nil {
+		return nil, cleanupConstructorPanic(recovered, distApp, cancel, storageCloser, metrics)
+	}
+	if err != nil && metrics != nil {
+		metrics.Unregister()
+	}
+	return registry, err
 }
 
 func cleanupConstructorPanic(recovered any, distApp *handlers.App, cancel context.CancelFunc, storageCloser io.Closer, metrics *registrymw.Metrics) error {
@@ -239,11 +254,16 @@ func (a *Registry) Close() error {
 	if a == nil {
 		return nil
 	}
-	if a.cancel != nil {
-		a.cancel()
-	}
-	if a.shutdown == nil {
-		return nil
-	}
-	return a.shutdown()
+	a.closeOnce.Do(func() {
+		if a.cancel != nil {
+			a.cancel()
+		}
+		if a.shutdown != nil {
+			a.closeErr = errors.Join(a.closeErr, a.shutdown())
+		}
+		if a.metrics != nil {
+			a.metrics.Unregister()
+		}
+	})
+	return a.closeErr
 }

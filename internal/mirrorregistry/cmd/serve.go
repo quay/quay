@@ -50,7 +50,11 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 		slog.Error("application setup error", "err", err)
 		return 1
 	}
-	defer func() { _ = app.Close() }()
+	defer func() {
+		if err := app.Close(); err != nil {
+			slog.Error("application shutdown error", "err", err)
+		}
+	}()
 
 	srv, err := newRegistryServer(ctx, app.Handler(), resolved, addr)
 	if err != nil {
@@ -66,12 +70,6 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) i
 	)
 
 	return srv.ListenAndServe(ctx)
-}
-
-func configureStandaloneSuperuser(resolved *config.Resolved, username string) {
-	if !resolved.FromFile {
-		resolved.Config.SuperUsers = []string{username}
-	}
 }
 
 func registryTLSHostname(publicHostname string) (string, error) {

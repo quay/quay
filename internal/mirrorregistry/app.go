@@ -130,6 +130,8 @@ func cloneResolved(resolved *config.Resolved) (*config.Resolved, error) {
 		return nil, fmt.Errorf("nil resolved config.Config")
 	}
 
+	// Preserve caller ownership while allowing product composition to apply
+	// runtime-only settings to its private resolved configuration.
 	copyResolved := *resolved
 	copyConfig := *resolved.Config
 	copyConfig.SuperUsers = append([]string(nil), resolved.Config.SuperUsers...)

@@ -94,6 +94,9 @@ func TestNewUsesIndependentDefaultMetricsRegistries(t *testing.T) {
 	}
 	for _, app := range apps {
 		require.NotNil(t, app)
+		resp := httptest.NewRecorder()
+		app.Handler().ServeHTTP(resp, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/metrics", http.NoBody))
+		require.Equal(t, http.StatusOK, resp.Code)
 		require.NoError(t, app.Close())
 	}
 }
@@ -127,13 +130,38 @@ func TestNewRejectsPartialMetricsDependencies(t *testing.T) {
 func TestNewDoesNotMutateCallerConfiguration(t *testing.T) {
 	cfg := testConfig(t)
 	cfg.Resolved.Config.SuperUsers = []string{"caller-configured-user"}
-	before := append([]string(nil), cfg.Resolved.Config.SuperUsers...)
+	cfg.Resolved.Config.RobotsWhitelist = []string{"caller-configured-robot"}
+	superUsersBefore := append([]string(nil), cfg.Resolved.Config.SuperUsers...)
+	robotsBefore := append([]string(nil), cfg.Resolved.Config.RobotsWhitelist...)
 
 	app, err := New(t.Context(), cfg)
 	require.NoError(t, err)
 	require.NoError(t, app.Close())
 
-	assert.Equal(t, before, cfg.Resolved.Config.SuperUsers)
+	assert.Equal(t, superUsersBefore, cfg.Resolved.Config.SuperUsers)
+	assert.Equal(t, robotsBefore, cfg.Resolved.Config.RobotsWhitelist)
+}
+
+func TestConfigureStandaloneSuperuser(t *testing.T) {
+	t.Run("defaults follow initialized user", func(t *testing.T) {
+		resolved := &config.Resolved{Config: config.NewDefault("localhost", "/data/storage")}
+
+		configureStandaloneSuperuser(resolved, "custom-admin")
+
+		assert.Equal(t, []string{"custom-admin"}, resolved.Config.SuperUsers)
+	})
+
+	t.Run("explicit config remains authoritative", func(t *testing.T) {
+		resolved := &config.Resolved{
+			Config:   config.NewDefault("localhost", "/data/storage"),
+			FromFile: true,
+		}
+		resolved.Config.SuperUsers = []string{"configured-admin"}
+
+		configureStandaloneSuperuser(resolved, "database-user")
+
+		assert.Equal(t, []string{"configured-admin"}, resolved.Config.SuperUsers)
+	})
 }
 
 func TestCloseStopsGCAndIsIdempotent(t *testing.T) {

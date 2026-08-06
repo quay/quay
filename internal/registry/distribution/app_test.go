@@ -97,6 +97,31 @@ func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
 	require.NoError(t, err, "second NewRegistry with nil MetricsRegisterer must not fail")
 }
 
+func TestNewRegistryReleasesMetricsOnClose(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	metricsRegistry := prometheus.NewRegistry()
+	cfg := &Config{
+		StoragePath:       t.TempDir(),
+		Hostname:          "registry.example.com",
+		TokenRealm:        "https://registry.example.com/v2/auth",
+		DB:                db,
+		Store:             &metadataStoreStub{},
+		BlobLocker:        oci.NewBlobLockSet(),
+		JWTService:        &registryTokenServiceStub{},
+		MetricsRegisterer: metricsRegistry,
+	}
+
+	first, err := NewRegistry(t.Context(), cfg)
+	require.NoError(t, err)
+	require.NoError(t, first.Close())
+	require.NoError(t, first.Close(), "Close must remain idempotent")
+
+	second, err := NewRegistry(t.Context(), cfg)
+	require.NoError(t, err, "closed registry must release its metrics collectors")
+	require.NoError(t, second.Close())
+}
+
 func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
