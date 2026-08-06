@@ -149,6 +149,16 @@ def sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service
     return
 
 
+def sync_oidc_superusers(additional_login_info, user_obj, auth_system, config):
+    if (
+        config.get("AUTHENTICATION_TYPE") == "OIDC"
+        and additional_login_info
+        and additional_login_info.get("groups") is not None
+    ):
+        auth_system.sync_superuser_status(additional_login_info.get("groups"), user_obj)
+    return
+
+
 def _conduct_oauth_login(
     config,
     analytics,
@@ -173,6 +183,7 @@ def _conduct_oauth_login(
     user_obj = model.user.verify_federated_login(service_id, lid)
     if user_obj is not None:
         sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
+        sync_oidc_superusers(additional_login_info, user_obj, auth_system, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     # If the login service has a bound field name, and we have a defined internal auth type that is
@@ -208,6 +219,7 @@ def _conduct_oauth_login(
             return result
 
         sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
+        sync_oidc_superusers(additional_login_info, user_obj, auth_system, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     # Otherwise, we need to create a new user account.
@@ -249,6 +261,7 @@ def _conduct_oauth_login(
         # Success, tell analytics
         analytics.track(user_obj.username, "register", {"service": service_name.lower()})
         sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
+        sync_oidc_superusers(additional_login_info, user_obj, auth_system, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     except model.InvalidEmailAddressException:
