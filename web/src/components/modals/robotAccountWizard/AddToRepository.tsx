@@ -187,6 +187,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
 
   const kebabItems = props.dropdownItems.map((item) => (
     <DropdownItem
+      component="button"
       key={item.name}
       description={item.description}
       onClick={() => dropdownOnSelect(item)}
