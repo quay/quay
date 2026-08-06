@@ -19,10 +19,10 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/gc"
+	mirrordist "github.com/quay/quay/internal/mirrorregistry/distribution"
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/oci/storage/local"
 	"github.com/quay/quay/internal/registry"
-	"github.com/quay/quay/internal/registry/distribution"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/registry/jwtauth"
 	"github.com/quay/quay/internal/repository"
@@ -37,7 +37,7 @@ type metricsConfig struct {
 type composition struct {
 	handler   http.Handler
 	db        *sql.DB
-	reg       *distribution.Registry
+	reg       *mirrordist.Registry
 	gcStore   gc.Store
 	blobs     oci.BlobStore
 	blobLocks oci.BlobLocker
@@ -85,7 +85,7 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 	}
 
 	result.blobLocks = oci.NewBlobLockSet()
-	result.reg, err = distribution.NewRegistry(ctx, &distribution.Config{
+	result.reg, err = mirrordist.NewRegistry(ctx, &mirrordist.Config{
 		StoragePath:                        resolved.StoragePath,
 		Hostname:                           resolved.Config.ServerHostname,
 		TokenRealm:                         tokenRealm,

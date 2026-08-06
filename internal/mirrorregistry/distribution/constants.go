@@ -1,4 +1,4 @@
-// Package distribution implements the OCI registry using go-distribution.
+// Package distribution assembles the mirror-registry integration with go-distribution.
 package distribution
 
 const (

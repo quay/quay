@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/quay/quay/internal/config"
-	"github.com/quay/quay/internal/registry/distribution"
+	mirrordist "github.com/quay/quay/internal/mirrorregistry/distribution"
 )
 
 // Config contains the resolved settings and runtime dependencies needed to
@@ -30,7 +30,7 @@ type Config struct {
 type App struct {
 	handler http.Handler
 	db      *sql.DB
-	reg     *distribution.Registry
+	reg     *mirrordist.Registry
 
 	cancel     context.CancelFunc
 	workerDone chan struct{}
