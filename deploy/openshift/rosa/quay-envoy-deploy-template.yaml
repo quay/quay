@@ -75,7 +75,7 @@ objects:
                   matchLabels:
                     app: quay-envoy
                 topologyKey: topology.kubernetes.io/zone
-        terminationGracePeriodSeconds: 45
+        terminationGracePeriodSeconds: 60
         containers:
         - name: envoy
           image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
@@ -201,7 +201,7 @@ objects:
         annotations:
           oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
-        terminationGracePeriodSeconds: 45
+        terminationGracePeriodSeconds: 60
         nodeSelector:
           workload: envoy
         tolerations:
