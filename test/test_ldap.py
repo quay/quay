@@ -1,5 +1,7 @@
 import unittest
 from contextlib import contextmanager
+from io import StringIO
+from unittest.mock import MagicMock
 
 import ldap
 from ldap.filter import filter_format
@@ -9,6 +11,7 @@ from mockldap import MockLdap
 from app import app
 from data import model
 from data.users import LDAPUsers
+from data.users.externalldap import _LDAPTraceRedactor
 from initdb import finished_database_for_testing, setup_database_for_testing
 
 
@@ -1158,6 +1161,74 @@ class TestLDAPCache(unittest.TestCase):
 
             # Verify cache has the entry
             self.assertEqual(ldap._cache.size(), 1)
+
+
+class TestLDAPPasswordRedaction(unittest.TestCase):
+    """
+    Unit tests for password redaction
+    """
+
+    def _make_bind_trace(self, dn, password):
+        return (
+            f"*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            f"ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
+            f"(('{dn}',\n"
+            f"  '{password}',\n"
+            f"  None,\n"
+            f"  None),\n"
+            f" {{}})\n"
+        )
+
+    def test_redacts_simple_password(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", "s3cret"))
+        output = buf.getvalue()
+
+        self.assertNotIn("s3cret", output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_redacts_complex_password(self):
+        buf = StringIO()
+        super_secret_password = "#HRx-u9r>W+?.?QTtN_X"
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
+        output = buf.getvalue()
+
+        self.assertNotIn(super_secret_password, output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_redacts_passwords_with_escaped_quotes(self):
+        buf = StringIO()
+        super_secret_password = "pa'ssword"
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
+        output = buf.getvalue()
+
+        self.assertNotIn(super_secret_password, output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_trace_pass_unchanged(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        search_trace = "*** <ldap...> - SimpleLDAPObject.search_ext\n(('dc=example',), {})\n"
+        redactor.write(search_trace)
+
+        self.assertEqual(buf.getvalue(), search_trace)
+
+    def test_flush_delegates_to_stream(self):
+        mock_stream = MagicMock()
+        redactor = _LDAPTraceRedactor(stream=mock_stream)
+        redactor.flush()
+
+        mock_stream.flush.assert_called_once()
 
 
 if __name__ == "__main__":
