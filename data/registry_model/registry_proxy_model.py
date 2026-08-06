@@ -843,13 +843,20 @@ class ProxyModel(OCIModel):
         # chunk size
         chunk_size = 64 * 1024
 
-        """
+        # set blob upload settings
+        settings = BlobUploadSettings(
+            maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
+            committed_blob_expiration=expiration,
+        )
+
         # check if the blob content-length is larger than the max allowed layer size
         max_blob_size = bitmath.parse_string_unsafe(app.config["MAXIMUM_LAYER_SIZE"])
-        if content_length != -1 and content_length > max_blob_size:
+        if content_length != -1 and bitmath.Byte(content_length) > max_blob_size:
             resp.close()
-            return None
-        """
+            logger.warning("Blob %s too large, aborting tee stream upload", blob_digest)
+            raise BlobTooLargeException(
+                uploaded=content_length, max_allowed=int(max_blob_size.bytes)
+            )
 
         def _stop_upload_thread(q: queue.Queue, upload_thread: threading.Thread):
             """
@@ -891,12 +898,6 @@ class ProxyModel(OCIModel):
                 """
                 uploader = None
                 try:
-                    # set blob upload settings
-                    settings = BlobUploadSettings(
-                        maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
-                        committed_blob_expiration=expiration,
-                    )
-
                     uploader = create_blob_upload(repo_ref, storage, settings)
 
                     if uploader is None:
@@ -940,9 +941,7 @@ class ProxyModel(OCIModel):
                 resp.close()
 
                 if upload_exception:
-                    if isinstance(upload_exception[0], BlobTooLargeException):
-                        logger.warning("Blob %s too large, aborting tee stream upload", blob_digest)
-                    elif stream_outcome == "complete" and upload_exception:
+                    if stream_outcome == "complete":
                         self._queue_blob_for_download(repo_ref, blob_digest)
                         logger.warning(
                             "Tee-stream failed for blob %s, queueing for later download",
@@ -956,7 +955,7 @@ class ProxyModel(OCIModel):
                         self._queue_blob_for_download(repo_ref, blob_digest)
                     else:
                         logger.warning(
-                            "Connection error raised during blob download, aborting tee stream upload for blob s",
+                            "Connection error raised during blob download, aborting tee stream upload for blob %s",
                             blob_digest,
                         )
 

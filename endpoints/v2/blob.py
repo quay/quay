@@ -99,9 +99,13 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
         # if there is no blob then stream from upstream
-        tee_result = registry_model.get_streaming_proxy_blob(namespace_name, repo_name, digest)
-        if tee_result is None:
-            raise BlobUnknown()
+        try:
+            tee_result = registry_model.get_streaming_proxy_blob(namespace_name, repo_name, digest)
+            if tee_result is None:
+                raise BlobUnknown()
+        except BlobTooLargeException as ble:
+            raise LayerTooLarge(uploaded=ble.uploaded, max_allowed=ble.max_allowed, proxy=True)
+
         tee_generator, content_length = tee_result
         logger.debug("Streaming blob content directly from upstream for blob digest %s.", digest)
 
