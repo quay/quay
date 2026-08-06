@@ -1,9 +1,12 @@
-import {useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   Button,
   Form,
   FormGroup,
   TextInput,
+  TextInputGroup,
+  TextInputGroupMain,
+  TextInputGroupUtilities,
   Radio,
   Flex,
   FlexItem,
@@ -21,6 +24,7 @@ import {
   ModalBody,
   ModalFooter,
 } from '@patternfly/react-core';
+import TimesIcon from '@patternfly/react-icons/dist/esm/icons/times-icon';
 import {IRepository} from 'src/resources/RepositoryResource';
 import FormError from 'src/components/errors/FormError';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
@@ -140,6 +144,29 @@ export default function CreateRepositoryModalTemplate(
     }));
   };
 
+  const [namespaceFilter, setNamespaceFilter] = useState('');
+  const namespaceInputRef = useRef<HTMLInputElement>();
+
+  const filteredNamespaceOptions = () => {
+    const allNames = [
+      props.username,
+      ...props.organizations.map((o) => o.name),
+    ];
+    const unique = allNames.filter(
+      (name, idx) => allNames.indexOf(name) === idx,
+    );
+    const filtered = namespaceFilter
+      ? unique.filter((n) =>
+          n.toLowerCase().includes(namespaceFilter.toLowerCase()),
+        )
+      : unique;
+    return filtered.slice(0, 50).map((name) => (
+      <SelectOption key={name} value={name} data-testid={`ns-${name}`}>
+        {name}
+      </SelectOption>
+    ));
+  };
+
   // namespace list includes both the orgs list and the user namespace
   const namespaceSelectionList = () => {
     const userSelection = (
@@ -191,31 +218,118 @@ export default function CreateRepositoryModalTemplate(
                   spaceItems={{default: 'spaceItemsMd'}}
                 >
                   <FlexItem>
-                    <Select
-                      aria-label="Namespace select"
-                      isOpen={currentOrganization.isDropdownOpen}
-                      selected={currentOrganization.name || 'Select namespace'}
-                      onSelect={handleNamespaceSelection}
-                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                        <MenuToggle
-                          ref={toggleRef}
-                          onClick={() =>
-                            setCurrentOrganization((prevState) => ({
-                              ...prevState,
-                              isDropdownOpen: !prevState.isDropdownOpen,
-                            }))
-                          }
-                          isExpanded={currentOrganization.isDropdownOpen}
-                          isDisabled={props.orgName !== null}
-                          data-testid="selected-namespace-dropdown"
-                        >
-                          {currentOrganization.name}
-                        </MenuToggle>
-                      )}
-                      shouldFocusToggleOnSelect
-                    >
-                      <SelectList>{namespaceSelectionList()}</SelectList>
-                    </Select>
+                    {props.enableNamespaceSearch && props.orgName === null ? (
+                      <Select
+                        aria-label="Namespace select"
+                        isOpen={currentOrganization.isDropdownOpen}
+                        selected={
+                          currentOrganization.name || 'Select namespace'
+                        }
+                        onSelect={(e, value) => {
+                          setCurrentOrganization({
+                            name: value as string,
+                            isDropdownOpen: false,
+                          });
+                          setNamespaceFilter(value as string);
+                        }}
+                        onOpenChange={(open) => {
+                          setCurrentOrganization((prev) => ({
+                            ...prev,
+                            isDropdownOpen: open,
+                          }));
+                        }}
+                        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                          <MenuToggle
+                            ref={toggleRef}
+                            variant="typeahead"
+                            onClick={() =>
+                              setCurrentOrganization((prev) => ({
+                                ...prev,
+                                isDropdownOpen: !prev.isDropdownOpen,
+                              }))
+                            }
+                            isExpanded={currentOrganization.isDropdownOpen}
+                            data-testid="selected-namespace-dropdown"
+                          >
+                            <TextInputGroup isPlain>
+                              <TextInputGroupMain
+                                value={namespaceFilter}
+                                onClick={() =>
+                                  setCurrentOrganization((prev) => ({
+                                    ...prev,
+                                    isDropdownOpen: true,
+                                  }))
+                                }
+                                onChange={(_e, value) => {
+                                  setNamespaceFilter(value);
+                                  if (!currentOrganization.isDropdownOpen) {
+                                    setCurrentOrganization((prev) => ({
+                                      ...prev,
+                                      isDropdownOpen: true,
+                                    }));
+                                  }
+                                }}
+                                autoComplete="off"
+                                innerRef={namespaceInputRef}
+                                placeholder="Type to search namespaces..."
+                                role="combobox"
+                                isExpanded={currentOrganization.isDropdownOpen}
+                                aria-controls="namespace-search-listbox"
+                              />
+                              <TextInputGroupUtilities>
+                                {namespaceFilter && (
+                                  <Button
+                                    icon={<TimesIcon aria-hidden />}
+                                    variant="plain"
+                                    onClick={() => {
+                                      setNamespaceFilter('');
+                                      setCurrentOrganization({
+                                        name: props.username,
+                                        isDropdownOpen: false,
+                                      });
+                                      namespaceInputRef.current?.focus();
+                                    }}
+                                    aria-label="Clear namespace search"
+                                  />
+                                )}
+                              </TextInputGroupUtilities>
+                            </TextInputGroup>
+                          </MenuToggle>
+                        )}
+                      >
+                        <SelectList id="namespace-search-listbox">
+                          {filteredNamespaceOptions()}
+                        </SelectList>
+                      </Select>
+                    ) : (
+                      <Select
+                        aria-label="Namespace select"
+                        isOpen={currentOrganization.isDropdownOpen}
+                        selected={
+                          currentOrganization.name || 'Select namespace'
+                        }
+                        onSelect={handleNamespaceSelection}
+                        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                          <MenuToggle
+                            ref={toggleRef}
+                            onClick={() =>
+                              setCurrentOrganization((prevState) => ({
+                                ...prevState,
+                                isDropdownOpen: !prevState.isDropdownOpen,
+                              }))
+                            }
+                            isExpanded={currentOrganization.isDropdownOpen}
+                            isDisabled={props.orgName !== null}
+                            data-testid="selected-namespace-dropdown"
+                          >
+                            {currentOrganization.name}
+                          </MenuToggle>
+                        )}
+                        shouldFocusToggleOnSelect
+                      >
+                        <SelectList>{namespaceSelectionList()}</SelectList>
+                      </Select>
+                    )}
                   </FlexItem>
                   <FlexItem>/</FlexItem>
                 </Flex>
@@ -348,4 +462,5 @@ interface CreateRepositoryModalTemplateProps {
   updateListHandler: (value: IRepository) => void;
   username: string;
   organizations: IOrganization[];
+  enableNamespaceSearch?: boolean;
 }

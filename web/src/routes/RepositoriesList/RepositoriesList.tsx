@@ -1,4 +1,4 @@
-import {ReactElement, useEffect, useState} from 'react';
+import {ReactElement, useEffect, useMemo, useState} from 'react';
 import {
   Alert,
   PageSection,
@@ -31,6 +31,8 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {IOrganization} from 'src/resources/OrganizationResource';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -68,8 +70,33 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const location = useLocation();
 
   const quayConfig = useQuayConfig();
-  const {user} = useCurrentUser();
+  const {user, isSuperUser} = useCurrentUser();
   const {isReadOnlySuperUser} = useSuperuserPermissions();
+  const isSuperUserFullAccess =
+    isSuperUser && quayConfig?.features?.SUPERUSERS_FULL_ACCESS;
+  const {superUserOrganizations, superUserUsers} = useOrganizations();
+
+  const allNamespaces = useMemo(() => {
+    if (!isSuperUserFullAccess) {
+      return user.organizations;
+    }
+    const merged = [...(user.organizations || [])];
+    const seen = new Set(merged.map((o) => o.name));
+    for (const org of superUserOrganizations || []) {
+      if (!seen.has(org.name)) {
+        merged.push({name: org.name} as IOrganization);
+        seen.add(org.name);
+      }
+    }
+    for (const u of superUserUsers || []) {
+      if (u.username !== user.username && !seen.has(u.username)) {
+        merged.push({name: u.username} as IOrganization);
+        seen.add(u.username);
+      }
+    }
+    return merged.sort((a, b) => a.name.localeCompare(b.name));
+  }, [user, isSuperUserFullAccess, superUserOrganizations, superUserUsers]);
+
   const isQuotaManagementEnabled =
     quayConfig?.features?.QUOTA_MANAGEMENT === true &&
     quayConfig?.features?.EDIT_QUOTA === true;
@@ -272,7 +299,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       orgName={currentOrg}
       updateListHandler={() => null}
       username={user.username}
-      organizations={user.organizations}
+      organizations={allNamespaces}
+      enableNamespaceSearch={isSuperUserFullAccess}
     />
   );
 
