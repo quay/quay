@@ -17,6 +17,7 @@ const (
 	imageManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 	imageConfigMediaType   = "application/vnd.oci.image.config.v1+json"
 	imageLayerMediaType    = "application/vnd.oci.image.layer.v1.tar+gzip"
+	emptyConfigMediaType   = "application/vnd.oci.empty.v1+json"
 	artifactType           = "application/vnd.example.sbom.v1"
 )
 
@@ -34,11 +35,12 @@ type imageManifest struct {
 }
 
 type artifactManifest struct {
-	SchemaVersion int        `json:"schemaVersion"`
-	MediaType     string     `json:"mediaType"`
-	ArtifactType  string     `json:"artifactType"`
-	Config        descriptor `json:"config"`
-	Subject       descriptor `json:"subject"`
+	SchemaVersion int          `json:"schemaVersion"`
+	MediaType     string       `json:"mediaType"`
+	ArtifactType  string       `json:"artifactType"`
+	Config        descriptor   `json:"config"`
+	Layers        []descriptor `json:"layers"`
+	Subject       descriptor   `json:"subject"`
 }
 
 func TestRegistryPushPullLifecycle(t *testing.T) {
@@ -85,9 +87,10 @@ func TestRegistryPushPullLifecycle(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	manifestDigest, err := client.PutManifest(ctx, repository, "latest", manifestBytes, imageManifestMediaType)
+	manifestResponse, err := client.PutManifest(ctx, repository, "latest", manifestBytes, imageManifestMediaType)
 	require.NoError(t, err)
-	assert.Equal(t, digest.FromBytes(manifestBytes), manifestDigest)
+	assert.Equal(t, digest.FromBytes(manifestBytes), manifestResponse.Digest)
+	manifestDigest := manifestResponse.Digest
 
 	head, err := client.HeadManifest(ctx, repository, "latest")
 	require.NoError(t, err)
@@ -149,8 +152,9 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 		}},
 	})
 	require.NoError(t, err)
-	subjectDigest, err := h.Registry().PutManifest(ctx, repository, "subject", subjectBytes, imageManifestMediaType)
+	subjectResponse, err := h.Registry().PutManifest(ctx, repository, "subject", subjectBytes, imageManifestMediaType)
 	require.NoError(t, err)
+	subjectDigest := subjectResponse.Digest
 
 	artifactBytes := []byte("artifact payload")
 	artifactBlobDigest, err := h.Registry().PushBlob(ctx, repository, artifactBytes)
@@ -160,10 +164,15 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 		MediaType:     imageManifestMediaType,
 		ArtifactType:  artifactType,
 		Config: descriptor{
-			MediaType: "application/octet-stream",
+			MediaType: emptyConfigMediaType,
+			Digest:    configDigest,
+			Size:      int64(len(configBytes)),
+		},
+		Layers: []descriptor{{
+			MediaType: artifactType,
 			Digest:    artifactBlobDigest,
 			Size:      int64(len(artifactBytes)),
-		},
+		}},
 		Subject: descriptor{
 			MediaType: imageManifestMediaType,
 			Digest:    subjectDigest,
@@ -171,8 +180,10 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	referrerDigest, err := h.Registry().PutManifest(ctx, repository, "sbom", referrerBytes, imageManifestMediaType)
+	referrerResponse, err := h.Registry().PutManifest(ctx, repository, "sbom", referrerBytes, imageManifestMediaType)
 	require.NoError(t, err)
+	assert.Equal(t, subjectDigest, referrerResponse.Subject)
+	referrerDigest := referrerResponse.Digest
 
 	referrers, err := h.Registry().GetReferrers(ctx, repository, subjectDigest)
 	require.NoError(t, err)
@@ -186,7 +197,6 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 }
 
 func TestHarnessInstancesAreIsolated(t *testing.T) {
-	t.Parallel()
 	first := e2etest.New(t)
 	second := e2etest.New(t)
 

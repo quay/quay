@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opencontainers/go-digest"
@@ -21,13 +22,17 @@ const (
 
 // RegistryClient is a deliberately small HTTP client for the registry
 // operations covered by the E2E suite. It performs token exchange explicitly
-// rather than hiding authentication in a transport retry loop.
+// rather than hiding authentication in a transport retry loop. Each client is
+// scoped to one harness and keeps tokens scoped by repository and actions.
 type RegistryClient struct {
 	baseURL  string
 	service  string
 	client   *http.Client
 	username string
 	password string
+
+	tokenMu sync.Mutex
+	tokens  map[string]string
 }
 
 // ManifestResponse contains an HTTP manifest response and its registry
@@ -36,6 +41,13 @@ type ManifestResponse struct {
 	Body      []byte
 	Digest    digest.Digest
 	MediaType string
+}
+
+// ManifestPutResponse contains the digest and OCI subject response header
+// returned after storing a manifest.
+type ManifestPutResponse struct {
+	Digest  digest.Digest
+	Subject digest.Digest
 }
 
 // Descriptor is an OCI descriptor returned by the referrers endpoint.
@@ -65,12 +77,20 @@ func newRegistryClient(baseURL string, client *http.Client, username, password s
 		client:   client,
 		username: username,
 		password: password,
+		tokens:   make(map[string]string),
 	}
 }
 
 func (c *RegistryClient) token(ctx context.Context, repository string, actions ...string) (string, error) {
 	if len(actions) == 0 {
 		return "", fmt.Errorf("token request requires at least one action")
+	}
+
+	cacheKey := repository + "\x00" + strings.Join(actions, ",")
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if token, ok := c.tokens[cacheKey]; ok {
+		return token, nil
 	}
 
 	endpoint, err := url.Parse(c.baseURL + "/v2/auth")
@@ -112,6 +132,7 @@ func (c *RegistryClient) token(ctx context.Context, repository string, actions .
 	if tokenResponse.Token == "" {
 		return "", fmt.Errorf("token response did not contain a token")
 	}
+	c.tokens[cacheKey] = tokenResponse.Token
 	return tokenResponse.Token, nil
 }
 
@@ -191,32 +212,41 @@ func (c *RegistryClient) finishBlobUpload(ctx context.Context, location, token s
 	return dgst, nil
 }
 
-// PutManifest stores a manifest under tag and returns its content digest.
-func (c *RegistryClient) PutManifest(ctx context.Context, repository, tag string, content []byte, mediaType string) (digest.Digest, error) {
+// PutManifest stores a manifest under tag and returns its content digest and
+// optional OCI subject response header.
+func (c *RegistryClient) PutManifest(ctx context.Context, repository, tag string, content []byte, mediaType string) (ManifestPutResponse, error) {
 	token, err := c.token(ctx, repository, "pull", "push")
 	if err != nil {
-		return "", err
+		return ManifestPutResponse{}, err
 	}
 	resp, err := c.do(ctx, http.MethodPut, c.endpoint(repository, "/manifests/"+tag), token, content, mediaType) //nolint:bodyclose // readBody closes every response body
 	if err != nil {
-		return "", err
+		return ManifestPutResponse{}, err
 	}
 	body, err := readBody(resp)
 	if err != nil {
-		return "", err
+		return ManifestPutResponse{}, err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return "", responseError(resp, body)
+		return ManifestPutResponse{}, responseError(resp, body)
 	}
 	got := resp.Header.Get("Docker-Content-Digest")
 	if got == "" {
-		return "", fmt.Errorf("manifest response did not contain Docker-Content-Digest")
+		return ManifestPutResponse{}, fmt.Errorf("manifest response did not contain Docker-Content-Digest")
 	}
 	dgst, err := digest.Parse(got)
 	if err != nil {
-		return "", fmt.Errorf("parse manifest response digest: %w", err)
+		return ManifestPutResponse{}, fmt.Errorf("parse manifest response digest: %w", err)
 	}
-	return dgst, nil
+
+	var subject digest.Digest
+	if rawSubject := resp.Header.Get("OCI-Subject"); rawSubject != "" {
+		subject, err = digest.Parse(rawSubject)
+		if err != nil {
+			return ManifestPutResponse{}, fmt.Errorf("parse manifest response OCI-Subject: %w", err)
+		}
+	}
+	return ManifestPutResponse{Digest: dgst, Subject: subject}, nil
 }
 
 // HeadManifest fetches manifest headers without a response body.
@@ -382,14 +412,19 @@ func (c *RegistryClient) resolveLocation(location string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse upload Location: %w", err)
 	}
-	if parsed.IsAbs() {
-		return parsed.String(), nil
-	}
 	base, err := url.Parse(c.baseURL + "/")
 	if err != nil {
 		return "", err
 	}
-	return base.ResolveReference(parsed).String(), nil
+	resolved := base.ResolveReference(parsed)
+	if !sameOrigin(base, resolved) {
+		return "", fmt.Errorf("upload Location origin %q does not match registry origin %q", resolved, base)
+	}
+	return resolved.String(), nil
+}
+
+func sameOrigin(left, right *url.URL) bool {
+	return strings.EqualFold(left.Scheme, right.Scheme) && strings.EqualFold(left.Host, right.Host)
 }
 
 const manifestMediaTypes = "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
