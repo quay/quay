@@ -47,10 +47,8 @@ def import_yaml(config_obj, config_file):
                 config_obj[key] = c[key]
 
         bootstrap_scope = config_obj.get("BOOTSTRAP_TOKEN_SCOPE")
-        if isinstance(bootstrap_scope, list):
-            raise InvalidConfigException(
-                "BOOTSTRAP_TOKEN_SCOPE must be a space-separated string, " "not a YAML list"
-            )
+        if not isinstance(bootstrap_scope, str):
+            raise InvalidConfigException("BOOTSTRAP_TOKEN_SCOPE must be a space-separated string")
 
     # if config_obj.get("SETUP_COMPLETE", True):
     #     try:

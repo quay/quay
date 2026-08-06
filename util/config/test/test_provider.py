@@ -3,13 +3,20 @@ import pytest
 from util.config.provider.baseprovider import InvalidConfigException, import_yaml
 
 
-def test_import_yaml_rejects_bootstrap_token_scope_list(tmp_path):
+@pytest.mark.parametrize(
+    "value",
+    ["- repo:read\n  - repo:write", "42", "true", "null"],
+)
+def test_import_yaml_rejects_non_string_bootstrap_token_scope(tmp_path, value):
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("BOOTSTRAP_TOKEN_SCOPE:\n" "  - repo:read\n" "  - repo:write\n")
+    if value.startswith("-"):
+        config_file.write_text(f"BOOTSTRAP_TOKEN_SCOPE:\n  {value}\n")
+    else:
+        config_file.write_text(f"BOOTSTRAP_TOKEN_SCOPE: {value}\n")
 
     with pytest.raises(
         InvalidConfigException,
-        match="BOOTSTRAP_TOKEN_SCOPE must be a space-separated string, not a YAML list",
+        match="BOOTSTRAP_TOKEN_SCOPE must be a space-separated string",
     ):
         import_yaml({}, str(config_file))
 
