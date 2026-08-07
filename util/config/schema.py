@@ -55,6 +55,8 @@ INTERNAL_ONLY_PROPERTIES = {
     "QUEUE_WORKER_METRICS_REFRESH_SECONDS",
     "PUSH_TEMP_TAG_EXPIRATION_SEC",
     "GARBAGE_COLLECTION_FREQUENCY",
+    "NAMESPACE_GC_GRACE_PERIOD_S",
+    "NAMESPACE_GC_GRACE_PERIOD_NAMESPACES",
     "PAGE_TOKEN_KEY",
     "BUILD_MANAGER",
     "SECURITY_SCANNER_V4_REINDEX_THRESHOLD",
@@ -2374,6 +2376,22 @@ CONFIG_SCHEMA = {
         "description": "[QUAY.IO] GARBAGE_COLLECTION_FREQUENCY. Defaults to 30",
         "x-example": 30,
         "x-reference": None,
+    },
+    "NAMESPACE_GC_GRACE_PERIOD_S": {
+        "type": "number",
+        "description": "Grace period in seconds before deleted namespaces (orgs/users) are permanently purged by GC. Only applies to namespaces listed in NAMESPACE_GC_GRACE_PERIOD_NAMESPACES. Defaults to 0 (immediate).",
+        "x-example": 1209600,
+        "x-reference": None,
+        "minimum": 0,
+    },
+    "NAMESPACE_GC_GRACE_PERIOD_NAMESPACES": {
+        "type": "array",
+        "description": "Allowlist of namespace names that receive the GC grace period. When empty, no namespaces are protected.",
+        "x-example": ["important-org"],
+        "x-reference": None,
+        "items": {
+            "type": "string",
+        },
     },
     "GREENLET_TRACING": {
         "type": "boolean",

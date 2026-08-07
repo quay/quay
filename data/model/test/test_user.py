@@ -15,10 +15,12 @@ from data.database import (
     OrgMirrorConfig,
     OrgMirrorRepository,
     OrgMirrorStatus,
+    QueueItem,
     QuotaNotificationState,
     Repository,
     RepositoryState,
     SourceRegistryType,
+    Team,
     User,
     Visibility,
 )
@@ -413,6 +415,116 @@ def test_delete_namespace_with_mixed_repo_states(initialized_db):
 
     with pytest.raises(User.DoesNotExist):
         User.get(id=user.id)
+
+
+def test_mark_namespace_for_deletion_with_grace_period(initialized_db):
+    """When available_after > 0, linked data (robots, teams, federated logins) is preserved."""
+    user = get_user("devtable")
+    org = create_organization("graceorg", "grace@example.com", user)
+
+    robot, _ = create_robot("bot", org)
+    create_team("graceteam", org, "member")
+    attach_federated_login(org, "google", "grace_oidc")
+
+    assert User.select().where(User.id == robot.id).count() == 1
+    assert Team.select().where(Team.organization == org).count() >= 1
+    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 1
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    assert marker_id is not None
+
+    marker = DeletedNamespace.get(id=marker_id)
+    assert marker.original_username == "graceorg"
+
+    org_after = User.get(id=org.id)
+    assert not org_after.enabled
+    assert org_after.username != "graceorg"
+
+    # Linked data is still present (query by ID since username was renamed).
+    assert User.select().where(User.id == robot.id).count() == 1
+    assert Team.select().where(Team.organization == org_after).count() >= 1
+    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 1
+
+    # Queue item has the grace period delay.
+    qi = QueueItem.get(id=marker.queue_id)
+    assert qi.available_after > datetime.utcnow()
+
+
+def test_mark_namespace_grace_period_config_allowlist(initialized_db):
+    """Config-driven grace period only applies to namespaces in the allowlist."""
+    user = get_user("devtable")
+    org = create_organization("listed_org", "listed@example.com", user)
+    org2 = create_organization("unlisted_org", "unlisted@example.com", user)
+
+    robot_listed, _ = create_robot("bot", org)
+    robot_unlisted, _ = create_robot("bot", org2)
+
+    config = {
+        "NAMESPACE_GC_GRACE_PERIOD_S": 86400,
+        "NAMESPACE_GC_GRACE_PERIOD_NAMESPACES": ["listed_org"],
+    }
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+
+    # Listed namespace gets grace period — robot preserved.
+    with patch("app.app") as mock_app:
+        mock_app.config.get = lambda key, default=None: config.get(key, default)
+        mark_namespace_for_deletion(org, [], queue)
+
+    assert User.select().where(User.id == robot_listed.id).count() == 1
+
+    # Unlisted namespace does NOT get grace period — robot deleted.
+    with patch("app.app") as mock_app:
+        mock_app.config.get = lambda key, default=None: config.get(key, default)
+        mark_namespace_for_deletion(org2, [], queue)
+
+    assert User.select().where(User.id == robot_unlisted.id).count() == 0
+
+
+def test_mark_namespace_for_deletion_without_grace_period(initialized_db):
+    """Without a grace period, linked data is eagerly deleted (current behavior)."""
+    user = get_user("devtable")
+    org = create_organization("nograceorg", "nograce@example.com", user)
+
+    create_robot("bot", org)
+    attach_federated_login(org, "google", "nograce_oidc")
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    assert marker_id is not None
+    org_after = User.get(id=org.id)
+
+    # Linked data is eagerly deleted.
+    assert len(list(list_namespace_robots(org_after.username))) == 0
+    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 0
+
+
+def test_mark_namespace_gc_worker_cleans_deferred_linked_data(initialized_db):
+    """GC worker cleans up linked data that was deferred during grace period marking."""
+    user = get_user("devtable")
+    org = create_organization("deferorg", "defer@example.com", user)
+
+    robot, _ = create_robot("bot", org)
+    create_team("deferteam", org, "member")
+    attach_federated_login(org, "google", "defer_oidc")
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    # Linked data preserved at mark time.
+    assert User.select().where(User.id == robot.id).count() == 1
+
+    # Simulate GC worker running after grace period.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    # Everything is cleaned up.
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=org.id)
+
+    assert User.select().where(User.id == robot.id).count() == 0
 
 
 def test_delete_robot(initialized_db):
