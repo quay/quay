@@ -1,5 +1,5 @@
 import {render, screen} from 'src/test-utils';
-import ProxyCacheConfig from './ProxyCacheConfig';
+import {ProxyCacheConfig} from './ProxyCacheConfig';
 
 const mockUseSuperuserPermissions = vi.hoisted(() =>
   vi.fn(() => ({isReadOnlySuperUser: false})),
@@ -36,11 +36,30 @@ vi.mock('src/hooks/UseProxyCache', () => ({
   }),
 }));
 
+vi.mock('src/hooks/UseOrgMirrorExists', () => ({
+  useOrgMirrorExists: () => ({exists: false, isLoading: false}),
+}));
+
+vi.mock('src/hooks/UseNamespaceImmutabilityPolicies', () => ({
+  useNamespaceImmutabilityPolicies: () => ({
+    policies: [],
+    isLoading: false,
+  }),
+}));
+
 vi.mock('src/hooks/UseQuayConfig', () => ({
+  useQuayConfigWithLoading: () => ({
+    config: {features: {PROXY_CACHE: true}, config: {}},
+    loading: false,
+  }),
   useQuayConfig: () => ({
     features: {PROXY_CACHE: true},
     config: {},
   }),
+}));
+
+vi.mock('src/routes/Alerts', () => ({
+  default: () => null,
 }));
 
 describe('ProxyCacheConfig', () => {
