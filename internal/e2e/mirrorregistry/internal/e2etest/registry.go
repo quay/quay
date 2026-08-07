@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/distribution/distribution/v3/manifest/manifestlist"
-	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -364,6 +362,9 @@ func (c *RegistryClient) GetBlob(ctx context.Context, repository string, dgst di
 	if resp.StatusCode != http.StatusOK {
 		return nil, responseError(resp, body)
 	}
+	if got := digest.FromBytes(body); got != dgst {
+		return nil, fmt.Errorf("blob response digest %q, want %q", got, dgst)
+	}
 	return body, nil
 }
 
@@ -504,7 +505,7 @@ func sameOrigin(left, right *url.URL) bool {
 	return strings.EqualFold(left.Scheme, right.Scheme) && strings.EqualFold(left.Host, right.Host)
 }
 
-const manifestMediaTypes = v1.MediaTypeImageManifest + ", " + v1.MediaTypeImageIndex + ", " + schema2.MediaTypeManifest + ", " + manifestlist.MediaTypeManifestList
+const manifestMediaTypes = v1.MediaTypeImageManifest + ", " + v1.MediaTypeImageIndex
 
 func manifestResponse(resp *http.Response, body []byte) (ManifestResponse, error) {
 	rawDigest := resp.Header.Get("Docker-Content-Digest")

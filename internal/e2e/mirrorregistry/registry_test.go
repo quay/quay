@@ -2,6 +2,7 @@ package mirrorregistry_test
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,6 +35,8 @@ func TestRegistryPushPullLifecycle(t *testing.T) {
 	resp, err := h.HTTPClient().Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
+	_, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	challenge := resp.Header.Get("WWW-Authenticate")
 	assert.Contains(t, challenge, `Bearer realm="`+h.BaseURL()+`/v2/auth"`)
@@ -305,8 +308,8 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 	configBytes := []byte(`{}`)
 	layerBytes := []byte("subject layer")
 	subject := pushImage(t, h, repository, "subject", configBytes, layerBytes)
-	sbom := pushArtifact(t, h, repository, subject, configBytes, artifactType, []byte("SBOM payload"))
-	signature := pushArtifact(t, h, repository, subject, configBytes, signatureArtifactType, []byte("signature payload"))
+	sbom := pushArtifact(t, h, repository, subject, artifactType, []byte("SBOM payload"))
+	signature := pushArtifact(t, h, repository, subject, signatureArtifactType, []byte("signature payload"))
 
 	tags, err := h.Registry().ListTags(ctx, repository)
 	require.NoError(t, err)
@@ -407,10 +410,8 @@ func TestHarnessInstancesAreIsolated(t *testing.T) {
 	assert.Equal(t, secondImage.manifest, secondManifest.Body)
 	assert.NotEqual(t, firstImage.manifest, secondManifest.Body)
 
-	_, err = first.Registry().GetBlob(t.Context(), "admin/shared-name", secondImage.layer)
-	require.Error(t, err)
-	_, err = second.Registry().GetBlob(t.Context(), "admin/shared-name", firstImage.layer)
-	require.Error(t, err)
+	assertBlobMissing(t, first, "admin/shared-name", secondImage.layer)
+	assertBlobMissing(t, second, "admin/shared-name", firstImage.layer)
 }
 
 type pushedImage struct {
@@ -474,7 +475,6 @@ func pushArtifact(
 	h *e2etest.Harness,
 	repository string,
 	subject pushedImage,
-	configBytes []byte,
 	artifactType string,
 	payload []byte,
 ) pushedArtifact {
@@ -485,11 +485,7 @@ func pushArtifact(
 		Versioned:    specs.Versioned{SchemaVersion: 2},
 		MediaType:    v1.MediaTypeImageManifest,
 		ArtifactType: artifactType,
-		Config: v1.Descriptor{
-			MediaType: v1.MediaTypeEmptyJSON,
-			Digest:    subject.config,
-			Size:      int64(len(configBytes)),
-		},
+		Config:       v1.DescriptorEmptyJSON,
 		Layers: []v1.Descriptor{{
 			MediaType: artifactType,
 			Digest:    blobDigest,
