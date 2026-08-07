@@ -298,11 +298,11 @@ func (ac *accessController) authorizeDistributionAccess(req *http.Request, princ
 			}
 		case registryResourceType:
 			if item.Name == registryCatalogName && item.Action == registryCatalogAction {
-				return fmt.Errorf("registry catalog is not supported by %s auth", quayDBAuthBackend)
+				return fmt.Errorf("%w: registry catalog is not supported by %s auth", errRepositoryAccessDenied, quayDBAuthBackend)
 			}
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
 		default:
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
 		}
 	}
 
@@ -351,7 +351,7 @@ func (ac *accessController) authorizeRepositoryAccess(req *http.Request, princip
 	case repositoryPushAction, repositoryDeleteAction:
 		allowed, err = ac.authorizer.CanPushRepository(req.Context(), principal, &repositoryRecord)
 	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
 	}
 	if err != nil {
 		return err
@@ -397,7 +397,7 @@ func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, 
 	case repositoryDeleteAction:
 		return errRepositoryNotFound
 	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
 	}
 }
 

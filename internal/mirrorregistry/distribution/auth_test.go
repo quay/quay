@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/distribution/distribution/v3/registry/auth"
+	quayAuth "github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/registry/jwtauth"
 	_ "modernc.org/sqlite"
@@ -736,6 +737,54 @@ func TestAuthorized_CatalogIsDeniedUntilQuayFilteredCatalogExists(t *testing.T) 
 		t.Fatal("expected unfiltered distribution catalog to fail")
 	}
 	assertChallenge(t, err)
+}
+
+func TestAuthorizeDistributionAccessClassifiesUnsupportedAccessAsDenied(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	controller := newPolicyTestController(t, map[string]interface{}{
+		authOptionRealm:      "test-realm",
+		authOptionDB:         db,
+		authOptionAnonAccess: true,
+	}).(*policyTestController)
+	principal := &quayAuth.Principal{Username: "admin"}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
+
+	tests := []struct {
+		name   string
+		access auth.Access
+	}{
+		{
+			name: "registry catalog",
+			access: auth.Access{
+				Resource: auth.Resource{Type: registryResourceType, Name: registryCatalogName},
+				Action:   registryCatalogAction,
+			},
+		},
+		{
+			name: "unsupported resource type",
+			access: auth.Access{
+				Resource: auth.Resource{Type: "blob", Name: "acme/private"},
+				Action:   repositoryPullAction,
+			},
+		},
+		{
+			name: "unsupported repository action",
+			access: auth.Access{
+				Resource: auth.Resource{Type: repositoryResourceType, Name: "acme/private"},
+				Action:   "unknown",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := controller.authorizeDistributionAccess(req, principal, []auth.Access{tt.access})
+			if !errors.Is(err, errRepositoryAccessDenied) {
+				t.Fatalf("error = %v, want errRepositoryAccessDenied", err)
+			}
+		})
+	}
 }
 
 func TestAuthorized_WriteRobotCannotPushReadOnlyRepository(t *testing.T) {
