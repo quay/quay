@@ -69,6 +69,16 @@ func TestNewAssemblesTopLevelRoutes(t *testing.T) {
 	}
 }
 
+func TestNewExposesBackgroundGarbageCollector(t *testing.T) {
+	app, err := New(t.Context(), testConfig(t))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, app.Close()) }()
+
+	require.NotNil(t, app.GarbageCollector())
+	assert.Same(t, app.collector, app.GarbageCollector())
+	assert.Nil(t, (*App)(nil).GarbageCollector())
+}
+
 func TestNewUsesIndependentDefaultMetricsRegistries(t *testing.T) {
 	var configs [2]*Config
 	for i := range configs {
