@@ -175,9 +175,11 @@ func TestOnCloseCannotBeUsedAfterBuilderReturns(t *testing.T) {
 		if recovered := recover(); recovered == nil {
 			t.Fatal("late cleanup registration did not panic")
 		}
+		if err := runtime.Close(); err != nil {
+			t.Fatalf("Close after late registration panic: %v", err)
+		}
 	}()
 	onClose(func() error { return nil })
-	_ = runtime.Close()
 }
 
 func TestRuntimeHandlerCloseAndCloseErrors(t *testing.T) {

@@ -141,19 +141,19 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 		}
 
 		authOptions := configuration.Parameters{
-			authOptionRealm:        cfg.TokenRealm,
-			authOptionService:      cfg.Hostname,
-			authOptionJWTService:   cfg.JWTService,
-			"db":                   cfg.DB,
-			"libraryNamespace":     libraryNamespace,
-			authOptionAnonAccess:   cfg.AnonymousAccess,
-			authOptionDatabaseKey:  cfg.DatabaseSecretKey,
-			"robotsDisallow":       cfg.RobotsDisallow,
-			"robotsWhitelist":      cfg.RobotsWhitelist,
-			authOptionLastAccess:   cfg.FeatureUserLastAccessed,
-			authOptionLastAccessS:  cfg.LastAccessedUpdateThresholdSeconds,
-			"superUsers":           cfg.SuperUsers,
-			"superUsersFullAccess": cfg.SuperUsersFullAccess,
+			authOptionRealm:                cfg.TokenRealm,
+			authOptionService:              cfg.Hostname,
+			authOptionJWTService:           cfg.JWTService,
+			authOptionDB:                   cfg.DB,
+			authOptionLibraryNamespace:     libraryNamespace,
+			authOptionAnonAccess:           cfg.AnonymousAccess,
+			authOptionDatabaseKey:          cfg.DatabaseSecretKey,
+			authOptionRobotsDisallow:       cfg.RobotsDisallow,
+			authOptionRobotsWhitelist:      cfg.RobotsWhitelist,
+			authOptionLastAccess:           cfg.FeatureUserLastAccessed,
+			authOptionLastAccessS:          cfg.LastAccessedUpdateThresholdSeconds,
+			authOptionSuperUsers:           cfg.SuperUsers,
+			authOptionSuperUsersFullAccess: cfg.SuperUsersFullAccess,
 		}
 		controller, err := newAccessController(authOptions)
 		if err != nil {
@@ -189,7 +189,7 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 				},
 			},
 			Auth: configuration.Auth{
-				"quaydb": configuration.Parameters{
+				quayDBAuthBackend: configuration.Parameters{
 					authOptionController: controller,
 				},
 			},
@@ -218,10 +218,20 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 }
 
 // TokenHandler returns the Docker Registry token exchange endpoint.
-func (a *Registry) TokenHandler() *TokenHandler { return a.tokenHandler }
+func (a *Registry) TokenHandler() *TokenHandler {
+	if a == nil {
+		return nil
+	}
+	return a.tokenHandler
+}
 
 // Authenticator returns the Bearer authenticator shared by custom OCI routes.
-func (a *Registry) Authenticator() *BearerAuthenticator { return a.authenticator }
+func (a *Registry) Authenticator() *BearerAuthenticator {
+	if a == nil {
+		return nil
+	}
+	return a.authenticator
+}
 
 // Handler returns the HTTP handler for the registry.
 func (a *Registry) Handler() http.Handler {

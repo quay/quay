@@ -13,9 +13,10 @@ import (
 // Cleanup releases one resource acquired during construction.
 type Cleanup func() error
 
-// OnClose registers cleanup synchronously during Builder execution. The
-// runtime runs registered cleanups in reverse order on construction failure or
-// when Runtime.Close is called.
+// OnClose registers cleanup synchronously during Builder execution. Registration
+// must happen on the builder's single goroutine; do not pass or invoke this
+// callback from another goroutine. The runtime runs registered cleanups in
+// reverse order on construction failure or when Runtime.Close is called.
 type OnClose func(Cleanup)
 
 // Builder constructs an application and registers cleanup for resources it
