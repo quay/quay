@@ -15,6 +15,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import CollaboratorsDeleteModal from './CollaboratorsDeleteModal';
 import Conditional from 'src/components/empty/Conditional';
 import {usePaginatedSortableTable} from '../../../../../../hooks/usePaginatedSortableTable';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export const collaboratorViewColumnNames = {
   username: 'User name',
@@ -24,6 +25,7 @@ export const collaboratorViewColumnNames = {
 export default function CollaboratorsViewList(
   props: CollaboratorsViewListProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const {collaborators, loading, error, search, setSearch} =
@@ -151,17 +153,19 @@ export default function CollaboratorsViewList(
                   Direct permissions on {collaborator.repositories?.length}{' '}
                   repositories under this organization
                 </Td>
-                <Td>
-                  <Button
-                    icon={<TrashIcon />}
-                    variant="plain"
-                    onClick={() => {
-                      setCollaboratorToBeDeleted(collaborator);
-                      setIsDeleteModalOpen(true);
-                    }}
-                    data-testid={`${collaborator.name}-del-icon`}
-                  />
-                </Td>
+                {!isReadOnlySuperUser && (
+                  <Td>
+                    <Button
+                      icon={<TrashIcon />}
+                      variant="plain"
+                      onClick={() => {
+                        setCollaboratorToBeDeleted(collaborator);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      data-testid={`${collaborator.name}-del-icon`}
+                    />
+                  </Td>
+                )}
               </Tr>
             ))}
           </Tbody>
