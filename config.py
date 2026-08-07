@@ -556,6 +556,9 @@ class DefaultConfig(ImmutableConfig):
     # Maximum number of scan retries per indexer hash before a manifest is skipped.
     SECURITY_SCANNER_MAX_SCAN_RETRIES = 5
 
+    # Whether to enable the legacy V4 security scanner indexing operations.
+    SECURITY_SCANNER_V4_INDEXING = True
+
     # Security scanner V2 worker (lock-free, uses FOR UPDATE SKIP LOCKED)
     FEATURE_SECURITY_SCANNER_V2 = False
     SECURITY_SCANNER_V2_INDEXING_INTERVAL = 30

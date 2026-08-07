@@ -247,7 +247,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         except InvalidContentSent:
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
-            logger.exception("Failed to index: invalid content sent")
+            logger.warning("Failed to index: invalid content sent")
             return
         except Non200ResponseException as ex:
             self._mark_failed(
