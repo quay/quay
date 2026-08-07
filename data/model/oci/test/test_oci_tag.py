@@ -57,6 +57,7 @@ from data.model.oci.tag import (
     lookup_alive_tags_shallow,
     lookup_unrecoverable_tags,
     remove_tag_from_timemachine,
+    reset_referrer_manifest_expiration,
     retarget_tag,
     set_tag_expiration_for_manifest,
     set_tag_immutable,
@@ -72,7 +73,8 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.bytes import Bytes
 
-# Cosign cascade acquires pg_advisory_xact_lock on PostgreSQL (+1 SQL); SQLite lock is a no-op.
+# Cosign cascade and referrer expiry each acquire pg_advisory_xact_lock on
+# PostgreSQL (+1 SQL per acquire); SQLite lock is a no-op.
 _ADVISORY_LOCK_QUERY = 1 if os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql") else 0
 
 
@@ -398,7 +400,7 @@ def test_delete_tag(initialized_db):
             assert get_tag(repo, tag.name) == tag
             assert tag.lifetime_end_ms is None
 
-            with assert_query_count(6 + _ADVISORY_LOCK_QUERY):
+            with assert_query_count(7 + 2 * _ADVISORY_LOCK_QUERY):
                 assert delete_tag(repo, tag.name) == tag
 
             assert get_tag(repo, tag.name) is None
@@ -420,7 +422,7 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.name.startswith("$temp-")
             assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
-        with assert_query_count(11 + _ADVISORY_LOCK_QUERY):
+        with assert_query_count(12 + 2 * _ADVISORY_LOCK_QUERY):
             assert delete_tag(repository.id, tag.name) == tag
 
         # Assert temporary tags pointing to child manifest are now expired
@@ -438,7 +440,7 @@ def test_delete_tags_for_manifest(initialized_db):
             repo = tag.repository
             assert get_tag(repo, tag.name) == tag
 
-            with assert_query_count(8 + _ADVISORY_LOCK_QUERY):
+            with assert_query_count(9 + 2 * _ADVISORY_LOCK_QUERY):
                 assert delete_tags_for_manifest(tag.manifest) == [tag]
 
             assert get_tag(repo, tag.name) is None
@@ -1954,6 +1956,103 @@ def test_cascade_serialized_with_concurrent_retarget(initialized_db):
         finally:
             # Same path as test_gc: purge tags/manifests/blobs (incl. ImageStorage) then
             # delete the repo. Commit so cleanup survives the fixture savepoint.
+            try:
+                repo_to_purge = Repository.get_by_id(repo_id)
+            except Repository.DoesNotExist:
+                repo_to_purge = None
+            if repo_to_purge is not None:
+                model.gc.purge_repository(repo_to_purge, force=True)
+            db.commit()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
+    reason="Advisory locks / multi-connection race coverage require PostgreSQL",
+)
+def test_referrer_expiry_serialized_with_concurrent_retarget(initialized_db):
+    """
+    Concurrent retarget that creates a new alive alias must prevent referrer
+    $temp-* expiry. The shared advisory lock serializes the paths.
+
+    Setup is committed so worker-thread connections can see the fixtures;
+    initialized_db's savepoint would otherwise hide them from other sessions.
+    Cleanup uses purge_repository (same as test_gc) so committed CAS rows do not
+    poison later assert_gc_integrity checks.
+    """
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        repo = create_repository("devtable", f"ref-race-{uuid.uuid4().hex[:12]}", None)
+        assert repo is not None
+        repo_id = repo.id
+        try:
+            subject_manifest, _ = _create_manifest_in_repo(repo, "img-ref-race")
+            assert retarget_tag("v1.0", subject_manifest.id) is not None
+            subject_manifest_id = subject_manifest.id
+
+            referrer_manifest, _ = _create_manifest_in_repo(repo, "ref-race")
+            Manifest.update(subject=subject_manifest.digest).where(
+                Manifest.id == referrer_manifest.id
+            ).execute()
+            temp_tag = create_temporary_tag_if_necessary(
+                referrer_manifest, 300, skip_expiration=True
+            )
+            assert temp_tag is not None
+            assert temp_tag.lifetime_end_ms is None
+            temp_tag_id = temp_tag.id
+
+            db.commit()
+
+            barrier = threading.Barrier(2, timeout=10)
+            retarget_done = threading.Event()
+            errors = []
+            results = {}
+            expire_tls = threading.local()
+            real_reset = reset_referrer_manifest_expiration
+
+            def reset_seam(*args, **kwargs):
+                if getattr(expire_tls, "wait_for_retarget", False):
+                    if not retarget_done.wait(timeout=10):
+                        raise TimeoutError("timed out waiting for concurrent retarget")
+                return real_reset(*args, **kwargs)
+
+            def thread_delete():
+                try:
+                    barrier.wait()
+                    expire_tls.wait_for_retarget = True
+                    with db.connection_context():
+                        results["deleted"] = delete_tag(repo_id, "v1.0")
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+
+            def thread_retarget():
+                try:
+                    barrier.wait()
+                    with db.connection_context():
+                        results["retarget"] = retarget_tag("v2.0", subject_manifest_id)
+                    retarget_done.set()
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+                    retarget_done.set()
+
+            with patch(
+                "data.model.oci.tag.reset_referrer_manifest_expiration",
+                side_effect=reset_seam,
+            ):
+                t_delete = threading.Thread(target=thread_delete)
+                t_retarget = threading.Thread(target=thread_retarget)
+                t_delete.start()
+                t_retarget.start()
+                t_delete.join(timeout=15)
+                t_retarget.join(timeout=15)
+                assert not t_delete.is_alive(), "delete worker did not finish within timeout"
+                assert not t_retarget.is_alive(), "retarget worker did not finish within timeout"
+
+            assert not errors, errors
+            assert results.get("deleted") is not None
+            assert results.get("retarget") is not None
+            assert get_tag(repo_id, "v2.0") is not None
+            refreshed = Tag.get_by_id(temp_tag_id)
+            assert refreshed.lifetime_end_ms is None
+        finally:
             try:
                 repo_to_purge = Repository.get_by_id(repo_id)
             except Repository.DoesNotExist:
