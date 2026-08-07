@@ -19,8 +19,8 @@ import (
 )
 
 func init() {
-	if err := distauth.Register("quaydb", distauth.InitFunc(accessControllerFactory)); err != nil {
-		slog.Error("failed to register quaydb auth", "err", err)
+	if err := distauth.Register(quayDBAuthBackend, distauth.InitFunc(accessControllerFactory)); err != nil {
+		slog.Error("failed to register auth", "backend", quayDBAuthBackend, "err", err)
 	}
 }
 
@@ -44,20 +44,9 @@ var (
 	_ oci.Authenticator         = &accessController{}
 )
 
-const (
-	repositoryPushAction   = "push"
-	repositoryDeleteAction = "delete"
-	registryResourceType   = "registry"
-	registryCatalogName    = "catalog"
-	registryCatalogAction  = "*"
-	authOptionRealm        = "realm"
-	authOptionService      = "service"
-	authOptionAnonAccess   = "anonymousAccess"
-	authOptionJWTService   = "jwtService"
-	authOptionController   = "controller"
-	authOptionDatabaseKey  = "databaseSecretKey"
-	authOptionLastAccess   = "featureUserLastAccessed"
-	authOptionLastAccessS  = "lastAccessedUpdateThresholdSeconds"
+var (
+	errRepositoryNotFound     = errors.New("repository not found")
+	errRepositoryAccessDenied = errors.New("repository access denied")
 )
 
 func newAccessController(options map[string]interface{}) (*accessController, error) {
@@ -66,39 +55,43 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 	}
 	realm, ok := options[authOptionRealm].(string)
 	if !ok || realm == "" {
-		return nil, fmt.Errorf("%q must be set for quaydb access controller", authOptionRealm)
+		return nil, fmt.Errorf("%q must be set for %s access controller", authOptionRealm, quayDBAuthBackend)
 	}
 	service, _ := options[authOptionService].(string)
 	jwtService, _ := options[authOptionJWTService].(registryTokenService)
 	if jwtService == nil {
-		return nil, fmt.Errorf("%q must be set for quaydb bearer access controller", authOptionJWTService)
+		return nil, fmt.Errorf("%q must be set for %s bearer access controller", authOptionJWTService, quayDBAuthBackend)
 	}
 	if service == "" {
-		return nil, fmt.Errorf("%q must be set for quaydb bearer access controller", authOptionService)
+		return nil, fmt.Errorf("%q must be set for %s bearer access controller", authOptionService, quayDBAuthBackend)
 	}
 
-	db, ok := options["db"].(*sql.DB)
+	db, ok := options[authOptionDB].(*sql.DB)
 	if !ok || db == nil {
-		return nil, fmt.Errorf(`"db" must be set to *sql.DB for quaydb access controller`)
+		return nil, fmt.Errorf("%q must be set to *sql.DB for %s access controller", authOptionDB, quayDBAuthBackend)
 	}
 
-	libraryNamespace, _ := options["libraryNamespace"].(string)
+	libraryNamespace, _ := options[authOptionLibraryNamespace].(string)
 	if libraryNamespace == "" {
 		libraryNamespace = defaultLibraryNamespace
 	}
 
-	anonymousAccess, ok := options[authOptionAnonAccess].(bool)
-	if !ok {
-		anonymousAccess = true
+	anonymousAccess := true
+	if configured, present := options[authOptionAnonAccess]; present {
+		var ok bool
+		anonymousAccess, ok = configured.(bool)
+		if !ok {
+			return nil, fmt.Errorf("%q must be a bool for %s access controller", authOptionAnonAccess, quayDBAuthBackend)
+		}
 	}
 
 	databaseSecretKey, _ := options[authOptionDatabaseKey].(string)
-	robotsDisallow, _ := options["robotsDisallow"].(bool)
-	robotsWhitelist, _ := options["robotsWhitelist"].([]string)
+	robotsDisallow, _ := options[authOptionRobotsDisallow].(bool)
+	robotsWhitelist, _ := options[authOptionRobotsWhitelist].([]string)
 	featureUserLastAccessed, _ := options[authOptionLastAccess].(bool)
 	lastAccessedUpdateThresholdSeconds, _ := options[authOptionLastAccessS].(int)
-	superUsers, _ := options["superUsers"].([]string)
-	superUsersFullAccess, _ := options["superUsersFullAccess"].(bool)
+	superUsers, _ := options[authOptionSuperUsers].([]string)
+	superUsersFullAccess, _ := options[authOptionSuperUsersFullAccess].(bool)
 
 	verifier := auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              databaseSecretKey,
@@ -305,11 +298,11 @@ func (ac *accessController) authorizeDistributionAccess(req *http.Request, princ
 			}
 		case registryResourceType:
 			if item.Name == registryCatalogName && item.Action == registryCatalogAction {
-				return fmt.Errorf("registry catalog is not supported by quaydb auth")
+				return fmt.Errorf("%w: registry catalog is not supported by %s auth", errRepositoryAccessDenied, quayDBAuthBackend)
 			}
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
 		default:
-			return fmt.Errorf("unsupported access resource type %q", item.Type)
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
 		}
 	}
 
@@ -348,7 +341,7 @@ func (ac *accessController) authorizeRepositoryAccess(req *http.Request, princip
 		return err
 	}
 	if repositoryRecord.KindID != repo.KindImage {
-		return fmt.Errorf("repository %q is not an image repository", item.Name)
+		return fmt.Errorf("%w: repository %q is not an image repository", errRepositoryAccessDenied, item.Name)
 	}
 
 	var allowed bool
@@ -358,13 +351,13 @@ func (ac *accessController) authorizeRepositoryAccess(req *http.Request, princip
 	case repositoryPushAction, repositoryDeleteAction:
 		allowed, err = ac.authorizer.CanPushRepository(req.Context(), principal, &repositoryRecord)
 	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
 	}
 	if err != nil {
 		return err
 	}
 	if !allowed {
-		return fmt.Errorf("repository action %q denied for %s", item.Action, principal.Username)
+		return fmt.Errorf("%w: repository action %q denied for %s", errRepositoryAccessDenied, item.Action, principal.Username)
 	}
 
 	return nil
@@ -378,7 +371,7 @@ func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, 
 		}
 		namespace, _, ok := ac.repositoryParts(item.Name)
 		if !ok {
-			return fmt.Errorf("invalid repository name %q", item.Name)
+			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
 		}
 		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
 		if err != nil {
@@ -387,24 +380,24 @@ func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, 
 		if allowed {
 			return nil
 		}
-		return sql.ErrNoRows
+		return errRepositoryNotFound
 	case repositoryPushAction:
 		namespace, _, ok := ac.repositoryParts(item.Name)
 		if !ok {
-			return fmt.Errorf("invalid repository name %q", item.Name)
+			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
 		}
 		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
 		if err != nil {
 			return err
 		}
 		if !allowed {
-			return fmt.Errorf("repository create denied for %s", principal.Username)
+			return fmt.Errorf("%w: repository create denied for %s", errRepositoryAccessDenied, principal.Username)
 		}
 		return nil
 	case repositoryDeleteAction:
-		return sql.ErrNoRows
+		return errRepositoryNotFound
 	default:
-		return fmt.Errorf("unsupported repository action %q", item.Action)
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
 	}
 }
 
