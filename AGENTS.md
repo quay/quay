@@ -59,6 +59,7 @@ make types-test                      # Type checking (mypy)
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
+| Tag lifecycle, autopruning | `agent_docs/tags.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
 
 ## Universal Conventions
