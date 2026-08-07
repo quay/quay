@@ -1142,7 +1142,7 @@ CONFIG_SCHEMA = {
         },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries and proxy endpoints, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks. Scheme-less mirror proxy values remain supported for backward compatibility and are interpreted as HTTP only during destination validation.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
