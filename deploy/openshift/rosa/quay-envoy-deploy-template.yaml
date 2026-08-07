@@ -75,12 +75,32 @@ objects:
                   matchLabels:
                     app: quay-envoy
                 topologyKey: topology.kubernetes.io/zone
+        terminationGracePeriodSeconds: 60
         containers:
         - name: envoy
           image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c"]
-          args: ["ulimit -n $(ulimit -Hn) && exec envoy -c /etc/envoy/envoy.yaml --log-level ${ENVOY_LOG_LEVEL}"]
+          args:
+          - |
+            ulimit -n $(ulimit -Hn)
+            ARGS="-c /etc/envoy/envoy.yaml --log-level $ENVOY_LOG_LEVEL --drain-time-s 30"
+            if [ -n "$ENVOY_COMPONENT_LOG_LEVEL" ]; then
+              ARGS="$ARGS --component-log-level $ENVOY_COMPONENT_LOG_LEVEL"
+            fi
+            exec envoy $ARGS
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - "/bin/sh"
+                - "-c"
+                - "curl -sf --max-time 10 -X POST http://localhost:9901/drain_listeners?graceful ; sleep 30"
+          env:
+          - name: ENVOY_LOG_LEVEL
+            value: "${ENVOY_LOG_LEVEL}"
+          - name: ENVOY_COMPONENT_LOG_LEVEL
+            value: "${ENVOY_COMPONENT_LOG_LEVEL}"
           ports:
           - containerPort: 8443
             name: https
@@ -181,6 +201,7 @@ objects:
         annotations:
           oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
+        terminationGracePeriodSeconds: 60
         nodeSelector:
           workload: envoy
         tolerations:
@@ -292,6 +313,9 @@ parameters:
 - name: ENVOY_LOG_LEVEL
   value: "info"
   displayName: Envoy log level
+- name: ENVOY_COMPONENT_LOG_LEVEL
+  value: ""
+  displayName: Per-component log levels (e.g. upstream:debug,connection:debug)
 - name: RLS_IMAGE
   value: "docker.io/envoyproxy/ratelimit"
   displayName: Rate limit service container image
