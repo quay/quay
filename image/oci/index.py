@@ -346,7 +346,9 @@ class OCIIndex(ManifestListInterface):
         if none.
         """
         for manifest_ref in self._parsed[INDEX_MANIFESTS_KEY]:
-            platform = manifest_ref[INDEX_PLATFORM_KEY]
+            platform = manifest_ref.get(INDEX_PLATFORM_KEY)
+            if platform is None:
+                continue
             architecture = platform.get(INDEX_ARCHITECTURE_KEY, None)
             os = platform.get(INDEX_OS_KEY, None)
             if architecture == "amd64" and os == "linux":
