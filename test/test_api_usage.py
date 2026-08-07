@@ -4045,7 +4045,7 @@ class TestOrgRobots(ApiTestCase):
         self.login("globalreadonlysuperuser")
         params = dict(orgname=ORGANIZATION)
         for r in self.getJsonResponse(OrgRobotList, params=params)["robots"]:
-            assert "token" in r
+            assert r.get("token") is None
 
 
 class TestLogs(ApiTestCase):
