@@ -61,9 +61,10 @@ type Descriptor struct {
 // ReferrersResponse is the subset of an OCI image index needed by the E2E
 // referrers assertion.
 type ReferrersResponse struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	MediaType     string       `json:"mediaType"`
-	Manifests     []Descriptor `json:"manifests"`
+	SchemaVersion  int          `json:"schemaVersion"`
+	MediaType      string       `json:"mediaType"`
+	Manifests      []Descriptor `json:"manifests"`
+	FiltersApplied string       `json:"-"`
 }
 
 func newRegistryClient(baseURL string, client *http.Client, username, password string) *RegistryClient {
@@ -81,12 +82,25 @@ func newRegistryClient(baseURL string, client *http.Client, username, password s
 	}
 }
 
-func (c *RegistryClient) token(ctx context.Context, repository string, actions ...string) (string, error) {
+// RequestToken exchanges the client's basic credentials for a repository token
+// restricted to the requested actions.
+func (c *RegistryClient) RequestToken(ctx context.Context, repository string, actions ...string) (string, error) {
 	if len(actions) == 0 {
 		return "", fmt.Errorf("token request requires at least one action")
 	}
+	return c.tokenForScopes(ctx, "repository:"+repository+":"+strings.Join(actions, ","))
+}
 
-	cacheKey := repository + "\x00" + strings.Join(actions, ",")
+func (c *RegistryClient) token(ctx context.Context, repository string, actions ...string) (string, error) {
+	return c.RequestToken(ctx, repository, actions...)
+}
+
+func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (string, error) {
+	if len(scopes) == 0 {
+		return "", fmt.Errorf("token request requires at least one scope")
+	}
+
+	cacheKey := strings.Join(scopes, "\x00")
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
 	if token, ok := c.tokens[cacheKey]; ok {
@@ -99,7 +113,9 @@ func (c *RegistryClient) token(ctx context.Context, repository string, actions .
 	}
 	query := endpoint.Query()
 	query.Set("service", c.service)
-	query.Set("scope", "repository:"+repository+":"+strings.Join(actions, ","))
+	for _, scope := range scopes {
+		query.Add("scope", scope)
+	}
 	endpoint.RawQuery = query.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), http.NoBody)
@@ -142,6 +158,11 @@ func (c *RegistryClient) PushBlob(ctx context.Context, repository string, conten
 	if err != nil {
 		return "", err
 	}
+	return c.PushBlobWithToken(ctx, repository, content, token)
+}
+
+// PushBlobWithToken uploads content using exactly the supplied bearer token.
+func (c *RegistryClient) PushBlobWithToken(ctx context.Context, repository string, content []byte, token string) (digest.Digest, error) {
 	location, err := c.startBlobUpload(ctx, repository, token)
 	if err != nil {
 		return "", err
@@ -212,14 +233,58 @@ func (c *RegistryClient) finishBlobUpload(ctx context.Context, location, token s
 	return dgst, nil
 }
 
-// PutManifest stores a manifest under tag and returns its content digest and
-// optional OCI subject response header.
-func (c *RegistryClient) PutManifest(ctx context.Context, repository, tag string, content []byte, mediaType string) (ManifestPutResponse, error) {
+// MountBlob mounts an existing blob from one repository into another.
+func (c *RegistryClient) MountBlob(ctx context.Context, fromRepository, toRepository string, dgst digest.Digest) error {
+	token, err := c.tokenForScopes(
+		ctx,
+		"repository:"+fromRepository+":pull",
+		"repository:"+toRepository+":pull,push",
+	)
+	if err != nil {
+		return err
+	}
+	endpoint, err := url.Parse(c.endpoint(toRepository, "/blobs/uploads/"))
+	if err != nil {
+		return err
+	}
+	query := endpoint.Query()
+	query.Set("mount", dgst.String())
+	query.Set("from", fromRepository)
+	endpoint.RawQuery = query.Encode()
+
+	resp, err := c.do(ctx, http.MethodPost, endpoint.String(), token, nil, "") //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return responseError(resp, body)
+	}
+	if _, err := c.resolveLocation(resp.Header.Get("Location")); err != nil {
+		return fmt.Errorf("resolve mounted blob Location: %w", err)
+	}
+	if got := resp.Header.Get("Docker-Content-Digest"); got != "" && got != dgst.String() {
+		return fmt.Errorf("mounted blob response digest %q, want %q", got, dgst)
+	}
+	return nil
+}
+
+// PutManifest stores a manifest under reference and returns its content digest
+// and optional OCI subject response header.
+func (c *RegistryClient) PutManifest(ctx context.Context, repository, reference string, content []byte, mediaType string) (ManifestPutResponse, error) {
 	token, err := c.token(ctx, repository, "pull", "push")
 	if err != nil {
 		return ManifestPutResponse{}, err
 	}
-	resp, err := c.do(ctx, http.MethodPut, c.endpoint(repository, "/manifests/"+tag), token, content, mediaType) //nolint:bodyclose // readBody closes every response body
+	return c.PutManifestWithToken(ctx, repository, reference, content, mediaType, token)
+}
+
+// PutManifestWithToken stores a manifest using exactly the supplied bearer token.
+func (c *RegistryClient) PutManifestWithToken(ctx context.Context, repository, reference string, content []byte, mediaType, token string) (ManifestPutResponse, error) {
+	resp, err := c.do(ctx, http.MethodPut, c.endpoint(repository, "/manifests/"+reference), token, content, mediaType) //nolint:bodyclose // readBody closes every response body
 	if err != nil {
 		return ManifestPutResponse{}, err
 	}
@@ -337,11 +402,29 @@ func (c *RegistryClient) ListTags(ctx context.Context, repository string) ([]str
 
 // GetReferrers fetches the OCI referrers index for a subject digest.
 func (c *RegistryClient) GetReferrers(ctx context.Context, repository string, subject digest.Digest) (ReferrersResponse, error) {
+	return c.getReferrers(ctx, repository, subject, "")
+}
+
+// GetReferrersByArtifactType fetches referrers filtered by artifact type.
+func (c *RegistryClient) GetReferrersByArtifactType(ctx context.Context, repository string, subject digest.Digest, artifactType string) (ReferrersResponse, error) {
+	return c.getReferrers(ctx, repository, subject, artifactType)
+}
+
+func (c *RegistryClient) getReferrers(ctx context.Context, repository string, subject digest.Digest, artifactType string) (ReferrersResponse, error) {
 	token, err := c.token(ctx, repository, "pull")
 	if err != nil {
 		return ReferrersResponse{}, err
 	}
-	resp, err := c.do(ctx, http.MethodGet, c.endpoint(repository, "/referrers/"+subject.String()), token, nil, "") //nolint:bodyclose // readBody closes every response body
+	endpoint, err := url.Parse(c.endpoint(repository, "/referrers/"+subject.String()))
+	if err != nil {
+		return ReferrersResponse{}, err
+	}
+	if artifactType != "" {
+		query := endpoint.Query()
+		query.Set("artifactType", artifactType)
+		endpoint.RawQuery = query.Encode()
+	}
+	resp, err := c.do(ctx, http.MethodGet, endpoint.String(), token, nil, "") //nolint:bodyclose // readBody closes every response body
 	if err != nil {
 		return ReferrersResponse{}, err
 	}
@@ -356,6 +439,7 @@ func (c *RegistryClient) GetReferrers(ctx context.Context, repository string, su
 	if err := json.Unmarshal(body, &response); err != nil {
 		return ReferrersResponse{}, fmt.Errorf("decode referrers response: %w", err)
 	}
+	response.FiltersApplied = resp.Header.Get("OCI-Filters-Applied")
 	return response, nil
 }
 
@@ -427,7 +511,7 @@ func sameOrigin(left, right *url.URL) bool {
 	return strings.EqualFold(left.Scheme, right.Scheme) && strings.EqualFold(left.Host, right.Host)
 }
 
-const manifestMediaTypes = "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+const manifestMediaTypes = "application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json"
 
 func manifestResponse(resp *http.Response, body []byte) (ManifestResponse, error) {
 	rawDigest := resp.Header.Get("Docker-Content-Digest")
