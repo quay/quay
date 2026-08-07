@@ -76,9 +76,7 @@ test.describe(
         `/organization/${org.name}?tab=TeamsAndMembership`,
       );
 
-      await expect(
-        readonlyPage.getByText('Create new team'),
-      ).not.toBeVisible();
+      await expect(readonlyPage.getByText('Create new team')).not.toBeVisible();
     });
 
     test('readonly superuser does not see create button on Default Permissions tab', async ({
