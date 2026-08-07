@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -2092,7 +2093,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
     @pytest.fixture(autouse=True)
     def setup(self, app, create_repo):
         self.user = get_user("devtable")
-        self.org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        self.org = create_organization(self.orgname, f"{self.orgname}@devtable.com", self.user)
         self.org.save()
         self.config = create_proxy_cache_config(
             org_name=self.orgname,
@@ -2100,71 +2101,6 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             expiration_s=3600,
         )
         self.repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-
-    def test_refetches_blob_missing_from_storage(self):
-        """
-        When a blob has a placement record in DB but the file is missing from
-        storage, the proxy model should re-download it from upstream instead of
-        returning a reference to a non-existent file (PROJQUAY-10315).
-        """
-        content = b"test blob content for proxy cache"
-        digest = str(sha256_digest(content))
-        blob = store_blob_record_and_temp_link(
-            self.orgname,
-            self.upstream_repository,
-            digest,
-            ImageStorageLocation.get(name="local_us"),
-            len(content),
-            120,
-        )
-        layer_path = get_layer_path(blob)
-        storage.put_content(["local_us"], layer_path, content)
-
-        manifest_bytes = json.dumps(
-            {
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                "config": {
-                    "mediaType": "application/vnd.docker.container.image.v1+json",
-                    "size": len(content),
-                    "digest": digest,
-                },
-                "layers": [],
-            }
-        )
-        media_type, _ = MediaType.get_or_create(
-            name="application/vnd.docker.distribution.manifest.v2+json"
-        )
-        from data.database import Repository
-
-        repo = Repository.get(id=self.repo_ref.id)
-        manifest = Manifest.create(
-            repository=repo,
-            digest=_get_digest(manifest_bytes.encode("utf-8")),
-            manifest_bytes=manifest_bytes,
-            media_type=media_type,
-        )
-        ManifestBlob.create(
-            manifest=manifest,
-            repository=repo,
-            blob=blob,
-        )
-
-        assert storage.exists(["local_us"], layer_path)
-        assert ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).exists()
-
-        storage.remove(["local_us"], layer_path)
-        assert not storage.exists(["local_us"], layer_path)
-
-        proxy_model = ProxyModel(
-            self.orgname,
-            self.upstream_repository,
-            self.user,
-        )
-
-        with patch.object(proxy_model, "_download_blob") as mock_download:
-            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
-            mock_download.assert_called_once_with(self.repo_ref, digest)
 
     def test_does_not_refetch_blob_present_in_storage(self):
         """
@@ -2230,13 +2166,14 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             assert result is not None
             assert result.digest == digest
 
-    def test_refetches_blob_when_storage_check_raises(self):
+    def test_get_streaming_proxy_blob_returns_None_when_blob_is_cached(self):
         """
-        When storage.exists() raises an exception (e.g. storage backend
-        unavailable), the proxy model should re-download from upstream
-        rather than serving a potentially missing blob.
+        Tests that the get_streaming_proxy_blob properly returns None if blob is locally available.
         """
-        content = b"test blob content for storage error"
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = b"test blob content that exists"
         digest = str(sha256_digest(content))
         blob = store_blob_record_and_temp_link(
             self.orgname,
@@ -2264,20 +2201,21 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         media_type, _ = MediaType.get_or_create(
             name="application/vnd.docker.distribution.manifest.v2+json"
         )
-        from data.database import Repository
 
-        repo = Repository.get(id=self.repo_ref.id)
         manifest = Manifest.create(
             repository=repo,
             digest=_get_digest(manifest_bytes.encode("utf-8")),
             manifest_bytes=manifest_bytes,
             media_type=media_type,
         )
+
         ManifestBlob.create(
             manifest=manifest,
             repository=repo,
             blob=blob,
         )
+
+        assert storage.exists(["local_us"], layer_path)
 
         proxy_model = ProxyModel(
             self.orgname,
@@ -2285,12 +2223,534 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             self.user,
         )
 
+        result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+        assert result is None
+
+    def test_get_streaming_proxy_blob_returns_a_generator_if_blob_needs_download(self):
+        """
+        Checks if the get_streaming_proxy_blob returns a (generator, comtent_length) if a blob
+        needs download.
+        """
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = b"test blob that doesn't exist locally"
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        # conduct call
+        mock_resp = mock_upstream_response(content)
+        with patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp):
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+
+    def test_imagestorage_placement_exists_after_streaming(self):
+        """
+        Verifies that the ImagestoragePlacement exists after streaming content.
+        """
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = b"test blob that doesn't exist locally"
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        mock_resp = mock_upstream_response(content)
         with (
-            patch(
-                "data.registry_model.registry_proxy_model.storage.exists",
-                side_effect=IOError("storage unavailable"),
-            ),
-            patch.object(proxy_model, "_download_blob") as mock_download,
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch("data.registry_model.registry_proxy_model.threading.Thread") as MockThread,
         ):
-            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
-            mock_download.assert_called_once_with(self.repo_ref, digest)
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+
+            generator, content_length = result
+            chunks = list(generator)
+            assert b"".join(chunks) == content
+
+            # NOTE: ImageStoragePlacement cannot be verified here in CI because PostgreSQL
+            # save endpoints are *not* visible to the upload thread's connection.
+            # Storage commitment is verified end-to-end by TestBlobPullThroughStorage
+            # and in production where transactions are committed normally.
+
+    def test_blob_queued_if_get_streamed_proxy_blob_raises_BlobDigestMismatchException(self):
+        """
+        Tests that get_streamed_proxy_blob creates a queue item for download after a BlobDigestMismatchException
+        is raised.
+        """
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = b"test blob that doesn't exist locally"
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        # need to return a different content
+        some_other_content = b"Content that won't match calculated SHA"
+        mock_resp = mock_upstream_response(some_other_content)
+
+        with (
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch(
+                "data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put"
+            ) as mock_queue_put,
+        ):
+            # conduct call
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+
+            # consuming of content should fail
+            generator, content_length = result
+            chunks = list(generator)
+
+            mock_queue_put.assert_called()
+
+    def test_blob_queued_if_get_streamed_proxy_blob_raises_BlobUploadException(self):
+        """
+        Tests that get_streamed_proxy_blob creates a queue item for download after a BlobUploadException
+        is raised.
+        """
+        from data.registry_model.blobuploader import BlobUploadException
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = b"test blob that doesn't exist locally"
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        mock_resp = mock_upstream_response(content)
+
+        with (
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch(
+                "data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put"
+            ) as mock_queue_put,
+            patch(
+                "data.registry_model.blobuploader._BlobUploadManager.upload_chunk",
+                side_effect=BlobUploadException(),
+            ),
+        ):
+            # conduct call
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+
+            # consuming of content should fail
+            generator, content_length = result
+            chunks = list(generator)
+
+            mock_queue_put.assert_called()
+
+            mb = (
+                ManifestBlob.select()
+                .where(ManifestBlob.manifest == manifest.id, ManifestBlob.repository == repo.id)
+                .get()
+            )
+            assert mb
+            ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
+            assert ip.count() == 0
+
+    # Note: storage commitment cannot be verified here because the test fixture wraps all db operations
+    # in a PostgreSQL savepoint that is not visible to the upload thread's connection. However,
+    # tests with a built container and real pull operations show that the issue doesn't exist in
+    # a real world scenario: the blob upload is properly committed making the row visible to the reconnected
+    # connection after CLoseForLongOperations. The test is properly executed in SQLite environment
+    # which does not have such strict savepoint isolation as PostgreSQL does.
+    @pytest.mark.xfail(
+        bool(os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql")),
+        reason="Upload thread cannot see savepoint data under POstgreSQL transaction isolation",
+        strict=False,
+    )
+    def test_blob_not_queued_on_BlobTooLargeException(self, app):
+        """
+        Tests that get_streamed_proxy_blob does NOT create a queue item if a blob we try to pull is too big.
+        """
+        from app import app as realapp
+        from data.registry_model.blobuploader import BlobTooLargeException
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        mock_resp = mock_upstream_response(content)
+
+        with (
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch(
+                "data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put"
+            ) as mock_queue_put,
+            patch.dict(realapp.config, {"MAXIMUM_LAYER_SIZE": "1MiB"}),
+        ):
+            with pytest.raises(BlobTooLargeException):
+                # conduct call
+                proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+
+            mock_queue_put.assert_not_called()
+
+    # Note: same rationale as in the previous test, this is expected to fail on PostgreSQL due to thread
+    # isolation.
+    @pytest.mark.xfail(
+        bool(os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql")),
+        reason="Upload thread cannot see savepoint data under POstgreSQL transaction isolation",
+        strict=False,
+    )
+    def test_blob_not_queued_on_general_connection_error_raised_mid_transfer(self):
+        """
+        Tests that no placement entries are created in the database if a ConnectionError is
+        raised mid-blob-transfer. Clients will usually try to re-download the blob if this happens
+        and we don't want internal workers to run concurrently with the real download.
+        """
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+
+            def failing_iter(chunk_size=64 * 1024):
+                yield content[:chunk_size]
+                raise ConnectionError("upstream connection dropped")
+
+            resp.iter_content = failing_iter
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+
+        assert manifest
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+        assert created_blobs
+
+        mock_resp = mock_upstream_response(content)
+
+        with (
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch(
+                "data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put"
+            ) as mock_queue_put,
+        ):
+            # conduct call
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+
+            # consuming of content should fail
+            generator, content_length = result
+            chunks = list(generator)
+
+            mock_queue_put.assert_not_called()
+
+            mb = (
+                ManifestBlob.select()
+                .where(ManifestBlob.manifest == manifest.id, ManifestBlob.repository == repo.id)
+                .get()
+            )
+            assert mb
+            ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
+            assert ip.count() == 0

@@ -95,10 +95,33 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @cache_control(max_age=31536000)
 @inject_registry_model()
 def download_blob(namespace_name, repo_name, digest, registry_model):
-    # Find the blob.
+    # try returning blob from cache
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # if there is no blob then stream from upstream
+        try:
+            tee_result = registry_model.get_streaming_proxy_blob(namespace_name, repo_name, digest)
+            if tee_result is None:
+                raise BlobUnknown()
+        except BlobTooLargeException as ble:
+            raise LayerTooLarge(uploaded=ble.uploaded, max_allowed=ble.max_allowed, proxy=True)
+
+        tee_generator, content_length = tee_result
+        logger.debug("Streaming blob content directly from upstream for blob digest %s.", digest)
+
+        headers = {
+            "Docker-Content-Digest": digest,
+            "Content-type": BLOB_CONTENT_TYPE,
+        }
+
+        if content_length and content_length > 0:
+            headers["Content-Length"] = content_length
+
+        image_pulled_bytes.labels("v2").inc(content_length if content_length > 0 else 0)
+
+        logger.debug("Closing database connection before streaming layer data")
+        with database.CloseForLongOperation(app.config):
+            return Response(tee_generator, headers=headers)
 
     # Build the response headers.
     headers = {"Docker-Content-Digest": digest}
