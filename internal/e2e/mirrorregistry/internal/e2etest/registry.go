@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,19 @@ type ManifestResponse struct {
 type ManifestPutResponse struct {
 	Digest  digest.Digest
 	Subject digest.Digest
+}
+
+// BlobMetadata contains the headers returned by a successful blob HEAD.
+type BlobMetadata struct {
+	Digest digest.Digest
+	Size   int64
+}
+
+// TagsPage contains one page returned by the tags listing endpoint.
+type TagsPage struct {
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
+	Link string   `json:"-"`
 }
 
 // ReferrersResponse contains the OCI image index and response metadata
@@ -165,6 +179,54 @@ func (c *RegistryClient) PushBlobWithToken(ctx context.Context, repository strin
 	return c.finishBlobUpload(ctx, location, token, content)
 }
 
+// PushBlobChunked uploads non-empty chunks with Content-Range headers and
+// resumes the upload through its status endpoint between chunks.
+func (c *RegistryClient) PushBlobChunked(ctx context.Context, repository string, chunks ...[]byte) (digest.Digest, error) {
+	if len(chunks) == 0 {
+		return "", fmt.Errorf("chunked blob upload requires at least one chunk")
+	}
+	token, err := c.token(ctx, repository, "pull", "push")
+	if err != nil {
+		return "", err
+	}
+	location, err := c.startBlobUpload(ctx, repository, token)
+	if err != nil {
+		return "", err
+	}
+
+	var content []byte
+	for _, chunk := range chunks {
+		if len(chunk) == 0 {
+			return "", fmt.Errorf("chunked blob upload does not accept empty chunks")
+		}
+		start := int64(len(content))
+		location, err = c.appendBlobUploadRange(ctx, location, token, chunk, start)
+		if err != nil {
+			return "", err
+		}
+		content = append(content, chunk...)
+		location, err = c.blobUploadStatus(ctx, location, token, int64(len(content)))
+		if err != nil {
+			return "", err
+		}
+	}
+	return c.finishBlobUpload(ctx, location, token, content)
+}
+
+// PutBlobMonolithic completes a newly started upload with one PUT request and
+// the caller-supplied digest, without an intermediate PATCH.
+func (c *RegistryClient) PutBlobMonolithic(ctx context.Context, repository string, content []byte, dgst digest.Digest) (digest.Digest, error) {
+	token, err := c.token(ctx, repository, "pull", "push")
+	if err != nil {
+		return "", err
+	}
+	location, err := c.startBlobUpload(ctx, repository, token)
+	if err != nil {
+		return "", err
+	}
+	return c.completeBlobUpload(ctx, location, token, content, dgst)
+}
+
 func (c *RegistryClient) startBlobUpload(ctx context.Context, repository, token string) (string, error) {
 	resp, err := c.do(ctx, http.MethodPost, c.endpoint(repository, "/blobs/uploads/"), token, nil, "") //nolint:bodyclose // readBody closes every response body
 	if err != nil {
@@ -198,8 +260,58 @@ func (c *RegistryClient) appendBlobUpload(ctx context.Context, location, token s
 	return location, nil
 }
 
+func (c *RegistryClient) appendBlobUploadRange(ctx context.Context, location, token string, content []byte, start int64) (string, error) {
+	end := start + int64(len(content)) - 1
+	headers := make(http.Header)
+	headers.Set("Content-Range", fmt.Sprintf("%d-%d", start, end))
+	resp, err := c.doWithHeaders(ctx, http.MethodPatch, location, token, content, "application/octet-stream", headers) //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return "", err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		return "", responseError(resp, body)
+	}
+	if got, want := resp.Header.Get("Range"), uploadRange(end+1); got != want {
+		return "", fmt.Errorf("blob upload Range %q, want %q", got, want)
+	}
+	return c.resolveLocation(resp.Header.Get("Location"))
+}
+
+func (c *RegistryClient) blobUploadStatus(ctx context.Context, location, token string, size int64) (string, error) {
+	resp, err := c.do(ctx, http.MethodGet, location, token, nil, "") //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return "", err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return "", responseError(resp, body)
+	}
+	if got, want := resp.Header.Get("Range"), uploadRange(size); got != want {
+		return "", fmt.Errorf("blob upload status Range %q, want %q", got, want)
+	}
+	return c.resolveLocation(resp.Header.Get("Location"))
+}
+
+func uploadRange(size int64) string {
+	end := size - 1
+	if end < 0 {
+		end = 0
+	}
+	return fmt.Sprintf("0-%d", end)
+}
+
 func (c *RegistryClient) finishBlobUpload(ctx context.Context, location, token string, content []byte) (digest.Digest, error) {
-	dgst := digest.FromBytes(content)
+	return c.completeBlobUpload(ctx, location, token, nil, digest.FromBytes(content))
+}
+
+func (c *RegistryClient) completeBlobUpload(ctx context.Context, location, token string, content []byte, dgst digest.Digest) (digest.Digest, error) {
 	finish, err := url.Parse(location)
 	if err != nil {
 		return "", fmt.Errorf("parse upload location: %w", err)
@@ -207,7 +319,11 @@ func (c *RegistryClient) finishBlobUpload(ctx context.Context, location, token s
 	query := finish.Query()
 	query.Set("digest", dgst.String())
 	finish.RawQuery = query.Encode()
-	resp, err := c.do(ctx, http.MethodPut, finish.String(), token, nil, "") //nolint:bodyclose // readBody closes every response body
+	contentType := ""
+	if content != nil {
+		contentType = "application/octet-stream"
+	}
+	resp, err := c.do(ctx, http.MethodPut, finish.String(), token, content, contentType) //nolint:bodyclose // readBody closes every response body
 	if err != nil {
 		return "", err
 	}
@@ -327,11 +443,16 @@ func (c *RegistryClient) HeadManifest(ctx context.Context, repository, reference
 
 // GetManifest fetches a manifest by tag or digest.
 func (c *RegistryClient) GetManifest(ctx context.Context, repository, reference string) (ManifestResponse, error) {
+	return c.GetManifestWithAccept(ctx, repository, reference, manifestMediaTypes)
+}
+
+// GetManifestWithAccept fetches a manifest with the supplied Accept media types.
+func (c *RegistryClient) GetManifestWithAccept(ctx context.Context, repository, reference string, accept ...string) (ManifestResponse, error) {
 	token, err := c.token(ctx, repository, "pull")
 	if err != nil {
 		return ManifestResponse{}, err
 	}
-	resp, err := c.do(ctx, http.MethodGet, c.endpoint(repository, "/manifests/"+reference), token, nil, "", manifestMediaTypes) //nolint:bodyclose // readBody closes every response body
+	resp, err := c.do(ctx, http.MethodGet, c.endpoint(repository, "/manifests/"+reference), token, nil, "", accept...) //nolint:bodyclose // readBody closes every response body
 	if err != nil {
 		return ManifestResponse{}, err
 	}
@@ -368,30 +489,106 @@ func (c *RegistryClient) GetBlob(ctx context.Context, repository string, dgst di
 	return body, nil
 }
 
-// ListTags returns all tags currently associated with a repository.
-func (c *RegistryClient) ListTags(ctx context.Context, repository string) ([]string, error) {
+// HeadBlob fetches blob metadata without a response body.
+func (c *RegistryClient) HeadBlob(ctx context.Context, repository string, dgst digest.Digest) (BlobMetadata, error) {
 	token, err := c.token(ctx, repository, "pull")
 	if err != nil {
-		return nil, err
+		return BlobMetadata{}, err
 	}
-	resp, err := c.do(ctx, http.MethodGet, c.endpoint(repository, "/tags/list"), token, nil, "") //nolint:bodyclose // readBody closes every response body
+	resp, err := c.do(ctx, http.MethodHead, c.endpoint(repository, "/blobs/"+dgst.String()), token, nil, "") //nolint:bodyclose // readBody closes every response body
 	if err != nil {
-		return nil, err
+		return BlobMetadata{}, err
 	}
 	body, err := readBody(resp)
 	if err != nil {
-		return nil, err
+		return BlobMetadata{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, responseError(resp, body)
+		return BlobMetadata{}, responseError(resp, body)
 	}
-	var response struct {
-		Tags []string `json:"tags"`
+	got, err := digest.Parse(resp.Header.Get("Docker-Content-Digest"))
+	if err != nil {
+		return BlobMetadata{}, fmt.Errorf("parse blob response digest: %w", err)
 	}
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("decode tag response: %w", err)
+	if got != dgst {
+		return BlobMetadata{}, fmt.Errorf("blob response digest %q, want %q", got, dgst)
 	}
-	return response.Tags, nil
+	size, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		return BlobMetadata{}, fmt.Errorf("parse blob response Content-Length: %w", err)
+	}
+	return BlobMetadata{Digest: got, Size: size}, nil
+}
+
+// DeleteBlob removes a blob link from a repository.
+func (c *RegistryClient) DeleteBlob(ctx context.Context, repository string, dgst digest.Digest) error {
+	token, err := c.token(ctx, repository, "pull", "push")
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(ctx, http.MethodDelete, c.endpoint(repository, "/blobs/"+dgst.String()), token, nil, "") //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		return responseError(resp, body)
+	}
+	return nil
+}
+
+// ListTags returns all tags currently associated with a repository.
+func (c *RegistryClient) ListTags(ctx context.Context, repository string) ([]string, error) {
+	page, err := c.getTags(ctx, repository, c.endpoint(repository, "/tags/list"))
+	if err != nil {
+		return nil, err
+	}
+	return page.Tags, nil
+}
+
+// ListTagsPage returns one tag page and its continuation Link header.
+func (c *RegistryClient) ListTagsPage(ctx context.Context, repository string, limit int, last string) (TagsPage, error) {
+	if limit < 0 {
+		return TagsPage{}, fmt.Errorf("tag page limit must not be negative")
+	}
+	endpoint, err := url.Parse(c.endpoint(repository, "/tags/list"))
+	if err != nil {
+		return TagsPage{}, err
+	}
+	query := endpoint.Query()
+	query.Set("n", strconv.Itoa(limit))
+	if last != "" {
+		query.Set("last", last)
+	}
+	endpoint.RawQuery = query.Encode()
+	return c.getTags(ctx, repository, endpoint.String())
+}
+
+func (c *RegistryClient) getTags(ctx context.Context, repository, endpoint string) (TagsPage, error) {
+	token, err := c.token(ctx, repository, "pull")
+	if err != nil {
+		return TagsPage{}, err
+	}
+	resp, err := c.do(ctx, http.MethodGet, endpoint, token, nil, "") //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return TagsPage{}, err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return TagsPage{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return TagsPage{}, responseError(resp, body)
+	}
+	var page TagsPage
+	if err := json.Unmarshal(body, &page); err != nil {
+		return TagsPage{}, fmt.Errorf("decode tag response: %w", err)
+	}
+	page.Link = resp.Header.Get("Link")
+	return page, nil
 }
 
 // GetReferrers fetches the OCI referrers index for a subject digest.
@@ -462,6 +659,10 @@ func (c *RegistryClient) endpoint(repository, suffix string) string {
 }
 
 func (c *RegistryClient) do(ctx context.Context, method, endpoint, token string, body []byte, contentType string, accept ...string) (*http.Response, error) {
+	return c.doWithHeaders(ctx, method, endpoint, token, body, contentType, nil, accept...)
+}
+
+func (c *RegistryClient) doWithHeaders(ctx context.Context, method, endpoint, token string, body []byte, contentType string, headers http.Header, accept ...string) (*http.Response, error) {
 	var reader io.Reader = http.NoBody
 	if body != nil {
 		reader = bytes.NewReader(body)
@@ -475,6 +676,11 @@ func (c *RegistryClient) do(ctx context.Context, method, endpoint, token string,
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	for name, values := range headers {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
 	}
 	if len(accept) > 0 {
 		req.Header.Set("Accept", strings.Join(accept, ", "))
