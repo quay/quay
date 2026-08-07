@@ -54,6 +54,54 @@ Global readonly superusers are blocked from writes at multiple levels:
 
 3. **Endpoint Level**: Individual endpoints may have additional checks
 
+## Robot Account Access
+
+GROSU can access organization robot account endpoints for audit purposes, but
+robot tokens are credentials that enable authentication as the robot and must
+never be exposed to GROSU. This preserves the read-only boundary — a leaked
+token would allow the GROSU user to push images or mutate resources as the
+robot.
+
+### Key invariants in `endpoints/api/robot.py`
+
+- **`include_token` must be `False` for GROSU.** Only org admins and
+  full-access superusers (`SUPERUSERS_FULL_ACCESS`) may see robot tokens.
+  The `OrgRobotList.get` and `OrgRobot.get` handlers gate `include_token`
+  on `is_org_admin or is_full_access_superuser`; GROSU is neither, so
+  it evaluates to `False`.
+- **`include_permissions` should be `True` for GROSU.** The legacy robot
+  manager UI requests `/api/v1/organization/<org>/robots?permissions=true&token=false`
+  and depends on `teams` / `repositories` fields in the response. The
+  `OrgRobotList.get` handler allows `include_permissions` when
+  `is_org_admin`, `is_full_access_superuser`, **or** GROSU.
+- **All write operations remain blocked.** Create (`PUT`), delete
+  (`DELETE`), and regenerate (`POST .../regenerate`) endpoints are gated
+  on `AdministerOrganizationPermission` or `allow_if_superuser_with_full_access()`
+  and do not include `allow_if_global_readonly_superuser()`.
+
+### Endpoint access matrix
+
+| Endpoint | Org Admin | Full-Access Superuser | GROSU | Regular User |
+|----------|-----------|----------------------|-------|--------------|
+| `OrgRobotList` GET | metadata + token + permissions | metadata + token + permissions | metadata + permissions (no token) | metadata only |
+| `OrgRobot` GET | metadata + token | metadata + token | metadata (no token) | Unauthorized |
+| `OrgRobotPermissions` GET | permissions list | permissions list | permissions list | Unauthorized |
+| Create / Delete / Regenerate | Yes | Yes | **Blocked** | Varies |
+
+### Why this matters for code changes
+
+When modifying GROSU logic in `robot.py`, always preserve these invariants:
+
+1. GROSU must **never** see `token` fields — they are write-equivalent credentials.
+2. GROSU **must** see `teams` and `repositories` when `?permissions=true` is
+   requested, or the legacy robot manager UI breaks.
+3. Do not add `allow_if_global_readonly_superuser()` to any write endpoint
+   (create, delete, regenerate).
+
+This invariant was established in PR [#6740](https://github.com/quay/quay/pull/6740)
+after a human reviewer identified that an initial fix inadvertently broke
+`permissions=true` support for GROSU.
+
 ## App Token Access
 
 Special handling for app tokens:
