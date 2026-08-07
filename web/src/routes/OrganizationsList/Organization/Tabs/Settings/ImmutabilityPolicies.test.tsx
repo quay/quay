@@ -22,6 +22,21 @@ vi.mock('src/hooks/UseSuperuserPermissions', () => ({
 
 vi.mock('src/hooks/UseNamespaceImmutabilityPolicies', () => ({
   useNamespaceImmutabilityPolicies: mockUseImmutabilityPolicies,
+  useCreateNamespaceImmutabilityPolicy: () => ({createPolicy: vi.fn()}),
+  useUpdateNamespaceImmutabilityPolicy: () => ({updatePolicy: vi.fn()}),
+  useDeleteNamespaceImmutabilityPolicy: () => ({deletePolicy: vi.fn()}),
+}));
+
+vi.mock('src/hooks/UseOrgMirrorExists', () => ({
+  useOrgMirrorExists: () => ({exists: false, isLoading: false}),
+}));
+
+vi.mock('src/hooks/UseProxyCache', () => ({
+  useFetchProxyCacheConfig: () => ({
+    proxyCacheConfig: null,
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock('src/components/ImmutabilityPolicyForm', () => ({
@@ -43,13 +58,13 @@ describe('ImmutabilityPolicies', () => {
   });
 
   it('shows add policy button for non-readonly user in empty state', () => {
-    render(<ImmutabilityPolicies organizationName="myorg" />);
+    render(<ImmutabilityPolicies org="myorg" />);
     expect(screen.getByText('Add Policy')).toBeInTheDocument();
   });
 
   it('hides add policy button for readonly superuser in empty state', () => {
     mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
-    render(<ImmutabilityPolicies organizationName="myorg" />);
+    render(<ImmutabilityPolicies org="myorg" />);
     expect(screen.queryByText('Add Policy')).not.toBeInTheDocument();
   });
 
@@ -62,7 +77,7 @@ describe('ImmutabilityPolicies', () => {
       updatePolicy: vi.fn(),
       deletePolicy: vi.fn(),
     });
-    render(<ImmutabilityPolicies organizationName="myorg" />);
+    render(<ImmutabilityPolicies org="myorg" />);
     expect(screen.getByText('Add Policy')).toBeInTheDocument();
   });
 
@@ -76,7 +91,7 @@ describe('ImmutabilityPolicies', () => {
       updatePolicy: vi.fn(),
       deletePolicy: vi.fn(),
     });
-    render(<ImmutabilityPolicies organizationName="myorg" />);
+    render(<ImmutabilityPolicies org="myorg" />);
     expect(screen.queryByText('Add Policy')).not.toBeInTheDocument();
   });
 });
