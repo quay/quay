@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	specs "github.com/opencontainers/image-spec/specs-go"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,54 +17,9 @@ import (
 )
 
 const (
-	imageManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
-	imageConfigMediaType   = "application/vnd.oci.image.config.v1+json"
-	imageLayerMediaType    = "application/vnd.oci.image.layer.v1.tar+gzip"
-	imageIndexMediaType    = "application/vnd.oci.image.index.v1+json"
-	emptyConfigMediaType   = "application/vnd.oci.empty.v1+json"
-	artifactType           = "application/vnd.example.sbom.v1"
-	signatureArtifactType  = "application/vnd.example.signature.v1"
+	artifactType          = "application/vnd.example.sbom.v1"
+	signatureArtifactType = "application/vnd.example.signature.v1"
 )
-
-type descriptor struct {
-	MediaType string        `json:"mediaType"`
-	Digest    digest.Digest `json:"digest"`
-	Size      int64         `json:"size"`
-}
-
-type imageManifest struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	MediaType     string       `json:"mediaType"`
-	Config        descriptor   `json:"config"`
-	Layers        []descriptor `json:"layers"`
-}
-
-type artifactManifest struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	MediaType     string       `json:"mediaType"`
-	ArtifactType  string       `json:"artifactType"`
-	Config        descriptor   `json:"config"`
-	Layers        []descriptor `json:"layers"`
-	Subject       descriptor   `json:"subject"`
-}
-
-type imageIndex struct {
-	SchemaVersion int                  `json:"schemaVersion"`
-	MediaType     string               `json:"mediaType"`
-	Manifests     []platformDescriptor `json:"manifests"`
-}
-
-type platformDescriptor struct {
-	MediaType string        `json:"mediaType"`
-	Digest    digest.Digest `json:"digest"`
-	Size      int64         `json:"size"`
-	Platform  platform      `json:"platform"`
-}
-
-type platform struct {
-	Architecture string `json:"architecture"`
-	OS           string `json:"os"`
-}
 
 func TestRegistryPushPullLifecycle(t *testing.T) {
 	h := e2etest.New(t)
@@ -92,23 +49,23 @@ func TestRegistryPushPullLifecycle(t *testing.T) {
 	layerDigest, err := client.PushBlob(ctx, repository, layerBytes)
 	require.NoError(t, err)
 
-	manifestBytes, err := json.Marshal(imageManifest{
-		SchemaVersion: 2,
-		MediaType:     imageManifestMediaType,
-		Config: descriptor{
-			MediaType: imageConfigMediaType,
+	manifestBytes, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config: v1.Descriptor{
+			MediaType: v1.MediaTypeImageConfig,
 			Digest:    configDigest,
 			Size:      int64(len(configBytes)),
 		},
-		Layers: []descriptor{{
-			MediaType: imageLayerMediaType,
+		Layers: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageLayerGzip,
 			Digest:    layerDigest,
 			Size:      int64(len(layerBytes)),
 		}},
 	})
 	require.NoError(t, err)
 
-	manifestResponse, err := client.PutManifest(ctx, repository, "latest", manifestBytes, imageManifestMediaType)
+	manifestResponse, err := client.PutManifest(ctx, repository, "latest", manifestBytes, v1.MediaTypeImageManifest)
 	require.NoError(t, err)
 	assert.Equal(t, digest.FromBytes(manifestBytes), manifestResponse.Digest)
 	manifestDigest := manifestResponse.Digest
@@ -116,14 +73,14 @@ func TestRegistryPushPullLifecycle(t *testing.T) {
 	head, err := client.HeadManifest(ctx, repository, "latest")
 	require.NoError(t, err)
 	assert.Equal(t, manifestDigest, head.Digest)
-	assert.Contains(t, head.MediaType, imageManifestMediaType)
+	assert.Contains(t, head.MediaType, v1.MediaTypeImageManifest)
 	assert.Empty(t, head.Body)
 
 	byTag, err := client.GetManifest(ctx, repository, "latest")
 	require.NoError(t, err)
 	assert.Equal(t, manifestBytes, byTag.Body)
 	assert.Equal(t, manifestDigest, byTag.Digest)
-	assert.Contains(t, byTag.MediaType, imageManifestMediaType)
+	assert.Contains(t, byTag.MediaType, v1.MediaTypeImageManifest)
 
 	byDigest, err := client.GetManifest(ctx, repository, manifestDigest.String())
 	require.NoError(t, err)
@@ -165,14 +122,14 @@ func TestRegistryTokenScopeEnforcement(t *testing.T) {
 	layerBytes := []byte("scope-authorized layer")
 	layerDigest, err := h.Registry().PushBlobWithToken(ctx, repository, layerBytes, pushToken)
 	require.NoError(t, err)
-	manifestBytes, err := json.Marshal(imageManifest{
-		SchemaVersion: 2,
-		MediaType:     imageManifestMediaType,
-		Config:        descriptor{MediaType: imageConfigMediaType, Digest: configDigest, Size: int64(len(configBytes))},
-		Layers:        []descriptor{{MediaType: imageLayerMediaType, Digest: layerDigest, Size: int64(len(layerBytes))}},
+	manifestBytes, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config:    v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: configDigest, Size: int64(len(configBytes))},
+		Layers:    []v1.Descriptor{{MediaType: v1.MediaTypeImageLayerGzip, Digest: layerDigest, Size: int64(len(layerBytes))}},
 	})
 	require.NoError(t, err)
-	response, err := h.Registry().PutManifestWithToken(ctx, repository, "latest", manifestBytes, imageManifestMediaType, pushToken)
+	response, err := h.Registry().PutManifestWithToken(ctx, repository, "latest", manifestBytes, v1.MediaTypeImageManifest, pushToken)
 	require.NoError(t, err)
 	assert.Equal(t, digest.FromBytes(manifestBytes), response.Digest)
 
@@ -232,33 +189,33 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	arm64Layer := []byte("linux-arm64 layer")
 	arm64 := pushImage(t, h, repository, "", arm64Config, arm64Layer)
 
-	indexBytes, err := json.Marshal(imageIndex{
-		SchemaVersion: 2,
-		MediaType:     imageIndexMediaType,
-		Manifests: []platformDescriptor{
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{
 			{
-				MediaType: imageManifestMediaType,
+				MediaType: v1.MediaTypeImageManifest,
 				Digest:    amd64.digest,
 				Size:      int64(len(amd64.manifest)),
-				Platform:  platform{Architecture: "amd64", OS: "linux"},
+				Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
 			},
 			{
-				MediaType: imageManifestMediaType,
+				MediaType: v1.MediaTypeImageManifest,
 				Digest:    arm64.digest,
 				Size:      int64(len(arm64.manifest)),
-				Platform:  platform{Architecture: "arm64", OS: "linux"},
+				Platform:  &v1.Platform{Architecture: "arm64", OS: "linux"},
 			},
 		},
 	})
 	require.NoError(t, err)
-	indexResponse, err := h.Registry().PutManifest(ctx, repository, "latest", indexBytes, imageIndexMediaType)
+	indexResponse, err := h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
 	require.NoError(t, err)
 	assert.Equal(t, digest.FromBytes(indexBytes), indexResponse.Digest)
 
 	byTag, err := h.Registry().GetManifest(ctx, repository, "latest")
 	require.NoError(t, err)
 	assert.Equal(t, indexBytes, byTag.Body)
-	assert.Contains(t, byTag.MediaType, imageIndexMediaType)
+	assert.Contains(t, byTag.MediaType, v1.MediaTypeImageIndex)
 	byDigest, err := h.Registry().GetManifest(ctx, repository, indexResponse.Digest.String())
 	require.NoError(t, err)
 	assert.Equal(t, indexBytes, byDigest.Body)
@@ -361,9 +318,9 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 	referrers, err := h.Registry().GetReferrers(ctx, repository, subject.digest)
 	require.NoError(t, err)
 	require.Equal(t, 2, referrers.SchemaVersion)
-	require.Equal(t, imageIndexMediaType, referrers.MediaType)
+	require.Equal(t, v1.MediaTypeImageIndex, referrers.MediaType)
 	require.Len(t, referrers.Manifests, 2)
-	assert.ElementsMatch(t, []string{sbom.digest.String(), signature.digest.String()}, []string{
+	assert.ElementsMatch(t, []digest.Digest{sbom.digest, signature.digest}, []digest.Digest{
 		referrers.Manifests[0].Digest,
 		referrers.Manifests[1].Digest,
 	})
@@ -372,8 +329,8 @@ func TestRegistryReferrersLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "artifactType", filtered.FiltersApplied)
 	require.Len(t, filtered.Manifests, 1)
-	assert.Equal(t, sbom.digest.String(), filtered.Manifests[0].Digest)
-	assert.Equal(t, imageManifestMediaType, filtered.Manifests[0].MediaType)
+	assert.Equal(t, sbom.digest, filtered.Manifests[0].Digest)
+	assert.Equal(t, v1.MediaTypeImageManifest, filtered.Manifests[0].MediaType)
 	assert.Equal(t, int64(len(sbom.manifest)), filtered.Manifests[0].Size)
 	assert.Equal(t, artifactType, filtered.Manifests[0].ArtifactType)
 
@@ -495,18 +452,18 @@ func putImageManifest(
 	layerDigest digest.Digest,
 ) pushedImage {
 	t.Helper()
-	manifestBytes, err := json.Marshal(imageManifest{
-		SchemaVersion: 2,
-		MediaType:     imageManifestMediaType,
-		Config:        descriptor{MediaType: imageConfigMediaType, Digest: configDigest, Size: int64(len(configBytes))},
-		Layers:        []descriptor{{MediaType: imageLayerMediaType, Digest: layerDigest, Size: int64(len(layerBytes))}},
+	manifestBytes, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config:    v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: configDigest, Size: int64(len(configBytes))},
+		Layers:    []v1.Descriptor{{MediaType: v1.MediaTypeImageLayerGzip, Digest: layerDigest, Size: int64(len(layerBytes))}},
 	})
 	require.NoError(t, err)
 	manifestDigest := digest.FromBytes(manifestBytes)
 	if reference == "" {
 		reference = manifestDigest.String()
 	}
-	response, err := h.Registry().PutManifest(t.Context(), repository, reference, manifestBytes, imageManifestMediaType)
+	response, err := h.Registry().PutManifest(t.Context(), repository, reference, manifestBytes, v1.MediaTypeImageManifest)
 	require.NoError(t, err)
 	assert.Equal(t, manifestDigest, response.Digest)
 	return pushedImage{manifest: manifestBytes, digest: manifestDigest, config: configDigest, layer: layerDigest}
@@ -524,29 +481,29 @@ func pushArtifact(
 	t.Helper()
 	blobDigest, err := h.Registry().PushBlob(t.Context(), repository, payload)
 	require.NoError(t, err)
-	manifestBytes, err := json.Marshal(artifactManifest{
-		SchemaVersion: 2,
-		MediaType:     imageManifestMediaType,
-		ArtifactType:  artifactType,
-		Config: descriptor{
-			MediaType: emptyConfigMediaType,
+	manifestBytes, err := json.Marshal(v1.Manifest{
+		Versioned:    specs.Versioned{SchemaVersion: 2},
+		MediaType:    v1.MediaTypeImageManifest,
+		ArtifactType: artifactType,
+		Config: v1.Descriptor{
+			MediaType: v1.MediaTypeEmptyJSON,
 			Digest:    subject.config,
 			Size:      int64(len(configBytes)),
 		},
-		Layers: []descriptor{{
+		Layers: []v1.Descriptor{{
 			MediaType: artifactType,
 			Digest:    blobDigest,
 			Size:      int64(len(payload)),
 		}},
-		Subject: descriptor{
-			MediaType: imageManifestMediaType,
+		Subject: &v1.Descriptor{
+			MediaType: v1.MediaTypeImageManifest,
 			Digest:    subject.digest,
 			Size:      int64(len(subject.manifest)),
 		},
 	})
 	require.NoError(t, err)
 	manifestDigest := digest.FromBytes(manifestBytes)
-	response, err := h.Registry().PutManifest(t.Context(), repository, manifestDigest.String(), manifestBytes, imageManifestMediaType)
+	response, err := h.Registry().PutManifest(t.Context(), repository, manifestDigest.String(), manifestBytes, v1.MediaTypeImageManifest)
 	require.NoError(t, err)
 	assert.Equal(t, subject.digest, response.Subject)
 	assert.Equal(t, manifestDigest, response.Digest)

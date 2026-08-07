@@ -12,7 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/distribution/distribution/v3/manifest/manifestlist"
+	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/opencontainers/go-digest"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const (
@@ -50,21 +53,11 @@ type ManifestPutResponse struct {
 	Subject digest.Digest
 }
 
-// Descriptor is an OCI descriptor returned by the referrers endpoint.
-type Descriptor struct {
-	MediaType    string `json:"mediaType"`
-	Digest       string `json:"digest"`
-	Size         int64  `json:"size"`
-	ArtifactType string `json:"artifactType,omitempty"`
-}
-
-// ReferrersResponse is the subset of an OCI image index needed by the E2E
-// referrers assertion.
+// ReferrersResponse contains the OCI image index and response metadata
+// returned by the referrers endpoint.
 type ReferrersResponse struct {
-	SchemaVersion  int          `json:"schemaVersion"`
-	MediaType      string       `json:"mediaType"`
-	Manifests      []Descriptor `json:"manifests"`
-	FiltersApplied string       `json:"-"`
+	v1.Index
+	FiltersApplied string `json:"-"`
 }
 
 func newRegistryClient(baseURL string, client *http.Client, username, password string) *RegistryClient {
@@ -511,7 +504,7 @@ func sameOrigin(left, right *url.URL) bool {
 	return strings.EqualFold(left.Scheme, right.Scheme) && strings.EqualFold(left.Host, right.Host)
 }
 
-const manifestMediaTypes = "application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json"
+const manifestMediaTypes = v1.MediaTypeImageManifest + ", " + v1.MediaTypeImageIndex + ", " + schema2.MediaTypeManifest + ", " + manifestlist.MediaTypeManifestList
 
 func manifestResponse(resp *http.Response, body []byte) (ManifestResponse, error) {
 	rawDigest := resp.Header.Get("Docker-Content-Digest")
