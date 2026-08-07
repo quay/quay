@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -20,8 +19,6 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/gc"
 	"github.com/quay/quay/internal/mirrorregistry"
-	"github.com/quay/quay/internal/oci"
-	"github.com/quay/quay/internal/oci/storage/local"
 )
 
 const (
@@ -33,13 +30,12 @@ const (
 // Every harness has an isolated database, storage directory, signing key, and
 // listener.
 type Harness struct {
-	server    *httptest.Server
-	app       *mirrorregistry.App
-	client    *http.Client
-	registry  *RegistryClient
-	gcDB      *sql.DB
-	collector gc.Collector
-	state     harnessState
+	server   *httptest.Server
+	app      *mirrorregistry.App
+	client   *http.Client
+	registry *RegistryClient
+	gcDB     *sql.DB
+	state    harnessState
 
 	closeOnce sync.Once
 	closeErr  error
@@ -131,16 +127,14 @@ func start(tb testing.TB, state harnessState) *Harness {
 		tb.Fatalf("compose E2E application: %v", err)
 	}
 	h.app = app
+	if app.GarbageCollector() == nil {
+		tb.Fatal("compose E2E application without garbage collector")
+	}
 
 	h.gcDB, err = dbcore.Setup(tb.Context(), state.dbPath)
 	if err != nil {
-		tb.Fatalf("open E2E database for garbage collection: %v", err)
+		tb.Fatalf("open E2E database for garbage collection fixtures: %v", err)
 	}
-	blobs, err := local.New(state.storagePath)
-	if err != nil {
-		tb.Fatalf("open E2E blob store for garbage collection: %v", err)
-	}
-	h.collector = gc.NewCollector(gc.NewSQLiteStore(h.gcDB), blobs, oci.NewBlobLockSet(), slog.Default())
 
 	server.Config.Handler = app.Handler()
 	server.Start()
@@ -157,10 +151,10 @@ func start(tb testing.TB, state harnessState) *Harness {
 // CollectGarbage runs one synchronous production collector cycle. Tests must
 // not issue registry writes concurrently with this call.
 func (h *Harness) CollectGarbage(ctx context.Context) (gc.Stats, error) {
-	if h == nil || h.collector == nil {
+	if h == nil || h.app == nil || h.app.GarbageCollector() == nil {
 		return gc.Stats{}, fmt.Errorf("collect garbage with uninitialized E2E harness")
 	}
-	return h.collector.Collect(ctx)
+	return h.app.GarbageCollector().Collect(ctx)
 }
 
 // ExpireUploadProtection advances recently-uploaded blob fixture state past
