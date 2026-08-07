@@ -340,8 +340,10 @@ class SparseManifestList(ManifestListInterface):
         """
         digest = None
         for manifest in self._parsed["manifests"]:
-            platform = manifest["platform"]
-            if platform["architecture"] == "amd64" and platform["os"] == "linux":
+            platform = manifest.get("platform")
+            if platform is None:
+                continue
+            if platform.get("architecture") == "amd64" and platform.get("os") == "linux":
                 digest = manifest["digest"]
                 break
         return digest
