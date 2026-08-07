@@ -10,6 +10,7 @@ from data.cache import (
     MemcachedModelCache,
     NoopDataModelCache,
     RedisDataModelCache,
+    cache_key,
 )
 from data.cache.cache_key import CacheKey, for_manifest_referrers
 from data.cache.redis_cache import (
@@ -55,6 +56,25 @@ def test_caching(cache_type):
     # Perform two retrievals, and make sure both return.
     assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
     assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+
+
+@pytest.mark.parametrize(
+    "page_ttl, expected_gen_ttl",
+    [
+        ("120s", "240s"),
+        ("5m", "600s"),
+        ("1h", "7200s"),
+        ("1d", "172800s"),
+    ],
+)
+def test_generation_cache_handles_proper_time_inputs(page_ttl, expected_gen_ttl):
+    """
+    Verifies that gen_ttl cache is properly set for different values of page_ttl.
+    """
+    cache_config = {"active_repo_tags_cache_ttl": page_ttl}
+
+    gen_key = cache_key.for_active_repo_tags_gen("42", cache_config)
+    assert gen_key.expiration == expected_gen_ttl
 
 
 def test_memcache():
