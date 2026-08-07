@@ -73,4 +73,47 @@ describe('OrgMirroringStatus', () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it('disables verify button when isVerifying is true', () => {
+    render(
+      <OrgMirroringStatus
+        config={baseConfig as unknown as OrgMirrorConfig}
+        isVerifying={true}
+        isCancellingSync={false}
+        onCancelSync={vi.fn()}
+        onVerifyConnection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('verify-connection-button')).toBeDisabled();
+  });
+
+  it('disables cancel button when isCancellingSync is true', () => {
+    render(
+      <OrgMirroringStatus
+        config={baseConfig as unknown as OrgMirrorConfig}
+        isVerifying={false}
+        isCancellingSync={true}
+        onCancelSync={vi.fn()}
+        onVerifyConnection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('cancel-sync-button')).toBeDisabled();
+  });
+
+  it('disables cancel button when no repos are syncing', () => {
+    const noSyncConfig = {
+      ...baseConfig,
+      repo_sync_status_counts: {SYNCING: 0, SYNC_NOW: 0, SUCCESS: 5},
+    };
+    render(
+      <OrgMirroringStatus
+        config={noSyncConfig as unknown as OrgMirrorConfig}
+        isVerifying={false}
+        isCancellingSync={false}
+        onCancelSync={vi.fn()}
+        onVerifyConnection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('cancel-sync-button')).toBeDisabled();
+  });
 });
