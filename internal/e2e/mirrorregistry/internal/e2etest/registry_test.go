@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,4 +63,27 @@ func TestTokenIsReusedWithinRepositoryAndScope(t *testing.T) {
 	assert.NotEqual(t, pullToken, pushToken)
 
 	assert.Equal(t, int32(3), tokenRequests.Load())
+}
+
+func TestGetBlobRejectsDigestMismatch(t *testing.T) {
+	const repository = "admin/repo"
+	expected := digest.FromString("expected content")
+	body := []byte("unexpected content")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/auth":
+			_, _ = fmt.Fprint(w, `{"token":"token"}`)
+		case "/v2/" + repository + "/blobs/" + expected.String():
+			_, _ = w.Write(body)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client := newRegistryClient(server.URL, server.Client(), "test-user", "password")
+	got, err := client.GetBlob(t.Context(), repository, expected)
+
+	assert.Nil(t, got)
+	assert.EqualError(t, err, fmt.Sprintf("blob response digest %q, want %q", digest.FromBytes(body), expected))
 }
