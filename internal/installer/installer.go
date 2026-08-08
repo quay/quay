@@ -620,6 +620,7 @@ func (inst *Installer) dumpContainerLogs(ctx context.Context) {
 	slog.Info("dumping container logs for diagnostics")
 	_ = inst.runner.Run(ctx, "podman", "logs", quadletServiceName)
 	_ = inst.runner.Run(ctx, "systemctl", "status", quadletServiceName)
+	_ = inst.runner.Run(ctx, "journalctl", "--no-pager", "-n", "100", "CONTAINER_NAME="+quadletServiceName)
 }
 
 // ValidateSSLFlags checks that -ssl-cert and -ssl-key are either both provided
