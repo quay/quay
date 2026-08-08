@@ -28,6 +28,27 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient;
 }
 
+function TestWrapper({
+  children,
+  queryClient: providedQueryClient,
+}: {
+  children: React.ReactNode;
+  queryClient?: QueryClient;
+}): React.ReactElement {
+  const [queryClient] = React.useState(
+    () => providedQueryClient ?? createTestQueryClient(),
+  );
+  return (
+    <RecoilRoot>
+      <UIProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </UIProvider>
+    </RecoilRoot>
+  );
+}
+
 function customRender(
   ui: ReactElement,
   options: CustomRenderOptions = {},
@@ -39,15 +60,7 @@ function customRender(
   }: {
     children: React.ReactNode;
   }): React.ReactElement {
-    return (
-      <RecoilRoot>
-        <UIProvider>
-          <QueryClientProvider client={queryClient}>
-            {children}
-          </QueryClientProvider>
-        </UIProvider>
-      </RecoilRoot>
-    );
+    return <TestWrapper queryClient={queryClient}>{children}</TestWrapper>;
   }
 
   return {
@@ -57,6 +70,6 @@ function customRender(
 }
 
 export {customRender as render};
-export {createTestQueryClient};
+export {createTestQueryClient, TestWrapper};
 export {screen, within, waitFor} from '@testing-library/react';
 export {default as userEvent} from '@testing-library/user-event';
