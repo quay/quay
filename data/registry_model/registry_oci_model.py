@@ -289,14 +289,15 @@ class OCIModel(RegistryDataInterface):
                 repository_ref, manifest, artifact_type
             ):
                 referrer_dict = referrer.asdict()
-                referrer_dict["internal_manifest_bytes"] = referrer_dict[
-                    "internal_manifest_bytes"
-                ].as_unicode()
+                if referrer_dict["internal_manifest_bytes"] is not None:
+                    referrer_dict["internal_manifest_bytes"] = referrer_dict[
+                        "internal_manifest_bytes"
+                    ].as_unicode()
                 referrer_dict["inputs"]["repository"] = referrer_dict["inputs"][
                     "repository"
                 ].asdict()
                 referrer_dict["inputs"]["legacy_id_handler"] = None
-                referrer_dict["inputs"]["legacy_image_handler"] = None
+                referrer_dict["inputs"]["legacy_image_row"] = None
                 cacheable_referrers.append(referrer_dict)
             return cacheable_referrers
 
@@ -309,9 +310,10 @@ class OCIModel(RegistryDataInterface):
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
             for referrer_dict in result:
-                referrer_dict["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
-                    referrer_dict["internal_manifest_bytes"]
-                )
+                if referrer_dict.get("internal_manifest_bytes") is not None:
+                    referrer_dict["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
+                        referrer_dict["internal_manifest_bytes"]
+                    )
             return [Manifest.from_dict(referrer_dict) for referrer_dict in result]
         except FromDictionaryException:
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)

@@ -1633,3 +1633,69 @@ def test_referrers_cache_artifact_type_isolation(initialized_db, registry_model)
         test_cache, repository_ref, created_a
     )
     assert len(unfiltered_again) == 1
+
+
+def test_referrers_cache_serialization_roundtrip(initialized_db, registry_model):
+    """
+    Verify that referrer Manifest objects survive the cache serialization
+    roundtrip: internal_manifest_bytes must be restored as a Bytes instance
+    so that get_parsed_manifest() works on cached results.
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+    builder_a = _create_oci_manifest_with_blobs("devtable", "simple")
+    manifest_a = builder_a.build()
+
+    created_a, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_a, "roundtrip-subject", storage, raise_on_error=True
+    )
+    assert created_a is not None
+
+    builder_b = _create_oci_manifest_with_blobs(
+        "devtable",
+        "simple",
+        config_content=json.dumps(
+            {
+                "config": {"kind": "roundtrip-ref"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        ),
+    )
+    builder_b.set_subject(
+        manifest_a.digest,
+        len(manifest_a.bytes.as_encoded_str()),
+        manifest_a.media_type,
+    )
+    manifest_b = builder_b.build()
+
+    registry_model.create_manifest_with_temp_tag(
+        repository_ref, manifest_b, 300, storage, model_cache=test_cache
+    )
+
+    referrers = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(referrers) == 1
+
+    cached = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(cached) == 1
+
+    for orig, from_cache in zip(
+        sorted(referrers, key=lambda m: m.digest),
+        sorted(cached, key=lambda m: m.digest),
+        strict=True,
+    ):
+        assert from_cache.digest == orig.digest
+        assert from_cache.media_type == orig.media_type
+        assert from_cache._db_id == orig._db_id
+
+        assert from_cache.internal_manifest_bytes is not None
+        assert isinstance(from_cache.internal_manifest_bytes, Bytes)
+        assert from_cache.internal_manifest_bytes.as_encoded_str() == (
+            orig.internal_manifest_bytes.as_encoded_str()
+        )
+        assert from_cache.get_parsed_manifest() is not None
