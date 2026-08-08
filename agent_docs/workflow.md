@@ -79,7 +79,7 @@ Where `<type>` matches the PR type: `fix`, `feat`, `test`, `refactor`, `docs`, `
 
 ## Bot Ecosystem
 
-Four bots interact with PRs. Understanding their roles helps respond correctly.
+Five bots interact with PRs. Understanding their roles helps respond correctly.
 
 | Bot | Role | Common Actions |
 |-----|------|----------------|
@@ -87,6 +87,50 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | **coderabbitai[bot]** | AI code review | Runs 7 pre-merge checks with `chill` profile. Flags are generally valid — fix or reply with rationale |
 | **codecov[bot]** | Coverage reporting | Reports coverage diffs. Project baseline ~72% |
 | **github-actions[bot]** | CI results | Playwright reports, Surge preview links |
+| **fullsend-ai[bot]** | AI code review (on-demand) | Invoke via `/fs-review` on security-sensitive PRs |
+
+### Fullsend Agent Pipeline
+
+The fullsend agent pipeline provides AI-assisted triage, implementation, and review
+for GitHub issues and pull requests. On `quay/quay`, **auto-review is currently
+disabled** — the review agent does not run automatically on PR events. This opt-out
+is temporary while per-repo configuration matures (tracked in
+[fullsend#3422](https://github.com/fullsend-ai/fullsend/issues/3422)). The on-demand
+`/fs-review` command is the only way to trigger fullsend review coverage.
+
+#### Available Agents
+
+| Agent | Trigger | What It Does |
+|-------|---------|--------------|
+| **Triage** | Issue labeled `ready-for-triage` | Analyzes the issue, identifies root cause, recommends fix approach, adds `ready-to-code` label |
+| **Code** | Issue labeled `ready-to-code` | Implements the fix on a feature branch following repo conventions, runs tests |
+| **Review** | On-demand via `/fs-review` | Independent code review focused on correctness, security, and style |
+| **Fix** | Review agent requests changes | Applies review feedback and updates the PR |
+| **Retro** | PR merged | Generates retrospective issues for process improvements |
+
+#### On-demand Review with `/fs-review`
+
+Post `/fs-review` as a comment on any PR to manually trigger the fullsend review
+agent. This is recommended for:
+
+- **Security-sensitive changes** — authentication, credential handling, password
+  redaction, input validation
+- **Complex regex or parsing logic** — where edge cases are easy to miss
+- **Storage backend changes** — S3, Azure, Swift, or local storage modifications
+- **Registry protocol handlers** — OCI/Docker v2 protocol changes in `endpoints/v2/`
+
+The review agent provides an independent perspective that complements CodeRabbit's
+rule-based checks.
+
+#### Other Slash Commands
+
+| Command | Effect |
+|---------|--------|
+| `/fs-triage` | Manually trigger triage on an issue |
+| `/fs-code` | Manually trigger the code agent on a triaged issue |
+| `/fs-review` | Trigger an independent code review on a PR |
+| `/fs-fix` | Trigger the fix agent to apply review feedback |
+| `/fs-retro` | Trigger a retrospective analysis on a merged PR |
 
 ### CodeRabbit Pre-merge Checks
 
