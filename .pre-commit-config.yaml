@@ -48,13 +48,13 @@ repos:
         stages: [pre-commit]
     -   id: eslint
         name: ESLint
-        entry: web/node_modules/.bin/eslint --fix
+        entry: bash -c 'if [ ! -x web/node_modules/.bin/eslint ]; then echo "ESLint not available (node_modules not installed), skipping"; exit 0; fi; web/node_modules/.bin/eslint --fix "$@"' --
         language: system
         files: ^web/.*\.(js|jsx|ts|tsx)$
         exclude: ^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml|^web/package-lock\.json
     -   id: check-playwright-tags
         name: Check Playwright required usage tags
-        entry: bash -c 'cd web && node playwright/ensure-required-tags.cjs'
+        entry: bash -c 'cd web && node -e "require.resolve(\"typescript\")" 2>/dev/null || { echo "typescript not available (node_modules not installed), skipping"; exit 0; } && node playwright/ensure-required-tags.cjs'
         language: system
         files: ^web/playwright/.*\.spec\.ts$
         pass_filenames: false
