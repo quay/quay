@@ -1,7 +1,8 @@
-import {test, expect} from '../../fixtures';
+import path from 'path';
+import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
-import {pushImage} from '../../utils/container';
+import {pushImage, orasAttach, isOrasAvailable} from '../../utils/container';
 
 test.describe(
   'Tags - Show/Hide Signatures',
@@ -148,6 +149,136 @@ test.describe(
       await settingsToggle.click();
       await expect(sigMenuItem.getByRole('checkbox')).not.toBeChecked();
       await settingsToggle.click();
+    });
+
+    test(
+      'shows cosign shield for classic .sig signature tag',
+      {tag: '@PROJQUAY-12113'},
+      async ({authenticatedPage}) => {
+        await authenticatedPage.goto(
+          `/repository/${testRepo.fullName}?tab=tags`,
+        );
+
+        await expect(
+          authenticatedPage.getByRole('link', {name: 'latest'}),
+        ).toBeVisible();
+
+        await expect(
+          authenticatedPage.getByLabel('Cosign signed'),
+        ).toBeVisible();
+      },
+    );
+  },
+);
+
+test.describe(
+  'Tags - Cosign referrer shield',
+  {tag: ['@tags', '@container', '@PROJQUAY-12113']},
+  () => {
+    let testRepo: {namespace: string; name: string; fullName: string};
+
+    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      if (!cachedContainerAvailable) return;
+
+      const orasAvailable = await isOrasAvailable();
+      if (!orasAvailable) return;
+
+      const api = new ApiClient(userContext.request);
+      const repoName = uniqueName('cosign-referrer');
+      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+
+      testRepo = {
+        namespace: TEST_USERS.user.username,
+        name: repoName,
+        fullName: `${TEST_USERS.user.username}/${repoName}`,
+      };
+
+      await pushImage(
+        testRepo.namespace,
+        testRepo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      let digest: string | undefined;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const tags = await api.getTags(testRepo.namespace, testRepo.name, {
+          specificTag: 'latest',
+        });
+        if (tags.tags.length > 0) {
+          digest = tags.tags[0].manifest_digest;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!digest) {
+        throw new Error('Pushed tag was not indexed after 10 attempts');
+      }
+
+      // Cosign v3-style referrer: sigstore artifact type, no visible .sig tag
+      const fixturesDir = path.resolve(__dirname, '../../fixtures/oras');
+      orasAttach(
+        testRepo.namespace,
+        testRepo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+        'application/vnd.dev.sigstore.bundle.v0.3+json',
+        'test=cosign-referrer',
+        path.join(fixturesDir, 'referrer.cyclonedx.json'),
+      );
+
+      // Wait for tags API enrichment to surface the referrer signature
+      await expect
+        .poll(
+          async () => {
+            const tags = await api.getTags(testRepo.namespace, testRepo.name, {
+              specificTag: 'latest',
+            });
+            const latest = tags.tags[0] as {
+              cosign_signature_manifest_digest?: string;
+            };
+            return latest?.cosign_signature_manifest_digest ?? null;
+          },
+          {
+            message:
+              'Waiting for cosign_signature_manifest_digest on latest tag',
+            timeout: 15_000,
+            intervals: [500, 1_000, 2_000],
+          },
+        )
+        .not.toBeNull();
+    });
+
+    test.afterAll(async ({userContext}) => {
+      if (!testRepo) return;
+      const api = new ApiClient(userContext.request);
+      try {
+        await api.deleteRepository(testRepo.namespace, testRepo.name);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    test('shows cosign shield for OCI referrer signature without .sig tag', async ({
+      authenticatedPage,
+    }) => {
+      const orasAvailable = await isOrasAvailable();
+      test.skip(!orasAvailable, 'oras CLI required for referrer tests');
+
+      await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'latest'}),
+      ).toBeVisible();
+
+      // No classic .sig tag should be present
+      await expect(
+        authenticatedPage.getByRole('link', {name: /\.sig$/}),
+      ).not.toBeAttached();
+
+      await expect(authenticatedPage.getByLabel('Cosign signed')).toBeVisible();
     });
   },
 );
