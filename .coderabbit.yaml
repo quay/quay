@@ -86,6 +86,31 @@ reviews:
         - Large blob operations that buffer into memory instead of streaming
         - Missing connection pooling or timeout configuration
 
+    - path: "web/src/**/*.test.{ts,tsx}"
+      instructions: |
+        Vitest unit tests are only appropriate for pure unit logic (data
+        transformers, utility functions) with no UI interaction or component
+        rendering. When reviewing changes to web/src/ component files, suggest
+        Playwright e2e tests in web/playwright/e2e/ rather than vitest unit
+        tests, unless the change is purely to utility/data logic.
+
+    - path: "web/playwright/**/*.spec.ts"
+      instructions: |
+        Review Playwright e2e tests against the conventions in
+        web/playwright/AGENTS.md:
+
+        - Prefer getByRole() > getByTestId() > getByText() over CSS selectors
+        - Every test must include Playwright tags for categorization
+          (e.g., @critical, @PROJQUAY-1234, @feature:FLAG_NAME)
+        - Use uniqueName() for resources created via raw API calls; never
+          hard-code entity names. However, TestApi fixture methods
+          (api.organization(), api.repository(), api.team(), api.robot(),
+          api.user(), api.oauthApplication()) already call uniqueName()
+          internally — callers should pass a short descriptive prefix string,
+          not a uniqueName() call
+        - Use the api fixture for test data creation with automatic cleanup;
+          avoid manual beforeEach/afterEach cleanup patterns
+
   pre_merge_checks:
     title:
       mode: "warning"
