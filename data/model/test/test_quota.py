@@ -14,9 +14,10 @@ from data.model.oci.manifest import get_or_create_manifest
 from data.model.organization import create_organization
 from data.model.quota import QuotaOperation, calculate_registry_size
 from data.model.quota import get_namespace_size as get_namespace_size_row
-from data.model.quota import get_registry_size
+from data.model.quota import get_namespace_total, get_registry_size
 from data.model.quota import get_repository_size as get_repository_size_row
 from data.model.quota import (
+    get_repository_total,
     queue_registry_size_calculation,
     run_backfill,
     sum_registry_size,
@@ -453,3 +454,49 @@ def _delete_tag_for_manifest(manifest_id):
         return True
     except Tag.DoesNotExist:
         return False
+
+
+class TestQuotaFnSumIntCasting:
+    """Verify that all fn.Sum() aggregate functions in the quota subsystem
+    return int (not Decimal), so downstream JSON serialization never fails."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, initialized_db):
+        with patch("data.model.quota.features", MagicMock()) as mock_features:
+            mock_features.QUOTA_MANAGEMENT = False
+            user = get_user("devtable")
+            self.org = create_organization(ORG_NAME, f"{ORG_NAME}@devtable.com", user)
+            self.repo1 = create_repository(ORG_NAME, REPO1_NAME, user)
+            self.repo1manifest1 = create_manifest_for_testing(self.repo1, [BLOB1, BLOB2])
+
+    def test_get_namespace_total_returns_int(self, initialized_db):
+        result = get_namespace_total(self.org.id)
+        assert isinstance(result, int)
+        # Must be JSON-serializable without TypeError
+        json.dumps({"size": result})
+
+    def test_get_repository_total_returns_int(self, initialized_db):
+        result = get_repository_total(self.repo1.id)
+        assert isinstance(result, int)
+        # Must be JSON-serializable without TypeError
+        json.dumps({"size": result})
+
+    def test_sum_registry_size_returns_int(self, initialized_db):
+        result = sum_registry_size()
+        assert isinstance(result, int)
+        # Must be JSON-serializable without TypeError
+        json.dumps({"size": result})
+
+    def test_get_namespace_total_empty_returns_zero(self, initialized_db):
+        """An empty namespace should return 0 (int), not None."""
+        user = get_user("devtable")
+        empty_org = create_organization("emptyorg", "emptyorg@devtable.com", user)
+        result = get_namespace_total(empty_org.id)
+        assert result == 0
+        assert isinstance(result, int)
+
+    def test_get_repository_total_empty_returns_zero(self, initialized_db):
+        """A repository with no blobs should return 0 (int), not None."""
+        result = get_repository_total(999999)
+        assert result == 0
+        assert isinstance(result, int)
