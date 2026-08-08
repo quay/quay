@@ -55,6 +55,19 @@ describe('AuthResource', () => {
       expect(GlobalAuthState.isLoggedIn).toBe(true);
     });
 
+    it('includes invite_code when provided', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(
+        mockResponse({success: true}),
+      );
+
+      await loginUser('alice', 'password', 'invite123');
+      expect(axios.post).toHaveBeenCalledWith('/api/v1/signin', {
+        username: 'alice',
+        password: 'password',
+        invite_code: 'invite123',
+      });
+    });
+
     it('does not set isLoggedIn on failed login', async () => {
       vi.mocked(axios.post).mockResolvedValueOnce(
         mockResponse({success: false}),

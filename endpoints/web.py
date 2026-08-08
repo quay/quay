@@ -240,7 +240,7 @@ def updateuser():
 @web.route("/confirminvite")
 @no_cache
 def confirm_invite():
-    code = request.values["code"]
+    code = request.values.get("code", "")
     return index("", code=code)
 
 

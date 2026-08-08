@@ -75,6 +75,10 @@ export function Signin() {
     if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
       const singleProvider = externalLogins[0];
       const redirectUrl = searchParams.get('redirect_url') || undefined;
+      const code = searchParams.get('code');
+      if (code) {
+        sessionStorage.setItem('pendingInviteCode', code);
+      }
       startExternalLogin(singleProvider, redirectUrl);
     }
   }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin, searchParams]);
@@ -131,14 +135,17 @@ export function Signin() {
     );
   };
 
+  const inviteCode = searchParams.get('code') || undefined;
+
   const showCreateAccount = () => {
     if (!quayConfig) return false;
+    const hasInvite = Boolean(inviteCode);
     return (
       !inReadOnlyMode &&
       quayConfig.features?.USER_CREATION === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
       shouldShowDirectLogin() &&
-      !quayConfig.features?.INVITE_ONLY_USER_CREATION &&
+      (!quayConfig.features?.INVITE_ONLY_USER_CREATION || hasInvite) &&
       !inAccountRecoveryMode
     );
   };
@@ -146,6 +153,7 @@ export function Signin() {
   const showInvitationMessage = () => {
     if (!quayConfig) return false;
     return (
+      !inviteCode &&
       quayConfig.features?.USER_CREATION === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
       quayConfig.features?.DIRECT_LOGIN === true &&
@@ -178,7 +186,7 @@ export function Signin() {
   ) => {
     e.preventDefault();
     try {
-      const response = await loginUser(username, password);
+      const response = await loginUser(username, password, inviteCode);
       if (response.success === true) {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
@@ -201,7 +209,16 @@ export function Signin() {
 
         // If user has prompts (e.g., confirm_username), redirect to updateuser
         if (user.prompts && user.prompts.length > 0) {
-          navigate('/updateuser');
+          const updateUrl = inviteCode
+            ? `/updateuser?code=${encodeURIComponent(inviteCode)}`
+            : '/updateuser';
+          navigate(updateUrl);
+          return;
+        }
+
+        // If there's an invite code, redirect to confirminvite to accept it
+        if (inviteCode) {
+          navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
           return;
         }
 
@@ -389,6 +406,11 @@ export function Signin() {
               redirectUrl={searchParams.get('redirect_url') || undefined}
               disabled={isExternalAuth}
               onClearErrors={() => setExternalLoginError(null)}
+              onSignInStarted={() => {
+                if (inviteCode) {
+                  sessionStorage.setItem('pendingInviteCode', inviteCode);
+                }
+              }}
             />
           ))}
 
@@ -424,7 +446,11 @@ export function Signin() {
               <>
                 Don&apos;t have an account?{' '}
                 <Link
-                  to="/createaccount"
+                  to={
+                    inviteCode
+                      ? `/createaccount?code=${encodeURIComponent(inviteCode)}`
+                      : '/createaccount'
+                  }
                   data-testid="signin-create-account-link"
                   style={{
                     color: 'var(--pf-t--global--text--color--link--default)',
