@@ -39,7 +39,7 @@ import {
   ServiceKey,
   TeamRole,
 } from './utils/api';
-import {isContainerRuntimeAvailable} from './utils/container';
+import {isContainerRuntimeAvailable, isHelmAvailable} from './utils/container';
 import {WebhookReceiver} from './utils/webhook';
 
 // ============================================================================
@@ -1118,6 +1118,12 @@ type TestFixtures = {
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
 
+  // Helm CLI availability (cached per worker)
+  helmAvailable: boolean;
+
+  // Auto-fixture: skips tests based on @helm tag (runs automatically)
+  _autoSkipByHelm: void;
+
   // WebhookReceiver that auto-starts and auto-stops per test
   webhook: WebhookReceiver;
 };
@@ -1140,6 +1146,9 @@ type WorkerFixtures = {
 
   // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
+
+  // Cached Helm CLI availability (checked once per worker)
+  cachedHelmAvailable: boolean;
 };
 
 /**
@@ -1219,6 +1228,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // eslint-disable-next-line no-empty-pattern
     async ({}, use) => {
       const available = await isContainerRuntimeAvailable();
+      await use(available);
+    },
+    {scope: 'worker'},
+  ],
+
+  cachedHelmAvailable: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const available = await isHelmAvailable();
       await use(available);
     },
     {scope: 'worker'},
@@ -1440,6 +1458,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   // =========================================================================
+  // Helm CLI availability
+  // =========================================================================
+
+  helmAvailable: async ({cachedHelmAvailable}, use) => {
+    await use(cachedHelmAvailable);
+  },
+
+  // =========================================================================
   // Auto-fixture: Skip tests based on @container tag
   // =========================================================================
 
@@ -1461,6 +1487,34 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
         testInfo.skip(true, 'Registry image tooling (skopeo) required');
+      }
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @helm tag
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @helm tag when the
+   * Helm CLI is not available.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Helm Chart Tests', {tag: ['@helm']}, () => {
+   *   test('pushes chart', async ({authenticatedPage}) => {
+   *     // Auto-skipped if Helm CLI not available!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByHelm: [
+    async ({helmAvailable}, use, testInfo) => {
+      const hasHelmTag = testInfo.tags.includes('@helm');
+      if (hasHelmTag && !helmAvailable) {
+        testInfo.skip(true, 'Helm CLI required');
       }
       await use();
     },
