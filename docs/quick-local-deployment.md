@@ -73,7 +73,7 @@ We run the Quay image with runtime flags set to launch ConfigTool accepting the 
 $ sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay config secret
 ```
 
-1. Open https://localhost:8080 in browser
+1. Open http://localhost:8080 in browser
 1. Log in with quayconfig/secret
 1. Start New Registry Setup
 
