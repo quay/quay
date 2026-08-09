@@ -454,6 +454,70 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
 
 
 @pytest.mark.parametrize(
+    "repo_namespace, repo_name",
+    [
+        ("devtable", "simple"),
+        ("devtable", "complex"),
+        ("devtable", "history"),
+        ("buynlarge", "orgrepo"),
+    ],
+)
+@pytest.mark.parametrize(
+    "via_manifest",
+    [
+        False,
+        True,
+    ],
+)
+def test_deleting_tags_properly_invalidates_cache(
+    repo_namespace, repo_name, via_manifest, registry_model
+):
+    """
+    Ensures that after tag deletion we rebuild cache for a specific repository instead of
+    returning stale results from cache back.
+    """
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    tags = []
+
+    repository_ref = registry_model.lookup_repository(repo_namespace, repo_name)
+
+    # read all tags and populate cache
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
+    assert len(tags)
+
+    # Save history before the deletions.
+    previous_history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(previous_history) >= len(tags)
+
+    # Delete every tag in the repository.
+    for tag in tags:
+        if via_manifest:
+            assert registry_model.delete_tag(model_cache, repository_ref, tag.name)
+        else:
+            full_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            manifest = registry_model.get_manifest_for_tag(full_tag)
+            if manifest is not None:
+                registry_model.delete_tags_for_manifest(model_cache, manifest)
+
+        # Make sure the tag is no longer found.
+        with assert_query_count(1):
+            found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            assert found_tag is None
+
+    # Ensure all tags have been deleted and we don't return any stale results
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
+    assert not len(tags)
+
+    # Ensure that the tags all live in history.
+    history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(history) == len(previous_history)
+
+
+@pytest.mark.parametrize(
     "use_manifest",
     [
         True,
