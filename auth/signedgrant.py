@@ -36,12 +36,12 @@ def validate_signed_grant(auth_header):
     # Try to parse the token from the header.
     normalized = [part.strip() for part in auth_header.split(" ") if part]
     if normalized[0].lower() != "token" or len(normalized) != 2:
-        logger.debug("Not a token: %s", auth_header)
+        logger.debug("Not a token")
         return ValidateResult(AuthKind.signed_grant, missing=True)
 
     # Check that it starts with the expected prefix.
     if not normalized[1].startswith(SIGNATURE_PREFIX):
-        logger.debug("Not a signed grant token: %s", auth_header)
+        logger.debug("Not a signed grant token")
         return ValidateResult(AuthKind.signed_grant, missing=True)
 
     # Decrypt the grant.
@@ -51,10 +51,10 @@ def validate_signed_grant(auth_header):
     try:
         token_data = ser.loads(encrypted, max_age=app.config["SIGNED_GRANT_EXPIRATION_SEC"])
     except BadSignature:
-        logger.warning("Signed grant could not be validated: %s", encrypted)
+        logger.warning("Signed grant could not be validated")
         return ValidateResult(
             AuthKind.signed_grant, error_message="Signed grant could not be validated"
         )
 
-    logger.debug("Successfully validated signed grant with data: %s", token_data)
+    logger.debug("Successfully validated signed grant")
     return ValidateResult(AuthKind.signed_grant, signed_data=token_data)
