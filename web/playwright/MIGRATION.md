@@ -30,7 +30,7 @@ web/playwright/
 │   │   ├── repository.ts         # createRepository, deleteRepository
 │   │   └── team.ts               # createTeam, deleteTeam
 │   ├── config.ts                 # API_URL, BASE_URL
-│   └── container.ts              # pushImage, isContainerRuntimeAvailable (multi-runtime: podman/docker)
+│   └── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
 ├── global-setup.ts               # Creates admin, testuser, readonly users
 └── MIGRATION.md                  # This guide
@@ -61,7 +61,7 @@ test.describe('Feature Name', { tag: ['@critical', '@repository'] }, () => {
 | Feature | `@repository` | `@repository` | Feature area |
 | Config | `@config:BILLING` | `@config:OIDC` | Required config |
 | Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature |
-| Container | `@container` | `@container` | Requires container runtime (auto-skip) |
+| Container | `@container` | `@container` | Requires registry image tooling (auto-skip) |
 
 ### Running Tagged Tests
 
@@ -565,7 +565,7 @@ When a feature is disabled, the test output shows:
 
 ## Container-Dependent Tests
 
-For tests that require a container runtime (podman or docker), use the `@container` tag. Tests are automatically skipped when no container runtime is available.
+For tests that require registry image tooling (skopeo, crane, oras, or regctl), use the `@container` tag. Tests are automatically skipped when skopeo is unavailable.
 
 ### Using @container Tag
 
@@ -573,10 +573,10 @@ For tests that require a container runtime (podman or docker), use the `@contain
 import { test, expect } from '../../fixtures';
 import { pushImage } from '../../utils/container';
 
-// Tag on describe block - all tests auto-skip if no container runtime
+// Tag on describe block - all tests auto-skip if registry image tooling is unavailable
 test.describe('Image Push Tests', { tag: ['@container'] }, () => {
   test('pushes image to registry', async ({ authenticatedPage, api }) => {
-    // Auto-skipped if podman/docker not available
+    // Auto-skipped if skopeo is not available
     const repo = await api.repository();
     await pushImage(repo.namespace, repo.name, 'latest', username, password);
     // ... test assertions
@@ -593,23 +593,23 @@ test.describe('Multi-Arch Tests', { tag: ['@container'] }, () => {
   let testRepo: { namespace: string; name: string };
 
   test.beforeAll(async ({ userContext, cachedContainerAvailable }) => {
-    // Skip setup if no container runtime (tests auto-skip via @container tag)
+    // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
     if (!cachedContainerAvailable) return;
 
     // Push images for tests...
   });
 
   test('verifies multi-arch manifest', async ({ authenticatedPage }) => {
-    // Auto-skipped if no container runtime
+    // Auto-skipped if registry image tooling is unavailable
   });
 });
 ```
 
 ### Test Output
 
-When no container runtime is available:
+When registry image tooling is unavailable:
 ```text
-- pushes image to registry (skipped: Container runtime (podman/docker) required)
+- pushes image to registry (skipped: Registry image tooling (skopeo) required)
 ```
 
 ## Common Gotchas
@@ -704,7 +704,7 @@ test.describe('Repository Delete', {tag: ['@critical', '@repository']}, () => {
 | `playwright/utils/api/repository.ts` | Repository utilities: `createRepository`, `deleteRepository` |
 | `playwright/utils/api/team.ts` | Team utilities: `createTeam`, `deleteTeam` |
 | `playwright/utils/config.ts` | Global config: `API_URL`, `BASE_URL` |
-| `playwright/utils/container.ts` | Container utilities (multi-runtime: podman/docker): `pushImage`, `isContainerRuntimeAvailable` |
+| `playwright/utils/container.ts` | Registry image utilities (`skopeo`, `crane`, `oras`, `regctl`): `pushImage`, `isContainerRuntimeAvailable` |
 | `playwright/MIGRATION.md` | This guide |
 
 ## Migration Checklist

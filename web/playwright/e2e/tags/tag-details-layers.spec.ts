@@ -11,7 +11,7 @@ test.describe(
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      // Skip setup if no container runtime (tests auto-skip via @container tag)
+      // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
       if (!cachedContainerAvailable) return;
 
       // Use the pre-authenticated userContext (already logged in as test user)

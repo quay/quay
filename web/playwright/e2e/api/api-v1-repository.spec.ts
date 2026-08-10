@@ -5,7 +5,7 @@
  * labels, starred repos, search, and vulnerability scanning.
  *
  * Tests that require pushed images are tagged with @container so they
- * auto-skip when no container runtime is available.
+ * auto-skip when registry image tooling is unavailable.
  */
 
 import {test, expect, uniqueName} from '../../fixtures';

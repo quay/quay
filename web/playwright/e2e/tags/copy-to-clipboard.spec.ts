@@ -10,7 +10,7 @@ test.describe(
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      // Skip setup if no container runtime
+      // Skip setup if registry image tooling is unavailable
       if (!cachedContainerAvailable) return;
 
       const api = new ApiClient(userContext.request);
