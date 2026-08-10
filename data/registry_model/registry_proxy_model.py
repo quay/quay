@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import threading
 from typing import Callable
 
+import bitmath
 from peewee import Select, fn
 
 import features
@@ -82,8 +84,6 @@ ACCEPTED_MEDIA_TYPES = [
     DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
 ]
-
-import queue
 
 
 class QueueReader:
@@ -782,9 +782,10 @@ class ProxyModel(OCIModel):
 
         return False
 
-    def _queue_blob_for_download(self, repo_ref, blob_digest):
+    def _queue_blob_for_download(self, repo_ref, blob_digest, available_after=5):
         """
-        Enqueues the current blob for later download if streaming of blob fails.
+        Enqueues the current blob for later download based on the available_after parameter
+        if streaming of blob fails.
         """
         username = self._user.username if self._user else None
         try:
@@ -798,7 +799,7 @@ class ProxyModel(OCIModel):
                         "namespace": self._namespace_name,
                     }
                 ),
-                available_after=5,
+                available_after=available_after,
             )
         except Exception as e:
             logger.error("Could not enqueue blob for download: %s", e)
@@ -807,7 +808,6 @@ class ProxyModel(OCIModel):
         """
         Returns a (generator, content_length) tuple for tee-streaming, or None.
         """
-        import bitmath
 
         repo_ref = self.lookup_repository(namespace_name, repo_name)
         if repo_ref is None:
@@ -866,8 +866,11 @@ class ProxyModel(OCIModel):
             try:
                 q.put(None, timeout=2)
             except queue.Full:
+                logger.warning(
+                    "Storage queue full for upload thread %s, continuing...", upload_thread.name
+                )
                 pass
-            upload_thread.join(timeout=10)
+            upload_thread.join(timeout=5)
 
         def generate():
             """
@@ -919,40 +922,49 @@ class ProxyModel(OCIModel):
 
             upload_thread = threading.Thread(target=do_upload)
             upload_thread.start()
+            logger.debug(
+                "Started upload thread %s for blob upload %s", upload_thread.name, blob_digest
+            )
 
             try:
                 for chunk in resp.iter_content(chunk_size=chunk_size):
                     try:
                         q.put(chunk, timeout=2.0)
                     except queue.Full:
-
                         stream_outcome = "queue_full"
-                        break
 
                     # always yield the chunk
                     yield chunk
                 else:
-                    stream_outcome = "complete"
-                    upstream_complete.set()
+                    if stream_outcome != "queue_full":
+                        stream_outcome = "complete"
+                        upstream_complete.set()
             except Exception:
                 stream_outcome = "upstream_error"
             finally:
                 _stop_upload_thread(q, upload_thread)
                 resp.close()
 
-                if upload_exception:
+                if upload_thread.is_alive():
+                    logger.warning(
+                        "Upload thread did not finish in time for blob %s, queueing for re-download",
+                        blob_digest,
+                    )
+                    self._queue_blob_for_download(repo_ref, blob_digest, available_after=30)
+
+                elif stream_outcome == "queue_full":
+                    logger.warning(
+                        "Backend storage too slow, aborting tee-stream upload for %s",
+                        blob_digest,
+                    )
+                    self._queue_blob_for_download(repo_ref, blob_digest)
+                elif upload_exception:
                     if stream_outcome == "complete":
                         self._queue_blob_for_download(repo_ref, blob_digest)
                         logger.warning(
                             "Tee-stream failed for blob %s, queueing for later download",
                             blob_digest,
                         )
-                    elif stream_outcome == "queue_full":
-                        logger.warning(
-                            "Backend stage too slow, aborting tee-stream upload for %s",
-                            blob_digest,
-                        )
-                        self._queue_blob_for_download(repo_ref, blob_digest)
                     else:
                         logger.warning(
                             "Connection error raised during blob download, aborting tee stream upload for blob %s",
