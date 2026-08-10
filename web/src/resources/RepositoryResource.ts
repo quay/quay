@@ -150,13 +150,22 @@ export async function fetchRepositories() {
   return response.data?.repositories as IRepository[];
 }
 
+/**
+ * Result from fetching all superuser repos, including whether results were truncated.
+ */
 export interface SuperUserReposResult {
   repos: IRepository[];
   truncated: boolean;
 }
 
-const MAX_SUPERUSER_REPO_PAGES = 100;
+const MAX_SUPERUSER_REPO_PAGES = 100; // 10,000 repos at 100/page
 
+/**
+ * Fetch all repositories across the registry as a superuser.
+ * Uses a single paginated API call with public=true (no namespace filter).
+ * The backend returns all repos (public + private) when the caller is a superuser.
+ * Stops after MAX_SUPERUSER_REPO_PAGES to prevent unbounded memory growth.
+ */
 export async function fetchAllReposAsSuperUser(
   options: FetchRepositoriesOptions = {},
   _pageCount = 0,
