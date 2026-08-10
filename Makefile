@@ -280,3 +280,22 @@ local-dev-up-static: local-dev-clean
 local-dev-down:
 	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean
+
+.PHONY: enable-ldap
+enable-ldap:
+	@echo "Merging LDAP config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps ldap 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: LDAP container not running. Start with: docker-compose up -d ldap"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/ldap/ldap-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ LDAP configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: docker-compose restart quay"
