@@ -439,6 +439,15 @@ export function orasAttach(
 
 /**
  * Push an image in OCI manifest format to the registry using skopeo.
+ *
+ * Uses `--format=oci` to guarantee the manifest uses the OCI content type,
+ * which exercises a different code path in the security scanner than
+ * Docker v2 schema 2 manifests.
+ *
+ * @example
+ * ```typescript
+ * await pushOCIImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
+ * ```
  */
 export async function pushOCIImage(
   namespace: string,
