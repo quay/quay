@@ -45,6 +45,17 @@ test.describe(
       });
     });
 
+    // cleanup
+    test.afterAll(async ({userContext, cachedContainerAvailable}) => {
+      if (!cachedContainerAvailable || !orgName) return;
+      const api = new ApiClient(userContext.request);
+      try {
+        await api.deleteOrganization(orgName);
+      } catch {
+        /* ignore all API errors here */
+      }
+    });
+
     test('Test pull through proxy cache', async ({playwright}) => {
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
