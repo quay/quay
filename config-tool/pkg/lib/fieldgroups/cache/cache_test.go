@@ -79,6 +79,22 @@ func TestValidateCache(t *testing.T) {
 			want: "typeError",
 		},
 		{
+			name: "Cache_Tst_Redis_Primary_With_Password",
+			config: map[string]any{
+				"DATA_MODEL_CACHE_CONFIG": map[string]any{
+					"engine": "redis",
+					"redis_config": map[string]any{
+						"primary": map[string]any{
+							"host":     "localhost",
+							"port":     1234,
+							"password": "somesupersecrettoken",
+						},
+					},
+				},
+			},
+			want: "valid",
+		},
+		{
 			name: "Cache_Test_Memcached_Valid_Config",
 			config: map[string]any{
 				"DATA_MODEL_CACHE_CONFIG": map[string]any{
