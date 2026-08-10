@@ -30,8 +30,8 @@ type RedisConfigGroup struct {
 
 // RedisNodeConfig contains the redis nodes
 type RedisNodeConfig struct {
-	Host string `json:"host,omitempty" yaml:"host,omitempty"`
-	Port int    `default:"6379" json:"port,omitempty" yaml:"port,omitempty"`
-	Pass string `json:"pass,omitempty" yaml:"pass,omitempty"`
-	SSL  bool   `default:"false" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Host     string `json:"host,omitempty" yaml:"host,omitempty"`
+	Port     int    `default:"6379" json:"port,omitempty" yaml:"port,omitempty"`
+	Password string `json:"password,omitempty" yaml:"password,omitempty"`
+	SSL      bool   `default:"false" json:"ssl,omitempty" yaml:"ssl,omitempty"`
 }

@@ -14,7 +14,7 @@ DATA_MODEL_CACHE_CONFIG:
     replica:
       host: 192.168.250.160
       port: 6379
-      pass: "supersecretpassword"
+      password: "supersecretpassword"
       ssl: true
   repository_blob_cache_ttl: 120s
   catalog_page_cache_ttl: 360s
