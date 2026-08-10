@@ -99,7 +99,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             return
 
         for mss_row in claimed:
-            self._index_manifest_by_id(mss_row.manifest_id, mss_row.repository_id, indexer_hash)
+            self._index_manifest(mss_row.manifest, mss_row.repository_id, indexer_hash)
 
         cycle_duration = time.monotonic() - cycle_start
         secscan_v2_cycle_duration.observe(cycle_duration)
@@ -151,7 +151,8 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
         with db_transaction():
             query = (
-                ManifestSecurityStatus.select()
+                ManifestSecurityStatus.select(ManifestSecurityStatus, Manifest)
+                .join(Manifest, on=(ManifestSecurityStatus.manifest == Manifest.id))
                 .where(ManifestSecurityStatus.id.in_(candidate_ids) & conditions)
                 .order_by(ManifestSecurityStatus.last_indexed.desc())
             )
@@ -196,19 +197,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
             return eligible
 
-    def _index_manifest_by_id(self, manifest_id, repository_id, current_indexer_hash):
-        try:
-            candidate = Manifest.get(Manifest.id == manifest_id)
-        except Manifest.DoesNotExist:
-            logger.warning("Manifest %d no longer exists, skipping", manifest_id)
-            self._mark_failed(
-                manifest_id,
-                "manifest_deleted",
-                {"error": "manifest not found"},
-                current_indexer_hash,
-            )
-            return
-
+    def _index_manifest(self, candidate, repository_id, current_indexer_hash):
         manifest = ManifestDataType.for_manifest(candidate, None)
 
         if manifest.is_manifest_list:
