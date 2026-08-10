@@ -182,6 +182,9 @@ services:
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       args:
@@ -194,12 +197,12 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
+      - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       QUAY_DISTRIBUTED_STORAGE_PREFERENCE: "${QUAY_DISTRIBUTED_STORAGE_PREFERENCE:-}"
+      DOCKER_HOST: "${QUAY_DOCKER_HOST:-}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp

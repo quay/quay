@@ -121,3 +121,13 @@ web/cypress/downloads
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+# quay-builder binary (extracted from container image)
+local-dev/quay-builder
+
+# Go build output
+bin/
+
+# claude
+.claude/plans
+.claude/implementation
