@@ -75,6 +75,31 @@ services:
       wait
       "
 
+  # Jaeger all-in-one for distributed tracing (optional).
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
+  garage:
+    container_name: quay-garage
+    image: dxflrs/garage:v1.0.1
+    volumes:
+      - "./local-dev/garage/garage.toml:/etc/garage.toml:ro,z"
+    ports:
+      - "3900:3900"
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   keycloak:
     container_name: quay-keycloak
     image: quay.io/keycloak/keycloak:26.2
@@ -173,7 +198,8 @@ services:
       - "host.containers.internal:host-gateway"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
+      QUAY_DISTRIBUTED_STORAGE_PREFERENCE: "${QUAY_DISTRIBUTED_STORAGE_PREFERENCE:-}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp

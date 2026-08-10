@@ -11,7 +11,12 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: quay-002-small-ubuntu-24-x64
+    runs-on: quay-003-medium-ubuntu-24-x64
+    env:
+      QUAY_HOTRELOAD: "false"
+      AWS_ACCESS_KEY_ID: GKe2e0123456789abcdef01234
+      AWS_SECRET_ACCESS_KEY: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
+      S3_ENDPOINT: http://localhost:3900
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,6 +27,8 @@ jobs:
           with-clair: true
           with-keycloak: true
           with-repomirror: true
+          with-georep: true
+          use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
