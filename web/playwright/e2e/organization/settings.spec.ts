@@ -547,6 +547,36 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
   );
 
   test.describe(
+    'Duplicate Email on Update',
+    {tag: ['@feature:MAILING']},
+    () => {
+      test('rejects updating organization email to one already in use (OCP-73836)', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org1 = await api.organization('emaildup');
+        const org2 = await api.organization('emaildup');
+
+        await authenticatedPage.goto(`/organization/${org2.name}?tab=Settings`);
+
+        const emailInput = authenticatedPage.locator('#org-settings-email');
+        await expect(emailInput).toBeVisible();
+
+        await emailInput.clear();
+        await emailInput.fill(org1.email);
+
+        const saveButton = authenticatedPage.locator('#save-org-settings');
+        await expect(saveButton).toBeEnabled();
+        await saveButton.click();
+
+        await expect(
+          authenticatedPage.getByText('E-mail address already used').first(),
+        ).toBeVisible();
+      });
+    },
+  );
+
+  test.describe(
     'Repository Settings: Org Mirror Mutual Exclusion',
     {
       tag: ['@repository', '@feature:ORG_MIRROR', '@feature:IMMUTABLE_TAGS'],

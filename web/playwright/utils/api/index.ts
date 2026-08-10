@@ -11,6 +11,7 @@ export {
   getV2Token,
 } from './auth';
 export type {
+  AutoPrunePolicy,
   CreateRobotResponse,
   CreateUserResponse,
   GetPrototypesResponse,

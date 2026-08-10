@@ -734,7 +734,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
-| ✅ | `marketplace.cy.ts` | `organization/marketplace.spec.ts` | 3→3 tests, mocked (exception: marketplace/billing APIs require external backend), Cypress file deleted |
+| ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
 | ✅ | `oauth-callback.cy.ts` | `auth/oauth-error.spec.ts`, `auth/oauth-callback.spec.ts` | consolidated 14→8 tests, Cypress file deleted |
@@ -755,9 +755,9 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
 | ✅ | `security-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 11→3 tests, Cypress file deleted |
 | ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |
-| ⬚ | `service-status.cy.ts` | | |
+| ✅ | `service-status.cy.ts` | `ui/service-status.spec.ts` | @feature:BILLING (mocked), 2→2 tests, uses page.route() for external StatusPage CDN, Cypress file deleted |
 | ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |
-| 🚧 | `superuser-build-logs.cy.ts` | `superuser/build-logs.spec.ts` | Partial: 12→8 tests (access control, button state, error handling, sidebar nav, BUILD_SUPPORT disabled, checkbox toggle). Build-dependent tests (load/display logs, timestamps with data, loading state, empty logs, object messages PROJQUAY-9714) not migrated |
+| ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |

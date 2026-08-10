@@ -7,7 +7,7 @@
  * and auto-cleanup via TestApi fixtures.
  */
 
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 
 test.describe(
   'Repository Features API',
@@ -227,6 +227,21 @@ test.describe(
         const listBody = await listBots.json();
         expect(listBody.robots.length).toBeGreaterThanOrEqual(1);
       });
+
+      test('admin can regenerate an org robot token', async ({
+        superuserApi,
+        adminClient,
+      }) => {
+        const org = await superuserApi.organization('robotregen');
+        const robot = await superuserApi.robot(org.name, 'regenbot');
+
+        const regenResp = await adminClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/regenerate`,
+        );
+        expect(regenResp.status()).toBe(200);
+        const regen = await regenResp.json();
+        expect(regen.token).toBeTruthy();
+      });
     });
 
     // ========================================================================
@@ -402,5 +417,49 @@ test.describe(
         });
       },
     );
+  },
+);
+
+// ============================================================================
+// Team Email Invitations
+// ============================================================================
+
+test.describe(
+  'Team Email Invitations',
+  {tag: ['@api', '@auth:Database', '@feature:MAILING']},
+  () => {
+    test('admin can invite user to team by email and revoke the invitation', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('teaminvite');
+      const team = await superuserApi.team(org.name, 'inviteteam');
+      const email = `${uniqueName('invite')}@example.com`;
+
+      const inviteResp = await adminClient.put(
+        `/api/v1/organization/${org.name}/team/${
+          team.name
+        }/invite/${encodeURIComponent(email)}`,
+      );
+      if (inviteResp.status() === 400) {
+        const body = await inviteResp.json();
+        const msg = body.message || body.error_message || '';
+        if (
+          msg.toLowerCase().includes('not enabled') ||
+          msg.toLowerCase().includes('mailing')
+        ) {
+          test.skip(true, 'Email team invitations not enabled');
+          return;
+        }
+      }
+      expect(inviteResp.status()).toBe(200);
+
+      const revokeResp = await adminClient.delete(
+        `/api/v1/organization/${org.name}/team/${
+          team.name
+        }/invite/${encodeURIComponent(email)}`,
+      );
+      expect([204, 404]).toContain(revokeResp.status());
+    });
   },
 );

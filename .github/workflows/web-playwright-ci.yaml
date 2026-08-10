@@ -26,6 +26,8 @@ jobs:
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
+            DEFAULT_UI: react
+            AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0
           logs-artifact-name: 'playwright-debug'
 
       - name: Set up Node.js with npm caching
@@ -63,7 +65,10 @@ jobs:
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
-      - name: Run Database auth tests
+      - name: Install regctl for CLI interop tests
+        uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
+
+      - name: Run Database auth tests (React + Legacy UI)
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
         run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
