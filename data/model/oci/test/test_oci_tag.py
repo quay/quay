@@ -9,7 +9,15 @@ from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
-from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User, db
+from data.database import (
+    ImageStorageLocation,
+    Manifest,
+    ManifestChild,
+    Repository,
+    Tag,
+    User,
+    db,
+)
 from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
@@ -381,7 +389,7 @@ def test_delete_tag(initialized_db):
             assert get_tag(repo, tag.name) == tag
             assert tag.lifetime_end_ms is None
 
-            with assert_query_count(6):
+            with assert_query_count(7):
                 assert delete_tag(repo, tag.name) == tag
 
             assert get_tag(repo, tag.name) is None
@@ -403,7 +411,7 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.name.startswith("$temp-")
             assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
-        with assert_query_count(11):
+        with assert_query_count(12):
             assert delete_tag(repository.id, tag.name) == tag
 
         # Assert temporary tags pointing to child manifest are now expired
@@ -421,7 +429,7 @@ def test_delete_tags_for_manifest(initialized_db):
             repo = tag.repository
             assert get_tag(repo, tag.name) == tag
 
-            with assert_query_count(8):
+            with assert_query_count(9):
                 assert delete_tags_for_manifest(tag.manifest) == [tag]
 
             assert get_tag(repo, tag.name) is None
@@ -1764,3 +1772,117 @@ def test_delete_tag_skips_cosign_cleanup_when_manifest_null(initialized_db):
         assert deleted is not None
         refreshed = Tag.get_by_id(tag.id)
         assert refreshed.lifetime_end_ms == now_ms
+
+
+def test_remove_tag_from_timemachine_expires_referrer_temp_tags(initialized_db):
+    """Permanently deleting the final visible subject tag via time-machine
+    removal should expire its referrer's $temp-* tag."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "tm_subject")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "tm_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+        result = remove_tag_from_timemachine(
+            repo.id, "v1.0", subject_manifest.id, include_submanifests=False, is_alive=False
+        )
+        assert result is True
+
+        expiration_ms = get_user("devtable").removed_tag_expiration_s * 1000
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms() - expiration_ms
+
+
+def test_delete_tag_expires_referrer_temp_tags(initialized_db):
+    """When the last tag on a subject manifest is deleted, $temp-* tags for
+    OCI 1.1 referrer manifests should be expired."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "subject1")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "referrer1")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.hidden is True
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_delete_tag_keeps_referrer_if_other_tags_exist(initialized_db):
+    """$temp-* referrer tags should NOT be expired if the subject manifest
+    still has other live tags."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "subject2")
+        tag1 = retarget_tag("v1.0", subject_manifest.id)
+        tag2 = retarget_tag("latest", subject_manifest.id)
+        assert tag1 is not None
+        assert tag2 is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "referrer2")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is None
+
+        delete_tag(repo.id, "latest")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_delete_tags_for_manifest_expires_referrer_temp_tags(initialized_db):
+    """Deleting all tags on a subject manifest via delete_tags_for_manifest
+    should expire referrer $temp-* tags."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "dtfm_subject")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "dtfm_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.hidden is True
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tags_for_manifest(subject_manifest)
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
