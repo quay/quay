@@ -928,10 +928,11 @@ class ProxyModel(OCIModel):
 
             try:
                 for chunk in resp.iter_content(chunk_size=chunk_size):
-                    try:
-                        q.put(chunk, timeout=2.0)
-                    except queue.Full:
-                        stream_outcome = "queue_full"
+                    if stream_outcome != "queue_full":
+                        try:
+                            q.put(chunk, timeout=2.0)
+                        except queue.Full:
+                            stream_outcome = "queue_full"
 
                     # always yield the chunk
                     yield chunk

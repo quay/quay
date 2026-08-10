@@ -2754,3 +2754,110 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             assert mb
             ip = ImageStoragePlacement.select().where(ImageStoragePlacement.storage == mb.blob)
             assert ip.count() == 0
+
+    def test_queue_full_skips_put_for_subsequent_chunks(self):
+        """
+        Verifies that after first queue.Full is reached we do not enqueue subsequent chunks to the
+        queue. Enqueueing subsequent chunks could block the upload thread until chunks are cleaned by
+        up to two seconds; for big blobs this could cause a client request timeout. All upstream chunks
+        must be yielded to the client.
+        """
+        import queue as stdlib_queue
+
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        # number of chunks we will yield
+        CHUNKS = 5
+        content = b"x" * (64 * 1024) * CHUNKS
+
+        def mock_upstream_response(content):
+            resp = MagicMock()
+            resp.headers = {"content-length": str(len(content))}
+            resp.iter_content = lambda chunk_size=64 * 1024: [
+                content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            ]
+            resp.close = MagicMock()
+            return resp
+
+        repo = create_repository(self.orgname, "testrepo", None)
+        assert repo is not None
+
+        digest = str(sha256_digest(content))
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        assert manifest
+
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+        proxy_model._create_placeholder_blobs(parsed_manifest, manifest.id, repo.id)
+
+        put_call_count = []
+
+        class AlwaysFullQueue(stdlib_queue.Queue):
+            """
+            Helper class that will always return a full queue back.
+            """
+
+            def put(self, item, timeout=None, block=True):
+                if item is not None:
+                    put_call_count.append(1)
+                    raise stdlib_queue.Full()
+                # accept the EOF sentinel so that _stop_upload_thread does not hang indefinitely
+                try:
+                    super().put(item, block=True)
+                except stdlib_queue.Full:
+                    pass
+
+            def get(self, timeout=None, block=True):
+                # return EOF immediately so the upload thread exists without blocking
+                return None
+
+        mock_resp = mock_upstream_response(content)
+        with (
+            patch.object(proxy_model._proxy, "get_blob", return_value=mock_resp),
+            patch("data.registry_model.registry_proxy_model.queue.Queue", AlwaysFullQueue),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put"),
+        ):
+            result = proxy_model.get_streaming_proxy_blob(self.orgname, repo.name, digest)
+            assert result is not None
+            generator, content_length = result
+
+            received = list(generator)
+
+        # all chunks must reach the client even if the upload queue is full
+        assert b"".join(received) == content
+
+        # put() must only be called once, when the first chunk raises queue.Full.
+        assert len(put_call_count) == 1
