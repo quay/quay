@@ -550,20 +550,49 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET robot account', async () => {
+      test('can GET robot account but token is hidden', async () => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/robots/${robotShortname}`,
         );
         expect(r.status()).toBe(200);
+        const body = await r.json();
+        expect(body.name).toContain(robotShortname);
+        expect(body.token).toBeFalsy();
       });
 
-      test('can list all robot accounts', async () => {
+      test('can list all robot accounts but tokens are hidden', async () => {
         const r = await readonlyClient.get(
-          `/api/v1/organization/${orgName}/robots`,
+          `/api/v1/organization/${orgName}/robots?token=true`,
         );
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.robots.length).toBeGreaterThanOrEqual(1);
+        for (const robot of body.robots) {
+          expect(robot.token).toBeFalsy();
+        }
+      });
+
+      test('can list robot accounts with permissions but tokens are hidden', async () => {
+        const r = await readonlyClient.get(
+          `/api/v1/organization/${orgName}/robots?token=true&permissions=true`,
+        );
+        expect(r.status()).toBe(200);
+        const body = await r.json();
+        expect(body.robots.length).toBeGreaterThanOrEqual(1);
+        for (const robot of body.robots) {
+          expect(robot.token).toBeFalsy();
+          expect(robot.teams).toBeDefined();
+          expect(robot.repositories).toBeDefined();
+        }
+      });
+
+      test('admin can see robot token', async ({adminClient}) => {
+        const r = await adminClient.get(
+          `/api/v1/organization/${orgName}/robots/${robotShortname}`,
+        );
+        expect(r.status()).toBe(200);
+        const body = await r.json();
+        expect(body.token).toBeTruthy();
       });
 
       test('cannot PUT (create) robot account', async () => {

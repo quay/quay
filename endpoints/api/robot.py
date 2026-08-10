@@ -230,20 +230,21 @@ class OrgRobotList(ApiResource):
             or allow_if_global_readonly_superuser()
             or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
-            include_token = (
-                AdministerOrganizationPermission(orgname).can()
-                or allow_if_global_readonly_superuser()
-            ) and parsed_args.get("token", True)
+            is_org_admin = AdministerOrganizationPermission(orgname).can()
+            is_full_access_superuser = features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            include_token = (is_org_admin or is_full_access_superuser) and parsed_args.get(
+                "token", True
+            )
             include_permissions = (
-                AdministerOrganizationPermission(orgname).can()
-                or allow_if_global_readonly_superuser()
+                is_org_admin or is_full_access_superuser or allow_if_global_readonly_superuser()
             ) and parsed_args.get("permissions", False)
-            return robots_list(
+            result = robots_list(
                 orgname,
                 include_permissions=include_permissions,
                 include_token=include_token,
                 limit=parsed_args.get("limit"),
             )
+            return result
 
         raise Unauthorized()
 
@@ -270,14 +271,18 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        is_org_admin = permission.can()
         if (
-            permission.can()
+            is_org_admin
             or allow_if_global_readonly_superuser()
             or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             robot = model.get_org_robot(robot_shortname, orgname)
-            return robot.to_dict(include_metadata=True, include_token=True)
+            include_token = is_org_admin or (
+                features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            )
+            result = robot.to_dict(include_metadata=True, include_token=include_token)
+            return result
 
         raise Unauthorized()
 
