@@ -1,6 +1,5 @@
 import datetime
 import logging
-import re
 import uuid
 from calendar import timegm
 
@@ -43,51 +42,6 @@ from util.timedeltastring import convert_to_timedelta
 logger = logging.getLogger(__name__)
 
 GC_CANDIDATE_COUNT = 500  # repositories
-
-COSIGN_TAG_SCHEMA_PATTERN = r"^sha256-[a-f0-9]{64}\.(sig|att|sbom)$"
-COSIGN_TAG_SCHEMA_RE = re.compile(COSIGN_TAG_SCHEMA_PATTERN)
-COSIGN_TAG_SCHEMA_PREFIX = "sha256-"
-COSIGN_TAG_SCHEMA_DIGEST_LEN = 64
-COSIGN_TAG_SCHEMA_SUFFIXES = ("sig", "att", "sbom")
-
-
-def is_cosign_tag_schema(tag_name):
-    return bool(COSIGN_TAG_SCHEMA_RE.fullmatch(tag_name))
-
-
-def _lowercase_hex_digest_clause(digest_expr):
-    """True when digest_expr is exactly lowercase hexadecimal (empty after stripping hex digits)."""
-    stripped = digest_expr
-    for ch in "0123456789abcdef":
-        stripped = fn.REPLACE(stripped, ch, "")
-    return stripped == ""
-
-
-def _not_cosign_tag_schema_clause(model=Tag):
-    """
-    SQL clause matching is_cosign_tag_schema without REGEXP (SQLite-safe).
-
-    Requires sha256- prefix, exactly 64 lowercase hex digest chars, and a supported suffix.
-    Uses SUBSTR equality so prefix/suffix checks are case-sensitive (unlike LIKE).
-    Accepts a Tag model or alias so the clause can be used in subqueries.
-    """
-    prefix = COSIGN_TAG_SCHEMA_PREFIX
-    digest_len = COSIGN_TAG_SCHEMA_DIGEST_LEN
-    digest_expr = fn.SUBSTR(model.name, len(prefix) + 1, digest_len)
-    hex_digest = _lowercase_hex_digest_clause(digest_expr)
-    prefix_match = fn.SUBSTR(model.name, 1, len(prefix)) == prefix
-    suffix_clauses = []
-    for suffix in COSIGN_TAG_SCHEMA_SUFFIXES:
-        expected_len = len(prefix) + digest_len + 1 + len(suffix)
-        suffix_start = len(prefix) + digest_len + 1
-        suffix_clauses.append(
-            (fn.LENGTH(model.name) == expected_len)
-            & (fn.SUBSTR(model.name, suffix_start, 1 + len(suffix)) == f".{suffix}")
-        )
-    suffix_match = suffix_clauses[0]
-    for clause in suffix_clauses[1:]:
-        suffix_match = suffix_match | clause
-    return ~(prefix_match & hex_digest & suffix_match)
 
 
 class RetargetTagException(Exception):
@@ -535,24 +489,7 @@ def retarget_tag(
                 return None
 
             delete_tag_notifications_for_tag(existing_tag)
-            displaced_manifest = existing_tag.manifest
             Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
-
-            # Cascade Cosign cleanup for the displaced subject digest. Autoprune
-            # excludes Cosign-schema names, so orphans left by retarget would
-            # otherwise persist forever.
-            if (
-                displaced_manifest is not None
-                and not is_cosign_tag_schema(existing_tag.name)
-                and displaced_manifest.id != manifest.id
-            ):
-                _expire_cosign_sibling_tags(
-                    existing_tag.repository,
-                    displaced_manifest.digest,
-                    now_ms,
-                    subject_manifest=displaced_manifest,
-                    exclude_tag_id=existing_tag.id,
-                )
 
         # Check if tag should be immutable based on manifest label or policies
         immutable = False
@@ -620,49 +557,6 @@ def retarget_tag(
     return created
 
 
-def _expire_cosign_sibling_tags(
-    repository_id, manifest_digest, now_ms, *, subject_manifest=None, exclude_tag_id=None
-):
-    """
-    Expire alive, mutable Cosign tag-schema siblings for the given subject digest.
-
-    When subject_manifest is provided, the UPDATE includes a NOT EXISTS guard so
-    Cosign siblings are only expired if no other visible, non-Cosign alive tag
-    still references that manifest (excluding exclude_tag_id when set).
-    Returns the number of Cosign tags expired.
-    """
-    cosign_tag_prefix = manifest_digest.replace(":", "-")
-    cosign_names = [f"{cosign_tag_prefix}.{suffix}" for suffix in COSIGN_TAG_SCHEMA_SUFFIXES]
-    conditions = [
-        Tag.repository == repository_id,
-        Tag.name.in_(cosign_names),
-        Tag.immutable == False,
-        (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
-    ]
-    if subject_manifest is not None:
-        OtherTag = Tag.alias()
-        other_alive = OtherTag.select(1).where(
-            OtherTag.repository == repository_id,
-            OtherTag.manifest == subject_manifest,
-            OtherTag.hidden == False,
-            _not_cosign_tag_schema_clause(OtherTag),
-            (OtherTag.lifetime_end_ms >> None) | (OtherTag.lifetime_end_ms > now_ms),
-        )
-        if exclude_tag_id is not None:
-            other_alive = other_alive.where(OtherTag.id != exclude_tag_id)
-        conditions.append(~fn.EXISTS(other_alive))
-
-    updated = Tag.update(lifetime_end_ms=now_ms).where(*conditions).execute()
-    if updated > 0:
-        logger.info(
-            "Expired %s Cosign sibling tag(s) for digest %s in repository %s",
-            updated,
-            manifest_digest,
-            repository_id,
-        )
-    return updated
-
-
 def delete_tag(repository_id, tag_name):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
@@ -680,7 +574,10 @@ def delete_tag(repository_id, tag_name):
     return _delete_tag(tag, get_epoch_timestamp_ms())
 
 
-def _delete_tag(tag, now_ms, expire_cosign=True):
+def _delete_tag(tag, now_ms):
+    """
+    Deletes the given tag by marking it as expired.
+    """
     with db_transaction():
         # Clear pull statistics so re-pushed tags start fresh
         if features.IMAGE_PULL_STATS:
@@ -700,16 +597,6 @@ def _delete_tag(tag, now_ms, expire_cosign=True):
         if updated != 1:
             return None
 
-        # clean up cosign tags derived from the deleted image digest
-        if expire_cosign and not is_cosign_tag_schema(tag.name) and tag.manifest is not None:
-            _expire_cosign_sibling_tags(
-                tag.repository,
-                tag.manifest.digest,
-                now_ms,
-                subject_manifest=tag.manifest,
-                exclude_tag_id=tag.id,
-            )
-
         reset_child_manifest_expiration(tag.repository, tag.manifest)
         return tag
 
@@ -721,41 +608,20 @@ def delete_tags_for_manifest(manifest):
     Returns the list of tags deleted.
     Raises ImmutableTagException if any tag is immutable.
     """
+    query = Tag.select().where(Tag.manifest == manifest)
+    query = filter_to_alive_tags(query)
+
+    tags = list(query)
     now_ms = get_epoch_timestamp_ms()
 
-    with db_transaction():
-        # Read alive tags inside the transaction so a tag retargeted/created onto
-        # this manifest between an earlier read and Cosign expiry cannot be missed.
-        query = filter_to_alive_tags(Tag.select().where(Tag.manifest == manifest))
-        tags = list(query)
-
-        if features.IMMUTABLE_TAGS:
-            for tag in tags:
-                if tag.immutable:
-                    raise ImmutableTagException(tag.name, "delete", tag.repository_id)
-
+    if features.IMMUTABLE_TAGS:
         for tag in tags:
-            _delete_tag(tag, now_ms, expire_cosign=False)
+            if tag.immutable:
+                raise ImmutableTagException(tag.name, "delete", tag.repository_id)
 
-        # Expire Cosign siblings once after all aliases on this subject are removed.
-        # `manifest` may be a Manifest row or a raw manifest id (registry_model passes _db_id).
-        # Pass subject_manifest so the NOT EXISTS guard applies if any alive
-        # non-Cosign alias remains (e.g. concurrent create visible mid-transaction).
-        subject_tag = next(
-            (
-                tag
-                for tag in tags
-                if not is_cosign_tag_schema(tag.name) and tag.manifest is not None
-            ),
-            None,
-        )
-        if subject_tag is not None:
-            _expire_cosign_sibling_tags(
-                subject_tag.repository,
-                subject_tag.manifest.digest,
-                now_ms,
-                subject_manifest=subject_tag.manifest,
-            )
+    with db_transaction():
+        for tag in tags:
+            _delete_tag(tag, now_ms)
 
     return tags
 
@@ -1127,7 +993,6 @@ def fetch_paginated_autoprune_repo_tags_by_number(
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
                 Tag.immutable == False,
-                _not_cosign_tag_schema_clause(),
             )
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
@@ -1135,7 +1000,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
         )
 
         if exclude_tags and len(exclude_tags) > 0:
-            query = query.where(Tag.name.not_in([tag.name for tag in exclude_tags]))
+            query.where(Tag.name.not_in([tag.name for tag in exclude_tags]))
 
         if tag_pattern is not None:
             query = db_regex_search(
@@ -1175,7 +1040,6 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
             (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
             Tag.hidden == False,
             Tag.immutable == False,
-            _not_cosign_tag_schema_clause(),
         )
         if tag_pattern is not None:
             query = db_regex_search(
