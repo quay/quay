@@ -2,6 +2,7 @@ package distribution
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -24,7 +25,9 @@ type TokenHandler struct {
 }
 
 const (
-	maxRequestedScopeCount = 100
+	// Registry clients normally request one scope per repository. This leaves
+	// room for multi-repository operations without allowing unbounded policy work.
+	maxRequestedScopeCount = 10
 	maxRequestedScopeBytes = 16 << 10
 )
 
@@ -88,7 +91,11 @@ func (h *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	authorized := h.downscope(r, principal, requested)
+	authorized, err := h.downscope(r, principal, requested)
+	if err != nil {
+		http.Error(w, "authorization service unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	subject := principal.Username
 	if principal.IsAnonymous() {
 		subject = jwtauth.AnonymousSubject
@@ -173,59 +180,105 @@ func parseRequestedScopes(r *http.Request) ([]jwtauth.ResourceActions, error) {
 	return mergeAccess(requested), nil
 }
 
-func (h *TokenHandler) downscope(r *http.Request, principal *auth.Principal, requested []jwtauth.ResourceActions) []jwtauth.ResourceActions {
-	allRequested := make([]distauth.Access, 0)
-	for _, grant := range requested {
-		for _, action := range grant.Actions {
-			if action == jwtauth.WildcardAction {
-				allRequested = append(allRequested,
-					repositoryAccessItem(grant.Name, repositoryPullAction),
-					repositoryAccessItem(grant.Name, repositoryPushAction),
-				)
-				continue
-			}
-			allRequested = append(allRequested, repositoryAccessItem(grant.Name, action))
-		}
-	}
+func (h *TokenHandler) downscope(r *http.Request, principal *auth.Principal, requested []jwtauth.ResourceActions) ([]jwtauth.ResourceActions, error) {
+	requested = mergeAccess(requested)
+	allRequested := requestedAccess(requested)
 
 	authorized := make([]jwtauth.ResourceActions, 0, len(requested))
 	for _, grant := range requested {
-		allowed := jwtauth.ResourceActions{Type: grant.Type, Name: grant.Name}
-		pushRequested := slices.Contains(grant.Actions, repositoryPushAction) || slices.Contains(grant.Actions, jwtauth.WildcardAction)
-		pushAllowed := false
-		if pushRequested {
-			pushAllowed = h.policy.AuthorizeRepositoryAccess(
-				r, principal, repositoryAccessItem(grant.Name, repositoryPushAction), allRequested,
-			) == nil
-		}
-		pullContext := repositoryPolicyContext(allRequested, grant.Name, pushAllowed)
-		for _, action := range grant.Actions {
-			if action == jwtauth.WildcardAction {
-				pullErr := h.policy.AuthorizeRepositoryAccess(r, principal, repositoryAccessItem(grant.Name, repositoryPullAction), pullContext)
-				if pullErr == nil {
-					allowedAction := repositoryPullAction
-					if pushAllowed {
-						allowedAction = jwtauth.WildcardAction
-					}
-					allowed.Actions = append(allowed.Actions, allowedAction)
-				}
-				continue
-			}
-			if action == repositoryPushAction {
-				if pushAllowed {
-					allowed.Actions = append(allowed.Actions, action)
-				}
-				continue
-			}
-			if err := h.policy.AuthorizeRepositoryAccess(r, principal, repositoryAccessItem(grant.Name, action), pullContext); err == nil {
-				allowed.Actions = append(allowed.Actions, action)
-			}
+		allowed, err := h.downscopeGrant(r, principal, grant, allRequested)
+		if err != nil {
+			return nil, err
 		}
 		if len(allowed.Actions) > 0 {
 			authorized = append(authorized, allowed)
 		}
 	}
-	return authorized
+	return authorized, nil
+}
+
+func (h *TokenHandler) downscopeGrant(r *http.Request, principal *auth.Principal, grant jwtauth.ResourceActions, allRequested []distauth.Access) (jwtauth.ResourceActions, error) {
+	pushRequested := slices.Contains(grant.Actions, repositoryPushAction) || slices.Contains(grant.Actions, jwtauth.WildcardAction)
+	pushAllowed := false
+	if pushRequested {
+		var err error
+		pushAllowed, err = h.authorizeAction(r, principal, repositoryAccessItem(grant.Name, repositoryPushAction), allRequested)
+		if err != nil {
+			return jwtauth.ResourceActions{}, err
+		}
+	}
+
+	pullRequested := slices.Contains(grant.Actions, repositoryPullAction) || slices.Contains(grant.Actions, jwtauth.WildcardAction)
+	pullAllowed := false
+	if pullRequested {
+		pullContext := repositoryPolicyContext(allRequested, grant.Name, pushAllowed)
+		var err error
+		pullAllowed, err = h.authorizeAction(r, principal, repositoryAccessItem(grant.Name, repositoryPullAction), pullContext)
+		if err != nil {
+			return jwtauth.ResourceActions{}, err
+		}
+	}
+
+	allowed := jwtauth.ResourceActions{Type: grant.Type, Name: grant.Name}
+	for _, action := range grant.Actions {
+		if allowedAction := authorizedAction(action, pullAllowed, pushAllowed); allowedAction != "" {
+			allowed.Actions = appendUniqueAction(allowed.Actions, allowedAction)
+		}
+	}
+	return allowed, nil
+}
+
+func authorizedAction(action string, pullAllowed, pushAllowed bool) string {
+	switch action {
+	case jwtauth.WildcardAction:
+		if !pullAllowed {
+			return ""
+		}
+		if pushAllowed {
+			return jwtauth.WildcardAction
+		}
+		return repositoryPullAction
+	case repositoryPushAction:
+		if pushAllowed {
+			return repositoryPushAction
+		}
+	case repositoryPullAction:
+		if pullAllowed {
+			return repositoryPullAction
+		}
+	}
+	return ""
+}
+
+func (h *TokenHandler) authorizeAction(r *http.Request, principal *auth.Principal, access distauth.Access, all []distauth.Access) (bool, error) {
+	err := h.policy.AuthorizeRepositoryAccess(r, principal, access, all)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, errRepositoryAccessDenied) || errors.Is(err, errRepositoryNotFound) {
+		return false, nil
+	}
+	return false, err
+}
+
+func requestedAccess(requested []jwtauth.ResourceActions) []distauth.Access {
+	allRequested := make([]distauth.Access, 0, len(requested)*2)
+	for _, grant := range requested {
+		if slices.Contains(grant.Actions, repositoryPullAction) || slices.Contains(grant.Actions, jwtauth.WildcardAction) {
+			allRequested = append(allRequested, repositoryAccessItem(grant.Name, repositoryPullAction))
+		}
+		if slices.Contains(grant.Actions, repositoryPushAction) || slices.Contains(grant.Actions, jwtauth.WildcardAction) {
+			allRequested = append(allRequested, repositoryAccessItem(grant.Name, repositoryPushAction))
+		}
+	}
+	return allRequested
+}
+
+func appendUniqueAction(actions []string, action string) []string {
+	if slices.Contains(actions, action) {
+		return actions
+	}
+	return append(actions, action)
 }
 
 func repositoryPolicyContext(requested []distauth.Access, name string, pushAllowed bool) []distauth.Access {

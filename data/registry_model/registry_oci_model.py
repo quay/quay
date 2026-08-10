@@ -1,4 +1,5 @@
 import logging
+import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 
@@ -763,6 +764,11 @@ class OCIModel(RegistryDataInterface):
             )
             model_cache.invalidate(manifest_cache_key)
 
+            gen_key = cache_key.for_active_repo_tags_gen(
+                deleted_tag.repository.id, model_cache.cache_config
+            )
+            model_cache.invalidate(gen_key)
+
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
     def delete_tags_for_manifest(self, model_cache, manifest):
@@ -779,6 +785,11 @@ class OCIModel(RegistryDataInterface):
                 manifest.repository.id, manifest.digest, model_cache.cache_config
             )
             model_cache.invalidate(manifest_cache_key)
+
+            gen_key = cache_key.for_active_repo_tags_gen(
+                manifest.repository.id, model_cache.cache_config
+            )
+            model_cache.invalidate(gen_key)
 
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
@@ -1145,8 +1156,17 @@ class OCIModel(RegistryDataInterface):
             )
             return [tag.asdict() for tag in tags], has_more
 
+        gen_key = cache_key.for_active_repo_tags_gen(
+            repository_ref._db_id, model_cache.cache_config
+        )
+        generation = model_cache.retrieve(gen_key, lambda: str(uuid.uuid4()))
+
         tags_cache_key = cache_key.for_active_repo_tags(
-            repository_ref._db_id, last_pagination_tag_name, limit, model_cache.cache_config
+            repository_ref._db_id,
+            last_pagination_tag_name,
+            limit,
+            generation,
+            model_cache.cache_config,
         )
         result, has_more = tuple(model_cache.retrieve(tags_cache_key, load_tags))
 

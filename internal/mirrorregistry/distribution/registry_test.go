@@ -20,6 +20,14 @@ type registryTokenServiceStub struct {
 	registryTokenService
 }
 
+func TestRegistryNilSafeMethods(t *testing.T) {
+	var registry *Registry
+	require.Nil(t, registry.Handler())
+	require.Nil(t, registry.TokenHandler())
+	require.Nil(t, registry.Authenticator())
+	require.NoError(t, registry.Close())
+}
+
 func TestNewRegistryRejectsNilBlobLocker(t *testing.T) {
 	_, err := NewRegistry(t.Context(), &Config{})
 	if err == nil {
@@ -47,6 +55,7 @@ func TestNewRegistryPassesStoreToDistributionDriver(t *testing.T) {
 		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, registry.Close()) })
 
 	app, ok := registry.Handler().(*handlers.App)
 	require.True(t, ok)
@@ -72,7 +81,7 @@ func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	jwt := &registryTokenServiceStub{}
 
-	_, err := NewRegistry(t.Context(), &Config{
+	registryA, err := NewRegistry(t.Context(), &Config{
 		StoragePath: t.TempDir(),
 		Hostname:    "registry-a.example.com",
 		TokenRealm:  "https://registry-a.example.com/v2/auth",
@@ -83,8 +92,9 @@ func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
 		// MetricsRegisterer intentionally nil.
 	})
 	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, registryA.Close()) })
 
-	_, err = NewRegistry(t.Context(), &Config{
+	registryB, err := NewRegistry(t.Context(), &Config{
 		StoragePath: t.TempDir(),
 		Hostname:    "registry-b.example.com",
 		TokenRealm:  "https://registry-b.example.com/v2/auth",
@@ -95,6 +105,7 @@ func TestNewRegistry_NilMetricsRegistererIsolation(t *testing.T) {
 		// MetricsRegisterer intentionally nil.
 	})
 	require.NoError(t, err, "second NewRegistry with nil MetricsRegisterer must not fail")
+	t.Cleanup(func() { require.NoError(t, registryB.Close()) })
 }
 
 func TestNewRegistryReleasesMetricsOnClose(t *testing.T) {
@@ -143,6 +154,7 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, registryA.Close()) })
 	registryB, err := NewRegistry(t.Context(), &Config{
 		StoragePath:       t.TempDir(),
 		Hostname:          "registry-b.example.com",
@@ -155,6 +167,7 @@ func TestNewRegistryKeepsMiddlewareOptionsPerInstance(t *testing.T) {
 		MetricsRegisterer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, registryB.Close()) })
 
 	appA, ok := registryA.Handler().(*handlers.App)
 	require.True(t, ok)

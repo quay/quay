@@ -9,6 +9,8 @@ from image.oci.index import MalformedIndex, OCIIndex, OCIIndexBuilder
 from image.oci.manifest import OCIManifest
 from image.oci.test.testdata import (
     OCI_IMAGE_INDEX_MANIFEST,
+    OCI_IMAGE_INDEX_MANIFEST_ALL_MISSING_PLATFORM,
+    OCI_IMAGE_INDEX_MANIFEST_MISSING_PLATFORM,
     OCI_IMAGE_INDEX_MANIFEST_WITH_ARTIFACT_TYPE_AND_SUBJECT,
     OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD,
     OCI_IMAGE_WITH_ARTIFACT_TYPES_AND_ANNOTATIONS,
@@ -229,3 +231,22 @@ def test_oci_index_with_mixed_docker_and_oci_children():
     assert isinstance(manifests[3].manifest_obj, DockerSchema2ManifestList)
 
     assert index.amd64_linux_manifest_digest == "sha256:aaa111"
+
+
+def test_index_missing_platform_skips_to_valid():
+    index = OCIIndex(Bytes.for_string_or_unicode(OCI_IMAGE_INDEX_MANIFEST_MISSING_PLATFORM))
+    assert index.is_manifest_list
+    assert index.child_manifest_digests() == [
+        "sha256:aaaa111111111111111111111111111111111111111111111111111111111111",
+        "sha256:bbbb222222222222222222222222222222222222222222222222222222222222",
+    ]
+    assert (
+        index.amd64_linux_manifest_digest
+        == "sha256:bbbb222222222222222222222222222222222222222222222222222222222222"
+    )
+
+
+def test_index_all_missing_platform_returns_none():
+    index = OCIIndex(Bytes.for_string_or_unicode(OCI_IMAGE_INDEX_MANIFEST_ALL_MISSING_PLATFORM))
+    assert index.is_manifest_list
+    assert index.amd64_linux_manifest_digest is None

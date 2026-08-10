@@ -2,6 +2,8 @@ import hashlib
 import logging
 from collections import namedtuple
 
+from util.timedeltastring import convert_to_timedelta
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,14 +44,29 @@ def for_catalog_page(auth_context_key, start_id, limit, cache_config):
     return CacheKey("catalog_page__%s_%s_%s" % params, cache_ttl)
 
 
-def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, cache_config):
+def for_active_repo_tags_gen(repository_id, cache_config):
+    """
+    Returns a cache key for the specific generation of active tags in a repository.
+    """
+
+    # set generation cache to twice the amount of active_repo_tags_cache_ttl
+    page_ttl_sec = cache_config.get("active_repo_tags_cache_ttl", "120s")
+    page_seconds = int(convert_to_timedelta(page_ttl_sec).total_seconds())
+    gen_ttl = f"{page_seconds * 2}s"
+
+    return CacheKey(f"repo_active_tags_gen__{repository_id}", gen_ttl)
+
+
+def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, generation, cache_config):
     """
     Returns a cache key for the active tags in a repository.
     """
 
     cache_ttl = cache_config.get("active_repo_tags_cache_ttl", "120s")
     return CacheKey(
-        "repo_active_tags__%s_%s_%s" % (repository_id, last_pagination_tag_name, limit), cache_ttl
+        "repo_active_tags__%s_%s_%s_%s"
+        % (repository_id, last_pagination_tag_name, limit, generation),
+        cache_ttl,
     )
 
 

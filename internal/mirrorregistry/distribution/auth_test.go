@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/distribution/distribution/v3/registry/auth"
+	quayAuth "github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/registry/jwtauth"
 	_ "modernc.org/sqlite"
@@ -253,6 +255,33 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func TestNewAccessControllerRejectsInvalidAnonymousAccessType(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	service, err := jwtauth.New(key, jwtauth.Config{Audience: "test-service"})
+	if err != nil {
+		t.Fatalf("create JWT service: %v", err)
+	}
+
+	_, err = newAccessController(map[string]interface{}{
+		authOptionRealm:      "test-realm",
+		authOptionService:    "test-service",
+		authOptionJWTService: service,
+		authOptionDB:         db,
+		authOptionAnonAccess: "true",
+	})
+	if err == nil {
+		t.Fatal("expected invalid anonymous access type to fail")
+	}
+	if !strings.Contains(err.Error(), authOptionAnonAccess) {
+		t.Fatalf("error %q does not mention %s", err, authOptionAnonAccess)
+	}
+}
+
 func newTestController(t *testing.T, db *sql.DB) auth.AccessController {
 	t.Helper()
 	return newTestControllerWithAnonymousAccess(t, db, true)
@@ -262,7 +291,7 @@ func newTestControllerWithAnonymousAccess(t *testing.T, db *sql.DB, anonymousAcc
 	t.Helper()
 	return newPolicyTestController(t, map[string]interface{}{
 		authOptionRealm:      "test-realm",
-		"db":                 db,
+		authOptionDB:         db,
 		authOptionAnonAccess: anonymousAccess,
 	})
 }
@@ -271,7 +300,7 @@ func newTestControllerWithRobotAuth(t *testing.T, db *sql.DB) auth.AccessControl
 	t.Helper()
 	return newPolicyTestController(t, map[string]interface{}{
 		authOptionRealm:       "test-realm",
-		"db":                  db,
+		authOptionDB:          db,
 		authOptionAnonAccess:  true,
 		authOptionDatabaseKey: "test1234",
 		authOptionLastAccess:  true,
@@ -282,11 +311,11 @@ func newTestControllerWithRobotAuth(t *testing.T, db *sql.DB) auth.AccessControl
 func newTestControllerWithSuperUserFullAccess(t *testing.T, db *sql.DB) auth.AccessController {
 	t.Helper()
 	return newPolicyTestController(t, map[string]interface{}{
-		authOptionRealm:        "test-realm",
-		"db":                   db,
-		authOptionAnonAccess:   true,
-		"superUsers":           []string{"admin"},
-		"superUsersFullAccess": true,
+		authOptionRealm:                "test-realm",
+		authOptionDB:                   db,
+		authOptionAnonAccess:           true,
+		authOptionSuperUsers:           []string{"admin"},
+		authOptionSuperUsersFullAccess: true,
 	})
 }
 
@@ -294,7 +323,7 @@ type policyTestController struct{ *accessController }
 
 func newPolicyTestController(t *testing.T, options map[string]interface{}) auth.AccessController {
 	t.Helper()
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatalf("generate test JWT key: %v", err)
 	}
@@ -708,6 +737,54 @@ func TestAuthorized_CatalogIsDeniedUntilQuayFilteredCatalogExists(t *testing.T) 
 		t.Fatal("expected unfiltered distribution catalog to fail")
 	}
 	assertChallenge(t, err)
+}
+
+func TestAuthorizeDistributionAccessClassifiesUnsupportedAccessAsDenied(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	controller := newPolicyTestController(t, map[string]interface{}{
+		authOptionRealm:      "test-realm",
+		authOptionDB:         db,
+		authOptionAnonAccess: true,
+	}).(*policyTestController)
+	principal := &quayAuth.Principal{Username: "admin"}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/", http.NoBody)
+
+	tests := []struct {
+		name   string
+		access auth.Access
+	}{
+		{
+			name: "registry catalog",
+			access: auth.Access{
+				Resource: auth.Resource{Type: registryResourceType, Name: registryCatalogName},
+				Action:   registryCatalogAction,
+			},
+		},
+		{
+			name: "unsupported resource type",
+			access: auth.Access{
+				Resource: auth.Resource{Type: "blob", Name: "acme/private"},
+				Action:   repositoryPullAction,
+			},
+		},
+		{
+			name: "unsupported repository action",
+			access: auth.Access{
+				Resource: auth.Resource{Type: repositoryResourceType, Name: "acme/private"},
+				Action:   "unknown",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := controller.authorizeDistributionAccess(req, principal, []auth.Access{tt.access})
+			if !errors.Is(err, errRepositoryAccessDenied) {
+				t.Fatalf("error = %v, want errRepositoryAccessDenied", err)
+			}
+		})
+	}
 }
 
 func TestAuthorized_WriteRobotCannotPushReadOnlyRepository(t *testing.T) {

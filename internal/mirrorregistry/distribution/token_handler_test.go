@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/registry/jwtauth"
 )
 
@@ -115,6 +117,12 @@ func TestTokenHandlerMergesRepeatedAndDuplicateScopes(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	seedRobotPermission(t, db, "admin", "write")
 	handler, service, _ := newBearerTestComponents(t, db, true)
+	originalPolicy := handler.policy
+	policyCalls := 0
+	handler.policy = tokenPolicyFunc(func(r *http.Request, principal *auth.Principal, access distauth.Access, all []distauth.Access) error {
+		policyCalls++
+		return originalPolicy.AuthorizeRepositoryAccess(r, principal, access, all)
+	})
 	query := url.Values{"service": []string{testTokenService}}
 	query.Add("scope", "repository:acme/private:pull,pull")
 	query.Add("scope", "repository:acme/private:push repository:acme/private:pull")
@@ -131,6 +139,18 @@ func TestTokenHandlerMergesRepeatedAndDuplicateScopes(t *testing.T) {
 	assert.Equal(t, []jwtauth.ResourceActions{{
 		Type: jwtauth.RepositoryType, Name: "acme/private", Actions: []string{jwtauth.PullAction, jwtauth.PushAction},
 	}}, claims.Access)
+	assert.Equal(t, 2, policyCalls, "one pull and one push policy check per repository")
+}
+
+func TestTokenHandlerReturnsServiceUnavailableOnPolicyInfrastructureError(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	handler, _, _ := newBearerTestComponents(t, db, true)
+	handler.policy = tokenPolicyFunc(func(*http.Request, *auth.Principal, distauth.Access, []distauth.Access) error {
+		return errors.New("database unavailable")
+	})
+
+	requestToken(t, handler, "admin", "correct-password", "repository:acme/private:pull", http.StatusServiceUnavailable)
 }
 
 func TestTokenHandlerDoesNotGrantPullWhenMissingRepositoryPushIsDenied(t *testing.T) {
@@ -323,6 +343,12 @@ func TestBearerAccessControllerRejectsMalformedAuthorizationHeaders(t *testing.T
 
 const testTokenService = "registry.example.com:8443"
 
+type tokenPolicyFunc func(*http.Request, *auth.Principal, distauth.Access, []distauth.Access) error
+
+func (f tokenPolicyFunc) AuthorizeRepositoryAccess(r *http.Request, principal *auth.Principal, access distauth.Access, all []distauth.Access) error {
+	return f(r, principal, access, all)
+}
+
 func newBearerTestComponents(t *testing.T, db *sql.DB, anonymous bool) (*TokenHandler, *jwtauth.Service, *accessController) {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -333,7 +359,7 @@ func newBearerTestComponents(t *testing.T, db *sql.DB, anonymous bool) (*TokenHa
 		authOptionRealm:       "https://registry.example.com:8443/v2/auth",
 		authOptionService:     testTokenService,
 		authOptionJWTService:  service,
-		"db":                  db,
+		authOptionDB:          db,
 		authOptionAnonAccess:  anonymous,
 		authOptionDatabaseKey: "test1234",
 		authOptionLastAccess:  true,
