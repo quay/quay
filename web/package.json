@@ -26,6 +26,7 @@
     "https-proxy-agent": "^5.0.1",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
+    "pretty-bytes": "^6.1.1",
     "null-loader": "^4.0.1",
     "process": "^0.11.10",
     "react": "^18.2.0",
@@ -56,18 +57,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "cypress run",
     "test:api": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @api",
     "test:e2e": "playwright test",
     "test:e2e:no-api": "playwright test --grep-invert @api",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
-    "start:integration": "serve -s dist -l 9000",
-    "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
-    "quay:seed": "npm run quay:seed-db && npm run quay:seed-storage",
-    "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./cypress/test/quay-db-data.txt",
-    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry"
+    "start:integration": "serve -s dist -l 9000"
   },
   "browserslist": {
     "production": [
@@ -131,9 +127,6 @@
     "happy-dom": "^20.9.0",
     "vitest": "^4.1.4",
     "webpack-merge": "^5.10.0"
-  },
-  "optionalDependencies": {
-    "cypress": "^13.13.2"
   },
   "overrides": {
     "cross-spawn": "^7.0.6",
