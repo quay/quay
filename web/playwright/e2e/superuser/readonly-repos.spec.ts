@@ -29,7 +29,9 @@ test.describe(
       await searchInput.fill(org.name);
 
       // Assert: repo from other user's org is visible in the filtered results
-      await expect(readonlyPage.getByText(repo.fullName)).toBeVisible({
+      await expect(
+        readonlyPage.getByRole('link', {name: repo.fullName, exact: true}),
+      ).toBeVisible({
         timeout: 15000,
       });
     });
@@ -46,7 +48,9 @@ test.describe(
       await readonlyPage.goto(`/organization/${org.name}`);
 
       // Assert: repo is visible in the org's repo list
-      await expect(readonlyPage.getByText(repo.name)).toBeVisible({
+      await expect(
+        readonlyPage.getByRole('link', {name: repo.name, exact: true}),
+      ).toBeVisible({
         timeout: 15000,
       });
     });
@@ -62,7 +66,9 @@ test.describe(
       await readonlyPage.goto(`/organization/${org.name}`);
 
       // Wait for repos to load
-      await expect(readonlyPage.getByText('nowrite-repo')).toBeVisible({
+      await expect(
+        readonlyPage.getByRole('link', {name: 'nowrite-repo', exact: true}),
+      ).toBeVisible({
         timeout: 15000,
       });
 
