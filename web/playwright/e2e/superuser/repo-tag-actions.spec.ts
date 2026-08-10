@@ -19,9 +19,6 @@ test.describe(
       // Click create repository
       await superuserPage
         .getByRole('button', {name: 'Create Repository'})
-        .waitFor({state: 'visible', timeout: 30000});
-      await superuserPage
-        .getByRole('button', {name: 'Create Repository'})
         .click();
 
       // Fill in repository name
@@ -32,12 +29,8 @@ test.describe(
       // Select private visibility
       await superuserPage.getByTestId('visibility-private-radio').click();
 
-      // Wait for form to stabilize after radio toggle re-render
-      const submitBtn = superuserPage.getByTestId(
-        'create-repository-submit-btn',
-      );
-      await expect(submitBtn).toBeEnabled();
-      await submitBtn.click();
+      // Submit
+      await superuserPage.getByTestId('create-repository-submit-btn').click();
 
       // Verify success alert appears
       await expect(
