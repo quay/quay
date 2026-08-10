@@ -114,10 +114,10 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
             "Content-type": BLOB_CONTENT_TYPE,
         }
 
-        if content_length and content_length > 0:
+        if content_length >= 0:
             headers["Content-Length"] = content_length
 
-        image_pulled_bytes.labels("v2").inc(content_length if content_length > 0 else 0)
+        image_pulled_bytes.labels("v2").inc(max(content_length, 0))
 
         logger.debug("Closing database connection before streaming layer data")
         with database.CloseForLongOperation(app.config):
