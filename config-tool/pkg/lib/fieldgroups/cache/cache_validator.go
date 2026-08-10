@@ -79,7 +79,7 @@ func (fg *CacheFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 			options := &redis.Options{
 				Addr: net.JoinHostPort(fg.DataModelCache.RedisConfig.Primary.Host,
 					strconv.Itoa(fg.DataModelCache.RedisConfig.Primary.Port)),
-				Password:  fg.DataModelCache.RedisConfig.Primary.Pass,
+				Password:  fg.DataModelCache.RedisConfig.Primary.Password,
 				DB:        0,
 				TLSConfig: tlsConfig,
 			}
@@ -101,7 +101,7 @@ func (fg *CacheFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 				options := &redis.Options{
 					Addr: net.JoinHostPort(fg.DataModelCache.RedisConfig.Replica.Host,
 						strconv.Itoa(fg.DataModelCache.RedisConfig.Replica.Port)),
-					Password:  fg.DataModelCache.RedisConfig.Replica.Pass,
+					Password:  fg.DataModelCache.RedisConfig.Replica.Password,
 					DB:        0,
 					TLSConfig: tlsConfig,
 				}
@@ -124,7 +124,7 @@ func (fg *CacheFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 
 				options := &redis.Options{
 					Addr:      net.JoinHostPort(node.Host, strconv.Itoa(node.Port)),
-					Password:  node.Pass,
+					Password:  node.Password,
 					DB:        0,
 					TLSConfig: tlsConfig,
 				}
