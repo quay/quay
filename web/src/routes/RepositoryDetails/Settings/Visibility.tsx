@@ -35,15 +35,15 @@ export default function Visibility(props: VisibilityProps) {
     return (
       <>
         <div
-          style={{paddingBottom: '1em'}}
           data-testid="visibility-private-description"
+          style={{paddingBottom: '1em'}}
         >
           This Repository is currently private. Only users on the permissions
           list may view and interact with it.
         </div>
         <Button
-          onClick={() => setVisibility('public')}
           data-testid="visibility-make-public-btn"
+          onClick={() => setVisibility('public')}
         >
           Make public
         </Button>
@@ -52,8 +52,8 @@ export default function Visibility(props: VisibilityProps) {
   } else {
     const publicRepoDescription = (
       <div
-        style={{paddingBottom: '1em'}}
         data-testid="visibility-public-description"
+        style={{paddingBottom: '1em'}}
       >
         This Repository is currently public and is visible to all users, and may
         be pulled by all users.
@@ -107,8 +107,8 @@ export default function Visibility(props: VisibilityProps) {
         <>
           {publicRepoDescription}
           <Button
-            onClick={() => setVisibility('private')}
             data-testid="visibility-make-private-btn"
+            onClick={() => setVisibility('private')}
           >
             Make private
           </Button>
