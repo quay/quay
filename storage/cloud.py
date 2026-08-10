@@ -440,8 +440,8 @@ class _CloudStorage(BaseStorageV2):
         obj = self.get_cloud_bucket().Object(path)
         try:
             obj.load()
-            obj.delete()
-            return
+            resp = obj.delete()
+            return resp.get("VersionId")
         except botocore.exceptions.ClientError as s3r:
             if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
                 raise
