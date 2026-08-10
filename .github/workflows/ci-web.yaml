@@ -143,7 +143,7 @@ jobs:
 
           # Subtract files that are themselves tests within source directories
           TEST_FILES_IN_SOURCE=$(echo "$CHANGED_FILES" | grep -cE \
-            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/test/' \
+            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/(.*/)?test/|^web/src/(.*/)?[^/]+\.test\.[^/]+$' \
             || true)
 
           SOURCE_CHANGES=$((SOURCE_CHANGES - TEST_FILES_IN_SOURCE))
