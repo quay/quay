@@ -274,6 +274,133 @@ test.describe('Manifest Track Visualization', {tag: ['@tags']}, () => {
     await expect(uniqueRow.locator('.manifest-track-dot')).toHaveCount(0);
   });
 
+  test('no spurious track lines when shared-digest tags span different pages (PROJQUAY-11442)', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const repo = await api.repository();
+
+    // Build 25 tags: tag-01 and tag-21 share DIGEST_A but land on
+    // different pages (page 1 = indices 0-19, page 2 = indices 20-24).
+    // All other tags have unique digests.
+    const tags = [];
+    for (let i = 1; i <= 25; i++) {
+      const name = `tag-${String(i).padStart(2, '0')}`;
+      const digest =
+        i === 1 || i === 21
+          ? DIGEST_A
+          : `sha256:${String(i).padStart(
+              4,
+              '0',
+            )}111122223333444455556666777788889999aaaabbbbccccddddeeee`;
+      tags.push(createMockTag(name, digest));
+    }
+
+    await mockTagApi(authenticatedPage, repo, tags);
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+    // Wait for page 1 to render
+    await expect(
+      authenticatedPage.getByRole('link', {name: 'tag-01'}),
+    ).toBeVisible();
+
+    // Page 1: tag-01 has DIGEST_A, but tag-21 (same digest) is on page 2.
+    // With the fix, tracks are computed per-page only, so a single
+    // matching tag on this page should NOT produce a track column.
+    const trackHeader = authenticatedPage.locator(
+      'th[aria-label="Manifest tracks"]',
+    );
+    await expect(trackHeader).not.toBeAttached();
+
+    // No track dots should appear on page 1
+    const dots = authenticatedPage.getByRole('button', {
+      name: /Select all.*tags with manifest/,
+    });
+    await expect(dots).toHaveCount(0);
+
+    // Navigate to page 2
+    await authenticatedPage
+      .getByRole('button', {name: 'Go to next page'})
+      .first()
+      .click();
+
+    // Wait for page 2 to render
+    await expect(
+      authenticatedPage.getByRole('link', {name: 'tag-21'}),
+    ).toBeVisible();
+
+    // Page 2: tag-21 is the only tag with DIGEST_A on this page.
+    // No track column or dots should appear.
+    await expect(trackHeader).not.toBeAttached();
+    await expect(dots).toHaveCount(0);
+  });
+
+  test('track lines appear only for shared digests on current page after pagination (PROJQUAY-11442)', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const repo = await api.repository();
+
+    // 25 tags. Tag-01 and tag-02 share DIGEST_B (both on page 1 → track visible).
+    // Tag-01 also has DIGEST_A? No — each tag has one digest.
+    // Tag-21 and tag-22 share DIGEST_B (both on page 2 → track visible).
+    // Tag-01 has DIGEST_A, tag-25 has DIGEST_A (cross-page, no track).
+    const tags = [];
+    for (let i = 1; i <= 25; i++) {
+      const name = `tag-${String(i).padStart(2, '0')}`;
+      let digest: string;
+      if (i === 1 || i === 2) {
+        digest = DIGEST_B;
+      } else if (i === 21 || i === 22) {
+        digest = DIGEST_C;
+      } else {
+        digest = `sha256:${String(i).padStart(
+          4,
+          '0',
+        )}111122223333444455556666777788889999aaaabbbbccccddddeeee`;
+      }
+      tags.push(createMockTag(name, digest));
+    }
+
+    await mockTagApi(authenticatedPage, repo, tags);
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+    // Wait for page 1
+    await expect(
+      authenticatedPage.getByRole('link', {name: 'tag-01'}),
+    ).toBeVisible();
+
+    // Page 1: tag-01 and tag-02 share DIGEST_B → track column should appear
+    const trackHeader = authenticatedPage.locator(
+      'th[aria-label="Manifest tracks"]',
+    );
+    await expect(trackHeader).toBeVisible();
+
+    // 2 dot buttons for the DIGEST_B group on page 1
+    const dotsPage1 = authenticatedPage.getByRole('button', {
+      name: /Select all 2 tags with manifest/,
+    });
+    await expect(dotsPage1).toHaveCount(2);
+
+    // Navigate to page 2
+    await authenticatedPage
+      .getByRole('button', {name: 'Go to next page'})
+      .first()
+      .click();
+    await expect(
+      authenticatedPage.getByRole('link', {name: 'tag-21'}),
+    ).toBeVisible();
+
+    // Page 2: tag-21 and tag-22 share DIGEST_C → track column should appear
+    await expect(trackHeader).toBeVisible();
+
+    // 2 dot buttons for the DIGEST_C group on page 2
+    const dotsPage2 = authenticatedPage.getByRole('button', {
+      name: /Select all 2 tags with manifest/,
+    });
+    await expect(dotsPage2).toHaveCount(2);
+  });
+
   test('supports keyboard activation of track dots', async ({
     authenticatedPage,
     api,

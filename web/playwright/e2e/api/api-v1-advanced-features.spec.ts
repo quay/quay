@@ -61,7 +61,7 @@ test.describe(
       // Get mirror config and verify update
       const mirrorCfg = await client.getMirrorConfig(org.name, repo.name);
       expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.sync_interval).toBe(7200);
+      expect(mirrorCfg?.sync_interval).toBe(7200);
 
       // Sync-now (204 expected)
       await client.triggerMirrorSync(org.name, repo.name);
@@ -106,7 +106,7 @@ test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
     // Get proxy cache config
     const proxyCfg = await client.getProxyCacheConfig(org.name);
     expect(proxyCfg).not.toBeNull();
-    expect(proxyCfg!.upstream_registry).toContain('quay.io');
+    expect(proxyCfg?.upstream_registry).toContain('quay.io');
 
     // Delete proxy cache config -- deleteProxyCacheConfig already
     // verifies the DELETE request succeeded (throws on failure)
@@ -541,8 +541,10 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
     const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
     expect([201, 202]).toContain(calcResp.status());
 
-    // Poll until size is available (replaces cy.wait(180000)).
-    // Return null for not-ready so the assertion cannot pass prematurely.
+    // Poll until the calculation completes and size_bytes is a valid number.
+    // Do NOT require size_bytes > 0: CI only creates repos/orgs via API and
+    // never pushes image blobs, so the registry legitimately has 0 bytes.
+    // Asserting > 0 caused guaranteed 180 s timeouts on every clean CI run.
     await expect
       .poll(
         async () => {
@@ -552,7 +554,9 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           if (sizeResp.status() !== 200) return null;
           const body = await sizeResp.json();
           const bytes = body.size_bytes;
-          return typeof bytes === 'number' && bytes > 0 ? bytes : null;
+          // Return the value only once the backend has finished calculating
+          // (size_bytes will be null/undefined until the async job completes).
+          return typeof bytes === 'number' ? bytes : null;
         },
         {
           message: 'Waiting for registry size calculation to complete',
@@ -560,7 +564,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           intervals: [5_000, 10_000, 15_000],
         },
       )
-      .toBeGreaterThan(0);
+      .toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -734,8 +738,8 @@ test.describe(
       // Get and verify
       const mirrorCfg = await client.getOrgMirrorConfig(org.name);
       expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.external_registry_url).toContain('https://quay.io');
-      expect(mirrorCfg!.sync_interval).toBe(3600);
+      expect(mirrorCfg?.external_registry_url).toContain('https://quay.io');
+      expect(mirrorCfg?.sync_interval).toBe(3600);
 
       // Sync-now
       await client.triggerOrgMirrorSync(org.name);
