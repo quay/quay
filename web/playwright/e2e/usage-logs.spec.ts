@@ -453,11 +453,10 @@ test.describe(
   {tag: ['@logs', '@PROJQUAY-10605']},
   () => {
     // Escape special regex characters in generated names (e.g. dots, plus signs)
-    const escapeRegex = (s: string): string =>
-      s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     test(
-      'superuser view shows full namespace/repo in Repository column',
+      'superuser view shows only repo name in Repository column (not namespace/repo)',
       {tag: '@superuser'},
       async ({superuserPage, superuserApi}) => {
         // Creating a repo generates a real create_repo log with {namespace, repo} metadata
@@ -477,12 +476,17 @@ test.describe(
 
         // Scope to td cells with exact text to avoid matching Description column.
         // Escape regex metacharacters in case generated names contain them.
-        const fullNameCell = table.locator('td').filter({
-          hasText: new RegExp(
-            `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
-          ),
-        });
-        await expect(fullNameCell.first()).toBeVisible();
+        const repoNameCell = table
+          .locator('td')
+          .filter({hasText: new RegExp(`^${escapeRegex(repoName)}$`)});
+        await expect(repoNameCell.first()).toBeVisible();
+        await expect(
+          table.locator('td').filter({
+            hasText: new RegExp(
+              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+            ),
+          }),
+        ).not.toBeVisible();
       },
     );
 
