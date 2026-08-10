@@ -959,11 +959,7 @@ test.describe(
     test.describe('Quotas', {tag: ['@feature:QUOTA_MANAGEMENT']}, () => {
       let quotaId: string;
 
-      test.beforeAll(async ({adminClient, cachedQuayConfig}) => {
-        if (!cachedQuayConfig?.features?.QUOTA_MANAGEMENT) {
-          return;
-        }
-
+      test.beforeAll(async ({adminClient}) => {
         await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
@@ -986,10 +982,7 @@ test.describe(
         }
       });
 
-      test.afterAll(async ({adminClient, cachedQuayConfig}) => {
-        if (!cachedQuayConfig?.features?.QUOTA_MANAGEMENT) {
-          return;
-        }
+      test.afterAll(async ({adminClient}) => {
         if (quotaId) {
           await adminClient.delete(
             `/api/v1/organization/${orgName}/quota/${quotaId}`,

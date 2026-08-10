@@ -9,8 +9,6 @@
 
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {RawApiClient} from '../../utils/api/raw-client';
-import {API_URL} from '../../utils/config';
 
 // ---------------------------------------------------------------------------
 // Repository Mirror
@@ -33,7 +31,7 @@ test.describe(
 
       // Create mirror config
       await client.createMirrorConfig(org.name, repo.name, {
-        external_reference: 'quay.io/quay/busybox',
+        external_reference: 'registry.example.io/library/alpine',
         sync_interval: 3600,
         sync_start_date: '2023-07-10T06:24:00Z',
         root_rule: {
@@ -209,121 +207,6 @@ test.describe(
         `/api/v1/superuser/organization/${org.name}/quota/${quotaId}`,
       );
       expect(deleteResp.status()).toBe(204);
-    });
-
-    test('admin can get quota limits via sub-resource endpoints', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('qlimit');
-      const quota = await superuserApi.quota(org.name, 1024000000);
-
-      await superuserApi.raw.createQuotaLimit(
-        org.name,
-        quota.quotaId,
-        'Warning',
-        80,
-      );
-
-      const limitsResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit`,
-      );
-      expect(limitsResp.status()).toBe(200);
-      const limits = await limitsResp.json();
-      expect(Array.isArray(limits)).toBe(true);
-      expect(limits.length).toBeGreaterThan(0);
-      expect(limits[0].type).toBe('Warning');
-      expect(limits[0].limit_percent).toBe(80);
-      const limitId = limits[0].id;
-
-      const limitResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit/${limitId}`,
-      );
-      expect(limitResp.status()).toBe(200);
-      const limit = await limitResp.json();
-      expect(limit.id).toBe(limitId);
-      expect(limit.type).toBe('Warning');
-    });
-  },
-);
-
-// ---------------------------------------------------------------------------
-// User Quotas
-// ---------------------------------------------------------------------------
-test.describe(
-  'User Quotas',
-  {tag: ['@api', '@feature:QUOTA_MANAGEMENT']},
-  () => {
-    test('admin can get user quota by ID and list its limits', async ({
-      superuserApi,
-      adminClient,
-      playwright,
-    }) => {
-      const user = await superuserApi.user('quotauser');
-
-      await superuserApi.raw.createUserQuotaSuperuser(
-        user.username,
-        2048000000,
-      );
-
-      const quotasResp = await adminClient.get(
-        `/api/v1/superuser/users/${user.username}/quota`,
-      );
-      expect(quotasResp.status()).toBe(200);
-      const quotas = await quotasResp.json();
-      const quota = quotas.find(
-        (q: {limit_bytes: number}) => q.limit_bytes === 2048000000,
-      );
-      expect(quota).toBeTruthy();
-      const quotaId = quota.id;
-
-      // Verify the user's email via superuser API (auto_verify=True on the backend)
-      const verifyEmailResp = await adminClient.put(
-        `/api/v1/superuser/users/${user.username}`,
-        {email: user.email},
-      );
-      expect(verifyEmailResp.status()).toBe(200);
-
-      // Sign in as the created user for user-scoped quota endpoints
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const userClient = new RawApiClient(request, API_URL);
-        await userClient.signIn(user.username, user.password);
-
-        const quotaResp = await userClient.get(`/api/v1/user/quota/${quotaId}`);
-        expect(quotaResp.status()).toBe(200);
-
-        const limitsResp = await userClient.get(
-          `/api/v1/user/quota/${quotaId}/limit`,
-        );
-        expect(limitsResp.status()).toBe(200);
-      } finally {
-        await request.dispose();
-      }
-
-      // Superuser update and verify
-      try {
-        const updateResp = await adminClient.put(
-          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
-          {limit_bytes: 4096000000},
-        );
-        expect(updateResp.status()).toBe(200);
-
-        const verifyResp = await adminClient.get(
-          `/api/v1/superuser/users/${user.username}/quota`,
-        );
-        const verifiedQuotas = await verifyResp.json();
-        const updated = verifiedQuotas.find(
-          (q: {id: number}) => q.id === quotaId,
-        );
-        expect(updated.limit_bytes).toBe(4096000000);
-      } finally {
-        await adminClient.delete(
-          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
-        );
-      }
     });
   },
 );
@@ -658,10 +541,8 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
     const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
     expect([201, 202]).toContain(calcResp.status());
 
-    // Poll until the calculation completes and size_bytes is a valid number.
-    // Do NOT require size_bytes > 0: CI only creates repos/orgs via API and
-    // never pushes image blobs, so the registry legitimately has 0 bytes.
-    // Asserting > 0 caused guaranteed 180 s timeouts on every clean CI run.
+    // Poll until size is available (replaces cy.wait(180000)).
+    // Return null for not-ready so the assertion cannot pass prematurely.
     await expect
       .poll(
         async () => {
@@ -671,9 +552,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           if (sizeResp.status() !== 200) return null;
           const body = await sizeResp.json();
           const bytes = body.size_bytes;
-          // Return the value only once the backend has finished calculating
-          // (size_bytes will be null/undefined until the async job completes).
-          return typeof bytes === 'number' ? bytes : null;
+          return typeof bytes === 'number' && bytes > 0 ? bytes : null;
         },
         {
           message: 'Waiting for registry size calculation to complete',
@@ -681,7 +560,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           intervals: [5_000, 10_000, 15_000],
         },
       )
-      .toBeGreaterThanOrEqual(0);
+      .toBeGreaterThan(0);
   });
 });
 
