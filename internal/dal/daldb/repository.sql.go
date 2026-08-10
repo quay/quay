@@ -274,6 +274,7 @@ SELECT EXISTS(
   WHERE u.username = ?
     AND r.name = ?
     AND v.name = 'public'
+    AND r.kind_id = 1
     AND r.state != 3
     AND u.enabled = 1
 )

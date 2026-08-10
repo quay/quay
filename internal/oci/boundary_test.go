@@ -45,6 +45,8 @@ func distributionBoundaryExempt(importPath string) bool {
 	short := strings.TrimPrefix(importPath, "github.com/quay/quay/")
 	return strings.HasPrefix(short, "internal/registry/") ||
 		short == "internal/registry" ||
+		strings.HasPrefix(short, "internal/mirrorregistry/distribution/") ||
+		short == "internal/mirrorregistry/distribution" ||
 		strings.HasPrefix(short, "internal/oci/storage/local/") ||
 		short == "internal/oci/storage/local"
 }

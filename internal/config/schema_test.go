@@ -96,6 +96,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_SECURITY_NOTIFICATIONS":          true,
 	"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": true,
 	"SECURITY_SCANNER_V4_PSK":                 true,
+	"SECURITY_SCANNER_V4_INDEXING":            true,
 	"SECURITY_SCANNER_V4_MANIFEST_CLEANUP":    true,
 	"FEATURE_SECURITY_SCANNER_V2":             true,
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
