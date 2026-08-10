@@ -1,0 +1,172 @@
+FROM registry.redhat.io/ubi9/ubi-minimal:latest AS base
+
+USER root
+
+ENV PATH=/opt/app-root/bin:/app/bin/:$PATH \
+    PYTHON_VERSION=3.12 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    PIP_NO_CACHE_DIR=off
+
+ENV PYTHONUSERBASE=/app
+ENV TZ=UTC
+RUN set -ex\
+	; microdnf -y module enable nginx:1.24 \
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs install \
+		python3.12 \
+		python3.12-pip \
+		python-unversioned-command \
+		glibc-langpack-en \
+		dnsmasq \
+		memcached \
+		nginx \
+		libpq-devel \
+		libjpeg-turbo \
+		openldap \
+		openssl \
+		python3-gpg \
+		python3-six \
+		skopeo \
+		findutils \
+	; microdnf -y clean all && rm -rf /var/cache/yum \
+	; ln -sf /usr/bin/python3.12 /usr/bin/python \
+	; ln -sf /usr/bin/python3.12 /usr/bin/python3 \
+	; mkdir -p /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages /opt/app-root/bin /app/bin \
+	; chown -R 1001:0 /opt/app-root /app \
+	; chmod -R g=u /opt/app-root /app
+
+FROM base AS build-python
+ENV PYTHONDONTWRITEBYTECODE=1
+RUN set -ex\
+	; microdnf -y --setopt=tsflags=nodocs install \
+		gcc-c++ \
+		git \
+		cmake \
+		ninja-build \
+		openldap-devel \
+		python3.12-devel \
+		libffi-devel \
+        openssl-devel \
+        diffutils \
+        file \
+        make \
+        libjpeg-turbo \
+        libjpeg-turbo-devel \
+		wget \
+		rust-toolset \
+		libxml2-devel \
+		libxslt-devel \
+		freetype-devel \
+	; microdnf -y clean all
+WORKDIR /build
+RUN python3.12 -m ensurepip --upgrade
+COPY requirements.txt .
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+USER 1001
+ARG TARGETARCH
+RUN set -ex \
+	; NO_BINARY_OPTS="" \
+	; if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
+		NO_BINARY_OPTS="--no-binary grpcio"; \
+	fi \
+	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS --requirement requirements.txt \
+	;
+RUN set -ex\
+	; for dir in\
+		$(find "/opt/app-root/lib/python3.12/site-packages" -type d -name certifi)\
+	; do chgrp -R 0 "$dir" && chmod -R g=u "$dir" ; done\
+	;
+RUN python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root dumb-init
+
+FROM registry.redhat.io/ubi9/nodejs-22-minimal:latest AS build-static
+WORKDIR /opt/app-root/src
+ENV NODE_OPTIONS=--openssl-legacy-provider
+COPY package.json package-lock.json  ./
+RUN npm clean-install
+COPY static/  ./static/
+COPY *.json *.js  ./
+RUN npm run --quiet build
+
+FROM registry.redhat.io/ubi9/nodejs-22-minimal:latest AS build-ui
+WORKDIR /opt/app-root
+COPY web/package.json web/package-lock.json  ./
+RUN npm clean-install --ignore-scripts --legacy-peer-deps
+COPY web .
+RUN npm run --quiet build
+
+FROM registry.redhat.io/ubi9/go-toolset:1.25 AS config-tool
+WORKDIR /opt/app-root/src
+COPY config-tool/ ./
+RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
+
+FROM registry.redhat.io/ubi9/ubi-minimal:latest AS build-quaydir
+WORKDIR /quaydir
+COPY --from=build-static /opt/app-root/src/static /quaydir/static
+COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
+COPY . .
+RUN rm -rf web/ config-tool/ node_modules/ .git \
+    package.json package-lock.json webpack.config.js \
+    tsconfig.json tslint.json karma.conf.js \
+    requirements.txt requirements-osbs.txt
+
+FROM base AS final
+
+LABEL com.redhat.component="quay-registry-container"
+LABEL name="quay/quay-rhel9"
+LABEL io.k8s.display-name="Red Hat Quay"
+LABEL io.k8s.description="Red Hat Quay"
+LABEL io.openshift.tags="quay"
+LABEL summary="Red Hat Quay"
+LABEL description="Red Hat Quay"
+LABEL vendor="Red Hat, Inc."
+LABEL maintainer="quay-devel@redhat.com"
+
+ENV QUAYDIR=/quay-registry
+ENV QUAYCONF=/quay-registry/conf
+ENV QUAYRUN=/quay-registry/conf
+ENV QUAYPATH=$QUAYDIR
+ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages:$QUAYPATH
+ENV RED_HAT_QUAY=true
+
+RUN set -ex\
+	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
+	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\
+	; setperms /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors\
+	; setperms /etc/nginx\
+	; ln -sf /dev/stdout /var/log/nginx/access.log\
+	; ln -sf /dev/stdout /var/log/nginx/error.log\
+	; ln -s $QUAYCONF /conf\
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage\
+    ; chown root:root /etc/passwd \
+    ; chmod 0644      /etc/passwd \
+	; chown -R 1001:0 /etc/pki/ \
+	; chown -R 1001:0 /etc/ssl/ \
+	; chown -R 1001:0 /quay-registry \
+	; chmod ug+w /etc/pki/ca-trust \
+	; chmod ug+w -R /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
+	; chmod ug+w -R /etc/ssl/certs
+
+WORKDIR $QUAYDIR
+COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
+COPY --from=build-python /opt/app-root/lib64/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages
+COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
+COPY --from=build-python /opt/app-root/bin/dumb-init /usr/local/bin/dumb-init
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
+COPY --from=build-quaydir /quaydir $QUAYDIR
+
+RUN set -ex \
+  ; chgrp -R 0 "$QUAYCONF" && chmod -R g=u "$QUAYCONF" \
+  ;
+
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
+
+EXPOSE 8080 8443 7443 9091 55443
+VOLUME ["/datastorage", "/tmp", "/conf/stack"]
+USER 1001
+ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
+CMD ["registry"]
