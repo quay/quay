@@ -6,12 +6,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/quay/quay/internal/config"
+	"github.com/quay/quay/internal/gc"
 	mirrordist "github.com/quay/quay/internal/mirrorregistry/distribution"
 )
 
@@ -28,9 +30,10 @@ type Config struct {
 
 // App is one composed mirror-registry HTTP application and its owned resources.
 type App struct {
-	handler http.Handler
-	db      *sql.DB
-	reg     *mirrordist.Registry
+	handler   http.Handler
+	db        *sql.DB
+	reg       *mirrordist.Registry
+	collector gc.Collector
 
 	cancel     context.CancelFunc
 	workerDone chan struct{}
@@ -71,12 +74,13 @@ func New(ctx context.Context, cfg *Config) (app *App, err error) {
 	}
 
 	app = &App{
-		handler: composition.handler,
-		db:      composition.db,
-		reg:     composition.reg,
-		cancel:  cancel,
+		handler:   composition.handler,
+		db:        composition.db,
+		reg:       composition.reg,
+		collector: gc.NewCollector(composition.gcStore, composition.blobs, composition.blobLocks, slog.Default()),
+		cancel:    cancel,
 	}
-	app.workerDone = startGC(appCtx, composition.gcStore, composition.blobs, composition.blobLocks)
+	app.workerDone = startGC(appCtx, app.collector)
 	return app, nil
 }
 
@@ -86,6 +90,15 @@ func (a *App) Handler() http.Handler {
 		return nil
 	}
 	return a.handler
+}
+
+// GarbageCollector returns the collector used by the application's background
+// GC worker. The collector is valid until Close releases the application.
+func (a *App) GarbageCollector() gc.Collector {
+	if a == nil {
+		return nil
+	}
+	return a.collector
 }
 
 // Close stops the garbage collector before releasing the registry and
