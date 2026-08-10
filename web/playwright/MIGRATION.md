@@ -757,7 +757,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |
 | ⬚ | `service-status.cy.ts` | | |
 | ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |
-| ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |
+| 🚧 | `superuser-build-logs.cy.ts` | `superuser/build-logs.spec.ts` | Partial: 12→8 tests (access control, button state, error handling, sidebar nav, BUILD_SUPPORT disabled, checkbox toggle). Build-dependent tests (load/display logs, timestamps with data, loading state, empty logs, object messages PROJQUAY-9714) not migrated |
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |
