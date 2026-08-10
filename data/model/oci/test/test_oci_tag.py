@@ -18,6 +18,7 @@ from data.model.oci.tag import (
     create_temporary_tag_outside_timemachine,
     delete_tag,
     delete_tags_for_manifest,
+    fetch_paginated_autoprune_repo_tags_by_number,
     filter_to_alive_tags,
     filter_to_visible_tags,
     find_matching_tag,
@@ -1273,3 +1274,94 @@ class TestRetargetTagRaceCondition:
         with pytest.raises(RetargetTagException) as exc_info:
             retarget_tag("failingtag", manifest.id, raise_on_error=True)
         assert "Repository no longer exists" in str(exc_info.value)
+
+
+class TestFetchPaginatedAutopruneRepoTagsByNumberExcludeTags:
+    """Tests for the exclude_tags parameter of fetch_paginated_autoprune_repo_tags_by_number."""
+
+    def test_exclude_tags_filters_specified_tags(self, initialized_db):
+        """Verify that tags listed in exclude_tags are absent from the result set."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create several tags pointing to this manifest
+        tag_keep1 = retarget_tag("keep-1", manifest.id)
+        tag_keep2 = retarget_tag("keep-2", manifest.id)
+        tag_exclude = retarget_tag("exclude-me", manifest.id)
+
+        # Call with exclude_tags containing the tag to exclude.
+        # max_tags_allowed=0 so all tags are eligible for pruning.
+        results = fetch_paginated_autoprune_repo_tags_by_number(
+            repo.id,
+            max_tags_allowed=0,
+            items_per_page=100,
+            page=1,
+            exclude_tags=[tag_exclude],
+        )
+
+        result_names = {t.name for t in results}
+        assert "exclude-me" not in result_names
+        assert "keep-1" in result_names
+        assert "keep-2" in result_names
+
+    def test_exclude_tags_none_returns_all(self, initialized_db):
+        """Verify that passing exclude_tags=None returns all tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        retarget_tag("tag-a", manifest.id)
+        retarget_tag("tag-b", manifest.id)
+
+        results = fetch_paginated_autoprune_repo_tags_by_number(
+            repo.id,
+            max_tags_allowed=0,
+            items_per_page=100,
+            page=1,
+            exclude_tags=None,
+        )
+
+        result_names = {t.name for t in results}
+        assert "tag-a" in result_names
+        assert "tag-b" in result_names
+
+    def test_exclude_tags_empty_list_returns_all(self, initialized_db):
+        """Verify that passing an empty exclude_tags list returns all tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        retarget_tag("tag-a", manifest.id)
+        retarget_tag("tag-b", manifest.id)
+
+        results = fetch_paginated_autoprune_repo_tags_by_number(
+            repo.id,
+            max_tags_allowed=0,
+            items_per_page=100,
+            page=1,
+            exclude_tags=[],
+        )
+
+        result_names = {t.name for t in results}
+        assert "tag-a" in result_names
+        assert "tag-b" in result_names
+
+    def test_exclude_multiple_tags(self, initialized_db):
+        """Verify that multiple tags can be excluded at once."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        tag_keep = retarget_tag("keep-me", manifest.id)
+        tag_ex1 = retarget_tag("exclude-1", manifest.id)
+        tag_ex2 = retarget_tag("exclude-2", manifest.id)
+
+        results = fetch_paginated_autoprune_repo_tags_by_number(
+            repo.id,
+            max_tags_allowed=0,
+            items_per_page=100,
+            page=1,
+            exclude_tags=[tag_ex1, tag_ex2],
+        )
+
+        result_names = {t.name for t in results}
+        assert "exclude-1" not in result_names
+        assert "exclude-2" not in result_names
+        assert "keep-me" in result_names
