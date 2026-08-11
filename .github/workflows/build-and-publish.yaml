@@ -98,6 +98,9 @@ jobs:
               platforms: linux/ppc64le
             - endpoint: ssh://builder-s390x
               platforms: linux/s390x
+              # Remove this pin once a BuildKit image ships runc >= 1.5.1.
+              driver-opts:
+                - image=moby/buildkit:v0.30.0
 
       - name: Login to Quay.io
         uses: docker/login-action@v1
