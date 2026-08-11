@@ -8,11 +8,16 @@ async function assertChartLegend(
   chartTestId = 'usage-logs-chart',
 ): Promise<void> {
   await page.goto(`/organization/${orgName}?tab=Logs`);
-  const chart = page.getByTestId(chartTestId);
-  await expect(chart).toBeVisible();
-  for (const text of legends) {
-    await expect(chart.getByText(text, {exact: true})).toBeVisible();
-  }
+  // Aggregate log kinds can lag behind mutating API calls; poll until all
+  // expected legend labels are present.
+  await expect(async () => {
+    await page.reload();
+    const chart = page.getByTestId(chartTestId);
+    await expect(chart).toBeVisible();
+    for (const text of legends) {
+      await expect(chart.getByText(text, {exact: true})).toBeVisible();
+    }
+  }).toPass({timeout: 60_000, intervals: [2_000, 5_000, 10_000]});
 }
 
 test.describe('Usage Logs', {tag: ['@logs']}, () => {
@@ -272,7 +277,9 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         const syncStartDate = new Date();
         syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
         await api.raw.createMirrorConfig(org.name, repo.name, {
-          external_reference: 'nonexistent.invalid/nope',
+          // Resolvable host so SSRF hostname checks pass; sync fails at pull
+          // time because the org/repo path does not exist (matches redhat-3.17).
+          external_reference: `quay.io/${org.name}/${repo.name}`,
           sync_interval: 86400,
           sync_start_date: syncStartDate
             .toISOString()

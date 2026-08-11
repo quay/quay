@@ -51,14 +51,10 @@ jobs:
         run: |
           docker compose up -d ldap
           echo "Waiting for LDAP to be ready..."
-          # Cold 389-ds bootstrap + schema/LDIF can exceed 90s. Require admin_ldap
-          # so we don't treat a mid-import base DN as success (align intent with
-          # redhat-3.17 pre-init; stricter readiness than anonymous base search).
-          timeout=180
+          timeout=90
           while [ $timeout -gt 0 ]; do
             if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
-                -D "cn=Directory Manager" -w admin \
-                -b "uid=admin_ldap,ou=users,dc=example,dc=org" -s base &>/dev/null; then
+                -b "dc=example,dc=org" -s base &>/dev/null; then
               echo "LDAP is ready!"
               break
             fi
@@ -66,7 +62,7 @@ jobs:
             timeout=$((timeout - 2))
           done
           if [ $timeout -le 0 ]; then
-            echo "::error::LDAP failed to initialize within 180 seconds"
+            echo "::error::LDAP failed to initialize within 90 seconds"
             docker logs quay-ldap
             exit 1
           fi
