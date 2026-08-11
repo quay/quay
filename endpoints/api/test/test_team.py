@@ -17,6 +17,7 @@ UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}
 NEW_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "apisyncteam"}
 NEW_TEAM_OIDC_PARAMS = {"orgname": "sellnsmall", "teamname": "oidcsyncteam"}
 NEW_TEAM_KEYSTONE_PARAMS = {"orgname": "sellnsmall", "teamname": "keystonesyncteam"}
+UPDATE_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "updatesyncteam"}
 FAILED_LOOKUP_CREATE_PARAMS = {"orgname": "sellnsmall", "teamname": "failedsyncteam"}
 
 
@@ -77,14 +78,24 @@ def test_update_team_with_group_dn_enables_sync(app):
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
+                # Create a non-owners team first — updating "owners" to role=member
+                # is rejected because it would remove the caller's org admin.
+                conduct_api_call(
+                    cl,
+                    OrganizationTeam,
+                    "PUT",
+                    UPDATE_TEAM_PARAMS,
+                    {"role": "member", "description": "to be synced"},
+                )
+
                 body = {
                     "role": "member",
                     "group_dn": "cn=AwesomeFolk",
                 }
-                conduct_api_call(cl, OrganizationTeam, "PUT", UNSYNCED_TEAM_PARAMS, body)
+                conduct_api_call(cl, OrganizationTeam, "PUT", UPDATE_TEAM_PARAMS, body)
 
                 sync_info = model.team.get_team_sync_information(
-                    UNSYNCED_TEAM_PARAMS["orgname"], UNSYNCED_TEAM_PARAMS["teamname"]
+                    UPDATE_TEAM_PARAMS["orgname"], UPDATE_TEAM_PARAMS["teamname"]
                 )
                 assert sync_info is not None
                 assert json.loads(sync_info.config) == {"group_dn": "cn=AwesomeFolk"}
@@ -107,7 +118,9 @@ def test_create_team_with_group_name_enables_sync(app):
                 )
                 assert sync_info is not None
                 assert json.loads(sync_info.config) == {"group_name": "external-object-id"}
-                oidc_auth.check_group_lookup_args.assert_called()
+                oidc_auth.check_group_lookup_args.assert_called_once_with(
+                    {"group_name": "external-object-id"}
+                )
 
 
 def test_create_team_with_group_id_enables_sync(app):
@@ -126,7 +139,9 @@ def test_create_team_with_group_id_enables_sync(app):
             )
             assert sync_info is not None
             assert json.loads(sync_info.config) == {"group_id": "keystone-group-123"}
-            keystone_auth.check_group_lookup_args.assert_called()
+            keystone_auth.check_group_lookup_args.assert_called_once_with(
+                {"group_id": "keystone-group-123"}
+            )
 
 
 def test_oidc_sync_removes_existing_team_members(app):
