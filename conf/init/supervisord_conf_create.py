@@ -14,6 +14,8 @@ QUAYRUN_DIR = os.getenv("QUAYRUN", QUAYCONF_DIR)
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 QUAY_HOTRELOAD: bool = os.getenv("QUAY_HOTRELOAD", "false") == "true"
 
+MAX_GUNICORN_TIMEOUT = 1800
+
 
 def _parse_csv_env(name):
     val = os.getenv(name, "")
@@ -118,6 +120,10 @@ if __name__ == "__main__":
         config,
         QUAY_LOGGING,
         QUAY_HOTRELOAD,
-        gunicorn_registry_timeout=app_config.get("GUNICORN_REGISTRY_TIMEOUT", 300),
-        gunicorn_web_timeout=app_config.get("GUNICORN_WEB_TIMEOUT", 60),
+        gunicorn_registry_timeout=min(
+            app_config.get("GUNICORN_REGISTRY_TIMEOUT", 300), MAX_GUNICORN_TIMEOUT
+        ),
+        gunicorn_web_timeout=min(
+            app_config.get("GUNICORN_WEB_TIMEOUT", 60), MAX_GUNICORN_TIMEOUT
+        ),
     )

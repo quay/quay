@@ -786,6 +786,63 @@ test.describe('Config Dump', {tag: ['@api']}, () => {
 });
 
 // ---------------------------------------------------------------------------
+// Gunicorn Timeout Config Schema
+// ---------------------------------------------------------------------------
+test.describe(
+  'Gunicorn Timeout Config Schema',
+  {tag: ['@api', '@superuser', '@PROJQUAY-12278']},
+  () => {
+    const TIMEOUT_FIELDS = [
+      {key: 'GUNICORN_REGISTRY_TIMEOUT', defaultValue: 300},
+      {key: 'GUNICORN_WEB_TIMEOUT', defaultValue: 60},
+    ];
+
+    test('config dump exposes timeout schema with min and max constraints', async ({
+      adminClient,
+    }) => {
+      const resp = await adminClient.get('/api/v1/superuser/config');
+      if (resp.status() === 404 || resp.status() === 403) {
+        test.skip(true, 'FEATURE_SUPERUSER_CONFIGDUMP not enabled');
+        return;
+      }
+      expect(resp.status()).toBe(200);
+      const body = await resp.json();
+
+      for (const {key} of TIMEOUT_FIELDS) {
+        const fieldSchema = body.schema?.properties?.[key];
+        expect(fieldSchema, `${key} should be in schema`).toBeDefined();
+        expect(fieldSchema.type).toBe('integer');
+        expect(fieldSchema.minimum).toBe(30);
+        expect(fieldSchema.maximum).toBe(1800);
+      }
+    });
+
+    test('config dump returns timeout values within valid range', async ({
+      adminClient,
+    }) => {
+      const resp = await adminClient.get('/api/v1/superuser/config');
+      if (resp.status() === 404 || resp.status() === 403) {
+        test.skip(true, 'FEATURE_SUPERUSER_CONFIGDUMP not enabled');
+        return;
+      }
+      expect(resp.status()).toBe(200);
+      const body = await resp.json();
+
+      for (const {key, defaultValue} of TIMEOUT_FIELDS) {
+        const value = body.config?.[key] ?? defaultValue;
+        expect(value, `${key} should be >= 30`).toBeGreaterThanOrEqual(30);
+        expect(value, `${key} should be <= 1800`).toBeLessThanOrEqual(1800);
+      }
+    });
+
+    test('normal user cannot access config dump', async ({userClient}) => {
+      const resp = await userClient.get('/api/v1/superuser/config');
+      expect(resp.status()).toBe(403);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // App Tokens Superuser
 // ---------------------------------------------------------------------------
 test.describe('App Tokens Superuser', {tag: ['@api']}, () => {

@@ -199,13 +199,20 @@ class TestGunicornTimeoutSchema:
     @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
     def test_accepts_valid_timeout(self, field):
         schema = CONFIG_SCHEMA["properties"][field]
-        for value in [30, 60, 300, 600, 3600]:
+        for value in [30, 60, 300, 600, 1800]:
             validate(value, schema)
 
     @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
     def test_rejects_timeout_below_minimum(self, field):
         schema = CONFIG_SCHEMA["properties"][field]
         for value in [0, 1, 29]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_timeout_above_maximum(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [1801, 3600, 7200]:
             with pytest.raises(ValidationError):
                 validate(value, schema)
 
