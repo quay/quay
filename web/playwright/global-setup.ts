@@ -81,7 +81,7 @@ export const TEST_USERS_LDAP = {
 } as const;
 
 async function globalSetup(config: FullConfig) {
-  const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
+  const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
 
   console.log(
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,

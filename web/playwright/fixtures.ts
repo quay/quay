@@ -1213,8 +1213,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await testApi.cleanup();
   },
 
-  superuserApi: async ({superuserRequest}, use) => {
+  superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
     const client = new ApiClient(superuserRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();

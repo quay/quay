@@ -20,8 +20,7 @@ const execFileAsync = promisify(execFile);
 // Extract registry host from API_URL (e.g., 'localhost:8080')
 const REGISTRY_HOST = new URL(API_URL).host;
 
-const BUSYBOX_IMAGE =
-  'quay.io/prometheus/busybox@sha256:467c84e76e5bd720ffd3cb86c11e421e2489ef20868114ba58cd0a9e02e70a9d';
+const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 
 type ToolAvailability = {
   skopeo: boolean;

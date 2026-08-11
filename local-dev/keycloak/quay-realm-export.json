@@ -24,7 +24,15 @@
         "http://localhost:8080/*",
         "http://localhost:8080/oauth2/someoidc/callback*",
         "http://localhost:9000/*",
-        "http://localhost:9000/oauth2/someoidc/callback*"
+        "http://localhost:9000/oauth2/someoidc/callback*",
+        "http://host.docker.internal:8080/*",
+        "http://host.docker.internal:8080/oauth2/someoidc/callback*",
+        "http://host.docker.internal:9000/*",
+        "http://host.docker.internal:9000/oauth2/someoidc/callback*",
+        "http://host.containers.internal:8080/*",
+        "http://host.containers.internal:8080/oauth2/someoidc/callback*",
+        "http://host.containers.internal:9000/*",
+        "http://host.containers.internal:9000/oauth2/someoidc/callback*"
       ],
       "webOrigins": ["+"],
       "attributes": {
