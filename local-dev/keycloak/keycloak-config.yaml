@@ -15,3 +15,8 @@ SOMEOIDC_LOGIN_CONFIG:
   USE_PKCE: true
   PKCE_METHOD: "S256"
   PUBLIC_CLIENT: true
+  # Quay discovers OIDC via host.containers.internal, but Keycloak's
+  # KC_HOSTNAME is localhost, so tokens carry a localhost issuer.
+  # Override validation to that issuer (this branch has OIDC_ISSUER, not
+  # master's multi-value OIDC_ISSUERS).
+  OIDC_ISSUER: "http://localhost:8081/realms/quay"

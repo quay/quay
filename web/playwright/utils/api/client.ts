@@ -4,7 +4,7 @@
  * Provides API interactions with CSRF token caching to reduce redundant requests.
  */
 
-import {APIRequestContext} from '@playwright/test';
+import {APIRequestContext, APIResponse} from '@playwright/test';
 import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
 
@@ -216,9 +216,14 @@ export interface ProxyCacheConfig {
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
+  private credentials: {username: string; password: string} | null = null;
 
   constructor(request: APIRequestContext) {
     this.request = request;
+  }
+
+  setCredentials(username: string, password: string): void {
+    this.credentials = {username, password};
   }
 
   private async fetchToken(): Promise<string> {
@@ -229,11 +234,60 @@ export class ApiClient {
   }
 
   /**
+   * After login (or other session-mutating calls), Quay rotates the CSRF
+   * token and returns it in X-Next-CSRF-Token — same as the frontend axios
+   * interceptor. When present, cache it; when `invalidateIfMissing` is set
+   * (sign-in always rotates the session), clear the cache so the next call
+   * refetches from /csrf_token.
+   */
+  private applyNextCsrfFromResponse(
+    response: APIResponse,
+    invalidateIfMissing = false,
+  ): void {
+    const next = response.headers()['x-next-csrf-token'];
+    if (next) {
+      this.csrfToken = next;
+    } else if (invalidateIfMissing) {
+      this.csrfToken = null;
+    }
+  }
+
+  /**
    * Get the CSRF token (fetches if not cached)
    * Primarily for use by test fixtures that need the raw token.
    */
   async getToken(): Promise<string> {
     return this.fetchToken();
+  }
+
+  private isFreshLoginRequired(status: number, body: string): boolean {
+    if (status !== 401) return false;
+    try {
+      return JSON.parse(body).error_type === 'fresh_login_required';
+    } catch {
+      return false;
+    }
+  }
+
+  private async ensureFreshSession(): Promise<void> {
+    if (!this.credentials) {
+      throw new Error('Cannot refresh session: no credentials stored');
+    }
+    await this.signIn(this.credentials.username, this.credentials.password);
+  }
+
+  private async withFreshLoginRetry(
+    doRequest: () => Promise<APIResponse>,
+  ): Promise<APIResponse> {
+    const response = await doRequest();
+    if (this.credentials && response.status() === 401) {
+      const body = await response.text();
+      if (this.isFreshLoginRequired(response.status(), body)) {
+        await this.ensureFreshSession();
+        return doRequest();
+      }
+    }
+    return response;
   }
 
   // Organization methods
@@ -851,6 +905,10 @@ export class ApiClient {
       );
     }
 
+    // When mailing is disabled, createUser also logs the user in and rotates
+    // the CSRF token via X-Next-CSRF-Token.
+    this.applyNextCsrfFromResponse(response);
+
     const result = await response.json();
     return {
       username: result.username || username,
@@ -950,10 +1008,15 @@ export class ApiClient {
   }
 
   async clearUserPrompts(): Promise<void> {
-    const token = await this.getToken();
+    // Always use a token tied to the current session. After sign-in the
+    // cache should already hold X-Next-CSRF-Token; if not, refetch.
+    const token = await this.fetchToken();
     const response = await this.request.put(`${API_URL}/api/v1/user/`, {
       timeout: 5000,
-      headers: {'X-CSRF-Token': token},
+      headers: {
+        'X-CSRF-Token': token,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
       data: {given_name: 'Test', family_name: 'User'},
     });
     if (!response.ok()) {
@@ -985,6 +1048,9 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+    // Sign-in always creates a new session and returns the rotated CSRF
+    // token in X-Next-CSRF-Token (see endpoints.common.common_login).
+    this.applyNextCsrfFromResponse(response, true);
   }
 
   // User notification methods
