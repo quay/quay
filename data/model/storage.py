@@ -101,7 +101,7 @@ def _is_storage_orphaned(candidate_id):
     return True
 
 
-def garbage_collect_storage(storage_id_whitelist):
+def garbage_collect_storage(storage_id_whitelist, namespace=None, repo_name=None):
     """
     Performs GC on a possible subset of the storage's with the IDs found in the whitelist.
 
@@ -239,8 +239,14 @@ def garbage_collect_storage(storage_id_whitelist):
                     ):
                         continue
 
-                    logger.debug("Removing %s from %s", image_path, location_name)
-                    config.store.remove({location_name}, image_path)
+                    version_id = config.store.remove({location_name}, image_path)
+                    if namespace:
+                        msg = "Removed blob %s from %s (path: %s) " "under namespace %s (repo: %s)"
+                        args = [storage_checksum, location_name, image_path, namespace, repo_name]
+                        if version_id:
+                            msg += " (delete_marker: %s)"
+                            args.append(version_id)
+                        logger.info(msg, *args)
                     gc_storage_blobs_deleted.inc()
             # If a lock cannot be acquired, skip deletion of the blob from storage backend (safe option)
             except LockNotAcquiredException:

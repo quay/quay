@@ -68,7 +68,8 @@ def test_basicop(storage_engine):
     storage_engine.get_checksum(_TEST_PATH)
 
     # Remove the file.
-    storage_engine.remove(_TEST_PATH)
+    result = storage_engine.remove(_TEST_PATH)
+    assert result is None
 
     # Ensure it no longer exists.
     with pytest.raises(IOError):
@@ -78,6 +79,32 @@ def test_basicop(storage_engine):
         storage_engine.get_checksum(_TEST_PATH)
 
     assert not storage_engine.exists(_TEST_PATH)
+
+
+def test_remove_returns_version_id_on_versioned_bucket():
+    with mock_s3():
+        client = boto3.client("s3", region_name=_TEST_REGION)
+        client.create_bucket(
+            Bucket=_TEST_BUCKET,
+            CreateBucketConfiguration={"LocationConstraint": _TEST_REGION},
+        )
+        client.put_bucket_versioning(
+            Bucket=_TEST_BUCKET,
+            VersioningConfiguration={"Status": "Enabled"},
+        )
+
+        engine = S3Storage(
+            _TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD, _TEST_REGION
+        )
+        engine.put_content(_TEST_PATH, _TEST_CONTENT)
+
+        version_id = engine.remove(_TEST_PATH)
+        assert version_id is not None
+
+
+def test_remove_nonexistent_returns_none(storage_engine):
+    result = storage_engine.remove("does/not/exist")
+    assert result is None
 
 
 def test_storage_setup(storage_engine):
