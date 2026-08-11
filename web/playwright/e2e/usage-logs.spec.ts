@@ -8,16 +8,11 @@ async function assertChartLegend(
   chartTestId = 'usage-logs-chart',
 ): Promise<void> {
   await page.goto(`/organization/${orgName}?tab=Logs`);
-  // Aggregate log kinds can lag behind mutating API calls; poll until all
-  // expected legend labels are present.
-  await expect(async () => {
-    await page.reload();
-    const chart = page.getByTestId(chartTestId);
-    await expect(chart).toBeVisible();
-    for (const text of legends) {
-      await expect(chart.getByText(text, {exact: true})).toBeVisible();
-    }
-  }).toPass({timeout: 60_000, intervals: [2_000, 5_000, 10_000]});
+  const chart = page.getByTestId(chartTestId);
+  await expect(chart).toBeVisible();
+  for (const text of legends) {
+    await expect(chart.getByText(text, {exact: true})).toBeVisible();
+  }
 }
 
 test.describe('Usage Logs', {tag: ['@logs']}, () => {
