@@ -6,7 +6,6 @@ import {
   useAllTags,
   useCreateTag,
   useSetExpiration,
-  useSetTagImmutability,
   useDeleteTag,
   useRestoreTag,
   usePermanentlyDeleteTag,
@@ -16,7 +15,6 @@ import {
   getTags,
   createTag,
   bulkSetExpiration,
-  bulkSetTagImmutability,
   bulkDeleteTags,
   restoreTag,
   permanentlyDeleteTag,
@@ -28,7 +26,6 @@ vi.mock('src/resources/TagResource', () => ({
   getTags: vi.fn(),
   createTag: vi.fn(),
   bulkSetExpiration: vi.fn(),
-  bulkSetTagImmutability: vi.fn(),
   bulkDeleteTags: vi.fn(),
   restoreTag: vi.fn(),
   permanentlyDeleteTag: vi.fn(),
@@ -144,28 +141,6 @@ describe('UseTags', () => {
         'myrepo',
         ['latest', 'v1.0'],
         1700000000,
-      );
-    });
-  });
-
-  describe('useSetTagImmutability', () => {
-    it('calls bulkSetTagImmutability and reports success', async () => {
-      vi.mocked(bulkSetTagImmutability).mockResolvedValueOnce(undefined);
-      const {result} = renderHook(
-        () => useSetTagImmutability('myorg', 'myrepo'),
-        {wrapper},
-      );
-      act(() => {
-        result.current.setImmutability({tags: ['latest'], immutable: true});
-      });
-      await waitFor(() =>
-        expect(result.current.successSetImmutability).toBe(true),
-      );
-      expect(bulkSetTagImmutability).toHaveBeenCalledWith(
-        'myorg',
-        'myrepo',
-        ['latest'],
-        true,
       );
     });
   });

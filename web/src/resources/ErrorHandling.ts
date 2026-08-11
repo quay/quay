@@ -56,7 +56,10 @@ export function addDisplayError(message: string, error: Error | AxiosError) {
 }
 
 interface ErrorResponse {
-  error_message?: string;
+  detail?: string; // Standard API error field (checked first)
+  error_message?: string; // Standard error message field
+  message?: string; // Legacy error format (backward compatibility)
+  error_description?: string; // OAuth/OpenID error format
 }
 
 // Only handling the codes related to network errors. HTTP based errors
@@ -75,21 +78,43 @@ enum AxiosErrorCode {
 }
 
 export function getErrorMessage(error: AxiosError<ErrorResponse>) {
-  if (Object.values(AxiosErrorCode).includes(error.code as AxiosErrorCode)) {
-    return getNetworkError(error.code as AxiosErrorCode);
-  }
+  // PRIORITY 1: Check if server sent a response
+  if (error.response) {
+    // Check all possible error message fields in priority order
+    const serverMessage =
+      error.response.data?.detail ||
+      error.response.data?.error_message ||
+      error.response.data?.message ||
+      error.response.data?.error_description ||
+      (typeof error.response.data === 'string' ? error.response.data : null);
 
-  if (error.response?.status) {
-    // For server errors (5xx), provide user-friendly message
-    if (error.response.status >= 500 && error.response.status < 600) {
+    // For 5xx errors, ALWAYS return generic message for security
+    // This runs even if response body is empty
+    if (
+      error.response.status &&
+      error.response.status >= 500 &&
+      error.response.status < 600
+    ) {
       return 'an unexpected issue occurred. Please try again or contact support';
     }
 
-    if (error.response.data?.error_message) {
-      return error.response.data?.error_message;
+    // For 4xx and other status codes, return specific message if available
+    if (serverMessage) {
+      return serverMessage;
     }
   }
 
+  // PRIORITY 2: Check for network-level errors (no response from server)
+  // Only use network error codes when there's truly NO response from server
+  if (
+    !error.response &&
+    error.code &&
+    Object.values(AxiosErrorCode).includes(error.code as AxiosErrorCode)
+  ) {
+    return getNetworkError(error.code as AxiosErrorCode);
+  }
+
+  // PRIORITY 3: Generic fallback
   return 'unable to make request';
 }
 

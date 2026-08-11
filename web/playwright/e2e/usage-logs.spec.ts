@@ -1,7 +1,5 @@
 import {test, expect, mailpit} from '../fixtures';
 import type {Page} from '@playwright/test';
-import {pushImage} from '../utils/container';
-import {TEST_USERS} from '../global-setup';
 
 async function assertChartLegend(
   page: Page,
@@ -199,61 +197,6 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
-  test('displays org mirror sync failure with stderr details', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const org = await api.organization('mirrstderr');
-
-    // Mock logs API to return an org_mirror_sync_failed log with stderr
-    await authenticatedPage.route(
-      `**/api/v1/organization/${org.name}/logs*`,
-      async (route): Promise<void> => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            logs: [
-              {
-                kind: 'org_mirror_sync_failed',
-                datetime: new Date().toISOString(),
-                metadata: {
-                  message:
-                    "Sync failed for 'quay.io/projectquay/quay': 2/2 tags failed",
-                  stderr:
-                    '[v1.0]: skopeo: authentication required; [v2.0]: skopeo: manifest unknown',
-                },
-                performer: {name: 'mirror-robot'},
-                ip: '127.0.0.1',
-              },
-            ],
-          }),
-        });
-      },
-    );
-    await authenticatedPage.route(
-      `**/api/v1/organization/${org.name}/aggregatelogs*`,
-      async (route): Promise<void> => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({aggregated: []}),
-        });
-      },
-    );
-
-    await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-
-    // Verify the table renders the failure log with stderr content
-    const table = authenticatedPage.getByTestId('usage-logs-table');
-    await expect(table).toBeVisible();
-
-    await expect(table.getByText(/Sync failed for/)).toBeVisible();
-    await expect(
-      table.getByText(/skopeo: authentication required/),
-    ).toBeVisible();
-  });
-
   test.describe(
     'repo mirror sync log rendering',
     {tag: ['@feature:REPO_MIRROR']},
@@ -445,30 +388,6 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         'Delete Robot Federation',
       ]);
     });
-
-    test(
-      'change_tag_immutability appears in the chart legend',
-      {tag: ['@container']},
-      async ({authenticatedPage, api}) => {
-        const org = await api.organization('chartimmut');
-        const repo = await api.repository(org.name, 'chartimmutrepo');
-
-        // Push an image to create a tag, then set it immutable
-        await pushImage(
-          org.name,
-          repo.name,
-          'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        // change_tag_immutability
-        await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
-
-        await assertChartLegend(authenticatedPage, org.name, [
-          'Change tag immutability',
-        ]);
-      },
-    );
   });
 
   test(

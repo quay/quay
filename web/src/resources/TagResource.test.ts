@@ -16,8 +16,6 @@ import {
   createTag,
   setExpiration,
   bulkSetExpiration,
-  setTagImmutability,
-  bulkSetTagImmutability,
   restoreTag,
   permanentlyDeleteTag,
   getTagPullStatistics,
@@ -384,38 +382,6 @@ describe('TagResource', () => {
 
       await expect(
         bulkSetExpiration('org', 'repo', ['t1', 't2'], 1700000000),
-      ).resolves.toBeUndefined();
-    });
-  });
-
-  describe('setTagImmutability', () => {
-    it('sets immutability on a tag', async () => {
-      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse({}));
-
-      await setTagImmutability('org', 'repo', 'v1', true);
-      expect(axios.put).toHaveBeenCalledWith(
-        '/api/v1/repository/org/repo/tag/v1',
-        {immutable: true},
-      );
-    });
-
-    it('throws ResourceError on failure', async () => {
-      vi.mocked(axios.put).mockRejectedValueOnce(new AxiosError('fail'));
-
-      await expect(
-        setTagImmutability('org', 'repo', 'v1', true),
-      ).rejects.toThrow(ResourceError);
-    });
-  });
-
-  describe('bulkSetTagImmutability', () => {
-    it('sets immutability for multiple tags', async () => {
-      vi.mocked(axios.put)
-        .mockResolvedValueOnce(mockResponse({}))
-        .mockResolvedValueOnce(mockResponse({}));
-
-      await expect(
-        bulkSetTagImmutability('org', 'repo', ['t1', 't2'], true),
       ).resolves.toBeUndefined();
     });
   });

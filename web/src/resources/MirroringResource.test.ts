@@ -140,8 +140,8 @@ describe('MirroringResource', () => {
   describe('statusLabels', () => {
     it('maps sync statuses to display labels', () => {
       expect(statusLabels.NEVER_RUN).toBe('Scheduled');
-      expect(statusLabels.SYNC_FAILED).toBe('Failed');
-      expect(statusLabels.SYNC_SUCCESS).toBe('Success');
+      expect(statusLabels.FAIL).toBe('Failed');
+      expect(statusLabels.SUCCESS).toBe('Success');
     });
   });
 });

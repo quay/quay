@@ -58,6 +58,7 @@ export const useMirroringConfig = (
           unsignedImages:
             response.external_registry_config?.unsigned_images ?? false,
           skopeoTimeoutInterval: response.skopeo_timeout_interval || 300,
+          architectureFilter: response.architecture_filter || [],
         });
 
         // Set selected robot if there's one configured
@@ -124,6 +125,8 @@ export const useMirroringConfig = (
         rule_kind: 'tag_glob_csv',
         rule_value: tagPatterns,
       },
+      architecture_filter:
+        data.architectureFilter.length > 0 ? data.architectureFilter : null,
     };
 
     // Only include credentials if:
