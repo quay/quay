@@ -374,6 +374,13 @@ location /static/ {
     error_page 404 /404;
 }
 
+location /nginx_status {
+    stub_status on;
+    allow 127.0.0.1;
+    allow ::1;
+    deny all;
+}
+
 error_page 502 =502 /502.html;
 
 location = /502.html {
