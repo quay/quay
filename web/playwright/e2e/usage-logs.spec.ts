@@ -315,7 +315,10 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
   );
 
   test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
-    test(
+    // Skip until PROJQUAY-9859 audit logging is backported to redhat-3.16.
+    // namespacequota APIs do not emit org_*_quota log kinds, so the chart
+    // legend can never show these entries.
+    test.skip(
       'quota log kinds appear in the chart legend',
       {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
       async ({superuserPage, superuserApi}) => {
