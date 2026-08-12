@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import type {Page} from '@playwright/test';
 
@@ -256,3 +256,111 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     );
   });
 });
+
+test.describe(
+  'Team Email Invites',
+  {tag: ['@organization', '@feature:MAILING']},
+  () => {
+    test('email invite shows in team members table', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('testorg');
+      const team = await api.team(org.name, 'emailshow');
+      const email = `${uniqueName('show')}@example.com`;
+
+      await api.teamEmailInvite(org.name, team.name, email);
+
+      await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
+
+      await expect(authenticatedPage.getByTestId(email)).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(
+        authenticatedPage
+          .getByTestId(email)
+          .locator('xpath=ancestor::tr')
+          .locator('[data-label="Account"]'),
+      ).toContainText('(Invited)');
+    });
+
+    test('can invite by email via drawer', async ({authenticatedPage, api}) => {
+      const org = await api.organization('testorg');
+      const team = await api.team(org.name, 'emaildrawer');
+      const email = `${uniqueName('drawer')}@example.com`;
+
+      await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
+
+      await authenticatedPage.getByTestId('add-new-member-button').click();
+
+      const emailInput = authenticatedPage.getByTestId('email-invite-input');
+      const inviteBtn = authenticatedPage.getByTestId('invite-by-email-btn');
+
+      // Button should be disabled with no input
+      await expect(inviteBtn).toBeDisabled();
+
+      await emailInput.fill(email);
+      await expect(inviteBtn).toBeEnabled();
+      await inviteBtn.click();
+
+      const alert = authenticatedPage
+        .locator('.pf-v6-c-alert.pf-m-success')
+        .last();
+      await expect(alert).toContainText('was invited to join the team', {
+        timeout: 10_000,
+      });
+      await expect(alert).toContainText(email);
+    });
+
+    test('invited tab shows only invited members', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('testorg');
+      const team = await api.team(org.name, 'emailfilter');
+      const email = `${uniqueName('filter')}@example.com`;
+
+      await api.teamMember(org.name, team.name, TEST_USERS.user.username);
+      await api.teamEmailInvite(org.name, team.name, email);
+
+      await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
+
+      await authenticatedPage.getByTestId('Invited').click();
+
+      const paginationInfo = authenticatedPage
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
+
+      await expect(paginationInfo).toContainText('1 - 1 of 1', {
+        timeout: 10_000,
+      });
+      await expect(authenticatedPage.getByTestId(email)).toBeVisible();
+    });
+
+    test('can revoke email invite via delete icon', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('testorg');
+      const team = await api.team(org.name, 'emailrevoke');
+      const email = `${uniqueName('revoke')}@example.com`;
+
+      await api.teamEmailInvite(org.name, team.name, email);
+
+      await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
+
+      await expect(authenticatedPage.getByTestId(email)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      await authenticatedPage.getByTestId(`${email}-delete-icon`).click();
+      await authenticatedPage.getByTestId(`${email}-del-btn`).click();
+
+      await expect(
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
+      ).toContainText('Successfully revoked invitation', {
+        timeout: 10_000,
+      });
+    });
+  },
+);

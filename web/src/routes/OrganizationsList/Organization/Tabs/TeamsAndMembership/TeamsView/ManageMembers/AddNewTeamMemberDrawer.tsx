@@ -13,6 +13,9 @@ import {
   SelectGroup,
   SelectOption,
   Spinner,
+  TextInput,
+  Split,
+  SplitItem,
 } from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
 import React, {useState} from 'react';
@@ -24,6 +27,7 @@ import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {
   useAddMembersToTeam,
+  useInviteTeamMemberByEmail,
   useFetchTeamMembersForOrg,
 } from 'src/hooks/UseMembers';
 import {useFetchTeams} from 'src/hooks/UseTeams';
@@ -39,6 +43,7 @@ export default function AddNewTeamMemberDrawer(
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
+  const [emailInput, setEmailInput] = useState<string>('');
   const {teamName} = useParams();
 
   // Fetch team sync info to determine if team is in read-only mode
@@ -169,11 +174,39 @@ export default function AddNewTeamMemberDrawer(
     },
   });
 
+  const {inviteMemberByEmail} = useInviteTeamMemberByEmail(props.orgName);
+
   const addTeamMemberHandler = async () => {
     await addMemberToTeam({
       team: teamName,
       member: selectedEntity.name,
     });
+  };
+
+  const isValidEmail = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const inviteByEmailHandler = () => {
+    const email = emailInput;
+    inviteMemberByEmail(
+      {team: teamName, email},
+      {
+        onSuccess: () => {
+          addAlert({
+            variant: AlertVariant.Success,
+            title: `E-mail address ${email} was invited to join the team`,
+          });
+          setEmailInput('');
+          props.closeDrawer();
+        },
+        onError: () => {
+          addAlert({
+            variant: AlertVariant.Failure,
+            title: `Unable to invite "${email}" to team`,
+          });
+        },
+      },
+    );
   };
 
   return (
@@ -207,8 +240,12 @@ export default function AddNewTeamMemberDrawer(
               accounts can be added to this team.
             </Alert>
           </Conditional>
-          <Form id="add-new-member-form">
-            <FormGroup fieldId="creator" label="Repository creator" isRequired>
+          <Form id="add-new-member-form" onSubmit={(e) => e.preventDefault()}>
+            <FormGroup
+              fieldId="creator"
+              label="Add a registered user or robot"
+              isRequired
+            >
               {dropdownForCreator}
             </FormGroup>
             <ActionGroup>
@@ -225,6 +262,48 @@ export default function AddNewTeamMemberDrawer(
               </Button>
             </ActionGroup>
           </Form>
+          <Conditional
+            if={quayConfig?.features?.MAILING && !pageInReadOnlyMode}
+          >
+            <Divider style={{marginTop: '1rem', marginBottom: '1rem'}} />
+            <Form
+              id="invite-by-email-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isValidEmail(emailInput)) {
+                  inviteByEmailHandler();
+                }
+              }}
+            >
+              <FormGroup
+                fieldId="email-invite"
+                label="Or invite by email address"
+              >
+                <Split hasGutter>
+                  <SplitItem isFilled>
+                    <TextInput
+                      id="email-invite-input"
+                      data-testid="email-invite-input"
+                      type="email"
+                      value={emailInput}
+                      onChange={(_event, value) => setEmailInput(value)}
+                      placeholder="Enter an email address to invite"
+                    />
+                  </SplitItem>
+                  <SplitItem>
+                    <Button
+                      data-testid="invite-by-email-btn"
+                      isDisabled={!isValidEmail(emailInput)}
+                      onClick={inviteByEmailHandler}
+                      variant="secondary"
+                    >
+                      Invite
+                    </Button>
+                  </SplitItem>
+                </Split>
+              </FormGroup>
+            </Form>
+          </Conditional>
         </DrawerPanelBody>
       </DrawerPanelContent>
     </>

@@ -273,6 +273,12 @@ class WebEndpointTestCase(EndpointTestCase):
     def test_user_view(self):
         self.getResponse("web.user_view", path="devtable")
 
+    def test_confirm_invite_with_code(self):
+        self.getResponse("web.confirm_invite", code="someinvitecode")
+
+    def test_confirm_invite_without_code(self):
+        self.getResponse("web.confirm_invite")
+
     def test_confirm_repo_email(self):
         code = model.repository.create_email_authorization_for_repo(
             "devtable", "simple", "foo@bar.com"
