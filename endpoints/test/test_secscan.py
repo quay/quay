@@ -118,6 +118,16 @@ class TestSecscanNotificationQueue:
 
         assert resp.status_code == 400
 
+    def test_non_object_json_returns_400(self, secscan_client):
+        resp = secscan_client.post(
+            "/secscan/notification",
+            data="[1, 2, 3]",
+            content_type="text/plain",
+            headers=_return_access_headers(),
+        )
+
+        assert resp.status_code == 400
+
 
 class TestSecscanJWTAuthentication:
     def test_valid_jwt_accepted(self, secscan_client):

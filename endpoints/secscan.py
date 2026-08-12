@@ -58,6 +58,10 @@ def secscan_notification():
         )
         abort(400)
 
+    if not isinstance(data, dict):
+        logger.error("Expected JSON object, got %s", type(data).__name__)
+        abort(400)
+
     logger.debug("Got notification from V4 Security Scanner: %s", data)
     if "notification_id" not in data or "callback" not in data:
         abort(400)
