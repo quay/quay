@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 
@@ -436,6 +437,110 @@ func TestListReferrers_WithSubject(t *testing.T) {
 	}
 }
 
+func TestPutManifest_RepeatSubjectPush_NoDuplicateProtectionTag(t *testing.T) {
+	// Regression test: repeat pushes of the same subject/referrer manifest
+	// (e.g. re-signing with cosign, CI re-running an attestation push) must
+	// not create a new hidden protection tag row each time.
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("subject-manifest")
+	referrerDgst := digest.FromString("sbom-referrer")
+	referrer := oci.ManifestRecord{
+		Digest:       referrerDgst,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Content:      []byte(`{"schemaVersion":2,"subject":{"digest":"` + subjectDgst.String() + `"}}`),
+		Subject:      subjectDgst,
+		ArtifactType: "application/vnd.example.sbom.v1",
+	}
+
+	manifestID, err := store.PutManifest(ctx, repoID, referrer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertProtectionTagCount(t, store.(*metastore.SQLiteStore), manifestID)
+
+	// Repeat push of the identical referrer manifest (same digest, same subject).
+	manifestID2, err := store.PutManifest(ctx, repoID, referrer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifestID2 != manifestID {
+		t.Fatalf("expected repeat push to resolve to the same manifest ID, got %d want %d", manifestID2, manifestID)
+	}
+	assertProtectionTagCount(t, store.(*metastore.SQLiteStore), manifestID)
+
+	// And a third push, for good measure.
+	if _, err := store.PutManifest(ctx, repoID, referrer); err != nil {
+		t.Fatal(err)
+	}
+	assertProtectionTagCount(t, store.(*metastore.SQLiteStore), manifestID)
+}
+
+func TestPutManifest_SubjectPush_PreExistingLegacyProtectionTag_NoOp(t *testing.T) {
+	// Simulates an already-affected install: a manifest that already has a
+	// non-expiring tag from before this fix shipped (e.g. a duplicate
+	// "$referrer-<digest>" row from a prior buggy push). The fix must detect
+	// any existing non-expiring tag by manifest_id --- not by name --- and
+	// skip creating another one.
+	store := setupStore(t)
+	ctx := t.Context()
+	sqliteStore := store.(*metastore.SQLiteStore)
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the referrer manifest without a subject, so setSubjectAndProtect
+	// is not yet invoked.
+	referrerDgst := digest.FromString("sbom-referrer")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    referrerDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually insert a legacy-style duplicate hidden tag, as the pre-fix
+	// code would have left behind.
+	db := sqliteStore.DB()
+	var tagKindID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM tagkind WHERE name = 'tag'`).Scan(&tagKindID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden) VALUES (?, ?, ?, ?, ?, 1)`,
+		"$referrer-"+referrerDgst.Encoded()[:12], repoID, manifestID, time.Now().UnixMilli(), tagKindID,
+	); err != nil {
+		t.Fatal(err)
+	}
+	assertProtectionTagCount(t, sqliteStore, manifestID)
+
+	// Now push again with the subject set, as a real referrer push would.
+	subjectDgst := digest.FromString("subject-manifest")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       referrerDgst,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Content:      []byte(`{"schemaVersion":2,"subject":{"digest":"` + subjectDgst.String() + `"}}`),
+		Subject:      subjectDgst,
+		ArtifactType: "application/vnd.example.sbom.v1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The pre-existing legacy row already satisfies the protection
+	// invariant, so no new tag should have been created.
+	assertProtectionTagCount(t, sqliteStore, manifestID)
+}
+
 func TestListReferrers_FilterByArtifactType(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -583,5 +688,24 @@ func assertActiveTagCount(t *testing.T, s *metastore.SQLiteStore, repoID int64, 
 	}
 	if count != want {
 		t.Errorf("active tags named %q: got %d, want %d", tag, count, want)
+	}
+}
+
+// assertProtectionTagCount asserts exactly one non-expiring
+// (lifetime_end_ms IS NULL) tag exists for a given manifest, regardless of
+// name. Hidden protection tags created by setSubjectAndProtect use randomly
+// generated names, so they can't be matched by name like assertActiveTagCount does.
+func assertProtectionTagCount(t *testing.T, s *metastore.SQLiteStore, manifestID int64) {
+	t.Helper()
+	db := s.DB()
+	var count int
+	err := db.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM tag WHERE manifest_id = ? AND lifetime_end_ms IS NULL`,
+		manifestID).Scan(&count)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("non-expiring tags for manifest %d: got %d, want 1", manifestID, count)
 	}
 }

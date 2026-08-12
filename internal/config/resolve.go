@@ -124,8 +124,16 @@ func NewDefault(hostname, storagePath string) *Config {
 			SuperUsers:         []string{"admin"},
 		},
 		Features: Features{
-			FeatureSuperUsers:           boolPtr(true),
-			FeatureSuperUsersFullAccess: boolPtr(true),
+			FeatureAnonymousAccess:      DefaultFeatureAnonymousAccess,
+			FeatureSuperUsers:           true,
+			FeatureSuperUsersFullAccess: true,
+			FeatureReferrersAPI:         DefaultFeatureReferrersAPI,
+			FeatureLibrarySupport:       DefaultFeatureLibrarySupport,
+			FeatureUserLastAccessed:     DefaultFeatureUserLastAccessed,
+		},
+		Keys: Keys{
+			InstanceServiceKeyService: DefaultInstanceServiceKeyService,
+			RegistryJWTAuthMaxFreshS:  DefaultRegistryJWTAuthMaxFreshS,
 		},
 		Storage: Storage{
 			DistributedStorageConfig: StorageEntries{

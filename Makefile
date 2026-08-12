@@ -457,10 +457,16 @@ GO_BINARY_NAME = quay
 GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
 GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
-GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/cmd.version=$(GO_VERSION)")
+GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/mirrorregistry/cmd.version=$(GO_VERSION)")
 
 SCHEMA_DIR := internal/dal/schema
 SCHEMA_TMP := /tmp/quay-schema-tmp
+
+# GO_SCHEMA_ALEMBIC_REVISION pins the Go binary's generated schema baseline.
+# The Go migration framework bridges OMR sources to this exact revision, so
+# generation must not silently follow a future Python Alembic head; advancing
+# it is a deliberate decision, not a side effect of an unrelated migration.
+GO_SCHEMA_ALEMBIC_REVISION := 9fa37f66a9b6
 
 .PHONY: go-schema go-schema-check
 
@@ -469,7 +475,7 @@ go-schema:
 	@rm -rf $(SCHEMA_TMP)
 	@mkdir -p $(SCHEMA_TMP)/stack $(SCHEMA_DIR)/sqlite
 	@echo 'DB_URI: sqlite:///$(SCHEMA_TMP)/quay.db' > $(SCHEMA_TMP)/stack/config.yaml
-	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
+	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade $(GO_SCHEMA_ALEMBIC_REVISION)
 	@echo "=== Extracting schema DDL ==="
 	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql > $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp && mv $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp $(SCHEMA_DIR)/sqlite/quay_schema.sql

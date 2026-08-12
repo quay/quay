@@ -8,37 +8,31 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
 )
 
 const markerFile = ".migration-in-progress"
 
-// validate checks source integrity and target readiness.
+// validate checks source compatibility, authentication policy, and target readiness.
+// All source database checks are read-only and finish before source shutdown.
 func (m *Migrator) validate(ctx context.Context) error {
-	if _, err := os.Stat(m.Source.DBPath); err != nil {
-		return fmt.Errorf("source database not found: %s", m.Source.DBPath)
-	}
-
-	db, err := dbcore.OpenSQLite(m.Source.DBPath)
+	db, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
 	if err != nil {
 		return fmt.Errorf("open source database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := dbcore.IntegrityCheck(ctx, db); err != nil {
-		return fmt.Errorf("source database is corrupted — run 'PRAGMA integrity_check' on %s to diagnose: %w",
-			m.Source.DBPath, err)
+	if err := m.validateSourceAuth(ctx, db); err != nil {
+		return fmt.Errorf("source authentication preflight: %w", err)
 	}
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		return fmt.Errorf("read schema version: %w", err)
+	if err := dbcore.ValidateSourceCompatibility(ctx, db); err != nil {
+		return err
 	}
-	if ver == "" {
-		return fmt.Errorf("source database has no alembic version — not a Quay database")
+	if err := m.validateRegistryJWTSource(ctx); err != nil {
+		return err
 	}
-	slog.Info("source schema version", "version", ver)
 
 	if m.Source.ConfigDir != "" {
 		certPath := filepath.Join(m.Source.ConfigDir, "ssl.cert")
@@ -63,6 +57,23 @@ func (m *Migrator) validate(ctx context.Context) error {
 	}
 
 	slog.Info("validation passed")
+	return nil
+}
+
+func (m *Migrator) validateRegistryJWTSource(ctx context.Context) error {
+	if m.Source.ConfigDir == "" {
+		return fmt.Errorf("source config directory not detected — provide -source-certs with config.yaml, quay.pem, and quay.kid")
+	}
+	sourcePath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	sourceCfg, err := config.Load(sourcePath)
+	if err != nil {
+		return fmt.Errorf("load source config for registry JWT key validation: %w", err)
+	}
+	key, _, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
+	if err != nil {
+		return fmt.Errorf("registry JWT key validation: %w", err)
+	}
+	m.sourceRegistryJWTKey = key
 	return nil
 }
 

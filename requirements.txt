@@ -75,7 +75,7 @@ opentelemetry-util-http==0.53b1
 opentelemetry-semantic-conventions==0.53b1
 os-service-types==1.7.0
 peewee==3.13.1
-pillow==12.2.0
+pillow==12.3.0
 ply==3.11
 prometheus_client==0.7.1
 protobuf==5.29.5
@@ -116,7 +116,7 @@ rsa==4.9.1
 s3transfer==0.10.4
 semantic-version==2.10.0
 six==1.17.0
-soupsieve==2.8
+soupsieve==2.8.4
 splunk-sdk==2.1.0
 SQLAlchemy==1.4.49
 stevedore==5.1.0

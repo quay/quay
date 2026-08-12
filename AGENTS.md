@@ -55,6 +55,7 @@ make types-test                      # Type checking (mypy)
 | Architecture, key files | `agent_docs/architecture.md` |
 | Feature flags | `agent_docs/architecture.md` (Adding a New Feature Flag section) |
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
+| OIDC superuser group sync | `agent_docs/oidc_superuser_sync.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
@@ -62,23 +63,27 @@ make types-test                      # Type checking (mypy)
 
 ## Universal Conventions
 
-1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. Always run relevant tests before committing.
-2. **Formatting:** Rely on pre-commit hook to format code on commit
-3. **No secrets:** Never commit credentials, API keys, or sensitive config
-4. **Imports:** Follow existing import ordering patterns in each file
-5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
-6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+1. **Testing:** Every code change must include tests. The **Playwright suite** (`web/playwright/`) is Quay's end-to-end (e2e) blackbox test suite — it exercises the running system through its real UI and API surfaces, with no mocks or DB seeding (see `web/playwright/AGENTS.md`). Prefer testing behavior e2e via Playwright whenever practical, rather than relying solely on unit/mock-level coverage, since e2e tests catch regressions that unit tests and mocks can miss. When fixing a bug, add or extend an e2e test that reproduces the original failure when feasible, so the regression stays caught. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory, and add or extend a Playwright `e2e/api/` test when the change affects externally observable API behavior. A backend-only change with no observable behavior change (internal refactor, logging, etc.) does not require Playwright. Always run relevant tests before committing.
+2. **Test reporting:** In PR descriptions, report each exact command and its outcome as passed, failed, not run, or infrastructure-blocked. Do not describe an attempted or planned command as having run successfully, and keep infrastructure failures distinct from test failures.
+3. **Formatting:** Rely on pre-commit hook to format code on commit
+4. **No secrets:** Never commit credentials, API keys, or sensitive config
+5. **Imports:** Follow existing import ordering patterns in each file
+6. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
+7. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+8. **Review scope:** Address blocking or explicitly requested review feedback. Non-blocking observations do not authorize unrelated changes. Check equivalent execution paths needed to preserve the fix's invariant, but report other similar occurrences instead of expanding scope without approval.
 
 ## Contributing
 
 ### PR & Commit Format
 
-- **PR title:** `PROJQUAY-XXXXX: type(scope): lowercase description`
-  - Use `NO-ISSUE:` when there is no associated Jira ticket
+- **PR title:** `{PROJQUAY|QUAYIO}-XXXXX: type(scope): lowercase description`
+  - Valid Jira prefixes: `PROJQUAY` (standard, used for most Quay work) and `QUAYIO` (for Quay.io-specific cross-project tickets). Use whichever prefix matches the Jira ticket assigned to the work.
+  - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
+  - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
-- **Branch naming:** `<type>/projquay-XXXXX-short-description` where `<type>` matches the PR type
+- **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
 

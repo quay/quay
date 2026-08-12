@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -49,24 +50,14 @@ func (m *Migrator) copyData(ctx context.Context) error {
 	}
 	slog.Info("copied database", "src", m.Source.DBPath, "dst", targetDB)
 
-	// Copy TLS certs (flatten from quay-config/ to data-dir root).
-	if m.Source.ConfigDir != "" {
-		for _, name := range []string{"ssl.cert", "ssl.key"} {
-			src := filepath.Join(m.Source.ConfigDir, name)
-			dst := filepath.Join(m.DataDir, name)
-			if _, err := os.Stat(src); err != nil {
-				slog.Warn("cert file not found, skipping", "path", src)
-				continue
-			}
-			if err := copyFileIdempotent(ctx, src, dst, false); err != nil {
-				return fmt.Errorf("copy %s: %w", name, err)
-			}
-			slog.Info("copied cert", "src", src, "dst", dst)
-		}
+	sourceConfig, err := m.loadSourceConfigAndImportRegistryKey(ctx, targetDB, resuming)
+	if err != nil {
+		return err
+	}
 
-		if err := m.writeRuntimeConfig(); err != nil {
-			return err
-		}
+	// Copy TLS certs (flatten from quay-config/ to data-dir root).
+	if err := m.copyTLSAndWriteConfig(ctx, sourceConfig.cfg); err != nil {
+		return err
 	}
 
 	// Copy blob storage recursively.
@@ -82,7 +73,70 @@ func (m *Migrator) copyData(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) writeRuntimeConfig() error {
+type loadedSourceConfig struct {
+	cfg *config.Config
+}
+
+func (m *Migrator) loadSourceConfigAndImportRegistryKey(ctx context.Context, targetDB string, resuming bool) (loadedSourceConfig, error) {
+	if m.Source.ConfigDir == "" {
+		return loadedSourceConfig{}, nil
+	}
+	sourcePath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
+	if _, err := os.Stat(sourcePath); err != nil {
+		if os.IsNotExist(err) {
+			return loadedSourceConfig{}, nil
+		}
+		return loadedSourceConfig{}, fmt.Errorf("stat source config: %w", err)
+	}
+	sourceCfg, err := config.Load(sourcePath)
+	if err != nil {
+		return loadedSourceConfig{}, fmt.Errorf("load source config: %w", err)
+	}
+	if err := m.importRegistryJWTSigningKey(ctx, targetDB, sourceCfg, resuming); err != nil {
+		return loadedSourceConfig{}, err
+	}
+	return loadedSourceConfig{cfg: sourceCfg}, nil
+}
+
+func (m *Migrator) copyTLSAndWriteConfig(ctx context.Context, sourceCfg *config.Config) error {
+	if m.Source.ConfigDir == "" {
+		return nil
+	}
+	for _, name := range []string{"ssl.cert", "ssl.key"} {
+		src := filepath.Join(m.Source.ConfigDir, name)
+		dst := filepath.Join(m.DataDir, name)
+		if _, err := os.Stat(src); err != nil {
+			slog.Warn("cert file not found, skipping", "path", src)
+			continue
+		}
+		if err := copyFileIdempotent(ctx, src, dst, false); err != nil {
+			return fmt.Errorf("copy %s: %w", name, err)
+		}
+		slog.Info("copied cert", "src", src, "dst", dst)
+	}
+
+	if err := m.copyRootCA(ctx); err != nil {
+		return err
+	}
+
+	return m.writeRuntimeConfig(sourceCfg)
+}
+
+func (m *Migrator) copyRootCA(ctx context.Context) error {
+	if m.Source.RootCADir == "" {
+		slog.Warn("no root CA directory detected; if clients trust a custom CA, back up rootCA.pem manually before cleaning up the old installation")
+		return nil
+	}
+	src := filepath.Join(m.Source.RootCADir, "rootCA.pem")
+	dst := filepath.Join(m.DataDir, "rootCA.pem")
+	if err := copyFileIdempotent(ctx, src, dst, false); err != nil {
+		return fmt.Errorf("copy rootCA.pem: %w", err)
+	}
+	slog.Info("copied root CA", "src", src, "dst", dst)
+	return nil
+}
+
+func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 	sourcePath := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
 	if _, err := os.Stat(sourcePath); err != nil {
 		if os.IsNotExist(err) {
@@ -92,13 +146,21 @@ func (m *Migrator) writeRuntimeConfig() error {
 		return fmt.Errorf("stat source config: %w", err)
 	}
 
-	sourceCfg, err := config.Load(sourcePath)
-	if err != nil {
-		return fmt.Errorf("load source config: %w", err)
+	if sourceCfg == nil {
+		var err error
+		sourceCfg, err = config.Load(sourcePath)
+		if err != nil {
+			return fmt.Errorf("load source config: %w", err)
+		}
 	}
 
+	configuredPort, err := runtimeServerHostnamePort(sourceCfg.ServerHostname)
+	if err != nil {
+		return err
+	}
+	publicHostname := net.JoinHostPort(m.Source.Hostname, configuredPort)
 	runtimeCfg := map[string]any{
-		"SERVER_HOSTNAME":      m.Source.Hostname,
+		"SERVER_HOSTNAME":      publicHostname,
 		"PREFERRED_URL_SCHEME": "https",
 		"DB_URI":               "sqlite:////data/quay.db",
 		"DISTRIBUTED_STORAGE_CONFIG": map[string]any{
@@ -114,17 +176,12 @@ func (m *Migrator) writeRuntimeConfig() error {
 		"ROBOTS_DISALLOW":                sourceCfg.RobotsDisallow,
 		"ROBOTS_WHITELIST":               sourceCfg.RobotsWhitelist,
 		"SUPER_USERS":                    sourceCfg.SuperUsers,
+		"FEATURE_SUPER_USERS":            sourceCfg.FeatureSuperUsers,
+		"FEATURE_SUPERUSERS_FULL_ACCESS": sourceCfg.FeatureSuperUsersFullAccess,
+		"FEATURE_USER_LAST_ACCESSED":     sourceCfg.FeatureUserLastAccessed,
+		"INSTANCE_SERVICE_KEY_SERVICE":   sourceCfg.InstanceServiceKeyService,
+		"REGISTRY_JWT_AUTH_MAX_FRESH_S":  sourceCfg.RegistryJWTAuthMaxFreshS,
 	}
-	if sourceCfg.FeatureSuperUsers != nil {
-		runtimeCfg["FEATURE_SUPER_USERS"] = *sourceCfg.FeatureSuperUsers
-	}
-	if sourceCfg.FeatureSuperUsersFullAccess != nil {
-		runtimeCfg["FEATURE_SUPERUSERS_FULL_ACCESS"] = *sourceCfg.FeatureSuperUsersFullAccess
-	}
-	if sourceCfg.FeatureUserLastAccessed != nil {
-		runtimeCfg["FEATURE_USER_LAST_ACCESSED"] = *sourceCfg.FeatureUserLastAccessed
-	}
-
 	data, err := yaml.Marshal(runtimeCfg)
 	if err != nil {
 		return fmt.Errorf("marshal runtime config: %w", err)

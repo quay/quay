@@ -42,6 +42,7 @@ from image.docker.schema1 import (
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from image.oci.manifest import OCIManifest, OCIManifestBuilder
 from image.shared.types import ManifestImageLayer
 from test.fixtures import *
 from util.bytes import Bytes
@@ -445,6 +446,70 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
 
     # Ensure all tags have been deleted.
     tags = registry_model.list_all_active_repository_tags(repository_ref)
+    assert not len(tags)
+
+    # Ensure that the tags all live in history.
+    history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(history) == len(previous_history)
+
+
+@pytest.mark.parametrize(
+    "repo_namespace, repo_name",
+    [
+        ("devtable", "simple"),
+        ("devtable", "complex"),
+        ("devtable", "history"),
+        ("buynlarge", "orgrepo"),
+    ],
+)
+@pytest.mark.parametrize(
+    "via_manifest",
+    [
+        False,
+        True,
+    ],
+)
+def test_deleting_tags_properly_invalidates_cache(
+    repo_namespace, repo_name, via_manifest, registry_model
+):
+    """
+    Ensures that after tag deletion we rebuild cache for a specific repository instead of
+    returning stale results from cache back.
+    """
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    tags = []
+
+    repository_ref = registry_model.lookup_repository(repo_namespace, repo_name)
+
+    # read all tags and populate cache
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
+    assert len(tags)
+
+    # Save history before the deletions.
+    previous_history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(previous_history) >= len(tags)
+
+    # Delete every tag in the repository.
+    for tag in tags:
+        if via_manifest:
+            assert registry_model.delete_tag(model_cache, repository_ref, tag.name)
+        else:
+            full_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            manifest = registry_model.get_manifest_for_tag(full_tag)
+            if manifest is not None:
+                registry_model.delete_tags_for_manifest(model_cache, manifest)
+
+        # Make sure the tag is no longer found.
+        with assert_query_count(1):
+            found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            assert found_tag is None
+
+    # Ensure all tags have been deleted and we don't return any stale results
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
     assert not len(tags)
 
     # Ensure that the tags all live in history.
@@ -1475,3 +1540,160 @@ def test_lookup_repository_cache_stale_after_delete_without_invalidation(
 
     assert repo_ref_stale._db_id == old_repo_id  # Points to a deleted repo
     assert repo_ref_stale._db_id != new_repo.id
+
+
+def _create_oci_manifest_with_blobs(org_name, repo_name, config_content=None):
+    """Helper to create an OCI manifest with populated blobs."""
+    if config_content is None:
+        config_content = json.dumps({"config": {}, "rootfs": {"type": "layers", "diff_ids": []}})
+    config = json.loads(config_content)
+    config.setdefault("architecture", "amd64")
+    config.setdefault("os", "linux")
+    config_content = json.dumps(config)
+    _, config_digest = _populate_blob_with_content(config_content, org_name, repo_name)
+    blob_content = "layer-" + sha256_digest(config_content.encode())[:8]
+    _, blob_digest = _populate_blob_with_content(blob_content, org_name, repo_name)
+
+    builder = OCIManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_content.encode("utf-8")))
+    builder.add_layer(blob_digest, len(blob_content.encode("utf-8")))
+    return builder
+
+
+def test_referrers_cache_invalidated_on_push(initialized_db, registry_model):
+    """
+    When a manifest with a subject is pushed, the referrers cache for the
+    subject digest must be invalidated so that the new referrer is visible
+    immediately without waiting for the TTL to expire.
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+    # Build the subject manifest (manifest A).
+    builder_a = _create_oci_manifest_with_blobs("devtable", "simple")
+    manifest_a = builder_a.build()
+
+    created_a, tag_a = registry_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_a, "subject-tag", storage, raise_on_error=True
+    )
+    assert created_a is not None
+
+    # Prime the referrers cache with an empty list.
+    referrers_before = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert referrers_before == []
+
+    # Build the referrer manifest (manifest B) pointing to A.
+    builder_b = _create_oci_manifest_with_blobs(
+        "devtable",
+        "simple",
+        config_content=json.dumps(
+            {
+                "config": {"extra": "referrer"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        ),
+    )
+    builder_b.set_subject(
+        manifest_a.digest,
+        len(manifest_a.bytes.as_encoded_str()),
+        manifest_a.media_type,
+    )
+    manifest_b = builder_b.build()
+
+    # Push the referrer by tag with model_cache so the cache is invalidated.
+    created_b, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref,
+        manifest_b,
+        "referrer-tag",
+        storage,
+        model_cache=test_cache,
+    )
+    assert created_b is not None
+
+    # Query referrers again — the new referrer must appear immediately.
+    referrers_after = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(referrers_after) == 1
+    assert referrers_after[0].digest == manifest_b.digest
+
+
+def test_referrers_cache_artifact_type_isolation(initialized_db, registry_model):
+    """
+    Referrers queries filtered by artifactType must use separate cache
+    entries, so that a cached filtered result does not serve an unfiltered
+    request (or vice-versa).
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+    # Build the subject manifest.
+    builder_a = _create_oci_manifest_with_blobs("devtable", "simple")
+    manifest_a = builder_a.build()
+
+    created_a, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_a, "artifact-subject", storage, raise_on_error=True
+    )
+    assert created_a is not None
+
+    # Push a referrer with a subject pointing to manifest A.
+    builder_b = _create_oci_manifest_with_blobs(
+        "devtable",
+        "simple",
+        config_content=json.dumps(
+            {
+                "config": {"kind": "sig"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        ),
+    )
+    builder_b.set_subject(
+        manifest_a.digest,
+        len(manifest_a.bytes.as_encoded_str()),
+        manifest_a.media_type,
+    )
+    manifest_b = builder_b.build()
+    artifact_type = "application/vnd.example.signature"
+    manifest_b_dict = json.loads(manifest_b.bytes.as_unicode())
+    manifest_b_dict["artifactType"] = artifact_type
+    manifest_b = OCIManifest(Bytes.for_string_or_unicode(json.dumps(manifest_b_dict)))
+
+    # Prime the matching filtered cache before the referrer is pushed.
+    filtered_before = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert filtered_before == []
+
+    registry_model.create_manifest_with_temp_tag(
+        repository_ref, manifest_b, 300, storage, model_cache=test_cache
+    )
+
+    # Query referrers without a filter — should find the referrer.
+    unfiltered = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(unfiltered) == 1
+
+    # Query with the matching artifactType — the filtered cache must have
+    # been invalidated along with the unfiltered entry.
+    filtered_match = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert len(filtered_match) == 1
+
+    # Query with a non-matching artifactType — should return empty.
+    filtered_miss = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type="application/vnd.nonexistent"
+    )
+    assert filtered_miss == []
+
+    # The unfiltered cache must still return the referrer (not the
+    # empty filtered result).
+    unfiltered_again = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(unfiltered_again) == 1

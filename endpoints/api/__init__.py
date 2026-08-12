@@ -544,14 +544,16 @@ def allow_if_any_superuser():
 def allow_if_global_readonly_superuser():
     ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
     config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
+    is_oidc = app.config.get("AUTHENTICATION_TYPE") == "OIDC"
 
     logger.debug(
-        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s",
+        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s, is_oidc=%s",
         ldap_filter,
         config_users,
+        is_oidc,
     )
 
-    if ldap_filter is None and config_users is None:
+    if ldap_filter is None and config_users is None and not is_oidc:
         logger.debug("allow_if_global_readonly_superuser: returning False - no config")
         return False
 

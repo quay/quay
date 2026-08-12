@@ -14,6 +14,7 @@ type FileSystem interface {
 	Link(oldPath, newPath string) error
 	Rename(oldPath, newPath string) error
 	Remove(path string) error
+	RemoveAll(path string) error
 }
 
 // OSFS implements FileSystem using the real filesystem.
@@ -52,3 +53,6 @@ func (OSFS) Rename(oldPath, newPath string) error { return os.Rename(oldPath, ne
 
 // Remove delegates to os.Remove.
 func (OSFS) Remove(path string) error { return os.Remove(path) }
+
+// RemoveAll delegates to os.RemoveAll.
+func (OSFS) RemoveAll(path string) error { return os.RemoveAll(path) } //nolint:gosec // paths from known locations

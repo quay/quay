@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/reference"
 
 	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
@@ -21,29 +22,80 @@ import (
 	"github.com/quay/quay/internal/oci"
 )
 
-const middlewareName = "quaydb"
+const (
+	middlewareName            = "quaydb"
+	storeParameter            = "metastore"
+	blobLockerParameter       = "bloblocker"
+	libraryNamespaceParameter = "librarynamespace"
+	metricsParameter          = "metrics"
+)
 
-// Register registers the metadata-recording middleware with distribution's
-// repository middleware registry. It must be called before
-// handlers.NewApp so that the middleware config reference resolves.
-//
-// The store is captured by closure---no options map is needed at runtime.
-func Register(store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string) error {
-	if locker == nil {
-		return fmt.Errorf("nil blob locker")
-	}
-	return repositorymiddleware.Register(middlewareName, func(
-		ctx context.Context,
-		repo distribution.Repository,
-		_ map[string]interface{},
-	) (distribution.Repository, error) {
-		return newRepository(repo, store, locker, libraryNamespace), nil
+var registerOnce sync.Once
+var errRegister error
+
+// Register makes the stateless metadata-recording middleware factory available
+// to distribution. It must be called before handlers.NewApp so that the
+// middleware config reference resolves. It is safe to call multiple times and
+// concurrently.
+func Register() error {
+	registerOnce.Do(func() {
+		errRegister = repositorymiddleware.Register(middlewareName, newRepositoryMiddleware)
 	})
+	return errRegister
 }
 
 // Name returns the name used to register with distribution. Use this in
 // configuration to avoid string duplication.
 func Name() string { return middlewareName }
+
+// Option configures optional middleware parameters.
+type Option func(configuration.Parameters)
+
+// WithMetrics attaches per-instance Prometheus metrics to the middleware
+// parameters. When m is nil the option is a no-op and metric recording is
+// disabled.
+func WithMetrics(m *Metrics) Option {
+	return func(p configuration.Parameters) {
+		if m != nil {
+			p[metricsParameter] = m
+		}
+	}
+}
+
+// Parameters builds distribution parameters for the metadata-recording
+// middleware. The values are kept in the per-registry configuration rather than
+// in the globally registered factory. Optional settings (e.g. metrics) are
+// provided via Option values; omitting them is safe and preserves backward
+// compatibility.
+func Parameters(store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string, opts ...Option) configuration.Parameters {
+	p := configuration.Parameters{
+		storeParameter:            store,
+		blobLockerParameter:       locker,
+		libraryNamespaceParameter: libraryNamespace,
+	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
+}
+
+func newRepositoryMiddleware(_ context.Context, repo distribution.Repository, options map[string]interface{}) (distribution.Repository, error) {
+	store, ok := options[storeParameter].(oci.MetadataStore)
+	if !ok || store == nil {
+		return nil, fmt.Errorf("middleware: %s parameter must implement oci.MetadataStore", storeParameter)
+	}
+	locker, ok := options[blobLockerParameter].(oci.BlobLocker)
+	if !ok || locker == nil {
+		return nil, fmt.Errorf("middleware: %s parameter must implement oci.BlobLocker", blobLockerParameter)
+	}
+	libraryNamespace, ok := options[libraryNamespaceParameter].(string)
+	if !ok || libraryNamespace == "" {
+		return nil, fmt.Errorf("middleware: %s parameter must be a non-empty string", libraryNamespaceParameter)
+	}
+	// Metrics are optional; nil disables metric recording.
+	metrics, _ := options[metricsParameter].(*Metrics)
+	return newRepository(repo, store, locker, libraryNamespace, metrics), nil
+}
 
 // repository wraps a distribution.Repository to intercept metadata-producing
 // operations. It resolves the repository ID lazily on the first write and
@@ -54,14 +106,15 @@ type repository struct {
 	store            oci.MetadataStore
 	locker           oci.BlobLocker
 	libraryNamespace string
+	metrics          *Metrics
 
 	repoOnce sync.Once
 	repoID   int64
 	repoErr  error
 }
 
-func newRepository(inner distribution.Repository, store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string) *repository {
-	return &repository{Repository: inner, store: store, locker: locker, libraryNamespace: libraryNamespace}
+func newRepository(inner distribution.Repository, store oci.MetadataStore, locker oci.BlobLocker, libraryNamespace string, metrics *Metrics) *repository {
+	return &repository{Repository: inner, store: store, locker: locker, libraryNamespace: libraryNamespace, metrics: metrics}
 }
 
 func (r *repository) Named() reference.Named { return r.Repository.Named() }

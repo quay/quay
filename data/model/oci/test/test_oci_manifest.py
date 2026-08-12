@@ -9,8 +9,12 @@ from app import docker_v2_signing_key, storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
+    IndexerVersion,
+    IndexStatus,
+    Manifest,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Tag,
     get_epoch_timestamp_ms,
 )
@@ -18,6 +22,7 @@ from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.label import list_manifest_labels
 from data.model.oci.manifest import (
     CreateManifestException,
+    connect_manifests,
     get_or_create_manifest,
     lookup_manifest,
     lookup_manifest_referrers,
@@ -34,6 +39,7 @@ from image.docker.schema2.manifest import (
     DockerSchema2ManifestBuilder,
 )
 from image.oci.config import OCIConfig
+from image.oci.index import OCIIndexBuilder
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.interfaces import ContentRetriever
 from image.shared.schemas import parse_manifest_from_bytes
@@ -385,6 +391,112 @@ def test_get_or_create_manifest_list_duplicate_child_manifest(initialized_db):
     assert created2_tuple.manifest == created_list
 
 
+def test_connect_manifests_properly_deduplicates_child_manifest_entries(initialized_db):
+    """
+    Tests that the connect_manifest function properly deduplicates child manifest entries if list
+    with duplicates is passed to it.
+    """
+    repository = create_repository("devtable", "newrepo", None)
+
+    expected_labels = {
+        "Foo": "Bar",
+        "Baz": "Meh",
+    }
+
+    layer_json = json.dumps(
+        {
+            "id": "somelegacyid",
+            "architecture": "amd64",
+            "os": "linux",
+            "config": {
+                "Labels": expected_labels,
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    # add a config blob
+    _, config_digest = _populate_blob(layer_json)
+
+    # add 1 blobs of random data
+    random_data1 = "Lorem ipsum...."
+    _, random_digest1 = _populate_blob(random_data1)
+
+    # create a secondary image that will also be part of the OCI index but
+    # with different layer and data
+    random_data2 = "Another lorem ipsum..."
+    _, random_digest2 = _populate_blob(random_data2)
+
+    # build the manifest
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    # build manifest 2
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_manifest2 = oci_builder2.build()
+
+    # write the manifest
+    oci_created1 = get_or_create_manifest(repository, oci_manifest1, storage)
+    oci_created2 = get_or_create_manifest(repository, oci_manifest2, storage)
+
+    assert oci_created1
+    assert oci_created2
+    assert oci_created1.manifest.digest == oci_manifest1.digest
+    assert oci_created2.manifest.digest == oci_manifest2.digest
+
+    # create the OCI manifest index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(oci_manifest1, "amd64", "linux")
+    index_builder.add_manifest(oci_manifest1, "amd64", "linux")
+    index_builder.add_manifest(oci_manifest1, "amd64", "linux")
+    index_builder.add_manifest(oci_manifest1, "amd64", "linux")
+    index_builder.add_manifest(oci_manifest2, "amd64", "linux")
+    oci_index = index_builder.build()
+
+    # insert manifest directly in the database
+    created_index = Manifest.create(
+        repository=repository.id,
+        digest=oci_index.digest,
+        media_type=Manifest.media_type.get_id(oci_index.media_type),
+        manifest_bytes=oci_index.bytes.as_encoded_str(),
+        config_media_type=oci_index.config_media_type,
+        layers_compressed_size=0,
+        subject_backfilled=True,
+        subject=None,
+        artifact_type_backfilled=True,
+        artifact_type=None,
+    )
+
+    assert created_index
+
+    # explicitly call connect on child manifests
+    connect_manifests(
+        [
+            oci_created1.manifest,
+            oci_created1.manifest,
+            oci_created1.manifest,
+            oci_created1.manifest,
+            oci_created2.manifest,
+        ],
+        created_index,
+        repository.id,
+    )
+
+    # verify that two child manifests were created
+    children = ManifestChild.select().where(ManifestChild.manifest == created_index)
+    assert children.count() == 2
+
+
 def test_get_or_create_manifest_with_remote_layers(initialized_db):
     repository = create_repository("devtable", "newrepo", None)
 
@@ -712,3 +824,27 @@ def test_is_manifest_present_with_none_bytes(initialized_db):
 
     mock_manifest = MockManifest()
     assert is_manifest_present(mock_manifest) is False
+
+
+class TestPendingSecurityStatus:
+    def test_creates_pending_mss_on_manifest_creation(self, initialized_db):
+        repository = create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repository)
+
+        mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
+        assert mss.index_status == IndexStatus.PENDING
+        assert mss.indexer_hash == ""
+        assert mss.indexer_version == IndexerVersion.V4
+        assert mss.repository_id == repository.id
+
+    def test_mss_failure_propagates(self, initialized_db):
+        from unittest import mock
+
+        repository = create_repository("devtable", "newrepo", None)
+
+        with mock.patch(
+            "data.model.oci.manifest.ManifestSecurityStatus.create",
+            side_effect=Exception("db error"),
+        ):
+            with pytest.raises(Exception, match="db error"):
+                create_manifest_for_testing(repository)

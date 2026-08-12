@@ -5,16 +5,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite" // Pure-Go SQLite driver, registers as "sqlite".
 )
 
-// pragmas are applied to every new SQLite connection via a DSN hook.
+// sqliteURIScheme is the URI scheme used to build SQLite DSNs.
+const sqliteURIScheme = "file"
+
+// dsnParams are applied to every new SQLite connection via a DSN hook.
 // WAL mode allows concurrent readers while a single writer holds the lock.
 // busy_timeout avoids immediate SQLITE_BUSY errors under brief contention.
-var pragmas = []string{
+var dsnParams = []string{
 	"_pragma=foreign_keys(1)",
 	"_pragma=journal_mode(WAL)",
 	"_pragma=busy_timeout(10000)",
@@ -32,15 +37,11 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("create database directory %s: %w", dir, err)
 	}
 
-	dsn := fmt.Sprintf("file:%s?", dbPath)
-	for i, p := range pragmas {
-		if i > 0 {
-			dsn += "&"
-		}
-		dsn += p
-	}
+	// Encode dbPath into the URI so paths containing characters such as
+	// '?', '#', or '&' aren't misparsed as the start of the query string.
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: strings.Join(dsnParams, "&"), OmitHost: true}
 
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", dbPath, err)
 	}
@@ -54,5 +55,24 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("ping %s: %w", dbPath, err)
 	}
 
+	return db, nil
+}
+
+// OpenSQLiteReadOnly opens an existing SQLite database for source preflight.
+// mode=ro prevents schema or data changes and never creates a missing source.
+func OpenSQLiteReadOnly(dbPath string) (*sql.DB, error) {
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, fmt.Errorf("source database not found: %s: %w", dbPath, err)
+	}
+
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	db, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		return nil, fmt.Errorf("open %s read-only: %w", dbPath, err)
+	}
+	if err := db.PingContext(context.Background()); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping %s read-only: %w", dbPath, err)
+	}
 	return db, nil
 }

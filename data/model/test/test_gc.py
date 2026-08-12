@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import random
 import string
 from contextlib import contextmanager
@@ -1304,6 +1305,140 @@ def test_gc_collects_orphaned_blobs_with_placement(default_tag_policy, initializ
     assert normal_blob.id in orphaned_ids
 
     assert not ImageStorage.select().where(ImageStorage.id == normal_blob.id).exists()
+
+
+def test_gc_storage_logs_namespace_and_repo(default_tag_policy, initialized_db):
+    """
+    When namespace and repo_name are provided, garbage_collect_storage emits an
+    info-level log line containing both values for each removed blob.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        orphaned_ids = storage_model.garbage_collect_storage(
+            [orphan.id], namespace="testns", repo_name="testrepo"
+        )
+
+    assert orphan.id in orphaned_ids
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert "testns" in log_msg
+    assert "testrepo" in log_msg
+    assert blob_digest in log_msg
+
+
+def test_gc_storage_no_log_without_namespace(default_tag_policy, initialized_db):
+    """
+    When namespace is not provided, garbage_collect_storage does not emit
+    the audit log line.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        orphaned_ids = storage_model.garbage_collect_storage([orphan.id])
+
+    assert orphan.id in orphaned_ids
+    mock_logger.info.assert_not_called()
+
+
+def test_gc_storage_returns_version_id_from_store(default_tag_policy, initialized_db):
+    """
+    garbage_collect_storage captures the return value of config.store.remove
+    and includes a delete_marker in the log when the storage backend returns
+    a version id.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    fake_version_id = "v-abc123"
+    original_remove = storage.remove
+
+    def patched_remove(locations, path):
+        original_remove(locations, path)
+        return fake_version_id
+
+    import logging
+
+    with mock_patch.object(storage, "remove", side_effect=patched_remove):
+        with mock_patch("data.model.storage.logger") as mock_logger:
+            mock_logger.debug = logging.getLogger().debug
+            mock_logger.warning = logging.getLogger().warning
+
+            storage_model.garbage_collect_storage(
+                [orphan.id], namespace="testns", repo_name="testrepo"
+            )
+
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert fake_version_id in log_msg
+    assert "delete_marker" in log_msg
+
+
+def test_gc_storage_omits_delete_marker_when_none(default_tag_policy, initialized_db):
+    """
+    When the storage backend returns None (non-versioned bucket), the log
+    line should not include a delete_marker fragment.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        storage_model.garbage_collect_storage([orphan.id], namespace="testns", repo_name="testrepo")
+
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert "delete_marker" not in log_msg
 
 
 def test_gc_proxy_cache_expired_temp_tag(default_tag_policy, initialized_db):

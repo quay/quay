@@ -251,6 +251,7 @@ jobs:
     - name: Start Quay
       run: |
         IP=$(ip addr show dev eth0 | sed -n 's: *inet \([0-9.]*\)/.*:\1:p')
+        echo "Resolved host IP for DB/Redis: ${IP:-<empty>}"
 
         mkdir -p /tmp/config
         cat >/tmp/config/config.yaml <<EOF
@@ -264,15 +265,15 @@ jobs:
         USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
         PULL_METRICS_REDIS: {"host": "$IP", "port": 6379}
 
-
         DATA_MODEL_CACHE_CONFIG:
-          engine: memcached
-          endpoint: [127.0.0.1, 18080]
+          engine: redis
+          redis_config:
+            primary:
+              host: "$IP"
+              port: 6379
           repository_blob_cache_ttl: 60s
           catalog_page_cache_ttl: 60s
-          # OCI Conformance tests don't expect tags to be cached.
-          # If we implement cache invalidation, we can enable it back.
-          active_repo_tags_cache_ttl: 0s
+          active_repo_tags_cache_ttl: 60s
         EOF
 
         # Run the Quay container. See also:
@@ -289,14 +290,33 @@ jobs:
           --volume=/tmp/config:/conf/stack:Z \
           localhost/quay
 
+        status="starting"
         for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-          status=$(docker inspect -f '{{.State.Health.Status}}' quay)
+          status=$(docker inspect -f '{{.State.Health.Status}}' quay 2>/dev/null || echo "not-running")
           printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
-          if [ "$status" == "healthy" ]; then
+          if [ "$status" == "healthy" ] || [ "$status" == "not-running" ]; then
             break
           fi
           sleep 10
         done
+
+        if [ "$status" != "healthy" ]; then
+          echo "::error::Quay container failed to become healthy (status=$status)"
+          echo "=== Resolved IP ==="
+          echo "${IP:-<empty>}"
+          echo "=== docker inspect quay ==="
+          inspect_stop=$(uuidgen)
+          echo "::stop-commands::$inspect_stop"
+          docker inspect quay || true
+          echo "::$inspect_stop::"
+          echo "=== docker logs quay ==="
+          logs_stop=$(uuidgen)
+          echo "::stop-commands::$logs_stop"
+          docker logs quay || true
+          echo "::$logs_stop::"
+          exit 1
+        fi
+
         docker inspect --format='{{json .State.Health}}' quay
 
         docker exec -i quay python <<EOF
@@ -321,14 +341,17 @@ jobs:
         export OCI_TEST_PULL=1
         export OCI_TEST_PUSH=1
         export OCI_TEST_CONTENT_DISCOVERY=1
-        export OCI_TEST_CONTENT_MANAGEMENT=0
+        export OCI_TEST_CONTENT_MANAGEMENT=1
 
         # Extra settings
         export OCI_HIDE_SKIPPED_WORKFLOWS=0
         export OCI_DEBUG=1
         export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
 
-        ./dist-spec/conformance/conformance.test
+        # Direct blob deletion via API is NOT SUPPORTED because of blob sharing in the background.
+        # We need to permanently disable blob deletion tests to make sure OCI conformance test
+        # pass.
+        ./dist-spec/conformance/conformance.test -ginkgo.skip="Blob delete"
 
     - name: Create report
       run: |

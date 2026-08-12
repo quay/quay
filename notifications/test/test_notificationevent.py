@@ -276,6 +276,14 @@ class TestQuotaWarningEvent:
         assert "usage_percent" in sample
         assert "homepage" in sample
 
+    def test_get_sample_data_includes_formatted_bytes(self):
+        event = QuotaWarningEvent()
+        sample = event.get_sample_data("testorg", "testrepo", {})
+        assert "usage_bytes_formatted" in sample
+        assert "limit_bytes_formatted" in sample
+        assert sample["usage_bytes_formatted"] == "819.20 MB"
+        assert sample["limit_bytes_formatted"] == "1.00 GB"
+
     def test_should_perform_default_true(self):
         event = QuotaWarningEvent()
         assert event.should_perform({}, {})
@@ -309,6 +317,14 @@ class TestQuotaErrorEvent:
         assert "usage_bytes" in sample
         assert "limit_bytes" in sample
         assert "homepage" in sample
+
+    def test_get_sample_data_includes_formatted_bytes(self):
+        event = QuotaErrorEvent()
+        sample = event.get_sample_data("testorg", "testrepo", {})
+        assert "usage_bytes_formatted" in sample
+        assert "limit_bytes_formatted" in sample
+        assert sample["usage_bytes_formatted"] == "1.05 GB"
+        assert sample["limit_bytes_formatted"] == "1.00 GB"
 
     def test_should_perform_default_true(self):
         event = QuotaErrorEvent()

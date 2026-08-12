@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,7 +23,9 @@ type OMRSource struct {
 	ConfigDir   string // path to quay-config/ (config.yaml, ssl.cert, ssl.key)
 	DBPath      string // path to quay_sqlite.db
 	StoragePath string // path to blob storage root
-	Hostname    string // from old config.yaml SERVER_HOSTNAME
+	Hostname    string // from old config.yaml SERVER_HOSTNAME (bare, no port)
+	Port        string // from old config.yaml SERVER_HOSTNAME (empty = default 8443)
+	RootCADir   string // path to quay-rootCA/ directory containing rootCA.pem
 
 	ImageArchive string // container image tar path
 	Image        string // container image ref (alternative)
@@ -53,6 +56,8 @@ type Migrator struct {
 
 	Out    io.Writer
 	Runner system.CommandRunner
+
+	sourceRegistryJWTKey *rsa.PrivateKey
 }
 
 // Run executes the migration phases in order.
@@ -66,6 +71,9 @@ func (m *Migrator) Run(ctx context.Context) error {
 	}
 
 	if m.DryRun {
+		if err := m.validate(ctx); err != nil {
+			return fmt.Errorf("validate: %w", err)
+		}
 		m.printPlan()
 		return nil
 	}
@@ -109,7 +117,7 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	if err := m.validate(ctx); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
-	if err := m.stopOldOMR(ctx); err != nil {
+	if err := m.stopSourceServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR: %w", err)
 	}
 	if err := m.copyData(ctx); err != nil {
@@ -164,7 +172,14 @@ func (m *Migrator) printPlan() {
 	fmt.Fprintf(m.Out, "  Config:   %s\n", m.Source.ConfigDir)
 	fmt.Fprintf(m.Out, "  Database: %s\n", m.Source.DBPath)
 	fmt.Fprintf(m.Out, "  Storage:  %s\n", m.Source.StoragePath)
-	fmt.Fprintf(m.Out, "  Hostname: %s\n", m.Source.Hostname)
+	if m.Source.Port != "" {
+		fmt.Fprintf(m.Out, "  Hostname: %s (port %s)\n", m.Source.Hostname, m.Source.Port)
+	} else {
+		fmt.Fprintf(m.Out, "  Hostname: %s\n", m.Source.Hostname)
+	}
+	if m.Source.RootCADir != "" {
+		fmt.Fprintf(m.Out, "  Root CA:  %s\n", m.Source.RootCADir)
+	}
 	if len(m.Source.UnitFiles) > 0 {
 		fmt.Fprintf(m.Out, "  Services: %v (%s scope)\n", m.Source.UnitFiles, m.Source.SystemdScope)
 	}

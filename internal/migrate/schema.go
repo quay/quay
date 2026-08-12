@@ -2,12 +2,14 @@ package migrate
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
 )
@@ -52,8 +54,8 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	return nil
 }
 
-// stopOldOMR stops old OMR systemd services to free port 8443 and flush WAL.
-func (m *Migrator) stopOldOMR(ctx context.Context) error {
+// stopSourceServices stops source systemd services to free the listen port and flush WAL.
+func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unparam // keeps error return for phase-method consistency
 	if m.Runner == nil {
 		slog.Info("no command runner, skipping service stop")
 		return nil
@@ -68,22 +70,17 @@ func (m *Migrator) stopOldOMR(ctx context.Context) error {
 		scopeArgs = []string{"--user"}
 	}
 
-	var stopErrs []error
 	for _, svc := range omrServiceNames {
 		args := make([]string, len(scopeArgs), len(scopeArgs)+2)
 		copy(args, scopeArgs)
 		args = append(args, "stop", svc+".service")
 		slog.Info("stopping service", "service", svc)
 		if err := m.Runner.Run(ctx, "systemctl", args...); err != nil {
-			stopErrs = append(stopErrs, fmt.Errorf("stop OMR service %s: %w", svc, err))
 			slog.Warn("failed to stop service (may already be stopped)", "service", svc, "err", err)
 		}
 	}
-	if err := errors.Join(stopErrs...); err != nil {
-		return fmt.Errorf("stop old OMR services: %w", err)
-	}
 
-	slog.Info("old OMR services stopped")
+	slog.Info("old OMR services stopped (or already inactive)")
 	return nil
 }
 
@@ -95,8 +92,14 @@ func (m *Migrator) install(ctx context.Context) error {
 	}
 
 	configPath := ""
-	if _, err := os.Stat(filepath.Join(m.DataDir, runtimeConfigFile)); err == nil {
+	port := m.Source.Port
+	runtimeConfigPath := filepath.Join(m.DataDir, runtimeConfigFile)
+	if _, err := os.Stat(runtimeConfigPath); err == nil {
 		configPath = "/data/" + runtimeConfigFile
+		port, err = runtimeConfigPort(runtimeConfigPath)
+		if err != nil {
+			return err
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("stat runtime config: %w", err)
 	}
@@ -107,6 +110,7 @@ func (m *Migrator) install(ctx context.Context) error {
 		ImageArchive: m.Source.ImageArchive,
 		Image:        m.Source.Image,
 		ConfigPath:   configPath,
+		Port:         port,
 	}
 
 	slog.Info("installing new registry", "hostname", cfg.Hostname, "data-dir", cfg.DataDir)
@@ -117,4 +121,30 @@ func (m *Migrator) install(ctx context.Context) error {
 	removeMarker(m.DataDir)
 	slog.Info("new registry installed and running")
 	return nil
+}
+
+func runtimeConfigPort(path string) (string, error) {
+	cfg, err := config.Load(path)
+	if err != nil {
+		return "", fmt.Errorf("load runtime config: %w", err)
+	}
+	return runtimeServerHostnamePort(cfg.ServerHostname)
+}
+
+func runtimeServerHostnamePort(serverHostname string) (string, error) {
+	_, port, err := net.SplitHostPort(serverHostname)
+	if err != nil {
+		hostname := strings.Trim(serverHostname, "[]")
+		if net.ParseIP(hostname) != nil || !strings.Contains(serverHostname, ":") {
+			return "8443", nil
+		}
+		return "", fmt.Errorf("parse runtime SERVER_HOSTNAME %q: %w", serverHostname, err)
+	}
+	if port == "" {
+		return "8443", nil
+	}
+	if err := installer.ValidatePort(port); err != nil {
+		return "", fmt.Errorf("invalid runtime SERVER_HOSTNAME port %q: %w", port, err)
+	}
+	return port, nil
 }

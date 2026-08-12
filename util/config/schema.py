@@ -857,6 +857,11 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "SECURITY_SCANNER_V4_INDEXING": {
+            "type": "boolean",
+            "description": "Whether to enable the legacy V4 security scanner indexing operations. When set to False, the old indexing paths are disabled while the V2 indexer and security scan query APIs remain functional. Defaults to True",
+            "x-example": True,
+        },
         "FEATURE_SECURITY_SCANNER_V2": {
             "type": "boolean",
             "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
@@ -871,6 +876,12 @@ CONFIG_SCHEMA = {
             "type": "number",
             "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
             "x-example": 30,
+        },
+        "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 5.",
+            "x-example": 5,
         },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
@@ -1143,7 +1154,7 @@ CONFIG_SCHEMA = {
         },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
@@ -1900,6 +1911,36 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
             "x-example": False,
+        },
+        "FEATURE_SPAM_DETECTION": {
+            "type": "boolean",
+            "description": "Enables repository-description spam detection at API ingress. Defaults to False.",
+            "x-example": False,
+        },
+        "SPAM_DETECTION_DRY_RUN": {
+            "type": "boolean",
+            "description": "Evaluates repository descriptions without rejecting create or update requests. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_FAIL_OPEN": {
+            "type": "boolean",
+            "description": "Allows repository create and update requests if the local spam classifier cannot be evaluated. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_CLASSIFIER_PATH": {
+            "type": ["string", "null"],
+            "description": "Path to the in-image Bayesian spam classifier JSON artifact used for repository-description ingress evaluation. Defaults to /conf/spam-detection/classifier.json.",
+            "x-example": "/conf/spam-detection/classifier.json",
+        },
+        "SPAM_DETECTION_CLASSIFIER_VERSION": {
+            "type": ["string", "null"],
+            "description": "Expected version of the local spam classifier artifact. If set, Quay rejects or fail-opens classifier evaluation when the artifact version differs.",
+            "x-example": "2026-06-20.1",
+        },
+        "SPAM_DETECTION_CLASSIFIER_SHA256": {
+            "type": ["string", "null"],
+            "description": "Optional SHA-256 checksum for the local spam classifier artifact.",
+            "x-example": "a3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         },
         "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
             "type": "string",

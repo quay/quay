@@ -146,7 +146,7 @@ jobs:
 
           # Subtract files that are themselves tests within source directories
           TEST_FILES_IN_SOURCE=$(echo "$CHANGED_FILES" | grep -cE \
-            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/test/' \
+            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/(.*/)?test/|^web/src/(.*/)?[^/]+\.test\.[^/]+$' \
             || true)
 
           SOURCE_CHANGES=$((SOURCE_CHANGES - TEST_FILES_IN_SOURCE))
@@ -200,6 +200,7 @@ jobs:
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
+            FEATURE_SECURITY_SCANNER_V2: true
             FEATURE_SECURITY_NOTIFICATIONS: true
             DEFAULT_UI: react
             AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0

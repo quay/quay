@@ -496,7 +496,7 @@ class SlackMethod(NotificationMethod):
             raise CannotValidateNotificationMethodException("Missing Slack Callback URL")
 
     def format_for_slack(self, message):
-        message = message.replace("\n", "")
+        message = message.replace("\n", " ")
         message = re.sub(r"\s+", " ", message)
         message = message.replace("<br>", "\n")
         return adjust_tags(message)

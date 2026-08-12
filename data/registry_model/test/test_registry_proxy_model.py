@@ -522,6 +522,78 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         assert expected_count == created_count
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_accept_proxying_of_manifests_which_contain_duplicate_identical_child_manifests(
+        self, create_repo
+    ):
+        """
+        Verifies that a manifest with multiple identical child manifests (allowed per OCI spec) are properly stored
+        in the database and no longer throw a unique constraint error.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+
+        # create child manifest, we're using UBI manifest
+        ubi_image = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LINUX_AMD64["manifest"]),
+            testdata.UBI8_LINUX_AMD64["content-type"],
+            sparse_manifest_support=True,
+        )
+
+        # create needed manifests
+        oci_manifest = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [
+                {
+                    "mediaType": testdata.UBI8_LINUX_AMD64["content-type"],
+                    "digest": ubi_image.digest,
+                    "size": len(testdata.UBI8_LINUX_AMD64["manifest"]),
+                    "platform": {
+                        "architecture": "amd64",
+                        "os": "linux",
+                    },
+                },
+                {
+                    "mediaType": testdata.UBI8_LINUX_AMD64["content-type"],
+                    "digest": ubi_image.digest,
+                    "size": len(testdata.UBI8_LINUX_AMD64["manifest"]),
+                    "platform": {
+                        "architecture": "amd64",
+                        "os": "linux",
+                    },
+                },
+            ],
+        }
+
+        oci_manifest_bytes = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(json.dumps(oci_manifest)),
+            "application/vnd.oci.image.index.v1+json",
+            sparse_manifest_support=True,
+        )
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_registry,
+            self.user,
+        )
+
+        child_manifest, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, ubi_image)
+
+        assert child_manifest
+
+        # create the OCI image index
+        index, _ = proxy_model._create_manifest_and_retarget_tag(
+            repo_ref, oci_manifest_bytes, self.tag
+        )
+
+        assert index
+
+        manifest_children = ManifestChild.select(ManifestChild.child_manifest_id).where(
+            ManifestChild.manifest == index.id
+        )
+
+        assert manifest_children.count() == 1
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_create_temp_tags_for_newly_created_sub_manifests_on_manifest_list(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(

@@ -57,9 +57,15 @@ objects:
       metadata:
         labels:
           app: quay-envoy
+        annotations:
+          oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
         nodeSelector:
-          part-of: quay
+          workload: envoy
+        tolerations:
+        - key: workload
+          value: envoy
+          effect: NoSchedule
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
@@ -69,12 +75,32 @@ objects:
                   matchLabels:
                     app: quay-envoy
                 topologyKey: topology.kubernetes.io/zone
+        terminationGracePeriodSeconds: 60
         containers:
         - name: envoy
           image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
-          command: ["envoy"]
-          args: ["-c", "/etc/envoy/envoy.yaml", "--log-level", "${ENVOY_LOG_LEVEL}"]
+          command: ["/bin/sh", "-c"]
+          args:
+          - |
+            ulimit -n $(ulimit -Hn)
+            ARGS="-c /etc/envoy/envoy.yaml --log-level $ENVOY_LOG_LEVEL --drain-time-s 30"
+            if [ -n "$ENVOY_COMPONENT_LOG_LEVEL" ]; then
+              ARGS="$ARGS --component-log-level $ENVOY_COMPONENT_LOG_LEVEL"
+            fi
+            exec envoy $ARGS
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - "/bin/sh"
+                - "-c"
+                - "curl -sf --max-time 10 -X POST http://localhost:9901/drain_listeners?graceful ; sleep 30"
+          env:
+          - name: ENVOY_LOG_LEVEL
+            value: "${ENVOY_LOG_LEVEL}"
+          - name: ENVOY_COMPONENT_LOG_LEVEL
+            value: "${ENVOY_COMPONENT_LOG_LEVEL}"
           ports:
           - containerPort: 8443
             name: https
@@ -118,6 +144,15 @@ objects:
               path: ssl.cert
             - key: ssl.key
               path: ssl.key
+- apiVersion: policy/v1
+  kind: PodDisruptionBudget
+  metadata:
+    name: quay-envoy-pdb
+  spec:
+    maxUnavailable: 1
+    selector:
+      matchLabels:
+        app: quay-envoy
 - apiVersion: v1
   kind: Service
   metadata:
@@ -126,6 +161,10 @@ objects:
       app: quay-rls
   spec:
     ports:
+    - name: healthcheck
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
     - name: grpc
       protocol: TCP
       port: 8081
@@ -159,18 +198,41 @@ objects:
       metadata:
         labels:
           app: quay-rls
+        annotations:
+          oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
       spec:
+        terminationGracePeriodSeconds: 60
         nodeSelector:
-          part-of: quay
+          workload: envoy
+        tolerations:
+        - key: workload
+          value: envoy
+          effect: NoSchedule
         containers:
         - name: quay-rls
           image: ${RLS_IMAGE}:${RLS_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
+          - containerPort: 8080
+            name: healthcheck
           - containerPort: 8081
             name: grpc
           - containerPort: 9090
             name: metrics
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           env:
           - name: USE_STATSD
             value: "false"
@@ -214,6 +276,15 @@ objects:
         - name: config
           configMap:
             name: ${{RLS_CONFIG_CONFIGMAP}}
+- apiVersion: policy/v1
+  kind: PodDisruptionBudget
+  metadata:
+    name: quay-rls-pdb
+  spec:
+    maxUnavailable: 1
+    selector:
+      matchLabels:
+        app: quay-rls
 parameters:
 - name: ENVOY_IMAGE
   value: "docker.io/envoyproxy/envoy"
@@ -222,7 +293,7 @@ parameters:
   value: "v1.35-latest"
   displayName: Envoy image tag
 - name: ENVOY_REPLICAS
-  value: "1"
+  value: "2"
   displayName: Number of Envoy replicas
 - name: ENVOY_CPU_REQUEST
   value: "500m"
@@ -242,6 +313,9 @@ parameters:
 - name: ENVOY_LOG_LEVEL
   value: "info"
   displayName: Envoy log level
+- name: ENVOY_COMPONENT_LOG_LEVEL
+  value: ""
+  displayName: Per-component log levels (e.g. upstream:debug,connection:debug)
 - name: RLS_IMAGE
   value: "docker.io/envoyproxy/ratelimit"
   displayName: Rate limit service container image
@@ -249,7 +323,7 @@ parameters:
   value: "latest"
   displayName: Rate limit service image tag
 - name: RLS_REPLICAS
-  value: "1"
+  value: "2"
   displayName: Number of RLS replicas
 - name: RLS_CPU_REQUEST
   value: "100m"
@@ -269,3 +343,6 @@ parameters:
 - name: RLS_LOG_LEVEL
   value: "info"
   displayName: RLS log level
+- name: DYNATRACE_MONITORING
+  value: "false"
+  displayName: Enable Dynatrace OneAgent injection

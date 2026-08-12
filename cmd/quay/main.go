@@ -4,7 +4,7 @@ package main
 import (
 	"os"
 
-	"github.com/quay/quay/internal/cmd"
+	"github.com/quay/quay/internal/mirrorregistry/cmd"
 )
 
 func main() {

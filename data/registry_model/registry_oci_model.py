@@ -1,4 +1,5 @@
 import logging
+import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 
@@ -284,13 +285,34 @@ class OCIModel(RegistryDataInterface):
         self, model_cache, repository_ref, manifest, artifact_type=None
     ):
         def load_referrers():
-            return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
+            cacheable_referrers = []
+            for referrer in self.lookup_referrers_for_manifest(
+                repository_ref, manifest, artifact_type
+            ):
+                referrer_dict = referrer.asdict()
+                referrer_dict["internal_manifest_bytes"] = referrer_dict[
+                    "internal_manifest_bytes"
+                ].as_unicode()
+                referrer_dict["inputs"]["repository"] = referrer_dict["inputs"][
+                    "repository"
+                ].asdict()
+                referrer_dict["inputs"]["legacy_id_handler"] = None
+                referrer_dict["inputs"]["legacy_image_handler"] = None
+                cacheable_referrers.append(referrer_dict)
+            return cacheable_referrers
 
         referrers_cache_key = cache_key.for_manifest_referrers(
-            repository_ref, manifest.digest, model_cache.cache_config
+            repository_ref._db_id,
+            manifest.digest,
+            model_cache.cache_config,
+            artifact_type=artifact_type,
         )
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
+            for referrer_dict in result:
+                referrer_dict["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
+                    referrer_dict["internal_manifest_bytes"]
+                )
             return [Manifest.from_dict(referrer_dict) for referrer_dict in result]
         except FromDictionaryException:
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
@@ -518,6 +540,28 @@ class OCIModel(RegistryDataInterface):
 
         return Tag.for_tag(tag, self._legacy_image_id_handler)
 
+    def _invalidate_referrers_cache_for_manifest(
+        self, repository_ref, manifest_interface_instance, model_cache
+    ):
+        if model_cache is None or manifest_interface_instance.subject is None:
+            return
+
+        subject_digest = manifest_interface_instance.subject.digest
+        unfiltered_key = cache_key.for_manifest_referrers(
+            repository_ref._db_id, subject_digest, model_cache.cache_config
+        )
+        model_cache.invalidate(unfiltered_key)
+
+        artifact_type = manifest_interface_instance.artifact_type
+        if artifact_type is not None:
+            filtered_key = cache_key.for_manifest_referrers(
+                repository_ref._db_id,
+                subject_digest,
+                model_cache.cache_config,
+                artifact_type=artifact_type,
+            )
+            model_cache.invalidate(filtered_key)
+
     def create_manifest_and_retarget_tag(
         self,
         repository_ref,
@@ -526,6 +570,7 @@ class OCIModel(RegistryDataInterface):
         storage,
         raise_on_error=False,
         verify_quota=False,
+        model_cache=None,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -616,6 +661,10 @@ class OCIModel(RegistryDataInterface):
             )
             if tag is None:
                 return (None, None)
+
+            self._invalidate_referrers_cache_for_manifest(
+                repository_ref, manifest_interface_instance, model_cache
+            )
 
             return (
                 wrapped_manifest,
@@ -715,6 +764,11 @@ class OCIModel(RegistryDataInterface):
             )
             model_cache.invalidate(manifest_cache_key)
 
+            gen_key = cache_key.for_active_repo_tags_gen(
+                deleted_tag.repository.id, model_cache.cache_config
+            )
+            model_cache.invalidate(gen_key)
+
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
     def delete_tags_for_manifest(self, model_cache, manifest):
@@ -731,6 +785,11 @@ class OCIModel(RegistryDataInterface):
                 manifest.repository.id, manifest.digest, model_cache.cache_config
             )
             model_cache.invalidate(manifest_cache_key)
+
+            gen_key = cache_key.for_active_repo_tags_gen(
+                manifest.repository.id, model_cache.cache_config
+            )
+            model_cache.invalidate(gen_key)
 
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
@@ -859,11 +918,16 @@ class OCIModel(RegistryDataInterface):
         manifest_interface_instance,
         expiration_sec,
         storage,
+        model_cache=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated so that subsequent queries
+        return fresh results.
         """
         with db_disallow_replica_use():
             # Get or create the manifest itself. get_or_create_manifest will take care of the
@@ -876,6 +940,10 @@ class OCIModel(RegistryDataInterface):
             )
             if created_manifest is None:
                 return None
+
+            self._invalidate_referrers_cache_for_manifest(
+                repository_ref, manifest_interface_instance, model_cache
+            )
 
             return Manifest.for_manifest(created_manifest.manifest, self._legacy_image_id_handler)
 
@@ -1088,8 +1156,17 @@ class OCIModel(RegistryDataInterface):
             )
             return [tag.asdict() for tag in tags], has_more
 
+        gen_key = cache_key.for_active_repo_tags_gen(
+            repository_ref._db_id, model_cache.cache_config
+        )
+        generation = model_cache.retrieve(gen_key, lambda: str(uuid.uuid4()))
+
         tags_cache_key = cache_key.for_active_repo_tags(
-            repository_ref._db_id, last_pagination_tag_name, limit, model_cache.cache_config
+            repository_ref._db_id,
+            last_pagination_tag_name,
+            limit,
+            generation,
+            model_cache.cache_config,
         )
         result, has_more = tuple(model_cache.retrieve(tags_cache_key, load_tags))
 

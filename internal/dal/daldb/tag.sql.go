@@ -105,6 +105,21 @@ func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByReposito
 	return items, nil
 }
 
+const hasNonExpiringTagForManifest = `-- name: HasNonExpiringTagForManifest :one
+SELECT EXISTS(
+    SELECT 1 FROM tag WHERE manifest_id = ? AND lifetime_end_ms IS NULL
+) AS has_tag
+`
+
+// Returns true if the manifest already has at least one non-expiring tag
+// (lifetime_end_ms IS NULL). Used to skip creating duplicate protection tags.
+func (q *Queries) HasNonExpiringTagForManifest(ctx context.Context, manifestID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasNonExpiringTagForManifest, manifestID)
+	var has_tag int64
+	err := row.Scan(&has_tag)
+	return has_tag, err
+}
+
 const insertHiddenTag = `-- name: InsertHiddenTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
 VALUES (?, ?, ?, ?, ?, 1)

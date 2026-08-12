@@ -1,0 +1,480 @@
+package distribution
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"slices"
+	"strings"
+
+	distauth "github.com/distribution/distribution/v3/registry/auth"
+	"github.com/quay/quay/internal/auth"
+	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/registry/jwtauth"
+	repo "github.com/quay/quay/internal/repository"
+	repositorydal "github.com/quay/quay/internal/repository/dal"
+)
+
+func init() {
+	if err := distauth.Register(quayDBAuthBackend, distauth.InitFunc(accessControllerFactory)); err != nil {
+		slog.Error("failed to register auth", "backend", quayDBAuthBackend, "err", err)
+	}
+}
+
+func accessControllerFactory(options map[string]interface{}) (distauth.AccessController, error) {
+	return newAccessController(options)
+}
+
+type accessController struct {
+	authenticator    *auth.BasicAuthenticator
+	jwtService       registryTokenService
+	authorizer       *repositorydal.Authorizer
+	queries          *daldb.Queries
+	realm            string
+	service          string
+	libraryNamespace string
+	anonymousAccess  bool
+}
+
+var (
+	_ distauth.AccessController = &accessController{}
+	_ oci.Authenticator         = &accessController{}
+)
+
+var (
+	errRepositoryNotFound     = errors.New("repository not found")
+	errRepositoryAccessDenied = errors.New("repository access denied")
+)
+
+func newAccessController(options map[string]interface{}) (*accessController, error) {
+	if controller, ok := options[authOptionController].(*accessController); ok && controller != nil {
+		return controller, nil
+	}
+	realm, ok := options[authOptionRealm].(string)
+	if !ok || realm == "" {
+		return nil, fmt.Errorf("%q must be set for %s access controller", authOptionRealm, quayDBAuthBackend)
+	}
+	service, _ := options[authOptionService].(string)
+	jwtService, _ := options[authOptionJWTService].(registryTokenService)
+	if jwtService == nil {
+		return nil, fmt.Errorf("%q must be set for %s bearer access controller", authOptionJWTService, quayDBAuthBackend)
+	}
+	if service == "" {
+		return nil, fmt.Errorf("%q must be set for %s bearer access controller", authOptionService, quayDBAuthBackend)
+	}
+
+	db, ok := options[authOptionDB].(*sql.DB)
+	if !ok || db == nil {
+		return nil, fmt.Errorf("%q must be set to *sql.DB for %s access controller", authOptionDB, quayDBAuthBackend)
+	}
+
+	libraryNamespace, _ := options[authOptionLibraryNamespace].(string)
+	if libraryNamespace == "" {
+		libraryNamespace = defaultLibraryNamespace
+	}
+
+	anonymousAccess := true
+	if configured, present := options[authOptionAnonAccess]; present {
+		var ok bool
+		anonymousAccess, ok = configured.(bool)
+		if !ok {
+			return nil, fmt.Errorf("%q must be a bool for %s access controller", authOptionAnonAccess, quayDBAuthBackend)
+		}
+	}
+
+	databaseSecretKey, _ := options[authOptionDatabaseKey].(string)
+	robotsDisallow, _ := options[authOptionRobotsDisallow].(bool)
+	robotsWhitelist, _ := options[authOptionRobotsWhitelist].([]string)
+	featureUserLastAccessed, _ := options[authOptionLastAccess].(bool)
+	lastAccessedUpdateThresholdSeconds, _ := options[authOptionLastAccessS].(int)
+	superUsers, _ := options[authOptionSuperUsers].([]string)
+	superUsersFullAccess, _ := options[authOptionSuperUsersFullAccess].(bool)
+
+	verifier := auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
+		DatabaseSecretKey:              databaseSecretKey,
+		RobotsDisallow:                 robotsDisallow,
+		RobotsWhitelist:                robotsWhitelist,
+		FeatureUserLastAccessed:        featureUserLastAccessed,
+		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
+	})
+
+	return &accessController{
+		authenticator: auth.NewBasicAuthenticator(verifier),
+		jwtService:    jwtService,
+		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
+			SuperUsers:           superUsers,
+			SuperUsersFullAccess: superUsersFullAccess,
+		}),
+		queries:          daldb.New(db),
+		realm:            realm,
+		service:          service,
+		libraryNamespace: libraryNamespace,
+		anonymousAccess:  anonymousAccess,
+	}, nil
+}
+
+func (ac *accessController) Authorized(req *http.Request, access ...distauth.Access) (*distauth.Grant, error) {
+	return ac.authorizedBearer(req, access)
+}
+
+func (ac *accessController) Authenticate(r *http.Request, access ...oci.Access) (*oci.Grant, error) {
+	return ac.authenticateBearer(r, access)
+}
+
+func (ac *accessController) authorizedBearer(req *http.Request, access []distauth.Access) (*distauth.Grant, error) {
+	rawToken, headerPresent, tokenErr := bearerToken(req)
+	if !headerPresent && ac.canAnonymousPull(req, access) {
+		return &distauth.Grant{User: distauth.UserInfo{Name: auth.AnonymousPrincipal().Username}}, nil
+	}
+	if tokenErr != nil {
+		return nil, ac.distributionChallenge(access, tokenErr)
+	}
+
+	claims, err := ac.jwtService.Authorize(rawToken, jwtAccessFromDistribution(access))
+	if err != nil {
+		return nil, ac.distributionChallenge(access, err)
+	}
+	resources := make([]distauth.Resource, 0, len(claims.Access))
+	for _, grant := range claims.Access {
+		resources = append(resources, distauth.Resource{Type: grant.Type, Name: grant.Name})
+	}
+	return &distauth.Grant{
+		User:      distauth.UserInfo{Name: claims.Subject},
+		Resources: resources,
+	}, nil
+}
+
+func (ac *accessController) authenticateBearer(r *http.Request, access []oci.Access) (*oci.Grant, error) {
+	rawToken, headerPresent, tokenErr := bearerToken(r)
+	if !headerPresent && ac.canAnonymousOCIPull(r, access) {
+		return &oci.Grant{User: oci.User{Name: auth.AnonymousPrincipal().Username}}, nil
+	}
+	challengeAccess := distributionAccessFromOCI(access)
+	if tokenErr != nil {
+		return nil, ac.ociChallenge(challengeAccess, tokenErr)
+	}
+	claims, err := ac.jwtService.Authorize(rawToken, jwtAccessFromDistribution(challengeAccess))
+	if err != nil {
+		return nil, ac.ociChallenge(challengeAccess, err)
+	}
+	return &oci.Grant{User: oci.User{Name: claims.Subject}}, nil
+}
+
+func bearerToken(r *http.Request) (raw string, headerPresent bool, err error) {
+	header := strings.TrimSpace(r.Header.Get("Authorization"))
+	if header == "" {
+		return "", false, jwtauth.ErrMissingToken
+	}
+	scheme, token, ok := strings.Cut(header, " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
+		return "", true, jwtauth.ErrMissingToken
+	}
+	if strings.TrimSpace(token) == "" {
+		return "", true, jwtauth.ErrInvalidToken
+	}
+	return strings.TrimSpace(token), true, nil
+}
+
+func distributionAccessFromOCI(access []oci.Access) []distauth.Access {
+	converted := make([]distauth.Access, 0, len(access))
+	for _, item := range access {
+		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
+		if !ok {
+			resourceType = ""
+			resourceName = item.Resource
+		}
+		converted = append(converted, distauth.Access{
+			Resource: distauth.Resource{Type: resourceType, Name: resourceName},
+			Action:   item.Action,
+		})
+	}
+	return converted
+}
+
+func jwtAccessFromDistribution(access []distauth.Access) []jwtauth.ResourceActions {
+	grants := make([]jwtauth.ResourceActions, 0, len(access))
+	for _, item := range access {
+		action := item.Action
+		if action == repositoryDeleteAction {
+			action = repositoryPushAction
+		}
+		found := false
+		for i := range grants {
+			if grants[i].Type == item.Type && grants[i].Name == item.Name {
+				if !slices.Contains(grants[i].Actions, action) {
+					grants[i].Actions = append(grants[i].Actions, action)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			grants = append(grants, jwtauth.ResourceActions{
+				Type: item.Type, Name: item.Name, Actions: []string{action},
+			})
+		}
+	}
+	return grants
+}
+
+func (ac *accessController) distributionChallenge(access []distauth.Access, err error) distauth.Challenge {
+	return bearerDistributionChallengeError{
+		realm: ac.realm, service: ac.service,
+		access: jwtAccessFromDistribution(access), err: err,
+	}
+}
+
+func (ac *accessController) ociChallenge(access []distauth.Access, err error) error {
+	return bearerOCIChallengeError{
+		realm: ac.realm, service: ac.service,
+		access: jwtAccessFromDistribution(access), err: err,
+	}
+}
+
+func (ac *accessController) canAnonymousPull(req *http.Request, access []distauth.Access) bool {
+	if !ac.anonymousAccess || len(access) == 0 {
+		return false
+	}
+
+	for _, item := range access {
+		if item.Type != repositoryResourceType || item.Action != repositoryPullAction {
+			return false
+		}
+		if !ac.repositoryIsPublic(req, item.Name) {
+			return false
+		}
+	}
+	return true
+}
+
+func (ac *accessController) canAnonymousOCIPull(req *http.Request, access []oci.Access) bool {
+	if !ac.anonymousAccess || len(access) == 0 {
+		return false
+	}
+
+	for _, item := range access {
+		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
+		if !ok || resourceType != repositoryResourceType || item.Action != repositoryPullAction {
+			return false
+		}
+		if !ac.repositoryIsPublic(req, resourceName) {
+			return false
+		}
+	}
+	return true
+}
+
+func (ac *accessController) repositoryIsPublic(req *http.Request, name string) bool {
+	namespace, repository, ok := ac.repositoryParts(name)
+	if !ok {
+		return false
+	}
+
+	isPublic, err := ac.queries.RepositoryIsPublicByNamespaceName(req.Context(), daldb.RepositoryIsPublicByNamespaceNameParams{
+		Username: namespace,
+		Name:     repository,
+	})
+	if err != nil {
+		slog.Debug("anonymous repository visibility lookup failed", "repository", name, "err", err)
+		return false
+	}
+
+	return isPublic != 0
+}
+
+func (ac *accessController) authorizeDistributionAccess(req *http.Request, principal *auth.Principal, access []distauth.Access) error {
+	if len(access) == 0 {
+		return nil
+	}
+
+	for _, item := range access {
+		switch item.Type {
+		case repositoryResourceType:
+			if err := ac.authorizeRepositoryAccess(req, principal, item, access); err != nil {
+				return err
+			}
+		case registryResourceType:
+			if item.Name == registryCatalogName && item.Action == registryCatalogAction {
+				return fmt.Errorf("%w: registry catalog is not supported by %s auth", errRepositoryAccessDenied, quayDBAuthBackend)
+			}
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
+		default:
+			return fmt.Errorf("%w: unsupported access resource type %q", errRepositoryAccessDenied, item.Type)
+		}
+	}
+
+	return nil
+}
+
+func (ac *accessController) authorizeOCIAccess(req *http.Request, principal *auth.Principal, access []oci.Access) error {
+	if len(access) == 0 {
+		return nil
+	}
+
+	distributionAccess := make([]distauth.Access, 0, len(access))
+	for _, item := range access {
+		resourceType, resourceName, ok := strings.Cut(item.Resource, ":")
+		if !ok {
+			return fmt.Errorf("invalid OCI access resource %q", item.Resource)
+		}
+		distributionAccess = append(distributionAccess, distauth.Access{
+			Resource: distauth.Resource{
+				Type: resourceType,
+				Name: resourceName,
+			},
+			Action: item.Action,
+		})
+	}
+
+	return ac.authorizeDistributionAccess(req, principal, distributionAccess)
+}
+
+func (ac *accessController) authorizeRepositoryAccess(req *http.Request, principal *auth.Principal, item distauth.Access, access []distauth.Access) error {
+	repositoryRecord, err := ac.resolveRepository(req, item.Name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ac.authorizeMissingRepositoryAccess(req, principal, item, access)
+		}
+		return err
+	}
+	if repositoryRecord.KindID != repo.KindImage {
+		return fmt.Errorf("%w: repository %q is not an image repository", errRepositoryAccessDenied, item.Name)
+	}
+
+	var allowed bool
+	switch item.Action {
+	case repositoryPullAction:
+		allowed, err = ac.authorizer.CanPullRepository(req.Context(), principal, &repositoryRecord)
+	case repositoryPushAction, repositoryDeleteAction:
+		allowed, err = ac.authorizer.CanPushRepository(req.Context(), principal, &repositoryRecord)
+	default:
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
+	}
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return fmt.Errorf("%w: repository action %q denied for %s", errRepositoryAccessDenied, item.Action, principal.Username)
+	}
+
+	return nil
+}
+
+func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, principal *auth.Principal, item distauth.Access, access []distauth.Access) error {
+	switch item.Action {
+	case repositoryPullAction:
+		if accessIncludesRepositoryAction(access, item.Name, repositoryPushAction) {
+			return nil
+		}
+		namespace, _, ok := ac.repositoryParts(item.Name)
+		if !ok {
+			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
+		}
+		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
+		if err != nil {
+			return err
+		}
+		if allowed {
+			return nil
+		}
+		return errRepositoryNotFound
+	case repositoryPushAction:
+		namespace, _, ok := ac.repositoryParts(item.Name)
+		if !ok {
+			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
+		}
+		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return fmt.Errorf("%w: repository create denied for %s", errRepositoryAccessDenied, principal.Username)
+		}
+		return nil
+	case repositoryDeleteAction:
+		return errRepositoryNotFound
+	default:
+		return fmt.Errorf("%w: unsupported repository action %q", errRepositoryAccessDenied, item.Action)
+	}
+}
+
+func accessIncludesRepositoryAction(access []distauth.Access, name, action string) bool {
+	for _, item := range access {
+		if item.Type == repositoryResourceType && item.Name == name && item.Action == action {
+			return true
+		}
+	}
+	return false
+}
+
+func (ac *accessController) resolveRepository(req *http.Request, name string) (repo.Repository, error) {
+	namespace, repository, ok := ac.repositoryParts(name)
+	if !ok {
+		return repo.Repository{}, fmt.Errorf("invalid repository name %q", name)
+	}
+
+	row, err := ac.queries.GetRepositoryAccessByNamespaceName(req.Context(), daldb.GetRepositoryAccessByNamespaceNameParams{
+		Username: namespace,
+		Name:     repository,
+	})
+	if err != nil {
+		return repo.Repository{}, err
+	}
+
+	return repo.Repository{
+		ID: row.ID,
+		Ref: repo.Ref{
+			Namespace: row.Namespace,
+			Name:      row.Name,
+		},
+		Visibility:       repo.Visibility(row.Visibility),
+		State:            row.State,
+		KindID:           row.KindID,
+		NamespaceEnabled: row.NamespaceEnabled,
+	}, nil
+}
+
+func (ac *accessController) repositoryParts(name string) (namespace, repository string, ok bool) {
+	namespace, repository, ok = strings.Cut(name, "/")
+	if !ok {
+		namespace = ac.libraryNamespace
+		repository = name
+	}
+	if namespace == "" || repository == "" {
+		return "", "", false
+	}
+	return namespace, repository, true
+}
+
+type bearerDistributionChallengeError struct {
+	realm   string
+	service string
+	access  []jwtauth.ResourceActions
+	err     error
+}
+
+var _ distauth.Challenge = bearerDistributionChallengeError{}
+
+func (ch bearerDistributionChallengeError) SetHeaders(_ *http.Request, w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", jwtauth.ChallengeValue(ch.realm, ch.service, ch.access, ch.err))
+}
+
+func (ch bearerDistributionChallengeError) Error() string { return ch.err.Error() }
+
+type bearerOCIChallengeError struct {
+	realm   string
+	service string
+	access  []jwtauth.ResourceActions
+	err     error
+}
+
+var _ oci.AuthChallenge = bearerOCIChallengeError{}
+
+func (ch bearerOCIChallengeError) SetHeaders(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", jwtauth.ChallengeValue(ch.realm, ch.service, ch.access, ch.err))
+}
+
+func (ch bearerOCIChallengeError) Error() string { return ch.err.Error() }

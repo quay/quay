@@ -64,47 +64,6 @@ def registry_services():
     }
 
 
-def config_services():
-    return {
-        "blobuploadcleanupworker": {"autostart": "false"},
-        "buildlogsarchiver": {"autostart": "false"},
-        "builder": {"autostart": "false"},
-        "chunkcleanupworker": {"autostart": "false"},
-        "expiredappspecifictokenworker": {"autostart": "false"},
-        "exportactionlogsworker": {"autostart": "false"},
-        "gcworker": {"autostart": "false"},
-        "globalpromstats": {"autostart": "false"},
-        "logrotateworker": {"autostart": "false"},
-        "namespacegcworker": {"autostart": "false"},
-        "repositorygcworker": {"autostart": "false"},
-        "notificationworker": {"autostart": "false"},
-        "queuecleanupworker": {"autostart": "false"},
-        "repositoryactioncounter": {"autostart": "false"},
-        "reconciliationworker": {"autostart": "false"},
-        "securityworker": {"autostart": "false"},
-        "storagereplication": {"autostart": "false"},
-        "teamsyncworker": {"autostart": "false"},
-        "dnsmasq": {"autostart": "false"},
-        "gunicorn-registry": {"autostart": "false"},
-        "gunicorn-secscan": {"autostart": "false"},
-        "gunicorn-web": {"autostart": "false"},
-        "ip-resolver-update-worker": {"autostart": "false"},
-        "memcache": {"autostart": "false"},
-        "nginx": {"autostart": "false"},
-        "pushgateway": {"autostart": "false"},
-        "servicekey": {"autostart": "false"},
-        "repomirrorworker": {"autostart": "false"},
-        "manifestbackfillworker": {"autostart": "false"},
-        "manifestsubjectbackfillworker": {"autostart": "false"},
-        "securityscanningnotificationworker": {"autostart": "false"},
-        "quotatotalworker": {"autostart": "false"},
-        "quotaregistrysizeworker": {"autostart": "false"},
-        "autopruneworker": {"autostart": "false"},
-        "proxycacheblobworker": {"autostart": "false"},
-        "pullstatsredisflushworker": {"autostart": "false"},
-    }
-
-
 def generate_supervisord_config(filename, config, logdriver, hotreload):
     with open(filename + ".jnj") as f:
         template = jinja2.Template(f.read())
@@ -137,10 +96,7 @@ def override_services(config, override_services):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "config":
-        config = config_services()
-    else:
-        config = registry_services()
+    config = registry_services()
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
 

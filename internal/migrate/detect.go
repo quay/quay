@@ -88,16 +88,18 @@ func (m *Migrator) sourceFromUnit(ctx context.Context, unitContent, scope, unitD
 		}
 	}
 
-	// Extract hostname from config.yaml.
+	// Extract hostname and port from config.yaml.
 	if src.ConfigDir != "" {
 		configPath := filepath.Join(src.ConfigDir, "config.yaml")
 		data, err := os.ReadFile(configPath) //nolint:gosec // detected config path
 		if err == nil {
-			hostname, err := extractHostname(data)
+			hostname, port, err := extractHostname(data)
 			if err == nil {
 				src.Hostname = hostname
+				src.Port = port
 			}
 		}
+		src.RootCADir = detectRootCADir(src.ConfigDir)
 	}
 
 	return src, nil
@@ -171,13 +173,15 @@ func (m *Migrator) detectPodmanVolumes(ctx context.Context) (OMRSource, error) {
 		}
 	}
 
-	// Extract hostname if config found.
+	// Extract hostname and port if config found.
 	if src.ConfigDir != "" {
 		data, err := os.ReadFile(filepath.Join(src.ConfigDir, "config.yaml")) //nolint:gosec // detected config path
 		if err == nil {
-			hostname, _ := extractHostname(data)
+			hostname, port, _ := extractHostname(data)
 			src.Hostname = hostname
+			src.Port = port
 		}
+		src.RootCADir = detectRootCADir(src.ConfigDir)
 	}
 
 	return src, nil
@@ -205,9 +209,11 @@ func (m *Migrator) detectDefaults() (OMRSource, error) {
 	}
 	data, err := os.ReadFile(filepath.Join(configDir, "config.yaml")) //nolint:gosec // detected config path
 	if err == nil {
-		hostname, _ := extractHostname(data)
+		hostname, port, _ := extractHostname(data)
 		src.Hostname = hostname
+		src.Port = port
 	}
+	src.RootCADir = detectRootCADir(configDir)
 	return src, nil
 }
 
@@ -245,21 +251,33 @@ func (m *Migrator) withImageArchive(src *OMRSource) OMRSource {
 	return *src
 }
 
-// extractHostname parses SERVER_HOSTNAME from an OMR config.yaml.
-// Strips any port suffix since the installer adds :8443 itself.
-func extractHostname(data []byte) (string, error) {
+// extractHostname parses SERVER_HOSTNAME from an OMR config.yaml,
+// returning the bare hostname and the port separately. If the value
+// has no explicit port, port is returned as "".
+func extractHostname(data []byte) (hostname, port string, _ error) {
 	var raw map[string]any
 	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return "", fmt.Errorf("parse config: %w", err)
+		return "", "", fmt.Errorf("parse config: %w", err)
 	}
 	hostname, ok := raw["SERVER_HOSTNAME"].(string)
 	if !ok || hostname == "" {
-		return "", fmt.Errorf("SERVER_HOSTNAME not found in config")
+		return "", "", fmt.Errorf("SERVER_HOSTNAME not found in config")
 	}
-	if host, _, err := net.SplitHostPort(hostname); err == nil {
-		hostname = host
+	if host, p, err := net.SplitHostPort(hostname); err == nil {
+		return host, p, nil
 	}
-	return hostname, nil
+	return hostname, "", nil
+}
+
+// detectRootCADir checks for a quay-rootCA directory containing rootCA.pem
+// as a sibling of the config directory (i.e. under the same quay-install root).
+func detectRootCADir(configDir string) string {
+	parent := filepath.Dir(configDir)
+	caDir := filepath.Join(parent, "quay-rootCA")
+	if _, err := os.Stat(filepath.Join(caDir, "rootCA.pem")); err == nil {
+		return caDir
+	}
+	return ""
 }
 
 // findImageArchive looks for a single .tar file in dir.

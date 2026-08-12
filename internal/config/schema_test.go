@@ -98,10 +98,12 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_SECURITY_NOTIFICATIONS":          true,
 	"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": true,
 	"SECURITY_SCANNER_V4_PSK":                 true,
+	"SECURITY_SCANNER_V4_INDEXING":            true,
 	"SECURITY_SCANNER_V4_MANIFEST_CLEANUP":    true,
 	"FEATURE_SECURITY_SCANNER_V2":             true,
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
 	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
+	"SECURITY_SCANNER_MAX_SCAN_RETRIES":       true,
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
@@ -148,6 +150,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_RESTRICTED_V1_PUSH":                    true,
 	"FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX":  true,
 	"FEATURE_SPARSE_INDEX":                          true,
+	"FEATURE_SPAM_DETECTION":                        true,
 	"FEATURE_SUPERUSERS_ORG_CREATION_ONLY":          true,
 	"FEATURE_SUPERUSER_CONFIGDUMP":                  true,
 	"FEATURE_UI":                                    true,
@@ -250,6 +253,11 @@ var knownUnmapped = map[string]bool{
 	"RESET_CHILD_MANIFEST_EXPIRATION":                true,
 	"SECURITY_SCANNER_INDEXING_INTERVAL":             true,
 	"SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE":       true,
+	"SPAM_DETECTION_CLASSIFIER_PATH":                 true,
+	"SPAM_DETECTION_CLASSIFIER_SHA256":               true,
+	"SPAM_DETECTION_CLASSIFIER_VERSION":              true,
+	"SPAM_DETECTION_DRY_RUN":                         true,
+	"SPAM_DETECTION_FAIL_OPEN":                       true,
 	"SESSION_TIMEOUT":                                true,
 	"WEBHOOK_NOTIFICATION_CONFIG":                    true,
 }
@@ -259,10 +267,14 @@ var knownUnmapped = map[string]bool{
 // INTERNAL_ONLY_PROPERTIES) that the Go CLI needs but are not part of the
 // public schema.
 var goOnlyFields = map[string]bool{
-	"DATABASE_SECRET_KEY":              true,
-	"LAST_ACCESSED_UPDATE_THRESHOLD_S": true,
-	"SECRET_KEY":                       true,
-	"LIBRARY_NAMESPACE":                true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"DATABASE_SECRET_KEY":               true,
+	"LAST_ACCESSED_UPDATE_THRESHOLD_S":  true,
+	"SECRET_KEY":                        true,
+	"LIBRARY_NAMESPACE":                 true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"INSTANCE_SERVICE_KEY_KID_LOCATION": true,
+	"INSTANCE_SERVICE_KEY_LOCATION":     true,
+	"INSTANCE_SERVICE_KEY_SERVICE":      true,
+	"REGISTRY_JWT_AUTH_MAX_FRESH_S":     true,
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

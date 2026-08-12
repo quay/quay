@@ -98,6 +98,50 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('superuser org deletion generates audit log entry', async ({
+      superuserPage,
+      superuserApi,
+    }) => {
+      const org = await superuserApi.organization('auditdel');
+
+      await superuserPage.goto('/organization');
+
+      // Delete the org via kebab menu
+      const optionsToggle = superuserPage.getByTestId(
+        `${org.name}-options-toggle`,
+      );
+      await expect(optionsToggle).toBeVisible({timeout: 15000});
+      await optionsToggle.click();
+
+      await superuserPage
+        .getByRole('menuitem', {name: 'Delete Organization'})
+        .click();
+
+      const dialog = superuserPage.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole('button', {name: 'OK'}).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(
+        superuserPage.getByText(
+          `Successfully deleted organization ${org.name}`,
+        ),
+      ).toBeVisible();
+
+      // Navigate to superuser usage logs and verify org_delete entry
+      await superuserPage.goto('/usage-logs');
+      await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
+
+      // Filter for the deleted org name to find the audit entry
+      await expect(superuserPage.getByPlaceholder('Filter logs')).toBeVisible();
+      await superuserPage.getByPlaceholder('Filter logs').fill(org.name);
+
+      await expect(
+        superuserPage
+          .getByTestId('usage-logs-table')
+          .getByText(`Organization ${org.name} deleted`),
+      ).toBeVisible();
+    });
+
     test('superuser can take ownership of an organization', async ({
       superuserPage,
       api,

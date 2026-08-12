@@ -60,6 +60,8 @@ RUN set -ex\
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
+# pyroscope-io depends on py-spy which has no s390x support
+RUN sed -i '/^pyroscope-io/d' requirements.txt
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -217,6 +219,9 @@ COPY --from=build-quaydir /quaydir $QUAYDIR
 # Strip setuid/setgid bits — with allowPrivilegeEscalation: false these are
 # inert at runtime; removing them reduces scanner noise and attack surface.
 RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
+
+ARG BUILD_TIMESTAMP
+RUN date -u +%Y%m%d%H%M > $QUAYDIR/BUILD_DATE
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it

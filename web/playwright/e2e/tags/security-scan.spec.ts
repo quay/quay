@@ -189,6 +189,58 @@ test.describe(
 );
 
 test.describe(
+  'Pending security status on push',
+  {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    test('security scan is queued immediately after push', async ({
+      userContext,
+      cachedContainerAvailable,
+      authenticatedPage,
+    }) => {
+      test.skip(!cachedContainerAvailable, 'Container runtime unavailable');
+      test.setTimeout(60000);
+
+      const api = new ApiClient(userContext.request);
+      const repoName = `secscan-pending-${Date.now()}`;
+      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+
+      try {
+        await pushImage(
+          TEST_USERS.user.username,
+          repoName,
+          'latest',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+
+        const tags = await api.getTags(TEST_USERS.user.username, repoName);
+        const digest = tags.tags[0].manifest_digest;
+        const sec = await api.getManifestSecurity(
+          TEST_USERS.user.username,
+          repoName,
+          digest,
+        );
+        expect(sec.status).toBe('queued');
+
+        await authenticatedPage.goto(
+          `/repository/${TEST_USERS.user.username}/${repoName}?tab=tags`,
+        );
+        await expect(
+          authenticatedPage.locator('th').filter({hasText: 'Security'}),
+        ).toBeVisible();
+        await expect(authenticatedPage.getByText('Queued')).toBeVisible();
+      } finally {
+        try {
+          await api.deleteRepository(TEST_USERS.user.username, repoName);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  },
+);
+
+test.describe(
   'OCI Image Security Scan (PROJQUAY-11333)',
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {

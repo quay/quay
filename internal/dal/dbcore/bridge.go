@@ -11,42 +11,13 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
-// knownOMRVersions lists every Alembic version a supported OMR v2.0.x SQLite
-// database could have. The bridge migration is safe to run from any of these
-// starting points.
-var knownOMRVersions = map[string]bool{
-	// Quay 3.12.x era (OMR SQLite support introduced)
-	"0cdd1f27a450": true,
-	"0988213e0885": true,
-	"66147b81aad2": true,
-	"f67fe4871771": true,
-	"2664723e1b4b": true,
-	"8a7ba94c2e84": true,
-	"3f8d7acdf7f9": true,
-	// Versions in the bridge chain itself (partially upgraded DBs)
-	"a32e17bfad20": true,
-	"5b8dc452f5c3": true,
-	"ba263f9be4a6": true,
-	"9085e82074f2": true,
-	"8e97c2cfee57": true,
-	"3634f2df3c5b": true,
-	"e8ed3fb547da": true,
-	"1623f40582ed": true,
-	"7078c84d14e8": true,
-	"9307c3d604b4": true,
-	"27d0df099ac4": true,
-	"a1b2c3d4e5f6": true,
-	"285f36ce97fd": true,
-	"b2c3d4e5f6a7": true,
-	"b1c2d3e4f5a6": true,
-	"15f06d00c4b3": true,
-	"414c5e2fc487": true,
-	// Previous target version (systems already bridged once)
-	"b30800b1d271": true,
-	// Quota notification tables
-	"6715e4719375": true,
-	"9fa37f66a9b6": true,
-}
+// ApprovedOMRSourceVersion is the only external OMR revision admitted by
+// migration preflight.
+const ApprovedOMRSourceVersion = "3f8d7acdf7f9"
+
+// manifestTable names the manifest table shared by bridgeColumns and tests
+// that check row-count preservation across bridging.
+const manifestTable = "manifest"
 
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
 // New tables created by the bridge SQL already include all columns.
@@ -54,8 +25,8 @@ var bridgeColumns = []struct {
 	table, column, typedef string
 }{
 	{"tag", "immutable", "BOOLEAN DEFAULT (0) NOT NULL"},
-	{"manifest", "artifact_type", "VARCHAR(255)"},
-	{"manifest", "artifact_type_backfilled", "BOOLEAN"},
+	{manifestTable, "artifact_type", "VARCHAR(255)"},
+	{manifestTable, "artifact_type_backfilled", "BOOLEAN"},
 	{"repomirrorconfig", "skopeo_timeout", "BIGINT DEFAULT '300' NOT NULL"},
 	{"repomirrorconfig", "architecture_filter", "TEXT"},
 }
@@ -69,25 +40,16 @@ var bridgeIndexFixes = []struct {
 	{"organizationrhskus", "organizationrhskus_subscription_id", "subscription_id"},
 }
 
-// RunBridge upgrades an OMR SQLite database to the Go binary's target schema.
-// This is a Go-native squash migration for supported OMR Alembic revisions:
-// the standalone binary intentionally does not ship Python, Alembic, or Quay's
-// Python migration runtime. It validates the starting version, applies column
-// additions and index fixes that SQLite cannot express idempotently, then
-// executes the bridge SQL file.
+// RunBridge upgrades the approved OMR source schema to the Go binary's target
+// schema. Source preflight rejects unsupported revisions before the source is
+// stopped; this repeat guard ensures copied data cannot bypass that policy.
 func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 	ver, err := SchemaVersion(ctx, db)
 	if err != nil {
 		return fmt.Errorf("read schema version: %w", err)
 	}
-	if ver == TargetVersion {
-		fmt.Fprintf(w, "Schema is current (version %s)\n", ver)
-		return nil
-	}
-	if !knownOMRVersions[ver] {
-		return fmt.Errorf(
-			"unknown schema version %q — this tool supports OMR v2.0.x (SQLite) databases; "+
-				"if you are on OMR v1.3.x, upgrade to OMR v2.0 first", ver)
+	if ver != ApprovedOMRSourceVersion {
+		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", ver, ApprovedOMRSourceVersion)
 	}
 
 	fmt.Fprintf(w, "Bridging schema from %s to %s\n", ver, TargetVersion)
@@ -134,7 +96,7 @@ func applyBridge(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
-	bridgeSQL, err := schema.MigrationFiles.ReadFile("sqlite/migrations/0001_bridge_from_omr.sql")
+	bridgeSQL, err := schema.CompatibilitySQL.ReadFile("sqlite/compatibility/0001_bridge_from_omr.sql")
 	if err != nil {
 		return fmt.Errorf("read bridge SQL: %w", err)
 	}
