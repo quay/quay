@@ -478,6 +478,100 @@ func TestCopyData_SkipsRootCAWhenNotDetected(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
+func TestCopyData_FallsBackWhenCheckpointFails(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	// Make source directory read-only to simulate rootless UID mismatch.
+	if err := os.Chmod(dbDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dbDir, 0o755) })
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			DBPath: dbPath,
+		},
+	}
+
+	if err := m.copyData(t.Context()); err != nil {
+		t.Fatalf("copyData should succeed via fallback: %v", err)
+	}
+
+	targetDB, err := dbcore.OpenSQLite(filepath.Join(targetDir, "quay.db"))
+	if err != nil {
+		t.Fatalf("open target: %v", err)
+	}
+	defer func() { _ = targetDB.Close() }()
+
+	var value string
+	if err := targetDB.QueryRowContext(t.Context(), "SELECT value FROM copy_test").Scan(&value); err != nil {
+		t.Fatalf("query copied row: %v", err)
+	}
+	if value != "ok" {
+		t.Errorf("copied value = %q, want ok", value)
+	}
+}
+
+func TestCopyData_FallbackPreservesWALData(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
+
+	srcDB, err := dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := srcDB.ExecContext(t.Context(), "PRAGMA journal_mode=WAL"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := srcDB.ExecContext(t.Context(), "CREATE TABLE wal_test (value TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := srcDB.ExecContext(t.Context(), "INSERT INTO wal_test (value) VALUES ('committed-in-wal')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := srcDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make source directory read-only to simulate rootless UID mismatch.
+	if err := os.Chmod(dbDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dbDir, 0o755) })
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	m := &Migrator{
+		DataDir: targetDir,
+		Out:     &bytes.Buffer{},
+		Source: OMRSource{
+			DBPath: dbPath,
+		},
+	}
+
+	if err := m.copyData(t.Context()); err != nil {
+		t.Fatalf("copyData should succeed via fallback: %v", err)
+	}
+
+	targetDB, err := dbcore.OpenSQLite(filepath.Join(targetDir, "quay.db"))
+	if err != nil {
+		t.Fatalf("open target: %v", err)
+	}
+	defer func() { _ = targetDB.Close() }()
+
+	var value string
+	if err := targetDB.QueryRowContext(t.Context(), "SELECT value FROM wal_test").Scan(&value); err != nil {
+		t.Fatalf("query WAL row from fallback copy: %v", err)
+	}
+	if value != "committed-in-wal" {
+		t.Errorf("copied value = %q, want committed-in-wal", value)
+	}
+}
+
 func mkdirCopyTestDir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o750); err != nil {
