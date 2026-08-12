@@ -16,9 +16,6 @@ proxy_set_header X-Forwarded-Proto $proper_scheme;
 proxy_set_header Host $http_host;
 proxy_redirect off;
 
-# temporarily removing to debug clair notifications
-# proxy_set_header Transfer-Encoding $http_transfer_encoding;
-
 absolute_redirect off;
 
 location /angular {
