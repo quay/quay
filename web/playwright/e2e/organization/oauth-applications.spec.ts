@@ -244,9 +244,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
       await page.getByRole('tab', {name: 'API Access Tokens'}).click();
       await page.getByTestId('generate-new-api-token-button').click();
 
-      await expect(
-        page.getByTestId('api-token-scope-repo:read'),
-      ).toBeVisible();
+      await expect(page.getByTestId('api-token-scope-repo:read')).toBeVisible();
       await expect(
         page.getByTestId('api-token-scope-super:user'),
       ).not.toBeVisible();
