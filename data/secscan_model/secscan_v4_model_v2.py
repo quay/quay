@@ -1,5 +1,6 @@
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 import features
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_REINDEX_THRESHOLD = 86400
 DEFAULT_MAX_SCAN_RETRIES = 5
+DEFAULT_INDEX_THREAD_COUNT = 3
 STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
 
@@ -98,8 +100,35 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             logger.debug("No manifests to index this cycle")
             return
 
+        indexable = []
         for mss_row in claimed:
-            self._index_manifest(mss_row.manifest, mss_row.repository_id, indexer_hash)
+            prepared = self._prepare_for_indexing(mss_row.manifest)
+            if prepared is not None:
+                manifest, layers = prepared
+                indexable.append((mss_row, manifest, layers))
+
+        if indexable:
+            thread_count = self.app.config.get(
+                "SECURITY_SCANNER_V2_INDEX_THREAD_COUNT", DEFAULT_INDEX_THREAD_COUNT
+            )
+            with ThreadPoolExecutor(
+                max_workers=thread_count, thread_name_prefix="secscan-v2"
+            ) as executor:
+                futures = {
+                    executor.submit(self._call_clair_index, manifest, layers): (
+                        mss_row,
+                        manifest,
+                    )
+                    for mss_row, manifest, layers in indexable
+                }
+                for future in as_completed(futures):
+                    mss_row, manifest = futures[future]
+                    try:
+                        result = future.result()
+                    except Exception:
+                        logger.exception("Unexpected error indexing manifest")
+                        continue
+                    self._process_index_result(mss_row.manifest, manifest, result, indexer_hash)
 
         cycle_duration = time.monotonic() - cycle_start
         secscan_v2_cycle_duration.observe(cycle_duration)
@@ -197,13 +226,13 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
             return eligible
 
-    def _index_manifest(self, candidate, repository_id, current_indexer_hash):
+    def _prepare_for_indexing(self, candidate):
         manifest = ManifestDataType.for_manifest(candidate, None)
 
         if manifest.is_manifest_list:
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
-            return
+            return None
 
         layers = registry_model.list_manifest_layers(manifest, self.storage, True)
 
@@ -216,7 +245,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             )
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
-            return
+            return None
 
         if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
             if not _has_container_layers(layers):
@@ -228,46 +257,57 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 )
                 self._mark_unsupported(manifest)
                 secscan_v2_scan_result.labels(result="unsupported").inc()
-                return
+                return None
 
+        return manifest, layers
+
+    def _call_clair_index(self, manifest, layers):
         scan_start = time.monotonic()
         try:
-            (report, state) = self._secscan_api.index(manifest, layers)
-        except InvalidContentSent:
-            self._mark_unsupported(manifest)
-            secscan_v2_scan_result.labels(result="unsupported").inc()
-            logger.warning("Failed to index: invalid content sent")
-            return
-        except Non200ResponseException as ex:
-            self._mark_failed(
-                candidate.id,
-                "server_error",
-                {"error": "non-200 response", "status_code": ex.response.status_code},
-                current_indexer_hash,
-            )
-            secscan_v2_scan_result.labels(result="api_error").inc()
-            logger.exception(
-                "Failed to index: security scanner returned %s", ex.response.status_code
-            )
-            return
-        except APIRequestFailure as ex:
-            self._mark_failed(
-                candidate.id,
-                "api_failure",
-                {"error": str(ex)},
-                current_indexer_hash,
-            )
-            secscan_v2_scan_result.labels(result="api_error").inc()
-            logger.exception("Failed to index: security scanner API error")
-            return
-        except LayerTooLargeException:
-            self._mark_layer_too_large(manifest)
-            secscan_v2_scan_result.labels(result="layer_too_large").inc()
-            logger.exception("Failed to index: layer too large")
-            return
+            report, state = self._secscan_api.index(manifest, layers)
+            secscan_v2_scan_duration.observe(time.monotonic() - scan_start)
+            return report, state, None
+        except (
+            InvalidContentSent,
+            Non200ResponseException,
+            APIRequestFailure,
+            LayerTooLargeException,
+        ) as ex:
+            return None, None, ex
 
-        scan_duration = time.monotonic() - scan_start
-        secscan_v2_scan_duration.observe(scan_duration)
+    def _process_index_result(self, candidate, manifest, result, current_indexer_hash):
+        report, state, error = result
+
+        if error is not None:
+            if isinstance(error, InvalidContentSent):
+                self._mark_unsupported(manifest)
+                secscan_v2_scan_result.labels(result="unsupported").inc()
+                logger.warning("Failed to index: invalid content sent")
+            elif isinstance(error, Non200ResponseException):
+                self._mark_failed(
+                    candidate.id,
+                    "server_error",
+                    {"error": "non-200 response", "status_code": error.response.status_code},
+                    current_indexer_hash,
+                )
+                secscan_v2_scan_result.labels(result="api_error").inc()
+                logger.error(
+                    "Failed to index: security scanner returned %s", error.response.status_code
+                )
+            elif isinstance(error, APIRequestFailure):
+                self._mark_failed(
+                    candidate.id,
+                    "api_failure",
+                    {"error": str(error)},
+                    current_indexer_hash,
+                )
+                secscan_v2_scan_result.labels(result="api_error").inc()
+                logger.error("Failed to index: security scanner API error: %s", error)
+            elif isinstance(error, LayerTooLargeException):
+                self._mark_layer_too_large(manifest)
+                secscan_v2_scan_result.labels(result="layer_too_large").inc()
+                logger.error("Failed to index: layer too large")
+            return
 
         if report["state"] == IndexReportState.Index_Finished:
             self._handle_scan_success(manifest, candidate)
