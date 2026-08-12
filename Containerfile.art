@@ -40,6 +40,9 @@ RUN set -ex\
 
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+ENV PIP_CONSTRAINT=/build/pip-build-constraints.txt
 RUN set -ex\
 	; microdnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
@@ -64,6 +67,7 @@ RUN set -ex\
 WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
+COPY pip-build-constraints.txt .
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 USER 1001
