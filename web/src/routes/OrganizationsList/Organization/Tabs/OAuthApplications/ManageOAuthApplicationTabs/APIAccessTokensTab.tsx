@@ -643,8 +643,13 @@ const APIAccessTokensTab: React.FC<APIAccessTokensTabProps> = (
           </FormGroup>
           <FormGroup label="Scopes" fieldId="api-token-scopes" isRequired>
             <Stack hasGutter>
-              {Object.entries(OAUTH_SCOPES).map(
-                ([scopeName, scopeInfo]: [string, OAuthScope]) => (
+              {Object.entries(OAUTH_SCOPES)
+                .filter(
+                  ([scopeName]) =>
+                    scopeName !== 'super:user' ||
+                    quayConfig?.features?.SUPER_USERS === true,
+                )
+                .map(([scopeName, scopeInfo]: [string, OAuthScope]) => (
                   <StackItem key={scopeName}>
                     <Checkbox
                       id={`api-token-scope-${scopeName}`}

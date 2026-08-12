@@ -422,6 +422,51 @@ describe('APIAccessTokensTab', () => {
     expect(screen.getByTestId('api-token-scope-repo:read')).not.toBeChecked();
   });
 
+  it('hides super:user scope when FEATURE_SUPER_USERS is disabled', async () => {
+    const user = userEvent.setup();
+    mockDefaultHooks();
+    vi.mocked(useQuayConfig).mockReturnValue({
+      features: {ASSIGN_OAUTH_TOKEN: true, SUPER_USERS: false},
+      config: {LOCAL_OAUTH_HANDLER: '/oauth/localapp'},
+    });
+    render(<APIAccessTokensTab application={application} orgName="myorg" />);
+
+    await user.click(screen.getByTestId('generate-new-api-token-button'));
+
+    expect(
+      screen.queryByTestId('api-token-scope-super:user'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Super User Access')).not.toBeInTheDocument();
+    expect(screen.getByTestId('api-token-scope-org:admin')).toBeVisible();
+  });
+
+  it('hides super:user scope when FEATURE_SUPER_USERS is undefined', async () => {
+    const user = userEvent.setup();
+    mockDefaultHooks();
+    render(<APIAccessTokensTab application={application} orgName="myorg" />);
+
+    await user.click(screen.getByTestId('generate-new-api-token-button'));
+
+    expect(
+      screen.queryByTestId('api-token-scope-super:user'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows super:user scope when FEATURE_SUPER_USERS is enabled', async () => {
+    const user = userEvent.setup();
+    mockDefaultHooks();
+    vi.mocked(useQuayConfig).mockReturnValue({
+      features: {ASSIGN_OAUTH_TOKEN: true, SUPER_USERS: true},
+      config: {LOCAL_OAUTH_HANDLER: '/oauth/localapp'},
+    });
+    render(<APIAccessTokensTab application={application} orgName="myorg" />);
+
+    await user.click(screen.getByTestId('generate-new-api-token-button'));
+
+    expect(screen.getByTestId('api-token-scope-super:user')).toBeVisible();
+    expect(screen.getByText('Super User Access')).toBeVisible();
+  });
+
   it('hides user assignment when the feature is disabled', async () => {
     const user = userEvent.setup();
     mockDefaultHooks();
