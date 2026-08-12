@@ -931,7 +931,8 @@ export type QuayFeature =
   | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
   | 'BUILD_SUPPORT'
   | 'STORAGE_REPLICATION'
-  | 'SPAM_DETECTION';
+  | 'SPAM_DETECTION'
+  | 'SUPER_USERS';
 
 /**
  * Quay configuration from /config endpoint

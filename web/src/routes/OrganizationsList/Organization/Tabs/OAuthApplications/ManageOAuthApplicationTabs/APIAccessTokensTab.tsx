@@ -662,8 +662,7 @@ const APIAccessTokensTab: React.FC<APIAccessTokensTabProps> = (
                       data-testid={`api-token-scope-${scopeName}`}
                     />
                   </StackItem>
-                ),
-              )}
+                ))}
             </Stack>
           </FormGroup>
         </Form>
