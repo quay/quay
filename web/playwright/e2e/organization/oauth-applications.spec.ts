@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, skipUnlessFeature} from '../../fixtures';
 
 test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   test('OAuth app lifecycle: create, view, update, delete', async ({
@@ -223,6 +223,56 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     const remaining = await api.raw.getOAuthApplications(org.name);
     expect(remaining).toHaveLength(0);
   });
+
+  test(
+    'hides super:user scope when FEATURE_SUPER_USERS is disabled',
+    {tag: '@QUAYIO-2118'},
+    async ({authenticatedPage: page, api, quayConfig}) => {
+      test.skip(
+        quayConfig?.features?.SUPER_USERS === true,
+        'SUPER_USERS is enabled on this instance',
+      );
+
+      const org = await api.organization('oauth-scope');
+      const app = await api.oauthApplication(org.name, 'scope-test-app');
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      await page
+        .getByTestId('oauth-applications-table')
+        .getByRole('button', {name: app.name, exact: true})
+        .click();
+      await page.getByRole('tab', {name: 'API Access Tokens'}).click();
+      await page.getByTestId('generate-new-api-token-button').click();
+
+      await expect(page.getByTestId('api-token-scope-repo:read')).toBeVisible();
+      await expect(
+        page.getByTestId('api-token-scope-super:user'),
+      ).not.toBeVisible();
+    },
+  );
+
+  test(
+    'shows super:user scope when FEATURE_SUPER_USERS is enabled',
+    {tag: '@QUAYIO-2118'},
+    async ({authenticatedPage: page, api, quayConfig}) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SUPER_USERS'));
+
+      const org = await api.organization('oauth-scope-su');
+      const app = await api.oauthApplication(org.name, 'scope-su-app');
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      await page
+        .getByTestId('oauth-applications-table')
+        .getByRole('button', {name: app.name, exact: true})
+        .click();
+      await page.getByRole('tab', {name: 'API Access Tokens'}).click();
+      await page.getByTestId('generate-new-api-token-button').click();
+
+      await expect(
+        page.getByTestId('api-token-scope-super:user'),
+      ).toBeVisible();
+    },
+  );
 
   test('reset client secret with confirmation', async ({
     authenticatedPage: page,
