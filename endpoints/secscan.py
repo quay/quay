@@ -4,6 +4,7 @@ import logging
 
 import jwt
 from flask import Blueprint, abort, jsonify, make_response, request
+from werkzeug.exceptions import BadRequest
 
 import features
 from app import app, secscan_notification_queue
@@ -47,9 +48,10 @@ def secscan_notification():
             abort(401)
         logger.debug("Successfully verified jwt")
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if data is None:
-        logger.error("expected json request")
+        raw_body = request.get_data(as_text=True)
+        logger.error(f">>> JSON PARSE FAILED. Raw Body: '{raw_body}'")
         abort(400)
 
     logger.debug("Got notification from V4 Security Scanner: %s", data)
