@@ -65,7 +65,7 @@ func OpenSQLiteReadOnly(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("source database not found: %s: %w", dbPath, err)
 	}
 
-	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro&immutable=1", OmitHost: true}
 	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("open %s read-only: %w", dbPath, err)

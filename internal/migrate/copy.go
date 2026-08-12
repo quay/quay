@@ -38,15 +38,40 @@ func (m *Migrator) copyData(ctx context.Context) error {
 	// ownership or ACL normalization step for the target data directory here.
 
 	// Copy database (rename quay_sqlite.db → quay.db).
-	if err := checkpointSQLite(ctx, m.Source.DBPath); err != nil {
-		return fmt.Errorf("checkpoint source database: %w", err)
-	}
 	targetDB := filepath.Join(m.DataDir, "quay.db")
 	if resuming {
 		slog.Info("migration marker already existed, recopying database", "dst", targetDB)
 	}
-	if err := copyFileIdempotent(ctx, m.Source.DBPath, targetDB, resuming); err != nil {
-		return fmt.Errorf("copy database: %w", err)
+
+	if err := checkpointSQLite(ctx, m.Source.DBPath); err != nil {
+		// Rootless podman volumes are owned by the container's mapped UID.
+		// Checkpoint requires write access to the source, which the host
+		// user lacks. Fall back to copying the DB plus any WAL/SHM files,
+		// then checkpoint the target copy that we own.
+		slog.Warn("cannot checkpoint source database in place, copying with WAL", "err", err)
+		if err := copyFileIdempotent(ctx, m.Source.DBPath, targetDB, resuming); err != nil {
+			return fmt.Errorf("copy database: %w", err)
+		}
+		for _, suffix := range []string{"-wal", "-shm"} {
+			src := m.Source.DBPath + suffix
+			if _, serr := os.Stat(src); serr == nil {
+				dst := targetDB + suffix
+				if err := copyFileIdempotent(ctx, src, dst, resuming); err != nil {
+					return fmt.Errorf("copy database %s: %w", suffix, err)
+				}
+				slog.Info("copied database sidecar", "file", suffix)
+			}
+		}
+		if err := checkpointSQLite(ctx, targetDB); err != nil {
+			return fmt.Errorf("checkpoint target database: %w", err)
+		}
+		for _, suffix := range []string{"-wal", "-shm"} {
+			_ = os.Remove(targetDB + suffix)
+		}
+	} else {
+		if err := copyFileIdempotent(ctx, m.Source.DBPath, targetDB, resuming); err != nil {
+			return fmt.Errorf("copy database: %w", err)
+		}
 	}
 	slog.Info("copied database", "src", m.Source.DBPath, "dst", targetDB)
 
