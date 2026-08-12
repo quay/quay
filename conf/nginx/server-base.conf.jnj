@@ -17,9 +17,6 @@ proxy_set_header X-Forwarded-Proto $final_proto;
 
 proxy_redirect off;
 
-# temporarily removing to debug clair notifications
-# proxy_set_header Transfer-Encoding $http_transfer_encoding;
-
 absolute_redirect off;
 
 # Pass safe host for non standard external ports
