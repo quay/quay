@@ -76,7 +76,20 @@ func TestNewExposesBackgroundGarbageCollector(t *testing.T) {
 
 	require.NotNil(t, app.GarbageCollector())
 	assert.Same(t, app.collector, app.GarbageCollector())
+	assert.NotNil(t, app.workerDone)
 	assert.Nil(t, (*App)(nil).GarbageCollector())
+}
+
+func TestNewCanDisableBackgroundGarbageCollector(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.DisableBackgroundGC = true
+
+	app, err := New(t.Context(), cfg)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, app.Close()) }()
+
+	assert.NotNil(t, app.GarbageCollector())
+	assert.Nil(t, app.workerDone)
 }
 
 func TestNewUsesIndependentDefaultMetricsRegistries(t *testing.T) {

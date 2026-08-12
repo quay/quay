@@ -96,6 +96,12 @@ func (c *RegistryClient) RequestToken(ctx context.Context, repository string, ac
 	return c.tokenForScopes(ctx, "repository:"+repository+":"+strings.Join(actions, ","))
 }
 
+// RequestTokenWithCredentials performs an explicit token exchange with the
+// supplied Basic credentials and optional account query parameter.
+func (c *RegistryClient) RequestTokenWithCredentials(ctx context.Context, username, password, account string, scopes ...string) (string, error) {
+	return c.requestToken(ctx, username, password, account, scopes...)
+}
+
 func (c *RegistryClient) token(ctx context.Context, repository string, actions ...string) (string, error) {
 	return c.RequestToken(ctx, repository, actions...)
 }
@@ -107,9 +113,29 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 
 	cacheKey := strings.Join(scopes, "\x00")
 	c.tokenMu.Lock()
-	defer c.tokenMu.Unlock()
 	if token, ok := c.tokens[cacheKey]; ok {
+		c.tokenMu.Unlock()
 		return token, nil
+	}
+	c.tokenMu.Unlock()
+
+	token, err := c.requestToken(ctx, c.username, c.password, "", scopes...)
+	if err != nil {
+		return "", err
+	}
+
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if cached, ok := c.tokens[cacheKey]; ok {
+		return cached, nil
+	}
+	c.tokens[cacheKey] = token
+	return token, nil
+}
+
+func (c *RegistryClient) requestToken(ctx context.Context, username, password, account string, scopes ...string) (string, error) {
+	if len(scopes) == 0 {
+		return "", fmt.Errorf("token request requires at least one scope")
 	}
 
 	endpoint, err := url.Parse(c.baseURL + "/v2/auth")
@@ -118,6 +144,9 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 	}
 	query := endpoint.Query()
 	query.Set("service", c.service)
+	if account != "" {
+		query.Set("account", account)
+	}
 	for _, scope := range scopes {
 		query.Add("scope", scope)
 	}
@@ -127,7 +156,7 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 	if err != nil {
 		return "", err
 	}
-	req.SetBasicAuth(c.username, c.password)
+	req.SetBasicAuth(username, password)
 	resp, err := c.client.Do(req) //nolint:bodyclose // readBody closes every response body
 	if err != nil {
 		return "", err
@@ -153,7 +182,6 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 	if tokenResponse.Token == "" {
 		return "", fmt.Errorf("token response did not contain a token")
 	}
-	c.tokens[cacheKey] = tokenResponse.Token
 	return tokenResponse.Token, nil
 }
 

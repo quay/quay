@@ -94,7 +94,7 @@ func TestRegistryCatalogIsRejected(t *testing.T) {
 	h := e2etest.New(t)
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, h.BaseURL()+"/v2/_catalog", http.NoBody)
 	require.NoError(t, err)
-	req.SetBasicAuth("admin", "e2e-password")
+	req.SetBasicAuth(e2etest.E2EUsername, e2etest.E2EPassword)
 
 	resp, err := h.HTTPClient().Do(req)
 	require.NoError(t, err)

@@ -10,20 +10,25 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/gc"
 	"github.com/quay/quay/internal/mirrorregistry"
+	"github.com/quay/quay/internal/registry/jwtauth"
 )
 
 const (
-	e2eUsername = "admin"
-	e2ePassword = "e2e-password"
+	// E2EUsername is the canonical administrator username for E2E fixtures.
+	E2EUsername = "admin"
+	// E2EPassword is the canonical administrator password for E2E fixtures.
+	E2EPassword = "e2e-password"
 )
 
 // Harness owns one composed mirror-registry application and one in-process HTTP server.
@@ -64,7 +69,7 @@ func New(tb testing.TB) *Harness {
 	if err != nil {
 		tb.Fatalf("set up E2E database: %v", err)
 	}
-	created, err := bootstrap.AdminUser(tb.Context(), db, e2eUsername, e2ePassword)
+	created, err := bootstrap.AdminUser(tb.Context(), db, E2EUsername, E2EPassword)
 	if err != nil {
 		_ = db.Close()
 		tb.Fatalf("provision E2E administrator: %v", err)
@@ -119,9 +124,10 @@ func start(tb testing.TB, state harnessState) *Harness {
 	resolved.Config.PreferredURLScheme = "http"
 
 	app, err := mirrorregistry.New(tb.Context(), &mirrorregistry.Config{
-		Resolved:   resolved,
-		Features:   resolved.Config.Features,
-		ListenAddr: addr,
+		Resolved:            resolved,
+		Features:            resolved.Config.Features,
+		ListenAddr:          addr,
+		DisableBackgroundGC: true,
 	})
 	if err != nil {
 		tb.Fatalf("compose E2E application: %v", err)
@@ -140,7 +146,7 @@ func start(tb testing.TB, state harnessState) *Harness {
 	server.Start()
 	h.client = server.Client()
 	h.client.Timeout = clientTimeout
-	h.registry = newRegistryClient(server.URL, h.client, e2eUsername, e2ePassword)
+	h.registry = newRegistryClient(server.URL, h.client, E2EUsername, E2EPassword)
 
 	if err := h.checkHealth(tb.Context()); err != nil {
 		tb.Fatalf("wait for E2E application health: %v", err)
@@ -193,6 +199,40 @@ func (h *Harness) Registry() *RegistryClient {
 		return nil
 	}
 	return h.registry
+}
+
+// ExpiredToken issues a token signed by this harness's registry key whose
+// timestamps are already in the past.
+func (h *Harness) ExpiredToken(subject, repository string, actions ...string) (string, error) {
+	if h == nil {
+		return "", fmt.Errorf("issue token with uninitialized E2E harness")
+	}
+	key, err := jwtauth.LoadPrivateKey(filepath.Join(h.state.dataDir, jwtauth.KeyFileName))
+	if err != nil {
+		return "", err
+	}
+	parsed, err := url.Parse(h.BaseURL())
+	if err != nil {
+		return "", err
+	}
+	service, err := jwtauth.New(key, jwtauth.Config{
+		Audience: parsed.Host,
+		Now:      func() time.Time { return time.Now().Add(-2 * time.Hour) },
+	})
+	if err != nil {
+		return "", err
+	}
+	return issueRepositoryToken(service, subject, repository, actions...)
+}
+
+func issueRepositoryToken(service *jwtauth.Service, subject, repository string, actions ...string) (string, error) {
+	if len(actions) == 0 {
+		return "", fmt.Errorf("expired token requires at least one action")
+	}
+	raw, _, err := service.Issue(subject, []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: repository, Actions: actions,
+	}})
+	return raw, err
 }
 
 // close drains the HTTP server before closing the composed application. It is

@@ -26,6 +26,9 @@ type Config struct {
 	ListenAddr        string
 	MetricsRegisterer prometheus.Registerer
 	MetricsGatherer   prometheus.Gatherer
+
+	// DisableBackgroundGC leaves collection under explicit caller control.
+	DisableBackgroundGC bool
 }
 
 // App is one composed mirror-registry HTTP application and its owned resources.
@@ -43,7 +46,7 @@ type App struct {
 }
 
 // New composes the production application handler and starts its background
-// garbage collector.
+// garbage collector unless explicitly disabled.
 func New(ctx context.Context, cfg *Config) (app *App, err error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("nil context")
@@ -80,7 +83,9 @@ func New(ctx context.Context, cfg *Config) (app *App, err error) {
 		collector: gc.NewCollector(composition.gcStore, composition.blobs, composition.blobLocks, slog.Default()),
 		cancel:    cancel,
 	}
-	app.workerDone = startGC(appCtx, app.collector)
+	if !cfg.DisableBackgroundGC {
+		app.workerDone = startGC(appCtx, app.collector)
+	}
 	return app, nil
 }
 
