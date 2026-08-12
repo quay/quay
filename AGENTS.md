@@ -80,6 +80,7 @@ make types-test                      # Type checking (mypy)
   - Valid Jira prefixes: `PROJQUAY` (standard, used for most Quay work) and `QUAYIO` (for Quay.io-specific cross-project tickets). Use whichever prefix matches the Jira ticket assigned to the work.
   - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
+  - Scope should be a short descriptive name for the affected subsystem or area (e.g., `api`, `auth`, `mirroring`, `agents`, `gc`), not an issue or PR number
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
