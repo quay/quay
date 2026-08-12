@@ -60,7 +60,7 @@ export async function getAccessToken(
   // Fetch initial CSRF token (pre-login session)
   const csrfToken = await requestCsrfToken(request, baseUrl);
 
-  // Sign in — this creates a new session, invalidating the old CSRF token
+  // Sign in — this creates a new session and rotates the CSRF token
   const signinResponse = await request.post(`${baseUrl}/api/v1/signin`, {
     headers: {'X-CSRF-Token': csrfToken},
     data: {username, password},
@@ -72,7 +72,13 @@ export async function getAccessToken(
     );
   }
 
-  // Fetch a fresh CSRF token from the authenticated session
+  // Prefer the rotated token from the login response (X-Next-CSRF-Token)
+  const next = signinResponse.headers()['x-next-csrf-token'];
+  if (next) {
+    return next;
+  }
+
+  // Fallback: fetch a fresh CSRF token from the authenticated session
   return requestCsrfToken(request, baseUrl);
 }
 

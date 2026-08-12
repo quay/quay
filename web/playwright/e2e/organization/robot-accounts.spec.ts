@@ -1,6 +1,7 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {API_URL} from '../../utils/config';
+import {pushImage, pullImage} from '../../utils/container';
 
 test.describe(
   'Robot Accounts',
@@ -692,6 +693,330 @@ test.describe(
       await expect(
         authenticatedPage.getByText('There are no viewable robot accounts'),
       ).toBeVisible({timeout: 15000});
+    });
+
+    test('robot wizard search state is isolated from org page search (PROJQUAY-11236)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('searchiso');
+      const repo1 = await api.repository(org.name, 'alpha');
+      const repo2 = await api.repository(org.name, 'beta');
+      const team = await api.team(org.name, 'searchteam');
+
+      // Step 1: Search repositories on the org Repositories tab
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Repositories`,
+      );
+      const repoSearch = authenticatedPage.getByPlaceholder('Search by name');
+      await expect(repoSearch).toBeVisible();
+      await repoSearch.fill(repo1.name);
+
+      // Verify the search filtered results
+      await expect(
+        authenticatedPage.getByRole('link', {name: repo1.name}),
+      ).toBeVisible();
+
+      // Step 2: Switch to Robot Accounts tab via tab click (not goto, to
+      // preserve in-memory search state on the Repositories tab)
+      await authenticatedPage
+        .getByRole('tab', {name: 'Robot accounts'})
+        .click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Create robot account'})
+        .click();
+      await expect(
+        authenticatedPage.locator('#create-robot-account-modal'),
+      ).toBeVisible();
+
+      // Fill robot name so wizard navigation is enabled
+      await authenticatedPage
+        .getByTestId('robot-wizard-form-name')
+        .fill('isobot');
+
+      // Navigate to "Add to repository" step
+      const wizardNav = authenticatedPage.locator(
+        'nav[aria-label="Wizard steps"]',
+      );
+      await wizardNav.getByText('Add to repository (optional)').click();
+
+      // Verify wizard repo search is empty (not polluted by org page search)
+      const wizardRepoSearch = authenticatedPage.getByTestId(
+        'robot-wizard-repo-search',
+      );
+      await expect(wizardRepoSearch).toBeVisible();
+      await expect(wizardRepoSearch).toHaveValue('');
+
+      // Both repos should be visible (no filter applied).
+      // PatternFly tables may use role="gridcell", so match by text within
+      // the wizard modal instead of relying on the cell role.
+      const modal = authenticatedPage.locator('#create-robot-account-modal');
+      await expect(modal.getByText(repo1.name)).toBeVisible();
+      await expect(modal.getByText(repo2.name)).toBeVisible();
+
+      // Type in the wizard's repo search and verify it filters
+      await wizardRepoSearch.fill(repo2.name);
+      await expect(modal.getByText(repo2.name)).toBeVisible();
+      await expect(modal.getByText(repo1.name)).not.toBeVisible();
+
+      // Navigate to "Add to team" step
+      await wizardNav.getByText('Add to team (optional)').click();
+
+      // Verify wizard team search is empty (FilterWithDropdown uses a
+      // different component, so match by placeholder instead of testId)
+      const wizardTeamSearch = modal.getByPlaceholder('Search, create team');
+      await expect(wizardTeamSearch).toBeVisible();
+      await expect(wizardTeamSearch).toHaveValue('');
+
+      // Team should be visible (no filter applied)
+      await expect(modal.getByText(team.name)).toBeVisible();
+
+      // Close the wizard
+      await authenticatedPage.getByTestId('create-robot-cancel').click();
+
+      // Step 3: Go back to Repositories tab via tab click (preserves state)
+      await authenticatedPage.getByRole('tab', {name: 'Repositories'}).click();
+      const repoSearchAfter =
+        authenticatedPage.getByPlaceholder('Search by name');
+      await expect(repoSearchAfter).toBeVisible();
+
+      // The repo list search should still show the original search text
+      // (not polluted by the wizard's search)
+      await expect(repoSearchAfter).toHaveValue(repo1.name);
+    });
+
+    test.describe('pagination with large datasets', () => {
+      const ITEM_COUNT = 21;
+
+      test('pagination in "Add to team" wizard step with >20 teams', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginateteam');
+
+        // Orgs start with an auto-created "owners" team
+        for (let i = 0; i < ITEM_COUNT - 1; i++) {
+          await api.team(org.name, `team${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+        await expect(
+          authenticatedPage.locator('#create-robot-account-modal'),
+        ).toBeVisible();
+
+        await authenticatedPage
+          .getByTestId('robot-wizard-form-name')
+          .fill('paginatebot');
+
+        const wizardNav = authenticatedPage.locator(
+          'nav[aria-label="Wizard steps"]',
+        );
+        await wizardNav.getByText('Add to team (optional)').click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        const paginationInfo = modal
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await modal
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await modal
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+
+      test('pagination in "Add to repository" wizard step with >20 repos', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginaterepo');
+
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          await api.repository(org.name, `repo${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+        await expect(
+          authenticatedPage.locator('#create-robot-account-modal'),
+        ).toBeVisible();
+
+        await authenticatedPage
+          .getByTestId('robot-wizard-form-name')
+          .fill('paginatebot');
+
+        const wizardNav = authenticatedPage.locator(
+          'nav[aria-label="Wizard steps"]',
+        );
+        await wizardNav.getByText('Add to repository (optional)').click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        const paginationInfo = modal
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await modal
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await modal
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+
+      test('pagination in robot account table with >20 robots', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginaterobots');
+
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await expect(
+          authenticatedPage.getByTestId('robot-accounts-table'),
+        ).toBeVisible();
+
+        const tabPanel = authenticatedPage.getByRole('tabpanel', {
+          name: 'Robot accounts',
+        });
+        const paginationInfo = tabPanel
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await tabPanel
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await tabPanel
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+    });
+
+    test.describe('robot credential execution', {tag: ['@container']}, () => {
+      test('robot credentials can authenticate via container login', async ({
+        api,
+      }) => {
+        const org = await api.organization('robotloginorg');
+        const repo = await api.repository(org.name, 'logintestrepo');
+        const robot = await api.robot(
+          org.name,
+          'loginbot',
+          'Robot for login test',
+        );
+
+        await api.repositoryPermission(
+          org.name,
+          repo.name,
+          'user',
+          robot.fullName,
+          'write',
+        );
+
+        await pushImage(
+          org.name,
+          repo.name,
+          'latest',
+          robot.fullName,
+          robot.token,
+        );
+      });
+
+      test('robot credentials can push and pull images', async ({api}) => {
+        const org = await api.organization('robotpushpullorg');
+        const repo = await api.repository(org.name, 'pushpullrepo');
+        const robot = await api.robot(
+          org.name,
+          'pushpullbot',
+          'Robot for push/pull test',
+        );
+
+        await api.repositoryPermission(
+          org.name,
+          repo.name,
+          'user',
+          robot.fullName,
+          'write',
+        );
+
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1.0',
+          robot.fullName,
+          robot.token,
+        );
+
+        await pullImage(
+          org.name,
+          repo.name,
+          'v1.0',
+          robot.fullName,
+          robot.token,
+        );
+      });
+
+      test('robot token format is valid and non-empty', async ({
+        authenticatedRequest,
+        api,
+      }) => {
+        const org = await api.organization('robottokenorg');
+        const robot = await api.robot(
+          org.name,
+          'tokenbot',
+          'Robot for token validation',
+        );
+
+        expect(robot.fullName).toMatch(/^.+\+.+$/);
+        expect(robot.token).toBeTruthy();
+        expect(robot.token.length).toBeGreaterThan(0);
+
+        const robotResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`,
+        );
+        const robotData = await robotResponse.json();
+        expect(robotData.token).toBe(robot.token);
+      });
     });
 
     test.describe(

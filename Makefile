@@ -91,7 +91,7 @@ test_postgres:
 	$(DOCKER) rm -f $(CONTAINER) || true
 	$(DOCKER) run --name $(CONTAINER) \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=$(PG_USER) \
-		-p $(PG_PORT):5432 -d postgres:12.1
+		-p $(PG_PORT):5432 -d postgres:18
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
@@ -211,6 +211,35 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
 	@echo "You can now access the frontend at http://localhost:8080"
 
+QUAY_BUILDER_IMAGE ?= quay.io/projectquay/quay-builder:3.17-unstable
+
+.PHONY: local-dev-extract-builder
+local-dev-extract-builder:
+	@if [ ! -f ./local-dev/quay-builder ]; then \
+	  echo "Extracting quay-builder binary from $(QUAY_BUILDER_IMAGE)..."; \
+	  $(DOCKER) rm -f quay-builder-extract 2>/dev/null || true; \
+	  $(DOCKER) create --name quay-builder-extract $(QUAY_BUILDER_IMAGE); \
+	  $(DOCKER) cp quay-builder-extract:/usr/local/bin/quay-builder ./local-dev/quay-builder; \
+	  $(DOCKER) rm -f quay-builder-extract; \
+	  chmod +x ./local-dev/quay-builder; \
+	else \
+	  echo "quay-builder binary already exists, skipping extraction"; \
+	fi
+
+.PHONY: enable-builds
+enable-builds: local-dev-extract-builder
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/builds/builds-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "Build support enabled in local-dev/stack/config.yaml"
+
+
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
 	$(DOCKER_COMPOSE) rm -fsv quay-db quay
@@ -266,6 +295,10 @@ local-dev-up-with-clair: local-dev-up
 	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d clair
 
+.PHONY: local-dev-up-with-repomirror
+local-dev-up-with-repomirror: local-dev-up
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d repomirror
+
 .PHONY: local-dev-up-static
 local-dev-up-static: local-dev-clean
 	$(DOCKER_COMPOSE) -f docker-compose.static up -d redis quay-db
@@ -280,3 +313,69 @@ local-dev-up-static: local-dev-clean
 local-dev-down:
 	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean
+
+.PHONY: enable-ldap
+enable-ldap:
+	@echo "Merging LDAP config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps ldap 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: LDAP container not running. Start with: docker-compose up -d ldap"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/ldap/ldap-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ LDAP configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: docker-compose restart quay"
+
+.PHONY: enable-splunk
+enable-splunk:
+	@echo "Setting up Splunk for local development..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps splunk 2>/dev/null | grep -q "Up"; then \
+		echo "Starting Splunk container..."; \
+		$(DOCKER_COMPOSE) up -d splunk; \
+	fi
+	@echo "Waiting for Splunk to be healthy (this may take 60-90 seconds)..."
+	@timeout=180; \
+	while [ $$timeout -gt 0 ]; do \
+		if $(DOCKER) inspect --format='{{.State.Health.Status}}' quay-splunk 2>/dev/null | grep -q "healthy"; then \
+			break; \
+		fi; \
+		sleep 5; \
+		timeout=$$((timeout - 5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "Error: Splunk did not become healthy in time"; \
+		exit 1; \
+	fi
+	@echo "Initializing Splunk (creating index and token)..."
+	@$(DOCKER) exec quay-splunk bash /tmp/init-splunk.sh
+	@echo "Merging Splunk config into local-dev/stack/config.yaml..."
+	@BEARER_TOKEN=$$($(DOCKER) exec quay-splunk cat /tmp/quay_splunk_bearer_token 2>/dev/null || echo ""); \
+	if [ -z "$$BEARER_TOKEN" ]; then \
+		echo "⚠ Warning: Could not retrieve bearer token."; \
+		echo "  You may need to set bearer_token manually in config.yaml"; \
+		BEARER_TOKEN="REPLACE_WITH_BEARER_TOKEN"; \
+	fi; \
+	cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup; \
+	ESCAPED_TOKEN=$$(echo "$$BEARER_TOKEN" | sed 's/[\/&]/\\&/g'); \
+	sed "s/BEARER_TOKEN_PLACEHOLDER/$$ESCAPED_TOKEN/" \
+		local-dev/splunk/splunk-config.yaml > /tmp/splunk-config-resolved.yaml; \
+	yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml /tmp/splunk-config-resolved.yaml > local-dev/stack/config.yaml.tmp; \
+	mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml; \
+	rm -f /tmp/splunk-config-resolved.yaml
+	@echo "✓ Splunk configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Splunk UI: http://localhost:8000 (admin/changeme1)"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"

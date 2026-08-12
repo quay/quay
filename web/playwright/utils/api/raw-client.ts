@@ -53,8 +53,10 @@ export class RawApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
-    // Invalidate cached token — the new session has a different CSRF token
-    this.csrfToken = null;
+    // Prefer the rotated token from X-Next-CSRF-Token (set by common_login).
+    // Fall back to invalidating the cache so the next call refetches.
+    const next = response.headers()['x-next-csrf-token'];
+    this.csrfToken = next || null;
   }
 
   /**

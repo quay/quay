@@ -1,4 +1,4 @@
-import {test, expect} from '../fixtures';
+import {test, expect, mailpit} from '../fixtures';
 import type {Page} from '@playwright/test';
 
 async function assertChartLegend(
@@ -97,6 +97,79 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeDisabled();
   });
 
+  test.describe('export delivery', {tag: ['@feature:LOG_EXPORT']}, () => {
+    test('delivers export email for organization logs', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      test.setTimeout(180_000);
+      const org = await api.organization('exportemail');
+      const recipient = `export-${org.name}@example.com`;
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+      await authenticatedPage.getByTestId('usage-logs-export-button').click();
+      await authenticatedPage
+        .getByTestId('usage-logs-export-email-input')
+        .fill(recipient);
+      await authenticatedPage
+        .getByTestId('usage-logs-export-confirm-button')
+        .click();
+
+      await expect(
+        authenticatedPage.getByText('Logs exported with id').first(),
+      ).toBeVisible();
+
+      const email = await mailpit.waitForEmail(
+        (msg) =>
+          msg.Subject.includes('Export Action Logs Complete') &&
+          msg.To.some((to) => to.Address === recipient),
+        120_000,
+      );
+      expect(email).not.toBeNull();
+
+      const body = await mailpit.getEmailBody(email!.ID);
+      expect(body).toContain('Usage Logs Export has completed');
+      expect(body).toContain('exported logs information can be found at');
+    });
+
+    test('delivers callback for repository logs export', async ({
+      authenticatedPage,
+      api,
+      webhook,
+    }) => {
+      test.setTimeout(180_000);
+      const repo = await api.repository();
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+
+      await authenticatedPage.getByTestId('usage-logs-export-button').click();
+      await authenticatedPage
+        .getByTestId('usage-logs-export-email-input')
+        .fill(webhook.getUrl('/export-callback'));
+      await authenticatedPage
+        .getByTestId('usage-logs-export-confirm-button')
+        .click();
+
+      await expect(
+        authenticatedPage.getByText('Logs exported with id').first(),
+      ).toBeVisible();
+
+      const received = await webhook.waitForWebhook(
+        (req) => req.url === '/export-callback',
+        120_000,
+      );
+      expect(received).not.toBeNull();
+
+      const body = received!.body;
+      expect(body).toHaveProperty('export_id');
+      expect(body).toHaveProperty('status', 'success');
+      expect(body).toHaveProperty('exported_data_url');
+      expect(body).toHaveProperty('namespace');
+      expect(body).toHaveProperty('repository');
+    });
+  });
+
   test('filters logs by text input', async ({authenticatedPage, api}) => {
     const org = await api.organization('filter');
 
@@ -124,8 +197,128 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
+  test.describe(
+    'repo mirror sync log rendering',
+    {tag: ['@feature:REPO_MIRROR']},
+    () => {
+      test('successful mirror sync logs render without undefined or null', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        test.setTimeout(180_000);
+        const org = await api.organization('logsyncok');
+        const repo = await api.repository(org.name, 'logsyncokr');
+        const robot = await api.robot(org.name, 'logsyncokbot');
+        await api.setMirrorState(org.name, repo.name);
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createMirrorConfig(org.name, repo.name, {
+          external_reference: 'quay.io/quay/busybox',
+          sync_interval: 86400,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+          root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+          robot_username: robot.fullName,
+          skopeo_timeout_interval: 300,
+          is_enabled: true,
+          verify_tls: true,
+        });
+
+        await api.raw.triggerMirrorSync(org.name, repo.name);
+
+        await expect
+          .poll(
+            async () => {
+              const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+              const status = cfg?.sync_status ?? 'UNKNOWN';
+              if (status === 'FAIL') {
+                throw new Error('Mirror sync failed unexpectedly');
+              }
+              return status;
+            },
+            {timeout: 120_000, intervals: [5_000, 10_000, 15_000]},
+          )
+          .toBe('SUCCESS');
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=logs`,
+        );
+        const table = authenticatedPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
+
+        await expect(
+          table.getByText(/Mirror finished successfully/),
+        ).toBeVisible();
+        await expect(
+          table.getByText(/Mirror of latest successful/),
+        ).toBeVisible();
+
+        await expect(table.getByText(/undefined/)).not.toBeAttached();
+        await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+      });
+
+      test('failed mirror sync logs render without undefined or null', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        test.setTimeout(180_000);
+        const org = await api.organization('logsyncfail');
+        const repo = await api.repository(org.name, 'logsyncfailr');
+        const robot = await api.robot(org.name, 'logsyncfailbot');
+        await api.setMirrorState(org.name, repo.name);
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createMirrorConfig(org.name, repo.name, {
+          // Resolvable host so SSRF hostname checks pass; sync fails at pull
+          // time because the org/repo path does not exist (matches redhat-3.17).
+          external_reference: `quay.io/${org.name}/${repo.name}`,
+          sync_interval: 86400,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+          root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+          robot_username: robot.fullName,
+          skopeo_timeout_interval: 300,
+          is_enabled: true,
+          verify_tls: false,
+        });
+
+        await api.raw.triggerMirrorSync(org.name, repo.name);
+
+        await expect
+          .poll(
+            async () => {
+              const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+              return cfg?.sync_status ?? 'UNKNOWN';
+            },
+            {timeout: 120_000, intervals: [5_000, 10_000, 15_000]},
+          )
+          .toBe('FAIL');
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=logs`,
+        );
+        const table = authenticatedPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
+
+        await expect(
+          table.getByText(/Mirror finished unsuccessfully/),
+        ).toBeVisible();
+
+        await expect(table.getByText(/undefined/)).not.toBeAttached();
+        await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+      });
+    },
+  );
+
   test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
-    test(
+    // Skip until PROJQUAY-9859 audit logging is backported to redhat-3.16.
+    // namespacequota APIs do not emit org_*_quota log kinds, so the chart
+    // legend can never show these entries.
+    test.skip(
       'quota log kinds appear in the chart legend',
       {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
       async ({superuserPage, superuserApi}) => {
@@ -200,6 +393,115 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         'Delete Robot Federation',
       ]);
     });
+  });
+
+  test(
+    'chart legend renders in scrollable container below chart SVG',
+    {tag: ['@PROJQUAY-11577']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('legendlayout');
+      const today = new Date().toISOString().slice(0, 10) + 'T12:00:00Z';
+
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/logs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({logs: [], is_truncated: false}),
+          });
+        },
+      );
+
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/aggregatelogs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              aggregated: [
+                {kind: 'create_repo', count: 3, datetime: today},
+                {kind: 'delete_repo', count: 1, datetime: today},
+                {kind: 'create_robot', count: 2, datetime: today},
+              ],
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+      const chart = authenticatedPage.getByTestId('usage-logs-chart');
+      await expect(chart).toBeVisible();
+
+      // Legend must be in the dedicated scrollable container, not inside the SVG
+      const legendContainer = chart.locator('.usage-logs-legend-container');
+      await expect(legendContainer).toBeVisible();
+
+      // Verify legend items from the mocked data appear inside the container
+      await expect(
+        legendContainer.getByText('Create Repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Delete repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Create Robot Account'),
+      ).toBeVisible();
+
+      // The chart SVG must still be present at full height
+      await expect(chart.locator('svg').first()).toBeVisible();
+    },
+  );
+
+  test('shows info alert when Splunk search is not configured', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('splunk');
+
+    // Mock 200 response with search_unavailable flag
+    await authenticatedPage.route(
+      '**/api/v1/organization/*/logs*',
+      async (route): Promise<void> => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            logs: [],
+            search_unavailable: true,
+            message:
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
+          }),
+        });
+      },
+    );
+    await authenticatedPage.route(
+      '**/api/v1/organization/*/aggregatelogs*',
+      async (route): Promise<void> => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            aggregated: [],
+            search_unavailable: true,
+            message:
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
+          }),
+        });
+      },
+    );
+
+    await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+    await expect(
+      authenticatedPage
+        .getByText(
+          'Audit log viewing requires a search_token to be configured for Splunk HEC.',
+        )
+        .first(),
+    ).toBeVisible();
   });
 });
 

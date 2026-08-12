@@ -4,6 +4,8 @@ import {ApiClient} from '../../utils/api';
 import {pushMultiArchImage, pushImage} from '../../utils/container';
 
 test.describe('Tags - Expanded View', {tag: ['@tags', '@container']}, () => {
+  test.slow();
+
   let testRepo: {namespace: string; name: string; fullName: string};
 
   test.beforeAll(async ({userContext, cachedContainerAvailable}) => {

@@ -29,6 +29,7 @@ export interface Tag {
   cosign_signature_manifest_digest?: string;
   pull_count?: number;
   last_pulled?: string;
+  immutable?: boolean;
 }
 
 export interface ManifestList {
@@ -394,6 +395,33 @@ export async function setExpiration(
   } catch (error) {
     throw new ResourceError('Unable to set tag expiration', tag, error);
   }
+}
+
+export async function setTagImmutability(
+  org: string,
+  repo: string,
+  tag: string,
+  immutable: boolean,
+) {
+  try {
+    await axios.put(`/api/v1/repository/${org}/${repo}/tag/${tag}`, {
+      immutable: immutable,
+    });
+  } catch (error) {
+    throw new ResourceError('Unable to set tag immutability', tag, error);
+  }
+}
+
+export async function bulkSetTagImmutability(
+  org: string,
+  repo: string,
+  tags: string[],
+  immutable: boolean,
+) {
+  const responses = await Promise.allSettled(
+    tags.map((tag) => setTagImmutability(org, repo, tag, immutable)),
+  );
+  throwIfError(responses, 'Error setting immutability for tags');
 }
 
 export async function restoreTag(

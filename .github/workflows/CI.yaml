@@ -114,6 +114,43 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: unit
 
+  sqlite:
+    name: SQLite Integration Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox (parallel)
+      run: |
+        tox -e py312-sqlite -- --cov=./ --cov-report=xml
+
+    - name: tox (legacy sequential)
+      run: |
+        tox -e py312-sqlite-legacy -- --cov=./ --cov-report=xml --cov-append
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: sqlite
+
   types:
     name: Types Test
     runs-on: ubuntu-22.04
@@ -177,7 +214,7 @@ jobs:
         tox -e py312-e2e
 
   registry:
-    name: E2E Registry Tests
+    name: Registry Protocol Test
     runs-on: quay-001-large-ubuntu-24-x64
     steps:
 
@@ -203,41 +240,9 @@ jobs:
     - name: tox
       run: |
         tox -e py312-registry
-  mysql:
-    name: E2E MySQL Test
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        sudo systemctl unmask docker
-        sudo systemctl start docker
-        docker version
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      env:
-        TOX_DOCKER_GATEWAY: "0.0.0.0"
-      run: |
-        tox -e py312-mysql
 
   psql:
-    name: E2E Postgres Test
+    name: PostgreSQL Integration Test
     runs-on: ubuntu-22.04
     steps:
 

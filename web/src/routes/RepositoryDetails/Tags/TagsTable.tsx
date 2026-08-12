@@ -561,13 +561,12 @@ export default function TagsTable(props: TableProps) {
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
 
-  // Calculate manifest tracks for visual grouping of tags sharing the same digest
+  // Calculate manifest tracks for visual grouping of tags sharing the same digest.
+  // Use the current page's tags only (PROJQUAY-11442) so shared digests on other
+  // pages do not draw track lines across unrelated rows.
   const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
-    props.allTags,
+    props.tags,
   );
-
-  // Page offset converts local row index to global index for track lookup
-  const pageOffset = (props.page - 1) * props.perPage;
 
   // Select all tags sharing a given manifest digest
   const selectTagsByManifest = (manifestDigest: string) => {
@@ -630,7 +629,7 @@ export default function TagsTable(props: TableProps) {
             org={props.org}
             repo={props.repo}
             tag={tag}
-            rowIndex={pageOffset + localIndex}
+            rowIndex={localIndex}
             selectedTags={props.selectedTags}
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}

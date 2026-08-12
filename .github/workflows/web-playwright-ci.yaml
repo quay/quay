@@ -3,18 +3,24 @@ on:
   pull_request:
     branches:
       - "*"
-    paths:
-      - "web/**"
-      - ".github/workflows/web-playwright-ci.yaml"
-      - ".github/actions/setup-quay/**"
+
+permissions:
+  contents: read
 
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: quay-002-small-ubuntu-24-x64
+    runs-on: quay-003-medium-ubuntu-24-x64
+    env:
+      QUAY_HOTRELOAD: "false"
+      AWS_ACCESS_KEY_ID: GKe2e0123456789abcdef01234
+      AWS_SECRET_ACCESS_KEY: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
+      S3_ENDPOINT: http://localhost:3900
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
@@ -22,10 +28,44 @@ jobs:
           with-clair: true
           with-keycloak: true
           with-repomirror: true
+          with-georep: true
+          with-builds: true
+          use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
+            DEFAULT_UI: react
+            AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0
+            SSRF_ALLOWED_HOSTS:
+              - host.containers.internal
+
+      # Browser runs on the runner host; compose only adds host.containers.internal
+      # inside containers. Map both names so OIDC redirects and build tooling resolve.
+      - name: Map container host aliases for browser/OIDC
+        run: |
+          echo "127.0.0.1 host.containers.internal" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
+
+      - name: Start LDAP server (pre-initialize for later auth swap)
+        run: |
+          docker compose up -d ldap
+          echo "Waiting for LDAP to be ready..."
+          timeout=90
+          while [ $timeout -gt 0 ]; do
+            if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+                -b "dc=example,dc=org" -s base &>/dev/null; then
+              echo "LDAP is ready!"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "::error::LDAP failed to initialize within 90 seconds"
+            docker logs quay-ldap
+            exit 1
+          fi
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
@@ -34,14 +74,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
+      # Keep npm (not pnpm) for redhat-3.16 — package-lock.json is the lockfile here.
       - name: Install dependencies
-        run: cd web && npm install
+        run: cd web && npm ci
 
       - name: Get Playwright version
         id: playwright-version
         run: |
           cd web
-          PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")
+          PLAYWRIGHT_VERSION=$(node -e "console.log(require('./node_modules/@playwright/test/package.json').version)")
           echo "version=$PLAYWRIGHT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Cache Playwright browsers
@@ -62,12 +103,23 @@ jobs:
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
-      - name: Run Database auth tests
+      - name: Install crane for unique image tests
+        uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+        with:
+          version: v0.20.6
+
+      - name: Install regctl for CLI interop tests
+        uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
+
+      - name: Run Database auth tests (React + Legacy UI)
+        id: db-tests
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Swap to OIDC authentication
+        id: swap-oidc
         if: always()
         run: |
           pip install pyyaml -q
@@ -91,29 +143,58 @@ jobs:
             /tmp/oidc-auth-overlay.yaml \
             > local-dev/stack/config.yaml.tmp
           mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
-          # Restart Quay and wait for healthy
+          # Restart Quay and wait for healthy (120s; matches setup-quay default)
           docker restart quay-quay
-          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+          curl -sf --retry 60 --retry-delay 2 --retry-all-errors \
             http://localhost:8080/health/instance > /dev/null
-          # Verify Quay loaded the OIDC config before running tests
-          for i in $(seq 1 15); do
-            AUTH_TYPE=$(curl -sf http://localhost:8080/config 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('config',{}).get('AUTHENTICATION_TYPE',''))" 2>/dev/null || true)
-            if [ "$AUTH_TYPE" = "OIDC" ]; then
-              echo "Quay is ready with OIDC auth"
-              break
-            fi
-            echo "Waiting for OIDC config to load (attempt $i/15, got AUTH_TYPE=$AUTH_TYPE)..."
-            sleep 2
-          done
-          if [ "$AUTH_TYPE" != "OIDC" ]; then
-            echo "WARNING: Quay config still shows AUTH_TYPE=$AUTH_TYPE after 30s"
-          fi
+          echo "Quay is ready with OIDC auth"
 
       - name: Run OIDC auth tests
-        if: always()
+        id: oidc-tests
+        if: always() && steps.swap-oidc.outcome == 'success'
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
         run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+
+      - name: Swap to LDAP authentication
+        id: swap-ldap
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge LDAP config (sets AUTHENTICATION_TYPE: LDAP + connection details)
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/ldap/ldap-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge LDAP-specific feature flags
+          cat > /tmp/ldap-auth-overlay.yaml <<'EOF'
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          STAGGER_WORKERS: false
+          SUPER_USERS:
+            - admin
+            - admin_ldap
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/ldap-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy (120s; matches setup-quay default)
+          docker restart quay-quay
+          curl -sf --retry 60 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with LDAP auth"
+
+      - name: Run LDAP auth tests
+        id: ldap-tests
+        if: always() && steps.swap-ldap.outcome == 'success'
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()
@@ -131,9 +212,11 @@ jobs:
 
       - name: Save PR number
         if: always()
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p ./pr-info
-          echo ${{ github.event.pull_request.number }} > ./pr-info/pr_number.txt
+          echo "$PR_NUMBER" > ./pr-info/pr_number.txt
 
       - name: Upload PR info
         uses: actions/upload-artifact@v4

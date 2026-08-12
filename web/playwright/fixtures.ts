@@ -32,6 +32,7 @@ import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL} from './utils/config';
 import {
   ApiClient,
+  AutoPrunePolicy,
   PrototypeRole,
   RawApiClient,
   RepositoryVisibility,
@@ -39,6 +40,7 @@ import {
   TeamRole,
 } from './utils/api';
 import {isContainerRuntimeAvailable} from './utils/container';
+import {WebhookReceiver} from './utils/webhook';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -81,6 +83,7 @@ export interface CreatedRobot {
   orgName: string;
   shortname: string;
   fullName: string;
+  token: string;
 }
 
 /**
@@ -327,7 +330,11 @@ export class TestApi {
     // Robot names can't have dashes, only underscores
     const shortname = uniqueName(namePrefix).replace(/-/g, '_');
 
-    await this.client.createRobot(orgName, shortname, description);
+    const result = await this.client.createRobot(
+      orgName,
+      shortname,
+      description,
+    );
 
     this.cleanupStack.push(async () => {
       try {
@@ -341,6 +348,7 @@ export class TestApi {
       orgName,
       shortname,
       fullName: `${orgName}+${shortname}`,
+      token: result.token,
     };
   }
 
@@ -627,11 +635,13 @@ export class TestApi {
     namespace: string,
     repoName: string,
     dockerfileContent = 'FROM scratch\n',
+    dockerTags: string[] = [],
   ): Promise<CreatedBuild> {
     const result = await this.client.startDockerfileBuild(
       namespace,
       repoName,
       dockerfileContent,
+      dockerTags,
     );
 
     // No cleanup needed - builds are deleted when the repository is deleted
@@ -721,6 +731,75 @@ export class TestApi {
   }
 
   /**
+   * Create an auto-prune policy for an organization.
+   * Automatically deleted after test.
+   */
+  async orgAutoPrunePolicy(
+    orgName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createOrgAutoPrunePolicy(orgName, policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgAutoPrunePolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create an auto-prune policy for a repository.
+   * Automatically deleted after test.
+   */
+  async repoAutoPrunePolicy(
+    namespace: string,
+    repoName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepoAutoPrunePolicy(
+      namespace,
+      repoName,
+      policy,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoAutoPrunePolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create an auto-prune policy for the current user.
+   * Automatically deleted after test.
+   */
+  async userAutoPrunePolicy(policy: AutoPrunePolicy): Promise<{uuid: string}> {
+    const result = await this.client.createUserAutoPrunePolicy(policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserAutoPrunePolicy(result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid};
+  }
+
+  /**
    * Create an OAuth application in an organization.
    * Automatically deleted after test.
    */
@@ -787,7 +866,9 @@ export type QuayFeature =
   | 'SPARSE_INDEX'
   | 'TEAM_SYNCING'
   | 'DIRECT_LOGIN'
-  | 'NONSUPERUSER_TEAM_SYNCING_SETUP';
+  | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
+  | 'BUILD_SUPPORT'
+  | 'STORAGE_REPLICATION';
 
 /**
  * Quay configuration from /config endpoint
@@ -952,17 +1033,23 @@ type TestFixtures = {
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
+  // Isolated user with its own API client (no shared namespace state)
+  freshUser: {user: CreatedUser; api: TestApi};
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
 
-  // Container runtime availability (cached per worker)
+  // Registry image tooling availability (cached per worker)
   containerAvailable: boolean;
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
+
+  // WebhookReceiver that auto-starts and auto-stops per test
+  webhook: WebhookReceiver;
 };
 
 /**
@@ -981,7 +1068,7 @@ type WorkerFixtures = {
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
 
-  // Cached container runtime availability (checked once per worker)
+  // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
 };
 
@@ -1126,11 +1213,32 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await testApi.cleanup();
   },
 
-  superuserApi: async ({superuserRequest}, use) => {
+  superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
     const client = new ApiClient(superuserRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
+  },
+
+  freshUser: async ({superuserApi, playwright}, use) => {
+    const created = await superuserApi.user('iso');
+    await superuserApi.raw.updateUserAsSuperuser(created.username, {
+      email: created.email,
+    });
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    const client = new ApiClient(request);
+    await client.signIn(created.username, created.password);
+    client.setCredentials(created.username, created.password);
+    const testApi = new TestApi(client, created.username);
+
+    await use({user: created, api: testApi});
+
+    await testApi.cleanup();
+    await request.dispose();
   },
 
   // =========================================================================
@@ -1255,7 +1363,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   // =========================================================================
-  // Container runtime availability
+  // Registry image tooling availability
   // =========================================================================
 
   containerAvailable: async ({cachedContainerAvailable}, use) => {
@@ -1267,14 +1375,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   /**
-   * Automatically skip tests that have @container tag when no
-   * container runtime (podman/docker) is available.
+   * Automatically skip tests that have @container tag when registry
+   * image tooling (skopeo) is not available.
    *
    * @example
    * ```typescript
    * test.describe('Push Tests', {tag: ['@container']}, () => {
    *   test('pushes image', async ({authenticatedPage}) => {
-   *     // Auto-skipped if no container runtime available!
+   *     // Auto-skipped if registry image tooling is unavailable!
    *   });
    * });
    * ```
@@ -1283,12 +1391,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     async ({containerAvailable}, use, testInfo) => {
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
-        testInfo.skip(true, 'Container runtime (podman/docker) required');
+        testInfo.skip(true, 'Registry image tooling (skopeo) required');
       }
       await use();
     },
     {auto: true},
   ],
+
+  // eslint-disable-next-line no-empty-pattern
+  webhook: async ({}, use) => {
+    const receiver = new WebhookReceiver();
+    await receiver.start();
+    await use(receiver);
+    await receiver.stop();
+  },
 });
 
 // Re-export expect for convenience
@@ -1302,3 +1418,10 @@ export {uniqueName} from './utils/test-utils';
 
 export {mailpit} from './utils/mailpit';
 export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';
+
+// ============================================================================
+// Webhook: Re-export from utils
+// ============================================================================
+
+export {WebhookReceiver} from './utils/webhook';
+export type {WebhookRequest} from './utils/webhook';

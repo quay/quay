@@ -579,7 +579,7 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
       // Token should be removed from table
       await expect(
-        authenticatedPage.getByRole('button', {name: tokenTitle}),
+        authenticatedPage.getByRole('button', {name: tokenTitle, exact: true}),
       ).not.toBeVisible();
     });
 

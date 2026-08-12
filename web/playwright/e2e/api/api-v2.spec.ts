@@ -43,7 +43,7 @@ test.describe(
     let manifestDigest: string;
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      // Skip setup if no container runtime (tests auto-skip via @container tag)
+      // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
       if (!cachedContainerAvailable) return;
 
       const api = new ApiClient(userContext.request);

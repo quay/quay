@@ -7,14 +7,14 @@ services:
   quay-db:
     user: postgres
     container_name: quay-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     environment:
       POSTGRES_USER: "quay"
       POSTGRES_PASSWORD: "quay"
       POSTGRES_DB: "quay"
     volumes:
       - "./local-dev/init/pg_bootstrap.sql:/docker-entrypoint-initdb.d/pg_bootstrap.sql"
-      - "quay-db-data:/var/lib/postgresql/data"
+      - "quay-db-data:/var/lib/postgresql"
     ports:
       - "5432:5432"
     healthcheck:
@@ -27,14 +27,14 @@ services:
   clair-db:
     user: postgres
     container_name: clair-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_PASSWORD: "clair"
       POSTGRES_DB: "clair"
     volumes:
-      - "clair-db-data:/var/lib/postgresql/data"
+      - "clair-db-data:/var/lib/postgresql"
     ports:
       - "5433:5432"
     healthcheck:
@@ -49,6 +49,9 @@ services:
     user: nobody
     container_name: quay-redis
     image: docker.io/library/redis:latest
+    # Disable RDB persistence: the default image runs as 'nobody' which cannot
+    # write snapshot files to /data, causing stop-writes-on-bgsave-error to
+    # block all writes and break the /health/endtoend check.
     command: ["redis-server", "--save", ""]
     ports:
       - "6379:6379"
@@ -72,6 +75,31 @@ services:
       wait
       "
 
+  # Jaeger all-in-one for distributed tracing (optional).
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
+  garage:
+    container_name: quay-garage
+    image: dxflrs/garage:v1.0.1
+    volumes:
+      - "./local-dev/garage/garage.toml:/etc/garage.toml:ro,z"
+    ports:
+      - "3900:3900"
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   keycloak:
     container_name: quay-keycloak
     image: quay.io/keycloak/keycloak:26.2
@@ -90,6 +118,27 @@ services:
     command:
       - start-dev
       - --import-realm
+
+  # Splunk Enterprise - local audit log testing
+  # Web UI: http://localhost:8000 (admin/changeme1)
+  splunk:
+    container_name: quay-splunk
+    image: docker.io/splunk/splunk:latest
+    environment:
+      SPLUNK_START_ARGS: "--accept-license"
+      SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
+      SPLUNK_PASSWORD: "changeme1"
+    volumes:
+      - "./local-dev/splunk/init-splunk.sh:/tmp/init-splunk.sh:ro"
+    ports:
+      - "8000:8000"   # Web UI
+      - "8089:8089"   # Management/SDK API
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -k -u admin:changeme1 https://localhost:8089/services/server/health/splunkd || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
 
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
@@ -133,6 +182,9 @@ services:
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       args:
@@ -145,11 +197,12 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
+      - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
+      QUAY_DISTRIBUTED_STORAGE_PREFERENCE: "${QUAY_DISTRIBUTED_STORAGE_PREFERENCE:-}"
+      DOCKER_HOST: "${QUAY_DOCKER_HOST:-}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp

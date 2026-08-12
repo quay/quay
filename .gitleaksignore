@@ -1,0 +1,10 @@
+# Local development test credentials (not real secrets)
+.github/workflows/web-playwright-ci.yaml:generic-api-key:17
+.github/workflows/web-playwright-ci.yaml:generic-api-key:18
+local-dev/garage/garage.toml:generic-api-key:6
+local-dev/garage/georep-config.yaml:generic-api-key:8
+local-dev/garage/georep-config.yaml:generic-api-key:9
+local-dev/garage/georep-config.yaml:generic-api-key:18
+local-dev/garage/georep-config.yaml:generic-api-key:19
+local-dev/garage/init-garage.sh:generic-api-key:13
+local-dev/garage/init-garage.sh:generic-api-key:14

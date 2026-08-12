@@ -118,7 +118,7 @@ RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 FROM registry.access.redhat.com/ubi8/nodejs-22:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json web/.npmrc  ./
-RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
+RUN npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
