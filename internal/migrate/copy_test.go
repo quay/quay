@@ -2,9 +2,11 @@ package migrate
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -478,21 +480,31 @@ func TestCopyData_SkipsRootCAWhenNotDetected(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
-func TestCopyData_FallsBackWhenCheckpointFails(t *testing.T) {
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
-	createCopyTestDB(t, dbPath)
+var errSimulatedPermission = fmt.Errorf("simulated: permission denied")
 
-	// Make source directory read-only to simulate rootless UID mismatch.
-	if err := os.Chmod(dbDir, 0o555); err != nil {
-		t.Fatal(err)
+// failFirstCheckpoint returns a checkpoint function that fails the first call
+// (simulating rootless source access) and delegates subsequent calls (target
+// checkpoint) to the real implementation.
+func failFirstCheckpoint() checkpointFunc {
+	called := false
+	return func(ctx context.Context, dbPath string) error {
+		if !called {
+			called = true
+			return errSimulatedPermission
+		}
+		return checkpointSQLite(ctx, dbPath)
 	}
-	t.Cleanup(func() { os.Chmod(dbDir, 0o755) })
+}
+
+func TestCopyData_FallsBackWhenCheckpointFails(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
 
 	targetDir := filepath.Join(t.TempDir(), "target")
 	m := &Migrator{
-		DataDir: targetDir,
-		Out:     &bytes.Buffer{},
+		DataDir:    targetDir,
+		Out:        &bytes.Buffer{},
+		Checkpoint: failFirstCheckpoint(),
 		Source: OMRSource{
 			DBPath: dbPath,
 		},
@@ -521,33 +533,35 @@ func TestCopyData_FallbackPreservesWALData(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "quay_sqlite.db")
 
-	srcDB, err := dbcore.OpenSQLite(dbPath)
+	// Open two connections: the first keeps the WAL alive (SQLite only
+	// auto-checkpoints when the LAST connection closes), and the second
+	// writes the test data.
+	keepAlive, err := dbcore.OpenSQLite(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := srcDB.ExecContext(t.Context(), "PRAGMA journal_mode=WAL"); err != nil {
+	defer func() { _ = keepAlive.Close() }()
+
+	if _, err := keepAlive.ExecContext(t.Context(), "PRAGMA journal_mode=WAL"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := srcDB.ExecContext(t.Context(), "CREATE TABLE wal_test (value TEXT)"); err != nil {
+	if _, err := keepAlive.ExecContext(t.Context(), "CREATE TABLE wal_test (value TEXT)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := srcDB.ExecContext(t.Context(), "INSERT INTO wal_test (value) VALUES ('committed-in-wal')"); err != nil {
-		t.Fatal(err)
-	}
-	if err := srcDB.Close(); err != nil {
+	if _, err := keepAlive.ExecContext(t.Context(), "INSERT INTO wal_test (value) VALUES ('committed-in-wal')"); err != nil {
 		t.Fatal(err)
 	}
 
-	// Make source directory read-only to simulate rootless UID mismatch.
-	if err := os.Chmod(dbDir, 0o555); err != nil {
-		t.Fatal(err)
+	walPath := dbPath + "-wal"
+	if _, err := os.Stat(walPath); os.IsNotExist(err) {
+		t.Fatal("WAL file should exist before fallback copy")
 	}
-	t.Cleanup(func() { os.Chmod(dbDir, 0o755) })
 
 	targetDir := filepath.Join(t.TempDir(), "target")
 	m := &Migrator{
-		DataDir: targetDir,
-		Out:     &bytes.Buffer{},
+		DataDir:    targetDir,
+		Out:        &bytes.Buffer{},
+		Checkpoint: failFirstCheckpoint(),
 		Source: OMRSource{
 			DBPath: dbPath,
 		},

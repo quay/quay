@@ -36,6 +36,9 @@ type OMRSource struct {
 	Method       string   // "systemd", "podman-volume", or "defaults"
 }
 
+// checkpointFunc is the signature for the WAL checkpoint operation.
+type checkpointFunc func(ctx context.Context, dbPath string) error
+
 // Migrator orchestrates the OMR-to-Go-binary migration phases.
 type Migrator struct {
 	Source OMRSource
@@ -54,8 +57,9 @@ type Migrator struct {
 	Cleanup     bool
 	SkipInstall bool
 
-	Out    io.Writer
-	Runner system.CommandRunner
+	Out        io.Writer
+	Runner     system.CommandRunner
+	Checkpoint checkpointFunc
 
 	sourceRegistryJWTKey *rsa.PrivateKey
 }
