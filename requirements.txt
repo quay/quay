@@ -11,7 +11,7 @@ alembic==1.13.1 \
     --hash=sha256:2edcc97bed0bd3272611ce3a98d98279e9c209e7186e43e75bbb1b2bdfdbcc43 \
     --hash=sha256:4932c8558bf68f2ee92b9bbcb8218671c627064d5b08939437af6d77dc05e595
     # via -r requirements.in
-aniso8601 @ https://codeload.github.com/DevTable/aniso8601-fake/tar.gz/bd7762c7dea0498706d3f57db60cd8a8af44ba90 \
+aniso8601 @ https://github.com/DevTable/aniso8601-fake/archive/bd7762c7dea0498706d3f57db60cd8a8af44ba90.tar.gz \
     --hash=sha256:7ab7e88598c2182d4289a34b40b220ae47d8525f2a8e41b32298721d662375bd
     # via
     #   -r requirements.in
@@ -1312,7 +1312,7 @@ psycopg2==2.9.9 \
     --hash=sha256:de80739447af31525feddeb8effd640782cf5998e1a4e9192ebdf829717e3913 \
     --hash=sha256:ff432630e510709564c01dafdbe996cb552e0b9f3f065eb89bdce5bd31fabf4c
     # via -r requirements.in
-py-bitbucket @ https://codeload.github.com/quay/py-bitbucket/tar.gz/3ba167408d92eb4ba2cae78c0047b8f1e8821c67 \
+py-bitbucket @ https://github.com/quay/py-bitbucket/archive/3ba167408d92eb4ba2cae78c0047b8f1e8821c67.tar.gz \
     --hash=sha256:4ae75463a80a02e8ebf32ed0c353e3ee49c80653785fb9cb007ad2a3a8af7d8d
     # via -r requirements.in
 pyasn1==0.6.4 \
@@ -2047,7 +2047,7 @@ supervisor==4.2.5 \
 supervisor-logging==0.0.9 \
     --hash=sha256:d602f6700c006ff22a4ea742c1b3d075af412dc35b1beeda20c94ac2f41917a2
     # via -r requirements.in
-supervisor-stdout @ https://codeload.github.com/quay/supervisor-stdout/tar.gz/9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380 \
+supervisor-stdout @ https://github.com/quay/supervisor-stdout/archive/9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380.tar.gz \
     --hash=sha256:2f130aa74b7f04506e9113e47fa152eb1c16f167423e1f31fc8f8fd103efd5a4
     # via -r requirements.in
 svglib==1.5.1 \
