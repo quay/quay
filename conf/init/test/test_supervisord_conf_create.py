@@ -64,21 +64,21 @@ class TestGunicornTimeouts:
         rendered = render_supervisord_conf(config)
         match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_registry\.py", rendered)
         assert match is not None, "gunicorn-registry should have --timeout flag"
-        assert match.group(1) == "300"
+        assert match.group(1) == "30"
 
     def test_registry_timeout_custom(self):
         config = registry_services()
-        rendered = render_supervisord_conf(config, gunicorn_registry_timeout=600)
+        rendered = render_supervisord_conf(config, gunicorn_registry_timeout=300)
         match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_registry\.py", rendered)
         assert match is not None
-        assert match.group(1) == "600"
+        assert match.group(1) == "300"
 
     def test_web_timeout_default(self):
         config = registry_services()
         rendered = render_supervisord_conf(config)
         match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_web\.py", rendered)
         assert match is not None, "gunicorn-web should have --timeout flag"
-        assert match.group(1) == "60"
+        assert match.group(1) == "30"
 
     def test_web_timeout_custom(self):
         config = registry_services()
@@ -112,5 +112,5 @@ class TestGunicornTimeouts:
         assert match is not None
         assert match.group(1) == str(MAX_GUNICORN_TIMEOUT)
 
-    def test_max_gunicorn_timeout_is_1800(self):
-        assert MAX_GUNICORN_TIMEOUT == 1800
+    def test_max_gunicorn_timeout_is_300(self):
+        assert MAX_GUNICORN_TIMEOUT == 300

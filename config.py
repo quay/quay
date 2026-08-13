@@ -679,8 +679,8 @@ class DefaultConfig(ImmutableConfig):
     MAXIMUM_LAYER_SIZE = "20G"
 
     # Gunicorn worker timeouts (seconds). Workers killed after this duration.
-    GUNICORN_REGISTRY_TIMEOUT = 300
-    GUNICORN_WEB_TIMEOUT = 60
+    GUNICORN_REGISTRY_TIMEOUT = 30
+    GUNICORN_WEB_TIMEOUT = 30
 
     # Feature Flag: Whether team syncing from the backing auth is enabled.
     FEATURE_TEAM_SYNCING = False

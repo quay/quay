@@ -793,8 +793,8 @@ test.describe(
   {tag: ['@api', '@superuser', '@PROJQUAY-12278']},
   () => {
     const TIMEOUT_FIELDS = [
-      {key: 'GUNICORN_REGISTRY_TIMEOUT', defaultValue: 300},
-      {key: 'GUNICORN_WEB_TIMEOUT', defaultValue: 60},
+      {key: 'GUNICORN_REGISTRY_TIMEOUT', defaultValue: 30},
+      {key: 'GUNICORN_WEB_TIMEOUT', defaultValue: 30},
     ];
 
     test('config dump exposes timeout schema with min and max constraints', async ({
@@ -813,7 +813,7 @@ test.describe(
         expect(fieldSchema, `${key} should be in schema`).toBeDefined();
         expect(fieldSchema.type).toBe('integer');
         expect(fieldSchema.minimum).toBe(30);
-        expect(fieldSchema.maximum).toBe(1800);
+        expect(fieldSchema.maximum).toBe(300);
       }
     });
 
@@ -831,7 +831,7 @@ test.describe(
       for (const {key, defaultValue} of TIMEOUT_FIELDS) {
         const value = body.config?.[key] ?? defaultValue;
         expect(value, `${key} should be >= 30`).toBeGreaterThanOrEqual(30);
-        expect(value, `${key} should be <= 1800`).toBeLessThanOrEqual(1800);
+        expect(value, `${key} should be <= 300`).toBeLessThanOrEqual(300);
       }
     });
 
