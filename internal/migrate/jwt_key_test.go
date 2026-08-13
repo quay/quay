@@ -351,13 +351,112 @@ INSTANCE_SERVICE_KEY_SERVICE: quay
 	require.NoError(t, err)
 }
 
+func TestReadSourceConfigMaterial_ReturnsHostFileWithoutInvokingRunner(t *testing.T) {
+	configDir := t.TempDir()
+	content := "already-on-host"
+	writeCopyTestFile(t, filepath.Join(configDir, legacyPrivateKeyName), []byte(content), 0o600)
+	runner := &sourceMaterialRunner{outputs: map[string]string{
+		filepath.Join(sourceContainerConf, legacyPrivateKeyName): "should-not-be-used",
+	}}
+
+	data, source, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, content, string(data))
+	assert.Equal(t, filepath.Join(configDir, legacyPrivateKeyName), source)
+	assert.Equal(t, 0, runner.outputCalls, "runner should not be invoked when file exists on host")
+}
+
+func TestLoadApprovedRegistryJWTSigningKeySucceedsViaCpFallback(t *testing.T) {
+	fixture := newRegistryKeyFixture(t)
+	privatePath := filepath.Join(fixture.configDir, legacyPrivateKeyName)
+	kidPath := filepath.Join(fixture.configDir, legacyKeyIDName)
+	privateBytes, err := os.ReadFile(privatePath) //nolint:gosec // test fixture path
+	require.NoError(t, err)
+	kidBytes, err := os.ReadFile(kidPath) //nolint:gosec // test fixture path
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(privatePath))
+	require.NoError(t, os.Remove(kidPath))
+	runner := &cpFallbackRunner{
+		cpContent: string(privateBytes),
+		cpKID:     string(kidBytes),
+	}
+
+	key, kid, err := loadApprovedRegistryJWTSigningKey(
+		t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, runner,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, fixture.kid, kid)
+	assert.True(t, jwtauth.PublicKeysEqual(&fixture.key.PublicKey, &key.PublicKey))
+}
+
+func TestReadSourceConfigMaterial_PersistsExecOutputToHost(t *testing.T) {
+	configDir := t.TempDir()
+	content := "test-key-material"
+	runner := &sourceMaterialRunner{outputs: map[string]string{
+		filepath.Join(sourceContainerConf, legacyPrivateKeyName): content,
+	}}
+
+	data, source, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, content, string(data))
+	assert.Contains(t, source, sourceContainerConf)
+
+	persisted, err := os.ReadFile(filepath.Join(configDir, legacyPrivateKeyName))
+	require.NoError(t, err, "exec output should be persisted to host config dir")
+	assert.Equal(t, content, string(persisted))
+}
+
+func TestReadSourceConfigMaterial_CpFallbackWhenExecFails(t *testing.T) {
+	configDir := t.TempDir()
+	content := "cp-recovered-material"
+	runner := &cpFallbackRunner{
+		cpContent: content,
+	}
+
+	data, source, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, content, string(data))
+	assert.Equal(t, filepath.Join(configDir, legacyPrivateKeyName), source)
+
+	info, statErr := os.Stat(filepath.Join(configDir, legacyPrivateKeyName))
+	require.NoError(t, statErr)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "podman cp output should be chmod'd to 0600")
+}
+
+func TestReadSourceConfigMaterial_FailsWhenBothExecAndCpFail(t *testing.T) {
+	configDir := t.TempDir()
+	runner := &cpFallbackRunner{
+		cpFail: true,
+	}
+
+	_, _, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+	)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exec:")
+	assert.Contains(t, err.Error(), "cp:")
+}
+
 type sourceMaterialRunner struct {
-	outputs map[string]string
+	outputs     map[string]string
+	outputCalls int
 }
 
 func (r *sourceMaterialRunner) Run(context.Context, string, ...string) error { return nil }
 
 func (r *sourceMaterialRunner) Output(_ context.Context, name string, args ...string) (string, error) {
+	r.outputCalls++
 	if name != "podman" || len(args) != 4 || args[0] != "exec" || args[1] != sourceContainerName || args[2] != "cat" {
 		return "", fmt.Errorf("unexpected source material command: %s %v", name, args)
 	}
@@ -366,4 +465,33 @@ func (r *sourceMaterialRunner) Output(_ context.Context, name string, args ...st
 		return "", fmt.Errorf("no output for %s", args[3])
 	}
 	return output, nil
+}
+
+type cpFallbackRunner struct {
+	cpContent string
+	cpKID     string
+	cpFail    bool
+}
+
+func (r *cpFallbackRunner) Run(_ context.Context, name string, args ...string) error {
+	if name != "podman" || len(args) != 3 || args[0] != "cp" {
+		return fmt.Errorf("unexpected command: %s %v", name, args)
+	}
+	src := args[1]
+	if !strings.HasPrefix(src, sourceContainerName+":") {
+		return fmt.Errorf("unexpected source container in cp: %s", src)
+	}
+	if r.cpFail {
+		return fmt.Errorf("simulated cp failure")
+	}
+	dst := args[2]
+	content := r.cpContent
+	if r.cpKID != "" && strings.HasSuffix(src, legacyKeyIDName) {
+		content = r.cpKID
+	}
+	return os.WriteFile(dst, []byte(content), 0o644)
+}
+
+func (r *cpFallbackRunner) Output(_ context.Context, _ string, _ ...string) (string, error) {
+	return "", fmt.Errorf("simulated exec failure: container not running")
 }
