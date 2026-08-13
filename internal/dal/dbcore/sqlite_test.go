@@ -138,6 +138,38 @@ func TestOpenSQLiteReadOnly_SucceedsWithReadOnlyDirectory(t *testing.T) {
 	}
 }
 
+func TestOpenSQLiteReadOnly_ModeRoAloneFailsOnReadOnlyDirectory(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "source.db")
+
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "CREATE TABLE ro_test (v TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	roOnly, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer roOnly.Close()
+
+	if err := roOnly.PingContext(t.Context()); err == nil {
+		t.Fatal("mode=ro without immutable=1 should fail on a read-only directory, but Ping succeeded")
+	}
+}
+
 func TestOpenSQLite_PathsContainingURIDelimiters(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "omr?with#symbols&.db")

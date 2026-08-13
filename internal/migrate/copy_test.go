@@ -314,6 +314,48 @@ func TestCopyData_RecopiesDatabaseWhenMarkerExists(t *testing.T) {
 	}
 }
 
+func TestCopyData_RecopiesDatabaseWhenMarkerExistsAndCheckpointFails(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "quay_sqlite.db")
+	createCopyTestDB(t, dbPath)
+
+	targetDir := filepath.Join(t.TempDir(), "target")
+	mkdirCopyTestDir(t, targetDir)
+	writeCopyTestFile(t, filepath.Join(targetDir, markerFile), []byte("migration in progress\n"), 0o600)
+
+	sourceBytes, err := os.ReadFile(dbPath) //nolint:gosec // test fixture path is under t.TempDir.
+	if err != nil {
+		t.Fatalf("read source db: %v", err)
+	}
+	writeCopyTestFile(t, filepath.Join(targetDir, "quay.db"), bytes.Repeat([]byte("x"), len(sourceBytes)), 0o600)
+
+	m := &Migrator{
+		DataDir:    targetDir,
+		Out:        &bytes.Buffer{},
+		Checkpoint: failFirstCheckpoint(),
+		Source: OMRSource{
+			DBPath: dbPath,
+		},
+	}
+
+	if err := m.copyData(t.Context()); err != nil {
+		t.Fatalf("copyData: %v", err)
+	}
+
+	targetDB, err := dbcore.OpenSQLite(filepath.Join(targetDir, "quay.db"))
+	if err != nil {
+		t.Fatalf("open target: %v", err)
+	}
+	defer func() { _ = targetDB.Close() }()
+
+	var value string
+	if err := targetDB.QueryRowContext(t.Context(), "SELECT value FROM copy_test").Scan(&value); err != nil {
+		t.Fatalf("query copied row: %v", err)
+	}
+	if value != "ok" {
+		t.Errorf("copied value = %q, want ok", value)
+	}
+}
+
 func TestCopyData_CheckpointsSourceWAL(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "quay_sqlite.db")
 	srcDB, err := dbcore.OpenSQLite(dbPath)
