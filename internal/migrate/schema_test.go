@@ -129,6 +129,9 @@ func (r *recordingRunner) Run(_ context.Context, name string, args ...string) er
 	return r.runErrs[args[len(args)-1]]
 }
 
-func (r *recordingRunner) Output(_ context.Context, _ string, _ ...string) (string, error) {
+func (r *recordingRunner) Output(_ context.Context, name string, args ...string) (string, error) {
+	if name == "podman" && len(args) > 0 && args[0] == "info" {
+		return "v2", nil
+	}
 	return "", nil
 }
