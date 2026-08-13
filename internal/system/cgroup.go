@@ -25,7 +25,7 @@ func CheckCgroupVersion(ctx context.Context, runner CommandRunner) (string, erro
 func ValidateCgroupsForQuadlet(ctx context.Context, runner CommandRunner) error {
 	version, err := CheckCgroupVersion(ctx, runner)
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // podman may not be installed yet; don't block
 	}
 	if version == "v2" {
 		return nil
@@ -38,7 +38,7 @@ func ValidateCgroupsForQuadlet(ctx context.Context, runner CommandRunner) error 
 				"  sudo reboot\n\n"+
 				"After reboot, verify with:\n\n"+
 				"  podman info --format '{{.Host.CgroupsVersion}}'\n\n"+
-				"Then re-run this command. Your existing installation has not been modified.", version)
+				"then re-run this command; your existing installation has not been modified", version)
 	}
 	return nil
 }

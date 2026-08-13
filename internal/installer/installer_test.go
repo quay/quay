@@ -575,7 +575,7 @@ func TestRunRejectsCgroupV1Rootless(t *testing.T) {
 	err := inst.Run(t.Context(), &Config{DataDir: dataDir})
 
 	require.ErrorContains(t, err, "cgroups v1")
-	require.ErrorContains(t, err, "OMR 3.0 requires cgroups v2")
+	require.ErrorContains(t, err, "OMR 3.0 requires cgroups v2 for rootless installs")
 	_, statErr := os.Stat(dataDir)
 	assert.ErrorIs(t, statErr, os.ErrNotExist, "data directory should not be created on cgroup failure")
 }
