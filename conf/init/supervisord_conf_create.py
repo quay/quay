@@ -123,7 +123,5 @@ if __name__ == "__main__":
         gunicorn_registry_timeout=min(
             app_config.get("GUNICORN_REGISTRY_TIMEOUT", 30), MAX_GUNICORN_TIMEOUT
         ),
-        gunicorn_web_timeout=min(
-            app_config.get("GUNICORN_WEB_TIMEOUT", 30), MAX_GUNICORN_TIMEOUT
-        ),
+        gunicorn_web_timeout=min(app_config.get("GUNICORN_WEB_TIMEOUT", 30), MAX_GUNICORN_TIMEOUT),
     )
