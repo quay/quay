@@ -16,7 +16,7 @@ proxy_set_header X-Forwarded-For $proper_forwarded_for;
 proxy_set_header X-Forwarded-Proto $final_proto;
 
 proxy_redirect off;
-proxy_set_header Transfer-Encoding $http_transfer_encoding;
+
 absolute_redirect off;
 
 # Pass safe host for non standard external ports
@@ -133,6 +133,7 @@ location ~ ^/v2/_catalog(.*)$ {
 
 location /secscan/ {
     proxy_pass http://secscan_app_server;
+    proxy_http_version 1.1;
 }
 
 {% if signing_enabled %}
