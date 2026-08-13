@@ -115,7 +115,7 @@ export default function CreateRobotAccountModal(
 
   // addDefaultPermsForRobotMutator
   const validateRobotName = () => {
-    return /^[a-z][a-z0-9_]{1,254}$/.test(robotName);
+    return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(robotName);
   };
 
   const handleModalToggle = () => {
@@ -154,7 +154,7 @@ export default function CreateRobotAccountModal(
           nameLabel="Provide a name for your robot account:"
           descriptionLabel="Provide an optional description for your new robot:"
           helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
-          nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
+          nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$."
           validateName={validateRobotName}
         />
       </>

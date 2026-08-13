@@ -106,7 +106,9 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const validateRobotName = () => {
-    return /^[a-z][a-z0-9_]{1,254}$/.test(newRobotAccntName);
+    return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(
+      newRobotAccntName,
+    );
   };
 
   const drawerPanelContent = (
@@ -124,7 +126,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
         nameLabel="Provide a name for your new robot account:"
         descriptionLabel="Provide an optional description for your new robot account:"
         helperText="Enter a description to provide extra information to your teammates about this new team account. Max length: 255"
-        nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
+        nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$."
         validateName={validateRobotName}
       />
       <div className="drawer-footer">
