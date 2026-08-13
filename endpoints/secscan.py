@@ -47,9 +47,19 @@ def secscan_notification():
             abort(401)
         logger.debug("Successfully verified jwt")
 
-    data = request.get_json()
-    if data is None:
-        logger.error("expected json request")
+    try:
+        data = request.get_json(force=True, silent=False)
+    except Exception as e:
+        logger.error(
+            "Parsing of notification body failed: %s, content-type=%s, content-length=%s",
+            e,
+            request.content_type,
+            request.content_length,
+        )
+        abort(400)
+
+    if not isinstance(data, dict):
+        logger.error("Expected JSON object, got %s", type(data).__name__)
         abort(400)
 
     logger.debug("Got notification from V4 Security Scanner: %s", data)
