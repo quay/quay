@@ -112,6 +112,13 @@ func TestOpenSQLiteReadOnly_SucceedsWithReadOnlyDirectory(t *testing.T) {
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatal(err)
 	}
+	probe := filepath.Join(dir, ".probe")
+	if f, err := os.Create(probe); err == nil {
+		f.Close()
+		os.Remove(probe)
+		os.Chmod(dir, 0o755)
+		t.Skip("test identity can write to 0555 directory (CAP_DAC_OVERRIDE); skipping")
+	}
 	t.Cleanup(func() { os.Chmod(dir, 0o755) })
 
 	readOnly, err := OpenSQLiteReadOnly(dbPath)
@@ -140,8 +147,20 @@ func TestOpenSQLiteReadOnly_SucceedsWithReadOnlyDirectory(t *testing.T) {
 
 func TestOpenSQLiteReadOnly_ModeRoAloneFailsOnReadOnlyDirectory(t *testing.T) {
 	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "source.db")
 
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	probe := filepath.Join(dir, ".probe")
+	if f, err := os.Create(probe); err == nil {
+		f.Close()
+		os.Remove(probe)
+		os.Chmod(dir, 0o755)
+		t.Skip("test identity can write to 0555 directory (CAP_DAC_OVERRIDE); skipping")
+	}
+	os.Chmod(dir, 0o755)
+
+	dbPath := filepath.Join(dir, "source.db")
 	db, err := OpenSQLite(dbPath)
 	if err != nil {
 		t.Fatal(err)
