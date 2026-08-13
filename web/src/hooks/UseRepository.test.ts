@@ -48,6 +48,11 @@ describe('UseRepository', () => {
       renderHook(() => useRepository('myorg', undefined), {wrapper});
       expect(fetchRepositoryDetails).not.toHaveBeenCalled();
     });
+
+    it('does not fetch when enabled is false', () => {
+      renderHook(() => useRepository('myorg', 'myrepo', false), {wrapper});
+      expect(fetchRepositoryDetails).not.toHaveBeenCalled();
+    });
   });
 
   describe('useTransitivePermissions', () => {
