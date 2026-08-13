@@ -127,6 +127,13 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                         result = future.result()
                     except Exception:
                         logger.exception("Unexpected error indexing manifest")
+                        self._mark_failed(
+                            mss_row.manifest.id,
+                            "unexpected_error",
+                            {"error": "unexpected worker error"},
+                            indexer_hash,
+                        )
+                        secscan_v2_scan_result.labels(result="failed").inc()
                         continue
                     self._process_index_result(mss_row.manifest, manifest, result, indexer_hash)
 

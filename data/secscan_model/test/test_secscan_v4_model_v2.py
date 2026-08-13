@@ -603,6 +603,16 @@ class TestPerformIndexingCycle:
         ):
             assert mss.indexer_hash == "none"
 
+    def test_marks_failed_on_unexpected_exception(self, initialized_db, scanner):
+        scanner._secscan_api.index.side_effect = RuntimeError("boom")
+
+        scanner.perform_indexing(batch_size=100)
+
+        for mss in ManifestSecurityStatus.select().where(
+            ManifestSecurityStatus.index_status == IndexStatus.FAILED
+        ):
+            assert mss.indexer_hash == "unexpected_error"
+
     def test_handles_deleted_manifest(self, initialized_db, scanner):
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id

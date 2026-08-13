@@ -404,6 +404,7 @@ _SCHEMA_FOR = {
     "GetVulnerabilityReport": "VulnerabilityReport",
     "GetNotification": "PagedNotifications",
     "DeleteNotification": None,
+    "DeleteIndexReport": None,
 }
 
 
