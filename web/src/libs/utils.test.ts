@@ -6,6 +6,7 @@ import {
   formatSize,
   isValidEmail,
   validateTeamName,
+  validateRobotName,
   parseRepoNameFromUrl,
   parseOrgNameFromUrl,
   parseTagNameFromUrl,
@@ -87,6 +88,60 @@ describe('validateTeamName', () => {
     expect(validateTeamName('')).toBe(false);
     expect(validateTeamName('-team')).toBe(false);
     expect(validateTeamName('team-')).toBe(false);
+  });
+});
+
+describe('validateRobotName', () => {
+  it('accepts valid robot names', () => {
+    expect(validateRobotName('myrobot')).toBe(true);
+    expect(validateRobotName('my-robot')).toBe(true);
+    expect(validateRobotName('my.robot')).toBe(true);
+    expect(validateRobotName('my_robot')).toBe(true);
+    expect(validateRobotName('robot123')).toBe(true);
+    expect(validateRobotName('r1')).toBe(true);
+  });
+
+  it('rejects names that are too short', () => {
+    expect(validateRobotName('')).toBe(false);
+    expect(validateRobotName('a')).toBe(false);
+  });
+
+  it('rejects names that are too long', () => {
+    expect(validateRobotName('a'.repeat(256))).toBe(false);
+  });
+
+  it('accepts names at the length boundaries', () => {
+    expect(validateRobotName('ab')).toBe(true);
+    expect(validateRobotName('a'.repeat(255))).toBe(true);
+  });
+
+  it('rejects names with uppercase letters', () => {
+    expect(validateRobotName('MyRobot')).toBe(false);
+  });
+
+  it('rejects names with spaces', () => {
+    expect(validateRobotName('my robot')).toBe(false);
+  });
+
+  it('rejects names starting or ending with separator', () => {
+    expect(validateRobotName('-robot')).toBe(false);
+    expect(validateRobotName('robot-')).toBe(false);
+    expect(validateRobotName('.robot')).toBe(false);
+    expect(validateRobotName('robot.')).toBe(false);
+    expect(validateRobotName('_robot')).toBe(false);
+    expect(validateRobotName('robot_')).toBe(false);
+  });
+
+  it('rejects names with consecutive separators', () => {
+    expect(validateRobotName('my--robot')).toBe(false);
+    expect(validateRobotName('my..robot')).toBe(false);
+    expect(validateRobotName('my__robot')).toBe(false);
+  });
+
+  it('accepts names with dots and hyphens (aligned with backend)', () => {
+    expect(validateRobotName('my.robot-1')).toBe(true);
+    expect(validateRobotName('test_bot.v2')).toBe(true);
+    expect(validateRobotName('a-b.c_d')).toBe(true);
   });
 });
 

@@ -27,6 +27,7 @@ import {useRepositories} from 'src/hooks/UseRepositories';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {Entity} from 'src/resources/UserResource';
+import {validateRobotName as validateRobotNamePattern} from 'src/libs/utils';
 
 export default function CreateRobotAccountModal(
   props: CreateRobotAccountModalProps,
@@ -115,7 +116,7 @@ export default function CreateRobotAccountModal(
 
   // addDefaultPermsForRobotMutator
   const validateRobotName = () => {
-    return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(robotName);
+    return validateRobotNamePattern(robotName);
   };
 
   const handleModalToggle = () => {

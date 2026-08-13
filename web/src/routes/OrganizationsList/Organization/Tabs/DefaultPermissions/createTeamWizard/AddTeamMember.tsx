@@ -18,6 +18,7 @@ import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAnd
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ToggleDrawer from 'src/components/ToggleDrawer';
+import {validateRobotName as validateRobotNamePattern} from 'src/libs/utils';
 
 const memberAndRobotColNames = {
   teamMember: 'Team Member',
@@ -106,9 +107,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const validateRobotName = () => {
-    return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(
-      newRobotAccntName,
-    );
+    return validateRobotNamePattern(newRobotAccntName);
   };
 
   const drawerPanelContent = (
