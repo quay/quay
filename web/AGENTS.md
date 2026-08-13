@@ -146,6 +146,20 @@ const RepositoriesList = lazy(() => import('./RepositoriesList'));
 
 **Legacy:** Recoil atoms in `src/atoms/` (avoid for new code)
 
+### Anonymous Access
+
+When `FEATURE_ANONYMOUS_ACCESS` is enabled, unauthenticated users can browse public repositories without signing in. This cross-cutting pattern touches auth, routing, data fetching, and the UI shell.
+
+**Anonymous user sentinel:** `fetchUser()` in `UserResource.ts` catches 401 from `/api/v1/user/` and returns an `ANONYMOUS_USER` object (`anonymous: true`) instead of throwing. Check `user?.anonymous` to detect the anonymous state — never check for a missing user object, since the sentinel is always present.
+
+**Route protection:** Use `ProtectedRepositoryRoute` (`src/routes/ProtectedRepositoryRoute.tsx`) to guard repository routes. It pre-checks repo accessibility for anonymous users: redirects 401/403 to `/signin` and renders `<RequestError>` for other errors (never returns `null` for terminal errors). All routes — including anonymous ones — must render inside the shared `<Page>` shell (`StandaloneMain.tsx`) so `SystemStatusBanner`, `GlobalMessages`, `Alerts`, and `QuayFooter` remain visible.
+
+**Hook gating:** Data-fetching hooks that require authentication (notifications, teams, user-specific data) must use the `enabled` parameter to skip queries for anonymous users. Examples: `useQuery([...], fn, { enabled: !!user })` in `UseAuthorizedApplications.ts`, `enabled` prop in `UseTeams`. New hooks fetching user-specific data should follow this pattern.
+
+**Axios interceptor ordering:** The 401 interceptor in `src/libs/axios.ts` refreshes OpenShift plugin tokens (`window.insights.chrome.auth`) *before* checking `shouldSkipRedirect`. The anonymous-mode skip logic (`_anonymousMode`) lives in the standalone-only `else` branch. Never move anonymous skip logic before the plugin token refresh — doing so wedges OpenShift Console sessions.
+
+**Pagination:** `fetchRepositories()` and `fetchRepositoriesForNamespace()` in `RepositoryResource.ts` recursively follow `next_page` cursors. Any new public-data fetch that returns paginated results must do the same — dropping cursors truncates results for anonymous users browsing large public namespaces.
+
 ## Critical Rules
 
 1. **No Early Returns with Loading Spinners**
