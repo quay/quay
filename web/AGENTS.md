@@ -150,11 +150,11 @@ const RepositoriesList = lazy(() => import('./RepositoriesList'));
 
 When `FEATURE_ANONYMOUS_ACCESS` is enabled, unauthenticated users can browse public repositories without signing in. This cross-cutting pattern touches auth, routing, data fetching, and the UI shell.
 
-**Anonymous user sentinel:** `fetchUser()` in `UserResource.ts` catches 401 from `/api/v1/user/` and returns an `ANONYMOUS_USER` object (`anonymous: true`) instead of throwing. Check `user?.anonymous` to detect the anonymous state — never check for a missing user object, since the sentinel is always present.
+**Anonymous user sentinel:** `fetchUser()` in `UserResource.ts` catches 401 from `/api/v1/user/` and returns an `ANONYMOUS_USER` object (`anonymous: true`) instead of throwing. After user loading completes, check `user?.anonymous` to detect the anonymous state. During loading, `user` may be null; do not treat a missing user as anonymous.
 
 **Route protection:** Use `ProtectedRepositoryRoute` (`src/routes/ProtectedRepositoryRoute.tsx`) to guard repository routes. It pre-checks repo accessibility for anonymous users: redirects 401/403 to `/signin` and renders `<RequestError>` for other errors (never returns `null` for terminal errors). All routes — including anonymous ones — must render inside the shared `<Page>` shell (`StandaloneMain.tsx`) so `SystemStatusBanner`, `GlobalMessages`, `Alerts`, and `QuayFooter` remain visible.
 
-**Hook gating:** Data-fetching hooks that require authentication (notifications, teams, user-specific data) must use the `enabled` parameter to skip queries for anonymous users. Examples: `useQuery([...], fn, { enabled: !!user })` in `UseAuthorizedApplications.ts`, `enabled` prop in `UseTeams`. New hooks fetching user-specific data should follow this pattern.
+**Hook gating:** Data-fetching hooks that require authentication (notifications, teams, user-specific data) must use the `enabled` parameter to skip queries for anonymous users. Gate on the user being non-null and not anonymous: `useQuery([...], fn, { enabled: user != null && !user.anonymous })`. Using `!!user` alone is insufficient because the `ANONYMOUS_USER` sentinel is truthy. New hooks fetching user-specific data should follow this pattern.
 
 **Axios interceptor ordering:** The 401 interceptor in `src/libs/axios.ts` refreshes OpenShift plugin tokens (`window.insights.chrome.auth`) *before* checking `shouldSkipRedirect`. The anonymous-mode skip logic (`_anonymousMode`) lives in the standalone-only `else` branch. Never move anonymous skip logic before the plugin token refresh — doing so wedges OpenShift Console sessions.
 
