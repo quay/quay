@@ -74,6 +74,12 @@ objects:
                 labelSelector:
                   matchLabels:
                     app: quay-envoy
+                topologyKey: kubernetes.io/hostname
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: quay-envoy
                 topologyKey: topology.kubernetes.io/zone
         terminationGracePeriodSeconds: 60
         containers:
@@ -208,6 +214,21 @@ objects:
         - key: workload
           value: envoy
           effect: NoSchedule
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: quay-rls
+                topologyKey: kubernetes.io/hostname
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: quay-rls
+                topologyKey: topology.kubernetes.io/zone
         containers:
         - name: quay-rls
           image: ${RLS_IMAGE}:${RLS_IMAGE_TAG}
