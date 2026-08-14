@@ -48,6 +48,25 @@ _TRANSIENT_ERROR_MESSAGES = frozenset(
 )
 
 
+class _LDAPTraceRedactor:
+    """
+    Wraps the LDAP output for password redaction when USERS_DEBUG is set.
+    """
+
+    _BIND_PW_RE = re.compile(
+        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*\n\s*')((?:\\.|[^'\\])*)(')",
+    )
+
+    def __init__(self, stream=None):
+        self._stream = stream or sys.stdout
+
+    def write(self, data):
+        self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", data))
+
+    def flush(self):
+        self._stream.flush()
+
+
 class LDAPCache:
     """
     Thread-safe in-memory TTL cache with LRU eviction for LDAP query results.
@@ -383,7 +402,13 @@ class LDAPConnection(object):
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+        if trace_level:
+            self._conn = ldap.initialize(
+                self._ldap_uri, trace_level=trace_level, trace_file=_LDAPTraceRedactor()
+            )
+        else:
+            self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+
         self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT

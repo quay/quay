@@ -1,5 +1,6 @@
 import unittest
 from contextlib import contextmanager
+from io import StringIO
 
 import ldap
 from ldap.filter import filter_format
@@ -9,6 +10,7 @@ from mockldap import MockLdap
 from app import app
 from data import model
 from data.users import LDAPUsers
+from data.users.externalldap import _LDAPTraceRedactor
 from initdb import finished_database_for_testing, setup_database_for_testing
 
 
