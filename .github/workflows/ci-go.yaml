@@ -557,8 +557,8 @@ jobs:
           fi
           echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
 
-          systemctl --user status || true
-          podman info --format '{{.Host.CgroupsVersion}}' || true
+          systemctl --user show-environment >/dev/null
+          test "$(podman info --format '{{.Host.CgroupsVersion}}')" = "v2"
 
       - name: Build container image
         run: |
@@ -574,6 +574,20 @@ jobs:
             -hostname=localhost \
             -data-dir="$HOME/.local/share/quay" \
             -image-archive=/tmp/quay-mirror.tar
+
+      - name: Verify rootless install
+        run: |
+          set -euo pipefail
+
+          QUADLET_DIR="$HOME/.config/containers/systemd"
+          test -f "$QUADLET_DIR/quay.container"
+          echo "Quadlet unit file exists"
+
+          grep -q ':/data:Z' "$QUADLET_DIR/quay.container"
+          echo "Volume mount uses :Z"
+
+          systemctl --user is-active quay.service
+          echo "quay.service is active"
 
       - name: Trust registry TLS certificate
         run: |
@@ -626,7 +640,7 @@ jobs:
             docker://localhost:8443
 
       - name: Verify healthz
-        run: curl -kfs https://localhost:8443/healthz
+        run: curl --cacert "$HOME/.local/share/quay/ssl.cert" -fs https://localhost:8443/healthz
 
       - name: Verify mirrored repositories
         run: |
@@ -638,7 +652,7 @@ jobs:
 
           for repo in "${expected_repos[@]}"; do
             safe_repo="${repo//\//-}"
-            skopeo list-tags --tls-verify=false --authfile "$HOME/.docker/config.json" \
+            skopeo list-tags --authfile "$HOME/.docker/config.json" \
               "docker://localhost:8443/${repo}" \
               | tee "/tmp/tags-${safe_repo}.json"
             jq -e --arg repo "$repo" \
@@ -651,7 +665,7 @@ jobs:
       - name: Pull mirrored image
         run: |
           echo "Pulling localhost:8443/projectquay/quay:3.13.2"
-          podman pull --tls-verify=false "localhost:8443/projectquay/quay:3.13.2"
+          podman pull "localhost:8443/projectquay/quay:3.13.2"
           echo "Successfully pulled mirrored image"
 
       - name: Uninstall registry (rootless)
@@ -707,6 +721,7 @@ jobs:
           podman info > /tmp/e2e-rootless-diagnostics/podman-info.txt 2>&1 || true
           id > /tmp/e2e-rootless-diagnostics/uid-info.txt 2>&1 || true
           cat /proc/self/uid_map > /tmp/e2e-rootless-diagnostics/uid-map.txt 2>&1 || true
+          podman unshare cat /proc/self/uid_map > /tmp/e2e-rootless-diagnostics/podman-uid-map.txt 2>&1 || true
 
       - name: Upload diagnostics
         if: always()
