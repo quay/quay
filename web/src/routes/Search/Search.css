@@ -1,0 +1,103 @@
+.search-results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.search-result-item {
+  padding: var(--pf-t--global--spacer--md) 0;
+  border-bottom: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-repo-name {
+  font-size: var(--pf-t--global--font--size--lg);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.search-result-star-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  min-width: 3em;
+}
+
+.search-result-description {
+  color: var(--pf-t--global--text--color--subtle);
+  margin-top: var(--pf-t--global--spacer--xs);
+}
+
+.search-result-metadata {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--sm);
+  margin-top: var(--pf-t--global--spacer--xs);
+}
+
+.search-result-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.search-signal-strength {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.search-signal-bar {
+  display: inline-block;
+  width: 3px;
+  background-color: var(--pf-t--global--border--color--default);
+  border-radius: 1px;
+}
+
+.search-signal-bar-active {
+  background-color: var(--pf-t--global--color--brand--default);
+}
+
+.search-page-navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  padding-top: var(--pf-t--global--spacer--lg);
+}
+
+.search-max-results-help {
+  color: var(--pf-t--global--text--color--subtle);
+  font-style: italic;
+}
+
+.search-bar-container {
+  display: flex;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--md) 0;
+}
+
+.search-toolbar-input {
+  width: 100%;
+  max-width: 600px;
+}
+
+.search-suggestion-kind {
+  display: inline-block;
+  min-width: 3em;
+  font-size: var(--pf-t--global--font--size--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  text-transform: capitalize;
+}
+
+.search-suggestion-description {
+  font-size: var(--pf-t--global--font--size--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  margin-top: var(--pf-t--global--spacer--xs);
+  padding-left: var(--pf-t--global--spacer--lg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
