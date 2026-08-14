@@ -1,5 +1,6 @@
 import json
 import os
+import socket
 import unittest
 import unittest.util
 from contextlib import contextmanager
@@ -16,7 +17,11 @@ from features import FeatureNameValue
 from initdb import finished_database_for_testing, setup_database_for_testing
 from test.helpers import liveserver_app
 
-_PORT_NUMBER = 5001
+
+def _get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 @contextmanager
@@ -48,10 +53,9 @@ def fake_keystone(version=3, requires_email=True):
 
 
 def _create_app(requires_email=True):
-    global _PORT_NUMBER
-    _PORT_NUMBER = _PORT_NUMBER + 1
+    port = _get_free_port()
 
-    server_url = "http://localhost:%s" % (_PORT_NUMBER)
+    server_url = "http://localhost:%s" % port
 
     users = [
         {"username": "adminuser", "name": "Admin User", "password": "adminpass"},
@@ -106,7 +110,7 @@ def _create_app(requires_email=True):
         return None
 
     ks_app = Flask("testks")
-    ks_app.config["SERVER_HOSTNAME"] = "localhost:%s" % _PORT_NUMBER
+    ks_app.config["SERVER_HOSTNAME"] = "localhost:%s" % port
     if os.environ.get("DEBUG") == "true":
         ks_app.config["DEBUG"] = True
 
@@ -296,7 +300,7 @@ def _create_app(requires_email=True):
 
         abort(403)
 
-    return ks_app, _PORT_NUMBER
+    return ks_app, port
 
 
 class KeystoneAuthTestsMixin:
