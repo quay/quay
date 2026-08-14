@@ -18,7 +18,7 @@ import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAnd
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ToggleDrawer from 'src/components/ToggleDrawer';
-import {validateRobotName as validateRobotNamePattern} from 'src/libs/utils';
+import {validateRobotName} from 'src/libs/utils';
 
 const memberAndRobotColNames = {
   teamMember: 'Team Member',
@@ -106,10 +106,6 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     }
   };
 
-  const validateRobotName = () => {
-    return validateRobotNamePattern(newRobotAccntName);
-  };
-
   const drawerPanelContent = (
     <>
       <Content>
@@ -126,14 +122,14 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
         descriptionLabel="Provide an optional description for your new robot account:"
         helperText="Enter a description to provide extra information to your teammates about this new team account. Max length: 255"
         nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$."
-        validateName={validateRobotName}
+        validateName={() => validateRobotName(newRobotAccntName)}
       />
       <div className="drawer-footer">
         <Button
           data-testid="create-robot-accnt-drawer-btn"
           variant="primary"
           onClick={onCreateRobotAccount}
-          isDisabled={!validateRobotName()}
+          isDisabled={!validateRobotName(newRobotAccntName)}
         >
           Add robot account
         </Button>

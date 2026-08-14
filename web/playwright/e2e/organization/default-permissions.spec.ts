@@ -330,7 +330,6 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     const newTeamName = uniqueName('newteam').substring(0, 20);
     const teamDescription = 'relegation club';
-    // Robot names must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$
     const newRobotShortname = `newbot${Date.now()}`.substring(0, 20);
     const newRobotDescription = 'premier league manager';
 
@@ -443,7 +442,6 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     const appliedToTeam = await api.team(org.name, 'team2');
     const addToRepo = await api.repository(org.name, 'testrepo');
 
-    // Robot names must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$
     const newRobotShortname = `newbot${Date.now()}`.substring(0, 20);
     const newRobotDescription = 'premier league manager';
 

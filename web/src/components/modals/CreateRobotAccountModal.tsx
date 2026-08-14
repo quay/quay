@@ -27,7 +27,7 @@ import {useRepositories} from 'src/hooks/UseRepositories';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {Entity} from 'src/resources/UserResource';
-import {validateRobotName as validateRobotNamePattern} from 'src/libs/utils';
+import {validateRobotName} from 'src/libs/utils';
 
 export default function CreateRobotAccountModal(
   props: CreateRobotAccountModalProps,
@@ -114,11 +114,6 @@ export default function CreateRobotAccountModal(
     }
   };
 
-  // addDefaultPermsForRobotMutator
-  const validateRobotName = () => {
-    return validateRobotNamePattern(robotName);
-  };
-
   const handleModalToggle = () => {
     // clear selected states
     setSelectedRepos([]);
@@ -156,7 +151,7 @@ export default function CreateRobotAccountModal(
           descriptionLabel="Provide an optional description for your new robot:"
           helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
           nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$."
-          validateName={validateRobotName}
+          validateName={() => validateRobotName(robotName)}
         />
       </>
     </WizardStep>
@@ -267,7 +262,7 @@ export default function CreateRobotAccountModal(
           <Footer
             onSubmit={onSubmit}
             isDrawerExpanded={isDrawerExpanded}
-            isDataValid={validateRobotName}
+            isDataValid={() => validateRobotName(robotName)}
           />
         }
       >
