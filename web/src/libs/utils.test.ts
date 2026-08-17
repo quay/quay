@@ -143,6 +143,116 @@ describe('validateRobotName', () => {
     expect(validateRobotName('test_bot.v2')).toBe(true);
     expect(validateRobotName('a-b.c_d')).toBe(true);
   });
+
+  it('rejects names with special characters', () => {
+    expect(validateRobotName('my!robot')).toBe(false);
+    expect(validateRobotName('my@robot')).toBe(false);
+    expect(validateRobotName('my#robot')).toBe(false);
+    expect(validateRobotName('my$robot')).toBe(false);
+    expect(validateRobotName('my%robot')).toBe(false);
+    expect(validateRobotName('my^robot')).toBe(false);
+    expect(validateRobotName('my&robot')).toBe(false);
+    expect(validateRobotName('my*robot')).toBe(false);
+    expect(validateRobotName('my+robot')).toBe(false);
+    expect(validateRobotName('my=robot')).toBe(false);
+  });
+
+  it('accepts names containing only digits', () => {
+    expect(validateRobotName('123')).toBe(true);
+    expect(validateRobotName('42')).toBe(true);
+    expect(validateRobotName('007')).toBe(true);
+  });
+
+  it('rejects names with mixed consecutive separators', () => {
+    expect(validateRobotName('my.-robot')).toBe(false);
+    expect(validateRobotName('my._robot')).toBe(false);
+    expect(validateRobotName('my-.robot')).toBe(false);
+    expect(validateRobotName('my-_robot')).toBe(false);
+    expect(validateRobotName('my_.robot')).toBe(false);
+    expect(validateRobotName('my_-robot')).toBe(false);
+  });
+
+  it('rejects names with unicode characters', () => {
+    expect(validateRobotName('roböt')).toBe(false);
+    expect(validateRobotName('ébot')).toBe(false);
+    expect(validateRobotName('bot☃')).toBe(false);
+  });
+
+  it('rejects names with leading or trailing whitespace', () => {
+    expect(validateRobotName(' robot')).toBe(false);
+    expect(validateRobotName('robot ')).toBe(false);
+    expect(validateRobotName(' robot ')).toBe(false);
+    expect(validateRobotName('\trobot')).toBe(false);
+    expect(validateRobotName('robot\n')).toBe(false);
+  });
+
+  it('rejects names with slashes', () => {
+    expect(validateRobotName('my/robot')).toBe(false);
+    expect(validateRobotName('my\\robot')).toBe(false);
+  });
+
+  it('accepts boundary-length names with separators', () => {
+    // 2 chars minimum with a valid pattern
+    expect(validateRobotName('a1')).toBe(true);
+    // 255 chars with separators (pattern: aaa...a-a)
+    const longWithSep = 'a'.repeat(127) + '-' + 'a'.repeat(127);
+    expect(longWithSep.length).toBe(255);
+    expect(validateRobotName(longWithSep)).toBe(true);
+  });
+
+  it('rejects 256-char name with separators', () => {
+    const tooLongWithSep = 'a'.repeat(127) + '-' + 'a'.repeat(128);
+    expect(tooLongWithSep.length).toBe(256);
+    expect(validateRobotName(tooLongWithSep)).toBe(false);
+  });
+
+  it('accepts complex multi-separator names', () => {
+    expect(validateRobotName('a.b-c_d.e-f')).toBe(true);
+    expect(validateRobotName('build.v1-rc2')).toBe(true);
+    expect(validateRobotName('ci_bot.prod-1')).toBe(true);
+  });
+
+  it('is aligned with validateTeamName for names in the 2-255 char range', () => {
+    // validateRobotName adds length constraints [2,255] on top of the
+    // same character pattern that validateTeamName uses. For names that
+    // meet the length requirement, both should agree.
+    const validNames = [
+      'ab',
+      'myteam',
+      'my-team',
+      'my.team',
+      'my_team',
+      'team123',
+      'a.b-c_d',
+    ];
+    for (const name of validNames) {
+      expect(validateRobotName(name)).toBe(validateTeamName(name));
+    }
+
+    const invalidNames = [
+      'MyTeam',
+      'my team',
+      '-team',
+      'team-',
+      '.team',
+      'team.',
+      'my--team',
+    ];
+    for (const name of invalidNames) {
+      expect(validateRobotName(name)).toBe(validateTeamName(name));
+    }
+  });
+
+  it('differs from validateTeamName only on length constraints', () => {
+    // Single-char: validateTeamName accepts, validateRobotName rejects
+    expect(validateTeamName('a')).toBe(true);
+    expect(validateRobotName('a')).toBe(false);
+
+    // 256-char: validateTeamName accepts, validateRobotName rejects
+    const long = 'a'.repeat(256);
+    expect(validateTeamName(long)).toBe(true);
+    expect(validateRobotName(long)).toBe(false);
+  });
 });
 
 describe('parseRepoNameFromUrl', () => {
