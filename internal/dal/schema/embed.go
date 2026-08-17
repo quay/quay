@@ -22,3 +22,13 @@ var SeedDataSQL string
 //
 //go:embed sqlite/compatibility
 var CompatibilitySQL embed.FS
+
+// OMRSourceSchemaSQL is the approved OMR v2 intermediate schema.
+//
+//go:embed sqlite/omr/3f8d7acdf7f9_schema.sql
+var OMRSourceSchemaSQL string
+
+// OMRSourceSeedDataSQL seeds the approved OMR v2 intermediate.
+//
+//go:embed sqlite/omr/3f8d7acdf7f9_seed_data.sql
+var OMRSourceSeedDataSQL string

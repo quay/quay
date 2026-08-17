@@ -516,7 +516,7 @@ go-schema-check:
 	  (echo "ERROR: Generated Go code is out of date. Run 'make go-schema' and commit." && exit 1)
 	@echo "All checks passed."
 
-.PHONY: go-build go-test go-fmt go-vet go-clean
+.PHONY: go-build go-test go-test-postgres go-fmt go-vet go-clean
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
@@ -524,6 +524,25 @@ go-build:
 
 go-test:
 	go test -cover -race ./...
+
+# Run PostgreSQL-source integration tests against a disposable Postgres 16.
+# Override DOCKER=podman when needed.
+GO_PG_TEST_CONTAINER := quay-go-postgres-testrunner
+GO_PG_TEST_PORT := 5434
+GO_PG_TEST_DSN := postgres://quay:quay@localhost:$(GO_PG_TEST_PORT)/quay?sslmode=disable
+
+go-test-postgres:
+	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true
+	$(DOCKER) run --name $(GO_PG_TEST_CONTAINER) \
+		-e POSTGRES_USER=quay -e POSTGRES_PASSWORD=quay -e POSTGRES_DB=quay \
+		-p $(GO_PG_TEST_PORT):5432 -d docker.io/library/postgres:16
+	@until $(DOCKER) exec $(GO_PG_TEST_CONTAINER) pg_isready -U quay >/dev/null 2>&1; do \
+		echo "waiting for postgres"; sleep 1; \
+	done
+	QUAY_TEST_POSTGRES_DSN=$(GO_PG_TEST_DSN) go test ./internal/migrate/... -run Postgres -v -count=1; \
+	status=$$?; \
+	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1; \
+	exit $$status
 
 go-fmt:
 	go fmt ./...
