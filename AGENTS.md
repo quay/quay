@@ -116,6 +116,19 @@ ln -sf "$(git -C /path/to/main/repo rev-parse --show-toplevel)/web/node_modules"
        "$(git rev-parse --show-toplevel)/web/node_modules"
 ```
 
+### Files Restricted to Org Members
+
+PRs modifying the following files are accepted only from `quay` org members:
+
+- `.coderabbit.yaml` — CodeRabbit review configuration
+- `.github/workflows/` — CI/CD workflow definitions
+- `.github/CODEOWNERS` — code ownership rules
+- `.fullsend/` — agent and automation configuration
+
+External contributors: if an issue involves these files, comment on the issue and a maintainer will arrange an internal PR. Do not open a PR for these files — it will be closed.
+
+**Triage agents:** do not apply the `good first issue` label to issues whose resolution requires modifying any of the files listed above.
+
 ## Local Dev URLs
 
 - Quay UI: http://localhost:8080
