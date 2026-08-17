@@ -483,6 +483,152 @@ class TestQuotaEnforcementV2:
                 raw_body=chunk3_large,
             )
 
+    @pytest.mark.parametrize(
+        ("rejection_endpoint", "rejection_method"),
+        [
+            ("v2.upload_chunk", "PATCH"),
+            ("v2.monolithic_upload_or_last_chunk", "PUT"),
+        ],
+    )
+    def test_small_upload_succeeds_after_quota_rejection(
+        self,
+        rejection_endpoint,
+        rejection_method,
+        client,
+        app,
+        initialized_db,
+    ):
+        with patch.dict(
+            app.config,
+            {
+                "FEATURE_QUOTA_MANAGEMENT": True,
+                "FEATURE_VERIFY_QUOTA": True,
+            },
+        ):
+            org_name = f"test-quota-cancel-{rejection_method.lower()}"
+            repo_name = "test-repo"
+            user = model.user.get_user("devtable")
+
+            org = model.organization.create_organization(org_name, f"{org_name}@test.com", user)
+            model.repository.create_repository(org_name, repo_name, user)
+
+            namespace_user = model.user.get_user_or_org(org_name)
+            quota = model.namespacequota.create_namespace_quota(namespace_user, 5 * 1024)
+            model.namespacequota.create_namespace_quota_limit(quota, "reject", 100)
+
+            from data.model.quota import run_backfill
+
+            run_backfill(org.id)
+
+            access = [
+                {
+                    "type": "repository",
+                    "name": f"{org_name}/{repo_name}",
+                    "actions": ["pull", "push"],
+                }
+            ]
+            context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+            token = generate_bearer_token(
+                realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+            )
+            auth_headers = {"Authorization": f"Bearer {token}"}
+            repository_params = {"repository": f"{org_name}/{repo_name}"}
+
+            init_response = conduct_call(
+                client,
+                "v2.start_blob_upload",
+                url_for,
+                "POST",
+                repository_params,
+                expected_code=202,
+                headers=auth_headers,
+            )
+            upload_params = {
+                **repository_params,
+                "upload_uuid": init_response.headers["Docker-Upload-UUID"],
+            }
+            oversized_blob = b"x" * (6 * 1024)
+            conduct_call(
+                client,
+                "v2.upload_chunk",
+                url_for,
+                "PATCH",
+                upload_params,
+                expected_code=202,
+                headers={
+                    **auth_headers,
+                    "Content-Range": "0-6143",
+                    "Content-Type": "application/octet-stream",
+                },
+                raw_body=oversized_blob,
+            )
+
+            rejection_params = dict(upload_params)
+            rejection_headers = dict(auth_headers)
+            rejection_body = None
+            if rejection_method == "PATCH":
+                rejection_headers.update(
+                    {
+                        "Content-Range": "6144-6144",
+                        "Content-Type": "application/octet-stream",
+                    }
+                )
+                rejection_body = b"y"
+            else:
+                rejection_params["digest"] = f"sha256:{hashlib.sha256(oversized_blob).hexdigest()}"
+                rejection_headers["Content-Length"] = "0"
+
+            conduct_call(
+                client,
+                rejection_endpoint,
+                url_for,
+                rejection_method,
+                rejection_params,
+                expected_code=403,
+                headers=rejection_headers,
+                raw_body=rejection_body,
+            )
+
+            tiny_blob = b"z"
+            tiny_digest = f"sha256:{hashlib.sha256(tiny_blob).hexdigest()}"
+            retry_response = conduct_call(
+                client,
+                "v2.start_blob_upload",
+                url_for,
+                "POST",
+                repository_params,
+                expected_code=202,
+                headers=auth_headers,
+            )
+            retry_params = {
+                **repository_params,
+                "upload_uuid": retry_response.headers["Docker-Upload-UUID"],
+            }
+            conduct_call(
+                client,
+                "v2.upload_chunk",
+                url_for,
+                "PATCH",
+                retry_params,
+                expected_code=202,
+                headers={
+                    **auth_headers,
+                    "Content-Range": "0-0",
+                    "Content-Type": "application/octet-stream",
+                },
+                raw_body=tiny_blob,
+            )
+            retry_params["digest"] = tiny_digest
+            conduct_call(
+                client,
+                "v2.monolithic_upload_or_last_chunk",
+                url_for,
+                "PUT",
+                retry_params,
+                expected_code=201,
+                headers={**auth_headers, "Content-Length": "0"},
+            )
+
     def test_shared_blob_deduplication_in_quota(self, client, app, initialized_db):
         """
         Verify shared blobs are counted once in quota calculations.
