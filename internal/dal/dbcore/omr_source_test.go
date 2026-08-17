@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -15,9 +17,16 @@ func TestInitOMRSourceIntermediate(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	var out bytes.Buffer
-	if err := InitOMRSourceIntermediate(t.Context(), db, &out); err != nil {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	if err := InitOMRSourceIntermediate(t.Context(), db); err != nil {
 		t.Fatalf("InitOMRSourceIntermediate: %v", err)
+	}
+	if got := logs.String(); !strings.Contains(got, `"msg":"initialized OMR source intermediate database"`) || !strings.Contains(got, `"revision":"3f8d7acdf7f9"`) {
+		t.Errorf("structured initialization log missing message or revision: %s", got)
 	}
 
 	ver, err := SchemaVersion(t.Context(), db)
@@ -31,7 +40,7 @@ func TestInitOMRSourceIntermediate(t *testing.T) {
 	if err := IntegrityCheck(t.Context(), db); err != nil {
 		t.Errorf("IntegrityCheck: %v", err)
 	}
-	if err := foreignKeyCheck(t.Context(), db); err != nil {
+	if err := ForeignKeyCheck(t.Context(), db); err != nil {
 		t.Errorf("foreign key check: %v", err)
 	}
 
@@ -45,7 +54,7 @@ func TestInitOMRSourceIntermediate(t *testing.T) {
 		}
 	}
 
-	if err := InitOMRSourceIntermediate(t.Context(), db, &out); err == nil {
+	if err := InitOMRSourceIntermediate(t.Context(), db); err == nil {
 		t.Fatal("expected second InitOMRSourceIntermediate call to fail on an already-populated database")
 	}
 }

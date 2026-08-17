@@ -58,7 +58,7 @@ func ensureSchema(ctx context.Context, db *sql.DB, dbPath string) error {
 	}
 	slog.Info("database backup created", "path", backupPath)
 
-	if err := RunBridge(ctx, db, io.Discard); err != nil {
+	if err := RunBridge(ctx, db); err != nil {
 		return fmt.Errorf("migrate (restore from %s): %w", backupPath, err)
 	}
 

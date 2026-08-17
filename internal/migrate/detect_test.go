@@ -1,8 +1,11 @@
 package migrate
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -43,6 +46,150 @@ WantedBy=default.target
 			t.Errorf("mount %s: got %q, want %q", container, got, host)
 		}
 	}
+}
+
+func TestSourceFromUnitDetectsKCSPostgres(t *testing.T) {
+	for _, configMount := range []string{"/quay-registry/conf/stack", "/conf/stack"} {
+		t.Run(configMount, func(t *testing.T) {
+			unitDir := t.TempDir()
+			configDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte("DB_URI: postgresql://user:password@quay-postgres/quay\nSERVER_HOSTNAME: registry.example.com\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			writePostgresUnits(t, unitDir)
+
+			runner := &topologyRunner{outputs: map[string]string{
+				"podman inspect quay-postgres --format {{.Pod}} {{.NetworkSettings.SandboxKey}}": "pod-id /run/user/1000/netns/quay",
+				"podman pod inspect quay-pod --format {{.Id}}":                                   "pod-id",
+				"podman inspect quay-app --format {{.Pod}}":                                      "pod-id",
+			}}
+			appUnit := fmt.Sprintf("ExecStart=/usr/bin/podman run --name quay-app --pod=quay-pod -v %s:%s:Z", configDir, configMount)
+			src, err := (&Migrator{Runner: runner}).sourceFromUnit(t.Context(), appUnit, scopeUser, unitDir)
+			if err != nil {
+				t.Fatalf("sourceFromUnit: %v", err)
+			}
+			if src.DatabaseKind != databasePostgres {
+				t.Errorf("database kind = %q, want %q", src.DatabaseKind, databasePostgres)
+			}
+			if src.ConfigDir != configDir {
+				t.Errorf("config dir = %q, want %q", src.ConfigDir, configDir)
+			}
+			if src.DBPath != "" {
+				t.Errorf("PostgreSQL DB path = %q, want empty", src.DBPath)
+			}
+			if src.PodSandboxKey != "/run/user/1000/netns/quay" {
+				t.Errorf("sandbox key = %q", src.PodSandboxKey)
+			}
+		})
+	}
+}
+
+func TestSourceFromUnitUsesExplicitConfigOverride(t *testing.T) {
+	unitDir := t.TempDir()
+	configDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte("DB_URI: postgresql://user:password@quay-postgres/quay\nSERVER_HOSTNAME: registry.example.com\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writePostgresUnits(t, unitDir)
+	runner := &topologyRunner{outputs: map[string]string{
+		"podman inspect quay-postgres --format {{.Pod}} {{.NetworkSettings.SandboxKey}}": "pod-id /run/user/1000/netns/quay",
+		"podman pod inspect quay-pod --format {{.Id}}":                                   "pod-id",
+		"podman inspect quay-app --format {{.Pod}}":                                      "pod-id",
+	}}
+	m := &Migrator{Runner: runner, Source: OMRSource{ConfigDir: configDir}}
+	src, err := m.sourceFromUnit(t.Context(), "ExecStart=/usr/bin/podman run --name quay-app --pod=quay-pod", scopeUser, unitDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src.DatabaseKind != databasePostgres || src.ConfigDir != configDir {
+		t.Fatalf("source = %+v", src)
+	}
+}
+
+func TestDetectPostgresTopologyRejectsWrongPodOrMissingSandbox(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		containerOutput string
+		appPodID        string
+		want            string
+	}{
+		{name: "wrong postgres pod", containerOutput: "different-pod /run/netns/quay", appPodID: "pod-id", want: "quay-postgres container is not in quay-pod"},
+		{name: "wrong app pod", containerOutput: "pod-id /run/netns/quay", appPodID: "different-pod", want: "quay-app container is not in quay-pod"},
+		{name: "missing sandbox", containerOutput: "pod-id", appPodID: "pod-id", want: "has no sandbox key"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			unitDir := t.TempDir()
+			writePostgresUnits(t, unitDir)
+			runner := &topologyRunner{outputs: map[string]string{
+				"podman inspect quay-postgres --format {{.Pod}} {{.NetworkSettings.SandboxKey}}": tc.containerOutput,
+				"podman pod inspect quay-pod --format {{.Id}}":                                   "pod-id",
+				"podman inspect quay-app --format {{.Pod}}":                                      tc.appPodID,
+			}}
+			_, err := (&Migrator{Runner: runner}).detectPostgresTopology(t.Context(), unitDir)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("detectPostgresTopology error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestExtractDatabaseKind(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		uri  string
+		want string
+	}{
+		{name: "sqlite", uri: "sqlite:////sqlite/quay_sqlite.db", want: databaseSQLite},
+		{name: "postgres", uri: "postgresql://user:password@quay-postgres/quay", want: databasePostgres},
+		{name: "postgres explicit port", uri: "postgresql://user:password@quay-postgres:5432/quay", want: databasePostgres},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := extractDatabaseKind([]byte("DB_URI: " + tc.uri + "\n"))
+			if err != nil {
+				t.Fatalf("extractDatabaseKind: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("database kind = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestExtractDatabaseKindRejectsUnsupportedPostgresWithoutLeakingURI(t *testing.T) {
+	const secret = "do-not-print-this"
+	_, err := extractDatabaseKind([]byte("DB_URI: postgresql://user:" + secret + "@other-postgres/quay\n"))
+	if err == nil {
+		t.Fatal("extractDatabaseKind unexpectedly accepted unsupported PostgreSQL host")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("error leaked database password: %v", err)
+	}
+}
+
+func writePostgresUnits(t *testing.T, unitDir string) {
+	t.Helper()
+	postgresUnit := "ExecStart=/usr/bin/podman run --name quay-postgres --pod=quay-pod image\n"
+	if err := os.WriteFile(filepath.Join(unitDir, "quay-postgres.service"), []byte(postgresUnit), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(unitDir, "quay-pod.service"), []byte("[Service]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type topologyRunner struct {
+	outputs map[string]string
+}
+
+func (*topologyRunner) Run(context.Context, string, ...string) error { return nil }
+
+func (r *topologyRunner) Output(_ context.Context, name string, args ...string) (string, error) {
+	command := name + " " + strings.Join(args, " ")
+	output, ok := r.outputs[command]
+	if !ok {
+		return "", fmt.Errorf("unexpected command: %s", command)
+	}
+	return output, nil
 }
 
 func TestExtractHostname(t *testing.T) {

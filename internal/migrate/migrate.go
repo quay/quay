@@ -17,24 +17,29 @@ const (
 	scopeSystem     = "system"
 	scopeUser       = "user"
 	systemdUserFlag = "--user"
+
+	databaseSQLite   = "sqlite"
+	databasePostgres = "postgres"
 )
 
-// OMRSource describes a detected OMR v2.0.x SQLite installation.
+// OMRSource describes a detected OMR v2.0.x installation.
 type OMRSource struct {
-	ConfigDir   string // path to quay-config/ (config.yaml, ssl.cert, ssl.key)
-	DBPath      string // path to quay_sqlite.db
-	StoragePath string // path to blob storage root
-	Hostname    string // from old config.yaml SERVER_HOSTNAME (bare, no port)
-	Port        string // from old config.yaml SERVER_HOSTNAME (empty = default 8443)
-	RootCADir   string // path to quay-rootCA/ directory containing rootCA.pem
+	DatabaseKind string
+	ConfigDir    string // path to quay-config/ (config.yaml, ssl.cert, ssl.key)
+	DBPath       string // path to quay_sqlite.db; empty for PostgreSQL
+	StoragePath  string // path to blob storage root
+	Hostname     string // from old config.yaml SERVER_HOSTNAME (bare, no port)
+	Port         string // from old config.yaml SERVER_HOSTNAME (empty = default 8443)
+	RootCADir    string // path to quay-rootCA/ directory containing rootCA.pem
 
 	ImageArchive string // container image tar path
 	Image        string // container image ref (alternative)
 
-	SystemdScope string   // "system" or "user"
-	UnitFiles    []string // old systemd unit file paths
-	VolumeNames  []string // podman volume names
-	Method       string   // "systemd", "podman-volume", or "defaults"
+	SystemdScope  string   // "system" or "user"
+	PodSandboxKey string   // PostgreSQL only: quay-pod network namespace path
+	UnitFiles     []string // old systemd unit file paths
+	VolumeNames   []string // podman volume names
+	Method        string   // "systemd", "podman-volume", or "defaults"
 }
 
 // checkpointFunc is the signature for the WAL checkpoint operation.
@@ -63,6 +68,7 @@ type Migrator struct {
 	Checkpoint checkpointFunc
 
 	sourceRegistryJWTKey *rsa.PrivateKey
+	sourceRegistryJWTKID string
 }
 
 // Run executes the migration phases in order.
@@ -75,6 +81,20 @@ func (m *Migrator) Run(ctx context.Context) error {
 		return err
 	}
 
+	if m.Source.DatabaseKind == databasePostgres {
+		inside, err := m.inPostgresNetworkNamespace()
+		if err != nil {
+			return fmt.Errorf("detect current network namespace: %w", err)
+		}
+		if inside {
+			return m.copyPostgresSource(ctx)
+		}
+		return m.runPostgresMigration(ctx)
+	}
+	return m.runSQLiteMigration(ctx)
+}
+
+func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	if m.DryRun {
 		if err := m.validate(ctx); err != nil {
 			return fmt.Errorf("validate: %w", err)

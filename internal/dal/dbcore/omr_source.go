@@ -4,14 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
+	"log/slog"
 
 	"github.com/quay/quay/internal/dal/schema"
 )
 
 // InitOMRSourceIntermediate creates the approved OMR v2 SQLite baseline
 // consumed by the PostgreSQL copier and RunBridge.
-func InitOMRSourceIntermediate(ctx context.Context, db *sql.DB, w io.Writer) error {
+func InitOMRSourceIntermediate(ctx context.Context, db *sql.DB) error {
 	var tableCount int
 	err := db.QueryRowContext(ctx,
 		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -59,6 +59,6 @@ func InitOMRSourceIntermediate(ctx context.Context, db *sql.DB, w io.Writer) err
 		return fmt.Errorf("OMR source baseline alembic_version = %q, want %q", ver, ApprovedOMRSourceVersion)
 	}
 
-	fmt.Fprintf(w, "Initialized OMR source intermediate database at revision %s\n", ver)
+	slog.Info("initialized OMR source intermediate database", "revision", ver)
 	return nil
 }

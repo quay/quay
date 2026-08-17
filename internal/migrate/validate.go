@@ -25,6 +25,13 @@ func (m *Migrator) validate(ctx context.Context) error {
 		}
 	}
 
+	if err := m.validateSourceDatabase(ctx); err != nil {
+		return err
+	}
+	return m.validateCommonInputs()
+}
+
+func (m *Migrator) validateSourceDatabase(ctx context.Context) error {
 	db, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
 	if err != nil {
 		return fmt.Errorf("open source database: %w", err)
@@ -37,10 +44,10 @@ func (m *Migrator) validate(ctx context.Context) error {
 	if err := dbcore.ValidateSourceCompatibility(ctx, db); err != nil {
 		return err
 	}
-	if err := m.validateRegistryJWTSource(ctx); err != nil {
-		return err
-	}
+	return m.validateRegistryJWTSource(ctx)
+}
 
+func (m *Migrator) validateCommonInputs() error {
 	if m.Source.ConfigDir != "" {
 		certPath := filepath.Join(m.Source.ConfigDir, "ssl.cert")
 		keyPath := filepath.Join(m.Source.ConfigDir, "ssl.key")
@@ -76,11 +83,18 @@ func (m *Migrator) validateRegistryJWTSource(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load source config for registry JWT key validation: %w", err)
 	}
-	key, _, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
+	if m.sourceRegistryJWTKey != nil {
+		if err := validateRegistryJWTSigningKey(ctx, m.Source.DBPath, sourceCfg, m.sourceRegistryJWTKey, m.sourceRegistryJWTKID); err != nil {
+			return fmt.Errorf("registry JWT key validation: %w", err)
+		}
+		return nil
+	}
+	key, kid, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
 	if err != nil {
 		return fmt.Errorf("registry JWT key validation: %w", err)
 	}
 	m.sourceRegistryJWTKey = key
+	m.sourceRegistryJWTKID = kid
 	return nil
 }
 

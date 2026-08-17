@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"io"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -53,7 +53,7 @@ type schemaColumn struct {
 
 // CopyPostgresToSQLite streams the frozen PostgreSQL profile into an
 // initialized OMR v2 SQLite intermediate in one transaction.
-func CopyPostgresToSQLite(ctx context.Context, pg *pgx.Conn, sqliteDB *sql.DB, w io.Writer) (CopyReport, error) {
+func CopyPostgresToSQLite(ctx context.Context, pg *pgx.Conn, sqliteDB *sql.DB) (CopyReport, error) {
 	report := CopyReport{Tables: make(map[string]TableCopyCount, len(approvedPostgresProfile.Tables))}
 
 	pgTx, err := pg.BeginTx(ctx, pgx.TxOptions{
@@ -80,13 +80,15 @@ func CopyPostgresToSQLite(ctx context.Context, pg *pgx.Conn, sqliteDB *sql.DB, w
 	}
 	defer func() { _ = sqliteTx.Rollback() }() //nolint:errcheck // No-op after commit.
 
+	var totalRows int64
 	for _, table := range approvedPostgresProfile.Tables {
 		count, err := copyTable(ctx, pgTx, sqliteTx, table)
 		if err != nil {
 			return report, fmt.Errorf("copy table %q: %w", table.Name, err)
 		}
 		report.Tables[table.Name] = count
-		fmt.Fprintf(w, "copied %s: %d rows\n", table.Name, count.DestRows)
+		totalRows += count.DestRows
+		slog.Debug("copied PostgreSQL table", "table", table.Name, "rows", count.DestRows)
 	}
 
 	if err := foreignKeyCheckSQLite(ctx, sqliteTx); err != nil {
@@ -102,6 +104,7 @@ func CopyPostgresToSQLite(ctx context.Context, pg *pgx.Conn, sqliteDB *sql.DB, w
 		return report, fmt.Errorf("re-enable sqlite foreign keys: %w", err)
 	}
 
+	slog.Info("copied PostgreSQL source", "tables", len(report.Tables), "rows", totalRows)
 	return report, nil
 }
 

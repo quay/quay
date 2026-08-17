@@ -3,7 +3,6 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"os"
@@ -166,7 +165,7 @@ func newIntermediate(t *testing.T) *sql.DB {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := dbcore.InitOMRSourceIntermediate(t.Context(), db, &bytes.Buffer{}); err != nil {
+	if err := dbcore.InitOMRSourceIntermediate(t.Context(), db); err != nil {
 		t.Fatalf("InitOMRSourceIntermediate: %v", err)
 	}
 	return db
@@ -176,8 +175,7 @@ func TestCopyPostgresToSQLite_Integration(t *testing.T) {
 	conn := connectTestPostgres(t)
 	sqliteDB := newIntermediate(t)
 
-	var copyOut, bridgeOut bytes.Buffer
-	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &copyOut)
+	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB)
 	if err != nil {
 		t.Fatalf("CopyPostgresToSQLite: %v", err)
 	}
@@ -245,7 +243,7 @@ func TestCopyPostgresToSQLite_Integration(t *testing.T) {
 	if err := dbcore.ValidateSourceCompatibility(t.Context(), sqliteDB); err != nil {
 		t.Fatalf("ValidateSourceCompatibility on copied intermediate: %v", err)
 	}
-	if err := dbcore.RunBridge(t.Context(), sqliteDB, &bridgeOut); err != nil {
+	if err := dbcore.RunBridge(t.Context(), sqliteDB); err != nil {
 		t.Fatalf("RunBridge: %v", err)
 	}
 	version, err := dbcore.SchemaVersion(t.Context(), sqliteDB)
@@ -283,7 +281,7 @@ func TestCopyPostgresToSQLite_Integration_RejectsDuplicateKey(t *testing.T) {
 		t.Fatalf("seed colliding destination row: %v", err)
 	}
 
-	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{}); err == nil {
+	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB); err == nil {
 		t.Fatal("CopyPostgresToSQLite unexpectedly succeeded against a colliding destination row")
 	}
 	var userCount, mediaTypeCount int
@@ -301,7 +299,7 @@ func TestCopyPostgresToSQLite_Integration_RejectsNonEmptyDestination(t *testing.
 	if _, err := sqliteDB.ExecContext(t.Context(), `INSERT INTO quayregion (id, name) VALUES (99, 'preexisting')`); err != nil {
 		t.Fatalf("seed non-colliding destination row: %v", err)
 	}
-	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{}); err == nil {
+	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB); err == nil {
 		t.Fatal("CopyPostgresToSQLite unexpectedly accepted a non-empty destination")
 	}
 
@@ -334,7 +332,7 @@ func TestCopyPostgresToSQLite_Integration_RejectsSourceDrift(t *testing.T) {
 func assertPreflightFailureLeavesIntermediateEmpty(t *testing.T, conn *pgx.Conn) {
 	t.Helper()
 	sqliteDB := newIntermediate(t)
-	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{})
+	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB)
 	if err == nil {
 		t.Fatal("CopyPostgresToSQLite unexpectedly accepted source drift")
 	}
