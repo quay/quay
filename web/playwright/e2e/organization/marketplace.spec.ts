@@ -128,6 +128,37 @@ async function mockCommonEndpoints(page: Page): Promise<void> {
 }
 
 test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
+  test(
+    'renders billing information when marketplace is disabled',
+    {tag: ['@PROJQUAY-12348']},
+    async ({authenticatedPage, api, quayConfig}) => {
+      test.skip(
+        quayConfig?.features?.BILLING !== true ||
+          quayConfig?.features?.RH_MARKETPLACE !== false,
+        'Requires Billing enabled and RH Marketplace disabled',
+      );
+      const org = await api.organization('mktdisabled');
+      const pageErrors: Error[] = [];
+      const marketplaceRequests: string[] = [];
+
+      authenticatedPage.on('pageerror', (error) => pageErrors.push(error));
+      authenticatedPage.on('request', (request) => {
+        if (request.url().includes('/marketplace')) {
+          marketplaceRequests.push(request.url());
+        }
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Billing information').click();
+
+      await expect(
+        authenticatedPage.getByTestId('billing-invoice-email'),
+      ).toBeVisible();
+      expect(marketplaceRequests).toEqual([]);
+      expect(pageErrors).toEqual([]);
+    },
+  );
+
   test('lists user marketplace subscriptions', async ({authenticatedPage}) => {
     const username = TEST_USERS.user.username;
 
