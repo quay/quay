@@ -29,6 +29,28 @@ jobs:
           path: bin/quay
           retention-days: 1
 
+  build-fips:
+    name: Build (FIPS)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build with FIPS tags
+        run: >
+          GOEXPERIMENT=strictfipsruntime go build
+          -tags='strictfipsruntime,noresumabledigest'
+          -ldflags="-s -w" -trimpath
+          -o bin/quay-fips ./cmd/quay
+
   lint:
     name: Lint
     needs: [build]
@@ -69,6 +91,25 @@ jobs:
 
       - name: Run tests
         run: make go-test
+
+  test-fips:
+    name: Test (FIPS tags)
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests with FIPS tags
+        run: go test -cover -tags='strictfipsruntime,noresumabledigest' ./...
 
   schema-sync:
     name: Schema Drift Check
