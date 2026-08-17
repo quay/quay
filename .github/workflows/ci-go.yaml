@@ -526,7 +526,7 @@ jobs:
 
   e2e-migrate:
     name: E2E Mirror Migrate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [test, schema-sync]
     timeout-minutes: 30
     steps:
@@ -553,6 +553,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y skopeo sqlite3
+
+      - name: Ensure podman is available for OMR
+        run: |
+          # OMR v2.0.x hard-codes /usr/bin/podman in its image-import
+          # commands. Ensure the binary exists at that path so the
+          # offline installer does not fail with "exit status 127".
+          if command -v podman >/dev/null 2>&1; then
+            echo "podman $(podman --version) found at $(command -v podman)"
+            if [ ! -x /usr/bin/podman ]; then
+              echo "Creating symlink /usr/bin/podman -> $(command -v podman)"
+              sudo ln -s "$(command -v podman)" /usr/bin/podman
+            fi
+          else
+            echo "podman not found — installing"
+            sudo apt-get update
+            sudo apt-get install -y podman
+          fi
+          /usr/bin/podman --version
 
       - name: Download and install old OMR
         run: |
