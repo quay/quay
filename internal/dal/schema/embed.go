@@ -28,7 +28,7 @@ var CompatibilitySQL embed.FS
 //go:embed sqlite/omr/3f8d7acdf7f9_schema.sql
 var OMRSourceSchemaSQL string
 
-// OMRSourceSeedDataSQL seeds the approved OMR v2 intermediate.
+// OMRSourceSeedDataSQL records the approved intermediate's Alembic revision.
 //
 //go:embed sqlite/omr/3f8d7acdf7f9_seed_data.sql
 var OMRSourceSeedDataSQL string

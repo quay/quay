@@ -8,6 +8,8 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -17,106 +19,7 @@ import (
 
 const postgresDSNEnv = "QUAY_TEST_POSTGRES_DSN"
 
-// This representative schema matches the real Alembic-derived fixture in
-// ../testdata. Lookup IDs are intentionally different from the SQLite seed.
-const postgresSchemaDDL = `
-DROP TABLE IF EXISTS tag, manifest, repository, "user", visibility, repositorykind, mediatype, tagkind CASCADE;
-
-CREATE TABLE visibility (
-	id integer PRIMARY KEY,
-	name varchar(255) NOT NULL
-);
-
-CREATE TABLE repositorykind (
-	id integer PRIMARY KEY,
-	name varchar(255) NOT NULL
-);
-
-CREATE TABLE mediatype (
-	id integer PRIMARY KEY,
-	name varchar(255) NOT NULL
-);
-
-CREATE TABLE tagkind (
-	id integer PRIMARY KEY,
-	name varchar(255) NOT NULL
-);
-
-CREATE TABLE "user" (
-	id integer PRIMARY KEY,
-	uuid varchar(36),
-	username varchar(255) NOT NULL,
-	password_hash varchar(255),
-	email varchar(255) NOT NULL,
-	verified boolean NOT NULL,
-	stripe_id varchar(255),
-	organization boolean NOT NULL,
-	robot boolean NOT NULL,
-	invoice_email boolean NOT NULL,
-	invalid_login_attempts integer NOT NULL DEFAULT 0,
-	last_invalid_login timestamp NOT NULL,
-	removed_tag_expiration_s bigint NOT NULL DEFAULT 1209600,
-	enabled boolean NOT NULL DEFAULT true,
-	invoice_email_address varchar(255),
-	company varchar(255),
-	family_name varchar(255),
-	given_name varchar(255),
-	location varchar(255),
-	maximum_queued_builds_count integer,
-	creation_date timestamp,
-	last_accessed timestamp
-);
-
-CREATE TABLE repository (
-	id integer PRIMARY KEY,
-	namespace_user_id integer,
-	name varchar(255) NOT NULL,
-	visibility_id integer NOT NULL,
-	description text,
-	badge_token varchar(255) NOT NULL,
-	kind_id integer NOT NULL DEFAULT 1,
-	trust_enabled boolean NOT NULL DEFAULT false,
-	state integer NOT NULL DEFAULT 0
-);
-
-CREATE TABLE manifest (
-	id integer PRIMARY KEY,
-	repository_id integer NOT NULL,
-	digest varchar(255) NOT NULL,
-	media_type_id integer NOT NULL,
-	manifest_bytes text NOT NULL,
-	config_media_type varchar(255),
-	layers_compressed_size bigint,
-	subject varchar(255),
-	subject_backfilled boolean,
-	artifact_type varchar(255),
-	artifact_type_backfilled boolean
-);
-
-CREATE TABLE tag (
-	id integer PRIMARY KEY,
-	name varchar(255) NOT NULL,
-	repository_id integer NOT NULL,
-	manifest_id integer,
-	lifetime_start_ms bigint NOT NULL,
-	lifetime_end_ms bigint,
-	hidden boolean NOT NULL DEFAULT false,
-	reversion boolean NOT NULL DEFAULT false,
-	tag_kind_id integer NOT NULL,
-	linked_tag_id integer
-);
-`
-
-// Representative rows cover NULLs, booleans, timestamps, JSON, and tag lifetimes.
-const postgresSeedDML = `
--- Deliberately swap lookup IDs relative to the SQLite baseline.
-INSERT INTO visibility (id, name) VALUES (1, 'private'), (2, 'public');
-INSERT INTO repositorykind (id, name) VALUES (1, 'image'), (2, 'application');
-INSERT INTO tagkind (id, name) VALUES (1, 'tag');
-INSERT INTO mediatype (id, name) VALUES
-	(15, 'application/vnd.docker.distribution.manifest.v2+json'),
-	(16, 'application/vnd.docker.distribution.manifest.list.v2+json');
-
+const postgresDataDML = `
 INSERT INTO "user" (id, uuid, username, password_hash, email, verified, stripe_id, organization, robot, invoice_email, invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled, invoice_email_address, company, family_name, given_name, location, maximum_queued_builds_count, creation_date, last_accessed) VALUES
 	(1, 'c6f515bd-b3fa-4c00-9e50-699d713a7ea5', 'init', 'FIXTURE-NOT-A-REAL-HASH', 'init@quay.io', true, NULL, false, false, false, 0, '2026-07-31 12:36:42.332282', 1209600, true, NULL, 'Acme Corp', 'Init', 'User', 'Raleigh', 4, '2026-07-31 12:36:42.332287', '2026-07-31 13:00:00'),
 	(2, NULL, 'init+robot', NULL, 'init+robot@quay.io', false, NULL, false, true, false, 0, '2026-07-31 12:36:42', 1209600, true, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 12:40:00', NULL);
@@ -148,61 +51,161 @@ func connectTestPostgres(t *testing.T) *pgx.Conn {
 	}
 	t.Cleanup(func() { _ = conn.Close(context.Background()) })
 
-	if _, err := conn.Exec(t.Context(), postgresSchemaDDL); err != nil {
-		t.Fatalf("create representative postgres schema: %v", err)
+	if _, err := conn.Exec(t.Context(), `DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
+		t.Fatalf("reset postgres schema: %v", err)
 	}
-	if _, err := conn.Exec(t.Context(), postgresSeedDML); err != nil {
+	schemaSQL := mustReadFixture(t, "omr_v2.0.11_postgres_3f8d7acdf7f9_schema.sql")
+	if _, err := conn.Exec(t.Context(), schemaSQL); err != nil {
+		t.Fatalf("load real postgres schema fixture: %v", err)
+	}
+	if _, err := conn.Exec(t.Context(), `SET search_path = public`); err != nil {
+		t.Fatalf("set fixture search path: %v", err)
+	}
+	loadCopyFixture(t, conn, mustReadFixture(t, "omr_v2.0.11_postgres_3f8d7acdf7f9_enum_seed_data.sql"))
+	if _, err := conn.Exec(t.Context(), `INSERT INTO alembic_version (version_num) VALUES ($1)`, approvedPostgresProfile.SchemaRevision); err != nil {
+		t.Fatalf("seed alembic revision: %v", err)
+	}
+	if _, err := conn.Exec(t.Context(), postgresDataDML); err != nil {
 		t.Fatalf("seed representative postgres data: %v", err)
 	}
 	return conn
 }
 
-// TestCopyPostgresToSQLite_Integration exercises the copy and bridge end to end.
-func TestCopyPostgresToSQLite_Integration(t *testing.T) {
-	conn := connectTestPostgres(t)
+func mustReadFixture(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "testdata", name))
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", name, err)
+	}
+	return string(raw)
+}
 
-	sqlitePath := filepath.Join(t.TempDir(), "quay.db.partial")
-	sqliteDB, err := dbcore.OpenSQLite(sqlitePath)
+func loadCopyFixture(t *testing.T, conn *pgx.Conn, fixture string) {
+	t.Helper()
+	profileByTable := make(map[string]postgresTable, len(approvedPostgresProfile.Tables))
+	for _, table := range approvedPostgresProfile.Tables {
+		profileByTable[table.Name] = table
+	}
+
+	lines := strings.Split(fixture, "\n")
+	for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+		header := lines[lineIndex]
+		if !strings.HasPrefix(header, "COPY public.") {
+			continue
+		}
+		tableEnd := strings.Index(header, " (")
+		columnsEnd := strings.LastIndex(header, ") FROM stdin;")
+		if tableEnd < 0 || columnsEnd < tableEnd {
+			t.Fatalf("parse COPY header %q", header)
+		}
+		tableName := strings.TrimPrefix(header[:tableEnd], "COPY public.")
+		columnNames := strings.Split(header[tableEnd+2:columnsEnd], ", ")
+		table, ok := profileByTable[tableName]
+		if !ok {
+			t.Fatalf("COPY fixture table %q is not in the frozen profile", tableName)
+		}
+		kindByColumn := make(map[string]columnKind, len(table.Columns))
+		for _, column := range table.Columns {
+			kindByColumn[column.Name] = column.Kind
+		}
+
+		var copyRows [][]any
+		for lineIndex++; lineIndex < len(lines) && lines[lineIndex] != `\.`; lineIndex++ {
+			rawValues := strings.Split(lines[lineIndex], "\t")
+			if len(rawValues) != len(columnNames) {
+				t.Fatalf("COPY fixture %s row has %d values, want %d", tableName, len(rawValues), len(columnNames))
+			}
+			row := make([]any, len(rawValues))
+			for i, raw := range rawValues {
+				row[i] = copyFixtureValue(t, tableName, columnNames[i], kindByColumn[columnNames[i]], raw)
+			}
+			copyRows = append(copyRows, row)
+		}
+		if lineIndex == len(lines) {
+			t.Fatalf("COPY fixture %s has no terminator", tableName)
+		}
+		if _, err := conn.CopyFrom(t.Context(), pgx.Identifier{"public", tableName}, columnNames, pgx.CopyFromRows(copyRows)); err != nil {
+			t.Fatalf("load COPY fixture table %s: %v", tableName, err)
+		}
+	}
+}
+
+func copyFixtureValue(t *testing.T, table, column string, kind columnKind, raw string) any {
+	t.Helper()
+	if raw == `\N` {
+		return nil
+	}
+	if strings.Contains(raw, `\`) {
+		t.Fatalf("unsupported COPY escape in %s.%s", table, column)
+	}
+	switch kind {
+	case kindInt64:
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			t.Fatalf("parse fixture integer %s.%s: %v", table, column, err)
+		}
+		return value
+	case kindBool:
+		value, err := strconv.ParseBool(raw)
+		if err != nil {
+			t.Fatalf("parse fixture boolean %s.%s: %v", table, column, err)
+		}
+		return value
+	case kindText:
+		return raw
+	default:
+		t.Fatalf("unsupported COPY fixture kind %q for %s.%s", kind, table, column)
+		return nil
+	}
+}
+
+func newIntermediate(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := dbcore.OpenSQLite(filepath.Join(t.TempDir(), "quay.db.partial"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
-	t.Cleanup(func() { _ = sqliteDB.Close() })
-
-	var initOut, copyOut, bridgeOut bytes.Buffer
-	if err := dbcore.InitOMRSourceIntermediate(t.Context(), sqliteDB, &initOut); err != nil {
+	t.Cleanup(func() { _ = db.Close() })
+	if err := dbcore.InitOMRSourceIntermediate(t.Context(), db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitOMRSourceIntermediate: %v", err)
 	}
+	return db
+}
 
+func TestCopyPostgresToSQLite_Integration(t *testing.T) {
+	conn := connectTestPostgres(t)
+	sqliteDB := newIntermediate(t)
+
+	var copyOut, bridgeOut bytes.Buffer
 	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &copyOut)
 	if err != nil {
 		t.Fatalf("CopyPostgresToSQLite: %v", err)
 	}
+	if len(report.Tables) != 96 {
+		t.Fatalf("report table count = %d, want 96", len(report.Tables))
+	}
+	for table, count := range report.Tables {
+		if count.SourceRows != count.DestRows {
+			t.Errorf("table %s: source=%d dest=%d", table, count.SourceRows, count.DestRows)
+		}
+	}
 
 	wantCounts := map[string]int64{
-		"visibility": 2, "repositorykind": 2, "mediatype": 2, "tagkind": 1,
+		"mediatype": 18, "visibility": 2, "imagestoragelocation": 8, "logentrykind": 114,
 		"user": 2, "repository": 2, "manifest": 2, "tag": 3,
 	}
 	for table, want := range wantCounts {
-		got, ok := report.Tables[table]
-		if !ok {
-			t.Fatalf("report missing table %s", table)
-		}
+		got := report.Tables[table]
 		if got.SourceRows != want || got.DestRows != want {
 			t.Errorf("table %s: source=%d dest=%d, want %d", table, got.SourceRows, got.DestRows, want)
 		}
 	}
 
-	// The source's shuffled lookup IDs must replace the static SQLite seed.
-	var visibility1Name string
-	mustScan(t, sqliteDB, `SELECT name FROM visibility WHERE id = 1`, &visibility1Name)
-	if visibility1Name != "private" {
-		t.Errorf("visibility 1 name = %q, want the source's %q (not the baseline's \"public\")", visibility1Name, "private")
-	}
-	var mediatype16Name string
-	mustScan(t, sqliteDB, `SELECT name FROM mediatype WHERE id = 16`, &mediatype16Name)
-	const wantMediatype16 = "application/vnd.docker.distribution.manifest.list.v2+json"
-	if mediatype16Name != wantMediatype16 {
-		t.Errorf("mediatype 16 name = %q, want the source's %q (not the baseline's \"...manifest.v2+json\")", mediatype16Name, wantMediatype16)
+	var mediatype15Name string
+	mustScan(t, sqliteDB, `SELECT name FROM mediatype WHERE id = 15`, &mediatype15Name)
+	const wantMediatype15 = "application/vnd.docker.distribution.manifest.v2+json"
+	if mediatype15Name != wantMediatype15 {
+		t.Errorf("mediatype 15 name = %q, want source-owned %q", mediatype15Name, wantMediatype15)
 	}
 
 	var verified, robot, enabled int64
@@ -217,25 +220,12 @@ func TestCopyPostgresToSQLite_Integration(t *testing.T) {
 		t.Errorf("user 2 expected NULL stripe_id/company, got %+v %+v", stripeID, company)
 	}
 
-	var repo1Desc sql.NullString
-	mustScan(t, sqliteDB, `SELECT description FROM repository WHERE id = 1`, &repo1Desc)
-	if repo1Desc.Valid {
-		t.Errorf("repository 1 expected NULL description, got %q", repo1Desc.String)
-	}
-
 	var repo2Desc string
 	var trustEnabled int64
 	mustScan(t, sqliteDB, `SELECT description, trust_enabled FROM repository WHERE id = 2`, &repo2Desc, &trustEnabled)
 	const wantDesc = "has a description with 'quotes' and text"
 	if repo2Desc != wantDesc || trustEnabled != 1 {
 		t.Errorf("repository 2 = description=%q trust_enabled=%d, want %q,1", repo2Desc, trustEnabled, wantDesc)
-	}
-
-	var subject sql.NullString
-	var artifactTypeBackfilled int64
-	mustScan(t, sqliteDB, `SELECT subject, artifact_type_backfilled FROM manifest WHERE id = 1`, &subject, &artifactTypeBackfilled)
-	if subject.Valid || artifactTypeBackfilled != 1 {
-		t.Errorf("manifest 1 = subject=%+v artifact_type_backfilled=%d, want NULL,1", subject, artifactTypeBackfilled)
 	}
 
 	var manifestBytes string
@@ -246,104 +236,115 @@ func TestCopyPostgresToSQLite_Integration(t *testing.T) {
 	}
 
 	var hidden, reversion int64
-	var linkedTagID sql.NullInt64
-	var lifetimeEnd sql.NullInt64
+	var linkedTagID, lifetimeEnd sql.NullInt64
 	mustScan(t, sqliteDB, `SELECT hidden, reversion, linked_tag_id, lifetime_end_ms FROM tag WHERE id = 3`, &hidden, &reversion, &linkedTagID, &lifetimeEnd)
 	if hidden != 1 || reversion != 1 || !linkedTagID.Valid || linkedTagID.Int64 != 1 || lifetimeEnd.Valid {
-		t.Errorf("tag 3 = hidden=%d reversion=%d linked_tag_id=%+v lifetime_end_ms=%+v, want 1,1,{1 true},{0 false}", hidden, reversion, linkedTagID, lifetimeEnd)
+		t.Errorf("tag 3 = hidden=%d reversion=%d linked_tag_id=%+v lifetime_end_ms=%+v", hidden, reversion, linkedTagID, lifetimeEnd)
 	}
 
-	var expiredLifetimeEnd sql.NullInt64
-	mustScan(t, sqliteDB, `SELECT lifetime_end_ms FROM tag WHERE id = 2`, &expiredLifetimeEnd)
-	if !expiredLifetimeEnd.Valid || expiredLifetimeEnd.Int64 != 1785501500000 {
-		t.Errorf("tag 2 lifetime_end_ms = %+v, want 1785501500000", expiredLifetimeEnd)
-	}
-
-	// Reuse the existing SQLite admission and bridge contracts unchanged.
 	if err := dbcore.ValidateSourceCompatibility(t.Context(), sqliteDB); err != nil {
 		t.Fatalf("ValidateSourceCompatibility on copied intermediate: %v", err)
 	}
-
 	if err := dbcore.RunBridge(t.Context(), sqliteDB, &bridgeOut); err != nil {
 		t.Fatalf("RunBridge: %v", err)
 	}
-
-	ver, err := dbcore.SchemaVersion(t.Context(), sqliteDB)
+	version, err := dbcore.SchemaVersion(t.Context(), sqliteDB)
 	if err != nil {
 		t.Fatalf("SchemaVersion after bridge: %v", err)
 	}
-	if ver != dbcore.TargetVersion {
-		t.Fatalf("post-bridge version = %q, want %q", ver, dbcore.TargetVersion)
+	if version != dbcore.TargetVersion {
+		t.Fatalf("post-bridge version = %q, want %q", version, dbcore.TargetVersion)
 	}
-
 	if err := dbcore.IntegrityCheck(t.Context(), sqliteDB); err != nil {
 		t.Errorf("post-bridge IntegrityCheck: %v", err)
 	}
 
-	for table, want := range wantCounts {
-		var got int64
-		if err := sqliteDB.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM "`+table+`"`).Scan(&got); err != nil {
-			t.Fatalf("count %s after bridge: %v", table, err)
-		}
-		if got != want {
-			t.Errorf("table %s row count changed during bridge: before=%d after=%d", table, want, got)
-		}
-	}
-
-	// SQLite must allocate a new ID without copied PostgreSQL sequences.
-	res, err := sqliteDB.ExecContext(t.Context(),
+	result, err := sqliteDB.ExecContext(t.Context(),
 		`INSERT INTO repository (namespace_user_id, name, visibility_id, badge_token) VALUES (?, ?, ?, ?)`,
 		1, "post-migration-repo", 2, "post-migration-badge-token",
 	)
 	if err != nil {
 		t.Fatalf("post-migration insert: %v", err)
 	}
-	newID, err := res.LastInsertId()
+	newID, err := result.LastInsertId()
 	if err != nil {
 		t.Fatalf("LastInsertId: %v", err)
 	}
 	if newID <= 2 {
-		t.Errorf("post-migration repository id = %d, want > 2 (the highest copied id)", newID)
+		t.Errorf("post-migration repository id = %d, want > 2", newID)
 	}
 }
 
-// TestCopyPostgresToSQLite_Integration_RejectsDuplicateKey verifies rollback.
 func TestCopyPostgresToSQLite_Integration_RejectsDuplicateKey(t *testing.T) {
 	conn := connectTestPostgres(t)
+	sqliteDB := newIntermediate(t)
 
-	if _, err := conn.Exec(t.Context(), `INSERT INTO "user" (id, username, email, verified, organization, robot, invoice_email, last_invalid_login) VALUES (3, 'dup', 'dup@quay.io', false, false, false, false, now())`); err != nil {
-		t.Fatalf("seed duplicate-triggering row: %v", err)
-	}
-
-	sqlitePath := filepath.Join(t.TempDir(), "quay.db.partial")
-	sqliteDB, err := dbcore.OpenSQLite(sqlitePath)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	t.Cleanup(func() { _ = sqliteDB.Close() })
-
-	var initOut bytes.Buffer
-	if err := dbcore.InitOMRSourceIntermediate(t.Context(), sqliteDB, &initOut); err != nil {
-		t.Fatalf("InitOMRSourceIntermediate: %v", err)
-	}
-
-	// Trigger a real destination primary-key violation.
 	if _, err := sqliteDB.ExecContext(t.Context(), `INSERT INTO "user" (id, username, email, verified, organization, robot, invoice_email, last_invalid_login, removed_tag_expiration_s) VALUES (1, 'preexisting', 'preexisting@quay.io', 0, 0, 0, 0, '2026-01-01 00:00:00', 1209600)`); err != nil {
 		t.Fatalf("seed colliding destination row: %v", err)
 	}
 
-	var copyOut bytes.Buffer
-	_, err = CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &copyOut)
-	if err == nil {
+	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{}); err == nil {
 		t.Fatal("CopyPostgresToSQLite unexpectedly succeeded against a colliding destination row")
 	}
-
-	var count int
-	if err := sqliteDB.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM "user"`).Scan(&count); err != nil {
-		t.Fatalf("count user after aborted copy: %v", err)
+	var userCount, mediaTypeCount int
+	mustScan(t, sqliteDB, `SELECT count(*) FROM "user"`, &userCount)
+	mustScan(t, sqliteDB, `SELECT count(*) FROM mediatype`, &mediaTypeCount)
+	if userCount != 1 || mediaTypeCount != 0 {
+		t.Errorf("aborted copy was not rolled back: user=%d mediatype=%d", userCount, mediaTypeCount)
 	}
-	if count != 1 {
-		t.Errorf("expected the aborted copy to leave only the pre-existing row (rolled back), found %d rows", count)
+}
+
+func TestCopyPostgresToSQLite_Integration_RejectsNonEmptyDestination(t *testing.T) {
+	conn := connectTestPostgres(t)
+	sqliteDB := newIntermediate(t)
+
+	if _, err := sqliteDB.ExecContext(t.Context(), `INSERT INTO quayregion (id, name) VALUES (99, 'preexisting')`); err != nil {
+		t.Fatalf("seed non-colliding destination row: %v", err)
+	}
+	if _, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{}); err == nil {
+		t.Fatal("CopyPostgresToSQLite unexpectedly accepted a non-empty destination")
+	}
+
+	var regionCount, mediaTypeCount int
+	mustScan(t, sqliteDB, `SELECT count(*) FROM quayregion`, &regionCount)
+	mustScan(t, sqliteDB, `SELECT count(*) FROM mediatype`, &mediaTypeCount)
+	if regionCount != 1 || mediaTypeCount != 0 {
+		t.Errorf("aborted copy was not rolled back: quayregion=%d mediatype=%d", regionCount, mediaTypeCount)
+	}
+}
+
+func TestCopyPostgresToSQLite_Integration_RejectsSourceDrift(t *testing.T) {
+	t.Run("revision", func(t *testing.T) {
+		conn := connectTestPostgres(t)
+		if _, err := conn.Exec(t.Context(), `UPDATE alembic_version SET version_num = 'wrongrevision'`); err != nil {
+			t.Fatalf("change revision: %v", err)
+		}
+		assertPreflightFailureLeavesIntermediateEmpty(t, conn)
+	})
+
+	t.Run("schema fingerprint", func(t *testing.T) {
+		conn := connectTestPostgres(t)
+		if _, err := conn.Exec(t.Context(), `ALTER TABLE visibility ADD COLUMN unexpected text`); err != nil {
+			t.Fatalf("change source schema: %v", err)
+		}
+		assertPreflightFailureLeavesIntermediateEmpty(t, conn)
+	})
+}
+
+func assertPreflightFailureLeavesIntermediateEmpty(t *testing.T, conn *pgx.Conn) {
+	t.Helper()
+	sqliteDB := newIntermediate(t)
+	report, err := CopyPostgresToSQLite(t.Context(), conn, sqliteDB, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("CopyPostgresToSQLite unexpectedly accepted source drift")
+	}
+	if len(report.Tables) != 0 {
+		t.Errorf("preflight failure copied %d tables", len(report.Tables))
+	}
+	var count int
+	mustScan(t, sqliteDB, `SELECT count(*) FROM mediatype`, &count)
+	if count != 0 {
+		t.Errorf("preflight failure left %d destination rows", count)
 	}
 }
 

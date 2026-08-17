@@ -2,6 +2,8 @@ package dbcore
 
 import (
 	"bytes"
+	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -33,45 +35,39 @@ func TestInitOMRSourceIntermediate(t *testing.T) {
 		t.Errorf("foreign key check: %v", err)
 	}
 
-	// The copier replaces the lookup seeds with source-owned IDs.
-	for _, table := range []string{"visibility", "repositorykind", "mediatype", "tagkind"} {
-		var n int
-		if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
+	for _, table := range emptyIntermediateTables(t, db) {
+		var count int
+		if err := db.QueryRowContext(t.Context(), fmt.Sprintf("SELECT count(*) FROM %q", table)).Scan(&count); err != nil {
 			t.Fatalf("count %s: %v", table, err)
 		}
-		if n == 0 {
-			t.Errorf("expected %s to be seeded, found 0 rows", table)
-		}
-	}
-
-	// Alembic creates eight locations; Quay creates "default" at runtime.
-	var storageLocationCount, runtimeDefaultCount int
-	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM imagestoragelocation").Scan(&storageLocationCount); err != nil {
-		t.Fatalf("count imagestoragelocation: %v", err)
-	}
-	if storageLocationCount != 8 {
-		t.Errorf("imagestoragelocation count = %d, want 8 Alembic seed rows", storageLocationCount)
-	}
-	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM imagestoragelocation WHERE name = 'default'").Scan(&runtimeDefaultCount); err != nil {
-		t.Fatalf("count runtime default storage locations: %v", err)
-	}
-	if runtimeDefaultCount != 0 {
-		t.Errorf("expected no runtime-created default storage location, found %d", runtimeDefaultCount)
-	}
-
-	// Data tables start empty until the PostgreSQL copy.
-	const tagTable = "tag"
-	for _, table := range []string{"user", "repository", manifestTable, tagTable} {
-		var n int
-		if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM "`+table+`"`).Scan(&n); err != nil {
-			t.Fatalf("count %s: %v", table, err)
-		}
-		if n != 0 {
-			t.Errorf("expected %s to start empty, found %d rows", table, n)
+		if count != 0 {
+			t.Errorf("expected %s to start empty, found %d rows", table, count)
 		}
 	}
 
 	if err := InitOMRSourceIntermediate(t.Context(), db, &out); err == nil {
 		t.Fatal("expected second InitOMRSourceIntermediate call to fail on an already-populated database")
 	}
+}
+
+func emptyIntermediateTables(t *testing.T, db *sql.DB) []string {
+	t.Helper()
+	rows, err := db.QueryContext(t.Context(), `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'`)
+	if err != nil {
+		t.Fatalf("list intermediate tables: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var tables []string
+	for rows.Next() {
+		var table string
+		if err := rows.Scan(&table); err != nil {
+			t.Fatalf("scan intermediate table: %v", err)
+		}
+		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate intermediate tables: %v", err)
+	}
+	return tables
 }
