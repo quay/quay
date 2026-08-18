@@ -1570,11 +1570,15 @@ jobs:
           test "$actual_revision" = "$expected_revision"
           sudo test ! -e "$target_dir/quay.db.partial"
           sudo test ! -e "$target_dir/.migration-in-progress"
-          sudo test -f "$target_dir/auth/admin-password"
           test "$(sudo sqlite3 "$target_dir/quay.db" \
-            "SELECT COUNT(*) FROM \"user\" WHERE username = 'admin';")" = 1
+            "SELECT COUNT(*) FROM \"user\" WHERE username = 'init';")" = 1
 
           state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_authfile="$RUNNER_TEMP/postgres-target-auth.json"
+          trap 'sudo rm -f "$target_authfile"' EXIT
+          printf '%s\n' testpassword123 | sudo podman login localhost:8443 \
+            -u init --password-stdin \
+            --authfile "$target_authfile" --tls-verify=false
           sudo sqlite3 -separator '|' "$target_dir/quay.db" \
             "SELECT u.username || '/' || r.name, t.name, m.digest
              FROM tag AS t
@@ -1596,7 +1600,8 @@ jobs:
               exit 1
             fi
           done
-          sudo podman pull --tls-verify=false localhost:8443/init/postgres-source:v1
+          sudo podman pull --authfile "$target_authfile" \
+            --tls-verify=false localhost:8443/init/postgres-source:v1
 
           sudo python3 - "$target_dir/config.yaml" <<'PY'
           import sys
