@@ -333,8 +333,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  e2e-mirror:
-    name: E2E Mirror Install
+  e2e-mirror-rootful:
+    name: E2E Mirror Install (rootful)
     runs-on: ubuntu-latest
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -525,7 +525,7 @@ jobs:
           retention-days: 7
 
   e2e-mirror-rootless:
-    name: E2E Mirror Install (Rootless)
+    name: E2E Mirror Install (rootless)
     runs-on: ubuntu-latest
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -731,8 +731,8 @@ jobs:
           path: /tmp/e2e-rootless-diagnostics/
           retention-days: 7
 
-  e2e-migrate:
-    name: E2E Mirror Migrate
+  e2e-migrate-sqlite:
+    name: E2E Mirror Migrate (SQLite)
     runs-on: ubuntu-26.04
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -1348,7 +1348,7 @@ jobs:
 
   e2e-migrate-postgres:
     name: E2E Mirror Migrate (PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [test, schema-sync]
     timeout-minutes: 30
     env:
