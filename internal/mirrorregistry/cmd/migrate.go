@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 	"flag"
-	"log/slog"
+	"fmt"
 	"os"
 
 	"github.com/quay/quay/internal/installer"
@@ -52,7 +52,7 @@ func newMigrateCmd() *Command {
 
 func runMigrate(ctx context.Context, m *migrate.Migrator) int {
 	if err := m.Run(ctx); err != nil {
-		slog.Error("migration failed", "err", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
 	return 0

@@ -530,14 +530,17 @@ go-test:
 GO_PG_TEST_CONTAINER := quay-go-postgres-testrunner
 GO_PG_TEST_PORT := 5434
 GO_PG_TEST_DATABASE := quay_migrate_test
-GO_PG_TEST_DSN := postgres://quay:quay@localhost:$(GO_PG_TEST_PORT)/$(GO_PG_TEST_DATABASE)?sslmode=disable
 
 go-test-postgres:
-	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true
+	@set -e; \
+	password="$$(openssl rand -hex 32)"; \
+	dsn="postgres://quay:$${password}@localhost:$(GO_PG_TEST_PORT)/$(GO_PG_TEST_DATABASE)?sslmode=disable"; \
+	trap '$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true' EXIT; \
+	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true; \
 	$(DOCKER) run --name $(GO_PG_TEST_CONTAINER) \
-		-e POSTGRES_USER=quay -e POSTGRES_PASSWORD=quay -e POSTGRES_DB=$(GO_PG_TEST_DATABASE) \
-		-p $(GO_PG_TEST_PORT):5432 -d docker.io/library/postgres:16
-	@ready=0; \
+		-e POSTGRES_USER=quay -e POSTGRES_PASSWORD="$${password}" -e POSTGRES_DB=$(GO_PG_TEST_DATABASE) \
+		-p $(GO_PG_TEST_PORT):5432 -d docker.io/library/postgres:16; \
+	ready=0; \
 	for attempt in $$(seq 1 60); do \
 		if $(DOCKER) exec $(GO_PG_TEST_CONTAINER) pg_isready -U quay -d $(GO_PG_TEST_DATABASE) >/dev/null 2>&1; then ready=1; break; fi; \
 		echo "waiting for postgres ($$attempt/60)"; sleep 1; \
@@ -545,12 +548,9 @@ go-test-postgres:
 	if [ "$$ready" -ne 1 ]; then \
 		echo "postgres did not become ready after 60 seconds"; \
 		$(DOCKER) logs $(GO_PG_TEST_CONTAINER) || true; \
-		$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true; \
 		exit 1; \
-	fi
-	QUAY_TEST_POSTGRES_DSN=$(GO_PG_TEST_DSN) go test ./internal/migrate/... -run Postgres -v -count=1; \
-	status=$$?; \
-	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1; \
+	fi; \
+	if QUAY_TEST_POSTGRES_DSN="$${dsn}" go test ./internal/migrate/... -run Postgres -v -count=1; then status=0; else status=$$?; fi; \
 	exit $$status
 
 go-fmt:
