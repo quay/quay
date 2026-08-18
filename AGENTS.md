@@ -120,6 +120,12 @@ ln -sf "$(git -C /path/to/main/repo rev-parse --show-toplevel)/web/node_modules"
 
 PRs modifying the following files are accepted only from `quay` org members:
 
+- `AGENTS.md` — agent instructions for the repository
+- `CLAUDE.md` — Claude Code configuration
+- `agent_docs/` — agent documentation and task-specific guides
+- `web/AGENTS.md` — frontend agent instructions
+- `web/playwright/AGENTS.md` — Playwright E2E test agent instructions
+- `.agents/` — agent skills and definitions
 - `.coderabbit.yaml` — CodeRabbit review configuration
 - `.github/workflows/` — CI/CD workflow definitions
 - `.github/CODEOWNERS` — code ownership rules
