@@ -1369,29 +1369,11 @@ jobs:
           name: quay-binary
           path: bin/
 
-      - name: Prepare rootless systemd
+      - name: Install test dependencies
         run: |
           set -euo pipefail
-
           sudo apt-get update
-          sudo apt-get install -y fuse-overlayfs python3-yaml slirp4netns sqlite3 uidmap
-
-          uid=$(id -u)
-          sudo loginctl enable-linger "$USER"
-          sudo systemctl start "user@${uid}.service"
-          echo "XDG_RUNTIME_DIR=/run/user/${uid}" >> "$GITHUB_ENV"
-          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" >> "$GITHUB_ENV"
-
-          export XDG_RUNTIME_DIR="/run/user/${uid}"
-          export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
-          for _ in $(seq 1 30); do
-            test -S "$XDG_RUNTIME_DIR/bus" && break
-            sleep 1
-          done
-          test -S "$XDG_RUNTIME_DIR/bus"
-          systemctl --user daemon-reload
-          grep -q "^${USER}:" /etc/subuid
-          grep -q "^${USER}:" /etc/subgid
+          sudo apt-get install -y python3-yaml sqlite3
 
       - name: Build target registry image
         run: |
@@ -1408,7 +1390,8 @@ jobs:
           mkdir -p /tmp/omr
           tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
           cd /tmp/omr
-          ./mirror-registry install \
+          sudo ./mirror-registry install \
+            --verbose \
             --initPassword testpassword123 \
             --quayHostname localhost
 
@@ -1419,13 +1402,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          systemctl --user stop quay-app.service
-          podman pull "$POSTGRES_IMAGE"
+          sudo systemctl stop quay-app.service
+          sudo podman pull "$POSTGRES_IMAGE"
           mkdir -p "$RUNNER_TEMP/quay-postgres"
-          podman unshare chown -R 26:26 "$RUNNER_TEMP/quay-postgres"
+          sudo chown -R 26:26 "$RUNNER_TEMP/quay-postgres"
 
-          mkdir -p "$HOME/.config/systemd/user"
-          cat > "$HOME/.config/systemd/user/quay-postgres.service" <<EOF
+          sudo tee /etc/systemd/system/quay-postgres.service > /dev/null <<EOF
           [Unit]
           Description=PostgreSQL Podman Container for Quay
           Wants=network.target
@@ -1458,26 +1440,30 @@ jobs:
           RestartSec=10
 
           [Install]
-          WantedBy=default.target
+          WantedBy=multi-user.target
           EOF
-          systemctl --user daemon-reload
-          systemctl --user start quay-postgres.service
+          sudo systemctl daemon-reload
+          sudo systemctl start quay-postgres.service
 
           for _ in $(seq 1 60); do
-            if podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+            if sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
               break
             fi
             sleep 2
           done
-          podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-          podman exec quay-postgres psql -v ON_ERROR_STOP=1 \
+          sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          sudo podman exec quay-postgres psql -v ON_ERROR_STOP=1 \
             -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
 
           config_dir=$(grep -oE -- '-v [^:]+:/(quay-registry/)?conf/stack' \
-            "$HOME/.config/systemd/user/quay-app.service" | head -n1 | awk '{print $2}' | cut -d: -f1)
-          test -f "$config_dir/config.yaml"
-          env CONFIG_DIR="$config_dir" python3 - <<'PY'
+            /etc/systemd/system/quay-app.service | head -n1 | awk '{print $2}' | cut -d: -f1)
+          sudo test -f "$config_dir/config.yaml"
+          sudo env CONFIG_DIR="$config_dir" \
+            POSTGRES_USER="$POSTGRES_USER" \
+            POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            POSTGRES_DB="$POSTGRES_DB" \
+            python3 - <<'PY'
           import os
           from pathlib import Path
 
@@ -1493,15 +1479,15 @@ jobs:
           path.write_text(yaml.safe_dump(config, sort_keys=False))
           PY
 
-          systemctl --user start quay-app.service
+          sudo systemctl start quay-app.service
           curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
             https://localhost:8443/health/instance
 
-          revision=$(podman exec quay-postgres psql -At \
+          revision=$(sudo podman exec quay-postgres psql -At \
             -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             -c 'SELECT version_num FROM alembic_version;')
           test "$revision" = 3f8d7acdf7f9
-          service_keys=$(podman exec quay-postgres psql -At \
+          service_keys=$(sudo podman exec quay-postgres psql -At \
             -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             -c 'SELECT COUNT(*) FROM servicekey;')
           test "$service_keys" -gt 0
@@ -1512,17 +1498,17 @@ jobs:
 
           state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
           mkdir -p "$state_dir"
-          printf '%s\n' testpassword123 | podman login localhost:8443 \
+          printf '%s\n' testpassword123 | sudo podman login localhost:8443 \
             -u init --password-stdin --tls-verify=false
-          podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+          sudo podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
 
           for target in postgres-source:v1 postgres-source:v2 postgres-shared:latest; do
-            podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+            sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
               "localhost:8443/init/${target}"
-            podman push --tls-verify=false "localhost:8443/init/${target}"
+            sudo podman push --tls-verify=false "localhost:8443/init/${target}"
           done
 
-          podman exec quay-postgres psql -At -F '|' \
+          sudo podman exec quay-postgres psql -At -F '|' \
             -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             -c "SELECT u.username || '/' || r.name, t.name, m.digest
                 FROM tag AS t
@@ -1540,7 +1526,7 @@ jobs:
 
           : > "$state_dir/source-counts.env"
           for table in repository tag manifest manifestblob imagestorage; do
-            count=$(podman exec quay-postgres psql -At \
+            count=$(sudo podman exec quay-postgres psql -At \
               -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
               -c "SELECT COUNT(*) FROM ${table};")
             printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
@@ -1550,7 +1536,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/e2e-migrate-postgres"
-          bin/quay migrate \
+          sudo bin/quay migrate \
             -data-dir="$RUNNER_TEMP/quay-v3" \
             -image-archive="$PWD/bin/quay-mirror.tar" \
             2>&1 | tee "$RUNNER_TEMP/e2e-migrate-postgres/migrate.log"
@@ -1560,29 +1546,29 @@ jobs:
           set -euo pipefail
 
           curl -kfsS https://localhost:8443/healthz
-          test "$(systemctl --user is-active quay.service)" = active
+          test "$(sudo systemctl is-active quay.service)" = active
           for unit in quay-app quay-postgres quay-redis quay-pod; do
-            if systemctl --user is-active "${unit}.service" >/dev/null 2>&1; then
+            if sudo systemctl is-active "${unit}.service" >/dev/null 2>&1; then
               echo "FAIL: old OMR service is still active: ${unit}.service"
               exit 1
             fi
           done
 
           target_dir="$RUNNER_TEMP/quay-v3"
-          test "$(sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;')" = ok
-          test -z "$(sqlite3 "$target_dir/quay.db" 'PRAGMA foreign_key_check;')"
+          test "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;')" = ok
+          test -z "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA foreign_key_check;')"
           expected_revision=$(sed -n 's/^const TargetVersion = "\(.*\)"/\1/p' internal/dal/dbcore/migrate.go)
-          actual_revision=$(sqlite3 "$target_dir/quay.db" \
+          actual_revision=$(sudo sqlite3 "$target_dir/quay.db" \
             'SELECT version_num FROM alembic_version;')
           test "$actual_revision" = "$expected_revision"
-          test ! -e "$target_dir/quay.db.partial"
-          test ! -e "$target_dir/.migration-in-progress"
-          test -f "$target_dir/auth/admin-password"
-          test "$(sqlite3 "$target_dir/quay.db" \
+          sudo test ! -e "$target_dir/quay.db.partial"
+          sudo test ! -e "$target_dir/.migration-in-progress"
+          sudo test -f "$target_dir/auth/admin-password"
+          test "$(sudo sqlite3 "$target_dir/quay.db" \
             "SELECT COUNT(*) FROM \"user\" WHERE username = 'admin';")" = 1
 
           state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
-          sqlite3 -separator '|' "$target_dir/quay.db" \
+          sudo sqlite3 -separator '|' "$target_dir/quay.db" \
             "SELECT u.username || '/' || r.name, t.name, m.digest
              FROM tag AS t
              JOIN repository AS r ON r.id = t.repository_id
@@ -1597,15 +1583,15 @@ jobs:
           for table in repository tag manifest manifestblob imagestorage; do
             expected=$(awk -F= -v key="$table" '$1 == key {print $2}' \
               "$state_dir/source-counts.env")
-            actual=$(sqlite3 "$target_dir/quay.db" "SELECT COUNT(*) FROM ${table};")
+            actual=$(sudo sqlite3 "$target_dir/quay.db" "SELECT COUNT(*) FROM ${table};")
             if [ "$actual" != "$expected" ]; then
               echo "FAIL: ${table} count changed during PostgreSQL migration: expected ${expected}, got ${actual}"
               exit 1
             fi
           done
-          podman pull --tls-verify=false localhost:8443/init/postgres-source:v1
+          sudo podman pull --tls-verify=false localhost:8443/init/postgres-source:v1
 
-          python3 - "$target_dir/config.yaml" <<'PY'
+          sudo python3 - "$target_dir/config.yaml" <<'PY'
           import sys
 
           import yaml
@@ -1622,15 +1608,15 @@ jobs:
           diagnostics="$RUNNER_TEMP/e2e-migrate-postgres"
           target_dir="$RUNNER_TEMP/quay-v3"
           mkdir -p "$diagnostics"
-          podman ps -a > "$diagnostics/podman-ps.txt" 2>&1 || true
+          sudo podman ps -a > "$diagnostics/podman-ps.txt" 2>&1 || true
           for unit in quay quay-app quay-postgres quay-redis quay-pod; do
             printf '%s=' "$unit"
-            systemctl --user is-active "${unit}.service" 2>/dev/null || true
+            sudo systemctl is-active "${unit}.service" 2>/dev/null || true
           done > "$diagnostics/service-states.txt"
-          podman logs systemd-quay > "$diagnostics/target-registry.log" 2>&1 || true
-          find "$target_dir" -maxdepth 3 -type f -printf '%p %s bytes\n' \
+          sudo podman logs systemd-quay > "$diagnostics/target-registry.log" 2>&1 || true
+          sudo find "$target_dir" -maxdepth 3 -type f -printf '%p %s bytes\n' \
             > "$diagnostics/target-files.txt" 2>&1 || true
-          sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;' \
+          sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;' \
             > "$diagnostics/target-integrity.txt" 2>&1 || true
 
       - name: Upload PostgreSQL migration diagnostics
