@@ -535,6 +535,13 @@ jobs:
           cd /tmp/omr
           mkdir -p /tmp/e2e-migrate-diagnostics
 
+          # GHA ubuntu-22.04 runner image 20260810+ ships conmon without
+          # journald support.  The old OMR's Ansible template hard-codes
+          # --log-driver=journald, which makes conmon exit 1 immediately.
+          # Swap to passthrough so the container can start.
+          find /tmp/omr -name 'quay.service.j2' \
+            -exec sed -i 's/--log-driver=journald/--log-driver=passthrough/g' {} +
+
           sudo ./mirror-registry install \
             --verbose \
             --initPassword testpassword123 \
