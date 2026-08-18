@@ -1,6 +1,5 @@
 akamai-edgeauth==0.3.2
 alembic==1.13.1
-aniso8601 @ https://github.com/DevTable/aniso8601-fake/archive/bd7762c7dea0498706d3f57db60cd8a8af44ba90.tar.gz#sha256=7ab7e88598c2182d4289a34b40b220ae47d8525f2a8e41b32298721d662375bd
 APScheduler==3.10.4
 attrs==19.3.0
 Authlib==1.6.9
@@ -83,7 +82,6 @@ psutil==5.9.0
 psycopg2==2.9.9
 pyasn1==0.6.4
 pyasn1_modules==0.4.2
-py-bitbucket @ https://github.com/quay/py-bitbucket/archive/3ba167408d92eb4ba2cae78c0047b8f1e8821c67.tar.gz#sha256=4ae75463a80a02e8ebf32ed0c353e3ee49c80653785fb9cb007ad2a3a8af7d8d
 PyGithub==2.1.1
 PyJWT==2.13.0
 pymemcache==3.0.0
@@ -123,7 +121,6 @@ stringscore==0.1.0
 stripe==5.5.0
 supervisor==4.2.5
 supervisor-logging==0.0.9
-supervisor-stdout @ https://github.com/quay/supervisor-stdout/archive/9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380.tar.gz#sha256=2f130aa74b7f04506e9113e47fa152eb1c16f167423e1f31fc8f8fd103efd5a4
 text-unidecode==1.3
 tldextract==2.2.2
 toposort==1.10

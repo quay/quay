@@ -1,0 +1,3 @@
+https://github.com/DevTable/aniso8601-fake/archive/bd7762c7dea0498706d3f57db60cd8a8af44ba90.tar.gz --hash=sha256:7ab7e88598c2182d4289a34b40b220ae47d8525f2a8e41b32298721d662375bd
+https://github.com/quay/py-bitbucket/archive/3ba167408d92eb4ba2cae78c0047b8f1e8821c67.tar.gz --hash=sha256:4ae75463a80a02e8ebf32ed0c353e3ee49c80653785fb9cb007ad2a3a8af7d8d
+https://github.com/quay/supervisor-stdout/archive/9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380.tar.gz --hash=sha256:2f130aa74b7f04506e9113e47fa152eb1c16f167423e1f31fc8f8fd103efd5a4
