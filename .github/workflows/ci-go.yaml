@@ -479,7 +479,7 @@ jobs:
 
   e2e-migrate:
     name: E2E Mirror Migrate
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     needs: [test, schema-sync]
     timeout-minutes: 30
     steps:
@@ -534,27 +534,6 @@ jobs:
           mkdir -p /tmp/omr && tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
           cd /tmp/omr
           mkdir -p /tmp/e2e-migrate-diagnostics
-
-          # GHA ubuntu-22.04 runner image 20260810+ ships conmon without
-          # journald support.  OMR v2.0.11 packages its Ansible templates
-          # inside execution-environment.tar, so patch the archive before
-          # the installer imports it and starts the target services.
-          ee_template=./runner/project/roles/mirror_appliance/templates/quay.service.j2
-          if ! tar -tf execution-environment.tar | grep -Fxq "$ee_template"; then
-            echo "::error::OMR execution environment is missing $ee_template"
-            exit 1
-          fi
-          mkdir -p /tmp/omr-ee
-          tar -xf execution-environment.tar -C /tmp/omr-ee "$ee_template"
-          sed -i 's/--log-driver=journald/--log-driver=passthrough/g' \
-            "/tmp/omr-ee/$ee_template"
-          tar --delete -f execution-environment.tar "$ee_template"
-          tar --append -f execution-environment.tar -C /tmp/omr-ee "$ee_template"
-          if tar xOf execution-environment.tar "$ee_template" | \
-              grep -Fq -- '--log-driver=journald'; then
-            echo "::error::journald log driver remains in patched OMR template"
-            exit 1
-          fi
 
           sudo ./mirror-registry install \
             --verbose \
