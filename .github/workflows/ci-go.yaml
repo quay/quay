@@ -556,13 +556,18 @@ jobs:
 
       - name: Download and install old OMR
         run: |
+          set -xo pipefail
+
           curl -fsSL -o /tmp/mirror-registry.tar.gz \
             https://github.com/quay/mirror-registry/releases/download/v2.0.11/mirror-registry-offline.tar.gz
           mkdir -p /tmp/omr && tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
           cd /tmp/omr
+          mkdir -p /tmp/e2e-migrate-diagnostics
+
           sudo ./mirror-registry install \
+            --verbose \
             --initPassword testpassword123 \
-            --quayHostname localhost
+            --quayHostname localhost 2>&1 | tee /tmp/e2e-migrate-diagnostics/omr-install.log
 
       - name: Wait for old OMR
         run: |
