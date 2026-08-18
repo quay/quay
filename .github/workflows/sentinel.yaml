@@ -65,6 +65,9 @@ jobs:
               - '!cmd/**'
               - '!config-tool/**'
               - '!.github/workflows/ci-config-tool.yaml'
+              - '!.github/workflows/ci-go.yaml'
+              - '!.github/workflows/ci-python.yaml'
+              - '!.github/workflows/ci-lint.yaml'
 
   lint-ci:
     name: Lint
