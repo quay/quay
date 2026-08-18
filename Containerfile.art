@@ -66,8 +66,8 @@ RUN set -ex\
 WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
-COPY requirements-git.txt .
 COPY pip-build-constraints.txt .
+COPY vendor/ ./vendor/
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -97,7 +97,7 @@ RUN set -ex \
 		NO_BINARY_OPTS="--no-binary grpcio"; \
 	fi \
 	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS --requirement requirements.txt --requirement requirements-git.txt \
+	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
