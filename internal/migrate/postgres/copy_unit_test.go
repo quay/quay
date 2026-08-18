@@ -1,11 +1,14 @@
 package postgres
 
 import (
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/quay/quay/internal/dal/dbcore"
 )
 
 func TestConvertColumnValue(t *testing.T) {
@@ -85,6 +88,105 @@ func TestSchemaFingerprintIncludesRelationKindAndLogicalOrder(t *testing.T) {
 	}
 	if schemaFingerprint(reordered) == baseFingerprint {
 		t.Error("logical column order did not affect schema fingerprint")
+	}
+}
+
+func TestValidateProfileContract(t *testing.T) {
+	base := inventoryFromApprovedProfile()
+	alembicColumn := schemaColumn{table: alembicVersionTable, name: "version_num", postgresType: "character varying(32)"}
+	insert := func(inventory []schemaColumn, index int, column schemaColumn) []schemaColumn {
+		inventory = append(inventory, schemaColumn{})
+		copy(inventory[index+1:], inventory[index:])
+		inventory[index] = column
+		return inventory
+	}
+
+	tests := []struct {
+		name    string
+		mutate  func([]schemaColumn) []schemaColumn
+		wantErr string
+	}{
+		{name: "matching inventory", mutate: func(inventory []schemaColumn) []schemaColumn { return inventory }},
+		{name: "alembic at start", mutate: func(inventory []schemaColumn) []schemaColumn {
+			return insert(inventory, 0, alembicColumn)
+		}},
+		{name: "alembic in middle", mutate: func(inventory []schemaColumn) []schemaColumn {
+			return insert(inventory, len(approvedPostgresProfile.Tables[0].Columns), alembicColumn)
+		}},
+		{name: "alembic at end", mutate: func(inventory []schemaColumn) []schemaColumn {
+			return append(inventory, alembicColumn)
+		}},
+		{name: "metadata mismatch", mutate: func(inventory []schemaColumn) []schemaColumn {
+			inventory[0].name = "unexpected_id"
+			return inventory
+		}, wantErr: "profile expects accesstoken.id (integer) but inventory has accesstoken.unexpected_id (integer)"},
+		{name: "extra inventory column", mutate: func(inventory []schemaColumn) []schemaColumn {
+			return append(inventory, schemaColumn{table: "unexpected", name: "id", postgresType: "integer"})
+		}, wantErr: "profile ended before inventory column unexpected.id"},
+		{name: "missing inventory column", mutate: func(inventory []schemaColumn) []schemaColumn {
+			return inventory[:len(inventory)-1]
+		}, wantErr: "profile has more columns than the approved schema inventory"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			inventory := test.mutate(append([]schemaColumn(nil), base...))
+			err := validateProfileContract(inventory)
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validateProfileContract: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("validateProfileContract error = %v, want %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func inventoryFromApprovedProfile() []schemaColumn {
+	var inventory []schemaColumn
+	for _, table := range approvedPostgresProfile.Tables {
+		for index, column := range table.Columns {
+			inventory = append(inventory, schemaColumn{
+				table:          table.Name,
+				logicalOrdinal: int64(index + 1),
+				name:           column.Name,
+				postgresType:   column.PostgresType,
+			})
+		}
+	}
+	return inventory
+}
+
+func TestForeignKeyCheckSQLiteReportsWithoutRowIDViolation(t *testing.T) {
+	db, err := dbcore.OpenSQLite(filepath.Join(t.TempDir(), "foreign-keys.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	for _, statement := range []string{
+		"PRAGMA foreign_keys = OFF",
+		"CREATE TABLE parent (id INTEGER PRIMARY KEY)",
+		"CREATE TABLE child (id TEXT PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY(parent_id) REFERENCES parent(id)) WITHOUT ROWID",
+		"INSERT INTO child (id, parent_id) VALUES ('orphan', 1)",
+		"PRAGMA foreign_keys = ON",
+	} {
+		if _, err := db.ExecContext(t.Context(), statement); err != nil {
+			t.Fatalf("execute %q: %v", statement, err)
+		}
+	}
+	tx, err := db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	err = foreignKeyCheckSQLite(t.Context(), tx)
+	if err == nil || !strings.Contains(err.Error(), "child row unknown referencing parent (foreign key 0)") {
+		t.Fatalf("foreignKeyCheckSQLite error = %v", err)
 	}
 }
 

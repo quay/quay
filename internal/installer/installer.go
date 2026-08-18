@@ -109,7 +109,9 @@ func (inst *Installer) HasInstallation() bool {
 	return inst.quadlet.Exists(quadletServiceName)
 }
 
-// RemoveFailedInstallation removes a newly-created Quay Quadlet after a failed install.
+// RemoveFailedInstallation removes the Quay Quadlet and reloads systemd. It
+// cannot distinguish a new installation from a pre-existing one, so callers
+// must first confirm that no installation existed before their operation.
 func (inst *Installer) RemoveFailedInstallation(ctx context.Context) error {
 	if !inst.HasInstallation() {
 		return nil

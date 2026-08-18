@@ -59,6 +59,28 @@ func TestInitOMRSourceIntermediate(t *testing.T) {
 	}
 }
 
+func TestInitOMRSourceIntermediateRestoresForeignKeysAfterFailure(t *testing.T) {
+	db, err := OpenSQLite(filepath.Join(t.TempDir(), "omr-source-failure.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if _, err := db.ExecContext(t.Context(), "CREATE VIEW accesstokenkind AS SELECT 1 AS id"); err != nil {
+		t.Fatal(err)
+	}
+	if err := InitOMRSourceIntermediate(t.Context(), db); err == nil {
+		t.Fatal("InitOMRSourceIntermediate unexpectedly succeeded with a conflicting view")
+	}
+	var foreignKeys int
+	if err := db.QueryRowContext(t.Context(), "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+		t.Fatal(err)
+	}
+	if foreignKeys != 1 {
+		t.Fatalf("foreign_keys = %d after initialization failure, want 1", foreignKeys)
+	}
+}
+
 func emptyIntermediateTables(t *testing.T, db *sql.DB) []string {
 	t.Helper()
 	rows, err := db.QueryContext(t.Context(), `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'`)

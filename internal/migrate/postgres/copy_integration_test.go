@@ -16,7 +16,11 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
-const postgresDSNEnv = "QUAY_TEST_POSTGRES_DSN"
+const (
+	postgresDSNEnv              = "QUAY_TEST_POSTGRES_DSN"
+	postgresAllowDestructiveEnv = "QUAY_TEST_POSTGRES_ALLOW_DESTRUCTIVE"
+	postgresTestDatabase        = "quay_migrate_test"
+)
 
 const postgresDataDML = `
 INSERT INTO "user" (id, uuid, username, password_hash, email, verified, stripe_id, organization, robot, invoice_email, invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled, invoice_email_address, company, family_name, given_name, location, maximum_queued_builds_count, creation_date, last_accessed) VALUES
@@ -44,7 +48,17 @@ func connectTestPostgres(t *testing.T) *pgx.Conn {
 		t.Skipf("skipping: set %s to a reachable PostgreSQL 16 connection string (see `make go-test-postgres`)", postgresDSNEnv)
 	}
 
-	conn, err := pgx.Connect(t.Context(), dsn)
+	config, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("parse test postgres configuration from %s: %v", postgresDSNEnv, err)
+	}
+	if config.Database != postgresTestDatabase && os.Getenv(postgresAllowDestructiveEnv) != "1" {
+		t.Fatalf(
+			"refusing to reset PostgreSQL database %q: use a disposable database named %q or set %s=1",
+			config.Database, postgresTestDatabase, postgresAllowDestructiveEnv,
+		)
+	}
+	conn, err := pgx.ConnectConfig(t.Context(), config)
 	if err != nil {
 		t.Fatalf("connect to test postgres (%s): %v", postgresDSNEnv, err)
 	}
@@ -179,8 +193,8 @@ func TestCopyPostgresToSQLite_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CopyPostgresToSQLite: %v", err)
 	}
-	if len(report.Tables) != 96 {
-		t.Fatalf("report table count = %d, want 96", len(report.Tables))
+	if want := len(approvedPostgresProfile.Tables); len(report.Tables) != want {
+		t.Fatalf("report table count = %d, want %d", len(report.Tables), want)
 	}
 	for table, count := range report.Tables {
 		if count.SourceRows != count.DestRows {

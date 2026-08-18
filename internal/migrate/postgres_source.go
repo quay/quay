@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
@@ -27,12 +28,16 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 	if err := m.validatePostgresBeforeStop(ctx); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+	retrySafe := true
 	defer func() {
 		if retErr == nil {
 			return
 		}
 		rollbackCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+		if cleanupErr := m.removePostgresMigrationArtifacts(retrySafe); cleanupErr != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("remove failed migration artifacts: %w", cleanupErr))
+		}
 		if rollbackErr := m.rollbackPostgresSource(rollbackCtx); rollbackErr != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("rollback old OMR: %w", rollbackErr))
 		}
@@ -54,6 +59,9 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 	if err := m.validateSourceDatabase(ctx); err != nil {
 		return fmt.Errorf("validate converted source: %w", err)
 	}
+	// Once broad target publication begins, retain the marker so a later failure
+	// remains fail-closed rather than being mistaken for a clean retry.
+	retrySafe = false
 	if err := m.copyData(ctx); err != nil {
 		return fmt.Errorf("copy: %w", err)
 	}
@@ -87,11 +95,11 @@ func (m *Migrator) validatePostgresFlags() error {
 }
 
 func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
-	inst, err := installer.New(m.Out)
+	hasInstallation, err := m.hasTargetInstallation()
 	if err != nil {
 		return fmt.Errorf("check target installation: %w", err)
 	}
-	if inst.HasInstallation() {
+	if hasInstallation {
 		return fmt.Errorf("an existing target Quay installation must be removed before PostgreSQL migration")
 	}
 	if _, err := m.validateSourceAuthConfig(); err != nil {
@@ -116,6 +124,17 @@ func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
 		return fmt.Errorf("stat migration marker: %w", err)
 	}
 	return nil
+}
+
+func (m *Migrator) hasTargetInstallation() (bool, error) {
+	if m.checkTargetInstallation != nil {
+		return m.checkTargetInstallation()
+	}
+	inst, err := installer.New(m.Out)
+	if err != nil {
+		return false, err
+	}
+	return inst.HasInstallation(), nil
 }
 
 func (m *Migrator) inPostgresNetworkNamespace() (bool, error) {
@@ -156,7 +175,7 @@ func (m *Migrator) copyPostgresSource(ctx context.Context) (retErr error) {
 	}
 	pg, err := pgx.Connect(ctx, dsn)
 	if err != nil {
-		return errors.New("connect to source PostgreSQL: connection failed")
+		return postgresConnectionError(err)
 	}
 	defer func() { _ = pg.Close(context.Background()) }()
 
@@ -174,14 +193,14 @@ func (m *Migrator) copyPostgresSource(ctx context.Context) (retErr error) {
 		}
 	}()
 
+	if err := createIntermediateDatabaseFile(targetPath); err != nil {
+		return err
+	}
 	db, err := dbcore.OpenSQLite(targetPath)
 	if err != nil {
 		return fmt.Errorf("open intermediate database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
-	if err := os.Chmod(targetPath, 0o600); err != nil {
-		return fmt.Errorf("secure intermediate database: %w", err)
-	}
 	if err := dbcore.InitOMRSourceIntermediate(ctx, db); err != nil {
 		return fmt.Errorf("initialize intermediate database: %w", err)
 	}
@@ -189,6 +208,49 @@ func (m *Migrator) copyPostgresSource(ctx context.Context) (retErr error) {
 		return fmt.Errorf("copy PostgreSQL source: %w", err)
 	}
 	return nil
+}
+
+func postgresConnectionError(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("connect to source PostgreSQL: %w", err)
+	}
+	var connectErr *pgconn.ConnectError
+	if errors.As(err, &connectErr) {
+		if cause := errors.Unwrap(connectErr); cause != nil {
+			return fmt.Errorf("connect to source PostgreSQL: %w", cause)
+		}
+	}
+	return errors.New("connect to source PostgreSQL: connection failed")
+}
+
+func createIntermediateDatabaseFile(path string) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // path is the validated migration target
+	if err != nil {
+		return fmt.Errorf("create intermediate database: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("create intermediate database: %w", err)
+	}
+	return nil
+}
+
+func (m *Migrator) removePostgresMigrationArtifacts(removeMarker bool) error {
+	partialPath := m.postgresPartialDBPath()
+	paths := []string{
+		partialPath,
+		partialPath + "-wal",
+		partialPath + "-shm",
+	}
+	if removeMarker {
+		paths = append(paths, filepath.Join(m.DataDir, markerFile))
+	}
+	var errs []error
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, fmt.Errorf("remove %s: %w", path, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func postgresLoopbackURI(raw string) (string, error) {

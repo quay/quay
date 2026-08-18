@@ -67,8 +67,9 @@ type Migrator struct {
 	Runner     system.CommandRunner
 	Checkpoint checkpointFunc
 
-	sourceRegistryJWTKey *rsa.PrivateKey
-	sourceRegistryJWTKID string
+	sourceRegistryJWTKey    *rsa.PrivateKey
+	sourceRegistryJWTKID    string
+	checkTargetInstallation func() (bool, error)
 }
 
 // Run executes the migration phases in order.

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -189,7 +190,11 @@ func validateProfileContract(inventory []schemaColumn) error {
 			}
 			observed := inventory[inventoryIndex]
 			if observed.table != table.Name || observed.name != column.Name || observed.postgresType != column.PostgresType {
-				return fmt.Errorf("profile table or column metadata differs from the approved schema inventory")
+				return fmt.Errorf(
+					"profile expects %s.%s (%s) but inventory has %s.%s (%s)",
+					table.Name, column.Name, column.PostgresType,
+					observed.table, observed.name, observed.postgresType,
+				)
 			}
 			inventoryIndex++
 		}
@@ -198,7 +203,8 @@ func validateProfileContract(inventory []schemaColumn) error {
 		inventoryIndex++
 	}
 	if inventoryIndex != len(inventory) {
-		return fmt.Errorf("profile has fewer columns than the approved schema inventory")
+		observed := inventory[inventoryIndex]
+		return fmt.Errorf("profile ended before inventory column %s.%s (%s)", observed.table, observed.name, observed.postgresType)
 	}
 	return nil
 }
@@ -364,11 +370,17 @@ func foreignKeyCheckSQLite(ctx context.Context, tx *sql.Tx) error {
 	defer func() { _ = rows.Close() }()
 
 	if rows.Next() {
-		var table, rowID, parent, foreignKeyID string
+		var table, parent string
+		var rowID sql.NullInt64
+		var foreignKeyID int64
 		if err := rows.Scan(&table, &rowID, &parent, &foreignKeyID); err != nil {
 			return fmt.Errorf("scan violation: %w", err)
 		}
-		return fmt.Errorf("violation in %s row %s referencing %s", table, rowID, parent)
+		formattedRowID := "unknown"
+		if rowID.Valid {
+			formattedRowID = strconv.FormatInt(rowID.Int64, 10)
+		}
+		return fmt.Errorf("violation in %s row %s referencing %s (foreign key %d)", table, formattedRowID, parent, foreignKeyID)
 	}
 	return rows.Err()
 }

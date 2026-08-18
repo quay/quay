@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -42,6 +43,9 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	}
 
 	if ver == dbcore.TargetVersion {
+		if m.Source.DatabaseKind == databasePostgres {
+			return fmt.Errorf("converted PostgreSQL database unexpectedly has target schema version %q", ver)
+		}
 		slog.Info("schema is current", "version", ver)
 		return nil
 	}
@@ -66,23 +70,33 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	}
 
 	if m.Source.DatabaseKind == databasePostgres {
-		if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-			return fmt.Errorf("checkpoint converted database: %w", err)
-		}
-		if err := db.Close(); err != nil {
-			return fmt.Errorf("close converted database: %w", err)
-		}
-		targetPath := filepath.Join(m.DataDir, "quay.db")
-		if _, err := os.Stat(targetPath); err == nil {
-			return fmt.Errorf("target database already exists")
-		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("stat target database: %w", err)
-		}
-		if err := os.Rename(dbPath, targetPath); err != nil {
-			return fmt.Errorf("publish converted database: %w", err)
-		}
+		return m.publishConvertedDatabase(ctx, db, dbPath, backupPath)
 	}
 
+	return nil
+}
+
+func (m *Migrator) publishConvertedDatabase(ctx context.Context, db *sql.DB, dbPath, backupPath string) error {
+	if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return fmt.Errorf("checkpoint converted database: %w", err)
+	}
+	if err := db.Close(); err != nil {
+		return fmt.Errorf("close converted database: %w", err)
+	}
+	targetPath := filepath.Join(m.DataDir, "quay.db")
+	if _, err := os.Stat(targetPath); err == nil {
+		return fmt.Errorf("target database already exists")
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat target database: %w", err)
+	}
+	if err := os.Rename(dbPath, targetPath); err != nil {
+		return fmt.Errorf("publish converted database: %w", err)
+	}
+	if backupPath != "" {
+		if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove converted database backup", "path", backupPath, "err", err)
+		}
+	}
 	return nil
 }
 

@@ -2,6 +2,8 @@
 -- run against PostgreSQL 16 documented in
 -- omr_v2.0.11_postgres_3f8d7acdf7f9_schema.sql. `pg_dump --data-only` COPY
 -- format, `\restrict`/`\unrestrict` pragma lines stripped.
+-- The Go test loader processes only COPY data blocks; it intentionally ignores
+-- these session SET statements and the pg_catalog.setval sequence statements.
 --
 -- All rows here matched the existing artifact-derived SQLite fixture's
 -- enum seed rows (internal/dal/schema/sqlite/omr/3f8d7acdf7f9_seed_data.sql)

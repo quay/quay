@@ -1424,6 +1424,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/quay-postgres"
           podman unshare chown -R 26:26 "$RUNNER_TEMP/quay-postgres"
 
+          mkdir -p "$HOME/.config/systemd/user"
           cat > "$HOME/.config/systemd/user/quay-postgres.service" <<EOF
           [Unit]
           Description=PostgreSQL Podman Container for Quay
@@ -1505,6 +1506,46 @@ jobs:
             -c 'SELECT COUNT(*) FROM servicekey;')
           test "$service_keys" -gt 0
 
+      - name: Seed and record PostgreSQL source content
+        run: |
+          set -euo pipefail
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          mkdir -p "$state_dir"
+          printf '%s\n' testpassword123 | podman login localhost:8443 \
+            -u init --password-stdin --tls-verify=false
+          podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+
+          for target in postgres-source:v1 postgres-source:v2 postgres-shared:latest; do
+            podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+              "localhost:8443/init/${target}"
+            podman push --tls-verify=false "localhost:8443/init/${target}"
+          done
+
+          podman exec quay-postgres psql -At -F '|' \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                FROM tag AS t
+                JOIN repository AS r ON r.id = t.repository_id
+                JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                JOIN manifest AS m ON m.id = t.manifest_id
+                WHERE u.username = 'init'
+                  AND r.name IN ('postgres-source', 'postgres-shared')
+                  AND t.lifetime_end_ms IS NULL
+                ORDER BY r.name, t.name" \
+            > "$state_dir/source-manifests.txt"
+          test "$(wc -l < "$state_dir/source-manifests.txt")" -eq 3
+          test "$(grep -Ec '^init/postgres-(shared|source)\|[^|]+\|sha256:[0-9a-f]{64}$' \
+            "$state_dir/source-manifests.txt")" -eq 3
+
+          : > "$state_dir/source-counts.env"
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(podman exec quay-postgres psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT COUNT(*) FROM ${table};")
+            printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
+          done
+
       - name: Migrate PostgreSQL OMR to v3
         run: |
           set -euo pipefail
@@ -1539,6 +1580,31 @@ jobs:
           test -f "$target_dir/auth/admin-password"
           test "$(sqlite3 "$target_dir/quay.db" \
             "SELECT COUNT(*) FROM \"user\" WHERE username = 'admin';")" = 1
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          sqlite3 -separator '|' "$target_dir/quay.db" \
+            "SELECT u.username || '/' || r.name, t.name, m.digest
+             FROM tag AS t
+             JOIN repository AS r ON r.id = t.repository_id
+             JOIN \"user\" AS u ON u.id = r.namespace_user_id
+             JOIN manifest AS m ON m.id = t.manifest_id
+             WHERE u.username = 'init'
+               AND r.name IN ('postgres-source', 'postgres-shared')
+               AND t.lifetime_end_ms IS NULL
+             ORDER BY r.name, t.name;" \
+            > "$state_dir/target-manifests.txt"
+          diff -u "$state_dir/source-manifests.txt" "$state_dir/target-manifests.txt"
+          for table in repository tag manifest manifestblob imagestorage; do
+            expected=$(awk -F= -v key="$table" '$1 == key {print $2}' \
+              "$state_dir/source-counts.env")
+            actual=$(sqlite3 "$target_dir/quay.db" "SELECT COUNT(*) FROM ${table};")
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${table} count changed during PostgreSQL migration: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+          done
+          podman pull --tls-verify=false localhost:8443/init/postgres-source:v1
+
           python3 - "$target_dir/config.yaml" <<'PY'
           import sys
 
