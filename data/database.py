@@ -928,6 +928,8 @@ class User(BaseModel):
                 RepositoryActionCount,
                 TeamSync,
                 RepositorySearchScore,
+                RepositoryBlobDigest,
+                RepositoryManifestDigest,
                 DeletedNamespace,
                 DeletedRepository,
                 RepoMirrorRule,
@@ -1152,6 +1154,8 @@ class Repository(BaseModel):
             BlobUpload,
             Label,
             RepositorySearchScore,
+            RepositoryBlobDigest,
+            RepositoryManifestDigest,
             RepoMirrorConfig,
             RepoMirrorRule,
             DeletedRepository,
@@ -1711,6 +1715,21 @@ class UploadedBlob(BaseModel):
     expires_at = DateTimeField(index=True)
 
 
+class RepositoryBlobDigest(BaseModel):
+    repository = ForeignKeyField(Repository)
+    image_storage = ForeignKeyField(ImageStorage)
+    digest = CharField(max_length=1024)
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            (("repository", "digest"), True),
+            (("repository", "image_storage"), False),
+        )
+
+
 class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     repository_id: int
@@ -1725,6 +1744,8 @@ class BlobUpload(BaseModel):
     created = DateTimeField(default=datetime.now, index=True)
     piece_sha_state = ResumableSHA1Field(null=True)
     piece_hashes = Base64BinaryField(null=True)
+    requested_digest_algorithm = CharField(null=True)
+    requested_digest_state = TextField(null=True)
 
     class Meta:
         database = db
@@ -1973,6 +1994,21 @@ class ManifestBlob(BaseModel):
         database = db
         read_only_config = read_only_config
         indexes = ((("manifest", "blob"), True),)
+
+
+class RepositoryManifestDigest(BaseModel):
+    repository = ForeignKeyField(Repository)
+    manifest = ForeignKeyField(Manifest)
+    digest = CharField(max_length=1024)
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            (("repository", "digest"), True),
+            (("repository", "manifest"), False),
+        )
 
 
 @unique
