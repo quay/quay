@@ -1483,6 +1483,13 @@ jobs:
           curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
             https://localhost:8443/health/instance
 
+          curl -kfsS --retry 30 --retry-delay 2 --retry-all-errors \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"init","password":"testpassword123","email":"init@quay.io"}' \
+            -o /dev/null \
+            https://localhost:8443/api/v1/user/initialize
+
           revision=$(sudo podman exec quay-postgres psql -At \
             -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             -c 'SELECT version_num FROM alembic_version;')
