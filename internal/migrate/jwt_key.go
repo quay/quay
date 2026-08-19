@@ -138,10 +138,40 @@ func readSourceConfigMaterial(
 		return nil, hostPath, err
 	}
 	output, execErr := runner.Output(ctx, "podman", "exec", sourceContainerName, "cat", containerPath)
-	if execErr != nil {
-		return nil, containerPath, fmt.Errorf("read %s from source container: %w", containerPath, execErr)
+	if execErr == nil {
+		if writeErr := os.WriteFile(hostPath, []byte(output), 0o600); writeErr != nil {
+			slog.Warn("could not persist config material to host", "path", hostPath, "err", writeErr)
+		} else {
+			slog.Info("persisted config material from container to host", "path", hostPath)
+		}
+		return []byte(output), containerPath, nil
 	}
-	return []byte(output), containerPath, nil
+
+	cpErr := podmanCpToHost(ctx, runner, sourceContainerName, containerPath, hostPath)
+	if cpErr == nil {
+		if chmodErr := os.Chmod(hostPath, 0o600); chmodErr != nil {
+			return nil, hostPath, fmt.Errorf("restrict permissions on extracted file %s: %w", hostPath, chmodErr)
+		}
+		data, readErr := os.ReadFile(hostPath) //nolint:gosec // path from detected source configuration
+		if readErr == nil {
+			slog.Info("recovered config material via podman cp", "path", hostPath)
+			return data, hostPath, nil
+		}
+		return nil, hostPath, fmt.Errorf("read extracted file %s: %w", hostPath, readErr)
+	}
+
+	return nil, containerPath, fmt.Errorf(
+		"read %s from source container: %w",
+		containerPath, errors.Join(
+			fmt.Errorf("exec: %w", execErr),
+			fmt.Errorf("cp: %w", cpErr),
+		),
+	)
+}
+
+func podmanCpToHost(ctx context.Context, runner system.CommandRunner, container, containerPath, hostPath string) error {
+	src := container + ":" + containerPath
+	return runner.Run(ctx, "podman", "cp", src, hostPath)
 }
 
 func sourceConfigPaths(configDir, configured, defaultName string) (hostPath, containerPath string) {
