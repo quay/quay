@@ -65,7 +65,7 @@ func (m *Migrator) reloadSystemd(ctx context.Context) error {
 	}
 	var args []string
 	if m.Source.SystemdScope == scopeUser {
-		args = []string{"--user"}
+		args = []string{systemdUserFlag}
 	}
 	args = append(args, "daemon-reload")
 	return m.Runner.Run(ctx, "systemctl", args...)

@@ -60,14 +60,22 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 		slog.Info("no command runner, skipping service stop")
 		return nil
 	}
+
+	scope := m.Source.SystemdScope
 	if len(m.Source.UnitFiles) == 0 {
-		slog.Info("no OMR services detected, skipping stop")
-		return nil
+		discovered := m.discoverOMRScope(ctx)
+		if discovered == "" {
+			slog.Info("no OMR services detected, skipping stop")
+			return nil
+		}
+		scope = discovered
+		m.Source.SystemdScope = discovered
+		slog.Info("discovered running OMR services via probe", "scope", scope)
 	}
 
 	var scopeArgs []string
-	if m.Source.SystemdScope == scopeUser {
-		scopeArgs = []string{"--user"}
+	if scope == scopeUser {
+		scopeArgs = []string{systemdUserFlag}
 	}
 
 	for _, svc := range omrServiceNames {
@@ -82,6 +90,24 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 
 	slog.Info("old OMR services stopped (or already inactive)")
 	return nil
+}
+
+// discoverOMRScope probes quay-app.service (the port-binding service) in
+// system then user scope, matching the probe order in detectSystemd.
+func (m *Migrator) discoverOMRScope(ctx context.Context) string {
+	unit := omrServiceNames[0] + ".service"
+	for _, scope := range []struct {
+		name string
+		args []string
+	}{
+		{scopeSystem, []string{"is-active", "--quiet", unit}},
+		{scopeUser, []string{systemdUserFlag, "is-active", "--quiet", unit}},
+	} {
+		if err := m.Runner.Run(ctx, "systemctl", scope.args...); err == nil {
+			return scope.name
+		}
+	}
+	return ""
 }
 
 // install chains into the existing installer to create the Quadlet unit and start the service.

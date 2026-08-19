@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	scopeSystem = "system"
-	scopeUser   = "user"
+	scopeSystem     = "system"
+	scopeUser       = "user"
+	systemdUserFlag = "--user"
 )
 
 // OMRSource describes a detected OMR v2.0.x SQLite installation.
