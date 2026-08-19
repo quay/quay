@@ -128,7 +128,6 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     const org = await api.organization('testorg');
     const team = await api.team(org.name, 'addrobotteam');
     const repo = await api.repository(org.name, 'wizardrepo');
-    // Robot names must match ^[a-z][a-z0-9_]{1,254}$
     const newRobotName = `testbot${Date.now()}`.substring(0, 20);
     const newRobotDescription = 'robot created via wizard';
 
