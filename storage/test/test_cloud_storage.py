@@ -1,11 +1,15 @@
+import datetime
 import os
 import time
 from datetime import timedelta
 from io import BytesIO
+from unittest.mock import patch
 
 import boto3
 import botocore.exceptions
 import pytest
+from botocore.client import BaseClient
+from freezegun import freeze_time
 from moto import mock_s3
 
 from storage import S3Storage, StorageContext
@@ -376,3 +380,138 @@ def test_clean_partial_uploads(storage_engine, path):
     storage_engine.remove("uploads")
     assert not storage_engine.exists("uploads")
     storage_engine.clean_partial_uploads(timedelta(seconds=0))
+
+
+@pytest.fixture
+def mock_mpu_dates():
+    """
+    Fixture to allow freezegun control moto's multipart upload dates. Needed since Moto
+    hardcodes MPU creation date in its source code which goes back to 2010.
+    Clears state automatically between tests.
+    """
+    _UPLOAD_DATES = {}
+    original_make_api_call = BaseClient._make_api_call
+
+    def _mock_make_api_call(self, operation_name, api_params):
+        response = original_make_api_call(self, operation_name, api_params)
+
+        if operation_name == "CreateMultipartUpload":
+            _UPLOAD_DATES[response["UploadId"]] = datetime.datetime.now(datetime.timezone.utc)
+
+        elif operation_name == "ListMultipartUploads" and "Uploads" in response:
+            for upload in response["Uploads"]:
+                upload_id = upload["UploadId"]
+                if upload_id in _UPLOAD_DATES:
+                    upload["Initiated"] = _UPLOAD_DATES[upload_id]
+
+        return response
+
+    with patch.object(BaseClient, "_make_api_call", new=_mock_make_api_call):
+        yield
+
+
+def test_clean_orphaned_multipart_uploads(storage_engine, mock_mpu_dates):
+    """
+    Tests clean up of stale multipart uploads based on specific threshold.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # initialize an MPU
+    with freeze_time(now):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key="test/multipart/upload.txt"
+        )
+
+    # verify that the upload exists
+    assert mpu_response
+    upload_id = mpu_response["UploadId"]
+    uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)
+    assert len(uploads.get("Uploads", [])) == 1
+    assert uploads["Uploads"][0]["UploadId"] == upload_id
+
+    # Check that the multipart upload is not cleaned for a very large threshold
+    with freeze_time(now):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(days=1))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)
+        assert len(uploads.get("Uploads", [])) == 1
+
+    # Check that the upload is deleted with a threshold of 0
+    with freeze_time(now + timedelta(seconds=5)):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)
+        assert len(uploads.get("Uploads", [])) == 0
+
+
+def test_cleanup_multiple_orphaned_multipart_uploads(storage_engine, mock_mpu_dates):
+    """
+    Tests that all created multipart uploads are cleaned after a certain threshold.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    file_list = ["apple", "ibm", "redhat", "github", "jira", "email"]
+
+    # create multiple MPUs
+    with freeze_time(now):
+        for keyname in file_list:
+            mpu_response = client.create_multipart_upload(
+                Bucket=_TEST_BUCKET, Key="test/multipart/%s" % keyname + ".txt"
+            )
+            assert mpu_response
+
+    # check that we can list all MPUs
+    uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+    assert len(uploads) == len(file_list)
+
+    # check that multipart uploads are not delte with a high enough threshold
+    with freeze_time(now):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(days=1))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+        assert len(uploads) == len(file_list)
+
+    # assert that all multipart uploads are deleted with a threshold of 0
+    with freeze_time(now + timedelta(seconds=5)):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)
+        assert len(uploads.get("Uploads", [])) == 0
+
+
+def test_partial_cleanup_of_multipart_uploads(storage_engine, mock_mpu_dates):
+    """
+    Tests that partial MPU deletion occurs after a provided threshold. Stale MPUs should
+    be deleted, active MPUs should not be touched.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    file_list = ["apple", "ibm", "redhat", "github", "jira", "email"]
+
+    # create multiple MPUs with a timedelta of 1 hour between them
+    for i, keyname in enumerate(file_list):
+        with freeze_time(now + timedelta(hours=1 * i)):
+            mpu_response = client.create_multipart_upload(
+                Bucket=_TEST_BUCKET, Key="test/multipart/%s" % keyname + ".txt"
+            )
+            assert mpu_response
+
+    # check that we can list all MPUs
+    uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+    assert len(uploads) == len(file_list)
+
+    # check that multipart uploads are not delte with a high enough threshold
+    with freeze_time(now + timedelta(hours=5)):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(days=1))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+        assert len(uploads) == len(file_list)
+
+    # assert that only some multipart uploads are deleted after a certain threshold
+    # fast forward time by 6 hours, set timedelta to 3.5 hours meaning that
+    # cutoff rate is at now + 2.5 hours. So 3 out of 6 MPUs should be deleted.
+    with freeze_time(now + timedelta(hours=6)):
+        storage_engine.clean_orphaned_multipart_uploads(timedelta(hours=3.5))
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+        assert len(uploads) == 3
+        assert uploads[0]["Key"] == "test/multipart/github.txt"
+        assert uploads[1]["Key"] == "test/multipart/jira.txt"
+        assert uploads[2]["Key"] == "test/multipart/email.txt"
