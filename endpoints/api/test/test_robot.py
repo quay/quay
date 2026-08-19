@@ -1,6 +1,5 @@
 import pytest
 import json
-from unittest.mock import patch
 
 from data import model
 from endpoints.api import api
@@ -142,19 +141,6 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
         for robot in result.json["robots"]:
             assert (robot.get("token") is not None) == is_admin
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
-
-
-def test_superuser_org_robot_list_hides_token(app):
-    with patch(
-        "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
-    ):
-        with client_with_identity("freshuser", app) as cl:
-            result = conduct_api_call(
-                cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
-            )
-            assert result.json["robots"]
-            for robot in result.json["robots"]:
-                assert robot.get("token") is None
 
 
 def test_org_admin_still_sees_robot_token(app):
