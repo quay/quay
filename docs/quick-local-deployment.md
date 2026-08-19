@@ -231,7 +231,7 @@ This workflow no longer works on Quay 3.17+ images. It is preserved here only fo
 The legacy workflow ran the Quay image with runtime flags set to launch ConfigTool:
 
 ```shell
-sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay config secret
+sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay:3.16.2 config secret
 ```
 
 1. Open https://localhost:8080 in browser
