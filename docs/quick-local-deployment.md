@@ -220,7 +220,7 @@ mysql> create database quay character set latin1;
 Query OK, 1 row affected (0.02 sec)
 ```
 
-Lastly, when configuring Quay manually, set the database type to `MySQL` and use the credentials `root/password` and database name `quay`. The legacy ConfigTool UI workflow is obsolete on Quay 3.17+; see [Legacy configuration tool workflow (obsolete)](./quick-local-deployment.md#legacy-configuration-tool-workflow-obsolete-in-quay-317).
+Lastly, when configuring Quay manually, set the database type to `MySQL` and use the credentials `root/password` and database name `quay`. The legacy ConfigTool UI workflow is obsolete on Quay 3.17+; see [Legacy configuration tool workflow (obsolete)](#legacy-configuration-tool-workflow-obsolete-in-quay-317).
 
 ## Legacy configuration tool workflow (obsolete in Quay 3.17+)
 
