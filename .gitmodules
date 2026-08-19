@@ -7,3 +7,6 @@
 [submodule "vendor/supervisor-stdout"]
 	path = vendor/supervisor-stdout
 	url = https://github.com/quay/supervisor-stdout.git
+[submodule "pushgateway"]
+	path = pushgateway
+	url = https://github.com/prometheus/pushgateway.git
