@@ -125,7 +125,7 @@
     "immutable": "^5.1.5",
     "decode-uri-component": "^0.5.0",
     "svgo": "4.0.1",
-    "brace-expansion": "^1.1.16",
+    "brace-expansion": "^1.1.18",
     "js-yaml": "4.3.0"
   }
 }
