@@ -104,11 +104,11 @@ describe('CreateRobotAccountModal', () => {
     expect(screen.getByTestId('name-and-description')).toBeInTheDocument();
   });
 
-  it('passes updated helper text with new regex pattern to NameAndDescription', () => {
+  it('passes human-readable helper text to NameAndDescription', () => {
     render(<CreateRobotAccountModal {...makeProps()} />);
     const helperText = screen.getByTestId('name-helper-text').textContent;
     expect(helperText).toContain(
-      '^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$',
+      'Can contain lowercase letters, digits, and separators',
     );
   });
 

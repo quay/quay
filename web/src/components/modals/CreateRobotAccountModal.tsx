@@ -150,7 +150,7 @@ export default function CreateRobotAccountModal(
           nameLabel="Provide a name for your robot account:"
           descriptionLabel="Provide an optional description for your new robot:"
           helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
-          nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$."
+          nameHelperText="Choose a name to inform your teammates about this robot account. Can contain lowercase letters, digits, and separators (period, hyphen, underscore) but must start and end with a letter or digit. 2-255 characters."
           validateName={() => validateRobotName(robotName)}
         />
       </>
