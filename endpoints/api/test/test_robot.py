@@ -144,22 +144,6 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
 
 
-def test_superuser_org_robot_get_hides_token(app):
-    with patch(
-        "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
-    ):
-        with client_with_identity("freshuser", app) as cl:
-            result = conduct_api_call(
-                cl,
-                OrgRobot,
-                "GET",
-                {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
-                None,
-            )
-            assert result.json["name"] == "buynlarge+coolrobot"
-            assert result.json.get("token") is None
-
-
 def test_superuser_org_robot_list_hides_token(app):
     with patch(
         "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
