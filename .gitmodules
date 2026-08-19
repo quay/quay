@@ -1,12 +1,3 @@
-[submodule "vendor/aniso8601-fake"]
-	path = vendor/aniso8601-fake
-	url = https://github.com/DevTable/aniso8601-fake.git
-[submodule "vendor/py-bitbucket"]
-	path = vendor/py-bitbucket
-	url = https://github.com/quay/py-bitbucket.git
-[submodule "vendor/supervisor-stdout"]
-	path = vendor/supervisor-stdout
-	url = https://github.com/quay/supervisor-stdout.git
 [submodule "pushgateway"]
 	path = pushgateway
 	url = https://github.com/prometheus/pushgateway.git

@@ -67,7 +67,6 @@ WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
 COPY pip-build-constraints.txt .
-COPY vendor/ ./vendor/
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -91,13 +90,6 @@ USER 1001
 
 # TARGETARCH is provided by BuildKit (amd64, arm64, ppc64le, s390x)
 ARG TARGETARCH
-# Install vendored git dependencies from submodules (local filesystem, no network)
-RUN python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root \
-	./vendor/aniso8601-fake \
-	./vendor/py-bitbucket \
-	./vendor/supervisor-stdout
-
-# Install main dependencies from PyPI
 RUN set -ex \
 	; NO_BINARY_OPTS="" \
 	; if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
