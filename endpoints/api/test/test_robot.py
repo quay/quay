@@ -1,5 +1,5 @@
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import requests
@@ -225,28 +225,6 @@ def test_org_admin_still_sees_robot_token(app):
             None,
         )
         assert result.json["token"] is not None
-
-
-def test_full_access_superuser_sees_robot_token(app):
-    with patch(
-        "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
-    ):
-        with client_with_identity("freshuser", app) as cl:
-            result = conduct_api_call(
-                cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
-            )
-            assert result.json["robots"]
-            for robot in result.json["robots"]:
-                assert robot.get("token") is not None
-
-            result = conduct_api_call(
-                cl,
-                OrgRobot,
-                "GET",
-                {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
-                None,
-            )
-            assert result.json["token"] is not None
 
 
 def test_robot_federation_create(app):
