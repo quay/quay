@@ -24,7 +24,7 @@ import (
 type SQLiteStore struct {
 	db *sql.DB
 
-	visibilityPrivate int64
+	defaultVisibility int64
 	repoKindImage     int64
 	tagKindTag        int64
 
@@ -38,22 +38,35 @@ var _ oci.MetadataStore = (*SQLiteStore)(nil)
 // DB returns the underlying database handle, primarily for use in tests.
 func (s *SQLiteStore) DB() *sql.DB { return s.db }
 
+// StoreConfig configures metastore behavior.
+type StoreConfig struct {
+	CreatePrivateOnPush bool
+}
+
 // NewSQLiteStore creates a Store backed by the given SQLite database. It
 // caches frequently-used enum IDs at construction time.
-func NewSQLiteStore(ctx context.Context, db *sql.DB) (*SQLiteStore, error) {
+func NewSQLiteStore(ctx context.Context, db *sql.DB, opts ...StoreConfig) (*SQLiteStore, error) {
+	var cfg StoreConfig
+	if len(opts) > 0 {
+		cfg = opts[0]
+	}
 	s := &SQLiteStore{db: db, mediaTypes: make(map[string]int64)}
-	if err := s.cacheEnums(ctx); err != nil {
+	if err := s.cacheEnums(ctx, cfg); err != nil {
 		return nil, fmt.Errorf("metastore: cache enums: %w", err)
 	}
 	return s, nil
 }
 
-func (s *SQLiteStore) cacheEnums(ctx context.Context) error {
+func (s *SQLiteStore) cacheEnums(ctx context.Context, cfg StoreConfig) error {
 	q := daldb.New(s.db)
 
 	var err error
-	if s.visibilityPrivate, err = q.GetVisibilityByName(ctx, "private"); err != nil {
-		return fmt.Errorf("visibility 'private': %w", err)
+	visibilityName := "public"
+	if cfg.CreatePrivateOnPush {
+		visibilityName = "private"
+	}
+	if s.defaultVisibility, err = q.GetVisibilityByName(ctx, visibilityName); err != nil {
+		return fmt.Errorf("visibility %q: %w", visibilityName, err)
 	}
 	if s.repoKindImage, err = q.GetRepositoryKindByName(ctx, "image"); err != nil {
 		return fmt.Errorf("repositorykind 'image': %w", err)
@@ -102,7 +115,7 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryN
 	repoID, err := q.GetOrCreateRepository(ctx, daldb.GetOrCreateRepositoryParams{
 		NamespaceUserID: sql.NullInt64{Int64: userID, Valid: true},
 		Name:            name.Name,
-		VisibilityID:    s.visibilityPrivate,
+		VisibilityID:    s.defaultVisibility,
 		KindID:          s.repoKindImage,
 		BadgeToken:      "",
 	})
