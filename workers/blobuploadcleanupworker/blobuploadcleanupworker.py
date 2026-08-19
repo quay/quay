@@ -18,11 +18,20 @@ DELETION_DATE_THRESHOLD = timedelta(minutes=threshold)
 BLOBUPLOAD_CLEANUP_FREQUENCY = app.config.get("BLOBUPLOAD_CLEANUP_FREQUENCY", 60 * 60)
 LOCK_TTL = 60 * 20  # 20 minutes
 
+# Sets MPU deletion date threshold to 1 day
+# The TTL is explicitly chosen not to be configurable by the client: if the threshold is set too low,
+# then MPUs still in progress might be deleted causing push failures.
+MPU_CLEANUP_TTL = 60 * 60 * 24  # 1 day
+MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
+# check if there are any stale MPUs every 60 seconds
+MPU_CLEANUP_FREQUENCY = 60
+
 
 class BlobUploadCleanupWorker(Worker):
     def __init__(self):
         super(BlobUploadCleanupWorker, self).__init__()
         self.add_operation(self._try_cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
+        self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
 
     def _try_cleanup_uploads(self):
         """
@@ -50,6 +59,29 @@ class BlobUploadCleanupWorker(Worker):
             if len(storage.preferred_locations) > 0:
                 logger.debug(
                     'Cleaning partial uploads not applicable to storage location "%s"',
+                    storage.preferred_locations[0],
+                )
+            else:
+                logger.debug("No preferred locations found")
+
+    def _try_clean_stale_multipart_uploads(self):
+        """
+        Attempts to clean up stale multipart uploads on the storage side. Stale uploads can happen if
+        the upload thread was terminated prematurely and MPU was not cancelled or committed properly,
+        consuming storage needlessly. This function cleans all MPUs older than MPU_DELETION_DATE_THRESHOLD.
+        """
+        deleted = 0
+        logger.debug("Performing cleanup of stale multipart uploads")
+        try:
+            deleted = storage.clean_orphaned_multipart_uploads(
+                storage.preferred_locations, MPU_DELETION_DATE_THRESHOLD
+            )
+            if deleted == 0:
+                logger.debug("No stale multipart uploads found")
+        except NotImplementedError:
+            if len(storage.preferred_locations) > 0:
+                logger.debug(
+                    "Deletion of stale multipart uploads is not applicable to storage location %s",
                     storage.preferred_locations[0],
                 )
             else:
