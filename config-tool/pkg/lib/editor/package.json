@@ -91,6 +91,7 @@
   },
   "overrides": {
     "brace-expansion": "^1.1.18",
+    "tmp": "^0.2.6",
     "request": {
       "qs": "^6.14.0"
     }
