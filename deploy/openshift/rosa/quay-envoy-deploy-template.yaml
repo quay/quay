@@ -81,7 +81,7 @@ objects:
                   matchLabels:
                     app: quay-envoy
                 topologyKey: topology.kubernetes.io/zone
-        terminationGracePeriodSeconds: 60
+        terminationGracePeriodSeconds: 90
         containers:
         - name: envoy
           image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
@@ -101,7 +101,7 @@ objects:
                 command:
                 - "/bin/sh"
                 - "-c"
-                - "curl -sf --max-time 10 -X POST http://localhost:9901/drain_listeners?graceful ; sleep 30"
+                - "curl -sf --max-time 10 -X POST http://localhost:9901/drain_listeners?graceful ; sleep 45"
           env:
           - name: ENVOY_LOG_LEVEL
             value: "${ENVOY_LOG_LEVEL}"
