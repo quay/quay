@@ -187,7 +187,9 @@ class OrgRobotList(ApiResource):
             include_token = (is_org_admin or allow_if_superuser()) and parsed_args.get(
                 "token", True
             )
-            include_permissions = is_org_admin and parsed_args.get("permissions", False)
+            include_permissions = (
+                is_org_admin or allow_if_global_readonly_superuser()
+            ) and parsed_args.get("permissions", False)
             result = robots_list(
                 orgname,
                 include_permissions=include_permissions,
