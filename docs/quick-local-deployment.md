@@ -63,11 +63,13 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" redis
 
 
 
-## Build the Quay Configuration via ConfigTool.
+## Build the Quay configuration
 
-The ConfigTool resides on the Quay image and lets you generate Quay configuration files and set up your Postgres database.  It is a web application that guides you through the Quay configuration process.  The Quay configuration is a tar/zipped YAML file that you can save locally for Quay to read at startup time.
+NOTE: The configuration tool web UI was removed from the Quay image in version 3.17. The steps below describe the legacy UI workflow and no longer work on current images. Configure Quay by editing `config.yaml` manually, or use the [local development environment](./getting-started.md#running-quay-for-development).
 
-We run the Quay image with runtime flags set to launch ConfigTool accepting the password 'secret':
+The ConfigTool web UI historically resided on the Quay image and let you generate Quay configuration files and set up your Postgres database.  The Quay configuration is a tar/zipped YAML file that you can save locally for Quay to read at startup time.
+
+The legacy workflow ran the Quay image with runtime flags set to launch ConfigTool accepting the password 'secret':
 
 ```
 $ sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay config secret
@@ -182,7 +184,9 @@ Congratulations you have a local Quay instance running!  Of course this deployme
 
 ## Getting Clair Running
 
-coming soon
+For standalone Podman deployments with security scanning, see [Setting up Clair on standalone deployments](clair-standalone-configuration.md).
+
+For development, use `make local-dev-up-with-clair` as described in [Getting Started](./getting-started.md#running-quay-for-development).
 
 ## Next Steps
 
@@ -191,12 +195,15 @@ Quay and Clair can also be run as services on a Kubernetes cluster.  This is bec
 ## Troubleshooting
 
 ### I need to change my Quay configuration!
-This can be done by uploading your config tarball back into the ConfigTool:
+Edit `config.yaml` directly in `$QUAY/config`, then restart the Quay container. To enable Clair security scanning on a standalone deployment, see [clair-standalone-configuration.md](clair-standalone-configuration.md).
+
+Optionally validate changes with the config-tool CLI:
+
 ```
-$ cd $QUAY/config
-$ tar cvzf myconfig.tar.gz config.yaml
+$ podman run --rm -v $QUAY/config:/conf/stack:Z \
+  quay.io/projectquay/quay:latest \
+  /quay-registry/config-tool validate -c /conf/stack
 ```
-Run the ConfigTool and choose 'Modify Existing Config'.  You can upload the tarball, make changes and then re-download it.
 
 
 
