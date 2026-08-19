@@ -1,8 +1,10 @@
 package mirrorregistry_test
 
 import (
+	"errors"
 	"io"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -88,6 +90,49 @@ func TestRegistryTagPagination(t *testing.T) {
 	assert.Equal(t, repository, second.Name)
 	assert.Equal(t, []string{"gamma"}, second.Tags)
 	assert.Empty(t, second.Link)
+}
+
+func TestRegistryConcurrentSameTagPushes(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const (
+		repository       = "admin/e2e-concurrent-tag"
+		concurrentPushes = 50
+	)
+	image := pushImage(t, h, repository, "v1", []byte(`{}`), []byte("concurrent tag layer"))
+	token, err := h.Registry().RequestToken(ctx, repository, "pull", "push")
+	require.NoError(t, err)
+
+	start := make(chan struct{})
+	pushErrors := make(chan error, concurrentPushes)
+	var workers sync.WaitGroup
+	workers.Add(concurrentPushes)
+	for range concurrentPushes {
+		go func() {
+			defer workers.Done()
+			<-start
+			_, err := h.Registry().PutManifestWithToken(ctx, repository, "v1", image.manifest, v1.MediaTypeImageManifest, token)
+			pushErrors <- err
+		}()
+	}
+
+	close(start)
+	workers.Wait()
+	close(pushErrors)
+
+	var failures []error
+	for err := range pushErrors {
+		if err != nil {
+			failures = append(failures, err)
+		}
+	}
+	require.NoError(t, errors.Join(failures...))
+
+	lastWriter := pushImage(t, h, repository, "v1", []byte(`{"generation":"last"}`), []byte("last writer layer"))
+	pulled, err := h.Registry().GetManifest(ctx, repository, "v1")
+	require.NoError(t, err)
+	assert.Equal(t, lastWriter.digest, pulled.Digest)
+	assert.Equal(t, lastWriter.manifest, pulled.Body)
 }
 
 func TestRegistryCatalogIsRejected(t *testing.T) {
