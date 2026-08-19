@@ -217,9 +217,12 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        is_org_admin = permission.can()
+        if is_org_admin or allow_if_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
-            return robot.to_dict(include_metadata=True, include_token=True)
+            include_token = is_org_admin
+            result = robot.to_dict(include_metadata=True, include_token=include_token)
+            return result
 
         raise Unauthorized()
 
