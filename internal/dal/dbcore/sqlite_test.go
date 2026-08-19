@@ -91,6 +91,104 @@ func TestOpenSQLiteReadOnly(t *testing.T) {
 	})
 }
 
+func TestOpenSQLiteReadOnly_SucceedsWithReadOnlyDirectory(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "source.db")
+
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "CREATE TABLE ro_test (v TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "INSERT INTO ro_test (v) VALUES ('hello')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	probe := filepath.Join(dir, ".probe")
+	if f, err := os.Create(probe); err == nil {
+		f.Close()
+		os.Remove(probe)
+		os.Chmod(dir, 0o755)
+		t.Skip("test identity can write to 0555 directory (CAP_DAC_OVERRIDE); skipping")
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	readOnly, err := OpenSQLiteReadOnly(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLiteReadOnly should succeed on read-only directory: %v", err)
+	}
+	defer readOnly.Close()
+
+	var v string
+	if err := readOnly.QueryRowContext(t.Context(), "SELECT v FROM ro_test").Scan(&v); err != nil {
+		t.Fatalf("SELECT failed: %v", err)
+	}
+	if v != "hello" {
+		t.Fatalf("got %q, want hello", v)
+	}
+
+	walPath := dbPath + "-wal"
+	shmPath := dbPath + "-shm"
+	if _, err := os.Stat(walPath); err == nil {
+		t.Fatalf("WAL file should not be created in read-only directory: %s", walPath)
+	}
+	if _, err := os.Stat(shmPath); err == nil {
+		t.Fatalf("SHM file should not be created in read-only directory: %s", shmPath)
+	}
+}
+
+func TestOpenSQLiteReadOnly_ModeRoAloneFailsOnReadOnlyDirectory(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	probe := filepath.Join(dir, ".probe")
+	if f, err := os.Create(probe); err == nil {
+		f.Close()
+		os.Remove(probe)
+		os.Chmod(dir, 0o755)
+		t.Skip("test identity can write to 0555 directory (CAP_DAC_OVERRIDE); skipping")
+	}
+	os.Chmod(dir, 0o755)
+
+	dbPath := filepath.Join(dir, "source.db")
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "CREATE TABLE ro_test (v TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	roOnly, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer roOnly.Close()
+
+	if err := roOnly.PingContext(t.Context()); err == nil {
+		t.Fatal("mode=ro without immutable=1 should fail on a read-only directory, but Ping succeeded")
+	}
+}
+
 func TestOpenSQLite_PathsContainingURIDelimiters(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "omr?with#symbols&.db")

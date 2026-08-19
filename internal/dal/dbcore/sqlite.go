@@ -59,13 +59,17 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 }
 
 // OpenSQLiteReadOnly opens an existing SQLite database for source preflight.
-// mode=ro prevents schema or data changes and never creates a missing source.
+// mode=ro&immutable=1 prevents schema or data changes, never creates a missing
+// source, and avoids creating WAL/SHM lock files. immutable=1 is required for
+// rootless podman volumes where the directory is owned by the container's
+// user-namespace-mapped UID. WAL-resident data will not be visible; callers
+// that need uncheckpointed WAL data must copy the DB first.
 func OpenSQLiteReadOnly(dbPath string) (*sql.DB, error) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return nil, fmt.Errorf("source database not found: %s: %w", dbPath, err)
 	}
 
-	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro", OmitHost: true}
+	uri := url.URL{Scheme: sqliteURIScheme, Path: dbPath, RawQuery: "mode=ro&immutable=1", OmitHost: true}
 	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("open %s read-only: %w", dbPath, err)
