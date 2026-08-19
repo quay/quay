@@ -87,6 +87,7 @@
     "webpack-cli": "3.3.9"
   },
   "overrides": {
-    "brace-expansion": "^1.1.18"
+    "brace-expansion": "^1.1.18",
+    "tmp": "^0.2.6"
   }
 }
