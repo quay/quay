@@ -91,6 +91,7 @@
   },
   "overrides": {
     "brace-expansion": "^1.1.18",
+    "tmp": "^0.2.6",
     "cypress": {
       "execa": {
         "cross-spawn": "^7.0.6"
