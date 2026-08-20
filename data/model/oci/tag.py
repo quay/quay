@@ -626,15 +626,28 @@ def _expire_cosign_sibling_tags(
     """
     Expire alive, mutable Cosign tag-schema siblings for the given subject digest.
 
-    When subject_manifest is provided, the UPDATE includes a NOT EXISTS guard so
-    Cosign siblings are only expired if no other visible, non-Cosign alive tag
-    still references that manifest (excluding exclude_tag_id when set).
-    Returns the number of Cosign tags expired.
+    When subject_manifest is provided, matching rows are only expired if no other
+    visible, non-Cosign alive tag still references that manifest (excluding
+    exclude_tag_id when set). Returns the number of Cosign tags expired.
+
+    Must use the same ("retarget_tag", repository_id) advisory lock as retarget_tag
+    so the NOT EXISTS check cannot race with a concurrent push that creates a new
+    alive alias on this manifest. Re-acquiring from inside retarget_tag is safe
+    (pg_advisory_xact_lock is re-entrant within a transaction).
+
+    Each matching row gets a distinct lifetime_end_ms (<= now_ms), skipping any
+    end already used by a historical same-named Cosign row, to avoid IntegrityError
+    on Tag's unique (repository, name, lifetime_end_ms) index.
     """
+    # Serialize with retarget_tag: same namespace+key closes the check-then-act race.
+    # Call sites may pass a Repository row or a raw id; lock key must be the integer id.
+    repo_id = getattr(repository_id, "id", repository_id)
+    lock_id = compute_advisory_lock_id("retarget_tag", repo_id)
+    db_advisory_xact_lock(lock_id)
     cosign_tag_prefix = manifest_digest.replace(":", "-")
     cosign_names = [f"{cosign_tag_prefix}.{suffix}" for suffix in COSIGN_TAG_SCHEMA_SUFFIXES]
     conditions = [
-        Tag.repository == repository_id,
+        Tag.repository == repo_id,
         Tag.name.in_(cosign_names),
         Tag.immutable == False,
         (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
@@ -642,7 +655,7 @@ def _expire_cosign_sibling_tags(
     if subject_manifest is not None:
         OtherTag = Tag.alias()
         other_alive = OtherTag.select(1).where(
-            OtherTag.repository == repository_id,
+            OtherTag.repository == repo_id,
             OtherTag.manifest == subject_manifest,
             OtherTag.hidden == False,
             _not_cosign_tag_schema_clause(OtherTag),
@@ -652,13 +665,37 @@ def _expire_cosign_sibling_tags(
             other_alive = other_alive.where(OtherTag.id != exclude_tag_id)
         conditions.append(~fn.EXISTS(other_alive))
 
-    updated = Tag.update(lifetime_end_ms=now_ms).where(*conditions).execute()
+    # Per-row distinct ends: same pattern as remove_tag_from_timemachine for the
+    # unique (repository, name, lifetime_end_ms) index. Skip end values already
+    # used by a historical same-named row (e.g. prior generation expired at now_ms).
+    # Candidates stay <= now_ms so tags remain expired relative to alive filters.
+    matching_tags = list(Tag.select(Tag.id, Tag.name).where(*conditions))
+    updated = 0
+    increment = 0
+    for tag in matching_tags:
+        while True:
+            candidate_end = now_ms - increment
+            occupied = (
+                Tag.select(Tag.id)
+                .where(
+                    Tag.repository == repo_id,
+                    Tag.name == tag.name,
+                    Tag.lifetime_end_ms == candidate_end,
+                    Tag.id != tag.id,
+                )
+                .exists()
+            )
+            if not occupied:
+                break
+            increment += 1
+        updated += Tag.update(lifetime_end_ms=candidate_end).where(Tag.id == tag.id).execute()
+        increment += 1
     if updated > 0:
         logger.info(
             "Expired %s Cosign sibling tag(s) for digest %s in repository %s",
             updated,
             manifest_digest,
-            repository_id,
+            repo_id,
         )
     return updated
 

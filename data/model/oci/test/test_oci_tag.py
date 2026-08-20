@@ -1,4 +1,7 @@
 import json
+import os
+import threading
+import uuid
 from calendar import timegm
 from datetime import datetime, timedelta
 
@@ -11,7 +14,10 @@ from app import storage
 from data import model
 from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User, db
 from data.model import ImmutableTagException
-from data.model.blob import store_blob_record_and_temp_link
+from data.model.blob import (
+    store_blob_record_and_temp_link,
+    store_blob_record_and_temp_link_in_repo,
+)
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
     _delete_tag,
@@ -57,6 +63,9 @@ from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.bytes import Bytes
+
+# Cosign cascade acquires pg_advisory_xact_lock on PostgreSQL (+1 SQL); SQLite lock is a no-op.
+_ADVISORY_LOCK_QUERY = 1 if os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql") else 0
 
 
 def _force_delete_repository(repo_id):
@@ -381,7 +390,7 @@ def test_delete_tag(initialized_db):
             assert get_tag(repo, tag.name) == tag
             assert tag.lifetime_end_ms is None
 
-            with assert_query_count(6):
+            with assert_query_count(6 + _ADVISORY_LOCK_QUERY):
                 assert delete_tag(repo, tag.name) == tag
 
             assert get_tag(repo, tag.name) is None
@@ -403,7 +412,7 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.name.startswith("$temp-")
             assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
-        with assert_query_count(11):
+        with assert_query_count(11 + _ADVISORY_LOCK_QUERY):
             assert delete_tag(repository.id, tag.name) == tag
 
         # Assert temporary tags pointing to child manifest are now expired
@@ -421,7 +430,7 @@ def test_delete_tags_for_manifest(initialized_db):
             repo = tag.repository
             assert get_tag(repo, tag.name) == tag
 
-            with assert_query_count(8):
+            with assert_query_count(8 + _ADVISORY_LOCK_QUERY):
                 assert delete_tags_for_manifest(tag.manifest) == [tag]
 
             assert get_tag(repo, tag.name) is None
@@ -1450,6 +1459,64 @@ def test_expire_cosign_sibling_tags_logs_when_rows_updated(initialized_db, caplo
         assert get_tag(repo.id, cosign_tag_name) is None
 
 
+def test_expire_cosign_avoids_lifetime_end_ms_unique_collision(initialized_db):
+    """Expiring Cosign siblings must not collide with a historical same-named end.
+
+    Tag uniquely indexes (repository, name, lifetime_end_ms). Retargeting a .sig
+    at now_ms leaves a historical row ending at now_ms; cascade must still expire
+    the new alive generation without IntegrityError.
+    """
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        repo = create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "img-collision")
+        assert retarget_tag("v1.0", manifest.id) is not None
+
+        cosign_tag_name = manifest.digest.replace(":", "-") + ".sig"
+        sig_old, _ = create_manifest_for_testing(repo, "sig-collision-old")
+        retarget_tag(cosign_tag_name, sig_old.id)
+
+        now_ms = get_epoch_timestamp_ms()
+        sig_new, _ = create_manifest_for_testing(repo, "sig-collision-new")
+        # Expires prior .sig generation to now_ms and creates a new alive row.
+        assert retarget_tag(cosign_tag_name, sig_new.id, now_ms=now_ms) is not None
+        assert get_tag(repo.id, cosign_tag_name) is not None
+        assert (
+            Tag.select()
+            .where(
+                Tag.repository == repo.id,
+                Tag.name == cosign_tag_name,
+                Tag.lifetime_end_ms == now_ms,
+            )
+            .count()
+            == 1
+        )
+
+        updated = _expire_cosign_sibling_tags(repo.id, manifest.digest, now_ms)
+        assert updated == 1
+        assert get_tag(repo.id, cosign_tag_name) is None
+        # Historical row at now_ms remains; alive generation used a distinct end.
+        assert (
+            Tag.select()
+            .where(
+                Tag.repository == repo.id,
+                Tag.name == cosign_tag_name,
+                Tag.lifetime_end_ms == now_ms,
+            )
+            .count()
+            == 1
+        )
+        assert (
+            Tag.select()
+            .where(
+                Tag.repository == repo.id,
+                Tag.name == cosign_tag_name,
+                Tag.lifetime_end_ms == now_ms - 1,
+            )
+            .count()
+            == 1
+        )
+
+
 def test_expire_cosign_with_subject_manifest_without_exclude_id(initialized_db):
     """NOT EXISTS guard works when subject_manifest is set without exclude_tag_id."""
     with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
@@ -1764,3 +1831,125 @@ def test_delete_tag_skips_cosign_cleanup_when_manifest_null(initialized_db):
         assert deleted is not None
         refreshed = Tag.get_by_id(tag.id)
         assert refreshed.lifetime_end_ms == now_ms
+
+
+def _create_manifest_in_repo(repository, differentiation_field="1"):
+    """Like create_manifest_for_testing, but links blobs to ``repository`` (not hardcoded newrepo)."""
+    layer_json = json.dumps(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    content = Bytes.for_string_or_unicode(layer_json).as_encoded_str()
+    config_digest = str(sha256_digest(content))
+    location = ImageStorageLocation.get(name="local_us")
+    blob = store_blob_record_and_temp_link_in_repo(
+        repository.id, config_digest, location, len(content), 120
+    )
+    storage.put_content(["local_us"], get_layer_path(blob), content)
+
+    remote_digest = sha256_digest(b"something")
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(config_digest, len(content))
+    builder.add_layer(remote_digest, 1234, urls=["http://hello/world" + differentiation_field])
+    manifest = builder.build()
+    created = get_or_create_manifest(repository, manifest, storage, raise_on_error=True)
+    assert created
+    return created.manifest, manifest
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
+    reason="Advisory locks / multi-connection race coverage require PostgreSQL",
+)
+def test_cascade_serialized_with_concurrent_retarget(initialized_db):
+    """
+    Concurrent retarget that creates a new alive alias must prevent cascade from
+    expiring Cosign siblings. The shared advisory lock serializes the paths.
+
+    Setup is committed so worker-thread connections can see the fixtures;
+    initialized_db's savepoint would otherwise hide them from other sessions.
+    Cleanup uses purge_repository (same as test_gc) so committed CAS rows do not
+    poison later assert_gc_integrity checks.
+    """
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        # Unique name so a failed cleanup cannot pollute shared "newrepo" used by GC tests.
+        repo = create_repository("devtable", f"race-{uuid.uuid4().hex[:12]}", None)
+        assert repo is not None
+        repo_id = repo.id
+        try:
+            manifest, _ = _create_manifest_in_repo(repo, "img-race")
+            assert retarget_tag("v1.0", manifest.id) is not None
+            manifest_id = manifest.id
+
+            cosign_tag_name = manifest.digest.replace(":", "-") + ".sig"
+            sig_manifest, _ = _create_manifest_in_repo(repo, "sig-race")
+            retarget_tag(cosign_tag_name, sig_manifest.id)
+            assert get_tag(repo_id, cosign_tag_name) is not None
+
+            # Publish fixtures to other connections (worker threads).
+            db.commit()
+
+            barrier = threading.Barrier(2, timeout=10)
+            retarget_done = threading.Event()
+            errors = []
+            results = {}
+            expire_tls = threading.local()
+            real_expire = _expire_cosign_sibling_tags
+
+            def expire_seam(*args, **kwargs):
+                # Only the delete worker sets wait_for_retarget; retarget path is unchanged.
+                if getattr(expire_tls, "wait_for_retarget", False):
+                    if not retarget_done.wait(timeout=10):
+                        raise TimeoutError("timed out waiting for concurrent retarget")
+                return real_expire(*args, **kwargs)
+
+            def thread_delete():
+                try:
+                    barrier.wait()
+                    expire_tls.wait_for_retarget = True
+                    with db.connection_context():
+                        results["deleted"] = delete_tag(repo_id, "v1.0")
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+
+            def thread_retarget():
+                try:
+                    barrier.wait()
+                    with db.connection_context():
+                        results["retarget"] = retarget_tag("v2.0", manifest_id)
+                    retarget_done.set()
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+                    retarget_done.set()
+
+            with patch(
+                "data.model.oci.tag._expire_cosign_sibling_tags",
+                side_effect=expire_seam,
+            ):
+                t_delete = threading.Thread(target=thread_delete)
+                t_retarget = threading.Thread(target=thread_retarget)
+                t_delete.start()
+                t_retarget.start()
+                t_delete.join(timeout=15)
+                t_retarget.join(timeout=15)
+                assert not t_delete.is_alive(), "delete worker did not finish within timeout"
+                assert not t_retarget.is_alive(), "retarget worker did not finish within timeout"
+
+            assert not errors, errors
+            assert results.get("deleted") is not None
+            assert results.get("retarget") is not None
+            assert get_tag(repo_id, "v2.0") is not None
+            assert get_tag(repo_id, cosign_tag_name) is not None
+        finally:
+            # Same path as test_gc: purge tags/manifests/blobs (incl. ImageStorage) then
+            # delete the repo. Commit so cleanup survives the fixture savepoint.
+            try:
+                repo_to_purge = Repository.get_by_id(repo_id)
+            except Repository.DoesNotExist:
+                repo_to_purge = None
+            if repo_to_purge is not None:
+                model.gc.purge_repository(repo_to_purge, force=True)
+            db.commit()
