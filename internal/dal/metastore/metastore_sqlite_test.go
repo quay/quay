@@ -28,6 +28,21 @@ func setupStore(t *testing.T) oci.MetadataStore {
 	return store
 }
 
+func setupStoreWithConfig(t *testing.T, cfg metastore.StoreConfig) *metastore.SQLiteStore {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "quay.db")
+	db, err := dbcore.Setup(t.Context(), dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	store, err := metastore.NewSQLiteStore(t.Context(), db, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
 func TestEnsureRepository(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -666,6 +681,89 @@ func TestListReferrers_FallbackTagSchema(t *testing.T) {
 	}
 	if refs[0].Annotations["org.test"] != "value" {
 		t.Errorf("annotations = %v, want org.test=value", refs[0].Annotations)
+	}
+}
+
+func TestEnsureRepository_DefaultVisibilityPublic(t *testing.T) {
+	store := setupStoreWithConfig(t, metastore.StoreConfig{CreatePrivateOnPush: false})
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "mirror", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.DB()
+	var visibilityName string
+	err = db.QueryRowContext(ctx,
+		`SELECT v.name FROM repository r JOIN visibility v ON r.visibility_id = v.id WHERE r.id = ?`,
+		repoID).Scan(&visibilityName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visibilityName != "public" {
+		t.Errorf("expected public visibility, got %q", visibilityName)
+	}
+}
+
+func TestEnsureRepository_CreatePrivateOnPush(t *testing.T) {
+	store := setupStoreWithConfig(t, metastore.StoreConfig{CreatePrivateOnPush: true})
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "mirror", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.DB()
+	var visibilityName string
+	err = db.QueryRowContext(ctx,
+		`SELECT v.name FROM repository r JOIN visibility v ON r.visibility_id = v.id WHERE r.id = ?`,
+		repoID).Scan(&visibilityName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visibilityName != "private" {
+		t.Errorf("expected private visibility, got %q", visibilityName)
+	}
+}
+
+func TestEnsureRepository_ExistingRepoVisibilityUnchanged(t *testing.T) {
+	store := setupStoreWithConfig(t, metastore.StoreConfig{CreatePrivateOnPush: false})
+	ctx := t.Context()
+	db := store.DB()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "mirror", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually change to private to simulate a user changing visibility.
+	_, err = db.ExecContext(ctx,
+		`UPDATE repository SET visibility_id = (SELECT id FROM visibility WHERE name = 'private') WHERE id = ?`,
+		repoID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-push (EnsureRepository again) should NOT change it back to public.
+	repoID2, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "mirror", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repoID2 != repoID {
+		t.Fatalf("expected same repo ID %d, got %d", repoID, repoID2)
+	}
+
+	var visibilityName string
+	err = db.QueryRowContext(ctx,
+		`SELECT v.name FROM repository r JOIN visibility v ON r.visibility_id = v.id WHERE r.id = ?`,
+		repoID).Scan(&visibilityName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visibilityName != "private" {
+		t.Errorf("expected visibility to remain private after re-push, got %q", visibilityName)
 	}
 }
 

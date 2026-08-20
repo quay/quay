@@ -111,6 +111,23 @@ func TestParseExplicitFalseNotOverridden(t *testing.T) {
 	assert.False(t, cfg.FeatureDirectLogin)
 }
 
+func TestParseCreatePrivateRepoOnPush(t *testing.T) {
+	cfg, err := Parse([]byte("CREATE_PRIVATE_REPO_ON_PUSH: true\n"))
+	require.NoError(t, err)
+	assert.True(t, cfg.CreatePrivateOnPush)
+}
+
+func TestParseCreatePrivateRepoOnPushDefaultPublic(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\n"))
+	require.NoError(t, err)
+	assert.False(t, cfg.CreatePrivateOnPush)
+}
+
+func TestNewDefaultCreatePrivateRepoOnPushPublic(t *testing.T) {
+	cfg := NewDefault("localhost", "/data/storage")
+	assert.False(t, cfg.CreatePrivateOnPush)
+}
+
 func TestParseUnknownFields(t *testing.T) {
 	yaml := `
 SERVER_HOSTNAME: test

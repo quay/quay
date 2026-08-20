@@ -60,7 +60,9 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 		return result, fmt.Errorf("database setup: %w", err)
 	}
 
-	store, err := metastore.NewSQLiteStore(ctx, result.db)
+	store, err := metastore.NewSQLiteStore(ctx, result.db, metastore.StoreConfig{
+		CreatePrivateOnPush: resolved.Config.CreatePrivateOnPush,
+	})
 	if err != nil {
 		return result, fmt.Errorf("metastore setup: %w", err)
 	}

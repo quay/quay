@@ -2,10 +2,11 @@ package config
 
 // Auth holds authentication and authorization settings.
 type Auth struct {
-	AuthenticationType string   `yaml:"AUTHENTICATION_TYPE"`
-	SuperUsers         []string `yaml:"SUPER_USERS"`
-	RobotsDisallow     bool     `yaml:"ROBOTS_DISALLOW"`
-	RobotsWhitelist    []string `yaml:"ROBOTS_WHITELIST"`
+	AuthenticationType  string   `yaml:"AUTHENTICATION_TYPE"`
+	SuperUsers          []string `yaml:"SUPER_USERS"`
+	RobotsDisallow      bool     `yaml:"ROBOTS_DISALLOW"`
+	RobotsWhitelist     []string `yaml:"ROBOTS_WHITELIST"`
+	CreatePrivateOnPush bool     `yaml:"CREATE_PRIVATE_REPO_ON_PUSH"`
 }
 
 // validateAuth checks authentication enum values.
