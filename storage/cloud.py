@@ -764,7 +764,7 @@ class _CloudStorage(BaseStorageV2):
         self._initialize_cloud_conn()
         paginator = self.get_cloud_conn().get_paginator("list_multipart_uploads")
         deleted = 0
-        page_iterator = paginator.paginate(Bucket=self._bucket_name)
+        page_iterator = paginator.paginate(Bucket=self._bucket_name, Prefix=self._root_path)
         for page in page_iterator:
             # check if there are any multipart uploads
             if "Uploads" in page:
