@@ -141,3 +141,22 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
         for robot in result.json["robots"]:
             assert (robot.get("token") is not None) == is_admin
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
+
+
+def test_org_admin_still_sees_robot_token(app):
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is not None
+
+        result = conduct_api_call(
+            cl,
+            OrgRobot,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        )
+        assert result.json["token"] is not None
