@@ -1718,7 +1718,7 @@ class UploadedBlob(BaseModel):
 class RepositoryBlobDigest(BaseModel):
     repository = ForeignKeyField(Repository)
     image_storage = ForeignKeyField(ImageStorage)
-    digest = CharField(max_length=1024)
+    digest = CharField(max_length=255)
     created_at = DateTimeField(default=datetime.utcnow)
 
     class Meta:
@@ -1999,7 +1999,7 @@ class ManifestBlob(BaseModel):
 class RepositoryManifestDigest(BaseModel):
     repository = ForeignKeyField(Repository)
     manifest = ForeignKeyField(Manifest)
-    digest = CharField(max_length=1024)
+    digest = CharField(max_length=255)
     created_at = DateTimeField(default=datetime.utcnow)
 
     class Meta:

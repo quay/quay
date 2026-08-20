@@ -2,6 +2,7 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
+from data.database import RepositoryBlobDigest, RepositoryManifestDigest
 from data.migrations.tester import NoopTester
 from data.migrations.versions import (
     a2f338ee672c_add_repository_digest_registration_ as migration,
@@ -24,8 +25,28 @@ def _operations(connection):
     return Operations(context)
 
 
+def _columns_by_name(connection, table_name):
+    return {column["name"]: column for column in sa.inspect(connection).get_columns(table_name)}
+
+
 def _column_names(connection, table_name):
-    return {column["name"] for column in sa.inspect(connection).get_columns(table_name)}
+    return set(_columns_by_name(connection, table_name))
+
+
+def _foreign_key_targets(connection, table_name):
+    return {
+        foreign_key["name"]: (
+            foreign_key["constrained_columns"],
+            foreign_key["referred_table"],
+            foreign_key["referred_columns"],
+        )
+        for foreign_key in sa.inspect(connection).get_foreign_keys(table_name)
+    }
+
+
+def test_repository_digest_model_field_lengths():
+    assert RepositoryBlobDigest._meta.fields["digest"].max_length == 255
+    assert RepositoryManifestDigest._meta.fields["digest"].max_length == 255
 
 
 def test_repository_digest_registration_migration_upgrade_and_downgrade():
@@ -44,10 +65,21 @@ def test_repository_digest_registration_migration_upgrade_and_downgrade():
         table_names = set(sa.inspect(connection).get_table_names())
         assert "repositoryblobdigest" in table_names
         assert "repositorymanifestdigest" in table_names
+
+        blob_columns = _columns_by_name(connection, "repositoryblobdigest")
+        manifest_columns = _columns_by_name(connection, "repositorymanifestdigest")
+        assert blob_columns["digest"]["type"].length == 255
+        assert manifest_columns["digest"]["type"].length == 255
+
+        blob_upload_columns = _columns_by_name(connection, "blobupload")
         assert {
             "requested_digest_algorithm",
             "requested_digest_state",
-        } <= _column_names(connection, "blobupload")
+        } <= set(blob_upload_columns)
+        assert blob_upload_columns["requested_digest_algorithm"]["type"].length == 255
+        assert blob_upload_columns["requested_digest_algorithm"]["nullable"] is True
+        assert isinstance(blob_upload_columns["requested_digest_state"]["type"], sa.Text)
+        assert blob_upload_columns["requested_digest_state"]["nullable"] is True
         assert tester.populated_tables == [
             (
                 "repositoryblobdigest",
@@ -67,8 +99,37 @@ def test_repository_digest_registration_migration_upgrade_and_downgrade():
             index["name"]: index
             for index in sa.inspect(connection).get_indexes("repositorymanifestdigest")
         }
-        assert blob_indexes["repositoryblobdigest_repository_id_digest"]["unique"] == 1
-        assert manifest_indexes["repositorymanifestdigest_repository_id_digest"]["unique"] == 1
+        blob_digest_index = blob_indexes["repositoryblobdigest_repository_id_digest"]
+        manifest_digest_index = manifest_indexes["repositorymanifestdigest_repository_id_digest"]
+        assert blob_digest_index["column_names"] == ["repository_id", "digest"]
+        assert blob_digest_index["unique"] == 1
+        assert manifest_digest_index["column_names"] == ["repository_id", "digest"]
+        assert manifest_digest_index["unique"] == 1
+
+        assert _foreign_key_targets(connection, "repositoryblobdigest") == {
+            "fk_repositoryblobdigest_repository_id": (
+                ["repository_id"],
+                "repository",
+                ["id"],
+            ),
+            "fk_repositoryblobdigest_image_storage_id": (
+                ["image_storage_id"],
+                "imagestorage",
+                ["id"],
+            ),
+        }
+        assert _foreign_key_targets(connection, "repositorymanifestdigest") == {
+            "fk_repositorymanifestdigest_repository_id": (
+                ["repository_id"],
+                "repository",
+                ["id"],
+            ),
+            "fk_repositorymanifestdigest_manifest_id": (
+                ["manifest_id"],
+                "manifest",
+                ["id"],
+            ),
+        }
 
         migration.downgrade(_operations(connection), None, NoopTester())
 

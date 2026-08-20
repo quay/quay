@@ -20,7 +20,7 @@ def upgrade(op, tables, tester):
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("repository_id", sa.Integer(), nullable=False),
         sa.Column("image_storage_id", sa.Integer(), nullable=False),
-        sa.Column("digest", sa.String(length=1024), nullable=False),
+        sa.Column("digest", sa.String(length=255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(
             ["repository_id"],
@@ -59,7 +59,7 @@ def upgrade(op, tables, tester):
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("repository_id", sa.Integer(), nullable=False),
         sa.Column("manifest_id", sa.Integer(), nullable=False),
-        sa.Column("digest", sa.String(length=1024), nullable=False),
+        sa.Column("digest", sa.String(length=255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(
             ["repository_id"],
