@@ -11,6 +11,7 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
+	"github.com/quay/quay/internal/system"
 )
 
 const markerFile = ".migration-in-progress"
@@ -18,6 +19,12 @@ const markerFile = ".migration-in-progress"
 // validate checks source compatibility, authentication policy, and target readiness.
 // All source database checks are read-only and finish before source shutdown.
 func (m *Migrator) validate(ctx context.Context) error {
+	if !m.SkipInstall {
+		if err := system.ValidateCgroupsForQuadlet(ctx, m.Runner); err != nil {
+			return fmt.Errorf("system compatibility: %w", err)
+		}
+	}
+
 	db, err := dbcore.OpenSQLiteReadOnly(m.Source.DBPath)
 	if err != nil {
 		return fmt.Errorf("open source database: %w", err)

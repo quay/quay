@@ -119,6 +119,10 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("initial administrator: %w", err)
 	}
 
+	if err := system.ValidateCgroupsForQuadlet(ctx, inst.runner); err != nil {
+		return fmt.Errorf("system compatibility: %w", err)
+	}
+
 	upgrading := inst.quadlet.Exists(quadletServiceName)
 	hostname, err := inst.resolveHostname(ctx, cfg.Hostname, upgrading)
 	if err != nil {

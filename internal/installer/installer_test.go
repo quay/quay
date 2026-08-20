@@ -545,6 +545,46 @@ func (r *recordingServiceManager) DisableLinger(context.Context) error {
 
 var _ system.ServiceManager = (*recordingServiceManager)(nil)
 
+type cgroupFakeRunner struct {
+	version string
+}
+
+func (r *cgroupFakeRunner) Run(context.Context, string, ...string) error { return nil }
+func (r *cgroupFakeRunner) Output(_ context.Context, name string, args ...string) (string, error) {
+	if name == "podman" && len(args) > 0 && args[0] == "info" {
+		return r.version, nil
+	}
+	return "", nil
+}
+
+func TestRunRejectsCgroupV1Rootless(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root to exercise rootless cgroup check")
+	}
+	root := t.TempDir()
+	dataDir := filepath.Join(root, "registry-data")
+	env := &system.Env{Mode: system.UserMode, HomeDir: filepath.Join(root, "home")}
+	inst := &Installer{
+		runner:  &cgroupFakeRunner{version: "v1"},
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		hostname: func(context.Context) (string, error) {
+			return "registry.example.com", nil
+		},
+	}
+
+	err := inst.Run(t.Context(), &Config{DataDir: dataDir})
+
+	require.ErrorContains(t, err, "cgroups v1")
+	require.ErrorContains(t, err, "OMR 3.0 requires cgroups v2 for rootless installs")
+	_, statErr := os.Stat(dataDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "data directory should not be created on cgroup failure")
+}
+
+func TestCgroupV2PassesCheck(t *testing.T) {
+	err := system.ValidateCgroupsForQuadlet(t.Context(), &cgroupFakeRunner{version: "v2"})
+	require.NoError(t, err)
+}
+
 func TestValidateSSLFlags(t *testing.T) {
 	tests := []struct {
 		name    string
