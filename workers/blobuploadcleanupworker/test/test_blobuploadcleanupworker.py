@@ -1,8 +1,8 @@
 from contextlib import contextmanager
+from datetime import timedelta
 
 import boto3
 from mock import Mock, patch
-from moto import mock_s3
 
 from test.fixtures import *
 from workers.blobuploadcleanupworker.blobuploadcleanupworker import (
@@ -45,6 +45,9 @@ def test_blobuploadcleanupworker_calls_mpu_cleanup(initialized_db):
     storage_mock = Mock()
     storage_mock.preferred_locations = ["default"]
 
+    # verify that the deletion threshold is always 1 day
+    assert MPU_DELETION_DATE_THRESHOLD == timedelta(days=1)
+
     # we'll mock the deleted count
     storage_mock.clean_orphaned_multipart_uploads.return_value = 5
 
@@ -56,3 +59,31 @@ def test_blobuploadcleanupworker_calls_mpu_cleanup(initialized_db):
     storage_mock.clean_orphaned_multipart_uploads.assert_called_once_with(
         ["default"], MPU_DELETION_DATE_THRESHOLD
     )
+
+
+def test_mpu_cleanup_exits_if_no_preferred_storage_location_is_found(initialized_db):
+    """
+    Checks that the MPU cleanup is not called if preferred storage engine is not set.
+    """
+    storage_mock = Mock()
+    storage_mock.preferred_locations = []
+
+    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+        worker = BlobUploadCleanupWorker()
+        worker._try_clean_stale_multipart_uploads()
+
+    storage_mock.clean_orphaned_multipart_uploads.assert_not_called()
+
+
+def test_partial_blob_cleanup_exits_if_no_preferred_storage_location_is_found(initialized_db):
+    """
+    Checks that the partial blob cleanup is not called if preferred storage engine is not set.
+    """
+    storage_mock = Mock()
+    storage_mock.preferred_locations = []
+
+    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+        worker = BlobUploadCleanupWorker()
+        worker._try_clean_partial_uploads()
+
+    storage_mock.clean_partial_uploads.assert_not_called()
