@@ -58,7 +58,7 @@ RUN set -ex\
         libjpeg-turbo \
         libjpeg-turbo-devel \
 		wget \
-		rust-toolset \
+		rust-toolset-1.92.0 \
 		libxml2-devel \
 		libxslt-devel \
 		freetype-devel \
@@ -95,8 +95,8 @@ RUN set -ex \
 	; if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
 		NO_BINARY_OPTS="--no-binary grpcio"; \
 	fi \
-	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root --only-binary :all: $NO_BINARY_OPTS $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root --only-binary :all: $NO_BINARY_OPTS --requirement requirements.txt \
+	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root $NO_BINARY_OPTS --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
