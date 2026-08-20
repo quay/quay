@@ -12,7 +12,7 @@ objects:
       app: quay-envoy
   spec:
     type: NodePort
-    externalTrafficPolicy: Local
+    externalTrafficPolicy: Cluster
     ports:
     - name: https
       protocol: TCP
@@ -66,6 +66,19 @@ objects:
         - key: workload
           value: envoy
           effect: NoSchedule
+        topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: quay-envoy
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: quay-envoy
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
