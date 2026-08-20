@@ -99,6 +99,25 @@ gh pr create --repo quay/quay --head <your-user>:<branch>
 
 Use the `/pr` skill — it handles fork detection, auth, and fallbacks automatically.
 
+### Superseding a Stalled PR
+
+When a new PR's description states it supersedes another open PR (e.g.,
+"Supersedes #1234"), closing the superseded PR is part of opening the new
+one — not a follow-up step to be done later or left to someone else.
+
+- **Human contributors:** close the superseded PR with a comment linking to
+  the new PR at the same time the new PR is opened.
+- **Agents:** immediately after opening the new PR, before requesting
+  review, run:
+
+  ```bash
+  gh pr close <old-pr> --comment "Superseded by #<new-pr>"
+  ```
+
+Leaving the superseded PR open causes it to keep attracting comments and
+review attention on a dead branch, and risks a maintainer reviewing or
+merging the stale PR by mistake.
+
 ### Jira Integration
 
 After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current development release (check the active versions in Jira) on the Jira ticket before opening the PR, or the bot will block merging.
