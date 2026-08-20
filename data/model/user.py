@@ -157,13 +157,11 @@ def create_user_noverify(
     except User.DoesNotExist:
         pass
 
-    allowlist = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST", [])
-    if allowlist and username in allowlist:
-        try:
-            DeletedNamespace.get(DeletedNamespace.original_username == username)
-            raise InvalidUsernameException("Username is not available")
-        except DeletedNamespace.DoesNotExist:
-            pass
+    try:
+        DeletedNamespace.get(DeletedNamespace.original_username == username)
+        raise InvalidUsernameException("Username is not available")
+    except DeletedNamespace.DoesNotExist:
+        pass
 
     # Check email uniqueness only among non-organization users. Organizations are allowed
     # to share emails (enforced by the partial unique index on User.email).
@@ -1379,6 +1377,11 @@ def mark_namespace_for_deletion(
             allowlist = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST", [])
             if grace_period > 0 and allowlist and user.username in allowlist:
                 available_after = grace_period
+                logger.info(
+                    "Namespace %s marked for deletion with %ds grace period",
+                    user.username,
+                    grace_period,
+                )
             else:
                 available_after = 0
 

@@ -164,7 +164,7 @@ def test_mark_user_for_deletion(initialized_db):
 
     # Mark the user for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
-    mark_namespace_for_deletion(user, [], queue)
+    marker_id = mark_namespace_for_deletion(user, [], queue)
 
     # Ensure the older user is still in the DB.
     older_user = User.get(id=user.id)
@@ -188,12 +188,13 @@ def test_mark_user_for_deletion(initialized_db):
     # Ensure the oauth assigned token is gone
     assert get_token_assignment(assigned_token.uuid, user, org) is None
 
+    # Complete the GC cycle so the DeletedNamespace marker is removed.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
     # Ensure we can create a user with the same namespace again.
     new_user = create_user_noverify("foobar", "foo@example.com", email_required=False)
-    assert new_user.id != user.id
-
-    # Ensure the older user is still in the DB.
-    assert User.get(id=user.id).username != "foobar"
+    assert new_user.username == "foobar"
 
 
 def test_mark_organization_for_deletion(initialized_db):
@@ -230,13 +231,13 @@ def test_mark_organization_for_deletion(initialized_db):
     )
     assert get_token_assignment(assigned_token.uuid, user, org) is not None
 
-    # Mark the user for deletion.
+    # Mark the org for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
-    mark_namespace_for_deletion(org, [], queue)
+    marker_id = mark_namespace_for_deletion(org, [], queue)
 
-    # Ensure the older user is still in the DB.
-    older_user = User.get(id=org.id)
-    assert older_user.username != "foobar"
+    # Ensure the older org is still in the DB (renamed to UUID).
+    older_org = User.get(id=org.id)
+    assert older_org.username != "foobar"
 
     # Ensure the robots are deleted.
     with pytest.raises(InvalidRobotException):
@@ -245,7 +246,7 @@ def test_mark_organization_for_deletion(initialized_db):
     with pytest.raises(InvalidRobotException):
         assert lookup_robot("foobar+bar")
 
-    assert len(list(list_namespace_robots(older_user.username))) == 0
+    assert len(list(list_namespace_robots(older_org.username))) == 0
 
     # Ensure the federated logins are gone.
     assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 0
@@ -258,12 +259,13 @@ def test_mark_organization_for_deletion(initialized_db):
     assert get_oauth_application_for_client_id(application.client_id) is None
     assert get_token_assignment(assigned_token.uuid, org, org) is None
 
-    # Ensure we can create a user with the same namespace again.
-    new_org = create_organization("foobar", "foobar@devtable.com", user)
-    assert new_org.id != org.id
+    # Complete the GC cycle so the DeletedNamespace marker is removed.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
 
-    # Ensure the older org is still in the DB.
-    assert User.get(id=org.id).username != "foobar"
+    # Ensure we can create an org with the same namespace again.
+    new_org = create_organization("foobar", "foobar@devtable.com", user)
+    assert new_org.username == "foobar"
 
 
 def test_mark_organization_for_deletion_with_org_mirror(initialized_db):
@@ -557,7 +559,7 @@ def test_force_delete_bypasses_grace_period(initialized_db):
 
 
 def test_grace_period_blocks_namespace_reregistration(initialized_db):
-    """Re-registering a namespace name is blocked while its grace period is active."""
+    """Re-registering a namespace name is blocked while a DeletedNamespace marker exists."""
     user = get_user("devtable")
     org = create_organization("protectedorg", "protected@example.com", user)
 
@@ -566,10 +568,7 @@ def test_grace_period_blocks_namespace_reregistration(initialized_db):
 
     with patch(
         "data.model.config.app_config",
-        {
-            "DEFAULT_TAG_EXPIRATION": "2w",
-            "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["protectedorg"],
-        },
+        {"DEFAULT_TAG_EXPIRATION": "2w"},
     ):
         with pytest.raises(InvalidUsernameException, match="Username is not available"):
             create_user_noverify("protectedorg", "new@example.com", email_required=False)
@@ -586,10 +585,7 @@ def test_grace_period_allows_reregistration_after_deletion_completes(initialized
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
     marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
 
-    mock_config = {
-        "DEFAULT_TAG_EXPIRATION": "2w",
-        "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["expiredorg"],
-    }
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
 
     # Still blocked before GC worker runs, even though grace period expired.
     with patch("data.model.config.app_config", mock_config):
@@ -606,13 +602,14 @@ def test_grace_period_allows_reregistration_after_deletion_completes(initialized
         assert new_user.username == "expiredorg"
 
 
-def test_grace_period_allows_reregistration_for_unlisted_namespace(initialized_db):
-    """Namespaces not in the allowlist can be re-registered even during grace period."""
+def test_reregistration_blocked_regardless_of_allowlist(initialized_db):
+    """Re-registering is blocked while a DeletedNamespace marker exists, even if the
+    namespace is not in the current allowlist."""
     user = get_user("devtable")
     org = create_organization("unlistedorg", "unlisted@example.com", user)
 
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
-    mark_namespace_for_deletion(org, [], queue, available_after=86400)
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
 
     with patch(
         "data.model.config.app_config",
@@ -620,6 +617,17 @@ def test_grace_period_allows_reregistration_for_unlisted_namespace(initialized_d
             "DEFAULT_TAG_EXPIRATION": "2w",
             "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["some_other_org"],
         },
+    ):
+        with pytest.raises(InvalidUsernameException, match="Username is not available"):
+            create_user_noverify("unlistedorg", "new@example.com", email_required=False)
+
+    # After GC completes, the name becomes available again.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    with patch(
+        "data.model.config.app_config",
+        {"DEFAULT_TAG_EXPIRATION": "2w"},
     ):
         new_user = create_user_noverify("unlistedorg", "new@example.com", email_required=False)
         assert new_user.username == "unlistedorg"
