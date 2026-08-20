@@ -443,16 +443,23 @@ func validateInitConfig(cfg *Config) error {
 }
 
 func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
-	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
+	slog.Info("initializing registry", "data-dir", cfg.DataDir)
+
+	storageDir := filepath.Join(cfg.DataDir, "storage")
+	for _, dir := range []string{cfg.DataDir, storageDir} {
 		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("create directory %s: %w", dir, err)
 		}
 	}
 
+	if cfg.ConfigPath != "" {
+		slog.Debug("resolving database from configuration file", "config", cfg.ConfigPath)
+	}
 	dbPath, runtimeCfg, err := resolveInitDatabase(cfg)
 	if err != nil {
 		return err
 	}
+	slog.Debug("database path resolved", "path", dbPath)
 
 	db, err := dbcore.Setup(ctx, dbPath)
 	if err != nil {
@@ -469,6 +476,7 @@ func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
 			return fmt.Errorf("registry is already initialized; supplied password was not applied and existing credentials are unchanged")
 		}
 		slog.Info("initial administrator already provisioned")
+		slog.Info("registry initialization complete", "data-dir", cfg.DataDir, "database", dbPath)
 		return nil
 	}
 
@@ -480,6 +488,8 @@ func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		return err
 	}
+	credentialPath := filepath.Join(cfg.DataDir, "auth", "admin-password")
+
 	created, err := bootstrap.AdminUser(ctx, db, cfg.InitUser, password)
 	if err != nil {
 		return fmt.Errorf("create initial administrator: %w", err)
@@ -487,6 +497,13 @@ func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
 	if !created {
 		return fmt.Errorf("initial administrator was created concurrently; credentials were not changed")
 	}
+
+	slog.Info("registry initialization complete",
+		"data-dir", cfg.DataDir,
+		"database", dbPath,
+		"admin-user", cfg.InitUser,
+		"credential", credentialPath,
+	)
 	return nil
 }
 

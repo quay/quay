@@ -34,7 +34,7 @@ func ensureSchema(ctx context.Context, db *sql.DB, dbPath string) error {
 	}
 
 	if tableCount == 0 {
-		slog.Info("initializing database")
+		slog.Info("initializing database", "path", dbPath)
 		if err := InitDatabase(ctx, db, io.Discard); err != nil {
 			return fmt.Errorf("init database: %w", err)
 		}
