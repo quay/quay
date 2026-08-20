@@ -12,7 +12,7 @@ objects:
       app: quay-envoy
   spec:
     type: NodePort
-    externalTrafficPolicy: Local
+    externalTrafficPolicy: Cluster
     ports:
     - name: https
       protocol: TCP
