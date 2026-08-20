@@ -53,16 +53,17 @@ class BlobUploadCleanupWorker(Worker):
         leftover in the uploads storage folder.
         This function cleans those blobs older than DELETION_DATE_THRESHOLD
         """
+        if not storage.preferred_locations:
+            logger.debug("No preferred storage locations defined, aborting cleanup of stale blobs")
+            return
+
         try:
             storage.clean_partial_uploads(storage.preferred_locations, DELETION_DATE_THRESHOLD)
         except NotImplementedError:
-            if len(storage.preferred_locations) > 0:
-                logger.debug(
-                    'Cleaning partial uploads not applicable to storage location "%s"',
-                    storage.preferred_locations[0],
-                )
-            else:
-                logger.debug("No preferred locations found")
+            logger.debug(
+                'Cleaning partial uploads not applicable to storage location "%s"',
+                storage.preferred_locations[0],
+            )
 
     def _try_clean_stale_multipart_uploads(self):
         """
@@ -71,6 +72,12 @@ class BlobUploadCleanupWorker(Worker):
         consuming storage needlessly. This function cleans all MPUs older than MPU_DELETION_DATE_THRESHOLD.
         """
         deleted = 0
+        if not storage.preferred_locations:
+            logger.debug(
+                "No preferred storage locations defined, aborting cleanup of stale multipart uploads"
+            )
+            return
+
         logger.debug("Performing cleanup of stale multipart uploads")
         try:
             deleted = storage.clean_orphaned_multipart_uploads(
@@ -79,13 +86,10 @@ class BlobUploadCleanupWorker(Worker):
             if deleted == 0:
                 logger.debug("No stale multipart uploads found")
         except NotImplementedError:
-            if len(storage.preferred_locations) > 0:
-                logger.debug(
-                    "Deletion of stale multipart uploads is not applicable to storage location %s",
-                    storage.preferred_locations[0],
-                )
-            else:
-                logger.debug("No preferred locations found")
+            logger.debug(
+                "Deletion of stale multipart uploads is not applicable to storage location %s",
+                storage.preferred_locations[0],
+            )
 
     def _cleanup_uploads(self):
         """
