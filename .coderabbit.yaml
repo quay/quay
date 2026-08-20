@@ -18,6 +18,14 @@ reviews:
     enabled: true
     auto_incremental_review: true
     drafts: false
+    # Base branches (other than the default branch) to review. Accepts
+    # regex patterns, matched against the PR's base branch name. The
+    # default branch (master) is always reviewed regardless of this list;
+    # it is listed explicitly here as a safeguard in case the repo's
+    # default branch ever changes.
+    base_branches:
+      - "master"
+      - "^redhat-.*$"
     ignore_title_keywords:
       - "WIP"
       - "DO NOT MERGE"
