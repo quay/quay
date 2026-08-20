@@ -848,3 +848,90 @@ class TestPendingSecurityStatus:
         ):
             with pytest.raises(Exception, match="db error"):
                 create_manifest_for_testing(repository)
+
+
+def test_get_or_create_nested_manifest_index(initialized_db):
+    """
+    Tests that a nested OCI index (an index containing another index as a child)
+    can be created without raising CreateManifestException. This validates that
+    label retrieval is skipped for child manifest lists, which return None for
+    get_manifest_labels().
+    """
+    repository = create_repository("devtable", "newrepo", None)
+
+    layer_json = json.dumps(
+        {
+            "id": "somelegacyid",
+            "architecture": "amd64",
+            "os": "linux",
+            "config": {
+                "Labels": {"Foo": "Bar"},
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    # Add a blob containing the config.
+    _, config_digest = _populate_blob(layer_json)
+
+    # Add a blob of random data.
+    random_data = "hello world"
+    _, random_digest = _populate_blob(random_data)
+
+    # Build two OCI manifests for the inner index.
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest, len(random_data.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    random_data2 = "goodbye world"
+    _, random_digest2 = _populate_blob(random_data2)
+
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_manifest2 = oci_builder2.build()
+
+    # Write both child manifests first.
+    oci_created1 = get_or_create_manifest(repository, oci_manifest1, storage)
+    assert oci_created1
+    oci_created2 = get_or_create_manifest(repository, oci_manifest2, storage)
+    assert oci_created2
+
+    # Build an inner OCI index containing the two manifests.
+    inner_index_builder = OCIIndexBuilder()
+    inner_index_builder.add_manifest(oci_manifest1, "amd64", "linux")
+    inner_index_builder.add_manifest(oci_manifest2, "arm64", "linux")
+    inner_index = inner_index_builder.build()
+
+    # Write the inner index.
+    inner_created = get_or_create_manifest(repository, inner_index, storage)
+    assert inner_created
+
+    # Build an outer OCI index that contains the inner index as a child.
+    outer_index_builder = OCIIndexBuilder()
+    outer_index_builder.add_manifest(inner_index, "amd64", "linux")
+    outer_index_builder.add_manifest(oci_manifest1, "arm64", "linux")
+    outer_index = outer_index_builder.build()
+
+    # This should succeed without raising CreateManifestException.
+    outer_created = get_or_create_manifest(repository, outer_index, storage, raise_on_error=True)
+    assert outer_created is not None
+    assert outer_created.manifest.digest == outer_index.digest
+
+    # Verify the child manifest links exist.
+    child_manifests = {
+        cm.child_manifest.digest: cm.child_manifest
+        for cm in ManifestChild.select(ManifestChild, Manifest)
+        .join(Manifest, on=(ManifestChild.child_manifest == Manifest.id))
+        .where(ManifestChild.manifest == outer_created.manifest)
+    }
+    assert len(child_manifests) == 2
+    assert inner_index.digest in child_manifests
+    assert oci_manifest1.digest in child_manifests

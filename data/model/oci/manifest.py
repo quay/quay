@@ -363,7 +363,7 @@ def _create_manifest(
 
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)
-            if labels is None and isinstance(child_manifest, ManifestInterface):
+            if labels is None and not isinstance(child_manifest, ManifestListInterface):
                 if raise_on_error:
                     raise CreateManifestException("Unable to retrieve manifest labels")
 
@@ -382,7 +382,7 @@ def _create_manifest(
                 return None
 
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
-            child_manifest_label_dicts.append(labels)
+            child_manifest_label_dicts.append(labels or {})
 
     # Build the map from required blob digests to the blob objects.
     blob_map = _build_blob_map(
