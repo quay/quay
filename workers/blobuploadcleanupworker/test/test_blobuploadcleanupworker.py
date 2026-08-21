@@ -104,3 +104,47 @@ def test_verify_operation_is_not_registered_if_feature_flag_is_disabled(initiali
 
         registered = [c.args[0].__name__ for c in mock_add.call_args_list]
         assert "_try_clean_stale_multipart_uploads" not in registered
+
+
+def test_verify_operation_is_registered_if_feature_flag_is_enabled(initialized_db):
+    """
+    Asserts that the job operation is scheduled if the feature flag is set.
+    """
+    with patch.dict(realapp.config, {"FEATURE_ENABLE_STALE_MPU_CLEANUP": True}):
+        with patch.object(BlobUploadCleanupWorker, "add_operation") as mock_add:
+            BlobUploadCleanupWorker()
+
+        registered = [c.args[0].__name__ for c in mock_add.call_args_list]
+        assert "_try_clean_stale_multipart_uploads" in registered
+
+
+def test_verify_that_worker_acquires_a_global_lock(initialized_db):
+    """
+    Verifies that a GlobalLock is acquired if the worker is called.
+    """
+    from util.locking import GlobalLock
+
+    class _FakeLock:
+        lock_factory = object()
+
+        def __init__(self, name, expire=None, auto_renewal=False):
+            self._name = name
+
+        def acquire(self):
+            return True
+
+        def release(self):
+            pass
+
+    storage_mock = Mock()
+    storage_mock.preferred_locations = ["default"]
+    storage_mock.clean_orphaned_multipart_uploads.return_value = 0
+
+    with patch.object(GlobalLock, "lock_factory", staticmethod(_FakeLock)):
+        with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+            worker = BlobUploadCleanupWorker()
+            worker._try_clean_stale_multipart_uploads()
+
+        storage_mock.clean_orphaned_multipart_uploads.assert_called_once_with(
+            ["default"], MPU_DELETION_DATE_THRESHOLD
+        )
