@@ -120,7 +120,7 @@ jobs:
           cat requirements-dev.txt | grep tox | xargs python3 -m pip -qq install
 
           if [[ 's390x' == $(uname -m) ]]; then
-            GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
+            GRPC_LATEST=$(grep "^grpcio==" requirements.txt |cut -d "=" -f 3 | tr -d ' \\')
             export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
           fi
 

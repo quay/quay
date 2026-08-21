@@ -111,7 +111,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install -r ./requirements-dev.txt
+        # requirements.txt is hash-pinned, so it's installed in hash-checking
+        # mode on its own; requirements-dev.txt's own deps aren't hash-pinned,
+        # so they're installed separately (installing both together via
+        # `-r requirements-dev.txt`, which itself does `-r requirements.txt`,
+        # would force pip's hash-checking mode onto the unhashed dev deps too).
+        pip install --require-hashes -r requirements.txt
+        pip install -r <(tail -n +2 requirements-dev.txt)
 
     - name: Check Types
       run: make types-test

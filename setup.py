@@ -8,7 +8,13 @@ install_requires = []
 if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
         for line in f.read().splitlines():
-            line = line.strip()
+            # requirements.txt is hash-pinned: a "--hash=..." or "# via ..."
+            # continuation line is indented under its package's pin line, so
+            # indentation (checked before stripping) is what marks it as a
+            # continuation to skip rather than a requirement of its own.
+            if line.startswith((" ", "\t")):
+                continue
+            line = line.strip().rstrip("\\").strip()
             if (
                 line
                 and not line.startswith("#")
