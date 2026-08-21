@@ -157,6 +157,12 @@ def create_user_noverify(
     except User.DoesNotExist:
         pass
 
+    try:
+        DeletedNamespace.get(DeletedNamespace.original_username == username)
+        raise InvalidUsernameException("Username is not available")
+    except DeletedNamespace.DoesNotExist:
+        pass
+
     # Check email uniqueness only among non-organization users. Organizations are allowed
     # to share emails (enforced by the partial unique index on User.email).
     if email_required:
@@ -1351,13 +1357,34 @@ def get_solely_admined_organizations(user_obj):
     return solely_admined
 
 
-def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
+def mark_namespace_for_deletion(
+    user, queues, namespace_gc_queue, force=False, available_after=None
+):
     """
     Marks a namespace (as referenced by the given user) for deletion.
 
     A queue item will be added to delete the namespace's repositories and storage, while the
     namespace itself will be renamed, disabled, and delinked from other tables.
+
+    When available_after > 0 (grace period), linked data (teams, OAuth apps, robots, etc.) is
+    preserved so the namespace can be recovered via direct DB operations during the grace window.
     """
+    if available_after is None:
+        if force:
+            available_after = 0
+        else:
+            grace_period = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_SECONDS", 0)
+            allowlist = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST", [])
+            if grace_period > 0 and allowlist and user.username in allowlist:
+                available_after = grace_period
+                logger.info(
+                    "Namespace %s marked for deletion with %ds grace period",
+                    user.username,
+                    grace_period,
+                )
+            else:
+                available_after = 0
+
     if not user.enabled:
         return None
 
@@ -1381,8 +1408,10 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
     for queue in queues:
         queue.delete_namespaced_items(user.username)
 
-    # Delete non-repository related items. This operation is very quick, so we can do so here.
-    _delete_user_linked_data(user)
+    # When a grace period is active, defer linked data deletion so the namespace can be
+    # recovered. The GC worker (delete_user) will clean up linked data at purge time.
+    if available_after <= 0:
+        _delete_user_linked_data(user)
 
     with db_transaction():
         original_username = user.username
@@ -1411,6 +1440,7 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
                 "original_username": original_username,
             }
         ),
+        available_after=available_after,
     )
     marker.save()
     return marker.id
@@ -1485,7 +1515,17 @@ def delete_user(user, queues):
         return False
 
 
+def _resolve_namespace_name(user):
+    """Returns the original namespace name, consulting the DeletedNamespace marker if the
+    username was replaced with a UUID during soft-delete."""
+    try:
+        return DeletedNamespace.get(DeletedNamespace.namespace == user).original_username
+    except DeletedNamespace.DoesNotExist:
+        return user.username
+
+
 def _delete_user_linked_data(user):
+    namespace_name = _resolve_namespace_name(user)
     if user.organization:
         # Delete the organization's teams.
         with db_transaction():
@@ -1510,7 +1550,7 @@ def _delete_user_linked_data(user):
             trigger.delete_instance(recursive=True, delete_nullable=False)
 
     with db_transaction():
-        quotas = namespacequota.get_namespace_quota_list(user.username)
+        quotas = namespacequota.get_namespace_quota_list(namespace_name)
         for quota in quotas:
             namespacequota.delete_namespace_quota(quota)
 
@@ -1526,12 +1566,12 @@ def _delete_user_linked_data(user):
 
     # Delete any mirrors with robots owned by this user.
     with db_transaction():
-        robots = list(list_namespace_robots(user.username))
+        robots = list(list_namespace_robots(namespace_name))
         RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
 
     # Delete any robots owned by this user.
     with db_transaction():
-        robots = list(list_namespace_robots(user.username))
+        robots = list(list_namespace_robots(namespace_name))
         for robot in robots:
             robot.delete_instance(recursive=True, delete_nullable=True)
 
