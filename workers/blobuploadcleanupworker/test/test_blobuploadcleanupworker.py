@@ -4,6 +4,7 @@ from datetime import timedelta
 import boto3
 from mock import Mock, patch
 
+from app import app as realapp
 from test.fixtures import *
 from workers.blobuploadcleanupworker.blobuploadcleanupworker import (
     MPU_DELETION_DATE_THRESHOLD,
@@ -51,14 +52,16 @@ def test_blobuploadcleanupworker_calls_mpu_cleanup(initialized_db):
     # we'll mock the deleted count
     storage_mock.clean_orphaned_multipart_uploads.return_value = 5
 
-    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
-        # call cleanup and ensure it's cancelled
-        worker = BlobUploadCleanupWorker()
-        worker._try_clean_stale_multipart_uploads()
+    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.GlobalLock"):
+        with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
 
-    storage_mock.clean_orphaned_multipart_uploads.assert_called_once_with(
-        ["default"], MPU_DELETION_DATE_THRESHOLD
-    )
+            # call cleanup and ensure it's cancelled
+            worker = BlobUploadCleanupWorker()
+            worker._try_clean_stale_multipart_uploads()
+
+        storage_mock.clean_orphaned_multipart_uploads.assert_called_once_with(
+            ["default"], MPU_DELETION_DATE_THRESHOLD
+        )
 
 
 def test_mpu_cleanup_exits_if_no_preferred_storage_location_is_found(initialized_db):
@@ -68,9 +71,10 @@ def test_mpu_cleanup_exits_if_no_preferred_storage_location_is_found(initialized
     storage_mock = Mock()
     storage_mock.preferred_locations = []
 
-    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
-        worker = BlobUploadCleanupWorker()
-        worker._try_clean_stale_multipart_uploads()
+    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.GlobalLock"):
+        with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+            worker = BlobUploadCleanupWorker()
+            worker._try_clean_stale_multipart_uploads()
 
     storage_mock.clean_orphaned_multipart_uploads.assert_not_called()
 
@@ -82,8 +86,21 @@ def test_partial_blob_cleanup_exits_if_no_preferred_storage_location_is_found(in
     storage_mock = Mock()
     storage_mock.preferred_locations = []
 
-    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
-        worker = BlobUploadCleanupWorker()
-        worker._try_clean_partial_uploads()
+    with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.GlobalLock"):
+        with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+            worker = BlobUploadCleanupWorker()
+            worker._try_clean_partial_uploads()
 
     storage_mock.clean_partial_uploads.assert_not_called()
+
+
+def test_verify_operation_is_not_registered_if_feature_flag_is_disabled(initialized_db):
+    """
+    Verifies that the job is not scheduled unless the feature flag is set.
+    """
+    with patch.dict(realapp.config, {"FEATURE_ENABLE_STALE_MPU_CLEANUP": False}):
+        with patch.object(BlobUploadCleanupWorker, "add_operation") as mock_add:
+            BlobUploadCleanupWorker()
+
+        registered = [c.args[0].__name__ for c in mock_add.call_args_list]
+        assert "_try_clean_stale_multipart_uploads" not in registered

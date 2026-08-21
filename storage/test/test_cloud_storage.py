@@ -567,3 +567,119 @@ def test_cleanup_does_not_impact_multipart_uploads_under_different_paths(
 
         # explicitly verify that the key matches
         assert uploads[0]["Key"] == "/completely/different/deletion/path.txt"
+
+
+def test_cleanup_triggers_on_non_normalized_root(storage_engine, mock_mpu_dates):
+    """
+    Asserts that deletion happens even if our root prefix contains a slash at the beginning.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # root path has a slash
+    storage_engine._root_path = "/" + _TEST_PATH
+
+    # create an MPU
+    with freeze_time(now):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key=_TEST_PATH + "/test/root_prefix/starts/with/slash.txt"
+        )
+        assert mpu_response
+
+    uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+    assert len(uploads) == 1
+
+    # clean up MPU
+    with freeze_time(now + timedelta(seconds=5)):
+        deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
+        assert deleted == 1
+
+        # list MPUs on the bucket
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET, Prefix=_TEST_PATH)
+        assert len(uploads.get("Uploads", [])) == 0
+
+
+def test_cleanup_does_not_trigger_on_sibling_suffix(storage_engine, mock_mpu_dates):
+    """
+    Asserts that deletion does not happen on sibling suffixes. Eg: cleanup should happen on
+    some/cool/path/testfile.txt but not on /some/cool/path-with-suffix/testfile.txt.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    storage_engine._root_path = _TEST_PATH
+
+    # create MPU
+    with freeze_time(now):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key=_TEST_PATH + "/testfile.txt"
+        )
+        assert mpu_response
+
+    # create MPU under different suffix
+    with freeze_time(now):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key=_TEST_PATH + "-with-suffix/testfile.txt"
+        )
+        assert mpu_response
+
+    # verify we have both MPUs present
+    uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+    assert len(uploads) == 2
+
+    # clean up only under default path
+    with freeze_time(now + timedelta(seconds=5)):
+        deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
+        assert deleted == 1
+
+        # specifically verify that the key that's left is the 2nd MPU
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET, Prefix=_TEST_PATH + "/")
+        assert len(uploads.get("Uploads", [])) == 0
+
+        uploads = client.list_multipart_uploads(Bucket=_TEST_BUCKET)["Uploads"]
+        assert len(uploads) == 1
+        assert uploads[0]["Key"] == _TEST_PATH + "-with-suffix/testfile.txt"
+
+
+def test_cleanup_handles_already_aborted_mpu(storage_engine, mock_mpu_dates):
+    """
+    Asserts that the NoSuchUpload exception is caught by the code and not raised.
+    """
+
+    err = botocore.exceptions.ClientError(
+        {"Error": {"Code": "NoSuchUpload", "Message": "The specified upload does not exist."}},
+        "AbortMultipartUpload",
+    )
+
+    def abort_side_effects(Bucket, Key, UploadId):
+        """
+        Helper function to simulate NoSuchUpload exception raised
+        """
+        if Key.endswith("gone.txt"):
+            raise err
+        return {}
+
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    storage_engine._root_path = _TEST_PATH
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # create two multipart uploads
+    with freeze_time(now):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key=_TEST_PATH + "/keep.txt"
+        )
+        assert mpu_response
+
+    with freeze_time(now + timedelta(seconds=30)):
+        mpu_response = client.create_multipart_upload(
+            Bucket=_TEST_BUCKET, Key=_TEST_PATH + "/gone.txt"
+        )
+        assert mpu_response
+
+    # conduct deletion
+    with patch.object(
+        storage_engine.get_cloud_conn(), "abort_multipart_upload", side_effect=abort_side_effects
+    ):
+        with freeze_time(now + timedelta(hours=1)):
+            deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
+            assert deleted == 1
