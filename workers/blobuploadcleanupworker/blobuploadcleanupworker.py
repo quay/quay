@@ -18,11 +18,23 @@ DELETION_DATE_THRESHOLD = timedelta(minutes=threshold)
 BLOBUPLOAD_CLEANUP_FREQUENCY = app.config.get("BLOBUPLOAD_CLEANUP_FREQUENCY", 60 * 60)
 LOCK_TTL = 60 * 20  # 20 minutes
 
+# Sets MPU deletion date threshold to 1 day
+# The TTL is explicitly chosen not to be configurable by the client: if the threshold is set too low,
+# then MPUs still in progress might be deleted causing push failures.
+MPU_CLEANUP_TTL = 60 * 60 * 24  # 1 day
+MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
+# check if there are any stale MPUs every 6 hours
+MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
+
 
 class BlobUploadCleanupWorker(Worker):
     def __init__(self):
         super(BlobUploadCleanupWorker, self).__init__()
         self.add_operation(self._try_cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
+        if app.config.get("FEATURE_ENABLE_STALE_MPU_CLEANUP", False):
+            self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
+        else:
+            logger.debug("Cleanup of stale multipart uploads not enabled, skipping...")
 
     def _try_cleanup_uploads(self):
         """
@@ -44,16 +56,49 @@ class BlobUploadCleanupWorker(Worker):
         leftover in the uploads storage folder.
         This function cleans those blobs older than DELETION_DATE_THRESHOLD
         """
+        if not storage.preferred_locations:
+            logger.debug("No preferred storage locations defined, aborting cleanup of stale blobs")
+            return
+
         try:
             storage.clean_partial_uploads(storage.preferred_locations, DELETION_DATE_THRESHOLD)
         except NotImplementedError:
-            if len(storage.preferred_locations) > 0:
-                logger.debug(
-                    'Cleaning partial uploads not applicable to storage location "%s"',
-                    storage.preferred_locations[0],
-                )
-            else:
-                logger.debug("No preferred locations found")
+            logger.debug(
+                'Cleaning partial uploads not applicable to storage location "%s"',
+                storage.preferred_locations[0],
+            )
+
+    def _try_clean_stale_multipart_uploads(self):
+        """
+        Attempts to clean up stale multipart uploads on the storage side. Stale uploads can happen if
+        the upload thread was terminated prematurely and MPU was not cancelled or committed properly,
+        consuming storage needlessly. This function cleans all MPUs older than MPU_DELETION_DATE_THRESHOLD.
+        """
+        deleted = 0
+        if not storage.preferred_locations:
+            logger.debug(
+                "No preferred storage locations defined, aborting cleanup of stale multipart uploads"
+            )
+            return
+
+        logger.debug("Performing cleanup of stale multipart uploads")
+        try:
+            with GlobalLock("STALE_MPU_CLEANUP", lock_ttl=LOCK_TTL):
+                try:
+                    deleted = storage.clean_orphaned_multipart_uploads(
+                        storage.preferred_locations, MPU_DELETION_DATE_THRESHOLD
+                    )
+                    if deleted == 0:
+                        logger.debug("No stale multipart uploads found")
+                except NotImplementedError:
+                    logger.debug(
+                        "Deletion of stale multipart uploads is not applicable to storage location %s",
+                        storage.preferred_locations[0],
+                    )
+        except LockNotAcquiredException:
+            logger.debug(
+                "Could not acquire global lock for stale multipart upload cleanup, skipping..."
+            )
 
     def _cleanup_uploads(self):
         """
