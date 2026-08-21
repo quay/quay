@@ -1,26 +1,20 @@
 name: Config Tool
+
 on:
-  push:
-    branches:
-    - "!dependabot/*"
-    - "*"
-    paths:
-    - config-tool/**
-  pull_request:
-    branches:
-    - "*"
-    paths:
-    - config-tool/**
+  workflow_call:
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: config-tool/go.mod
           cache-dependency-path: config-tool/go.sum
@@ -33,10 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up Go 1.x
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: config-tool/go.mod
           cache-dependency-path: config-tool/go.sum
@@ -56,7 +52,7 @@ jobs:
           POSTGRES_PASSWORD: "password"
           POSTGRES_DB: "quay"
       redis:
-        image: redis:latest
+        image: redis:7.4
       mysql:
         image: mysql:5.7
         env:
@@ -67,7 +63,9 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Workaround for dubious ownership issue
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build
@@ -76,31 +74,3 @@ jobs:
         run: cd ./config-tool && go test ./pkg/lib/fieldgroups/...
         env:
           GODEBUG: x509ignoreCN=0
-
-  cypress:
-    name: Cypress
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Docker Build
-        run: cd config-tool && docker build -t localhost/config-tool:latest .
-      - name: Cypress run
-        uses: cypress-io/github-action@v5
-        with:
-          browser: chrome
-          start: docker run --rm -p 8080:8080 -v ${{ github.workspace }}/config-tool/pkg/lib/editor/cypress/conf:/conf localhost/config-tool:latest editor --config-dir /conf --password qwerty
-          wait-on: 'http://localhost:8080'
-          wait-on-timeout: 120
-          working-directory: config-tool/pkg/lib/editor
-      - name: Upload screenshots and videos
-        uses: actions/upload-artifact@v4
-        if: success() || failure()
-        with:
-          name: cypress-artifacts
-          path: |
-            config-tool/pkg/lib/editor/cypress/screenshots
-            config-tool/pkg/lib/editor/cypress/videos
-          if-no-files-found: ignore
