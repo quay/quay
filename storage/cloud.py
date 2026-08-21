@@ -764,7 +764,12 @@ class _CloudStorage(BaseStorageV2):
         self._initialize_cloud_conn()
         paginator = self.get_cloud_conn().get_paginator("list_multipart_uploads")
         deleted = 0
-        page_iterator = paginator.paginate(Bucket=self._bucket_name, Prefix=self._root_path)
+
+        root_prefix = self._init_path()
+        if root_prefix and not root_prefix.endswith("/"):
+            root_prefix = root_prefix + "/"
+
+        page_iterator = paginator.paginate(Bucket=self._bucket_name, Prefix=root_prefix)
         for page in page_iterator:
             # check if there are any multipart uploads
             if "Uploads" in page:
@@ -790,17 +795,20 @@ class _CloudStorage(BaseStorageV2):
                             )
                             deleted = deleted + 1
                         except botocore.exceptions.ClientError as s3r:
-                            if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                            if (
+                                s3r.response["Error"]["Code"]
+                                in ("NoSuchUpload",) + _MISSING_KEY_ERROR_CODES
+                            ):
+                                logger.debug(
+                                    "Multipart upload with upload id %s not found",
+                                    upload["UploadId"],
+                                )
+                            else:
                                 logger.exception(
                                     "Got error when attempting to clean up stale multipart upload: key=%s, uploadid=%s, exception=%s",
                                     upload["Key"],
                                     upload["UploadId"],
                                     str(s3r),
-                                )
-                            else:
-                                logger.debug(
-                                    "Multipart upload with upload id %s not found",
-                                    upload["UploadId"],
                                 )
         return deleted
 
