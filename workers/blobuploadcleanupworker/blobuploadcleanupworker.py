@@ -23,15 +23,18 @@ LOCK_TTL = 60 * 20  # 20 minutes
 # then MPUs still in progress might be deleted causing push failures.
 MPU_CLEANUP_TTL = 60 * 60 * 24  # 1 day
 MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
-# check if there are any stale MPUs every 60 seconds
-MPU_CLEANUP_FREQUENCY = 60
+# check if there are any stale MPUs every 6 hours
+MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
 
 
 class BlobUploadCleanupWorker(Worker):
     def __init__(self):
         super(BlobUploadCleanupWorker, self).__init__()
         self.add_operation(self._try_cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
-        self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
+        if app.config.get("FEATURE_ENABLE_STALE_MPU_CLEANUP", False):
+            self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
+        else:
+            logger.debug("Cleanup of stale multipart uploads not enabled, skipping...")
 
     def _try_cleanup_uploads(self):
         """
@@ -80,15 +83,21 @@ class BlobUploadCleanupWorker(Worker):
 
         logger.debug("Performing cleanup of stale multipart uploads")
         try:
-            deleted = storage.clean_orphaned_multipart_uploads(
-                storage.preferred_locations, MPU_DELETION_DATE_THRESHOLD
-            )
-            if deleted == 0:
-                logger.debug("No stale multipart uploads found")
-        except NotImplementedError:
+            with GlobalLock("STALE_MPU_CLEANUP", lock_ttl=LOCK_TTL):
+                try:
+                    deleted = storage.clean_orphaned_multipart_uploads(
+                        storage.preferred_locations, MPU_DELETION_DATE_THRESHOLD
+                    )
+                    if deleted == 0:
+                        logger.debug("No stale multipart uploads found")
+                except NotImplementedError:
+                    logger.debug(
+                        "Deletion of stale multipart uploads is not applicable to storage location %s",
+                        storage.preferred_locations[0],
+                    )
+        except LockNotAcquiredException:
             logger.debug(
-                "Deletion of stale multipart uploads is not applicable to storage location %s",
-                storage.preferred_locations[0],
+                "Could not acquire global lock for stale multipart upload cleanup, skipping..."
             )
 
     def _cleanup_uploads(self):
