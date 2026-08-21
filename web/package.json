@@ -133,6 +133,7 @@
     "svgo": "4.0.1",
     "fast-uri": "3.1.3",
     "brace-expansion": "^1.1.18",
-    "js-yaml": "4.3.0"
+    "js-yaml": "4.3.0",
+    "nanoid": "^3.3.12"
   }
 }
