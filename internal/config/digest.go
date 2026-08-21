@@ -46,7 +46,7 @@ type Digest struct {
 func validateDigest(cfg *Config, _ ValidateOptions) []ValidationError {
 	if len(cfg.AllowedHashAlgorithms) == 0 {
 		return []ValidationError{{
-			Field:    "ALLOWED_HASH_ALGORITHMS",
+			Field:    fieldAllowedHashAlgorithms,
 			Severity: SeverityError,
 			Message:  "must contain at least one algorithm",
 		}}
@@ -57,7 +57,7 @@ func validateDigest(cfg *Config, _ ValidateOptions) []ValidationError {
 	for _, algorithm := range cfg.AllowedHashAlgorithms {
 		if _, duplicate := seen[algorithm]; duplicate {
 			errs = append(errs, ValidationError{
-				Field:    "ALLOWED_HASH_ALGORITHMS",
+				Field:    fieldAllowedHashAlgorithms,
 				Severity: SeverityError,
 				Message:  fmt.Sprintf("contains duplicate algorithm %q", algorithm),
 			})
@@ -67,7 +67,7 @@ func validateDigest(cfg *Config, _ ValidateOptions) []ValidationError {
 
 		if _, supported := supportedHashAlgorithms[algorithm]; !supported {
 			errs = append(errs, ValidationError{
-				Field:    "ALLOWED_HASH_ALGORITHMS",
+				Field:    fieldAllowedHashAlgorithms,
 				Severity: SeverityError,
 				Message:  fmt.Sprintf("contains unsupported algorithm %q", algorithm),
 			})
