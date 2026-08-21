@@ -1993,6 +1993,11 @@ CONFIG_SCHEMA = {
             "description": "Comma separated list of urls to exclude from tracing",
             "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
         },
+        "FEATURE_ENABLE_STALE_MPU_CLEANUP": {
+            "type": "boolean",
+            "description": "Enables cleanup of stale multipart uploads on the backend bucket. This feature flag is only applicable to S3 storage engines.",
+            "x-example": True,
+        },
     },
     "DEBUG": {
         "type": "boolean",
