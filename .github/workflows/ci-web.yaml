@@ -26,29 +26,11 @@ jobs:
       with:
         node-version: '22'
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      with:
-        version: 10
-        run_install: false
-
-    - name: Get pnpm store directory
-      id: pnpm-cache
-      shell: bash
-      run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-    - name: Cache pnpm store
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-      with:
-        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: ${{ runner.os }}-pnpm-store-
-
     - name: Install dependencies
-      run: cd web && pnpm install --frozen-lockfile
+      run: cd web && npm ci
 
     - name: Build plugin
-      run: cd web && pnpm run build-plugin
+      run: cd web && npm run build-plugin
 
   unit-tests:
     name: Vitest Unit Tests
@@ -64,32 +46,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-        with:
-          version: 10
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-store-
-
       - name: Install dependencies
-        run: cd web && pnpm install --frozen-lockfile
+        run: cd web && npm ci
 
-      - name: Verify npm lockfile is valid
-        run: cd web && npm ci --ignore-scripts --legacy-peer-deps --dry-run
 
       - name: Run unit tests with coverage
-        run: cd web && pnpm run test:coverage
+        run: cd web && npm run test:coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
