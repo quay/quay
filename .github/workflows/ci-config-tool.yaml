@@ -1,19 +1,7 @@
 name: Config Tool
-on:
-  push:
-    branches:
-    - "!dependabot/*"
-    - "*"
-    paths:
-    - config-tool/**
-  pull_request:
-    branches:
-    - "*"
-    paths:
-    - config-tool/**
 
-permissions:
-  contents: read
+on:
+  workflow_call:
 
 jobs:
   lint:
