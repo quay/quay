@@ -758,7 +758,7 @@ class _CloudStorage(BaseStorageV2):
     def clean_orphaned_multipart_uploads(self, deletion_date_threshold):
         """
         Lists and deletes all orphaned multipart uploads that are older than the provided threshold.
-        The threashold must be large enough so we don't clean up multipart uploads that are potentially
+        The threshold must be large enough so we don't clean up multipart uploads that are potentially
         in progress.
         """
         self._initialize_cloud_conn()
