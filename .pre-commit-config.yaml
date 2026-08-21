@@ -48,15 +48,15 @@ repos:
         stages: [pre-commit]
     -   id: eslint
         name: ESLint
-        entry: web/node_modules/.bin/eslint --fix
-        language: system
+        entry: .github/hooks/run-eslint.sh
+        language: script
         files: ^web/.*\.(js|jsx|ts|tsx)$
         exclude: ^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml|^web/package-lock\.json
     -   id: check-playwright-tags
         name: Check Playwright required usage tags
-        entry: bash -c 'cd web && node playwright/ensure-required-tags.cjs'
-        language: system
-        files: ^web/playwright/.*\.spec\.ts$
+        entry: .github/hooks/check-playwright-tags.sh
+        language: script
+        files: ^web/playwright/.*\.spec\.tsx?$
         pass_filenames: false
 -   repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
