@@ -1023,6 +1023,14 @@ CONFIG_SCHEMA = {
             "description": "If set to true, Quay will run using FIPS compliant hash functions. Defaults to False",
             "x-example": True,
         },
+        "ALLOWED_HASH_ALGORITHMS": {
+            "type": "array",
+            "description": "Exact allowlist of digest algorithms accepted for new client-visible blob and manifest digest writes. Defaults to sha256 when omitted. Internal storage and deduplication always use canonical SHA-256.",
+            "minItems": 1,
+            "uniqueItems": True,
+            "items": {"type": "string", "enum": ["sha256", "sha512"]},
+            "x-example": ["sha256", "sha512"],
+        },
         # Feature Flag: Anonymous Users.
         "FEATURE_ANONYMOUS_ACCESS": {
             "type": "boolean",

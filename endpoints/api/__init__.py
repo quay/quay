@@ -215,7 +215,7 @@ def page_support(page_token_kwarg="page_token", parsed_args_kwarg="parsed_args")
             page_token = decrypt_page_token(kwargs[parsed_args_kwarg]["next_page"])
             kwargs[page_token_kwarg] = page_token
 
-            (result, next_page_token) = func(self, *args, **kwargs)
+            result, next_page_token = func(self, *args, **kwargs)
             if next_page_token is not None:
                 result["next_page"] = encrypt_page_token(next_page_token)
 
@@ -248,7 +248,7 @@ def parse_args(kwarg_name="parsed_args"):
 def parse_repository_name(func):
     @wraps(func)
     def wrapper(repository, *args, **kwargs):
-        (namespace, repository) = parse_namespace_repository(
+        namespace, repository = parse_namespace_repository(
             repository, app.config["LIBRARY_NAMESPACE"]
         )
         return func(namespace, repository, *args, **kwargs)
@@ -825,7 +825,7 @@ def deprecated():
     def wrapper(func):
         @wraps(func)
         def wrapped(self, *args, **kwargs):
-            (data, code, headers) = unpack(func(self, *args, **kwargs))
+            data, code, headers = unpack(func(self, *args, **kwargs))
             headers["Deprecation"] = "true"
 
             return (data, code, headers)
