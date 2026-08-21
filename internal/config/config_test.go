@@ -57,6 +57,58 @@ func TestParseDefaults(t *testing.T) {
 	assert.True(t, cfg.FeatureDirectLogin)
 }
 
+func TestParseAllowedHashAlgorithmsDefaultsToSHA256(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\n"))
+	require.NoError(t, err)
+
+	assert.Equal(t, HashAlgorithms{"sha256"}, cfg.AllowedHashAlgorithms)
+}
+
+func TestParseAllowedHashAlgorithmsUsesExplicitListExactly(t *testing.T) {
+	tests := []struct {
+		name       string
+		algorithms string
+		expected   HashAlgorithms
+	}{
+		{name: "sha256 only", algorithms: "[sha256]", expected: HashAlgorithms{"sha256"}},
+		{name: "sha512 only", algorithms: "[sha512]", expected: HashAlgorithms{"sha512"}},
+		{name: "sha256 and sha512", algorithms: "[sha256, sha512]", expected: HashAlgorithms{"sha256", "sha512"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Parse([]byte("ALLOWED_HASH_ALGORITHMS: " + tt.algorithms + "\n"))
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expected, cfg.AllowedHashAlgorithms)
+			assert.NotContains(t, cfg.Extra, "ALLOWED_HASH_ALGORITHMS")
+		})
+	}
+}
+
+func TestParseAllowedHashAlgorithmsRejectsInvalidTypes(t *testing.T) {
+	tests := map[string]string{
+		"string":          "ALLOWED_HASH_ALGORITHMS: sha256\n",
+		"mapping":         "ALLOWED_HASH_ALGORITHMS: {sha256: true}\n",
+		"integer":         "ALLOWED_HASH_ALGORITHMS: 256\n",
+		"non-string item": "ALLOWED_HASH_ALGORITHMS: [sha256, 512]\n",
+		"null item":       "ALLOWED_HASH_ALGORITHMS: [sha256, null]\n",
+	}
+
+	for name, input := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Parse([]byte(input))
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestNewDefaultAllowedHashAlgorithmsUsesSHA256(t *testing.T) {
+	cfg := NewDefault("localhost", "/data/storage")
+
+	assert.Equal(t, HashAlgorithms{"sha256"}, cfg.AllowedHashAlgorithms)
+}
+
 func TestParseRobotAuthConfig(t *testing.T) {
 	cfg, err := Parse([]byte(`
 SERVER_HOSTNAME: test

@@ -243,7 +243,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
         scan_start = time.monotonic()
         try:
-            (report, state) = self._secscan_api.index(manifest, layers)
+            report, state = self._secscan_api.index(manifest, layers)
         except InvalidContentSent:
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
