@@ -7,6 +7,7 @@ from mock import Mock, patch
 from app import app as realapp
 from test.fixtures import *
 from workers.blobuploadcleanupworker.blobuploadcleanupworker import (
+    LOCK_TTL,
     MPU_DELETION_DATE_THRESHOLD,
     BlobUploadCleanupWorker,
 )
@@ -118,17 +119,21 @@ def test_verify_operation_is_registered_if_feature_flag_is_enabled(initialized_d
         assert "_try_clean_stale_multipart_uploads" in registered
 
 
-def test_verify_that_worker_acquires_a_global_lock(initialized_db):
+def test_verify_that_worker_acquires_a_global_lock_with_proper_values(initialized_db):
     """
-    Verifies that a GlobalLock is acquired if the worker is called.
+    Verifies that a GlobalLock is acquired if the worker is called and that proper values
+    were sent.
     """
     from util.locking import GlobalLock
 
-    class _FakeLock:
-        lock_factory = object()
+    captured = {}
 
+    class _FakeLock:
         def __init__(self, name, expire=None, auto_renewal=False):
             self._name = name
+            self._expire = expire
+            self._auto_renewal = auto_renewal
+            captured.update(name=name, expire=expire, auto_renewal=auto_renewal)
 
         def acquire(self):
             return True
@@ -137,6 +142,7 @@ def test_verify_that_worker_acquires_a_global_lock(initialized_db):
             pass
 
     storage_mock = Mock()
+
     storage_mock.preferred_locations = ["default"]
     storage_mock.clean_orphaned_multipart_uploads.return_value = 0
 
@@ -145,6 +151,38 @@ def test_verify_that_worker_acquires_a_global_lock(initialized_db):
             worker = BlobUploadCleanupWorker()
             worker._try_clean_stale_multipart_uploads()
 
+        # verify that the lock is initialized with proper values
+        assert captured["name"] == "STALE_MPU_CLEANUP"
+        assert captured["expire"] == LOCK_TTL
+        assert captured["auto_renewal"] is False
+
         storage_mock.clean_orphaned_multipart_uploads.assert_called_once_with(
             ["default"], MPU_DELETION_DATE_THRESHOLD
         )
+
+
+def test_verify_that_multipart_cleanup_does_not_run_if_lock_cannot_be_acquired(initialized_db):
+    """
+    Verifies that cleanup of orphaned MPUs is not called if GlobalLock cannot be acquired.
+    """
+    from util.locking import GlobalLock, LockNotAcquiredException
+
+    class _FakeLock:
+        def __init__(self, name, expire=None, auto_renewal=False):
+            self._name = name
+
+        def acquire(self):
+            return False
+
+        def release(self):
+            pass
+
+    storage_mock = Mock()
+    storage_mock.preferred_locations = ["default"]
+
+    with patch.object(GlobalLock, "lock_factory", staticmethod(_FakeLock)):
+        with patch("workers.blobuploadcleanupworker.blobuploadcleanupworker.storage", storage_mock):
+            worker = BlobUploadCleanupWorker()
+            worker._try_clean_stale_multipart_uploads()
+
+        storage_mock.clean_orphaned_multipart_uploads.assert_not_called()
