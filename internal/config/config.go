@@ -23,6 +23,7 @@ type Config struct {
 	Auth      `yaml:",inline"`
 	Features  `yaml:",inline"`
 	Security  `yaml:",inline"`
+	Digest    `yaml:",inline"`
 	Keys      `yaml:",inline"`
 	AccessLog `yaml:",inline"`
 
