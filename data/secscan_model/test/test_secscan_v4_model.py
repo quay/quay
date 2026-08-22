@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import mock
 import pytest
-from peewee import fn
+from peewee import IntegrityError, fn
 
 from app import app as application
 from app import instance_keys, storage
@@ -1527,9 +1527,12 @@ def test_connection_failure_does_not_increment_retry_count(initialized_db, set_s
 
     secscan.perform_indexing(batch_size=100)
 
+    failed_count = 0
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
         assert mss.metadata_json.get("retry_count") is None
+        failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
 def test_non200_response_increments_retry_count(initialized_db, set_secscan_config):
@@ -1813,3 +1816,55 @@ def test_load_security_information_scan_retries_exhausted(initialized_db, set_se
 
     result = secscan.load_security_information(manifest)
     assert result.status == ScanLookupStatus.FAILED_TO_INDEX
+
+
+def test_duplicate_create_in_savepoint_preserves_outer_transaction(
+    initialized_db, set_secscan_config
+):
+    """
+    Regression test: a duplicate ManifestSecurityStatus.create() wrapped in
+    db_transaction() (savepoint) must not poison the outer PostgreSQL transaction.
+    Without the savepoint, PostgreSQL aborts the entire transaction on IntegrityError
+    and all subsequent queries fail with 'current transaction is aborted'.
+
+    Uses db.transaction() directly because the test fixture replaces
+    db_transaction() with a no-op FakeTransaction.
+    """
+    from data.database import db
+
+    manifest = Manifest.select().first()
+    if manifest is None:
+        pytest.skip("No manifests in test database")
+
+    # Ensure a row exists so the second create will hit a constraint violation.
+    ManifestSecurityStatus.delete().where(
+        ManifestSecurityStatus.manifest == manifest,
+    ).execute()
+    ManifestSecurityStatus.create(
+        manifest=manifest,
+        repository=manifest.repository,
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="existing",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    # Duplicate create inside a savepoint — the IntegrityError should only
+    # roll back the savepoint, leaving the outer transaction intact.
+    try:
+        with db.transaction():
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                index_status=IndexStatus.IN_PROGRESS,
+                indexer_hash="duplicate",
+                indexer_version=IndexerVersion.V4,
+                metadata_json={},
+            )
+        pytest.fail("Expected IntegrityError from duplicate create")
+    except IntegrityError:
+        pass
+
+    # This query must succeed — proves the outer transaction was not poisoned.
+    row = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
+    assert row.indexer_hash == "existing"
