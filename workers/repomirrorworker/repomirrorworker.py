@@ -27,7 +27,9 @@ class RepoMirrorWorker(Worker):
         super(RepoMirrorWorker, self).__init__()
         RepoMirrorConfigValidator(features.REPO_MIRROR).valid()
 
-        self._mirrorer = SkopeoMirror()
+        self._mirrorer = SkopeoMirror(
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+        )
         self._next_token = None
         self._org_discovery_token = None
         self._org_next_token = None

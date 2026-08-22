@@ -11,6 +11,7 @@ from util.security.ssrf import (
     SSRFBlockedError,
     validate_external_registry_reference,
     validate_external_registry_url,
+    validate_mirror_proxy_config,
 )
 
 
@@ -282,6 +283,112 @@ class TestValidateExternalRegistryUrl:
             mock_dns.return_value = [(10, 1, 6, "", ("::", 0, 0, 0))]
             with pytest.raises(SSRFBlockedError, match="private or reserved"):
                 validate_external_registry_url("https://registry.example.com")
+
+
+class TestValidateMirrorProxyConfig:
+    """Tests for repository and organization mirror proxy destination validation."""
+
+    @pytest.mark.parametrize(
+        "proxy_value",
+        [
+            "http://proxy.example.com:8080",
+            "https://proxy.example.com:8443",
+            "proxy.example.com:8080",
+            "http://user:password@proxy.example.com:8080",
+            "http://user%40example.com:p%2Fass@proxy.example.com:8080",
+            "http://93.184.216.34:8080",
+            "http://[2606:2800:220:1:248:1893:25c8:1946]:8080",
+        ],
+    )
+    def test_supported_proxy_values_pass(self, proxy_value):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+            validate_mirror_proxy_config({"https_proxy": proxy_value})
+
+    def test_scheme_less_proxy_is_not_added_to_caller_config(self):
+        proxy = {
+            "http_proxy": "proxy.example.com:8080",
+            "https_proxy": None,
+            "no_proxy": "localhost,10.0.0.0/8",
+        }
+        original = proxy.copy()
+
+        validate_mirror_proxy_config(proxy, resolve_dns=False)
+
+        assert proxy == original
+
+    @pytest.mark.parametrize(
+        "proxy",
+        [
+            None,
+            {},
+            {"http_proxy": None, "https_proxy": ""},
+            {"no_proxy": "localhost; rm -rf /"},
+        ],
+    )
+    def test_unset_values_and_no_proxy_are_unchanged(self, proxy):
+        original = proxy.copy() if proxy is not None else None
+        validate_mirror_proxy_config(proxy, resolve_dns=False)
+        assert proxy == original
+
+    @pytest.mark.parametrize(
+        "proxy_value",
+        [
+            "ftp://proxy.example.com:21",
+            "socks5://proxy.example.com:1080",
+            "http://proxy.example.com:bad",
+            "http://proxy.example.com:１２３",
+            "http://[2606:4700:4700::1111]:１２３",
+            "http://proxy.example.com:0",
+            "http://proxy.example.com:70000",
+            "http://proxy.example.com/path",
+            "http://proxy.example.com?target=127.0.0.1",
+            "http://proxy.example.com#@127.0.0.1",
+            "http://first.example@second.example@proxy.example.com",
+            "http://127.0.0.1%40proxy.example.com",
+            "http://proxy.example.com%2F@127.0.0.1",
+            "proxy.example.com; rm -rf /",
+            " proxy.example.com:8080",
+            "2001:4860:4860::8888",
+            "http://[2606:4700:4700::1111]suffix:8080",
+        ],
+    )
+    def test_malformed_or_ambiguous_proxy_rejected(self, proxy_value):
+        with pytest.raises(ValueError):
+            validate_mirror_proxy_config({"http_proxy": proxy_value}, resolve_dns=False)
+
+    @pytest.mark.parametrize(
+        "proxy_value",
+        [
+            "http://127.0.0.1:8080",
+            "169.254.169.254:8080",
+            "http://[::1]:8080",
+            "http://[fc00::1]:8080",
+            "http://user:password@10.0.0.1:8080",
+        ],
+    )
+    def test_blocked_ip_literals_rejected(self, proxy_value):
+        with pytest.raises(SSRFBlockedError):
+            validate_mirror_proxy_config({"http_proxy": proxy_value}, resolve_dns=False)
+
+    def test_mixed_public_and_private_dns_answers_rejected(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [
+                (2, 1, 6, "", ("93.184.216.34", 0)),
+                (2, 1, 6, "", ("10.0.0.1", 0)),
+            ]
+            with pytest.raises(SSRFBlockedError):
+                validate_mirror_proxy_config({"https_proxy": "proxy.example.com:8443"})
+
+    def test_allowlisted_private_proxy_passes(self):
+        validate_mirror_proxy_config(
+            {"http_proxy": "http://10.0.0.1:8080"},
+            allowed_hosts=["10.0.0.0/8"],
+        )
+
+    def test_non_string_proxy_rejected(self):
+        with pytest.raises(ValueError, match="string or null"):
+            validate_mirror_proxy_config({"http_proxy": 8080}, resolve_dns=False)
 
 
 class TestValidateExternalRegistryReference:

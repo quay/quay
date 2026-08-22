@@ -71,11 +71,10 @@ class HarborAdapter(RegistryAdapter):
 
                 logger.debug("Fetching repositories from %s with params %s", url, params)
 
-                response = self.session.get(
+                response = self._get(
                     url,
                     params=params,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(url),
                     timeout=self.timeout,
                     allow_redirects=False,
                 )
@@ -171,10 +170,9 @@ class HarborAdapter(RegistryAdapter):
         try:
             # Try to fetch project info
             url = f"{self.base_url}/api/v2.0/projects/{self.namespace}"
-            response = self.session.get(
+            response = self._get(
                 url,
                 verify=self.verify_tls,
-                proxies=self._build_proxies(url),
                 timeout=10,
                 allow_redirects=False,
             )
