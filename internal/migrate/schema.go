@@ -107,18 +107,15 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 		return nil
 	}
 
-	scope := m.Source.SystemdScope
 	if len(m.Source.UnitFiles) == 0 {
 		discovered := m.discoverOMRScope(ctx)
 		if discovered == "" {
 			slog.Info("no OMR services detected, skipping stop")
 			return nil
 		}
-		scope = discovered
 		m.Source.SystemdScope = discovered
-		slog.Info("discovered running OMR services via probe", "scope", scope)
+		slog.Info("discovered running OMR services via probe", "scope", discovered)
 	}
-
 
 	for _, svc := range omrServiceNames {
 		slog.Info("stopping service", "service", svc)
