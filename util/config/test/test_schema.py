@@ -193,3 +193,38 @@ def test_programmatic_token_k8s_namespace_rejects_invalid_dns_labels(value):
 
     with pytest.raises(ValidationError):
         validate(value, schema)
+
+
+class TestGunicornTimeoutSchema:
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_accepts_valid_timeout(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [30, 60, 300]:
+            validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_timeout_below_minimum(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [0, 1, 29]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_timeout_above_maximum(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [301, 600, 1800, 3600, 7200]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_non_integer_timeout(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in ["300", 30.5]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    def test_default_registry_timeout(self):
+        assert DefaultConfig.GUNICORN_REGISTRY_TIMEOUT == 30
+
+    def test_default_web_timeout(self):
+        assert DefaultConfig.GUNICORN_WEB_TIMEOUT == 30

@@ -688,6 +688,10 @@ class DefaultConfig(ImmutableConfig):
     # Maximum size allowed for layers in the registry.
     MAXIMUM_LAYER_SIZE = "20G"
 
+    # Gunicorn worker timeouts (seconds). Workers killed after this duration.
+    GUNICORN_REGISTRY_TIMEOUT = 30
+    GUNICORN_WEB_TIMEOUT = 30
+
     # Feature Flag: Whether team syncing from the backing auth is enabled.
     FEATURE_TEAM_SYNCING = False
     TEAM_RESYNC_STALE_TIME = "30m"
