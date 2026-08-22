@@ -15,6 +15,7 @@
 If your goal is not to develop Quay, see the below guides.
 
  * [Deploy a Quick Local Environment With Podman](quick-local-deployment.md)
+ * [Configure Clair on standalone deployments](clair-standalone-configuration.md)
  * [Deploy a Proof-of-Concept](https://docs.projectquay.io/deploy_quay.html)
  * [Deploy to OpenShift with the Quay Operator](https://docs.projectquay.io/deploy_quay_on_openshift_op_tng.html)
  * [Deploy with High Availability](https://docs.projectquay.io/deploy_quay_ha.html)

@@ -63,67 +63,31 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" redis
 
 
 
-## Build the Quay Configuration via ConfigTool.
+## Build the Quay configuration
 
-The ConfigTool resides on the Quay image and lets you generate Quay configuration files and set up your Postgres database.  It is a web application that guides you through the Quay configuration process.  The Quay configuration is a tar/zipped YAML file that you can save locally for Quay to read at startup time.
+NOTE: The configuration tool web UI was removed from the Quay image in version 3.17 ([quay/quay#4769](https://github.com/quay/quay/pull/4769)). On current images, create `config.yaml` manually or use the [local development environment](./getting-started.md#running-quay-for-development) for a working reference configuration.
 
-We run the Quay image with runtime flags set to launch ConfigTool accepting the password 'secret':
+Create a Quay configuration directory and a minimal `config.yaml` that matches the Postgres and Redis containers started above. At minimum, set database connection settings (`DB_URI` or equivalent fields), Redis settings, `SERVER_HOSTNAME` (for example `quay:8080`), and `SETUP_COMPLETE: true`. See the [Manage Quay](https://docs.projectquay.io/manage_quay.html) documentation for the full set of configuration fields.
 
-```
-$ sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay config secret
-```
-
-1. Open https://localhost:8080 in browser
-1. Log in with quayconfig/secret
-1. Start New Registry Setup
-
-### Database Setup
-
-1. Choose Postgres database type...
-1. host: (enter the postgres IP address you obtained previously)
-1. user: `user`
-1. password: `pass`
-1. database: `quay`
-
-Hit `Validate Database Settings`.  This will begin setting up your database automatically.
-
-On the next screen, set up a Quay super user account.  Click `Create Super User`.
-
-On main config screen, you will have a few fields to fill out:
-
-#### Server Configuration
-
-1. For `Server Hostname` use `quay:8080` (or `localhost` however the UI will complain).
-1. For `TLS` choose `None (Not for Production)` - verify that you've included the port number in step above.
-
-#### redis
-
-1. For `Redis Hostname` enter the IP address for your Redis container obtained earlier.
-2. For `Redis password` enter `strongpassword` or whatever you used when you launched the redis container.
-
-
-Click on `Save Configuration Changes` at bottom of page.  Popup window should show settings confirmed.
-
-On next screen, you will have the ability to download the Quay config.yaml as a gzipped tarball.  Click `Download Configuration`- we'll assume it goes into $DOWNLOADS.
-
-Unpack the config so Quay can use it:
-
-```
-$ mkdir $QUAY/config
-$ cp quay-config.tar.gz $QUAY/config
-$ cd $QUAY/config
-$ tar xvf quay-config.tar.gz
-
+```shell
+mkdir -p $QUAY/config
+# Create and edit $QUAY/config/config.yaml with your database, Redis, and server settings.
 ```
 
-While we're here, let's set up a directory to hold image blobs:
+Optionally validate the configuration with the config-tool CLI (validation only; no web UI):
+
+```shell
+podman run --rm -v $QUAY/config:/conf/stack:Z \
+  quay.io/projectquay/quay:latest \
+  /quay-registry/config-tool validate -c /conf/stack
+```
+
+Set up a directory to hold image blobs:
 
 ```
 $ mkdir $QUAY/storage
 $ setfacl -m u:1001:-wx $QUAY/storage
 ```
-
-Stop the Config Tool with `CTRL-C` (or `podman stop` depending on how you ran it)- we won't need it anymore.
 
 ## Run Quay
 
@@ -182,7 +146,9 @@ Congratulations you have a local Quay instance running!  Of course this deployme
 
 ## Getting Clair Running
 
-coming soon
+For standalone Podman deployments with security scanning, see [Setting up Clair on standalone deployments](clair-standalone-configuration.md).
+
+For development, use `make local-dev-up-with-clair` as described in [Getting Started](./getting-started.md#running-quay-for-development).
 
 ## Next Steps
 
@@ -191,12 +157,15 @@ Quay and Clair can also be run as services on a Kubernetes cluster.  This is bec
 ## Troubleshooting
 
 ### I need to change my Quay configuration!
-This can be done by uploading your config tarball back into the ConfigTool:
+Edit `config.yaml` directly in `$QUAY/config`, then restart the Quay container. To enable Clair security scanning on a standalone deployment, see [clair-standalone-configuration.md](clair-standalone-configuration.md).
+
+Optionally validate changes with the config-tool CLI:
+
+```shell
+podman run --rm -v $QUAY/config:/conf/stack:Z \
+  quay.io/projectquay/quay:latest \
+  /quay-registry/config-tool validate -c /conf/stack
 ```
-$ cd $QUAY/config
-$ tar cvzf myconfig.tar.gz config.yaml
-```
-Run the ConfigTool and choose 'Modify Existing Config'.  You can upload the tarball, make changes and then re-download it.
 
 
 
@@ -251,4 +220,59 @@ mysql> create database quay character set latin1;
 Query OK, 1 row affected (0.02 sec)
 ```
 
-Lastly, when you run the Quay Config Tool, remember to pick `MySQL` as your database type and use the credentials `root/password` and database name `quay`.
+Lastly, when configuring Quay manually, set the database type to `MySQL` and use the credentials `root/password` and database name `quay`. The legacy ConfigTool UI workflow is obsolete on Quay 3.17+; see [Legacy configuration tool workflow (obsolete)](#legacy-configuration-tool-workflow-obsolete-in-quay-317).
+
+## Legacy configuration tool workflow (obsolete in Quay 3.17+)
+
+The ConfigTool web UI historically resided on the Quay image and let you generate Quay configuration files and set up your Postgres database. The Quay configuration was a tar/zipped YAML file that you could save locally for Quay to read at startup time.
+
+This workflow no longer works on Quay 3.17+ images. It is preserved here only for reference when working with older images.
+
+The legacy workflow ran the Quay image with runtime flags set to launch ConfigTool:
+
+```shell
+sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay:3.16.2 config secret
+```
+
+1. Open https://localhost:8080 in browser
+1. Log in with quayconfig/secret
+1. Start New Registry Setup
+
+### Database Setup
+
+1. Choose Postgres database type...
+1. host: (enter the postgres IP address you obtained previously)
+1. user: `user`
+1. password: `pass`
+1. database: `quay`
+
+Hit `Validate Database Settings`.  This will begin setting up your database automatically.
+
+On the next screen, set up a Quay super user account.  Click `Create Super User`.
+
+On main config screen, you will have a few fields to fill out:
+
+#### Server Configuration
+
+1. For `Server Hostname` use `quay:8080` (or `localhost` however the UI will complain).
+1. For `TLS` choose `None (Not for Production)` - verify that you've included the port number in step above.
+
+#### redis
+
+1. For `Redis Hostname` enter the IP address for your Redis container obtained earlier.
+2. For `Redis password` enter `strongpassword` or whatever you used when you launched the redis container.
+
+Click on `Save Configuration Changes` at bottom of page.  Popup window should show settings confirmed.
+
+On next screen, you will have the ability to download the Quay config.yaml as a gzipped tarball.  Click `Download Configuration`- we'll assume it goes into $DOWNLOADS.
+
+Unpack the config so Quay can use it:
+
+```shell
+mkdir $QUAY/config
+cp quay-config.tar.gz $QUAY/config
+cd $QUAY/config
+tar xvf quay-config.tar.gz
+```
+
+Stop the Config Tool with `CTRL-C` (or `podman stop` depending on how you ran it).
