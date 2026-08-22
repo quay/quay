@@ -48,7 +48,7 @@ class SSLCertificate(object):
 
         Raises a KeyInvalidException on failure.
         """
-        context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
+        context = OpenSSL.SSL.Context(OpenSSL.SSL.TLS_METHOD)
         context.use_certificate(self.openssl_cert)
 
         try:
