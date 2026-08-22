@@ -36,14 +36,15 @@ func ValidateSourceCompatibility(ctx context.Context, db *sql.DB) error {
 	if err := IntegrityCheck(ctx, db); err != nil {
 		return fmt.Errorf("source database integrity check: %w", err)
 	}
-	if err := foreignKeyCheck(ctx, db); err != nil {
+	if err := ForeignKeyCheck(ctx, db); err != nil {
 		return fmt.Errorf("source database foreign key check: %w", err)
 	}
 
 	return nil
 }
 
-func foreignKeyCheck(ctx context.Context, db *sql.DB) error {
+// ForeignKeyCheck reports the first SQLite foreign-key violation.
+func ForeignKeyCheck(ctx context.Context, db *sql.DB) error {
 	rows, err := db.QueryContext(ctx, "PRAGMA foreign_key_check")
 	if err != nil {
 		return err

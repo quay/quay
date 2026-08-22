@@ -333,8 +333,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  e2e-mirror:
-    name: E2E Mirror Install
+  e2e-mirror-rootful:
+    name: E2E Mirror Install (rootful)
     runs-on: ubuntu-latest
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -525,7 +525,7 @@ jobs:
           retention-days: 7
 
   e2e-mirror-rootless:
-    name: E2E Mirror Install (Rootless)
+    name: E2E Mirror Install (rootless)
     runs-on: ubuntu-latest
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -731,8 +731,8 @@ jobs:
           path: /tmp/e2e-rootless-diagnostics/
           retention-days: 7
 
-  e2e-migrate:
-    name: E2E Mirror Migrate
+  e2e-migrate-sqlite:
+    name: E2E Mirror Migrate (SQLite)
     runs-on: ubuntu-26.04
     needs: [test, schema-sync]
     timeout-minutes: 30
@@ -1344,4 +1344,350 @@ jobs:
         with:
           name: e2e-migrate-diagnostics
           path: /tmp/e2e-migrate-diagnostics/
+          retention-days: 7
+
+  e2e-migrate-postgres:
+    name: E2E Mirror Migrate (PostgreSQL)
+    runs-on: ubuntu-26.04
+    needs: [test, schema-sync]
+    timeout-minutes: 30
+    env:
+      # The KCS RHEL PostgreSQL image requires credentials that PR workflows do not receive.
+      POSTGRES_IMAGE: quay.io/sclorg/postgresql-16-c9s@sha256:95e64c83d48743e590c393f293181cccb3abba1e87c35d50365fc3560f0520d0
+      POSTGRES_USER: quay
+      POSTGRES_DB: quay
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Generate test credentials
+        run: |
+          set -euo pipefail
+          postgres_password=$(openssl rand -hex 32)
+          registry_password=$(openssl rand -hex 32)
+          echo "::add-mask::$postgres_password"
+          echo "::add-mask::$registry_password"
+          {
+            printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
+            printf 'REGISTRY_PASSWORD=%s\n' "$registry_password"
+          } >> "$GITHUB_ENV"
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Install test dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml sqlite3
+
+      - name: Build target registry image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+          podman save quay-mirror:test -o bin/quay-mirror.tar
+
+      - name: Install old SQLite OMR
+        run: |
+          set -euo pipefail
+
+          curl -fsSL -o /tmp/mirror-registry.tar.gz \
+            https://github.com/quay/mirror-registry/releases/download/v2.0.11/mirror-registry-offline.tar.gz
+          mkdir -p /tmp/omr
+          tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
+          cd /tmp/omr
+          sudo ./mirror-registry install \
+            --verbose \
+            --initPassword "$REGISTRY_PASSWORD" \
+            --quayHostname localhost
+
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            https://localhost:8443/health/instance
+
+      - name: Switch old OMR to PostgreSQL
+        run: |
+          set -euo pipefail
+
+          sudo systemctl stop quay-app.service
+          sudo podman pull "$POSTGRES_IMAGE"
+          mkdir -p "$RUNNER_TEMP/quay-postgres"
+          sudo chown -R 26:26 "$RUNNER_TEMP/quay-postgres"
+
+          sudo tee /etc/systemd/system/quay-postgres.service > /dev/null <<EOF
+          [Unit]
+          Description=PostgreSQL Podman Container for Quay
+          Wants=network.target
+          After=network-online.target quay-pod.service
+          Requires=quay-pod.service
+
+          [Service]
+          Type=simple
+          TimeoutStartSec=5m
+          ExecStartPre=-/usr/bin/podman rm --force quay-postgres
+          ExecStart=/usr/bin/podman run \\
+            --name quay-postgres \\
+            -v ${RUNNER_TEMP}/quay-postgres:/var/lib/pgsql/data:Z \\
+            --image-volume=ignore \\
+            -e POSTGRESQL_USER=${POSTGRES_USER} \\
+            -e POSTGRESQL_DATABASE=${POSTGRES_DB} \\
+            -e POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD} \\
+            -e POSTGRESQL_MAX_CONNECTIONS=500 \\
+            --pod=quay-pod \\
+            --conmon-pidfile=%t/quay-postgres.pid \\
+            --cidfile=%t/quay-postgres.cid \\
+            --cgroups=no-conmon \\
+            --replace \\
+            ${POSTGRES_IMAGE}
+          ExecStop=/usr/bin/podman stop --ignore --cidfile %t/quay-postgres.cid -t 10
+          ExecStopPost=/usr/bin/podman rm --ignore --force --cidfile %t/quay-postgres.cid
+          PIDFile=%t/quay-postgres.pid
+          KillMode=none
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          sudo systemctl daemon-reload
+          sudo systemctl start quay-postgres.service
+
+          for _ in $(seq 1 60); do
+            if sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+              break
+            fi
+            sleep 2
+          done
+          sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          sudo podman exec quay-postgres psql -v ON_ERROR_STOP=1 \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+
+          config_dir=$(grep -oE -- '-v [^:]+:/(quay-registry/)?conf/stack' \
+            /etc/systemd/system/quay-app.service | head -n1 | awk '{print $2}' | cut -d: -f1)
+          sudo test -f "$config_dir/config.yaml"
+          sudo env CONFIG_DIR="$config_dir" \
+            POSTGRES_USER="$POSTGRES_USER" \
+            POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            POSTGRES_DB="$POSTGRES_DB" \
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          import yaml
+
+          path = Path(os.environ["CONFIG_DIR"]) / "config.yaml"
+          config = yaml.safe_load(path.read_text())
+          config["DB_URI"] = (
+              f"postgresql://{os.environ['POSTGRES_USER']}:"
+              f"{os.environ['POSTGRES_PASSWORD']}@quay-postgres/{os.environ['POSTGRES_DB']}"
+          )
+          config["DB_CONNECTION_ARGS"] = {"max_connections": 5, "stale_timeout": 120}
+          path.write_text(yaml.safe_dump(config, sort_keys=False))
+          PY
+
+          sudo systemctl start quay-app.service
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            -o /dev/null \
+            https://localhost:8443/health/instance
+
+          curl -kfsS \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"init\",\"password\":\"$REGISTRY_PASSWORD\",\"email\":\"init@quay.io\"}" \
+            -o /dev/null \
+            https://localhost:8443/api/v1/user/initialize
+          revision=$(sudo podman exec quay-postgres psql -At \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'SELECT version_num FROM alembic_version;')
+          test "$revision" = 3f8d7acdf7f9
+          service_keys=$(sudo podman exec quay-postgres psql -At \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'SELECT COUNT(*) FROM servicekey;')
+          test "$service_keys" -gt 0
+
+      - name: Seed and record PostgreSQL source content
+        run: |
+          set -euo pipefail
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          mkdir -p "$state_dir"
+          printf '%s\n' "$REGISTRY_PASSWORD" | sudo podman login localhost:8443 \
+            -u init --password-stdin --tls-verify=false
+          sudo podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+
+          for target in postgres-source:v1 postgres-source:v2 postgres-shared:latest; do
+            sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+              "localhost:8443/init/${target}"
+            sudo podman push --tls-verify=false "localhost:8443/init/${target}"
+          done
+
+          sudo podman exec quay-postgres psql -At -F '|' \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                FROM tag AS t
+                JOIN repository AS r ON r.id = t.repository_id
+                JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                JOIN manifest AS m ON m.id = t.manifest_id
+                WHERE u.username = 'init'
+                  AND r.name IN ('postgres-source', 'postgres-shared')
+                  AND t.lifetime_end_ms IS NULL
+                ORDER BY r.name, t.name" \
+            > "$state_dir/source-manifests.txt"
+          test "$(wc -l < "$state_dir/source-manifests.txt")" -eq 3
+          test "$(grep -Ec '^init/postgres-(shared|source)\|[^|]+\|sha256:[0-9a-f]{64}$' \
+            "$state_dir/source-manifests.txt")" -eq 3
+
+          : > "$state_dir/source-counts.env"
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo podman exec quay-postgres psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT COUNT(*) FROM ${table};")
+            printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
+          done
+
+      - name: Migrate PostgreSQL OMR to v3
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e2e-migrate-postgres"
+          sudo bin/quay migrate \
+            -data-dir="$RUNNER_TEMP/quay-v3" \
+            -image-archive="$PWD/bin/quay-mirror.tar" \
+            2>&1 | tee "$RUNNER_TEMP/e2e-migrate-postgres/migrate.log"
+
+      - name: Verify migrated registry
+        run: |
+          set -euo pipefail
+
+          curl -kfsS https://localhost:8443/healthz
+          test "$(sudo systemctl is-active quay.service)" = active
+          for unit in quay-app quay-postgres quay-redis quay-pod; do
+            if sudo systemctl is-active "${unit}.service" >/dev/null 2>&1; then
+              echo "FAIL: old OMR service is still active: ${unit}.service"
+              exit 1
+            fi
+          done
+
+          target_dir="$RUNNER_TEMP/quay-v3"
+          test "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;')" = ok
+          test -z "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA foreign_key_check;')"
+          expected_revision=$(sed -n 's/^const TargetVersion = "\(.*\)"/\1/p' internal/dal/dbcore/migrate.go)
+          actual_revision=$(sudo sqlite3 "$target_dir/quay.db" \
+            'SELECT version_num FROM alembic_version;')
+          test "$actual_revision" = "$expected_revision"
+          sudo test ! -e "$target_dir/quay.db.partial"
+          sudo test ! -e "$target_dir/.migration-in-progress"
+          test "$(sudo sqlite3 "$target_dir/quay.db" \
+            "SELECT COUNT(*) FROM \"user\" WHERE username = 'init';")" = 1
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_authfile="$RUNNER_TEMP/postgres-target-auth.json"
+          verify_container=quay-postgres-verify
+          trap 'sudo podman rm -f "$verify_container" >/dev/null 2>&1 || true; sudo rm -f "$target_authfile"' EXIT
+          printf '%s\n' "$REGISTRY_PASSWORD" | sudo podman login localhost:8443 \
+            -u init --password-stdin \
+            --authfile "$target_authfile" --tls-verify=false
+          sudo sqlite3 -separator '|' "$target_dir/quay.db" \
+            "SELECT u.username || '/' || r.name, t.name, m.digest
+             FROM tag AS t
+             JOIN repository AS r ON r.id = t.repository_id
+             JOIN \"user\" AS u ON u.id = r.namespace_user_id
+             JOIN manifest AS m ON m.id = t.manifest_id
+             WHERE u.username = 'init'
+               AND r.name IN ('postgres-source', 'postgres-shared')
+               AND t.lifetime_end_ms IS NULL
+             ORDER BY r.name, t.name;" \
+            > "$state_dir/target-manifests.txt"
+          diff -u "$state_dir/source-manifests.txt" "$state_dir/target-manifests.txt"
+          for table in repository tag manifest manifestblob imagestorage; do
+            expected=$(awk -F= -v key="$table" '$1 == key {print $2}' \
+              "$state_dir/source-counts.env")
+            actual=$(sudo sqlite3 "$target_dir/quay.db" "SELECT COUNT(*) FROM ${table};")
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${table} count changed during PostgreSQL migration: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+          done
+          sudo podman pull --authfile "$target_authfile" \
+            --tls-verify=false localhost:8443/init/postgres-source:v1
+
+          sudo python3 - "$target_dir/config.yaml" <<'PY'
+          import sys
+
+          import yaml
+
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              config = yaml.safe_load(stream)
+          assert config["DB_URI"].startswith("sqlite:///")
+          PY
+
+          sudo podman rm -f "$verify_container" >/dev/null 2>&1 || true
+          sudo podman run -d --name "$verify_container" \
+            -v "$RUNNER_TEMP/quay-postgres:/var/lib/pgsql/data:Z" \
+            --image-volume=ignore \
+            -e POSTGRESQL_USER="$POSTGRES_USER" \
+            -e POSTGRESQL_DATABASE="$POSTGRES_DB" \
+            -e POSTGRESQL_PASSWORD="$POSTGRES_PASSWORD" \
+            "$POSTGRES_IMAGE"
+          for attempt in $(seq 1 60); do
+            if sudo podman exec "$verify_container" pg_isready \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "FAIL: retained PostgreSQL data did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          sudo podman exec "$verify_container" psql -At -F '|' \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                FROM tag AS t
+                JOIN repository AS r ON r.id = t.repository_id
+                JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                JOIN manifest AS m ON m.id = t.manifest_id
+                WHERE u.username = 'init'
+                  AND r.name IN ('postgres-source', 'postgres-shared')
+                  AND t.lifetime_end_ms IS NULL
+                ORDER BY r.name, t.name" \
+            > "$state_dir/retained-manifests.txt"
+          diff -u "$state_dir/source-manifests.txt" "$state_dir/retained-manifests.txt"
+          : > "$state_dir/retained-counts.env"
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo podman exec "$verify_container" psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT COUNT(*) FROM ${table};")
+            printf '%s=%s\n' "$table" "$count" >> "$state_dir/retained-counts.env"
+          done
+          diff -u "$state_dir/source-counts.env" "$state_dir/retained-counts.env"
+
+      - name: Collect PostgreSQL migration diagnostics
+        if: always()
+        run: |
+          diagnostics="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_dir="$RUNNER_TEMP/quay-v3"
+          mkdir -p "$diagnostics"
+          sudo podman ps -a > "$diagnostics/podman-ps.txt" 2>&1 || true
+          for unit in quay quay-app quay-postgres quay-redis quay-pod; do
+            printf '%s=' "$unit"
+            sudo systemctl is-active "${unit}.service" 2>/dev/null || true
+          done > "$diagnostics/service-states.txt"
+          sudo podman logs systemd-quay > "$diagnostics/target-registry.log" 2>&1 || true
+          sudo find "$target_dir" -maxdepth 3 -type f -printf '%p %s bytes\n' \
+            > "$diagnostics/target-files.txt" 2>&1 || true
+          sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;' \
+            > "$diagnostics/target-integrity.txt" 2>&1 || true
+
+      - name: Upload PostgreSQL migration diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-migrate-postgres-diagnostics
+          path: ${{ runner.temp }}/e2e-migrate-postgres/
           retention-days: 7

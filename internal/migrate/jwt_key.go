@@ -60,6 +60,17 @@ func (m *Migrator) importRegistryJWTSigningKey(ctx context.Context, targetDBPath
 }
 
 func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir string, cfg *config.Config, runner system.CommandRunner) (*rsa.PrivateKey, string, error) {
+	key, kid, err := loadRegistryJWTSigningKey(ctx, configDir, cfg, runner)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := validateRegistryJWTSigningKey(ctx, dbPath, cfg, key, kid); err != nil {
+		return nil, "", err
+	}
+	return key, kid, nil
+}
+
+func loadRegistryJWTSigningKey(ctx context.Context, configDir string, cfg *config.Config, runner system.CommandRunner) (*rsa.PrivateKey, string, error) {
 	privateBytes, privateSource, err := readSourceConfigMaterial(
 		ctx, configDir, cfg.InstanceServiceKeyLocation, legacyPrivateKeyName, runner,
 	)
@@ -87,10 +98,13 @@ func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir st
 	if derivedKID != kid {
 		return nil, "", fmt.Errorf("source registry JWT private key does not match key ID %q", kid)
 	}
+	return key, kid, nil
+}
 
+func validateRegistryJWTSigningKey(ctx context.Context, dbPath string, cfg *config.Config, key *rsa.PrivateKey, kid string) error {
 	db, err := dbcore.OpenSQLiteReadOnly(dbPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("open source database for registry JWT key validation: %w", err)
+		return fmt.Errorf("open source database for registry JWT key validation: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 	var rawJWK string
@@ -102,23 +116,23 @@ func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir st
 		  AND (sk.expiration_date IS NULL OR julianday(sk.expiration_date) > julianday('now'))
 	`, kid, cfg.InstanceServiceKeyService).Scan(&rawJWK)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, "", fmt.Errorf("source registry JWT key %q is not approved and unexpired for service %q", kid, cfg.InstanceServiceKeyService)
+		return fmt.Errorf("source registry JWT key %q is not approved and unexpired for service %q", kid, cfg.InstanceServiceKeyService)
 	}
 	if err != nil {
-		return nil, "", fmt.Errorf("query approved source registry JWT key: %w", err)
+		return fmt.Errorf("query approved source registry JWT key: %w", err)
 	}
 	var jwk jose.JSONWebKey
 	if err := json.Unmarshal([]byte(rawJWK), &jwk); err != nil {
-		return nil, "", fmt.Errorf("parse approved source registry JWT JWK: %w", err)
+		return fmt.Errorf("parse approved source registry JWT JWK: %w", err)
 	}
 	if jwk.KeyID != "" && jwk.KeyID != kid {
-		return nil, "", fmt.Errorf("approved source registry JWT JWK has mismatched key ID %q", jwk.KeyID)
+		return fmt.Errorf("approved source registry JWT JWK has mismatched key ID %q", jwk.KeyID)
 	}
 	publicJWK := jwk.Public()
 	if !jwtauth.PublicKeysEqual(&key.PublicKey, publicJWK.Key) {
-		return nil, "", fmt.Errorf("source registry JWT private key does not match approved database JWK")
+		return fmt.Errorf("source registry JWT private key does not match approved database JWK")
 	}
-	return key, kid, nil
+	return nil
 }
 
 func readSourceConfigMaterial(

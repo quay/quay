@@ -14,47 +14,51 @@ import (
 // validateSourceAuth checks only the authentication state that this migrator
 // can preserve. It reads the source config and database without mutating them.
 func (m *Migrator) validateSourceAuth(ctx context.Context, db *sql.DB) error {
+	databaseSecretKey, err := m.validateSourceAuthConfig()
+	if err != nil {
+		return err
+	}
+	return validateRobotTokenContinuity(ctx, db, databaseSecretKey)
+}
+
+func (m *Migrator) validateSourceAuthConfig() (string, error) {
 	if m.Source.ConfigDir == "" {
-		return fmt.Errorf("source config directory not detected")
+		return "", fmt.Errorf("source config directory not detected")
 	}
 
 	path := filepath.Join(m.Source.ConfigDir, runtimeConfigFile)
 	raw, err := os.ReadFile(path) //nolint:gosec // source directory comes from detection or an explicit override
 	if err != nil {
-		return fmt.Errorf("read source config: %w", err)
+		return "", fmt.Errorf("read source config: %w", err)
 	}
 
 	var values map[string]any
 	if err := yaml.Unmarshal(raw, &values); err != nil {
-		return fmt.Errorf("parse source config: %w", err)
+		return "", fmt.Errorf("parse source config: %w", err)
 	}
 
 	authType, err := requiredSourceConfigString(values, "AUTHENTICATION_TYPE")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if authType != "Database" {
-		return fmt.Errorf("unsupported authentication provider %q: only Database is supported", authType)
+		return "", fmt.Errorf("unsupported authentication provider %q: only Database is supported", authType)
 	}
 
 	if _, err := requiredSourceConfigString(values, "SERVER_HOSTNAME"); err != nil && m.Hostname == "" {
-		return err
+		return "", err
 	}
 	if _, err := requiredSourceConfigString(values, "SECRET_KEY"); err != nil {
-		return err
+		return "", err
 	}
 	databaseSecretKey, err := requiredSourceConfigString(values, "DATABASE_SECRET_KEY")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if _, err := encryptedfield.ConvertSecretKey(databaseSecretKey); err != nil {
-		return fmt.Errorf("DATABASE_SECRET_KEY is not valid: %w", err)
+		return "", fmt.Errorf("DATABASE_SECRET_KEY is not valid: %w", err)
 	}
-
-	if err := validateRobotTokenContinuity(ctx, db, databaseSecretKey); err != nil {
-		return err
-	}
-	return nil
+	return databaseSecretKey, nil
 }
 
 func requiredSourceConfigString(values map[string]any, field string) (string, error) {

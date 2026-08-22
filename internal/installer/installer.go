@@ -104,6 +104,31 @@ func Initialize(ctx context.Context, cfg *Config) error {
 	return inst.initialize(ctx, &resolvedCfg)
 }
 
+// HasInstallation reports whether the Quay Quadlet already exists.
+func (inst *Installer) HasInstallation() bool {
+	return inst.quadlet.Exists(quadletServiceName)
+}
+
+// RemoveFailedInstallation removes the Quay Quadlet and reloads systemd. It
+// cannot distinguish a new installation from a pre-existing one, so callers
+// must first confirm that no installation existed before their operation.
+func (inst *Installer) RemoveFailedInstallation(ctx context.Context) error {
+	if !inst.HasInstallation() {
+		return nil
+	}
+	var errs []error
+	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil && !errors.Is(err, system.ErrUnitNotFound) {
+		errs = append(errs, fmt.Errorf("stop service: %w", err))
+	}
+	if err := inst.quadlet.Remove(quadletServiceName); err != nil {
+		errs = append(errs, err)
+	}
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("reload systemd: %w", err))
+	}
+	return errors.Join(errs...)
+}
+
 // Run performs an install or upgrade based on whether a Quadlet unit already
 // exists.
 func (inst *Installer) Run(ctx context.Context, cfg *Config) error {

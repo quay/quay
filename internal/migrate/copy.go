@@ -38,8 +38,15 @@ func (m *Migrator) copyData(ctx context.Context) error {
 	// ownership or ACL normalization step for the target data directory here.
 
 	targetDB := filepath.Join(m.DataDir, "quay.db")
-	if err := m.copyDatabase(ctx, targetDB, resuming); err != nil {
-		return err
+	if m.Source.DatabaseKind == databasePostgres {
+		targetDB = m.postgresPartialDBPath()
+		if _, err := os.Stat(targetDB); err != nil {
+			return fmt.Errorf("stat converted database: %w", err)
+		}
+	} else {
+		if err := m.copyDatabase(ctx, targetDB, resuming); err != nil {
+			return err
+		}
 	}
 
 	sourceConfig, err := m.loadSourceConfigAndImportRegistryKey(ctx, targetDB, resuming)
@@ -55,7 +62,7 @@ func (m *Migrator) copyData(ctx context.Context) error {
 	// Copy blob storage recursively.
 	if m.Source.StoragePath != "" {
 		targetStorage := filepath.Join(m.DataDir, "storage")
-		count, totalBytes, err := copyDirRecursive(ctx, m.Source.StoragePath, targetStorage, m.Out)
+		count, totalBytes, err := copyDirRecursive(ctx, m.Source.StoragePath, targetStorage)
 		if err != nil {
 			return fmt.Errorf("copy storage: %w", err)
 		}
@@ -313,7 +320,7 @@ func copyFileIdempotent(ctx context.Context, src, dst string, force bool) (retEr
 }
 
 // copyDirRecursive copies the contents of srcDir into dstDir.
-func copyDirRecursive(ctx context.Context, srcDir, dstDir string, w io.Writer) (files int, totalBytes int64, _ error) {
+func copyDirRecursive(ctx context.Context, srcDir, dstDir string) (files int, totalBytes int64, _ error) {
 	err := filepath.Walk(srcDir, func(srcPath string, info os.FileInfo, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -340,7 +347,7 @@ func copyDirRecursive(ctx context.Context, srcDir, dstDir string, w io.Writer) (
 		totalBytes += info.Size()
 
 		if files%1000 == 0 {
-			fmt.Fprintf(w, "  copied %d files (%d MB)...\n", files, totalBytes/(1024*1024))
+			slog.Info("storage copy progress", "files", files, "bytes", totalBytes)
 		}
 
 		return nil
