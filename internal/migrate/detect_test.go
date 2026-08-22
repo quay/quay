@@ -155,14 +155,34 @@ func TestExtractDatabaseKind(t *testing.T) {
 	}
 }
 
-func TestExtractDatabaseKindRejectsUnsupportedPostgresWithoutLeakingURI(t *testing.T) {
-	const secret = "do-not-print-this"
-	_, err := extractDatabaseKind([]byte("DB_URI: postgresql://user:" + secret + "@other-postgres/quay\n"))
-	if err == nil {
-		t.Fatal("extractDatabaseKind unexpectedly accepted unsupported PostgreSQL host")
-	}
-	if strings.Contains(err.Error(), secret) {
-		t.Fatalf("error leaked database password: %v", err)
+func TestExtractDatabaseKindRejectsInvalidPostgresWithoutLeakingPassword(t *testing.T) {
+	const secret = "do-not-print-this-secret"
+	for _, tc := range []struct {
+		name    string
+		uri     string
+		wantErr string
+	}{
+		{name: "wrong host", uri: "postgresql://user:" + secret + "@other-postgres/quay", wantErr: `DB_URI host must be "quay-postgres"`},
+		{name: "wrong scheme", uri: "mysql://user:" + secret + "@quay-postgres/quay", wantErr: `unsupported DB_URI scheme "mysql"`},
+		{name: "missing user", uri: "postgresql://:" + secret + "@quay-postgres/quay", wantErr: "DB_URI is missing username"},
+		{name: "missing password", uri: "postgresql://user@quay-postgres/quay", wantErr: "DB_URI is missing password"},
+		{name: "wrong port", uri: "postgresql://user:" + secret + "@quay-postgres:5433/quay", wantErr: `DB_URI port must be 5432, got "5433"`},
+		{name: "wrong db path", uri: "postgresql://user:" + secret + "@quay-postgres/otherdb", wantErr: `DB_URI database path must be "/quay", got "/otherdb"`},
+		{name: "query parameters", uri: "postgresql://user:" + secret + "@quay-postgres/quay?sslmode=disable", wantErr: "DB_URI contains unsupported query parameters"},
+		{name: "fragment", uri: "postgresql://user:" + secret + "@quay-postgres/quay#frag", wantErr: "DB_URI contains unsupported fragment"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := extractDatabaseKind([]byte("DB_URI: " + tc.uri + "\n"))
+			if err == nil {
+				t.Fatalf("extractDatabaseKind unexpectedly succeeded for %s", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("error = %q, want substring %q", err.Error(), tc.wantErr)
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Errorf("error leaked password: %v", err)
+			}
+		})
 	}
 }
 

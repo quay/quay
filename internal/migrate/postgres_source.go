@@ -102,6 +102,9 @@ func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
 	if hasInstallation {
 		return fmt.Errorf("an existing target Quay installation must be removed before PostgreSQL migration")
 	}
+	if err := validatePostgresTargetDir(m.DataDir); err != nil {
+		return err
+	}
 	if _, err := m.validateSourceAuthConfig(); err != nil {
 		return fmt.Errorf("source authentication preflight: %w", err)
 	}
@@ -115,13 +118,24 @@ func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
 	}
 	m.sourceRegistryJWTKey = key
 	m.sourceRegistryJWTKID = kid
-	if err := m.validateCommonInputs(); err != nil {
-		return err
+	return m.validateCommonInputs()
+}
+
+func validatePostgresTargetDir(path string) error {
+	entries, err := os.ReadDir(path)
+	if os.IsNotExist(err) {
+		return nil
 	}
-	if _, err := os.Stat(filepath.Join(m.DataDir, markerFile)); err == nil {
-		return fmt.Errorf("PostgreSQL migration does not support resuming a previous migration")
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("stat migration marker: %w", err)
+	if err != nil {
+		return fmt.Errorf("read target directory %s: %w", path, err)
+	}
+	if len(entries) > 0 {
+		for _, e := range entries {
+			if e.Name() == markerFile {
+				return fmt.Errorf("target directory %s is not clean (found %s): PostgreSQL migration does not support resuming a previous migration — specify a clean directory or remove existing files", path, markerFile)
+			}
+		}
+		return fmt.Errorf("target directory %s is not clean (found %d existing file(s)) — specify a clean directory or remove existing files before PostgreSQL migration", path, len(entries))
 	}
 	return nil
 }

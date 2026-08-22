@@ -294,7 +294,7 @@ func extractDatabaseKind(data []byte) (string, error) {
 	}
 	u, err := url.Parse(raw.DBURI)
 	if err != nil {
-		return "", fmt.Errorf("parse DB_URI")
+		return "", fmt.Errorf("parse DB_URI: %w", err)
 	}
 	switch u.Scheme {
 	case "sqlite":
@@ -305,17 +305,38 @@ func extractDatabaseKind(data []byte) (string, error) {
 		}
 		return databasePostgres, nil
 	default:
-		return "", fmt.Errorf("unsupported DB_URI scheme")
+		return "", fmt.Errorf("unsupported DB_URI scheme %q", u.Scheme)
 	}
 }
 
 func parsePostgresURI(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "postgresql" || u.Hostname() != postgresContainerName || (u.Port() != "" && u.Port() != "5432") || u.Path != "/quay" || u.RawQuery != "" || u.Fragment != "" || u.User == nil || u.User.Username() == "" {
-		return nil, fmt.Errorf("DB_URI does not match the supported quay-postgres endpoint")
+	if err != nil {
+		return nil, fmt.Errorf("parse DB_URI: %w", err)
+	}
+	if u.Scheme != "postgresql" {
+		return nil, fmt.Errorf("DB_URI scheme must be %q, got %q", "postgresql", u.Scheme)
+	}
+	if u.User == nil || u.User.Username() == "" {
+		return nil, fmt.Errorf("DB_URI is missing username")
 	}
 	if _, ok := u.User.Password(); !ok {
-		return nil, fmt.Errorf("DB_URI does not match the supported quay-postgres endpoint")
+		return nil, fmt.Errorf("DB_URI is missing password")
+	}
+	if u.Hostname() != postgresContainerName {
+		return nil, fmt.Errorf("DB_URI host must be %q, got %q", postgresContainerName, u.Hostname())
+	}
+	if u.Port() != "" && u.Port() != "5432" {
+		return nil, fmt.Errorf("DB_URI port must be 5432, got %q", u.Port())
+	}
+	if u.Path != "/quay" {
+		return nil, fmt.Errorf("DB_URI database path must be %q, got %q", "/quay", u.Path)
+	}
+	if u.RawQuery != "" {
+		return nil, fmt.Errorf("DB_URI contains unsupported query parameters")
+	}
+	if u.Fragment != "" {
+		return nil, fmt.Errorf("DB_URI contains unsupported fragment")
 	}
 	return u, nil
 }

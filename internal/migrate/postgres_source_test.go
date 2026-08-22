@@ -258,6 +258,56 @@ func TestValidatePostgresBeforeStopRejectsResume(t *testing.T) {
 	}
 }
 
+func TestPostgresRejectsUncleanTargetDirBeforeStoppingOMR(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		fileNames []string
+		wantErr   string
+	}{
+		{
+			name:      "stale non-marker file",
+			fileNames: []string{"quay.db.partial"},
+			wantErr:   "target directory",
+		},
+		{
+			name:      "corrupted leftovers",
+			fileNames: []string{"some-stale-file.db", "storage"},
+			wantErr:   "target directory",
+		},
+		{
+			name:      "stale marker file",
+			fileNames: []string{markerFile},
+			wantErr:   "does not support resuming",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			m := validInstallMigrator(t)
+			m.Source.DatabaseKind = databasePostgres
+			m.Source.SystemdScope = scopeUser
+			runner := &recordingRunner{}
+			m.Runner = runner
+
+			if err := os.MkdirAll(m.DataDir, 0o750); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range tc.fileNames {
+				if err := os.WriteFile(filepath.Join(m.DataDir, name), []byte("stale"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			err := m.runPostgresMigration(t.Context())
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("runPostgresMigration error = %v, want substring %q", err, tc.wantErr)
+			}
+			if len(runner.runCalls) != 0 {
+				t.Fatalf("OMR was touched before unclean target-dir rejection: %v", runner.runCalls)
+			}
+		})
+	}
+}
+
 func TestPostgresRejectsExistingTargetQuadletBeforeStoppingOMR(t *testing.T) {
 	m := validInstallMigrator(t)
 	m.Source.DatabaseKind = databasePostgres
