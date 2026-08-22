@@ -75,6 +75,7 @@ def generate_nginx_config(config):
     ssl_protocols = config.get("SSL_PROTOCOLS", SSL_PROTOCOL_DEFAULTS)
     ssl_ciphers = config.get("SSL_CIPHERS", SSL_CIPHER_DEFAULTS)
     ssl_ciphersuites = config.get("SSL_CIPHERSUITES", [])
+    ssl_ecdh_curves = config.get("SSL_ECDH_CURVES")
 
     # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
     ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
@@ -96,6 +97,7 @@ def generate_nginx_config(config):
         ssl_protocols=ssl_protocols,
         ssl_ciphers=":".join(ssl_ciphers),
         ssl_ciphersuites=":".join(ssl_ciphersuites),
+        ssl_ecdh_curves=":".join(ssl_ecdh_curves) if ssl_ecdh_curves else None,
         use_ipv4=use_ipv4,
         use_ipv6=use_ipv6,
         preferred_scheme=preferred_scheme,

@@ -52,6 +52,13 @@ CONFIG_SCHEMA = {
             "x-example": ["TLSv1.1", "TLSv1.2"],
             "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols",
         },
+        "SSL_ECDH_CURVES": {
+            "type": "array",
+            "description": "If specified, the nginx-defined list of elliptic curves and post-quantum key exchange groups",
+            "x-example": ["X25519MLKEM768", "X25519", "prime256v1"],
+            "items": {"type": "string", "minLength": 1},
+            "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ecdh_curve",
+        },
         # User-visible configuration.
         "REGISTRY_TITLE": {
             "type": "string",
