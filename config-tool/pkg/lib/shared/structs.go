@@ -54,6 +54,9 @@ type DistributedStorageArgs struct {
 	SwiftOsOptions   map[string]interface{} `default:"" validate:"" json:"os_options,omitempty" yaml:"os_options,omitempty"`
 	// Args for CloudFlare
 	CloudflareDomain string `default:"" validate:"" json:"cloudflare_domain,omitempty" yaml:"cloudflare_domain,omitempty"`
+	// Args for Akamai
+	AkamaiDomain string `default:"" validate:"" json:"akamai_domain,omitempty" yaml:"akamai_domain,omitempty"`
+	AkamaiSharedSecret string `default:"" validate:"" json:"akamai_shared_secret,omitempty" yaml:"akamai_shared_secret,omitempty"`
 	// Args for MultiCDNStorage
 	DefaultProvider string                 `default:"" validate:"" json:"default_provider,omitempty" yaml:"default_provider,omitempty"`
 	Providers       map[string]interface{} `default:"" validate:"" json:"providers,omitempty" yaml:"providers,omitempty"`
