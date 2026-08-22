@@ -60,6 +60,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     repoDetails?.state,
     formHook.reset,
     formHook.setSelectedRobot,
+    formHook.getValues,
   );
 
   // Fetch robot accounts and teams
@@ -190,6 +191,8 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           setArchitectureFilter={(archs) =>
             formHook.setValue('architectureFilter', archs, {shouldDirty: true})
           }
+          getValues={formHook.getValues}
+          reset={formHook.reset}
         />
         <MirroringCredentials
           control={formHook.control}
