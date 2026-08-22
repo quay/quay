@@ -123,6 +123,8 @@ After opening a PR, comment `/jira refresh` to link the ticket and validate the 
 
 Resolve every inline CodeRabbit comment — either fix the code or reply explaining why it's not actionable. The bot re-reviews on each push.
 
+CodeRabbit auto-review is intentionally scoped to `master` only (`.coderabbit.yaml` has no `base_branches` override) — backport/cherry-pick PRs targeting `redhat-*` release branches carry code already reviewed on `master`, and enabling review there was proposed twice (#6597, #6893 → PR #6894) and rejected by a maintainer as unnecessary re-review noise. Do not re-propose adding `base_branches` for `redhat-*` without first revisiting that decision explicitly.
+
 ### Worktrees (Frontend)
 
 Git worktrees don't inherit `node_modules`. Pre-commit hooks (Prettier, ESLint) will fail silently without this symlink:
