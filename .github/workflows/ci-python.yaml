@@ -229,7 +229,7 @@ jobs:
     - name: Set up Go 1.18
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # zizmor: ignore[cache-poisoning] v7.0.0
       with:
-        go-version: 1.18
+        go-version: 1.27
 
     - name: Build conformance.test binary
       run: |
