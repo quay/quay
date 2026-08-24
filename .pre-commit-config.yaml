@@ -20,8 +20,8 @@ repos:
         language: script
     -   id: eslint
         name: ESLint
-        entry: web/node_modules/.bin/eslint --fix
-        language: system
+        entry: .github/hooks/run-eslint.sh
+        language: script
         files: ^web/
         exclude: ^web/cypress/test/
 -   repo: https://github.com/pre-commit/pre-commit-hooks
