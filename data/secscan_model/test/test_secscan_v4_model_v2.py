@@ -603,29 +603,40 @@ class TestPerformIndexingCycle:
         ):
             assert mss.indexer_hash == "none"
 
+    def test_marks_failed_on_unexpected_exception(self, initialized_db, scanner):
+        scanner._secscan_api.index.side_effect = RuntimeError("boom")
+
+        scanner.perform_indexing(batch_size=100)
+
+        for mss in ManifestSecurityStatus.select().where(
+            ManifestSecurityStatus.index_status == IndexStatus.FAILED
+        ):
+            assert mss.indexer_hash == "unexpected_error"
+
     def test_handles_deleted_manifest(self, initialized_db, scanner):
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id
-        repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
         ).where(ManifestSecurityStatus.id == mss.id).execute()
 
-        with mock.patch(
-            "data.secscan_model.secscan_v4_model_v2.Manifest.get",
-            side_effect=Manifest.DoesNotExist(),
-        ):
-            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
+        with mock.patch.object(registry_model, "list_manifest_layers", return_value=None):
+            result = scanner._prepare_for_indexing(candidate)
 
-        updated = ManifestSecurityStatus.get(ManifestSecurityStatus.id == mss.id)
-        assert updated.index_status == IndexStatus.FAILED
-        assert updated.indexer_hash == "manifest_deleted"
+        assert result is None
+        updated = ManifestSecurityStatus.get(
+            ManifestSecurityStatus.manifest == manifest_id,
+            ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
+        )
+        assert updated.indexer_hash == "none"
 
     def test_handles_manifest_list(self, initialized_db, scanner):
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id
         repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
@@ -640,8 +651,9 @@ class TestPerformIndexingCycle:
             mock_manifest.repository._db_id = repository_id
             mock_for_manifest.return_value = mock_manifest
 
-            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
+            result = scanner._prepare_for_indexing(candidate)
 
+        assert result is None
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
             ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
@@ -651,15 +663,16 @@ class TestPerformIndexingCycle:
     def test_handles_manifest_with_no_layers(self, initialized_db, scanner):
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id
-        repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
         ).where(ManifestSecurityStatus.id == mss.id).execute()
 
         with mock.patch.object(registry_model, "list_manifest_layers", return_value=None):
-            scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
+            result = scanner._prepare_for_indexing(candidate)
 
+        assert result is None
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
             ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
@@ -670,6 +683,7 @@ class TestPerformIndexingCycle:
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id
         repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
 
         ManifestSecurityStatus.update(
             index_status=IndexStatus.IN_PROGRESS,
@@ -698,8 +712,9 @@ class TestPerformIndexingCycle:
                     "data.secscan_model.secscan_v4_model_v2._has_container_layers",
                     return_value=False,
                 ):
-                    scanner._index_manifest_by_id(manifest_id, repository_id, "abc")
+                    result = scanner._prepare_for_indexing(candidate)
 
+        assert result is None
         updated = ManifestSecurityStatus.get(
             ManifestSecurityStatus.manifest == manifest_id,
             ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
