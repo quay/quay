@@ -137,7 +137,8 @@
     "immutable": "^5.1.5",
     "fast-uri": "^3.1.3",
     "brace-expansion": "^1.1.16",
-    "js-yaml": "^4.3.0"
+    "js-yaml": "^4.3.0",
+    "browserslist": ">=4.28.7"
   },
   "pnpm": {
     "overrides": {
@@ -156,7 +157,8 @@
       "immutable": "^5.1.5",
       "fast-uri": "^3.1.3",
       "brace-expansion": "^1.1.16",
-      "js-yaml": "^4.3.0"
+      "js-yaml": "^4.3.0",
+      "browserslist": ">=4.28.7"
     }
   }
 }
