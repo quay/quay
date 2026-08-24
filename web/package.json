@@ -125,6 +125,7 @@
     "glob": {
       "minimatch": "^9.0.4"
     },
-    "axios": "^1.13.5"
+    "axios": "^1.13.5",
+    "browserslist": ">=4.28.7"
   }
 }
