@@ -222,8 +222,6 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     limit_req zone=namespaced_dynamicauth_light_http1 burst=50 nodelay;
     limit_req zone=namespaced_dynamicauth_light_http2 burst=100 nodelay;
     {% endif %}
-
-    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
 }
 
 # This block handles tags endpoint requests, for which we want to restrict traffic due to how
@@ -249,8 +247,6 @@ location ~ /v2/([^/]+)\/[^/]+/tags/ {
     limit_req zone=namespaced_dynamicauth_heavy_http1 burst=2 nodelay;
     limit_req zone=namespaced_dynamicauth_heavy_http2 burst=2 nodelay;
     {% endif %}
-
-    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
 }
 
 # This block handles manifests endpoint requests, for which we want to restrict traffic heavier than
@@ -302,8 +298,6 @@ location = /v2/auth {
     # Use namespace-based rate limiting extracted from scope query parameter
     limit_req zone=namespace_auth burst=2 nodelay;
     {% endif %}
-
-    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
 }
 
 # This block handles all other V2 requests, for which we can use a higher rate limit.
@@ -333,8 +327,6 @@ location ~ ^/v2 {
     limit_req zone=dynamicauth_very_light_http1 burst=20 nodelay;
     limit_req zone=dynamicauth_very_light_http2 burst=80 nodelay;
     {% endif %}
-
-    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
 }
 
 location /v1/ {
