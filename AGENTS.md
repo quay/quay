@@ -81,9 +81,11 @@ make types-test                      # Type checking (mypy)
   - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - Scope should be a short descriptive name for the affected subsystem or area (e.g., `api`, `auth`, `mirroring`, `agents`, `gc`), not an issue or PR number
+  - For backports to a `redhat-X.Y` release branch, prefix the title with `[redhat-X.Y] ` *before* the Jira key, not after. The `conventional commit check` job in `.github/workflows/ci-lint.yaml` enforces this exact order and fails CI if the bracket comes after the Jira key.
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
+  - `[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153`
 - **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
