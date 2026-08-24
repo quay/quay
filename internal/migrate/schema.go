@@ -2,6 +2,8 @@ package migrate
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -14,10 +16,20 @@ import (
 	"github.com/quay/quay/internal/installer"
 )
 
+const (
+	quayAppUnit      = "quay-app.service"
+	quayPodUnit      = "quay-pod.service"
+	quayPostgresUnit = "quay-postgres.service"
+	quayRedisUnit    = "quay-redis.service"
+)
+
 // upgradeSchema opens the copied database, backs it up, and runs the bridge
 // migration to bring it to the Go binary's target schema version.
 func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	dbPath := filepath.Join(m.DataDir, "quay.db")
+	if m.Source.DatabaseKind == databasePostgres {
+		dbPath = m.postgresPartialDBPath()
+	}
 
 	db, err := dbcore.OpenSQLite(dbPath)
 	if err != nil {
@@ -31,6 +43,9 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	}
 
 	if ver == dbcore.TargetVersion {
+		if m.Source.DatabaseKind == databasePostgres {
+			return fmt.Errorf("converted PostgreSQL database unexpectedly has target schema version %q", ver)
+		}
 		slog.Info("schema is current", "version", ver)
 		return nil
 	}
@@ -43,14 +58,45 @@ func (m *Migrator) upgradeSchema(ctx context.Context) error {
 	}
 	slog.Info("database backup created", "path", backupPath)
 
-	if err := dbcore.RunBridge(ctx, db, m.Out); err != nil {
+	if err := dbcore.RunBridge(ctx, db); err != nil {
 		return fmt.Errorf("bridge migration (restore from %s): %w", backupPath, err)
 	}
 
 	if err := dbcore.IntegrityCheck(ctx, db); err != nil {
 		return fmt.Errorf("post-migration integrity check: %w", err)
 	}
+	if err := dbcore.ForeignKeyCheck(ctx, db); err != nil {
+		return fmt.Errorf("post-migration foreign key check: %w", err)
+	}
 
+	if m.Source.DatabaseKind == databasePostgres {
+		return m.publishConvertedDatabase(ctx, db, dbPath, backupPath)
+	}
+
+	return nil
+}
+
+func (m *Migrator) publishConvertedDatabase(ctx context.Context, db *sql.DB, dbPath, backupPath string) error {
+	if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return fmt.Errorf("checkpoint converted database: %w", err)
+	}
+	if err := db.Close(); err != nil {
+		return fmt.Errorf("close converted database: %w", err)
+	}
+	targetPath := filepath.Join(m.DataDir, "quay.db")
+	if _, err := os.Stat(targetPath); err == nil {
+		return fmt.Errorf("target database already exists")
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat target database: %w", err)
+	}
+	if err := os.Rename(dbPath, targetPath); err != nil {
+		return fmt.Errorf("publish converted database: %w", err)
+	}
+	if backupPath != "" {
+		if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove converted database backup", "path", backupPath, "err", err)
+		}
+	}
 	return nil
 }
 
@@ -61,29 +107,19 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 		return nil
 	}
 
-	scope := m.Source.SystemdScope
 	if len(m.Source.UnitFiles) == 0 {
 		discovered := m.discoverOMRScope(ctx)
 		if discovered == "" {
 			slog.Info("no OMR services detected, skipping stop")
 			return nil
 		}
-		scope = discovered
 		m.Source.SystemdScope = discovered
-		slog.Info("discovered running OMR services via probe", "scope", scope)
-	}
-
-	var scopeArgs []string
-	if scope == scopeUser {
-		scopeArgs = []string{systemdUserFlag}
+		slog.Info("discovered running OMR services via probe", "scope", discovered)
 	}
 
 	for _, svc := range omrServiceNames {
-		args := make([]string, len(scopeArgs), len(scopeArgs)+2)
-		copy(args, scopeArgs)
-		args = append(args, "stop", svc+".service")
 		slog.Info("stopping service", "service", svc)
-		if err := m.Runner.Run(ctx, "systemctl", args...); err != nil {
+		if err := m.runSourceService(ctx, "stop", svc+".service"); err != nil {
 			slog.Warn("failed to stop service (may already be stopped)", "service", svc, "err", err)
 		}
 	}
@@ -110,11 +146,58 @@ func (m *Migrator) discoverOMRScope(ctx context.Context) string {
 	return ""
 }
 
+func (m *Migrator) stopPostgresApp(ctx context.Context) error {
+	return m.runSourceService(ctx, "stop", quayAppUnit)
+}
+
+func (m *Migrator) stopPostgresRemainingServices(ctx context.Context) error {
+	var errs []error
+	for _, service := range []string{quayPostgresUnit, quayRedisUnit, quayPodUnit} {
+		if err := m.runSourceService(ctx, "stop", service); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
+	var errs []error
+	inst, err := installer.New(m.Out)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("create installer for rollback: %w", err))
+	} else if err := inst.RemoveFailedInstallation(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("remove failed target install: %w", err))
+	}
+	for _, service := range []string{quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit} {
+		if err := m.runSourceService(ctx, "start", service); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (m *Migrator) runSourceService(ctx context.Context, action, service string) error {
+	if m.Runner == nil {
+		return fmt.Errorf("no command runner for %s %s", action, service)
+	}
+	args := []string{action, service}
+	if m.Source.SystemdScope == scopeUser {
+		args = append([]string{systemdUserFlag}, args...)
+	}
+	if err := m.Runner.Run(ctx, "systemctl", args...); err != nil {
+		return fmt.Errorf("%s %s: %w", action, service, err)
+	}
+	return nil
+}
+
 // install chains into the existing installer to create the Quadlet unit and start the service.
 func (m *Migrator) install(ctx context.Context) error {
 	inst, err := installer.New(m.Out)
 	if err != nil {
 		return fmt.Errorf("create installer: %w", err)
+	}
+	if m.Source.DatabaseKind == databasePostgres && inst.HasInstallation() {
+		return fmt.Errorf("an existing target Quay installation must be removed before PostgreSQL migration")
 	}
 
 	configPath := ""

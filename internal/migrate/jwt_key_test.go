@@ -147,6 +147,17 @@ func TestLoadApprovedRegistryJWTSigningKeyMapsContainerStackPath(t *testing.T) {
 	assert.True(t, jwtauth.PublicKeysEqual(&fixture.key.PublicKey, &key.PublicKey))
 }
 
+func TestLoadRegistryJWTSigningKeyDoesNotRequireDatabase(t *testing.T) {
+	fixture := newRegistryKeyFixture(t)
+	require.NoError(t, os.Remove(fixture.dbPath))
+
+	key, kid, err := loadRegistryJWTSigningKey(t.Context(), fixture.configDir, fixture.cfg, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, fixture.kid, kid)
+	assert.True(t, jwtauth.PublicKeysEqual(&fixture.key.PublicKey, &key.PublicKey))
+}
+
 func TestLoadApprovedRegistryJWTSigningKeyReadsContainerDefaults(t *testing.T) {
 	fixture := newRegistryKeyFixture(t)
 	privatePath := filepath.Join(fixture.configDir, legacyPrivateKeyName)

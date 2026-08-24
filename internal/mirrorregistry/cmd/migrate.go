@@ -18,14 +18,13 @@ func newMigrateCmd() *Command {
 	imageArchive := fs.String("image-archive", "", "path to container image tar (auto-detected)")
 
 	sourceRoot := fs.String("source-root", "", "old quay-install directory")
-	sourceDB := fs.String("source-db", "", "old SQLite database file path")
+	sourceDB := fs.String("source-db", "", "old database file path (SQLite only)")
 	sourceStorage := fs.String("source-storage", "", "old blob storage path")
 	sourceCerts := fs.String("source-certs", "", "old TLS cert directory")
 
-	dryRun := fs.Bool("dry-run", false, "show migration plan without making changes")
-	cleanup := fs.Bool("cleanup", false, "remove old OMR after successful migration")
-	skipInstall := fs.Bool("skip-install", false, "only migrate data, do not deploy Quadlet service")
-
+	dryRun := fs.Bool("dry-run", false, "show migration plan without making changes (SQLite only)")
+	cleanup := fs.Bool("cleanup", false, "remove old OMR after successful migration (SQLite only)")
+	skipInstall := fs.Bool("skip-install", false, "only migrate data, do not deploy Quadlet service (SQLite only)")
 	return &Command{
 		Name:     "migrate",
 		Synopsis: "Migrate from mirror-registry (OMR) to this binary",

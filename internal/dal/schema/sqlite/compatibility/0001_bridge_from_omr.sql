@@ -167,6 +167,10 @@ CREATE INDEX IF NOT EXISTS tag_manifest_id_immutable ON tag (manifest_id, immuta
 CREATE INDEX IF NOT EXISTS tag_manifest_id_lifetime_end_ms ON tag (manifest_id, lifetime_end_ms);
 CREATE INDEX IF NOT EXISTS manifest_repository_id_artifact_type ON manifest (repository_id, artifact_type);
 CREATE INDEX IF NOT EXISTS manifest_artifact_type_backfilled ON manifest (artifact_type_backfilled);
+CREATE INDEX IF NOT EXISTS oauthaccesstoken_application_id_last_accessed ON oauthaccesstoken (application_id, last_accessed);
+CREATE UNIQUE INDEX IF NOT EXISTS user_email_unique_non_org ON "user" (email) WHERE organization = false;
+CREATE INDEX IF NOT EXISTS user_email_idx ON "user" (email);
+DROP INDEX IF EXISTS user_email;
 
 -- ============================================================
 -- SECTION 4: Dropped tables

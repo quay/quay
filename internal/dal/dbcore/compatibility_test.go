@@ -93,7 +93,7 @@ func TestRunBridgeRejectsUnsupportedRevision(t *testing.T) {
 		t.Fatalf("InitDatabase: %v", err)
 	}
 
-	err := RunBridge(t.Context(), db, &bytes.Buffer{})
+	err := RunBridge(t.Context(), db)
 	if err == nil || !strings.Contains(err.Error(), "unsupported OMR source revision") {
 		t.Fatalf("RunBridge error = %v, want source rejection", err)
 	}
@@ -120,7 +120,7 @@ func TestRunBridge_RollsBackSchemaAndVersionTogetherOnFailure(t *testing.T) {
 		t.Fatalf("drop tag table: %v", err)
 	}
 
-	if err := RunBridge(ctx, db, &bytes.Buffer{}); err == nil {
+	if err := RunBridge(ctx, db); err == nil {
 		t.Fatal("expected RunBridge to fail")
 	}
 

@@ -2,9 +2,11 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,13 @@ import (
 
 // OMR service names.
 var omrServiceNames = []string{"quay-app", "quay-redis", "quay-pod"}
+
+const (
+	postgresContainerName = "quay-postgres"
+	podName               = "quay-pod"
+)
+
+var errNoSystemdUnits = errors.New("no OMR systemd units found")
 
 // detectSystemd scans for old OMR systemd unit files and extracts paths.
 func (m *Migrator) detectSystemd(ctx context.Context) (OMRSource, error) {
@@ -34,7 +43,7 @@ func (m *Migrator) detectSystemd(ctx context.Context) (OMRSource, error) {
 			return m.sourceFromUnit(ctx, string(data), scope.name, dir)
 		}
 	}
-	return OMRSource{}, fmt.Errorf("no OMR systemd units found")
+	return OMRSource{}, errNoSystemdUnits
 }
 
 func userSystemdDirs() []string {
@@ -61,8 +70,12 @@ func (m *Migrator) sourceFromUnit(ctx context.Context, unitContent, scope, unitD
 		}
 	}
 
-	// Extract config dir from the /quay-registry/conf/stack mount.
-	if hostPath, ok := vols["/quay-registry/conf/stack"]; ok {
+	// OMR has used both config mount destinations.
+	if m.Source.ConfigDir != "" {
+		src.ConfigDir = m.Source.ConfigDir
+	} else if hostPath, ok := vols["/quay-registry/conf/stack"]; ok {
+		src.ConfigDir = hostPath
+	} else if hostPath, ok := vols["/conf/stack"]; ok {
 		src.ConfigDir = hostPath
 	}
 
@@ -88,21 +101,37 @@ func (m *Migrator) sourceFromUnit(ctx context.Context, unitContent, scope, unitD
 		}
 	}
 
-	// Extract hostname and port from config.yaml.
+	if err := m.populateSourceConfig(ctx, &src, unitDir); err != nil {
+		return OMRSource{}, err
+	}
+	return src, nil
+}
+
+func (m *Migrator) populateSourceConfig(ctx context.Context, src *OMRSource, unitDir string) error {
 	if src.ConfigDir != "" {
-		configPath := filepath.Join(src.ConfigDir, "config.yaml")
-		data, err := os.ReadFile(configPath) //nolint:gosec // detected config path
+		data, err := os.ReadFile(filepath.Join(src.ConfigDir, "config.yaml")) //nolint:gosec // detected config path
 		if err == nil {
-			hostname, port, err := extractHostname(data)
-			if err == nil {
-				src.Hostname = hostname
-				src.Port = port
+			src.DatabaseKind, err = extractDatabaseKind(data)
+			if err != nil {
+				return err
 			}
+			src.Hostname, src.Port, _ = extractHostname(data)
 		}
 		src.RootCADir = detectRootCADir(src.ConfigDir)
 	}
-
-	return src, nil
+	if src.DatabaseKind == "" {
+		src.DatabaseKind = databaseSQLite
+	}
+	if src.DatabaseKind != databasePostgres {
+		return nil
+	}
+	src.DBPath = ""
+	sandboxKey, err := m.detectPostgresTopology(ctx, unitDir)
+	if err != nil {
+		return err
+	}
+	src.PodSandboxKey = sandboxKey
+	return nil
 }
 
 // parseUnitVolumes extracts -v host:container[:opts] mappings from a systemd unit.
@@ -149,7 +178,7 @@ func (m *Migrator) detectPodmanVolumes(ctx context.Context) (OMRSource, error) {
 	if m.Runner == nil {
 		return OMRSource{}, fmt.Errorf("no command runner")
 	}
-	src := OMRSource{Method: "podman-volume"}
+	src := OMRSource{DatabaseKind: databaseSQLite, Method: "podman-volume"}
 	sqlitePath, volName, err := m.resolveVolumePath(ctx, "sqlite-storage")
 	if err != nil {
 		return OMRSource{}, fmt.Errorf("sqlite-storage volume: %w", err)
@@ -202,10 +231,11 @@ func (m *Migrator) detectDefaults() (OMRSource, error) {
 		return OMRSource{}, fmt.Errorf("config dir %s not found: %w", configDir, err)
 	}
 	src := OMRSource{
-		ConfigDir:   configDir,
-		DBPath:      filepath.Join(root, "sqlite-storage", "quay_sqlite.db"),
-		StoragePath: filepath.Join(root, "quay-storage"),
-		Method:      "defaults",
+		DatabaseKind: databaseSQLite,
+		ConfigDir:    configDir,
+		DBPath:       filepath.Join(root, "sqlite-storage", "quay_sqlite.db"),
+		StoragePath:  filepath.Join(root, "quay-storage"),
+		Method:       "defaults",
 	}
 	data, err := os.ReadFile(filepath.Join(configDir, "config.yaml")) //nolint:gosec // detected config path
 	if err == nil {
@@ -219,15 +249,19 @@ func (m *Migrator) detectDefaults() (OMRSource, error) {
 
 // detect tries each strategy in order.
 func (m *Migrator) detect(ctx context.Context) (OMRSource, error) {
-	if src, err := m.detectSystemd(ctx); err == nil {
+	src, err := m.detectSystemd(ctx)
+	if err == nil {
 		slog.Info("detected OMR via systemd units", "scope", src.SystemdScope)
 		return m.withImageArchive(&src), nil
+	}
+	if !errors.Is(err, errNoSystemdUnits) {
+		return OMRSource{}, fmt.Errorf("detect OMR from systemd: %w", err)
 	}
 	if src, err := m.detectPodmanVolumes(ctx); err == nil {
 		slog.Info("detected OMR via podman volumes")
 		return m.withImageArchive(&src), nil
 	}
-	src, err := m.detectDefaults()
+	src, err = m.detectDefaults()
 	if err != nil {
 		return OMRSource{}, fmt.Errorf("could not detect OMR installation: %w", err)
 	}
@@ -249,6 +283,97 @@ func (m *Migrator) withImageArchive(src *OMRSource) OMRSource {
 		slog.Info("auto-detected image archive", "path", archive)
 	}
 	return *src
+}
+
+func extractDatabaseKind(data []byte) (string, error) {
+	var raw struct {
+		DBURI string `yaml:"DB_URI"`
+	}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return "", fmt.Errorf("parse config: %w", err)
+	}
+	u, err := url.Parse(raw.DBURI)
+	if err != nil {
+		return "", fmt.Errorf("parse DB_URI: %w", err)
+	}
+	switch u.Scheme {
+	case "sqlite":
+		return databaseSQLite, nil
+	case "postgresql":
+		if _, err := parsePostgresURI(raw.DBURI); err != nil {
+			return "", err
+		}
+		return databasePostgres, nil
+	default:
+		return "", fmt.Errorf("unsupported DB_URI scheme %q", u.Scheme)
+	}
+}
+
+func parsePostgresURI(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse DB_URI: %w", err)
+	}
+	if u.Scheme != "postgresql" {
+		return nil, fmt.Errorf("DB_URI scheme must be %q, got %q", "postgresql", u.Scheme)
+	}
+	if u.User == nil || u.User.Username() == "" {
+		return nil, fmt.Errorf("DB_URI is missing username")
+	}
+	if _, ok := u.User.Password(); !ok {
+		return nil, fmt.Errorf("DB_URI is missing password")
+	}
+	if u.Hostname() != postgresContainerName {
+		return nil, fmt.Errorf("DB_URI host must be %q, got %q", postgresContainerName, u.Hostname())
+	}
+	if u.Port() != "" && u.Port() != "5432" {
+		return nil, fmt.Errorf("DB_URI port must be 5432, got %q", u.Port())
+	}
+	if u.Path != "/quay" {
+		return nil, fmt.Errorf("DB_URI database path must be %q, got %q", "/quay", u.Path)
+	}
+	if u.RawQuery != "" {
+		return nil, fmt.Errorf("DB_URI contains unsupported query parameters")
+	}
+	if u.Fragment != "" {
+		return nil, fmt.Errorf("DB_URI contains unsupported fragment")
+	}
+	return u, nil
+}
+
+func (m *Migrator) detectPostgresTopology(ctx context.Context, unitDir string) (string, error) {
+	for _, service := range []string{postgresContainerName, podName} {
+		if _, err := os.Stat(filepath.Join(unitDir, service+".service")); err != nil {
+			return "", fmt.Errorf("read %s service: %w", service, err)
+		}
+	}
+	if m.Runner == nil {
+		return "", fmt.Errorf("no command runner for PostgreSQL topology detection")
+	}
+
+	containerOutput, err := m.Runner.Output(ctx, "podman", "inspect", postgresContainerName, "--format", "{{.Pod}} {{.NetworkSettings.SandboxKey}}")
+	if err != nil {
+		return "", fmt.Errorf("inspect %s container: %w", postgresContainerName, err)
+	}
+	podID, err := m.Runner.Output(ctx, "podman", "pod", "inspect", podName, "--format", "{{.Id}}")
+	if err != nil {
+		return "", fmt.Errorf("inspect %s pod: %w", podName, err)
+	}
+	appPodID, err := m.Runner.Output(ctx, "podman", "inspect", sourceContainerName, "--format", "{{.Pod}}")
+	if err != nil {
+		return "", fmt.Errorf("inspect %s container: %w", sourceContainerName, err)
+	}
+	if appPodID != podID {
+		return "", fmt.Errorf("%s container is not in %s", sourceContainerName, podName)
+	}
+	containerFields := strings.Fields(containerOutput)
+	if len(containerFields) == 0 || containerFields[0] != podID {
+		return "", fmt.Errorf("%s container is not in %s", postgresContainerName, podName)
+	}
+	if len(containerFields) != 2 {
+		return "", fmt.Errorf("%s network namespace has no sandbox key", podName)
+	}
+	return containerFields[1], nil
 }
 
 // extractHostname parses SERVER_HOSTNAME from an OMR config.yaml,

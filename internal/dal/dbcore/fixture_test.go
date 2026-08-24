@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,9 +76,16 @@ func TestRunBridge_ConvergesArtifactFixture(t *testing.T) {
 	dataTables := []string{"repository", "tag", manifestTable}
 	before := tableCounts(t, db, dataTables)
 
-	var out bytes.Buffer
-	if err := RunBridge(t.Context(), db, &out); err != nil {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	if err := RunBridge(t.Context(), db); err != nil {
 		t.Fatalf("RunBridge: %v", err)
+	}
+	if got := logs.String(); !strings.Contains(got, `"msg":"bridging schema"`) || !strings.Contains(got, `"msg":"schema bridged"`) {
+		t.Errorf("structured bridge logs missing: %s", got)
 	}
 
 	ver, err = SchemaVersion(t.Context(), db)
@@ -91,7 +99,7 @@ func TestRunBridge_ConvergesArtifactFixture(t *testing.T) {
 	if err := IntegrityCheck(t.Context(), db); err != nil {
 		t.Errorf("post-bridge IntegrityCheck: %v", err)
 	}
-	if err := foreignKeyCheck(t.Context(), db); err != nil {
+	if err := ForeignKeyCheck(t.Context(), db); err != nil {
 		t.Errorf("post-bridge foreign key check: %v", err)
 	}
 
@@ -111,6 +119,14 @@ func TestRunBridge_ConvergesArtifactFixture(t *testing.T) {
 	for _, idx := range bridgeIndexFixes {
 		assertIndexExists(t, db, idx.indexName)
 	}
+	for name, want := range map[string]string{
+		"oauthaccesstoken_application_id_last_accessed": "CREATE INDEX oauthaccesstoken_application_id_last_accessed ON oauthaccesstoken (application_id, last_accessed)",
+		"user_email_unique_non_org":                     `CREATE UNIQUE INDEX user_email_unique_non_org ON "user" (email) WHERE organization = false`,
+		"user_email_idx":                                `CREATE INDEX user_email_idx ON "user" (email)`,
+	} {
+		assertIndexDefinition(t, db, name, want)
+	}
+	assertIndexMissing(t, db, "user_email")
 	for _, table := range []string{
 		"tagpullstatistics", "manifestpullstatistics", "orgmirrorconfig",
 		"orgmirrorrepository", "namespaceimmutabilitypolicy",
@@ -128,7 +144,7 @@ func TestRunBridge_RejectsMarkerTamperedArtifactFixture(t *testing.T) {
 		t.Fatalf("tamper marker: %v", err)
 	}
 
-	err := RunBridge(t.Context(), db, &bytes.Buffer{})
+	err := RunBridge(t.Context(), db)
 	if err == nil || !strings.Contains(err.Error(), "unsupported OMR source revision") {
 		t.Fatalf("RunBridge error = %v, want source rejection", err)
 	}
@@ -154,7 +170,7 @@ func TestRunBridge_RejectsStructurallyAlteredArtifactFixture(t *testing.T) {
 		t.Fatalf("mutate fixture: %v", err)
 	}
 
-	err := RunBridge(t.Context(), db, &bytes.Buffer{})
+	err := RunBridge(t.Context(), db)
 	if err == nil {
 		t.Fatal("RunBridge unexpectedly succeeded against a structurally altered fixture")
 	}
@@ -207,6 +223,29 @@ func assertIndexExists(t *testing.T, db *sql.DB, name string) {
 	}
 	if n != 1 {
 		t.Errorf("expected index %s to exist after bridge", name)
+	}
+}
+
+func assertIndexDefinition(t *testing.T, db *sql.DB, name, want string) {
+	t.Helper()
+	var got string
+	if err := db.QueryRowContext(t.Context(), "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", name).Scan(&got); err != nil {
+		t.Fatalf("read index %s: %v", name, err)
+	}
+	normalize := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	if normalize(got) != normalize(want) {
+		t.Errorf("index %s = %q, want %q", name, got, want)
+	}
+}
+
+func assertIndexMissing(t *testing.T, db *sql.DB, name string) {
+	t.Helper()
+	var n int
+	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM sqlite_master WHERE type='index' AND name=?", name).Scan(&n); err != nil {
+		t.Fatalf("check index %s: %v", name, err)
+	}
+	if n != 0 {
+		t.Errorf("expected index %s to be absent after bridge", name)
 	}
 }
 

@@ -112,6 +112,33 @@ func TestUpgradePreservesConfigBasedServeCommand(t *testing.T) {
 	assert.Contains(t, content, "PublishPort=9443:8443")
 }
 
+func TestRemoveFailedInstallation(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: "/var/lib/quay", Hostname: "registry.example.com", Port: "8443",
+	}))
+	services := &recordingServiceManager{}
+	inst := &Installer{systemd: services, quadlet: quadlet}
+
+	assert.True(t, inst.HasInstallation())
+	require.NoError(t, inst.RemoveFailedInstallation(t.Context()))
+	assert.False(t, inst.HasInstallation())
+	assert.Equal(t, []string{"stop:quay", "daemon-reload"}, services.calls)
+}
+
+func TestRemoveFailedInstallationWithoutQuadletIsNoop(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+	}
+
+	require.NoError(t, inst.RemoveFailedInstallation(t.Context()))
+	assert.Empty(t, services.calls)
+}
+
 func TestResolveHostnameForFreshInstall(t *testing.T) {
 	tests := []struct {
 		name      string

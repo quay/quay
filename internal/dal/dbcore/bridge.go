@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/quay/quay/internal/dal/schema"
@@ -15,9 +15,10 @@ import (
 // migration preflight.
 const ApprovedOMRSourceVersion = "3f8d7acdf7f9"
 
-// manifestTable names the manifest table shared by bridgeColumns and tests
-// that check row-count preservation across bridging.
-const manifestTable = "manifest"
+const (
+	manifestTable         = "manifest"
+	oauthAccessTokenTable = "oauthaccesstoken"
+)
 
 // bridgeColumns are columns that may be missing on existing tables in old OMR databases.
 // New tables created by the bridge SQL already include all columns.
@@ -27,6 +28,9 @@ var bridgeColumns = []struct {
 	{"tag", "immutable", "BOOLEAN DEFAULT (0) NOT NULL"},
 	{manifestTable, "artifact_type", "VARCHAR(255)"},
 	{manifestTable, "artifact_type_backfilled", "BOOLEAN"},
+	{oauthAccessTokenTable, "last_accessed", "DATETIME"},
+	{oauthAccessTokenTable, "created", "DATETIME"},
+	{oauthAccessTokenTable, "display_name", "VARCHAR(255)"},
 	{"repomirrorconfig", "skopeo_timeout", "BIGINT DEFAULT '300' NOT NULL"},
 	{"repomirrorconfig", "architecture_filter", "TEXT"},
 }
@@ -43,7 +47,7 @@ var bridgeIndexFixes = []struct {
 // RunBridge upgrades the approved OMR source schema to the Go binary's target
 // schema. Source preflight rejects unsupported revisions before the source is
 // stopped; this repeat guard ensures copied data cannot bypass that policy.
-func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
+func RunBridge(ctx context.Context, db *sql.DB) error {
 	ver, err := SchemaVersion(ctx, db)
 	if err != nil {
 		return fmt.Errorf("read schema version: %w", err)
@@ -52,7 +56,7 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("unsupported OMR source revision %q; only %q is supported", ver, ApprovedOMRSourceVersion)
 	}
 
-	fmt.Fprintf(w, "Bridging schema from %s to %s\n", ver, TargetVersion)
+	slog.Info("bridging schema", "from", ver, "to", TargetVersion)
 
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
@@ -77,7 +81,7 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("commit bridge: %w", err)
 	}
 
-	fmt.Fprintf(w, "Schema bridged to %s\n", TargetVersion)
+	slog.Info("schema bridged", "version", TargetVersion)
 	return nil
 }
 
