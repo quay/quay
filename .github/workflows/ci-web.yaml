@@ -288,7 +288,7 @@ jobs:
           HELM_VERSION=v3.17.0
           HELM_TARBALL=helm-${HELM_VERSION}-linux-amd64.tar.gz
           HELM_URL=https://get.helm.sh/${HELM_TARBALL}
-          HELM_SHA256=c54bc9b719de0b3ff30ad120d57c61eb7f475e0e4b4a4de0d4e51d2cca07a186
+          HELM_SHA256=fb5d12662fde6eeff36ac4ccacbf3abed96b0ee2de07afdde4edb14e613aee24
 
           curl -fsSL ${HELM_URL} -o ${HELM_TARBALL}
           echo "${HELM_SHA256}  ${HELM_TARBALL}" | sha256sum -c -
