@@ -177,6 +177,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             for row in ManifestSecurityStatus.select(
                 ManifestSecurityStatus.id, can_use_read_replica=True
             )
+            .join(Manifest, on=(ManifestSecurityStatus.manifest == Manifest.id))
             .where(conditions)
             .order_by(ManifestSecurityStatus.last_indexed.desc())
             .limit(batch_size)
