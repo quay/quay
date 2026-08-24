@@ -20,6 +20,9 @@ from io import BytesIO
 
 import pytest
 
+from test.fixtures import *  # noqa: F401,F403
+from test.registry.fixtures import *  # noqa: F401,F403
+from test.registry.liveserverfixture import *  # noqa: F401,F403
 from test.registry.protocol_fixtures import *  # noqa: F401,F403
 from test.registry.protocols import Image, layer_bytes_for_contents
 
@@ -169,7 +172,7 @@ appVersion: "1.5"
     ]
 
 
-def test_helm_chart_push_and_pull(manifest_protocol, helm_chart, liveserver_session):
+def test_helm_chart_push_and_pull(manifest_protocol, helm_chart, liveserver_session, app_reloader):
     """
     Test 1.1: Basic Helm chart push and pull - verify byte identity.
 
@@ -217,7 +220,9 @@ def test_helm_chart_push_and_pull(manifest_protocol, helm_chart, liveserver_sess
     )
 
 
-def test_helm_chart_metadata_extraction(manifest_protocol, helm_chart, liveserver_session):
+def test_helm_chart_metadata_extraction(
+    manifest_protocol, helm_chart, liveserver_session, app_reloader
+):
     """
     Test 1.2: Chart metadata extraction - Chart.yaml parsed correctly.
 
@@ -249,7 +254,7 @@ def test_helm_chart_metadata_extraction(manifest_protocol, helm_chart, liveserve
 
 
 def test_helm_chart_multiple_layers(
-    manifest_protocol, helm_chart_with_dependencies, liveserver_session
+    manifest_protocol, helm_chart_with_dependencies, liveserver_session, app_reloader
 ):
     """
     Test 1.3: Multiple layers (dependencies) - structure maintained.
@@ -287,7 +292,9 @@ def test_helm_chart_multiple_layers(
     assert len(pull_result.image_ids) == len(helm_chart_with_dependencies)
 
 
-def test_helm_chart_version_overwrite(manifest_protocol, helm_chart, liveserver_session):
+def test_helm_chart_version_overwrite(
+    manifest_protocol, helm_chart, liveserver_session, app_reloader
+):
     """
     Test 1.4: Chart version overwrite - versioning works correctly.
 
@@ -368,7 +375,7 @@ appVersion: "2.0"
 
 
 def test_helm_chart_oci_annotations(
-    manifest_protocol, helm_chart_with_annotations, liveserver_session
+    manifest_protocol, helm_chart_with_annotations, liveserver_session, app_reloader
 ):
     """
     Test 1.5: OCI config metadata preservation (including annotations).
