@@ -16,7 +16,7 @@ import {pushHelmChart} from '../../utils/container';
 
 test.describe(
   'Helm Chart OCI Artifacts',
-  {tag: ['@repository', '@helm']},
+  {tag: ['@repository', '@helm', '@container']},
   () => {
     test.describe('Repository List Display', () => {
       test('displays Helm chart in global repository view', async ({
