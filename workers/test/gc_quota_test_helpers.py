@@ -7,10 +7,16 @@ from data.database import (
     ImageStorageLocation,
     QuotaNamespaceSize,
     QuotaRepositorySize,
+    QuotaTypes,
     Tag,
 )
 from data.model.blob import store_blob_record_and_temp_link
-from data.model.namespacequota import get_namespace_size
+from data.model.namespacequota import (
+    check_limits,
+    create_namespace_quota,
+    create_namespace_quota_limit,
+    get_namespace_size,
+)
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import create_or_update_tag
 from data.model.organization import create_organization
@@ -157,19 +163,44 @@ def get_repo_quota(repository):
     return quota_row.size_bytes if quota_row else 0
 
 
-def set_namespace_quota_limit(org_or_user, limit_bytes):
+def set_namespace_quota_limit(org_or_user, limit_bytes, warning_percent=80, reject_percent=100):
     """
-    Set quota limit for a namespace (organization or user).
+    Persist a real quota limit for a namespace (organization or user).
 
-    This is a placeholder - actual implementation would set the quota limit
-    in the appropriate table.
+    Creates a UserOrganizationQuota row with the given limit and, unless
+    disabled, the warning/reject QuotaLimits thresholds, so that the actual
+    quota enforcement state can be asserted via get_namespace_quota_severity.
 
     Args:
         org_or_user: Organization or User object
         limit_bytes: Quota limit in bytes
+        warning_percent: Percent of the limit at which a warning fires
+            (pass None to skip creating the warning threshold)
+        reject_percent: Percent of the limit at which pushes are rejected
+            (pass None to skip creating the reject threshold)
+
+    Returns:
+        The created UserOrganizationQuota row
     """
-    # TODO: Implement actual quota limit setting if needed for tests
-    pass
+    quota = create_namespace_quota(org_or_user, limit_bytes)
+    if warning_percent is not None:
+        create_namespace_quota_limit(quota, QuotaTypes.WARNING, warning_percent)
+    if reject_percent is not None:
+        create_namespace_quota_limit(quota, QuotaTypes.REJECT, reject_percent)
+    return quota
+
+
+def get_namespace_quota_severity(org_or_user):
+    """
+    Return the current quota enforcement severity for a namespace based on its
+    real persisted usage and configured limits.
+
+    Returns:
+        QuotaTypes.REJECT, QuotaTypes.WARNING, or None depending on how the
+        current namespace size compares to the configured quota thresholds.
+    """
+    namespace_size = get_namespace_size(org_or_user.username)
+    return check_limits(org_or_user.username, namespace_size)["severity_level"]
 
 
 def expire_tag(repository, tag_name):

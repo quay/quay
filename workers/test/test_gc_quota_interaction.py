@@ -15,13 +15,14 @@ Tests ensure that:
 """
 
 import json
-import threading
 import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from data.database import QuotaNamespaceSize, QuotaRepositorySize, Tag
+from data.database import QuotaNamespaceSize, QuotaRepositorySize, QuotaTypes, Tag
+from data.model import gc as gc_model
+from data.model import storage as storage_model
 from data.model.organization import create_organization
 from data.model.quota import run_backfill
 from data.model.repository import create_repository
@@ -36,9 +37,11 @@ from workers.test.gc_quota_test_helpers import (
     enable_quota_management,
     expire_tag,
     get_namespace_quota,
+    get_namespace_quota_severity,
     get_repo_quota,
     run_gc_worker,
     run_quota_worker,
+    set_namespace_quota_limit,
 )
 
 pytestmark = pytest.mark.workers
@@ -136,8 +139,8 @@ class TestGCQuotaInteraction:
         2. After GC and quota recalculation, usage drops below threshold
         3. Warning state is cleared
 
-        Note: This test simulates the warning threshold behavior. Actual warning implementation
-        may vary based on Quay's quota enforcement system.
+        Configures a real UserOrganizationQuota with warning/reject thresholds and
+        asserts the actual enforcement severity (via check_limits) before and after GC.
         """
         user = setup_orgs["user"]
         org = setup_orgs["org1"]
@@ -162,10 +165,14 @@ class TestGCQuotaInteraction:
         expected_initial = calculate_expected_size(blob1, blob2, blob3)
         assert initial_quota == expected_initial
 
-        # Simulate warning threshold at 80% of 10 MB = 8 MB
-        warning_threshold = 8 * 1024 * 1024
-        is_over_threshold = initial_quota > warning_threshold
-        assert is_over_threshold, "Quota should be over warning threshold"
+        # Configure a real 10 MB namespace quota with an 80% (8 MB) warning
+        # threshold, then assert the warning state is actually triggered by the
+        # persisted usage rather than comparing against a local constant.
+        quota_limit_bytes = 10 * 1024 * 1024
+        set_namespace_quota_limit(org, quota_limit_bytes, warning_percent=80, reject_percent=100)
+        assert (
+            get_namespace_quota_severity(org) == QuotaTypes.WARNING
+        ), "Usage above 80% of the limit should trigger the warning threshold before GC"
 
         # Delete tag and run GC
         expire_tag(repo, "v1.0")
@@ -175,11 +182,15 @@ class TestGCQuotaInteraction:
         # Run quota worker to recalculate
         run_quota_worker()
 
-        # Verify quota is below warning threshold
+        # Verify usage dropped below the limit and the warning state is cleared
+        # based on the real quota limits (severity is no longer Warning/Reject).
         quota_after_gc = get_namespace_quota(org)
         assert (
-            quota_after_gc < warning_threshold
-        ), "Quota should be below warning threshold after GC"
+            quota_after_gc < quota_limit_bytes
+        ), "Usage should drop below the quota limit after GC"
+        assert (
+            get_namespace_quota_severity(org) is None
+        ), "Warning state should be cleared after GC frees space"
 
     def test_shared_blob_deduplication_after_gc(self, setup_orgs):
         """
@@ -339,19 +350,35 @@ class TestGCQuotaInteraction:
         expire_tag(repo, "v1.0")
         expire_tag(repo, "v2.0")
 
-        # Run GC - both blobs should be removed
-        with enable_gc_and_quota():
-            run_gc_worker()
+        # Inject a removal failure for manifest1 (blob1) while allowing
+        # manifest2 (blob2) to be collected normally. Quay counts a blob toward
+        # quota via its ManifestBlob rows, and GC deletes those rows during the
+        # manifest-purge step (before the later storage-removal step). So to
+        # keep the failed blob counted, the failure must be injected at the
+        # manifest-purge step, not at storage removal.
+        real_gc_manifest = gc_model._garbage_collect_manifest
+
+        def _fail_manifest1(manifest_id, context):
+            if manifest_id == manifest1.id:
+                # Simulate a failed/skipped collection of this manifest.
+                return False
+            return real_gc_manifest(manifest_id, context)
+
+        with patch.object(gc_model, "_garbage_collect_manifest", side_effect=_fail_manifest1):
+            with enable_gc_and_quota():
+                run_gc_worker()
 
         # Run quota worker
         run_quota_worker()
 
-        # Verify quota reflects removal of blob1 and blob2, but blob3 remains
+        # blob2 was removed successfully, but blob1's collection "failed" so its
+        # ManifestBlob rows survive and it remains counted alongside the never-
+        # expired blob3.
         quota_after_gc = get_namespace_quota(org)
-        expected_after_gc = calculate_expected_size(blob3)
+        expected_after_gc = calculate_expected_size(blob1, blob3)
         assert (
             quota_after_gc == expected_after_gc
-        ), f"Quota should reflect only blob3, got {quota_after_gc}"
+        ), f"Failed blob1 should remain counted with blob3, got {quota_after_gc}"
 
     def test_concurrent_push_during_gc_maintains_consistency(self, setup_orgs):
         """
@@ -362,7 +389,8 @@ class TestGCQuotaInteraction:
         2. Quota includes new blobs correctly
         3. Concurrent operations don't corrupt quota state
 
-        Note: This is a simplified version. Full concurrent testing would require more complex setup.
+        The concurrent push is injected mid-GC via a synchronization hook (deterministic,
+        since the test DB fixture is single-connection and cannot be shared across threads).
         """
         user = setup_orgs["user"]
         org = setup_orgs["org1"]
@@ -385,22 +413,41 @@ class TestGCQuotaInteraction:
         # Expire old tag
         expire_tag(repo, "old-tag")
 
-        # Push new content while GC is running
+        # New content that lands "concurrently" while GC is in progress.
         new_blob = "NEW" * (2 * 1024 * 1024)  # 2 MB
 
-        with enable_quota_management():
-            # Create new manifest (simulating concurrent push)
-            manifest2 = create_manifest_with_blobs(repo, [new_blob])
-            tag2 = create_tag_for_manifest(repo, manifest2, "new-tag")
+        # Coordinate the concurrent push via a synchronization hook: the first
+        # time GC reaches its storage-removal step (i.e. after it has already
+        # computed the set of blobs to remove for the expired tag), the push is
+        # injected. GC is therefore in progress when the new blob is written.
+        # A synchronization hook is used instead of real threads because the
+        # test DB fixture is single-connection and cannot be shared across
+        # threads; this keeps the interleaving deterministic while still
+        # exercising the race: GC must not remove a blob pushed after it
+        # computed its removal set.
+        real_gc_storage = storage_model.garbage_collect_storage
+        push_state = {}
 
-            # Run GC
+        def _push_during_gc(storage_id_whitelist):
+            if "manifest" not in push_state:
+                with enable_quota_management():
+                    push_state["manifest"] = create_manifest_with_blobs(repo, [new_blob])
+                    push_state["tag"] = create_tag_for_manifest(
+                        repo, push_state["manifest"], "new-tag"
+                    )
+            return real_gc_storage(storage_id_whitelist)
+
+        with patch.object(storage_model, "garbage_collect_storage", side_effect=_push_during_gc):
             with enable_gc_and_quota():
                 run_gc_worker()
+
+        # The push must have actually been injected during GC.
+        assert "manifest" in push_state, "Concurrent push hook did not fire during GC"
 
         # Run quota worker
         run_quota_worker()
 
-        # Verify new blob is NOT removed and quota is correct
+        # Verify the concurrently-pushed blob is NOT removed and quota is correct
         quota_after = get_namespace_quota(org)
         expected_after = calculate_expected_size(new_blob)
         assert quota_after == expected_after, f"New blob should be preserved, got {quota_after}"
@@ -435,9 +482,14 @@ class TestGCQuotaInteraction:
         expected_initial = calculate_expected_size(blob1, blob2)
         assert initial_quota == expected_initial
 
-        # Simulate overflow situation (quota > limit)
-        # For testing, we just verify current state
-        assert initial_quota > (10 * 1024 * 1024), "Quota should be over 10 MB (simulated limit)"
+        # Configure a real 10 MB namespace quota. With ~12 MB of content the
+        # namespace is in overflow, so the reject threshold (100%) must fire.
+        quota_limit_bytes = 10 * 1024 * 1024
+        set_namespace_quota_limit(org, quota_limit_bytes, warning_percent=80, reject_percent=100)
+        assert initial_quota > quota_limit_bytes, "Usage should exceed the quota limit (overflow)"
+        assert (
+            get_namespace_quota_severity(org) == QuotaTypes.REJECT
+        ), "Overflow usage should trigger the reject threshold before GC"
 
         # Delete tag and run GC
         expire_tag(repo, "overflow-tag")
@@ -447,9 +499,12 @@ class TestGCQuotaInteraction:
         # Run quota worker to recalculate
         run_quota_worker()
 
-        # Verify quota is corrected to actual usage (0)
+        # Verify quota is corrected to actual usage (0) and enforcement cleared.
         quota_after_gc = get_namespace_quota(org)
         assert quota_after_gc == 0, f"Quota should be corrected to 0, got {quota_after_gc}"
+        assert (
+            get_namespace_quota_severity(org) is None
+        ), "Reject/overflow state should be cleared after GC frees space"
 
     def test_cross_org_quota_isolation_during_gc(self, setup_orgs):
         """
