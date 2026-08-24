@@ -17,7 +17,6 @@ import (
 var knownUnmapped = map[string]bool{
 	// SSL/TLS
 	"SSL_CIPHERS":     true,
-	"SSL_PROTOCOLS":   true,
 	"SSL_ECDH_CURVES": true,
 
 	// User-visible
