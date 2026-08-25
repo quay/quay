@@ -991,3 +991,7 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
     # When enabled, manifests for missing architectures will be skipped instead of raising errors.
     FEATURE_SPARSE_INDEX = False
+
+    # Feature flag: Enables cleanup of stale multipart uploads on the backend bucket. This feature flag
+    # is only applicable to S3 storage engines.
+    FEATURE_ENABLE_STALE_MPU_CLEANUP = True
