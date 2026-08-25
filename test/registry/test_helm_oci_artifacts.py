@@ -288,8 +288,13 @@ def test_helm_chart_multiple_layers(
     )
 
     assert pull_result is not None
-    # Should have multiple image IDs (one for each layer)
-    assert len(pull_result.image_ids) == len(helm_chart_with_dependencies)
+    # image_ids is keyed by tag (and only populated for schema1), so it can't be
+    # used to count layers. Verify layer preservation via the pulled manifest's
+    # blob digests instead. schema2/OCI include one extra config blob, so the
+    # manifest must contain at least one blob per pushed layer.
+    assert len(pull_result.manifests) > 0
+    for manifest in pull_result.manifests.values():
+        assert len(list(manifest.blob_digests)) >= len(helm_chart_with_dependencies)
 
 
 def test_helm_chart_version_overwrite(
