@@ -14,7 +14,7 @@ ENV PATH=/opt/app-root/bin:/app/bin/:$PATH \
 ENV PYTHONUSERBASE=/app
 ENV TZ=UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.24 \
+	; microdnf -y module enable nginx:1.26 \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		python3.12 \
 		python3.12-pip \
