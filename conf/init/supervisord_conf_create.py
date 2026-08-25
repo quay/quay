@@ -4,6 +4,7 @@ import sys
 from typing import List
 
 import jinja2
+import yaml
 
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")
@@ -12,6 +13,8 @@ QUAYRUN_DIR = os.getenv("QUAYRUN", QUAYCONF_DIR)
 
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 QUAY_HOTRELOAD: bool = os.getenv("QUAY_HOTRELOAD", "false") == "true"
+
+MAX_GUNICORN_TIMEOUT = 300
 
 
 def _parse_csv_env(name):
@@ -64,10 +67,20 @@ def registry_services():
     }
 
 
-def generate_supervisord_config(filename, config, logdriver, hotreload):
+def load_app_config():
+    config_path = os.path.join(QUAYCONF_DIR, "stack/config.yaml")
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+def generate_supervisord_config(filename, config, logdriver, hotreload, **extra_vars):
     with open(filename + ".jnj") as f:
         template = jinja2.Template(f.read())
-    rendered = template.render(config=config, logdriver=logdriver, hotreload=hotreload)
+    rendered = template.render(
+        config=config, logdriver=logdriver, hotreload=hotreload, **extra_vars
+    )
 
     with open(filename, "w") as f:
         f.write(rendered)
@@ -100,9 +113,15 @@ if __name__ == "__main__":
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
 
+    app_config = load_app_config()
+
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),
         config,
         QUAY_LOGGING,
         QUAY_HOTRELOAD,
+        gunicorn_registry_timeout=min(
+            app_config.get("GUNICORN_REGISTRY_TIMEOUT", 30), MAX_GUNICORN_TIMEOUT
+        ),
+        gunicorn_web_timeout=min(app_config.get("GUNICORN_WEB_TIMEOUT", 30), MAX_GUNICORN_TIMEOUT),
     )
