@@ -239,3 +239,6 @@ OTEL_TRACING: FeatureNameValue
 
 # Feature Flag: If set to true, enables programmatic bootstrap token provisioning.
 PROGRAMMATIC_BOOTSTRAP: FeatureNameValue
+
+# Feature Flag: If set to true, enables Kubernetes ServiceAccount workload identity bootstrap.
+KUBERNETES_SA_BOOTSTRAP: FeatureNameValue
