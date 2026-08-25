@@ -1,5 +1,8 @@
 import os
 import re
+import shutil
+import subprocess
+import sys
 import tempfile
 from contextlib import contextmanager
 
@@ -114,3 +117,44 @@ class TestGunicornTimeouts:
 
     def test_max_gunicorn_timeout_is_300(self):
         assert MAX_GUNICORN_TIMEOUT == 300
+
+    def test_config_yaml_reaches_gunicorn_commands(self, tmp_path):
+        """Exercise load_app_config() and the __main__ wiring end-to-end via a real config.yaml."""
+        quay_conf_dir = tmp_path / "conf"
+        (quay_conf_dir / "stack").mkdir(parents=True)
+        (quay_conf_dir / "stack" / "config.yaml").write_text(
+            "GUNICORN_REGISTRY_TIMEOUT: 111\nGUNICORN_WEB_TIMEOUT: 45\n"
+        )
+
+        repo_conf_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../..")
+        shutil.copy(
+            os.path.join(repo_conf_dir, "supervisord.conf.jnj"),
+            quay_conf_dir / "supervisord.conf.jnj",
+        )
+
+        script_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "../supervisord_conf_create.py"
+        )
+
+        env = os.environ.copy()
+        env.update(
+            QUAYDIR=str(tmp_path),
+            QUAYPATH=".",
+            QUAYCONF=str(quay_conf_dir),
+            QUAY_SERVICES="",
+            QUAY_OVERRIDE_SERVICES="",
+            QUAY_LOGGING="stdout",
+            QUAY_HOTRELOAD="false",
+        )
+
+        subprocess.run([sys.executable, script_path], env=env, check=True)
+
+        rendered = (quay_conf_dir / "supervisord.conf").read_text()
+
+        registry_match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_registry\.py", rendered)
+        assert registry_match is not None
+        assert registry_match.group(1) == "111"
+
+        web_match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_web\.py", rendered)
+        assert web_match is not None
+        assert web_match.group(1) == "45"
