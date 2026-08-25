@@ -40,6 +40,12 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 - Actively maintained branches: `redhat-3.15` through `redhat-3.17`
 - Older branches (`redhat-3.12` through `redhat-3.14`) receive critical/security fixes only
 - When backporting, skip `redhat-3.18` and target only the branches older than master
+- CodeRabbit auto-review is intentionally scoped to `master` only — it is
+  not enabled for `redhat-*` branches. Backport/cherry-pick PRs carry code
+  already reviewed on `master`, so re-running review on the release branch
+  was evaluated and rejected as unnecessary noise (see PR #6894). Do not
+  re-propose adding `base_branches` for `redhat-*` in `.coderabbit.yaml`
+  without first revisiting this decision explicitly.
 
 ### Auth
 
