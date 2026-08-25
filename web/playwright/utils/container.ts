@@ -246,7 +246,9 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(
+              ' ',
+            )} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
@@ -646,6 +648,29 @@ ${
 
     fs.writeFileSync(path.join(chartDir, 'Chart.yaml'), chartYaml);
 
+    // Vendor a minimal stub subchart for each declared dependency. `helm
+    // package` fails with "found in Chart.yaml, but missing in charts/
+    // directory" unless every dependency exists under charts/, and the real
+    // dependency repositories are not reachable from CI.
+    if (chartMetadata?.dependencies?.length) {
+      const chartsDir = path.join(chartDir, 'charts');
+      fs.mkdirSync(chartsDir);
+      for (const dep of chartMetadata.dependencies) {
+        const depDir = path.join(chartsDir, dep.name);
+        fs.mkdirSync(path.join(depDir, 'templates'), {recursive: true});
+        // Build a concrete version that satisfies simple constraints like
+        // "2.x" or "^1.2.0" so `helm package` accepts the vendored subchart.
+        const match = dep.version.match(/(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+        const depVersion = match
+          ? `${match[1]}.${match[2] ?? '0'}.${match[3] ?? '0'}`
+          : '0.1.0';
+        fs.writeFileSync(
+          path.join(depDir, 'Chart.yaml'),
+          `apiVersion: v2\nname: ${dep.name}\ndescription: Stub dependency ${dep.name}\ntype: application\nversion: ${depVersion}\n`,
+        );
+      }
+    }
+
     // Create values.yaml
     const valuesYaml = `# Default values for ${repo}
 replicaCount: 1
@@ -717,9 +742,16 @@ Create a default fully qualified app name.
     // Package the chart
     await execAsync(`helm package ${chartDir}`, {cwd: tmpDir});
 
+    // Use a per-invocation registry config so parallel Playwright workers don't
+    // race on the shared default (~/.config/helm/registry/config.json). A
+    // concurrent login/logout there corrupts the stored credentials and makes
+    // the server reject otherwise-valid logins with "unauthorized: Invalid
+    // Username or Password".
+    const registryConfig = path.join(tmpDir, 'registry-config.json');
+
     // Login to registry
     await execAsync(
-      `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure`,
+      `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure --registry-config ${registryConfig}`,
     );
 
     // Push the chart (with retries for repo-init race)
@@ -729,7 +761,7 @@ Create a default fully qualified app name.
       `helm push ${path.join(
         tmpDir,
         packagedChart,
-      )} ${registryUrl}/${namespace} --insecure`,
+      )} ${registryUrl}/${namespace} --insecure --registry-config ${registryConfig}`,
     );
   } finally {
     // Cleanup temporary directory
