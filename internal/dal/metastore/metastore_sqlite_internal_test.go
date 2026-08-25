@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -194,29 +193,65 @@ func TestExpireActiveTagWaitsForUnusedLifetimeEnd(t *testing.T) {
 		}
 	})
 
-	t.Run("stops on cancellation after clock rollback", func(t *testing.T) {
-		const rollbackTag = "clock-rollback"
-		futureEnd := time.Now().Add(time.Hour).UnixMilli()
-		for _, lifetimeEnd := range []any{futureEnd, nil} {
-			_, err := db.ExecContext(ctx, `
-				INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
-				VALUES (?, ?, ?, ?, ?, ?)`,
-				rollbackTag, repoID, manifestID, futureEnd, lifetimeEnd, store.tagKindTag)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		waitTx, err := db.BeginTx(ctx, nil)
+	t.Run("deletes when clock rollback leaves active start occupied", func(t *testing.T) {
+		const rollbackTag = "occupied-active-start"
+		futureStart := time.Now().Add(time.Hour).UnixMilli()
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			rollbackTag, repoID, manifestID, futureStart-1, futureStart, store.tagKindTag)
 		if err != nil {
 			t.Fatal(err)
 		}
-		waitCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+		result, err := db.ExecContext(ctx, `
+			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+			VALUES (?, ?, ?, ?, NULL, ?)`,
+			rollbackTag, repoID, manifestID, futureStart, store.tagKindTag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		activeTagID, err := result.LastInsertId()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		deleteCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		_, err = expireActiveTag(waitCtx, daldb.New(waitTx), repoID, rollbackTag, futureEnd)
-		_ = waitTx.Rollback()
-		if !errors.Is(err, context.DeadlineExceeded) {
-			t.Fatalf("expireActiveTag error = %v, want context deadline exceeded", err)
+		if _, hasDeadline := deleteCtx.Deadline(); hasDeadline {
+			t.Fatal("DeleteTag context unexpectedly has a deadline")
+		}
+		done := make(chan error, 1)
+		go func() {
+			done <- store.DeleteTag(deleteCtx, repoID, rollbackTag)
+		}()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(time.Second):
+			cancel()
+			err := <-done
+			t.Fatalf("DeleteTag waited for the rolled-back clock; after cancellation it returned %v", err)
+		}
+
+		var gotEnd int64
+		if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = ?`, activeTagID).Scan(&gotEnd); err != nil {
+			t.Fatal(err)
+		}
+		if gotEnd <= futureStart {
+			t.Fatalf("lifetime_end_ms = %d, want value after occupied active start %d", gotEnd, futureStart)
+		}
+
+		var total, distinct int
+		if err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*), COUNT(DISTINCT lifetime_end_ms)
+			FROM tag
+			WHERE repository_id = ? AND name = ?`, repoID, rollbackTag).Scan(&total, &distinct); err != nil {
+			t.Fatal(err)
+		}
+		if total != 2 || distinct != total {
+			t.Fatalf("tag history rows = %d, distinct lifetime ends = %d", total, distinct)
 		}
 	})
 }

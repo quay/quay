@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -430,9 +431,9 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 }
 
 // expireActiveTag chooses an unused transition millisecond no earlier than the
-// active tag's lifetime start. It begins with requestedEnd, then re-samples the
-// wall clock after a collision so forward progress and clock rollback are both
-// handled without one rollback-sized wait.
+// active tag's lifetime start. After a collision it follows the wall clock when
+// possible, or advances logically when rollback leaves the clock behind the
+// active generation.
 // q must be transaction-bound so the reads and update cannot interleave with
 // another tag mutation.
 func expireActiveTag(ctx context.Context, q *daldb.Queries, repoID int64, tag string, requestedEnd int64) (int64, error) {
@@ -469,9 +470,16 @@ func expireActiveTag(ctx context.Context, q *daldb.Queries, repoID int64, tag st
 		}
 
 		for {
-			next := max(time.Now().UnixMilli(), activeStart)
-			if next != candidate {
-				candidate = next
+			now := time.Now().UnixMilli()
+			if now < activeStart {
+				if candidate == math.MaxInt64 {
+					return 0, fmt.Errorf("no lifetime end available after %d", candidate)
+				}
+				candidate++
+				break
+			}
+			if now != candidate {
+				candidate = now
 				break
 			}
 
