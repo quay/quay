@@ -76,13 +76,8 @@ func (q *Queries) GetActiveTagLifetimeStart(ctx context.Context, arg GetActiveTa
 const getTagsByRepository = `-- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag
-WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0
+WHERE repository_id = ? AND lifetime_end_ms IS NULL AND hidden = 0
 `
-
-type GetTagsByRepositoryParams struct {
-	RepositoryID  int64         `json:"repository_id"`
-	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
-}
 
 type GetTagsByRepositoryRow struct {
 	ID              int64         `json:"id"`
@@ -94,8 +89,8 @@ type GetTagsByRepositoryRow struct {
 	TagKindID       int64         `json:"tag_kind_id"`
 }
 
-func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByRepositoryParams) ([]GetTagsByRepositoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTagsByRepository, arg.RepositoryID, arg.LifetimeEndMs)
+func (q *Queries) GetTagsByRepository(ctx context.Context, repositoryID int64) ([]GetTagsByRepositoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTagsByRepository, repositoryID)
 	if err != nil {
 		return nil, err
 	}

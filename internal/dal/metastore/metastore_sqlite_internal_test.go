@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -36,6 +37,73 @@ func TestExpireActiveTagWaitsForUnusedLifetimeEnd(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	seedOccupiedActiveStart := func(t *testing.T, tag string) (int64, int64) {
+		t.Helper()
+		futureStart := time.Now().Add(time.Hour).UnixMilli()
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			tag, repoID, manifestID, futureStart-1, futureStart, store.tagKindTag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := db.ExecContext(ctx, `
+			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+			VALUES (?, ?, ?, ?, NULL, ?)`,
+			tag, repoID, manifestID, futureStart, store.tagKindTag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		activeTagID, err := result.LastInsertId()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return futureStart, activeTagID
+	}
+
+	assertCurrentTag := func(t *testing.T, tag string, expectedDigest digest.Digest, expiredTagID, previousStart int64) {
+		t.Helper()
+		gotDigest, err := store.GetTagDigest(ctx, repoID, tag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if gotDigest != expectedDigest {
+			t.Fatalf("tag digest = %s, want %s", gotDigest, expectedDigest)
+		}
+
+		tags, err := store.ListTags(ctx, repoID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var matches int
+		for _, listedTag := range tags {
+			if listedTag == tag {
+				matches++
+			}
+		}
+		if matches != 1 {
+			t.Fatalf("ListTags returned %d entries for %q, want 1: %v", matches, tag, tags)
+		}
+
+		var expiredEnd, activeStart int64
+		if err := db.QueryRowContext(ctx, `SELECT lifetime_end_ms FROM tag WHERE id = ?`, expiredTagID).Scan(&expiredEnd); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.QueryRowContext(ctx, `
+			SELECT lifetime_start_ms
+			FROM tag
+			WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL`,
+			repoID, tag).Scan(&activeStart); err != nil {
+			t.Fatal(err)
+		}
+		if expiredEnd != activeStart {
+			t.Fatalf("expired lifetime_end_ms = %d, replacement lifetime_start_ms = %d", expiredEnd, activeStart)
+		}
+		if expiredEnd <= previousStart {
+			t.Fatalf("transition = %d, want value after occupied active start %d", expiredEnd, previousStart)
+		}
 	}
 
 	const tag = "v1"
@@ -81,9 +149,6 @@ func TestExpireActiveTagWaitsForUnusedLifetimeEnd(t *testing.T) {
 	}
 	if gotEnd <= requestedEnd {
 		t.Fatalf("lifetime_end_ms = %d, want value after occupied millisecond %d", gotEnd, requestedEnd)
-	}
-	if now := time.Now().UnixMilli(); gotEnd > now {
-		t.Fatalf("lifetime_end_ms = %d, ahead of wall clock %d", gotEnd, now)
 	}
 
 	var total, distinct int
@@ -193,27 +258,43 @@ func TestExpireActiveTagWaitsForUnusedLifetimeEnd(t *testing.T) {
 		}
 	})
 
+	t.Run("PutTag replaces a rollback generation consistently", func(t *testing.T) {
+		const rollbackTag = "put-tag-after-rollback"
+		newDigest := digest.FromString("manifest-put-tag")
+		if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    newDigest,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		futureStart, activeTagID := seedOccupiedActiveStart(t, rollbackTag)
+
+		if _, err := store.PutTag(ctx, repoID, oci.TagRecord{Name: rollbackTag, Digest: newDigest}); err != nil {
+			t.Fatal(err)
+		}
+		assertCurrentTag(t, rollbackTag, newDigest, activeTagID, futureStart)
+	})
+
+	t.Run("PutManifest replaces a rollback generation consistently", func(t *testing.T) {
+		const rollbackTag = "put-manifest-after-rollback"
+		newDigest := digest.FromString("manifest-put-manifest")
+		futureStart, activeTagID := seedOccupiedActiveStart(t, rollbackTag)
+
+		if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    newDigest,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+			Tag:       rollbackTag,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		assertCurrentTag(t, rollbackTag, newDigest, activeTagID, futureStart)
+	})
+
 	t.Run("deletes when clock rollback leaves active start occupied", func(t *testing.T) {
 		const rollbackTag = "occupied-active-start"
-		futureStart := time.Now().Add(time.Hour).UnixMilli()
-		_, err := db.ExecContext(ctx, `
-			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			rollbackTag, repoID, manifestID, futureStart-1, futureStart, store.tagKindTag)
-		if err != nil {
-			t.Fatal(err)
-		}
-		result, err := db.ExecContext(ctx, `
-			INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
-			VALUES (?, ?, ?, ?, NULL, ?)`,
-			rollbackTag, repoID, manifestID, futureStart, store.tagKindTag)
-		if err != nil {
-			t.Fatal(err)
-		}
-		activeTagID, err := result.LastInsertId()
-		if err != nil {
-			t.Fatal(err)
-		}
+		futureStart, activeTagID := seedOccupiedActiveStart(t, rollbackTag)
 
 		deleteCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -241,6 +322,19 @@ func TestExpireActiveTagWaitsForUnusedLifetimeEnd(t *testing.T) {
 		}
 		if gotEnd <= futureStart {
 			t.Fatalf("lifetime_end_ms = %d, want value after occupied active start %d", gotEnd, futureStart)
+		}
+
+		if _, err := store.GetTagDigest(ctx, repoID, rollbackTag); !errors.Is(err, oci.ErrNotExist) {
+			t.Fatalf("GetTagDigest error = %v, want %v", err, oci.ErrNotExist)
+		}
+		tags, err := store.ListTags(ctx, repoID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, listedTag := range tags {
+			if listedTag == rollbackTag {
+				t.Fatalf("ListTags returned deleted tag %q: %v", rollbackTag, tags)
+			}
 		}
 
 		var total, distinct int

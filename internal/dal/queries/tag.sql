@@ -33,7 +33,7 @@ DELETE FROM tag WHERE manifest_id = ?;
 -- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag
-WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0;
+WHERE repository_id = ? AND lifetime_end_ms IS NULL AND hidden = 0;
 
 -- name: InsertHiddenTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)

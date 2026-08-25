@@ -1,9 +1,11 @@
 package mirrorregistry_test
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -103,15 +105,26 @@ func TestRegistryConcurrentSameTagPushes(t *testing.T) {
 	token, err := h.Registry().RequestToken(ctx, repository, "pull", "push")
 	require.NoError(t, err)
 
+	var baseManifest v1.Manifest
+	require.NoError(t, json.Unmarshal(image.manifest, &baseManifest))
+	manifests := make([][]byte, concurrentPushes)
+	for i := range concurrentPushes {
+		manifest := baseManifest
+		manifest.Annotations = map[string]string{"test.generation": strconv.Itoa(i)}
+		manifests[i], err = json.Marshal(manifest)
+		require.NoError(t, err)
+	}
+
 	start := make(chan struct{})
 	pushErrors := make(chan error, concurrentPushes)
 	var workers sync.WaitGroup
 	workers.Add(concurrentPushes)
-	for range concurrentPushes {
+	for i := range concurrentPushes {
+		manifest := manifests[i]
 		go func() {
 			defer workers.Done()
 			<-start
-			_, err := h.Registry().PutManifestWithToken(ctx, repository, "v1", image.manifest, v1.MediaTypeImageManifest, token)
+			_, err := h.Registry().PutManifestWithToken(ctx, repository, "v1", manifest, v1.MediaTypeImageManifest, token)
 			pushErrors <- err
 		}()
 	}
