@@ -952,3 +952,7 @@ class DefaultConfig(ImmutableConfig):
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
     OTEL_TRACING_EXCLUDED_URLS = None
+
+    # Feature flag: Enables cleanup of stale multipart uploads on the backend bucket. This feature flag
+    # is only applicable to S3 storage engines.
+    FEATURE_ENABLE_STALE_MPU_CLEANUP = True

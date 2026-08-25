@@ -922,6 +922,63 @@ class _CloudStorage(BaseStorageV2):
                                 "Blob not found in uploads folder with key %s", obj_info["Key"]
                             )
 
+    def clean_orphaned_multipart_uploads(self, deletion_date_threshold):
+        """
+        Lists and deletes all orphaned multipart uploads that are older than the provided threshold.
+        The threshold must be large enough so we don't clean up multipart uploads that are potentially
+        in progress.
+        """
+        self._initialize_cloud_conn()
+        paginator = self.get_cloud_conn().get_paginator("list_multipart_uploads")
+        deleted = 0
+
+        root_prefix = self._init_path()
+        if root_prefix and not root_prefix.endswith("/"):
+            root_prefix = root_prefix + "/"
+
+        page_iterator = paginator.paginate(Bucket=self._bucket_name, Prefix=root_prefix)
+        for page in page_iterator:
+            # check if there are any multipart uploads
+            if "Uploads" in page:
+                for upload in page["Uploads"]:
+                    # if the upload is older than the designated deletion time
+                    if upload["Initiated"] <= datetime.now(timezone.utc) - deletion_date_threshold:
+                        try:
+                            logger.info(
+                                "Aborting stale multipart upload: uploadid=%s, key=%s, initiated=%s",
+                                upload["UploadId"],
+                                upload["Key"],
+                                upload["Initiated"],
+                            )
+                            self.get_cloud_conn().abort_multipart_upload(
+                                Bucket=self._bucket_name,
+                                Key=upload["Key"],
+                                UploadId=upload["UploadId"],
+                            )
+                            logger.info(
+                                "Deleted stale multipart upload with upload id %s and key %s",
+                                upload["UploadId"],
+                                upload["Key"],
+                            )
+                            deleted = deleted + 1
+                        except botocore.exceptions.ClientError as s3r:
+                            if (
+                                s3r.response["Error"]["Code"]
+                                in ("NoSuchUpload",) + _MISSING_KEY_ERROR_CODES
+                            ):
+                                logger.debug(
+                                    "Multipart upload with upload id %s not found",
+                                    upload["UploadId"],
+                                )
+                            else:
+                                logger.exception(
+                                    "Got error when attempting to clean up stale multipart upload: key=%s, uploadid=%s, exception=%s",
+                                    upload["Key"],
+                                    upload["UploadId"],
+                                    str(s3r),
+                                )
+        return deleted
+
 
 class S3Storage(_CloudStorage):
     REGIONS = {
