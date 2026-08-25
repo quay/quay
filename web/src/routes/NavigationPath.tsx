@@ -153,7 +153,7 @@ function domainRoute(currentRoute, definedRoute) {
    ***/
   return (
     currentRoute.replace(
-      /\/(overview|organization|repository|signin)(?=\/|$).*/,
+      /\/(overview|organization|repository|signin|build|tag)(?=\/|$).*/,
       '',
     ) + definedRoute
   );
