@@ -126,14 +126,32 @@ CONFIG_SCHEMA = {
     "allOf": [
         {
             "if": {
-                "properties": {"FEATURE_PROGRAMMATIC_BOOTSTRAP": {"const": True}},
-                "required": ["FEATURE_PROGRAMMATIC_BOOTSTRAP"],
+                "anyOf": [
+                    {
+                        "properties": {"FEATURE_PROGRAMMATIC_BOOTSTRAP": {"const": True}},
+                        "required": ["FEATURE_PROGRAMMATIC_BOOTSTRAP"],
+                    },
+                    {
+                        "properties": {"FEATURE_KUBERNETES_SA_BOOTSTRAP": {"const": True}},
+                        "required": ["FEATURE_KUBERNETES_SA_BOOTSTRAP"],
+                    },
+                ]
             },
             "then": {
                 "required": ["BOOTSTRAP_TOKEN_OWNER"],
                 "properties": {"BOOTSTRAP_TOKEN_OWNER": {"type": "string", "minLength": 1}},
             },
-        }
+        },
+        {
+            "if": {
+                "properties": {"FEATURE_KUBERNETES_SA_BOOTSTRAP": {"const": True}},
+                "required": ["FEATURE_KUBERNETES_SA_BOOTSTRAP"],
+            },
+            "then": {
+                "required": ["KUBERNETES_SA_BOOTSTRAP_CONFIG"],
+                "properties": {"KUBERNETES_SA_BOOTSTRAP_CONFIG": {"type": "object"}},
+            },
+        },
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -1568,11 +1586,132 @@ CONFIG_SCHEMA = {
             "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
             "x-example": False,
         },
+        "FEATURE_KUBERNETES_SA_BOOTSTRAP": {
+            "type": "boolean",
+            "description": "Feature flag for exchanging Kubernetes ServiceAccount credentials for scoped Quay OAuth tokens. Defaults to False.",
+            "x-example": False,
+        },
+        "KUBERNETES_SA_BOOTSTRAP_CONFIG": {
+            "type": ["object", "null"],
+            "additionalProperties": False,
+            "required": ["ISSUERS", "AUTHORIZED_SUBJECTS"],
+            "properties": {
+                "REQUIRED_AUDIENCE": {
+                    "type": "string",
+                    "minLength": 1,
+                    "default": "quay-bootstrap",
+                    "description": "Audience required in Kubernetes ServiceAccount JWTs. Defaults to quay-bootstrap.",
+                    "x-example": "quay-bootstrap",
+                },
+                "ISSUERS": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": True,
+                    "description": "Trusted Kubernetes token issuers and their optional discovery configuration.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["ISSUER"],
+                        "properties": {
+                            "ISSUER": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^https://[^\s/:?#]+(?::[0-9]+)?(?:/[^\s?#]*)?$",
+                                "description": "Exact issuer expected in the ServiceAccount JWT iss claim.",
+                                "x-example": "https://kubernetes.default.svc",
+                            },
+                            "DISCOVERY_ENDPOINT": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^https://[^\s/:?#]+(?::[0-9]+)?(?:/[^\s?#]*)?$",
+                                "description": "Optional network endpoint for OIDC discovery when it differs from ISSUER.",
+                                "x-example": "https://api.cluster.example.com:6443",
+                            },
+                            "CA_CERT_PATH": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^/[^\x00]*$",
+                                "description": "Optional absolute path to a CA certificate used for discovery TLS verification.",
+                                "x-example": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                            },
+                            "BEARER_TOKEN_PATH": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^/[^\x00]*$",
+                                "description": "Optional absolute path to a bearer token used to authenticate discovery requests. The credential itself is not stored in configuration.",
+                                "x-example": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+                            },
+                        },
+                        "allOf": [
+                            {
+                                "if": {"required": ["BEARER_TOKEN_PATH"]},
+                                "then": {"required": ["CA_CERT_PATH"]},
+                            }
+                        ],
+                    },
+                },
+                "AUTHORIZED_SUBJECTS": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": True,
+                    "description": "Exact Kubernetes issuer and ServiceAccount subjects authorized to request bounded Quay scopes.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["ISSUER", "SUBJECT", "SCOPES"],
+                        "properties": {
+                            "ISSUER": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^https://[^\s/:?#]+(?::[0-9]+)?(?:/[^\s?#]*)?$",
+                            },
+                            "SUBJECT": {
+                                "type": "string",
+                                "pattern": (
+                                    r"^system:serviceaccount:"
+                                    r"[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?:"
+                                    r"[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$"
+                                ),
+                                "description": (
+                                    "Exact Kubernetes ServiceAccount JWT subject. The namespace and "
+                                    "ServiceAccount name segments must each be a valid Kubernetes "
+                                    "DNS-1123 label (lowercase alphanumeric characters or '-', starting "
+                                    "and ending with an alphanumeric character, up to 63 characters)."
+                                ),
+                                "x-example": "system:serviceaccount:quay-operator:controller-manager",
+                            },
+                            "SCOPES": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1024,
+                                "pattern": r"^(org:admin|repo:(admin|create|read|write)|super:user|user:(admin|read))( (org:admin|repo:(admin|create|read|write)|super:user|user:(admin|read)))*$",
+                                "description": "Space-separated Quay OAuth scopes this subject may request.",
+                                "x-example": "org:admin repo:create repo:read repo:write",
+                            },
+                        },
+                    },
+                },
+                "JWKS_CACHE_TTL_SECONDS": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 3600,
+                    "description": "JWKS cache lifetime in seconds. Defaults to 3600.",
+                    "x-example": 3600,
+                },
+                "BOOTSTRAP_TOKEN_MAX_TTL": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 86400,
+                    "description": "Maximum lifetime in seconds for OAuth tokens issued through workload identity exchange. Defaults to 86400.",
+                    "x-example": 86400,
+                },
+            },
+        },
         "BOOTSTRAP_TOKEN_OWNER": {
             "type": ["string", "null"],
             "minLength": 1,
             "maxLength": 255,
-            "description": "Username that owns the programmatic bootstrap OAuth application and tokens. Required when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled, and the user must also be listed in SUPER_USERS.",
+            "description": "Username that owns bootstrap OAuth applications and tokens. Required when programmatic or Kubernetes ServiceAccount bootstrap is enabled, and the user must also be listed in SUPER_USERS.",
             "x-example": "admin",
         },
         "BOOTSTRAP_TOKEN_PATH": {
@@ -2786,3 +2925,26 @@ CONFIG_SCHEMA = {
         "x-reference": None,
     },
 }
+
+
+def apply_kubernetes_sa_bootstrap_defaults(config_obj):
+    """
+    Materialize the documented defaults for KUBERNETES_SA_BOOTSTRAP_CONFIG's
+    optional nested fields.
+
+    jsonschema's `default` keyword is annotation-only: it does not fill in
+    missing values during validation. Administrators who omit REQUIRED_AUDIENCE,
+    JWKS_CACHE_TTL_SECONDS, or BOOTSTRAP_TOKEN_MAX_TTL from their config.yaml
+    would otherwise see those keys simply absent rather than defaulted, even
+    though the schema documentation states defaults apply. This normalizes the
+    loaded config in place so consumers can always rely on the three fields
+    being present whenever KUBERNETES_SA_BOOTSTRAP_CONFIG itself is set.
+    """
+    bootstrap_config = config_obj.get("KUBERNETES_SA_BOOTSTRAP_CONFIG")
+    if not isinstance(bootstrap_config, dict):
+        return
+
+    nested_properties = CONFIG_SCHEMA["properties"]["KUBERNETES_SA_BOOTSTRAP_CONFIG"]["properties"]
+    for field_name, field_schema in nested_properties.items():
+        if field_name not in bootstrap_config and "default" in field_schema:
+            bootstrap_config[field_name] = field_schema["default"]

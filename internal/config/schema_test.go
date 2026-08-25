@@ -36,6 +36,10 @@ var knownUnmapped = map[string]bool{
 	"ALLOW_PULLS_WITHOUT_STRICT_LOGGING": true,
 	"ALLOW_WITHOUT_STRICT_LOGGING":       true,
 
+	// Gunicorn worker tuning (PROJQUAY-12278)
+	"GUNICORN_REGISTRY_TIMEOUT": true,
+	"GUNICORN_WEB_TIMEOUT":      true,
+
 	// Storage extras
 	"FEATURE_PROXY_CACHE":               true,
 	"FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": true,
@@ -135,6 +139,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
 	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
+	"FEATURE_KUBERNETES_SA_BOOTSTRAP":               true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
 	"FEATURE_QUOTA_NOTIFICATIONS":                   true,
@@ -164,8 +169,9 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_USERNAME_CONFIRMATION":                 true,
 	"FEATURE_VERIFY_QUOTA":                          true,
 
-	// Programmatic bootstrap token config
+	// Bootstrap token config
 	"BOOTSTRAP_TOKEN_OWNER":            true,
+	"KUBERNETES_SA_BOOTSTRAP_CONFIG":   true,
 	"BOOTSTRAP_TOKEN_EXPIRATION":       true,
 	"BOOTSTRAP_TOKEN_PATH":             true,
 	"BOOTSTRAP_TOKEN_SCOPE":            true,
