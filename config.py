@@ -905,6 +905,12 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Controls programmatic bootstrap token provisioning.
     FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+
+    # Feature Flag: Controls Kubernetes ServiceAccount workload identity bootstrap.
+    FEATURE_KUBERNETES_SA_BOOTSTRAP = False
+    KUBERNETES_SA_BOOTSTRAP_CONFIG: Optional[Dict[str, Any]] = None
+
+    # Shared owner for bootstrap OAuth applications and tokens.
     BOOTSTRAP_TOKEN_OWNER: Optional[str] = None
     BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
     PROGRAMMATIC_TOKEN_K8S_SECRET: Optional[str] = None
