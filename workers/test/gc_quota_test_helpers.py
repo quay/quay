@@ -19,7 +19,7 @@ from data.model.namespacequota import (
     get_namespace_size,
 )
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.oci.tag import find_repository_with_garbage, get_tag, retarget_tag
+from data.model.oci.tag import find_repository_with_garbage, retarget_tag
 from data.model.organization import create_organization
 from data.model.quota import get_namespace_size as get_namespace_size_row
 from data.model.quota import get_repository_size as get_repository_size_row
@@ -85,7 +85,11 @@ def create_tag_for_manifest(repository, manifest, tag_name, expiration_ms=None):
     tag = retarget_tag(tag_name, manifest.id, raise_on_error=True)
     if expiration_ms is not None:
         Tag.update(lifetime_end_ms=expiration_ms).where(Tag.id == tag.id).execute()
-        tag = get_tag(repository.id, tag_name)
+        # Reflect the new expiration on the returned object directly. Reloading
+        # via get_tag would apply an alive-only filter and return None for a
+        # tag expired in the past, dropping the created tag's ID that callers
+        # rely on (e.g. when seeding an already-expired GC root).
+        tag.lifetime_end_ms = expiration_ms
     return tag
 
 
