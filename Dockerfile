@@ -19,7 +19,8 @@ ENV PYTHONUSERBASE=/app
 ENV TZ=UTC
 RUN set -ex\
 	; microdnf -y module enable nginx:1.24 \
-	; microdnf update -y \
+	; microdnf update -y --nobest \
+	; microdnf clean all \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
@@ -122,7 +123,8 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:8eb2830d0936237fc13a
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
-	; microdnf update -y \
+	; microdnf update -y --nobest \
+	; microdnf clean all \
 	; microdnf -y --setopt=tsflags=nodocs install tar gzip \
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
