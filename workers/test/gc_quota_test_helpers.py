@@ -19,7 +19,7 @@ from data.model.namespacequota import (
     get_namespace_size,
 )
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.oci.tag import find_repository_with_garbage, retarget_tag
+from data.model.oci.tag import find_repository_with_garbage, get_tag, retarget_tag
 from data.model.organization import create_organization
 from data.model.quota import get_namespace_size as get_namespace_size_row
 from data.model.quota import get_repository_size as get_repository_size_row
@@ -251,7 +251,11 @@ def expire_tag(repository, tag_name):
     try:
         past_time = int((time.time() - 3600) * 1000)  # 1 hour ago
 
-        target = Tag.select().where(Tag.repository == repository, Tag.name == tag_name).first()
+        # Resolve the *live* tag by name: after retarget_tag the repository can
+        # hold an expired historical row alongside the live row with the same
+        # name, and an unordered select could pick the historical one and expire
+        # the wrong manifest. get_tag applies the alive-only filter.
+        target = get_tag(repository.id, tag_name)
         if target is None:
             return False
 
