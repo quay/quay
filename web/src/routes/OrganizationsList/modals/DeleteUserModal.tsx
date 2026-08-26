@@ -1,5 +1,14 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {
+  Button,
+  Content,
+  Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useDeleteUser} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -65,11 +74,37 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
 
   return (
     <Modal
-      title="Delete User"
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title="Delete User" />
+      <ModalBody>
+        <Content component="p">
+          Are you sure you want to delete user <strong>{props.username}</strong>
+          ?
+        </Content>
+        <Alert
+          variant="warning"
+          title="Warning"
+          isInline
+          style={{marginTop: 16}}
+        >
+          This action cannot be undone. All repositories and data owned by this
+          user will be permanently deleted.
+        </Alert>
+        {error && (
+          <Alert
+            variant="danger"
+            title="Error"
+            isInline
+            style={{marginTop: 16}}
+          >
+            {error}
+          </Alert>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="delete"
           variant="danger"
@@ -78,24 +113,11 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
           isDisabled={isLoading}
         >
           Delete User
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Text>
-        Are you sure you want to delete user <strong>{props.username}</strong>?
-      </Text>
-      <Alert variant="warning" title="Warning" isInline style={{marginTop: 16}}>
-        This action cannot be undone. All repositories and data owned by this
-        user will be permanently deleted.
-      </Alert>
-      {error && (
-        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
-          {error}
-        </Alert>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

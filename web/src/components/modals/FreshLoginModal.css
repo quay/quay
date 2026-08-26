@@ -14,16 +14,16 @@
  * - Modal content: 1200
  */
 
-.fresh-login-modal.pf-v5-c-modal-box {
+.fresh-login-modal.pf-v6-c-modal-box {
   z-index: 1200;
 }
 
 /* Target the backdrop specifically for this modal */
-.pf-v5-c-backdrop:has(+ .fresh-login-modal) {
+.pf-v6-c-backdrop:has(+ .fresh-login-modal) {
   z-index: 1100;
 }
 
 /* Alternative selector for when the modal is inside the backdrop */
-.pf-v5-c-backdrop:has(.fresh-login-modal) {
+.pf-v6-c-backdrop:has(.fresh-login-modal) {
   z-index: 1100;
 }

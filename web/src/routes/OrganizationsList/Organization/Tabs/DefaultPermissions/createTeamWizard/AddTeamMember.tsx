@@ -1,9 +1,8 @@
 import {
   Button,
   PageSection,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {ITeamMember} from 'src/hooks/UseMembers';
@@ -19,6 +18,7 @@ import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAnd
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ToggleDrawer from 'src/components/ToggleDrawer';
+import {validateRobotName} from 'src/libs/utils';
 
 const memberAndRobotColNames = {
   teamMember: 'Team Member',
@@ -106,15 +106,13 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     }
   };
 
-  const validateRobotName = () => {
-    return /^[a-z][a-z0-9_]{1,254}$/.test(newRobotAccntName);
-  };
-
   const drawerPanelContent = (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Provide a name and description</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Provide a name and description
+        </Content>
+      </Content>
       <NameAndDescription
         name={newRobotAccntName}
         setName={setNewRobotAccntName}
@@ -123,15 +121,15 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
         nameLabel="Provide a name for your new robot account:"
         descriptionLabel="Provide an optional description for your new robot account:"
         helperText="Enter a description to provide extra information to your teammates about this new team account. Max length: 255"
-        nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
-        validateName={validateRobotName}
+        nameHelperText="Choose a name to inform your teammates about this robot account. Can contain lowercase letters, digits, and separators (period, hyphen, underscore) but must start and end with a letter or digit. 2-255 characters."
+        validateName={() => validateRobotName(newRobotAccntName)}
       />
       <div className="drawer-footer">
         <Button
           data-testid="create-robot-accnt-drawer-btn"
           variant="primary"
           onClick={onCreateRobotAccount}
-          isDisabled={!validateRobotName()}
+          isDisabled={!validateRobotName(newRobotAccntName)}
         >
           Add robot account
         </Button>
@@ -179,7 +177,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   }
 
   return (
-    <PageSection padding={{default: 'noPadding'}}>
+    <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
       <AddTeamToolbar
         orgName={props.orgName}
         allItems={props.tableItems}

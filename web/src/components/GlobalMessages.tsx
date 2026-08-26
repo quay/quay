@@ -6,6 +6,7 @@ import {
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import {useGlobalMessages} from 'src/hooks/UseGlobalMessages';
 import {IGlobalMessage} from 'src/resources/GlobalMessagesResource';
 
@@ -72,7 +73,7 @@ function GlobalMessage({message}: {message: IGlobalMessage}) {
     message.media_type === 'text/markdown' ? (
       <Markdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
           // Ensure links open in new tab for external URLs
           a: ({href, children, ...props}) => {

@@ -10,9 +10,8 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {useRecoilState} from 'recoil';
-import {searchTeamState} from 'src/atoms/TeamState';
 import React, {useEffect, useState} from 'react';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {FilterWithDropdown} from 'src/components/toolbar/FilterWithDropdown';
 import {formatDate} from 'src/libs/utils';
@@ -32,7 +31,10 @@ export default function TeamView(props: TeamViewProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [tableItems, setTableItems] = useState([]);
-  const [search, setSearch] = useRecoilState(searchTeamState);
+  const [search, setSearch] = useState<SearchState>({
+    query: '',
+    field: 'name',
+  });
   const [searchInputText, setSearchInputText] = useState('Search, create team');
 
   useEffect(() => {
@@ -81,7 +83,10 @@ export default function TeamView(props: TeamViewProps) {
   };
 
   return (
-    <PageSection {...(props.isWizardStep && {padding: {default: 'noPadding'}})}>
+    <PageSection
+      hasBodyWrapper={false}
+      {...(props.isWizardStep && {padding: {default: 'noPadding'}})}
+    >
       <Toolbar>
         <ToolbarContent>
           {props.showCheckbox ? (

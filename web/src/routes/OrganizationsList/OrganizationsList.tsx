@@ -2,12 +2,14 @@ import {
   Alert,
   Button,
   DropdownItem,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Title,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
@@ -77,13 +79,13 @@ function OrgListHeader({
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
+        <div className="co-m-nav-title--row pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
 
           {/* Registry Size Display - Inline with header for superusers */}
           {showRegistrySize && (
-            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+            <div className="pf-v6-u-font-size-sm pf-v6-u-mb-xs">
               <span>
                 Total Registry Size:{' '}
                 {registrySize
@@ -97,7 +99,7 @@ function OrgListHeader({
                 size="sm"
                 onClick={handleCalculateClick}
                 isDisabled={isQueuing}
-                className="pf-v5-u-ml-md"
+                className="pf-v6-u-ml-md"
               >
                 {isQueuing ? 'Calculating...' : 'Calculate'}
               </Button>
@@ -106,7 +108,7 @@ function OrgListHeader({
         </div>
       </PageSection>
       {isSuperUser && isExternalAuth && (
-        <PageSection variant={PageSectionVariants.light}>
+        <PageSection hasBodyWrapper={false}>
           <Alert
             variant="info"
             isInline
@@ -448,6 +450,8 @@ export default function OrganizationsList() {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state
   if (!loading && !organizationsTableDetails?.length) {
     return (
@@ -465,15 +469,21 @@ export default function OrganizationsList() {
         <Empty
           icon={CubesIcon}
           title="Collaborate and share projects across teams"
-          body="Create a shared space of public and private repositories for your developers to collaborate in. Organizations make it easy to add and manage people and permissions"
+          body={
+            isAuthenticated
+              ? 'Create a shared space of public and private repositories for your developers to collaborate in. Organizations make it easy to add and manage people and permissions'
+              : 'Sign in to create organizations and manage repositories.'
+          }
           button={
-            <ToolbarButton
-              id="create-organization-button"
-              buttonValue="Create Organization"
-              Modal={createOrgModal}
-              isModalOpen={isOrganizationModalOpen}
-              setModalOpen={setOrganizationModalOpen}
-            />
+            isAuthenticated ? (
+              <ToolbarButton
+                id="create-organization-button"
+                buttonValue="Create Organization"
+                Modal={createOrgModal}
+                isModalOpen={isOrganizationModalOpen}
+                setModalOpen={setOrganizationModalOpen}
+              />
+            ) : null
           }
         />
       </>
@@ -507,7 +517,7 @@ export default function OrganizationsList() {
         setError={setRegistryCalcErr}
       />
 
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <OrganizationToolBar
           search={search}
           setSearch={setSearch}
@@ -518,7 +528,7 @@ export default function OrganizationsList() {
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
           kebabItems={kebabItems}
-          selectedOrganization={selectedOrganization}
+          selectedOrganization={isAuthenticated ? selectedOrganization : []}
           deleteKebabIsOpen={deleteModalIsOpen}
           deleteModal={deleteModal}
           organizationsList={sortedOrgs}
@@ -530,11 +540,12 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
           isExternalAuth={!!isExternalAuth}
+          isAuthenticated={isAuthenticated}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {isAuthenticated && <Th />}
               <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
               </Th>
@@ -556,18 +567,19 @@ export default function OrganizationsList() {
           <Tbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
               <Tr key={org.name}>
-                {isOrgSelectable(org) ? (
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectOrganization(org, rowIndex, isSelecting),
-                      isSelected: isOrganizationSelected(org),
-                    }}
-                  />
-                ) : (
-                  <Td />
-                )}
+                {isAuthenticated &&
+                  (isOrgSelectable(org) ? (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectOrganization(org, rowIndex, isSelecting),
+                        isSelected: isOrganizationSelected(org),
+                      }}
+                    />
+                  ) : (
+                    <Td />
+                  ))}
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}
@@ -596,10 +608,17 @@ export default function OrganizationsList() {
       {/* Calculate Registry Size Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Confirm Registry Size Calculation"
         isOpen={isCalculateModalOpen}
         onClose={() => setCalculateModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Confirm Registry Size Calculation" />
+        <ModalBody>
+          <p>Are you sure you want to queue registry size calculation?</p>
+          <p style={{color: 'red', marginTop: '1em'}}>
+            This is a database intensive operation. Use with caution.
+          </p>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="primary"
@@ -607,20 +626,15 @@ export default function OrganizationsList() {
             isDisabled={isQueuing}
           >
             {isQueuing ? 'Queuing...' : 'Calculate'}
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setCalculateModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>Are you sure you want to queue registry size calculation?</p>
-        <p style={{color: 'red', marginTop: '1em'}}>
-          This is a database intensive operation. Use with caution.
-        </p>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

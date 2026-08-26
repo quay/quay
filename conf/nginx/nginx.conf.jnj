@@ -16,13 +16,26 @@ http {
 
     resolver 127.0.0.1:8053 valid=10s;
 
-    ssl_ciphers '{{ ssl_ciphers }}';
+    {% if ssl_ciphers %}ssl_ciphers '{{ ssl_ciphers }}';{% endif %}
+    {% if ssl_ciphersuites %}ssl_conf_command Ciphersuites {{ ssl_ciphersuites }};{% endif %}
     ssl_protocols {% for ssl_protocol in ssl_protocols %}{{ ssl_protocol }} {% endfor %};
     ssl_session_cache shared:SSL:60m;
     ssl_session_timeout 2h;
     ssl_session_tickets on;
     ssl_prefer_server_ciphers on;
     ssl_dhparam dhparams.pem;
+
+    # Map host headers to properly handle redirects when non-standard HTTP ports are used
+    map $http_host $safe_host {
+        default $http_host;
+        ""      $host;
+    }
+
+    # Trust load balancer protocol header
+    map $http_x_forwarded_proto $final_proto {
+        default {{ preferred_scheme }};
+        ~.+     $http_x_forwarded_proto;
+    }
 
     server {
         server_name _;
@@ -38,8 +51,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:8443 ssl http2 default;
         {% endif %}
-
-        ssl on;
 
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
@@ -67,8 +78,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:7443 ssl http2 default proxy_protocol;
         {% endif %}
-        
-        ssl on;
 
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
@@ -94,7 +103,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:55443 ssl http2 default;
         {% endif %}
-        ssl on;
 
         # Required for gRPC streaming of long running builds
         client_header_timeout 2h;
@@ -133,8 +141,6 @@ http {
         listen [::]:8443 ssl;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -155,8 +161,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:7443 ssl proxy_protocol;
         {% endif %}
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -176,6 +180,18 @@ http {
 
     resolver 127.0.0.1:8053 valid=10s;
 
+    # Map host headers to properly handle redirects when non-standard HTTP ports are used
+    map $http_host $safe_host {
+        default $http_host;
+        ""      $host;
+    }
+
+    # Trust load balancer protocol header
+    map $http_x_forwarded_proto $final_proto {
+        default {{ preferred_scheme }};
+        ~.+     $http_x_forwarded_proto;
+    }
+
     server {
         include server-base.conf;
 
@@ -185,6 +201,8 @@ http {
         {% if use_ipv6 %}
         listen [::]:8080 default;
         {% endif %}
+
+        real_ip_header X-Forwarded-For;
 
         access_log /var/log/nginx/access.log lb_logs;
     }

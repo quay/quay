@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions" # zizmor: ignore[dependabot-cooldown]
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "area/ci"
+    commit-message:
+      prefix: "NO-ISSUE: chore(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "docker/*"
+          - "github/*"

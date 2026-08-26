@@ -96,6 +96,16 @@ class PreOCIModel(SuperuserDataInterface):
         if build.resource_key is not None:
             url = userfiles.get_file_url(build.resource_key, get_request_ip(), requires_cors=True)
 
+        trigger = None
+        if build.trigger is not None:
+            trigger = BuildTrigger(
+                build.trigger,
+                _create_user(build.trigger.pull_robot),
+                can_read,
+                can_admin,
+                True,
+            )
+
         return RepositoryBuild(
             build.uuid,
             build.logs_archived,
@@ -105,13 +115,7 @@ class PreOCIModel(SuperuserDataInterface):
             can_read,
             _create_user(build.pull_robot),
             build.resource_key,
-            BuildTrigger(
-                build.trigger,
-                _create_user(build.trigger.pull_robot),
-                can_read,
-                can_admin,
-                True,
-            ),
+            trigger,
             build.display_name,
             build.started,
             job_config,

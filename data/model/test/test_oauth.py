@@ -1,7 +1,11 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 
 from auth.scopes import READ_REPO
 from data import model
+from data.database import LogEntryKind, OAuthAccessToken
 from data.model.oauth import DatabaseAuthorizationProvider
 from test.fixtures import *
 
@@ -21,6 +25,393 @@ def setup(num_assignments=0):
         application, user, REDIRECT_URI, READ_REPO.scope, "token"
     )
     return (application, token_assignment, user, org)
+
+
+def create_access_token_for_last_accessed_test(application_name, expires_at):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, application_name, "", "")
+    token, access_token = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        READ_REPO.scope,
+        "Bearer",
+        3600,
+    )
+    (
+        OAuthAccessToken.update(expires_at=expires_at)
+        .where(OAuthAccessToken.id == token.id)
+        .execute()
+    )
+    token.expires_at = expires_at
+    return token, access_token
+
+
+def test_oauth_access_token_metadata_fields_are_nullable():
+    assert OAuthAccessToken._meta.fields["created"].null is True
+    assert OAuthAccessToken._meta.fields["created"].default == datetime.now
+    assert OAuthAccessToken._meta.fields["last_accessed"].null is True
+    assert OAuthAccessToken._meta.fields["display_name"].null is True
+
+
+def test_oauth_access_token_last_accessed_indexed_by_application():
+    assert (("application", "last_accessed"), False) in OAuthAccessToken._meta.indexes
+
+
+def test_oauth_api_token_log_kinds_seeded(initialized_db):
+    expected_log_kinds = {"create_oauth_api_token", "revoke_oauth_api_token"}
+    found_log_kinds = {
+        kind.name for kind in LogEntryKind.select().where(LogEntryKind.name << expected_log_kinds)
+    }
+    assert found_log_kinds == expected_log_kinds
+
+
+def test_oauth_access_token_created_defaults_to_now(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "metadata-defaults", "", "")
+
+    before = datetime.now()
+    token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        READ_REPO.scope,
+        "Bearer",
+        3600,
+    )
+    after = datetime.now()
+
+    assert token.last_accessed is None
+    assert before <= token.created <= after
+
+
+def test_create_oauth_api_token_populates_fields(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "api-token-fields", "", "")
+
+    token, access_token = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:read",
+        expiration_seconds=3600,
+    )
+
+    assert token.authorized_user == owner
+    assert token.scope == "repo:read"
+    assert token.token_type == "Bearer"
+    assert token.last_accessed is None
+    assert token.display_name is None
+    assert access_token
+    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+
+def test_create_oauth_api_token_persists_display_name_without_affecting_secret(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "api-token-display-name", "", "")
+
+    token, access_token = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:read",
+        display_name="Release automation",
+    )
+
+    assert token.display_name == "Release automation"
+    assert token.token_name != token.display_name
+    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+
+def test_create_oauth_api_token_allows_duplicate_display_names(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "duplicate-token-display-name", "", "")
+
+    token_one, _ = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:read",
+        display_name="Shared label",
+    )
+    token_two, _ = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:write",
+        display_name="Shared label",
+    )
+
+    assert token_one.uuid != token_two.uuid
+    assert token_one.display_name == "Shared label"
+    assert token_two.display_name == "Shared label"
+
+
+def test_count_active_tokens_excludes_expired(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "active-token-count", "", "")
+
+    model.oauth.create_oauth_api_token(application, owner, "repo:read", expiration_seconds=3600)
+    expired, _ = model.oauth.create_oauth_api_token(
+        application,
+        owner,
+        "repo:write",
+        expiration_seconds=1,
+    )
+    expired.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    expired.save()
+
+    assert model.oauth.count_active_tokens(application) == 1
+
+
+def test_create_oauth_api_token_under_limit_enforces_configured_limit(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "limited-token-create", "", "")
+
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": 1},
+        clear=False,
+    ):
+        token, access_token = model.oauth.create_oauth_api_token_under_limit(
+            application,
+            owner,
+            "repo:read",
+        )
+
+        assert token.application == application
+        assert token.authorized_user == owner
+        assert token.scope == "repo:read"
+        assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+        with pytest.raises(model.oauth.TokenLimitExceeded) as exc_info:
+            model.oauth.create_oauth_api_token_under_limit(
+                application,
+                owner,
+                "repo:read",
+            )
+
+    assert exc_info.value.max_active_tokens == 1
+
+
+def test_create_oauth_api_token_under_limit_allows_multiple_tokens_when_unconfigured(
+    initialized_db,
+):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "unlimited-token-create", "", "")
+
+    with patch.dict(model.oauth.config.app_config, {}, clear=True):
+        token_one, _ = model.oauth.create_oauth_api_token_under_limit(
+            application,
+            owner,
+            "repo:read",
+        )
+        token_two, _ = model.oauth.create_oauth_api_token_under_limit(
+            application,
+            owner,
+            "repo:read",
+        )
+
+    assert token_one.uuid != token_two.uuid
+    assert model.oauth.count_active_tokens(application) == 2
+
+
+def test_list_application_tokens_excludes_expired_tokens(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "active-token-list", "", "")
+
+    active_token, _ = model.oauth.create_oauth_api_token(application, owner, "repo:read")
+    expired_token, _ = model.oauth.create_oauth_api_token(application, owner, "repo:write")
+    expired_token.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    expired_token.save()
+
+    tokens, next_page = model.oauth.list_application_tokens(application)
+
+    assert {token.uuid for token in tokens} == {active_token.uuid}
+    assert next_page is None
+
+
+def test_list_application_tokens_paginates_and_excludes_other_apps(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "paginated-token-list", "", "")
+    other_application = model.oauth.create_application(owner, "other-token-list", "", "")
+
+    token_one, _ = model.oauth.create_oauth_api_token(application, owner, "repo:read")
+    token_two, _ = model.oauth.create_oauth_api_token(application, owner, "repo:write")
+    other_token, _ = model.oauth.create_oauth_api_token(other_application, owner, "repo:admin")
+
+    first_page, next_page = model.oauth.list_application_tokens(application, limit=1)
+    second_page, final_page = model.oauth.list_application_tokens(
+        application,
+        page_token=next_page,
+        limit=1,
+    )
+
+    listed_uuids = {first_page[0].uuid, second_page[0].uuid}
+    assert listed_uuids == {token_one.uuid, token_two.uuid}
+    assert other_token.uuid not in listed_uuids
+    assert final_page is None
+
+
+def test_delete_application_token_invalidates_token(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "delete-api-token", "", "")
+
+    token, access_token = model.oauth.create_oauth_api_token(application, owner, "repo:read")
+
+    assert model.oauth.delete_application_token(application, token.uuid) is True
+    assert model.oauth.lookup_access_token_by_uuid(token.uuid) is None
+    assert model.oauth.validate_access_token(access_token) is None
+
+
+def test_delete_application_token_rejects_cross_application_uuid(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "delete-api-token-owner", "", "")
+    other_application = model.oauth.create_application(owner, "delete-api-token-other", "", "")
+
+    other_token, _ = model.oauth.create_oauth_api_token(other_application, owner, "repo:read")
+
+    assert model.oauth.delete_application_token(application, other_token.uuid) is False
+    assert model.oauth.lookup_access_token_by_uuid(other_token.uuid) is not None
+
+
+def test_delete_application_token_returns_false_for_missing_uuid(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "delete-api-token-missing", "", "")
+
+    assert (
+        model.oauth.delete_application_token(
+            application,
+            "00000000-0000-0000-0000-000000000000",
+        )
+        is False
+    )
+
+
+def test_validate_token_display_name():
+    assert model.oauth.validate_token_display_name("  Release automation  ") == "Release automation"
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name(123)
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name("   ")
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_token_display_name(
+            "n" * (model.oauth.MAX_TOKEN_DISPLAY_NAME_LENGTH + 1)
+        )
+
+
+def test_normalize_scope_and_validate_expiration():
+    assert model.oauth.normalize_scope("repo:read, repo:write repo:read") == "repo:read repo:write"
+    assert model.oauth.validate_expiration(3600.5) == 3600
+    assert model.oauth.validate_expiration(0.5) == 1
+    assert (
+        model.oauth.validate_expiration(model.oauth.MAX_TOKEN_EXPIRATION_SECONDS + 1)
+        == model.oauth.MAX_TOKEN_EXPIRATION_SECONDS
+    )
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(0)
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(True)
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(float("inf"))
+
+    with pytest.raises(ValueError):
+        model.oauth.validate_expiration(float("nan"))
+
+
+def test_validate_access_token_updates_last_accessed_for_active_token(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-active",
+        now + timedelta(hours=1),
+    )
+
+    with patch("data.model.oauth.datetime") as mock_datetime:
+        mock_datetime.now.return_value = now
+        found = model.oauth.validate_access_token(access_token)
+
+    assert found.id == token.id
+    assert found.last_accessed == now
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == now
+
+
+def test_validate_access_token_does_not_update_expired_token(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-expired",
+        now - timedelta(seconds=1),
+    )
+
+    with patch("data.model.oauth.datetime") as mock_datetime:
+        mock_datetime.now.return_value = now
+        found = model.oauth.validate_access_token(access_token)
+
+    assert found.id == token.id
+    assert found.last_accessed is None
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed is None
+
+
+def test_validate_access_token_does_not_update_invalid_suffix(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-invalid-suffix",
+        now + timedelta(hours=1),
+    )
+    prefix_length = model.oauth.ACCESS_TOKEN_PREFIX_LENGTH
+    replacement = "x" if access_token[prefix_length] != "x" else "y"
+    invalid_access_token = (
+        access_token[:prefix_length] + replacement + access_token[prefix_length + 1 :]
+    )
+
+    assert model.oauth.validate_access_token(invalid_access_token) is None
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed is None
+
+
+def test_validate_access_token_honors_oauth_last_accessed_debounce(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    previous = now - timedelta(seconds=30)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-debounce",
+        now + timedelta(hours=1),
+    )
+    (
+        OAuthAccessToken.update(last_accessed=previous)
+        .where(OAuthAccessToken.id == token.id)
+        .execute()
+    )
+    token.last_accessed = previous
+
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": 60},
+        clear=False,
+    ):
+        with patch("data.model.oauth.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
+            found = model.oauth.validate_access_token(access_token)
+
+    assert found.last_accessed == previous
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == previous
+
+
+def test_validate_access_token_ignores_user_last_accessed_feature_flag(initialized_db):
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    token, access_token = create_access_token_for_last_accessed_test(
+        "last-accessed-user-feature-disabled",
+        now + timedelta(hours=1),
+    )
+
+    with patch.dict(
+        model.oauth.config.app_config,
+        {"FEATURE_USER_LAST_ACCESSED": False},
+        clear=False,
+    ):
+        with patch("data.model.oauth.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
+            found = model.oauth.validate_access_token(access_token)
+
+    assert found.last_accessed == now
+    assert OAuthAccessToken.get_by_id(token.id).last_accessed == now
 
 
 def test_get_token_response_with_assignment_id(initialized_db):
@@ -309,3 +700,41 @@ def test_validate_redirect_uri_blocks_path_prefix_mismatch(initialized_db):
         # Path that doesn't match configured prefix
         malicious_uri_2 = "http://foo/ba"
         assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_delete_bootstrap_tokens_keeps_requested_token_and_unmarked_tokens(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application("cleanup-bootstrap", owner)
+    keep_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    stale_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:write")
+    unmarked_token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        "repo:read",
+        "Bearer",
+        3600,
+    )
+
+    model.oauth.delete_bootstrap_tokens(application, keep_token_id=keep_token.id)
+
+    assert model.oauth.lookup_access_token_by_uuid(keep_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(stale_token.uuid) is None
+    assert model.oauth.lookup_access_token_by_uuid(unmarked_token.uuid) is not None
+
+
+def test_delete_bootstrap_tokens_noops_when_only_kept_token_exists(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application("cleanup-bootstrap", owner)
+    keep_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    unmarked_token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        "repo:read",
+        "Bearer",
+        3600,
+    )
+
+    model.oauth.delete_bootstrap_tokens(application, keep_token_id=keep_token.id)
+
+    assert model.oauth.lookup_access_token_by_uuid(keep_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(unmarked_token.uuid) is not None

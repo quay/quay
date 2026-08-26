@@ -84,7 +84,13 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_and_retarget_tag(
-        self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        model_cache=None,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -96,6 +102,9 @@ class RegistryDataInterface(object):
         method will fail and return None.
 
         Returns a reference to the (created manifest, tag) or (None, None) on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
@@ -242,12 +251,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def delete_tags_for_manifest(self, manifest):
+    def delete_tags_for_manifest(self, model_cache, manifest):
         """
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags deleted, if any. Returns None on error.
+        Returns the tags deleted, if any. Raises ImmutableTagException if any tag is immutable.
         """
 
     @abstractmethod
@@ -401,19 +410,15 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage
+        self, repository_ref, manifest_interface_instance, expiration_sec, storage, model_cache=None
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
-        """
 
-    @abstractmethod
-    def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """
-        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
-        the list could not be loaded.
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod

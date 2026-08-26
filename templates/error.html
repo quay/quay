@@ -3,9 +3,9 @@
     {% block title %}
 
     {% endblock %}
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.no-icons.min.css">
-    <link href='//fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>
+    {% for style_url in external_styles %}
+      <link rel="stylesheet" href="{{ style_url }}" type="text/css">
+    {% endfor %}
     <style type="text/css">
       .ship-header {
         width: 100%;

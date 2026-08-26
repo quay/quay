@@ -1,4 +1,12 @@
-import {Modal, ModalVariant, Button, TextInput} from '@patternfly/react-core';
+import {
+  Button,
+  TextInput,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useState, useEffect} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -63,10 +71,23 @@ export function GenerateEncryptedPassword(props: ConfirmationModalProps) {
   return (
     <Modal
       variant={ModalVariant.small}
-      title={props.title}
       isOpen={props.modalOpen}
       onClose={handleClose}
-      actions={[
+    >
+      <ModalHeader title={props.title} />
+      <ModalBody>
+        <FormError message={err} setErr={setErr} />
+        <TextInput
+          id="delete-confirmation-input"
+          value={password}
+          type="password"
+          onChange={(_, value) => setPassword(value)}
+          aria-label="text input example"
+          label="Password"
+        />
+        Please enter your password in order to generate
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -74,22 +95,11 @@ export function GenerateEncryptedPassword(props: ConfirmationModalProps) {
           id="submit"
         >
           {props.buttonText}
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <FormError message={err} setErr={setErr} />
-      <TextInput
-        id="delete-confirmation-input"
-        value={password}
-        type="password"
-        onChange={(_, value) => setPassword(value)}
-        aria-label="text input example"
-        label="Password"
-      />
-      Please enter your password in order to generate
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

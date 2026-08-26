@@ -3,6 +3,9 @@ import {
   AlertActionCloseButton,
   Button,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
@@ -29,11 +32,41 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
     <>
       <Modal
         variant={ModalVariant.small}
-        title="Delete Repository?"
         id="delete-repository-modal"
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Delete Repository?" />
+        <ModalBody>
+          <Conditional if={isError}>
+            <Alert
+              isInline
+              variant="danger"
+              title="Unable to delete repository"
+              actionClose={
+                <AlertActionCloseButton onClose={() => setIsError(false)} />
+              }
+            />
+          </Conditional>
+          <Alert
+            isInline
+            variant="danger"
+            title={`You are requesting to delete the repository ${org}/${repo}. This action is non-reversable.`}
+            style={{marginBottom: '1em'}}
+          />
+          <div>
+            You must type {org}/{repo} below to confirm deletion:
+          </div>
+          <TextInput
+            value={repoNameInput}
+            type="text"
+            onChange={(_event, value) => setRepoNameInput(value.trim())}
+            aria-label="repo-delete-name-input"
+            placeholder="Enter repository here"
+            data-testid="delete-repository-confirm-input"
+          />
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="danger"
@@ -42,7 +75,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
             onClick={() => deleteRepositories([{namespace: org, name: repo}])}
           >
             Delete
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
@@ -52,36 +85,8 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
             }}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Conditional if={isError}>
-          <Alert
-            isInline
-            variant="danger"
-            title="Unable to delete repository"
-            actionClose={
-              <AlertActionCloseButton onClose={() => setIsError(false)} />
-            }
-          />
-        </Conditional>
-        <Alert
-          isInline
-          variant="danger"
-          title={`You are requesting to delete the repository ${org}/${repo}. This action is non-reversable.`}
-          style={{marginBottom: '1em'}}
-        />
-        <div>
-          You must type {org}/{repo} below to confirm deletion:
-        </div>
-        <TextInput
-          value={repoNameInput}
-          type="text"
-          onChange={(_event, value) => setRepoNameInput(value.trim())}
-          aria-label="repo-delete-name-input"
-          placeholder="Enter repository here"
-          data-testid="delete-repository-confirm-input"
-        />
+          </Button>
+        </ModalFooter>
       </Modal>
       <Alert
         isInline

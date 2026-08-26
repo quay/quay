@@ -31,3 +31,15 @@ def when_ready(server):
     logger.debug(
         "Starting secscan gunicorn with %s workers and %s worker class", workers, worker_class
     )
+
+
+def post_fork(server, worker):
+    if os.getenv("QUAY_HOTRELOAD", "false") == "true":
+        return
+
+    import features
+
+    if features.OTEL_TRACING:
+        from util.metrics.otel import post_fork_init
+
+        post_fork_init()

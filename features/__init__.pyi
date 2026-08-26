@@ -46,6 +46,9 @@ BUILD_SUPPORT: FeatureNameValue
 # Feature Flag: Whether emails are enabled.
 MAILING: FeatureNameValue
 
+# Feature Flag: Whether organizations can share email addresses with other users/orgs.
+ORG_SHARED_EMAIL: FeatureNameValue
+
 # Feature Flag: Whether users can be created (by non-super users).
 USER_CREATION: FeatureNameValue
 
@@ -192,6 +195,7 @@ SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX: FeatureNameValue
 EXTENDED_REPOSITORY_NAMES: FeatureNameValue
 
 QUOTA_MANAGEMENT: FeatureNameValue
+QUOTA_NOTIFICATIONS: FeatureNameValue
 EDIT_QUOTA: FeatureNameValue
 
 IMAGE_PULL_STATS: FeatureNameValue
@@ -205,6 +209,8 @@ PROXY_CACHE: FeatureNameValue
 PROXY_CACHE_BLOB_DOWNLOAD: FeatureNameValue
 
 RESTRICTED_USERS: FeatureNameValue
+
+SPAM_DETECTION: FeatureNameValue
 
 # Feature Flag: If set to true, enables reconciler for RH marketplace
 ENTITLEMENT_RECONCILIATION: FeatureNameValue
@@ -230,3 +236,6 @@ IMAGE_EXPIRY_TRIGGER: FeatureNameValue
 UI_MODELCARD: FeatureNameValue
 
 OTEL_TRACING: FeatureNameValue
+
+# Feature Flag: If set to true, enables programmatic bootstrap token provisioning.
+PROGRAMMATIC_BOOTSTRAP: FeatureNameValue

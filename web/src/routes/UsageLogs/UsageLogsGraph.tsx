@@ -5,14 +5,13 @@ import {
   ChartLegend,
   ChartGroup,
   ChartVoronoiContainer,
-} from '@patternfly/react-charts';
-import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
+} from '@patternfly/react-charts/victory';
+import {getAggregateLogs, LogsUnavailable} from 'src/hooks/UseUsageLogs';
 
 import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
-import {AxiosError} from 'axios';
 
 import './css/UsageLogs.scss';
 
@@ -24,8 +23,10 @@ interface UsageLogsGraphProps {
   type: string;
   isSuperuser?: boolean;
   isHidden?: boolean;
+  enabled?: boolean;
 }
 
+/** Renders aggregate usage log data as a bar chart with a scrollable legend below the SVG. */
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   // D3 Category20 colors (same as Angular)
   const d3Category20Colors = [
@@ -54,10 +55,9 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
-    error: fetchError,
     isLoading: loadingAggregateLogs,
-  } = useQuery(
-    [
+  } = useQuery({
+    queryKey: [
       'usageLogs',
       props.starttime,
       props.endtime,
@@ -68,7 +68,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         isSuperuser: props.isSuperuser,
       },
     ],
-    async () => {
+    queryFn: async () => {
       return await getAggregateLogs(
         props.org,
         props.repo,
@@ -77,23 +77,20 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         props.isSuperuser,
       );
     },
-  );
+    enabled: props.enabled !== false,
+  });
 
   // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;
 
   // tslint:disable-next-line:curly
   if (errorFetchingLogs) {
-    // Check if this is a 501 NOT IMPLEMENTED error from Splunk
-    if (
-      fetchError instanceof AxiosError &&
-      fetchError.response?.status === 501
-    ) {
-      const errorMessage =
-        fetchError.response?.data?.message || 'Unable to get logs';
-      return <RequestError message={errorMessage} title="" />;
-    }
     return <RequestError message="Unable to get logs" />;
+  }
+
+  // Hide chart when log viewing is unavailable (e.g. Splunk HEC without search_token)
+  if (aggregateLogs && (aggregateLogs as LogsUnavailable).unavailable) {
+    return null;
   }
 
   let maxRange = 0;
@@ -153,7 +150,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     // tslint:disable-next-line:curly
   } else
     return (
-      <Flex grow={{default: 'grow'}}>
+      <Flex grow={{default: 'grow'}} data-testid="usage-logs-chart">
         <FlexItem>
           <Chart
             key={props.starttime + props.endtime}
@@ -167,25 +164,12 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
               x: [new Date(props.starttime), new Date(props.endtime)],
               y: [0, maxRange],
             }}
-            legendAllowWrap
-            legendComponent={
-              <ChartLegend
-                data={getLegendData()}
-                itemsPerRow={6}
-                style={{
-                  labels: {fontSize: 11},
-                }}
-              />
-            }
-            // @ts-expect-error PatternFly's type definitions are incomplete, but "top" works in practice
-            legendPosition="top"
-            legendOrientation="horizontal"
             name="usage-logs-graph"
             padding={{
               bottom: 50,
               left: 80,
               right: 50,
-              top: 120, // More space for legend above chart
+              top: 50,
             }}
             domainPadding={{x: 5 * Object.keys(logData).length}}
             height={500}
@@ -210,6 +194,15 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
               ))}
             </ChartGroup>
           </Chart>
+          <div className="usage-logs-legend-container">
+            <ChartLegend
+              data={getLegendData()}
+              itemsPerRow={6}
+              orientation="horizontal"
+              style={{labels: {fontSize: 11}}}
+              width={1200}
+            />
+          </div>
         </FlexItem>
       </Flex>
     );

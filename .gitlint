@@ -1,0 +1,38 @@
+# Commit-message lint rules for Project Quay
+#
+# CI enforces a PR-title regex via the conventional-commit-checker action
+# (see .github/workflows/ci-lint.yaml).  Because the PR title is derived
+# from the commit subject, validating the subject here catches format
+# errors before they reach CI.
+#
+# Usage:
+#   - fullsend agents: gitlint is installed in the sandbox image and agents
+#     run `gitlint --commit HEAD` to validate each commit before pushing.
+#   - Human contributors: run `gitlint` locally to catch format errors
+#     before pushing.
+#
+# Accepted subject formats:
+#   PROJQUAY-12345: fix(scope): description
+#   QUAYIO-12345: feat: description
+#   NO-ISSUE: docs(agents): add contributing guide
+#   [redhat-3.12] PROJQUAY-12345: fix(api): backport pagination fix
+
+[general]
+# Ignore merge commits and reverts — they have auto-generated subjects.
+ignore-merge-commits=true
+ignore-revert-commits=true
+regex-style-search=true
+
+[title-max-length]
+line-length=120
+
+[title-match-regex]
+# Must match the CI regex in .github/workflows/ci-lint.yaml exactly.
+regex=^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$
+
+[body-max-line-length]
+line-length=120
+
+[ignore-body-lines]
+# Allow long URLs and signed-off-by lines in the body.
+regex=(^https?://|^Signed-off-by:)

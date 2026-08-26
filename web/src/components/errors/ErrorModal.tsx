@@ -1,4 +1,9 @@
-import {Modal, ModalVariant} from '@patternfly/react-core';
+import {
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+} from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 
 export default function ErrorModal(props: ErrorModalProps) {
@@ -15,13 +20,12 @@ export default function ErrorModal(props: ErrorModalProps) {
   return (
     <Modal
       variant={ModalVariant.small}
-      position="top"
       aria-label="error modal"
-      title={props.title}
       isOpen={props.error != null}
       onClose={() => props.setError(null)}
     >
-      {err}
+      <ModalHeader title={props.title} />
+      <ModalBody>{err}</ModalBody>
     </Modal>
   );
 }

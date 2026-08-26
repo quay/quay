@@ -1,0 +1,11 @@
+// non-scrollable widgets using flex
+.landing-quay, [class*="landing-landing-./QuayWidget"] {
+  display: flex;
+  overflow: hidden;
+  a {
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

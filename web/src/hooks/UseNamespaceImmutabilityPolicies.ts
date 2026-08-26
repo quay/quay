@@ -14,6 +14,7 @@ export function useNamespaceImmutabilityPolicies(
   const {
     data: nsPolicies,
     isLoading,
+    isError,
     error,
     isSuccess,
     dataUpdatedAt,
@@ -27,6 +28,7 @@ export function useNamespaceImmutabilityPolicies(
 
   return {
     error,
+    isError,
     isSuccess,
     isLoading,
     dataUpdatedAt,

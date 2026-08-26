@@ -80,6 +80,18 @@ db_close_calls = Counter(
     "number of close() calls made to db",
 )
 
+ui_page_views = Counter(
+    "quay_ui_page_views_total",
+    "Total page views by UI type",
+    labelnames=["ui"],
+)
+
+spam_ingress_decisions = Counter(
+    "quay_spam_ingress_decisions_total",
+    "Repository description spam ingress decisions",
+    labelnames=["action", "outcome"],
+)
+
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
@@ -124,6 +136,36 @@ secscan_result_duration = Histogram(
     "quay_secscan_result_duration_seconds",
     "how long it takes to receive scan results after pushing an image",
     buckets=SECSCAN_RESULT_BUCKETS,
+)
+
+secscan_v2_manifests_claimed = Histogram(
+    "quay_secscan_v2_manifests_claimed_per_cycle",
+    "number of manifests claimed per indexing cycle by the V2 security worker",
+    buckets=(0, 1, 5, 10, 25, 50, 100, 250, INF),
+)
+
+secscan_v2_scan_duration = Histogram(
+    "quay_secscan_v2_scan_duration_seconds",
+    "duration of a single manifest scan (Clair API call) by the V2 security worker",
+    buckets=(0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, INF),
+)
+
+secscan_v2_scan_result = Counter(
+    "quay_secscan_v2_scan_result_total",
+    "count of scan results by outcome for the V2 security worker",
+    labelnames=["result"],
+)
+
+secscan_v2_cycle_duration = Histogram(
+    "quay_secscan_v2_cycle_duration_seconds",
+    "duration of a complete V2 security worker indexing cycle",
+    buckets=(1, 5, 10, 30, 60, 120, 300, 600, INF),
+)
+
+secscan_v2_claim_status = Counter(
+    "quay_secscan_v2_claim_status_total",
+    "manifests claimed from MSS batch by original index status",
+    labelnames=["status"],
 )
 
 

@@ -6,11 +6,11 @@ AI-optimized guide for working with Project Quay container registry.
 
 Enterprise container registry supporting Docker Registry Protocol v2, OCI spec v1.1. Provides authentication, ACLs, team management, geo-replicated storage, and security scanning via Clair.
 
-**Stack:** Python 3.12, Flask, SQLAlchemy, PostgreSQL, Redis, Alembic migrations
+**Stack:** Python 3.12, Flask, Peewee ORM, PostgreSQL, Redis, Alembic migrations (via SQLAlchemy bridge)
 
 **Frontend:** Legacy Angular (`static/js/`) + New React/PatternFly (`web/`) - see `web/AGENTS.md` for React details
 
-**Config:** YAML at `conf/stack/config.yaml` (local dev), validated via JSON Schema
+**Config:** YAML at `local-dev/stack/config.yaml` (host) / `conf/stack/config.yaml` (container), validated via JSON Schema
 
 ## Quick Commands
 
@@ -35,7 +35,8 @@ make types-test                      # Type checking (mypy)
 
 - `endpoints/api/` - REST API v1 (Flask)
 - `endpoints/v2/` - OCI/Docker registry protocol
-- `data/model/` - SQLAlchemy models
+- `data/database.py` - Peewee model class definitions (schema source of truth)
+- `data/model/` - Query and business-logic modules
 - `data/migrations/` - Alembic migrations
 - `workers/` - Background job processors
 - `auth/` - Authentication & authorization
@@ -52,17 +53,107 @@ make types-test                      # Type checking (mypy)
 | Database models, migrations | `agent_docs/database.md` |
 | Testing patterns, fixtures | `agent_docs/testing.md` |
 | Architecture, key files | `agent_docs/architecture.md` |
+| Feature flags | `agent_docs/architecture.md` (Adding a New Feature Flag section) |
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
+| OIDC superuser group sync | `agent_docs/oidc_superuser_sync.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
+| Frontend E2E tests, Playwright fixtures | `web/playwright/AGENTS.md` |
+| Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
 
 ## Universal Conventions
 
-1. **Testing:** Always run relevant tests before committing
-2. **Formatting:** Rely on pre-commit hook to format code on commit
-3. **No secrets:** Never commit credentials, API keys, or sensitive config
-4. **Imports:** Follow existing import ordering patterns in each file
-5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
+1. **Testing:** Every code change must include tests. The **Playwright suite** (`web/playwright/`) is Quay's end-to-end (e2e) blackbox test suite — it exercises the running system through its real UI and API surfaces, with no mocks or DB seeding (see `web/playwright/AGENTS.md`). Prefer testing behavior e2e via Playwright whenever practical, rather than relying solely on unit/mock-level coverage, since e2e tests catch regressions that unit tests and mocks can miss. When fixing a bug, add or extend an e2e test that reproduces the original failure when feasible, so the regression stays caught. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory, and add or extend a Playwright `e2e/api/` test when the change affects externally observable API behavior. A backend-only change with no observable behavior change (internal refactor, logging, etc.) does not require Playwright. Always run relevant tests before committing.
+2. **Test reporting:** In PR descriptions, report each exact command and its outcome as passed, failed, not run, or infrastructure-blocked. Do not describe an attempted or planned command as having run successfully, and keep infrastructure failures distinct from test failures.
+3. **Formatting:** Rely on pre-commit hook to format code on commit
+4. **No secrets:** Never commit credentials, API keys, or sensitive config
+5. **Imports:** Follow existing import ordering patterns in each file
+6. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
+7. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+8. **Review scope:** Address blocking or explicitly requested review feedback. Non-blocking observations do not authorize unrelated changes. Check equivalent execution paths needed to preserve the fix's invariant, but report other similar occurrences instead of expanding scope without approval.
+
+## Contributing
+
+### PR & Commit Format
+
+- **PR title:** `{PROJQUAY|QUAYIO}-XXXXX: type(scope): lowercase description`
+  - Valid Jira prefixes: `PROJQUAY` (standard, used for most Quay work) and `QUAYIO` (for Quay.io-specific cross-project tickets). Use whichever prefix matches the Jira ticket assigned to the work.
+  - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
+  - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
+  - Scope should be a short descriptive name for the affected subsystem or area (e.g., `api`, `auth`, `mirroring`, `agents`, `gc`), not an issue or PR number
+  - For backports to a `redhat-X.Y` release branch, prefix the title with `[redhat-X.Y] ` *before* the Jira key, not after. The `conventional commit check` job in `.github/workflows/ci-lint.yaml` enforces this exact order and fails CI if the bracket comes after the Jira key.
+  - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
+  - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
+  - `NO-ISSUE: docs(agents): add contributing guide`
+  - `[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153`
+- **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
+
+### Fork Workflow
+
+**Never push directly to `quay/quay`.** Always use a fork.
+
+```bash
+gh repo list <your-user> --fork   # check for existing fork
+git remote add fork https://github.com/<your-user>/quay.git
+git push -u fork <branch>
+gh pr create --repo quay/quay --head <your-user>:<branch>
+```
+
+Use the `/pr` skill — it handles fork detection, auth, and fallbacks automatically.
+
+### Superseding a Stalled PR
+
+When a new PR's description states it supersedes another open PR (e.g.,
+"Supersedes #1234"), closing the superseded PR is part of opening the new
+one — not a follow-up step to be done later or left to someone else.
+
+Immediately after opening the new PR, before requesting review, run:
+
+```bash
+gh pr close <old-pr> --comment "Superseded by #<new-pr>"
+```
+
+Leaving the superseded PR open causes it to keep attracting comments and
+review attention on a dead branch, and risks a maintainer reviewing or
+merging the stale PR by mistake.
+
+### Jira Integration
+
+After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current development release (check the active versions in Jira) on the Jira ticket before opening the PR, or the bot will block merging.
+
+### Code Review (CodeRabbit)
+
+Resolve every inline CodeRabbit comment — either fix the code or reply explaining why it's not actionable. The bot re-reviews on each push.
+
+CodeRabbit auto-review is intentionally scoped to `master` only (`.coderabbit.yaml` has no `base_branches` override) — backport/cherry-pick PRs targeting `redhat-*` release branches carry code already reviewed on `master`, and enabling review there was proposed twice (#6597, #6893 → PR #6894) and rejected by a maintainer as unnecessary re-review noise. Do not re-propose adding `base_branches` for `redhat-*` without first revisiting that decision explicitly.
+
+### Worktrees (Frontend)
+
+Git worktrees don't inherit `node_modules`. Pre-commit hooks (Prettier, ESLint) will fail silently without this symlink:
+
+```bash
+ln -sf "$(git -C /path/to/main/repo rev-parse --show-toplevel)/web/node_modules" \
+       "$(git rev-parse --show-toplevel)/web/node_modules"
+```
+
+### Files Restricted to Org Members
+
+PRs modifying the following files are accepted only from `quay` org members:
+
+- `AGENTS.md` — agent instructions for the repository
+- `CLAUDE.md` — Claude Code configuration
+- `agent_docs/` — agent documentation and task-specific guides
+- `web/AGENTS.md` — frontend agent instructions
+- `web/playwright/AGENTS.md` — Playwright E2E test agent instructions
+- `.agents/` — agent skills and definitions
+- `.coderabbit.yaml` — CodeRabbit review configuration
+- `.github/workflows/` — CI/CD workflow definitions
+- `.github/CODEOWNERS` — code ownership rules
+- `.fullsend/` — agent and automation configuration
+
+External contributors: if an issue involves these files, comment on the issue and a maintainer will arrange an internal PR. Do not open a PR for these files — it will be closed.
+
+**Triage agents:** do not apply the `good first issue` label to issues whose resolution requires modifying any of the files listed above.
 
 ## Local Dev URLs
 
@@ -70,3 +161,16 @@ make types-test                      # Type checking (mypy)
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 - Clair: localhost:6000 (from Quay container, when enabled)
+
+## Contextification Addendum
+
+Use this low-token routing map before opening broader docs:
+
+- API: `endpoints/api/`, `agent_docs/api.md`
+- Registry protocol: `endpoints/v2/`, `data/registry_model/`
+- Schema/migrations: `data/database.py`, `data/migrations/`, `agent_docs/database.md`
+- Workers: `workers/`
+- Storage: `storage/`
+- React UI: `web/AGENTS.md`
+
+Guardrails: add tests for behavior changes, generate Alembic revisions instead of hand-writing IDs, and keep secrets out of config and fixtures.

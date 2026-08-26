@@ -18,6 +18,7 @@ from botocore.credentials import (
 )
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
+from cryptography import exceptions as crypto_exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -439,8 +440,8 @@ class _CloudStorage(BaseStorageV2):
         obj = self.get_cloud_bucket().Object(path)
         try:
             obj.load()
-            obj.delete()
-            return
+            resp = obj.delete()
+            return resp.get("VersionId")
         except botocore.exceptions.ClientError as s3r:
             if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
                 raise
@@ -753,6 +754,63 @@ class _CloudStorage(BaseStorageV2):
                             logger.debug(
                                 "Blob not found in uploads folder with key %s", obj_info["Key"]
                             )
+
+    def clean_orphaned_multipart_uploads(self, deletion_date_threshold):
+        """
+        Lists and deletes all orphaned multipart uploads that are older than the provided threshold.
+        The threshold must be large enough so we don't clean up multipart uploads that are potentially
+        in progress.
+        """
+        self._initialize_cloud_conn()
+        paginator = self.get_cloud_conn().get_paginator("list_multipart_uploads")
+        deleted = 0
+
+        root_prefix = self._init_path()
+        if root_prefix and not root_prefix.endswith("/"):
+            root_prefix = root_prefix + "/"
+
+        page_iterator = paginator.paginate(Bucket=self._bucket_name, Prefix=root_prefix)
+        for page in page_iterator:
+            # check if there are any multipart uploads
+            if "Uploads" in page:
+                for upload in page["Uploads"]:
+                    # if the upload is older than the designated deletion time
+                    if upload["Initiated"] <= datetime.now(timezone.utc) - deletion_date_threshold:
+                        try:
+                            logger.info(
+                                "Aborting stale multipart upload: uploadid=%s, key=%s, initiated=%s",
+                                upload["UploadId"],
+                                upload["Key"],
+                                upload["Initiated"],
+                            )
+                            self.get_cloud_conn().abort_multipart_upload(
+                                Bucket=self._bucket_name,
+                                Key=upload["Key"],
+                                UploadId=upload["UploadId"],
+                            )
+                            logger.info(
+                                "Deleted stale multipart upload with upload id %s and key %s",
+                                upload["UploadId"],
+                                upload["Key"],
+                            )
+                            deleted = deleted + 1
+                        except botocore.exceptions.ClientError as s3r:
+                            if (
+                                s3r.response["Error"]["Code"]
+                                in ("NoSuchUpload",) + _MISSING_KEY_ERROR_CODES
+                            ):
+                                logger.debug(
+                                    "Multipart upload with upload id %s not found",
+                                    upload["UploadId"],
+                                )
+                            else:
+                                logger.exception(
+                                    "Got error when attempting to clean up stale multipart upload: key=%s, uploadid=%s, exception=%s",
+                                    upload["Key"],
+                                    upload["UploadId"],
+                                    str(s3r),
+                                )
+        return deleted
 
 
 class S3Storage(_CloudStorage):
@@ -1181,6 +1239,32 @@ class CloudFrontedS3Storage(S3Storage):
     @lru_cache(maxsize=1)
     def _get_rsa_signer(self):
         private_key = self.cloudfront_privatekey
+
+        try:
+            # Test if SHA1 signing works with this system's crypto policy
+            private_key.sign(b"test", padding.PKCS1v15(), hashes.SHA1())
+        except crypto_exceptions.UnsupportedAlgorithm:
+            # SHA1 blocked by system crypto policy (e.g., RHEL9).
+            # Fall back to pure-Python rsa library which bypasses OpenSSL.
+            import rsa as rsa_lib
+
+            pn = private_key.private_numbers()
+            rsa_key = rsa_lib.PrivateKey(
+                n=pn.public_numbers.n,
+                e=pn.public_numbers.e,
+                d=pn.d,
+                p=pn.p,
+                q=pn.q,
+            )
+            logger.warning(
+                "SHA1 not supported by system crypto policy for RSA signing. "
+                "Using pure-Python RSA for CloudFront URL signing."
+            )
+
+            def handler(message):
+                return rsa_lib.sign(message, rsa_key, "SHA-1")
+
+            return handler
 
         def handler(message):
             return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())

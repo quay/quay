@@ -7,7 +7,9 @@ work with just FEATURE_SUPER_USERS enabled.
 """
 
 import pytest
+from mock import patch
 
+from data.logs_model.shared import SearchNotConfiguredError
 from endpoints.api.globalmessages import GlobalUserMessages
 from endpoints.api.namespacequota import (
     OrganizationQuota,
@@ -110,6 +112,28 @@ class TestSuperuserBasicAccessWithoutFullAccess:
             result = conduct_api_call(cl, SuperUserAggregateLogs, "GET", params, None, 200)
             assert result.json is not None
             assert "aggregated" in result.json
+
+    def test_superuser_logs_search_not_configured(self, app):
+        """Test that SuperUserLogs returns 200 with search_unavailable when search is not configured."""
+        with patch("endpoints.api.superuser.logs_model") as mock_logs_model:
+            mock_logs_model.lookup_logs.side_effect = SearchNotConfiguredError(
+                "search_token missing"
+            )
+            with client_with_identity("devtable", app) as cl:
+                result = conduct_api_call(cl, SuperUserLogs, "GET", None, None, 200)
+                assert result.json["search_unavailable"] is True
+                assert result.json["logs"] == []
+
+    def test_superuser_aggregate_logs_search_not_configured(self, app):
+        """Test that SuperUserAggregateLogs returns 200 with search_unavailable."""
+        with patch("endpoints.api.superuser.logs_model") as mock_logs_model:
+            mock_logs_model.get_aggregated_log_counts.side_effect = SearchNotConfiguredError(
+                "search_token missing"
+            )
+            with client_with_identity("devtable", app) as cl:
+                result = conduct_api_call(cl, SuperUserAggregateLogs, "GET", None, None, 200)
+                assert result.json["search_unavailable"] is True
+                assert result.json["aggregated"] == []
 
     def test_superuser_can_manage_global_messages_without_full_access(self, app):
         """

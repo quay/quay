@@ -2,6 +2,7 @@
 Manage the tags of a repository.
 """
 
+import json
 from datetime import datetime
 
 from flask import abort, request
@@ -11,7 +12,6 @@ from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerRepositoryPermission
 from data.database import Manifest as ManifestTable
-from data.database import ManifestChild
 from data.model import ImmutableTagException
 from data.model.oci.manifest import is_manifest_present
 from data.model.oci.tag import RetargetTagException
@@ -48,26 +48,58 @@ def _get_sparse_manifest_info(manifest_id, repository_id):
 
     Returns a tuple of (is_sparse, child_manifest_count, present_child_count, child_presence_map).
     The child_presence_map is a dict mapping child manifest digests to their presence status.
+
+    Determines sparseness by parsing the parent manifest's JSON to get all referenced
+    child digests (source of truth), then checking which ones exist in the database with
+    non-empty manifest_bytes. This correctly handles mirror scenarios where ManifestChild
+    entries are only created for actually-mirrored architectures.
     """
-    # Query child manifests and check their presence
-    child_manifests = (
-        ManifestChild.select(ManifestChild, ManifestTable)
-        .join(ManifestTable, on=(ManifestChild.child_manifest == ManifestTable.id))
-        .where(
-            ManifestChild.manifest == manifest_id,
-            ManifestChild.repository == repository_id,
+    # Fetch the parent manifest's bytes
+    try:
+        parent_manifest = ManifestTable.get(
+            ManifestTable.id == manifest_id,
+            ManifestTable.repository == repository_id,
         )
+    except ManifestTable.DoesNotExist:
+        return False, 0, 0, {}
+
+    if not parent_manifest.manifest_bytes:
+        return False, 0, 0, {}
+
+    # Parse the manifest list JSON to get all referenced child digests
+    try:
+        manifest_data = json.loads(parent_manifest.manifest_bytes)
+    except (json.JSONDecodeError, TypeError):
+        return False, 0, 0, {}
+
+    if not isinstance(manifest_data, dict):
+        return False, 0, 0, {}
+
+    child_entries = manifest_data.get("manifests", [])
+    child_digests = [entry["digest"] for entry in child_entries if "digest" in entry]
+    child_manifest_count = len(child_digests)
+
+    if child_manifest_count == 0:
+        return False, 0, 0, {}
+
+    # Batch-query all child manifests that exist in the database
+    existing_children = ManifestTable.select(
+        ManifestTable.digest, ManifestTable.manifest_bytes
+    ).where(
+        ManifestTable.digest << child_digests,
+        ManifestTable.repository == repository_id,
     )
 
-    child_manifest_count = 0
+    existing_by_digest = {child.digest: child for child in existing_children}
+
+    # Build the presence map: a child is present if it exists in DB with non-empty manifest_bytes
     present_child_count = 0
     child_presence_map = {}
 
-    for child in child_manifests:
-        child_manifest_count += 1
-        child_digest = child.child_manifest.digest
-        is_present = is_manifest_present(child.child_manifest)
-        child_presence_map[child_digest] = is_present
+    for digest in child_digests:
+        child = existing_by_digest.get(digest)
+        is_present = child is not None and is_manifest_present(child)
+        child_presence_map[digest] = is_present
         if is_present:
             present_child_count += 1
 

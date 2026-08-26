@@ -1,13 +1,12 @@
 import {SetStateAction, useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Wizard,
   WizardHeader,
   WizardStep,
+  Modal,
+  ModalVariant,
 } from '@patternfly/react-core';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
@@ -28,6 +27,7 @@ import {useRepositories} from 'src/hooks/UseRepositories';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {Entity} from 'src/resources/UserResource';
+import {validateRobotName} from 'src/libs/utils';
 
 export default function CreateRobotAccountModal(
   props: CreateRobotAccountModalProps,
@@ -114,11 +114,6 @@ export default function CreateRobotAccountModal(
     }
   };
 
-  // addDefaultPermsForRobotMutator
-  const validateRobotName = () => {
-    return /^[a-z][a-z0-9_]{1,254}$/.test(robotName);
-  };
-
   const handleModalToggle = () => {
     // clear selected states
     setSelectedRepos([]);
@@ -142,11 +137,11 @@ export default function CreateRobotAccountModal(
       key="robot-name-and-desc"
     >
       <>
-        <TextContent>
-          <Text component={TextVariants.h1}>
+        <Content>
+          <Content component={ContentVariants.h1}>
             Provide robot account name and description
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
         <NameAndDescription
           name={robotName}
           setName={setRobotName}
@@ -155,8 +150,8 @@ export default function CreateRobotAccountModal(
           nameLabel="Provide a name for your robot account:"
           descriptionLabel="Provide an optional description for your new robot:"
           helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
-          nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
-          validateName={validateRobotName}
+          nameHelperText="Choose a name to inform your teammates about this robot account. Can contain lowercase letters, digits, and separators (period, hyphen, underscore) but must start and end with a letter or digit. 2-255 characters."
+          validateName={() => validateRobotName(robotName)}
         />
       </>
     </WizardStep>
@@ -252,14 +247,10 @@ export default function CreateRobotAccountModal(
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
-      onClose={handleModalToggle}
-      showClose={false}
-      hasNoBodyWrapper
     >
       <Wizard
         onClose={handleModalToggle}
         height={600}
-        width={1170}
         header={
           <WizardHeader
             onClose={handleModalToggle}
@@ -271,7 +262,7 @@ export default function CreateRobotAccountModal(
           <Footer
             onSubmit={onSubmit}
             isDrawerExpanded={isDrawerExpanded}
-            isDataValid={validateRobotName}
+            isDataValid={() => validateRobotName(robotName)}
           />
         }
       >
@@ -285,7 +276,9 @@ interface CreateRobotAccountModalProps {
   isModalOpen: boolean;
   handleModalToggle?: () => void;
   orgName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   teams: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
   showSuccessAlert: (msg: string) => void;

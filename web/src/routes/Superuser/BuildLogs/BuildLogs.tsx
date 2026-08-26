@@ -1,7 +1,6 @@
 import {useState} from 'react';
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Form,
   FormGroup,
@@ -10,10 +9,13 @@ import {
   Alert,
   Spinner,
   Checkbox,
+  CodeBlock,
+  CodeBlockCode,
 } from '@patternfly/react-core';
 import {useFetchBuildLogsSuperuser} from 'src/hooks/UseBuildLogs';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function BuildLogs() {
@@ -22,7 +24,9 @@ export default function BuildLogs() {
   const [showTimestamps, setShowTimestamps] = useState<boolean>(true);
 
   const {isSuperUser} = useSuperuserPermissions();
-  const quayConfig = useQuayConfig();
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
+  const {loading: userLoading} = useCurrentUser();
   const {
     data: build,
     isLoading,
@@ -30,10 +34,18 @@ export default function BuildLogs() {
     error,
   } = useFetchBuildLogsSuperuser(submittedUuid);
 
+  if (configLoading || userLoading) {
+    return (
+      <PageSection hasBodyWrapper={false}>
+        <Spinner size="lg" aria-label="Loading" />
+      </PageSection>
+    );
+  }
+
   // Check if BUILD_SUPPORT is enabled
   if (!quayConfig?.features?.BUILD_SUPPORT) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="warning" title="Build support not enabled">
           Build logs are not available because BUILD_SUPPORT is not enabled in
           the registry configuration.
@@ -45,7 +57,7 @@ export default function BuildLogs() {
   // Check if user is superuser
   if (!isSuperUser) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="danger" title="Access Denied">
           You must be a superuser to access build logs.
         </Alert>
@@ -122,7 +134,13 @@ export default function BuildLogs() {
               <dt style={{marginTop: '0.5em'}}>
                 <strong>Error:</strong>
               </dt>
-              <dd style={{color: '#c9190b'}}>{build.error}</dd>
+              <dd
+                style={{
+                  color: 'var(--pf-t--global--color--status--danger--default)',
+                }}
+              >
+                {build.error}
+              </dd>
             </>
           )}
         </dl>
@@ -148,33 +166,29 @@ export default function BuildLogs() {
         <Title headingLevel="h3" size="lg">
           Build Logs
         </Title>
-        <pre
-          style={{
-            marginTop: '1em',
-            backgroundColor: '#f5f5f5',
-            padding: '1em',
-            borderRadius: '4px',
-            overflow: 'auto',
-            maxHeight: '600px',
-            fontSize: '0.875rem',
-            fontFamily: 'monospace',
-            lineHeight: '1.5',
-          }}
-          data-testid="build-logs-display"
-        >
-          {build.logs.map((log, index) => (
-            <div key={index}>
-              {showTimestamps && log.timestamp && (
-                <span style={{color: '#666', marginRight: '0.5em'}}>
-                  [{log.timestamp}]
-                </span>
-              )}
-              {typeof log.message === 'string'
-                ? log.message
-                : JSON.stringify(log.message)}
-            </div>
-          ))}
-        </pre>
+        <div style={{marginTop: '1em', maxHeight: '600px', overflow: 'auto'}}>
+          <CodeBlock data-testid="build-logs-display">
+            <CodeBlockCode>
+              {build.logs.map((log, index) => (
+                <div key={index}>
+                  {showTimestamps && log.timestamp && (
+                    <span
+                      style={{
+                        opacity: 0.6,
+                        marginRight: '0.5em',
+                      }}
+                    >
+                      [{log.timestamp}]
+                    </span>
+                  )}
+                  {typeof log.message === 'string'
+                    ? log.message
+                    : JSON.stringify(log.message)}
+                </div>
+              ))}
+            </CodeBlockCode>
+          </CodeBlock>
+        </div>
       </div>
     );
   };
@@ -182,12 +196,12 @@ export default function BuildLogs() {
   return (
     <>
       {/* Page Header */}
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <Title headingLevel="h1">Build Logs</Title>
       </PageSection>
 
       {/* Main Content */}
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         {/* Build UUID Input Form */}
         <Form onSubmit={handleLoadBuild} style={{maxWidth: '600px'}}>
           <FormGroup label="Build UUID" isRequired fieldId="build-uuid">

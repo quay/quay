@@ -1,4 +1,25 @@
 import {test, expect, uniqueName} from '../../fixtures';
+import {Page} from '@playwright/test';
+
+async function fillDateTimePicker(
+  page: Page,
+  date: Date,
+  dateLabel: string,
+  timeLabel: string,
+) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateInput = page.getByRole('textbox', {name: dateLabel});
+  await dateInput.clear();
+  await dateInput.fill(`${year}-${month}-${day}`);
+
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const timeInput = page.getByRole('textbox', {name: timeLabel});
+  await timeInput.clear();
+  await timeInput.fill(`${hours}:${minutes}`);
+}
 
 test.describe(
   'Service Keys',
@@ -64,12 +85,17 @@ test.describe(
       // Future date for expiration
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);
-      const expirationValue = futureDate.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
 
       // Fill out the create form
       await superuserPage.locator('#key-name').fill(keyName);
       await superuserPage.locator('#service-name').fill(serviceName);
-      await superuserPage.locator('#expiration').fill(expirationValue);
+
+      await fillDateTimePicker(
+        superuserPage,
+        futureDate,
+        'Expiration date',
+        'Expiration time',
+      );
 
       // Submit the form
       await superuserPage.getByTestId('create-key-submit').click();
@@ -195,9 +221,13 @@ test.describe(
       await superuserPage.locator('#service-name').fill('test_service');
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);
-      await superuserPage
-        .locator('#expiration')
-        .fill(futureDate.toISOString().slice(0, 16));
+
+      await fillDateTimePicker(
+        superuserPage,
+        futureDate,
+        'Expiration date',
+        'Expiration time',
+      );
 
       // Submit - should fail
       await superuserPage.getByTestId('create-key-submit').click();
@@ -206,9 +236,9 @@ test.describe(
       await expect(
         superuserPage.getByTestId('create-service-key-modal'),
       ).toBeVisible();
-      // Look for error message in the modal
+      // Look for error message in the modal (use alert title selector to avoid matching PF6 screen-reader text)
       await expect(
-        superuserPage.getByText(/Service already exists|Error/i),
+        superuserPage.locator('.pf-v6-c-alert__title').first(),
       ).toBeVisible();
     });
 
@@ -257,7 +287,7 @@ test.describe(
       await readonlyPage.keyboard.press('Escape');
 
       // Select the key and verify bulk delete is disabled
-      await keyRow.getByTestId(`select-${key.kid}`).click();
+      await keyRow.getByTestId(`select-${key.kid}`).locator('input').click();
 
       // Click Actions button
       await readonlyPage.getByRole('button', {name: 'Actions'}).click();
@@ -287,8 +317,14 @@ test.describe(
       await expect(superuserPage.getByText('Bulk Key 2')).toBeVisible();
 
       // Select both keys using individual checkboxes
-      await superuserPage.getByTestId(`select-${key1.kid}`).click();
-      await superuserPage.getByTestId(`select-${key2.kid}`).click();
+      await superuserPage
+        .getByTestId(`select-${key1.kid}`)
+        .locator('input')
+        .click();
+      await superuserPage
+        .getByTestId(`select-${key2.kid}`)
+        .locator('input')
+        .click();
 
       // Click Actions button (appears when items are selected)
       await superuserPage.getByRole('button', {name: 'Actions'}).click();

@@ -121,7 +121,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'creates account with valid inputs and redirects to organization',
-    {tag: '@critical'},
+    {tag: ['@critical', '@superuser']},
     async ({createAccountPage, cleanupUser, quayConfig}) => {
       const username = uniqueName('newuser');
       const email = `${username}@example.com`;
@@ -179,54 +179,56 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
     },
   );
 
-  test('shows error for existing username', async ({
-    createAccountPage,
-    superuserRequest,
-    cleanupUser,
-  }) => {
-    const username = uniqueName('existing');
-    const email = `${username}@example.com`;
-    const password = 'validpassword123';
+  test(
+    'shows error for existing username',
+    {tag: '@superuser'},
+    async ({createAccountPage, superuserRequest, cleanupUser}) => {
+      const username = uniqueName('existing');
+      const email = `${username}@example.com`;
+      const password = 'validpassword123';
 
-    // Pre-create user via API
-    const superApi = new ApiClient(superuserRequest);
-    await superApi.createUser(username, password, email);
+      // Pre-create user via API
+      const superApi = new ApiClient(superuserRequest);
+      await superApi.createUser(username, password, email);
 
-    await createAccountPage.goto('/createaccount');
+      await createAccountPage.goto('/createaccount');
 
-    // Wait for the page to be fully loaded
-    await expect(
-      createAccountPage.getByRole('heading', {name: 'Create Account'}),
-    ).toBeVisible();
+      // Wait for the page to be fully loaded
+      await expect(
+        createAccountPage.getByRole('heading', {name: 'Create Account'}),
+      ).toBeVisible();
 
-    // Try to create the same user via UI
-    await createAccountPage
-      .getByTestId('create-account-username')
-      .fill(username);
-    await createAccountPage.getByTestId('create-account-email').fill(email);
-    await createAccountPage
-      .getByTestId('create-account-password')
-      .fill(password);
-    await createAccountPage
-      .getByTestId('create-account-confirm-password')
-      .fill(password);
+      // Try to create the same user via UI
+      await createAccountPage
+        .getByTestId('create-account-username')
+        .fill(username);
+      await createAccountPage.getByTestId('create-account-email').fill(email);
+      await createAccountPage
+        .getByTestId('create-account-password')
+        .fill(password);
+      await createAccountPage
+        .getByTestId('create-account-confirm-password')
+        .fill(password);
 
-    // Submit form
-    const submitButton = createAccountPage.getByTestId('create-account-submit');
-    await expect(submitButton).toBeEnabled({timeout: 10000});
-    await submitButton.click();
+      // Submit form
+      const submitButton = createAccountPage.getByTestId(
+        'create-account-submit',
+      );
+      await expect(submitButton).toBeEnabled({timeout: 10000});
+      await submitButton.click();
 
-    // Should show error message (actual message from API includes prefix)
-    await expect(
-      createAccountPage.getByText('The username already exists'),
-    ).toBeVisible({timeout: 10000});
+      // Should show error message (actual message from API includes prefix)
+      await expect(
+        createAccountPage.getByText('The username already exists'),
+      ).toBeVisible({timeout: 10000});
 
-    // Should not redirect - still on create account page
-    await expect(createAccountPage).toHaveURL(/\/createaccount/);
+      // Should not redirect - still on create account page
+      await expect(createAccountPage).toHaveURL(/\/createaccount/);
 
-    // Cleanup
-    await cleanupUser(username);
-  });
+      // Cleanup
+      await cleanupUser(username);
+    },
+  );
 
   test('navigates to signin page via link', async ({createAccountPage}) => {
     await createAccountPage.goto('/createaccount');
@@ -245,7 +247,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'shows verification message when email verification required',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@superuser']},
     async ({createAccountPage, cleanupUser}) => {
       // This test only runs when FEATURE_MAILING is enabled
       // When enabled, new accounts require email verification
@@ -309,7 +311,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'redirects to updateuser when user has prompts',
-    {tag: '@feature:QUOTA_MANAGEMENT'},
+    {tag: ['@feature:QUOTA_MANAGEMENT', '@superuser']},
     async ({createAccountPage, cleanupUser, quayConfig}) => {
       // This test only runs when FEATURE_QUOTA_MANAGEMENT is enabled
       // When enabled, new users may have prompts (enter_name, enter_company)

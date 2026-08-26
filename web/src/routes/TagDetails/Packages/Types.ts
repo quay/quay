@@ -5,6 +5,7 @@ export interface PackagesListItem {
   PackageName: string;
   CurrentVersion: string;
   Vulnerabilities: Vulnerability[];
+  IntroducedInLayer: string | null;
 
   VulnerabilityCounts: VulnerabilityStats;
   HighestVulnerabilitySeverity: VulnerabilitySeverity;

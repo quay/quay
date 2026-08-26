@@ -1,3 +1,4 @@
-.header-logo {
-    height: 2em;
+.pf-v6-c-masthead__logo {
+    --pf-v6-c-masthead__logo--Width: auto;
+    --pf-v6-c-masthead__logo--MaxHeight: 2rem;
 }

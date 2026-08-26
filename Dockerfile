@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312-minimal:latest@sha256:c570170ec76987bb669de93a620f2f3b55b98e4121822c28140ec80da590c64d AS base
+FROM registry.access.redhat.com/ubi9/python-312-minimal:9.8@sha256:0682a7aa239c28eaad5187914699612daaa3b1fa63abddaee7ba46f5b76c3361 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -60,6 +60,8 @@ RUN set -ex\
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
+# pyroscope-io depends on py-spy which has no s390x support
+RUN sed -i '/^pyroscope-io/d' requirements.txt
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -95,7 +97,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fc8e8ebdb189d074d6448db56baf78edb4f26e7017dcb1c235bf9420eb028cd1 AS build-static
 ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
@@ -107,15 +109,16 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fc8e8ebdb189d074d6448db56baf78edb4f26e7017dcb1c235bf9420eb028cd1 AS build-ui
+RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web/package.json web/package-lock.json  ./
-RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
+COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
+RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
-RUN npm run --quiet build
+RUN pnpm run --silent build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41 AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
@@ -131,13 +134,13 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi9/go-toolset@sha256:82b82ecf4aedf67c4369849047c2680dba755fe57547bbb05eca211b22038e29 AS config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset:9.8@sha256:9ef42b045aaabcaff14b76c75c086ec1479fbc7502c0587efdcedb2d721c46e5 AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41 AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
@@ -155,7 +158,12 @@ RUN set -ex\
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer="quay-devel@redhat.com"
+LABEL maintainer="quay-devel@redhat.com" \
+      io.containers.capabilities="NET_BIND_SERVICE" \
+      io.k8s.security.capabilities.drop="ALL" \
+      io.k8s.security.capabilities.add="NET_BIND_SERVICE" \
+      io.k8s.security.allow-privilege-escalation="false" \
+      io.k8s.security.run-as-non-root="true"
 
 ENV QUAYDIR=/quay-registry
 ENV QUAYCONF=/quay-registry/conf
@@ -182,17 +190,19 @@ RUN set -ex\
 # symlink.
 	; ln -s $QUAYCONF /conf\
 # Make a grip of runtime directories.
-	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage\
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage /var/lib/quay\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
 # Harden /etc/passwd – no group write.
     ; chown root:root /etc/passwd \
     ; chmod 0644      /etc/passwd \
-	; chown -R 1001:0 /etc/pki/ \
+	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chown 1001:0 {} + \
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
-	; chmod ug+wx -R /etc/pki/ \
+	; chmod ug+w /etc/pki/ca-trust \
+	; chmod ug+w -R /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
+	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chmod ug+wx {} + \
 	; chmod ug+wx -R /etc/ssl/
 
 
@@ -205,6 +215,13 @@ COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-roo
 COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
+
+# Strip setuid/setgid bits — with allowPrivilegeEscalation: false these are
+# inert at runtime; removing them reduces scanner noise and attack surface.
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
+
+ARG BUILD_TIMESTAMP
+RUN date -u +%Y%m%d%H%M > $QUAYDIR/BUILD_DATE
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it

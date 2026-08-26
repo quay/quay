@@ -1,10 +1,12 @@
 # pylint: disable=old-style-class,no-init
 from __future__ import annotations
 
+import hashlib
 import inspect
 import logging
 import os
 import string
+import struct
 import sys
 import time
 import uuid
@@ -20,6 +22,7 @@ from cachetools.func import lru_cache
 from peewee import *
 from peewee import Function, __exception_wrapper__  # type: ignore
 from playhouse.pool import (
+    MaxConnectionsExceeded,
     PooledDatabase,
     PooledMySQLDatabase,
     PooledPostgresqlDatabase,
@@ -218,6 +221,37 @@ SCHEME_SPECIALIZED_FOR_UPDATE = {
 }
 
 
+def real_advisory_xact_lock(lock_id):
+    """Acquire a PostgreSQL transaction-scoped advisory lock.
+
+    The lock is automatically released when the transaction ends (commit or rollback).
+    Unlike row-level locks (SELECT FOR UPDATE), advisory locks do not block readers
+    and do not require locking an actual row.
+    """
+    db.execute_sql("SELECT pg_advisory_xact_lock(%s)", (lock_id,))
+
+
+def null_advisory_xact_lock(lock_id):
+    """No-op advisory lock for databases that don't support it (e.g. SQLite)."""
+    pass
+
+
+def compute_advisory_lock_id(namespace, key):
+    """Compute a deterministic 64-bit signed integer lock ID from a namespace string and
+    an integer key. The namespace prevents collisions between different lock use cases.
+
+    Returns a value in the range of a PostgreSQL bigint (-2^63 to 2^63-1).
+    """
+    h = hashlib.sha256(f"{namespace}:{key}".encode()).digest()
+    # Unpack as signed 64-bit integer to match PostgreSQL bigint range
+    return struct.unpack(">q", h[:8])[0]
+
+
+SCHEME_SPECIALIZED_ADVISORY_LOCK = {
+    "sqlite": null_advisory_xact_lock,
+}
+
+
 class CallableProxy(Proxy):
     def __call__(self, *args, **kwargs):
         if self.obj is None:
@@ -282,6 +316,9 @@ class RetryOperationalError(object):
                 # This causes Peewee to be unable to reuse its stale connection.
                 # Instead, the peewee connection needs to be closed, and a new session opened with MySQL.
                 # https://github.com/PyMySQL/PyMySQL/blob/main/pymysql/connections.py#L1354
+                raise
+
+            if self.in_transaction():
                 raise
 
             if not self.is_closed():
@@ -384,6 +421,7 @@ db_disallow_replica_use = CallableProxy()
 db_concat_func = CallableProxy()
 db_encrypter = Proxy()
 db_count_estimator = CallableProxy()
+db_advisory_xact_lock = CallableProxy()
 ensure_under_transaction = CallableProxy()
 
 
@@ -450,6 +488,70 @@ class ObservableDatabase(object):
 
 class ObservablePooledDatabase(ObservableDatabase):
     """Wrapper around Peewee's PooledDatabase class for observability."""
+
+    def _connect(self, _retry_count=0):
+        """
+        Override internal connection method to validate connection availability from the connection pool.
+        This acts like SQLAlchemy's pool_pre_ping with exponential backoff for high concurrency.
+        """
+        # Limit retries to prevent long delays in high-concurrency scenarios
+        # With 50+ concurrent requests, we want individual requests to fail faster
+        # rather than each one retrying 20+ times
+        max_retries = 7
+        if _retry_count >= max_retries:
+            raise OperationalError(
+                f"Unable to obtain healthy connection after {max_retries} attempts"
+            )
+
+        try:
+            conn = super(ObservablePooledDatabase, self)._connect()
+        except MaxConnectionsExceeded:
+            # Pool exhausted - wait with exponential backoff before retrying
+            # Base delay: 10ms, max delay: 200ms to prevent long waits
+            delay = min(0.01 * (2**_retry_count), 0.2)
+            # Add jitter to prevent thundering herd (±25% randomization)
+            jitter = delay * (0.75 + uniform(0, 0.5))
+            logger.debug(
+                "Connection pool exhausted (attempt %d/%d), retrying after %.3fs",
+                _retry_count + 1,
+                max_retries,
+                jitter,
+            )
+            time.sleep(jitter)
+            return self._connect(_retry_count=_retry_count + 1)
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            return conn  # Connection is healthy
+        except Exception as e:
+            # Catch ALL exceptions during liveness check - includes ProtocolViolation,
+            # OperationalError, InterfaceError, and any other DB-related errors
+            logger.warning(
+                "Pooled connection failed liveness check (attempt %d/%d), discarding: %s",
+                _retry_count + 1,
+                max_retries,
+                e,
+            )
+
+            # Manually remove from _in_use tracking and close the connection
+            try:
+                # Remove from pool's _in_use dict to prevent connection leak
+                key = self.conn_key(conn)
+                self._in_use.pop(key, None)
+
+                # Close the actual connection (bypassing pool return logic)
+                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)
+            except Exception as ex:
+                logger.debug("Error closing stale connection: %s", ex)
+
+            # Small delay before retry to allow other requests to complete
+            if _retry_count > 0:
+                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
+                time.sleep(delay)
+
+            # Recursively retry - pool will provide another connection (or create new one)
+            return self._connect(_retry_count=_retry_count + 1)
 
     def connect(self, reuse_if_open=False):
         ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
@@ -588,6 +690,9 @@ def configure(config_object, testing=False):
     )
     db_concat_func.initialize(
         SCHEME_SPECIALIZED_CONCAT.get(parsed_write_uri.drivername, function_concat)
+    )
+    db_advisory_xact_lock.initialize(
+        SCHEME_SPECIALIZED_ADVISORY_LOCK.get(parsed_write_uri.drivername, real_advisory_xact_lock)
     )
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
@@ -757,7 +862,10 @@ class User(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, null=True, index=True)
     username = CharField(unique=True, index=True)
     password_hash = CharField(null=True)
-    email = CharField(unique=True, index=True, default=random_string_generator(length=64))
+    # Uniqueness is enforced at the DB level via a partial unique index
+    # (user_email_unique_non_org) that only applies to non-org users.
+    # Peewee cannot express partial indexes, so unique=True is omitted here.
+    email = CharField(index=True, default=random_string_generator(length=64))
     verified = BooleanField(default=False)
     stripe_id = CharField(index=True, null=True)
     organization = BooleanField(default=False, index=True)
@@ -823,12 +931,13 @@ class User(BaseModel):
                 DeletedNamespace,
                 DeletedRepository,
                 RepoMirrorRule,
-                NamespaceGeoRestriction,
                 ManifestSecurityStatus,
                 RepoMirrorConfig,
                 UploadedBlob,
                 QuotaRepositorySize,
                 QuotaNamespaceSize,
+                QuotaNotificationState,
+                NamespaceNotification,
                 UserOrganizationQuota,
                 QuotaLimits,
                 RedHatSubscriptions,
@@ -844,6 +953,7 @@ class User(BaseModel):
                 ManifestPullStatistics,
                 OrgMirrorConfig,
                 OrgMirrorRepository,
+                OrganizationContactEmail,
             } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -889,19 +999,6 @@ class DeletedNamespace(BaseModel):
     original_username = CharField(index=True)
     original_email = CharField(index=True)
     queue_id = CharField(null=True, index=True)
-
-
-class NamespaceGeoRestriction(BaseModel):
-    namespace = QuayUserField(index=True, allows_robots=False)
-    added = DateTimeField(default=datetime.utcnow)
-    description = CharField()
-    unstructured_json = JSONField()
-    restricted_region_iso_code = CharField(index=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("namespace", "restricted_region_iso_code"), True),)
 
 
 class UserPromptTypes(object):
@@ -1511,12 +1608,21 @@ class OAuthAccessToken(BaseModel):
     application = ForeignKeyField(OAuthApplication)
     authorized_user = QuayUserField()
     scope = CharField()
+    display_name = CharField(null=True)
     token_name = CharField(index=True, unique=True)
     token_code = CredentialField()
 
     token_type = CharField(default="Bearer")
     expires_at = DateTimeField()
     data = TextField()  # This is context for which this token was generated, such as the user
+
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.now)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("application", "last_accessed"), False),)
 
 
 class NotificationKind(BaseModel):
@@ -1551,6 +1657,30 @@ class RepositoryNotification(BaseModel):
     event_config_json = TextField(default="{}")
     number_of_failures = IntegerField(default=0)
     last_ran_ms = BigIntegerField(null=True, index=True)
+
+
+class NamespaceNotification(BaseModel):
+    uuid = CharField(default=uuid_generator, index=True)
+    namespace = QuayUserField(index=True)
+    event = EnumField(ExternalNotificationEvent)
+    method = EnumField(ExternalNotificationMethod)
+    title = CharField(null=True)
+    config_json = TextField()
+    event_config_json = TextField(default="{}")
+    number_of_failures = IntegerField(default=0)
+    last_ran_ms = BigIntegerField(null=True, index=True)
+
+
+class QuotaNotificationState(BaseModel):
+    namespace = QuayUserField(index=True)
+    threshold_percent = IntegerField()
+    last_notified_at = DateTimeField(null=True)
+    cleared = BooleanField(default=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("namespace", "threshold_percent"), True),)
 
 
 class RepositoryAuthorizedEmail(BaseModel):
@@ -1971,8 +2101,7 @@ class OrgMirrorStatus(IntEnum):
 class OrgMirrorRepoStatus(IntEnum):
     """
     Possible statuses of individual repositories discovered by organization mirroring.
-    Same values as RepoMirrorStatus for consistency.
-    Note: Filtered-out repos are not tracked (no OrgMirrorRepository entry created).
+    Same values as RepoMirrorStatus for consistency, plus SKIP for deactivated repos.
     """
 
     CANCEL = -2  # Sync cancelled
@@ -1981,6 +2110,7 @@ class OrgMirrorRepoStatus(IntEnum):
     SUCCESS = 1  # Last sync succeeded
     SYNCING = 2  # Currently syncing
     SYNC_NOW = 3  # Priority sync requested
+    SKIP = 4  # Repo no longer in source or excluded by filters
 
 
 class OrgMirrorConfig(BaseModel):
@@ -2071,15 +2201,26 @@ class OrgMirrorRepository(BaseModel):
         )
 
 
+class OrganizationContactEmail(BaseModel):
+    organization = QuayUserField(index=True, allows_robots=False, unique=True)
+    contact_email = CharField(null=True, index=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+
+
 @unique
 class IndexStatus(IntEnum):
     """
     Possible statuses of manifest security scan progress.
     """
 
+    SCAN_RETRIES_EXHAUSTED = -4
     MANIFEST_LAYER_TOO_LARGE = -3
     MANIFEST_UNSUPPORTED = -2
     FAILED = -1
+    PENDING = 0
     IN_PROGRESS = 1
     COMPLETED = 2
 

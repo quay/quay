@@ -1,5 +1,14 @@
 import React from 'react';
-import {Modal, ModalVariant, Button, Alert, Text} from '@patternfly/react-core';
+import {
+  Button,
+  Alert,
+  Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useRevokeApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 
@@ -39,11 +48,28 @@ export default function RevokeTokenModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Revoke Application Token"
       isOpen={isOpen}
       onClose={onClose}
       data-testid="revoke-token-modal"
-      actions={[
+    >
+      <ModalHeader title="Revoke Application Token" />
+      <ModalBody>
+        <Alert
+          variant="warning"
+          isInline
+          title="Warning"
+          className="pf-v6-u-mb-md"
+        >
+          This action cannot be undone. Any applications using this token will
+          no longer be able to authenticate.
+        </Alert>
+
+        <Content component="p">
+          Are you sure you want to revoke the application token &quot;
+          <strong>{token.title}</strong>&quot;?
+        </Content>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="revoke"
           variant="danger"
@@ -52,26 +78,11 @@ export default function RevokeTokenModal({
           data-testid="revoke-token-confirm"
         >
           Revoke Token
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={onClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Alert
-        variant="warning"
-        isInline
-        title="Warning"
-        className="pf-v5-u-mb-md"
-      >
-        This action cannot be undone. Any applications using this token will no
-        longer be able to authenticate.
-      </Alert>
-
-      <Text>
-        Are you sure you want to revoke the application token &quot;
-        <strong>{token.title}</strong>&quot;?
-      </Text>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

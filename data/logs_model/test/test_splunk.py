@@ -13,10 +13,15 @@ from dateutil.parser import parse
 from mock import Mock, patch
 from splunklib.binding import AuthenticationError  # type: ignore[import]
 
-from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
-from .test_elasticsearch import logs_model, mock_db_model
 from data.logs_model import configure
 from data.logs_model.logs_producer import LogSendException
+from data.logs_model.logs_producer.splunk_hec_logs_producer import (
+    _splunk_json_serialize as hec_splunk_json_serialize,
+)
+from data.logs_model.logs_producer.splunk_logs_producer import (
+    _splunk_json_serialize as sdk_splunk_json_serialize,
+)
+from data.logs_model.test.test_elasticsearch import logs_model, mock_db_model
 from data.model import config as _config
 from test.fixtures import *
 
@@ -330,6 +335,72 @@ def test_splunk_logs_producers(
 
 
 @pytest.mark.parametrize(
+    "unlogged_ok, unlogged_pulls_ok, kind_name",
+    [
+        pytest.param(True, False, "push_repo", id="allow_without_strict_logging"),
+        pytest.param(False, True, "pull_repo", id="allow_pulls_without_strict_logging"),
+    ],
+)
+def test_log_action_failed_includes_context_in_extra(
+    unlogged_ok,
+    unlogged_pulls_ok,
+    kind_name,
+    logs_model,
+    splunk_logs_model_config,
+    mock_db_model,
+    initialized_db,
+    cert_file_path,
+    app_config,
+):
+    """Verify that when log sending fails and strict logging is disabled,
+    logger.exception receives the full log context in the extra dict
+    (not None from dict.update())."""
+    app_config["ALLOW_WITHOUT_STRICT_LOGGING"] = unlogged_ok
+    app_config["ALLOW_PULLS_WITHOUT_STRICT_LOGGING"] = unlogged_pulls_ok
+
+    send_exception = LogSendException("Splunk unreachable")
+
+    with (
+        patch(
+            "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send",
+            side_effect=send_exception,
+        ),
+        patch("splunklib.client.connect"),
+        patch("ssl.SSLContext.load_verify_locations"),
+        patch("data.logs_model.splunk_logs_model.logger") as mock_logger,
+    ):
+        configure(splunk_logs_model_config)
+
+        logs_model.log_action(
+            kind_name,
+            "devtable",
+            FAKE_PERFORMER["user1"],
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+        )
+
+        mock_logger.exception.assert_called_once()
+        call_args = mock_logger.exception.call_args
+
+        # Verify context is in the message format string args
+        msg_format = call_args[0][0]
+        assert "kind=%s" in msg_format
+        msg_args = call_args[0][1:]
+        assert kind_name in msg_args
+        assert "devtable" in msg_args
+        assert "fake_username" in msg_args
+
+        # Verify extra dict is populated (not None from dict.update())
+        extra = call_args.kwargs.get("extra") or call_args[1].get("extra")
+        assert extra is not None, "extra must not be None (dict.update() returns None)"
+        assert extra["kind"] == kind_name
+        assert isinstance(extra["exception"], LogSendException)
+
+
+@pytest.mark.parametrize(
     """
     kind_name, namespace_name,
     performer, ip, metadata, repository, repository_name, timestamp, throws
@@ -472,7 +543,10 @@ def test_splunk_hec_logs_producer(
                         logs_model._logs_producer.hec_url,
                         headers=logs_model._logs_producer.headers,
                         data=json.dumps(
-                            expected_call, sort_keys=True, default=str, ensure_ascii=False
+                            expected_call,
+                            sort_keys=True,
+                            default=hec_splunk_json_serialize,
+                            ensure_ascii=False,
                         ).encode("utf-8"),
                         verify=splunk_hec_logs_model_config["LOGS_MODEL_CONFIG"][
                             "splunk_hec_config"
@@ -589,6 +663,41 @@ def test_submit_skip_ssl_verify_false(
             mock_send.assert_has_calls(expected_call_args)
 
 
+def test_extended_logging_omits_performer_email(
+    logs_model,
+    splunk_logs_model_config,
+    mock_db_model,
+    initialized_db,
+    cert_file_path,
+):
+    with (
+        patch(
+            "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
+        ) as mock_send,
+        patch("splunklib.client.connect"),
+    ):
+        with patch("ssl.SSLContext.load_verify_locations"):
+            configure(splunk_logs_model_config)
+            logs_model.log_action(
+                "push_repo",
+                "devtable",
+                FAKE_PERFORMER["user1"],
+                "192.168.1.1",
+                {"key": "value"},
+                None,
+                "repo1",
+                parse("2019-01-01T03:30"),
+                request_url="/api/v1/repository/devtable/repo1",
+                http_method="POST",
+            )
+
+            sent_event = mock_send.call_args[0][0]
+            assert "performer_email" not in sent_event
+            assert sent_event["performer_username"] == "fake_username"
+            assert sent_event["request_url"] == "/api/v1/repository/devtable/repo1"
+            assert sent_event["http_method"] == "POST"
+
+
 def test_connect_with_invalid_certfile_path(
     logs_model, splunk_logs_model_config, mock_db_model, initialized_db
 ):
@@ -647,3 +756,31 @@ def test_connect_with_invalid_ssl_cert(
                     False,
                 )
                 mock_send.assert_not_called()
+
+
+class TestSplunkJsonSerialize:
+    """Tests for _splunk_json_serialize in both HEC and SDK producers."""
+
+    def test_hec_serializer_datetime_returns_epoch(self):
+        from calendar import timegm
+
+        dt = datetime(2024, 1, 15, 10, 30, 0)
+        result = hec_splunk_json_serialize(dt)
+        assert isinstance(result, int)
+        assert result == timegm(dt.utctimetuple())
+
+    def test_hec_serializer_non_datetime_returns_str(self):
+        result = hec_splunk_json_serialize({"key": "value"})
+        assert result == "{'key': 'value'}"
+
+    def test_sdk_serializer_datetime_returns_epoch(self):
+        from calendar import timegm
+
+        dt = datetime(2024, 1, 15, 10, 30, 0)
+        result = sdk_splunk_json_serialize(dt)
+        assert isinstance(result, int)
+        assert result == timegm(dt.utctimetuple())
+
+    def test_sdk_serializer_non_datetime_returns_str(self):
+        result = sdk_splunk_json_serialize(42)
+        assert result == "42"

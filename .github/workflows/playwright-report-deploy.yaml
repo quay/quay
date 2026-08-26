@@ -1,7 +1,10 @@
 name: Playwright Report Deploy
 on:
   workflow_run:
-    workflows: ["Playwright E2E Tests"]
+    # "Playwright E2E Tests" now runs as a job inside the reusable ci-web.yaml
+    # workflow, called from the top-level "CI" workflow (sentinel.yaml). Only
+    # "CI" itself is a directly-triggered workflow that can be targeted here.
+    workflows: ["CI"]
     types:
       - completed
 
@@ -19,46 +22,64 @@ jobs:
       contents: read
 
     steps:
+    # The "CI" run may not have executed the Playwright job at all (e.g. a
+    # Go/Python-only PR never calls ci-web.yaml), so no artifacts will exist.
+    # Treat that as a normal skip rather than a failure.
     - name: Download Playwright report artifact
-      uses: dawidd6/action-download-artifact@v8
+      id: download-report
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: playwright-report
-        workflow: web-playwright-ci.yaml
+        workflow: ci-web.yaml
         run_id: ${{ github.event.workflow_run.id }}
         path: ./playwright-report
+        if_no_artifact_found: ignore
 
     - name: Download PR number
-      uses: dawidd6/action-download-artifact@v8
+      id: download-pr-info
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: pr-info
-        workflow: web-playwright-ci.yaml
+        workflow: ci-web.yaml
         run_id: ${{ github.event.workflow_run.id }}
         path: ./pr-info
+        if_no_artifact_found: ignore
 
     - name: Read PR number
       id: pr
+      if: steps.download-pr-info.outputs.found_artifact == 'true'
       run: |
         PR_NUMBER=$(cat pr-info/pr_number.txt)
         echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
     - name: Deploy to Surge
       id: deploy
-      run: |
-        DEPLOY_DOMAIN="quay-playwright-pr-${{ steps.pr.outputs.number }}.surge.sh"
-        cd playwright-report
-        npx surge . $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
-        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
+      if: steps.download-report.outputs.found_artifact == 'true' && steps.download-pr-info.outputs.found_artifact == 'true'
       env:
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+      run: |
+        DEPLOY_DOMAIN="quay-playwright-pr-${PR_NUMBER}.surge.sh"
+        cd playwright-report
+        npx surge . "$DEPLOY_DOMAIN" --token "$SURGE_TOKEN"
+        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
 
     - name: Comment PR with report URL
-      uses: actions/github-script@v8
+      if: steps.deploy.outcome == 'success'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        REPORT_URL: ${{ steps.deploy.outputs.url }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        RUN_URL: ${{ github.event.workflow_run.html_url }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       with:
         script: |
-          const reportUrl = '${{ steps.deploy.outputs.url }}';
-          const prNumber = ${{ steps.pr.outputs.number }};
-          const conclusion = '${{ github.event.workflow_run.conclusion }}';
-          const runUrl = '${{ github.event.workflow_run.html_url }}';
+          const reportUrl = process.env.REPORT_URL;
+          const prNumber = parseInt(process.env.PR_NUMBER, 10);
+          const conclusion = process.env.RUN_CONCLUSION;
+          const runUrl = process.env.RUN_URL;
+          const headSha = process.env.HEAD_SHA;
 
           // Find existing comment
           const { data: comments } = await github.rest.issues.listComments({
@@ -83,7 +104,7 @@ jobs:
 
           🔗 [View Workflow Run](${runUrl})
 
-          _Report from commit ${{ github.event.workflow_run.head_sha }}_`;
+          _Report from commit ${headSha}_`;
 
           if (botComment) {
             // Update existing comment

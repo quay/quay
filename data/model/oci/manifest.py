@@ -10,9 +10,12 @@ from peewee import IntegrityError
 import features
 from data.database import (
     ExternalNotificationEvent,
+    IndexerVersion,
+    IndexStatus,
     Manifest,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Repository,
     RepositoryNotification,
     Tag,
@@ -232,10 +235,22 @@ def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id
     Connects manifests to a manifest list.
     Raises a _ManifestAlreadyExists if any of the manifest children already exist.
     """
-    children = [
-        dict(manifest=parent, child_manifest=manifest, repository=repository_id)
-        for manifest in manifests
-    ]
+
+    # proxy code will send us a raw list of children, if we have multiple identical entries in the list,
+    # the insert will fail with a unique constraint violation.
+    # we need to make sure that duplicates are removed from the list
+
+    children = []
+    deduped_list = set()
+    for manifest in manifests:
+        if manifest.id not in deduped_list:
+            deduped_list.add(manifest.id)
+            children.append(
+                dict(manifest=parent, child_manifest=manifest, repository=repository_id)
+            )
+    if not children:
+        return
+
     try:
         ManifestChild.insert_many(children).execute()
     except IntegrityError as e:
@@ -348,7 +363,7 @@ def _create_manifest(
 
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)
-            if labels is None and isinstance(child_manifest, ManifestInterface):
+            if labels is None and not isinstance(child_manifest, ManifestListInterface):
                 if raise_on_error:
                     raise CreateManifestException("Unable to retrieve manifest labels")
 
@@ -367,7 +382,7 @@ def _create_manifest(
                 return None
 
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
-            child_manifest_label_dicts.append(labels)
+            child_manifest_label_dicts.append(labels or {})
 
     # Build the map from required blob digests to the blob objects.
     blob_map = _build_blob_map(
@@ -409,6 +424,16 @@ def _create_manifest(
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)
+
+            ManifestSecurityStatus.create(
+                manifest=manifest.id,
+                repository=repository_id,
+                index_status=IndexStatus.PENDING,
+                indexer_hash="",
+                indexer_version=IndexerVersion.V4,
+                error_json={},
+                metadata_json={},
+            )
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're

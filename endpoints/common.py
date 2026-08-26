@@ -2,7 +2,7 @@ import datetime
 import logging
 import os
 
-from flask import make_response, render_template, request, session
+from flask import current_app, make_response, render_template, request, session
 from flask_login import login_user
 from flask_principal import identity_changed
 
@@ -17,8 +17,8 @@ from endpoints.common_models_pre_oci import pre_oci_model as model
 from endpoints.csrf import QUAY_CSRF_UPDATED_HEADER_NAME, generate_csrf_token
 from external_libraries import get_external_css, get_external_javascript
 from util.config.provider.k8sprovider import QE_NAMESPACE
+from util.metrics.prometheus import ui_page_views
 from util.secscan import PRIORITY_LEVELS
-from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,14 @@ def common_login(user_uuid, permanent_session=True):
     if login_user(LoginWrappedDBUser(user_uuid)):
         logger.debug("Successfully signed in as user %s with uuid %s", user.username, user_uuid)
         new_identity = QuayDeferredPermissionUser.for_id(user_uuid)
-        identity_changed.send(app, identity=new_identity)
+        active_app = current_app._get_current_object()
+        identity_changed.send(active_app, identity=new_identity)
         session["login_time"] = datetime.datetime.now()
 
         if permanent_session and features.PERMANENT_SESSIONS:
-            session_timeout_str = app.config.get("SESSION_TIMEOUT", "31d")
             session.permanent = True
-            session.permanent_session_lifetime = convert_to_timedelta(session_timeout_str)
+        else:
+            session.permanent = False
 
         # Force a new CSRF token.
         headers = {}
@@ -68,6 +69,10 @@ def _list_files(path, extension, contains=""):
         return os.path.join(dp, f)[len("static/") :]
 
     filepath = os.path.join("static/", path)
+    if not os.path.isdir(filepath):
+        # Volume mounts of the repo (e.g. CI, local dev) often omit gitignored `static/build`;
+        # walking a missing path raises FileNotFoundError and yields 500 on every Angular UI route.
+        return []
     return [join_path(dp, f) for dp, _, files in os.walk(filepath) for f in files if matches(f)]
 
 
@@ -101,6 +106,8 @@ def render_page_template(name, route_data=None, **kwargs):
     """
     Renders the page template with the given name as the response and returns its contents.
     """
+    ui_page_views.labels(ui="angular").inc()
+
     main_scripts = _list_files("build", "js", JS_BUNDLE_NAME)
 
     use_cdn = app.config.get("USE_CDN", True)

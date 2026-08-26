@@ -11,7 +11,7 @@
  * Requires REPO_MIRROR feature to be enabled in Quay config.
  */
 
-import {test, expect} from '../../fixtures';
+import {test, expect, skipUnlessFeature} from '../../fixtures';
 
 test.describe(
   'Repository Mirroring',
@@ -180,7 +180,9 @@ test.describe(
       ).toBeChecked();
 
       // Verify status section exists
-      await expect(authenticatedPage.getByText('Status')).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('heading', {name: 'Status'}),
+      ).toBeVisible();
       await expect(authenticatedPage.getByText('State')).toBeVisible();
 
       // Update the external reference
@@ -310,7 +312,9 @@ test.describe(
     test('displays architecture filter component with all architectures option', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archfilterorg');
       const repo = await api.repository(org.name, 'archfilterrepo');
@@ -342,7 +346,9 @@ test.describe(
     test('allows selecting multiple architectures from dropdown', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archselectorg');
       const repo = await api.repository(org.name, 'archselectrepo');
@@ -398,7 +404,9 @@ test.describe(
     test('saves and loads architecture filter with mirror configuration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, robot, set MIRROR state
       const org = await api.organization('archsaveorg');
       const repo = await api.repository(org.name, 'archsaverepo');
@@ -467,7 +475,9 @@ test.describe(
     test('clears architecture filter selection', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archclearorg');
       const repo = await api.repository(org.name, 'archclearrepo');
@@ -512,7 +522,9 @@ test.describe(
     test('loads existing architecture filter from saved mirror configuration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, robot, set MIRROR state, create mirror config with architecture filter
       const org = await api.organization('archloadorg');
       const repo = await api.repository(org.name, 'archloadrepo');
@@ -553,6 +565,137 @@ test.describe(
       await expect(
         authenticatedPage.getByTestId('architecture-filter-helper'),
       ).toContainText('s390x');
+    });
+
+    test('completes a real sync using authfile credentials', async ({api}) => {
+      // This test waits up to 2 minutes for a real skopeo sync to complete.
+      test.setTimeout(180_000);
+      // Validates the authfile credential path end-to-end: if skopeomirror.py
+      // writes a malformed authfile or passes credentials on the CLI instead,
+      // the sync will fail or produce an error status here.
+      const org = await api.organization('syncauthfileorg');
+      const repo = await api.repository(org.name, 'syncauthfilerepo');
+      const robot = await api.robot(org.name, 'syncauthfilebot');
+      await api.setMirrorState(org.name, repo.name);
+
+      // Mirror a small, stable public image so the sync completes quickly.
+      // Push sync_start_date into the future so the scheduler won't fire
+      // independently; triggerMirrorSync() is the only driver.
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/quay/busybox',
+        sync_interval: 86400,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        verify_tls: true,
+      });
+
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+
+      // Poll until the mirror worker finishes. Throw on FAIL so the test
+      // surfaces a clear message rather than timing out.
+      await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`Mirror sync failed with status: ${status}`);
+            }
+            return status;
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message:
+              'Mirror sync did not complete successfully within 2 minutes',
+          },
+        )
+        .toBe('SUCCESS');
+
+      // Confirm the synced tag landed in the repository.
+      const tags = await api.raw.getTags(org.name, repo.name);
+      expect(tags.tags.some((t) => t.name === 'latest')).toBe(true);
+    });
+
+    test('mirror health endpoint reflects completed sync', async ({
+      api,
+      adminClient,
+    }) => {
+      test.setTimeout(180_000);
+
+      const org = await api.organization('mhealthsyncorg');
+      const repo = await api.repository(org.name, 'mhealthsyncrepo');
+      const robot = await api.robot(org.name, 'mhealthsyncbot');
+      await api.setMirrorState(org.name, repo.name);
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/quay/busybox',
+        sync_interval: 86400,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        verify_tls: true,
+      });
+
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+
+      await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`Mirror sync failed with status: ${status}`);
+            }
+            return status;
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message:
+              'Mirror sync did not complete successfully within 2 minutes',
+          },
+        )
+        .toBe('SUCCESS');
+
+      // Validate the health endpoint reflects the synced mirror
+      const healthResp = await adminClient.get(
+        `/api/v1/repository/mirror/health?namespace=${org.name}`,
+      );
+      expect([200, 503]).toContain(healthResp.status());
+
+      const health = await healthResp.json();
+      expect(health).toHaveProperty('healthy');
+      expect(health).toHaveProperty('repositories');
+      expect(health.repositories.total).toBeGreaterThanOrEqual(1);
+      expect(health.repositories.completed).toBeGreaterThanOrEqual(1);
+
+      // Detailed mode should list the synced repository
+      const detailedResp = await adminClient.get(
+        `/api/v1/repository/mirror/health?namespace=${org.name}&detailed=true`,
+      );
+      expect([200, 503]).toContain(detailedResp.status());
+
+      const detailed = await detailedResp.json();
+      expect(detailed.repositories.details).toBeDefined();
+      expect(Array.isArray(detailed.repositories.details)).toBe(true);
+
+      const syncedRepo = detailed.repositories.details.find(
+        (d: {namespace: string; repository: string}) =>
+          d.namespace === org.name && d.repository === repo.name,
+      );
+      expect(syncedRepo).toBeDefined();
+      expect(syncedRepo.sync_status).toBe('SUCCESS');
+      expect(syncedRepo.is_enabled).toBe(true);
     });
   },
 );

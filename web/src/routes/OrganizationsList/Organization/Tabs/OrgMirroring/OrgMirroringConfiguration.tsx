@@ -20,6 +20,8 @@ interface OrgMirroringConfigurationProps {
   setSelectedRobot: (robot: Entity | null) => void;
   robotOptions: React.ReactNode[];
   isSyncingNow: boolean;
+  isCancellingSync: boolean;
+  isOrgSyncing: boolean;
   onSyncNow: () => Promise<void>;
   onToggleEnabled: (
     checked: boolean,
@@ -44,6 +46,8 @@ export const OrgMirroringConfiguration: React.FC<
   setSelectedRobot,
   robotOptions,
   isSyncingNow,
+  isCancellingSync,
+  isOrgSyncing,
   onSyncNow,
   onToggleEnabled,
   addAlert,
@@ -79,6 +83,8 @@ export const OrgMirroringConfiguration: React.FC<
         errors={errors}
         config={config}
         isSyncingNow={isSyncingNow}
+        isCancellingSync={isCancellingSync}
+        isOrgSyncing={isOrgSyncing}
         onSyncNow={onSyncNow}
       />
 

@@ -1,6 +1,9 @@
 import {
   Button,
   Divider,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   MenuGroup,
   MenuItem,
   MenuList,
@@ -24,6 +27,7 @@ import {
 } from '@patternfly/react-core';
 import {
   PowerOffIcon,
+  QuestionCircleIcon,
   UserIcon,
   UserCogIcon,
   WindowMaximizeIcon,
@@ -40,7 +44,6 @@ import Avatar from 'src/components/Avatar';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
-import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -48,23 +51,23 @@ import {useNavigate} from 'react-router-dom';
 
 export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const {themePreference, setThemePreference} = useTheme();
-  const config = useQuayConfig();
+  const quayConfig = useQuayConfig();
   const navigate = useNavigate();
   const showUIToggle =
-    config?.features?.UI_V2 &&
+    quayConfig?.features?.UI_V2 &&
     !(
-      config?.config?.DISABLE_ANGULAR_UI &&
-      config?.config?.DEFAULT_UI === 'react'
+      quayConfig?.config?.DISABLE_ANGULAR_UI &&
+      quayConfig?.config?.DEFAULT_UI === 'react'
     );
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
   const [err, setErr] = useState<string>();
-  const quayConfig = useQuayConfig();
 
   const onDropdownToggle = () => {
     setIsDropdownOpen((prev) => !prev);
@@ -157,6 +160,63 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
   };
 
+  const helpDropdown = (
+    <Dropdown
+      isOpen={isHelpOpen}
+      onSelect={() => setIsHelpOpen(false)}
+      onOpenChange={setIsHelpOpen}
+      popperProps={{position: 'end'}}
+      toggle={(toggleRef) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setIsHelpOpen((prev) => !prev)}
+          isExpanded={isHelpOpen}
+          variant="plain"
+          aria-label="Help menu"
+          data-testid="help-menu-toggle"
+        >
+          <QuestionCircleIcon />
+        </MenuToggle>
+      )}
+    >
+      <DropdownList>
+        {quayConfig?.config?.DOCUMENTATION_ROOT && (
+          <DropdownItem
+            key="documentation"
+            to={quayConfig.config.DOCUMENTATION_ROOT}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="help-documentation-link"
+          >
+            Documentation
+          </DropdownItem>
+        )}
+        <DropdownItem
+          key="api-reference"
+          to="/api/v1/discovery"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="help-api-reference-link"
+        >
+          API Reference
+        </DropdownItem>
+        {quayConfig?.version_number && (
+          <>
+            <Divider component="li" />
+            <DropdownItem
+              key="version"
+              isDisabled
+              isAriaDisabled
+              data-testid="help-version-info"
+            >
+              {quayConfig.version_number}
+            </DropdownItem>
+          </>
+        )}
+      </DropdownList>
+    </Dropdown>
+  );
+
   const userMenu = (
     <Menu ref={menuRef} onSelect={onMenuSelect}>
       <MenuContent>
@@ -221,7 +281,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 <Flex
                   spaceItems={{default: 'spaceItemsMd'}}
                   flexWrap={{default: 'nowrap'}}
-                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                  className="pf-v6-u-text-nowrap pf-v6-u-pr-md"
                 >
                   <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
                     Legacy UI
@@ -229,7 +289,6 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                   <Switch
                     id="menu-ui-switch"
                     label="Current UI"
-                    labelOff="Current UI"
                     isChecked={isChecked}
                     onChange={toggleSwitch}
                   />
@@ -326,9 +385,16 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     ? `Sign in to ${quayConfig.config.REGISTRY_TITLE_SHORT}`
     : 'Sign In';
 
-  const signInButton = <Button>{signInButtonText}</Button>;
+  // Use full page reload instead of React Router navigation to ensure
+  // React Query cache and auth state are properly cleared before signin
+  const signInButton = (
+    <Button component="a" href="/signin">
+      {signInButtonText}
+    </Button>
+  );
 
-  const {unreadCount} = useAppNotifications();
+  const isAuthenticated = !!user?.username;
+  const {unreadCount} = useAppNotifications(isAuthenticated);
 
   return (
     <>
@@ -336,34 +402,35 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       <Toolbar id="toolbar" isFullHeight isStatic>
         <ToolbarContent>
           <ToolbarGroup
-            variant="icon-button-group"
-            align={{default: 'alignRight'}}
-            spacer={{default: 'spacerNone', md: 'spacerMd'}}
+            variant="action-group-plain"
+            align={{default: 'alignEnd'}}
+            gap={{default: 'gapNone', md: 'gapMd'}}
           >
-            <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
-              }}
-            >
-              <NotificationBadge
-                variant={
-                  unreadCount > 0
-                    ? NotificationBadgeVariant.unread
-                    : NotificationBadgeVariant.read
-                }
-                count={unreadCount}
-                onClick={toggleDrawer}
-                aria-label="Notifications"
-                data-testid="notification-bell"
+            {isAuthenticated && (
+              <ToolbarItem
+                gap={{
+                  default: 'gapNone',
+                  md: 'gapSm',
+                  lg: 'gapMd',
+                  xl: 'gapLg',
+                }}
               >
-                <BellIcon />
-              </NotificationBadge>
-            </ToolbarItem>
+                <NotificationBadge
+                  variant={
+                    unreadCount > 0
+                      ? NotificationBadgeVariant.unread
+                      : NotificationBadgeVariant.read
+                  }
+                  count={unreadCount}
+                  onClick={toggleDrawer}
+                  aria-label="Notifications"
+                  data-testid="notification-bell"
+                />
+              </ToolbarItem>
+            )}
+            <ToolbarItem>{helpDropdown}</ToolbarItem>
             <ToolbarItem>
-              {user.username ? menuContainer : signInButton}
+              {isAuthenticated ? menuContainer : signInButton}
             </ToolbarItem>
           </ToolbarGroup>
         </ToolbarContent>

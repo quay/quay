@@ -1,9 +1,4 @@
-import {
-  Alert,
-  PageSection,
-  PageSectionVariants,
-  Title,
-} from '@patternfly/react-core';
+import {Alert, PageSection, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useLocation, useSearchParams} from 'react-router-dom';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
@@ -155,7 +150,7 @@ export default function TagDetails() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Title headingLevel="h1">
           {repo}:{tag}
         </Title>
@@ -164,14 +159,14 @@ export default function TagDetails() {
           options={tagDetails.manifest_list?.manifests}
           setDigest={setDigest}
           render={tagDetails.is_manifest_list}
-          style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
+          style={{marginTop: 'var(--pf-t--global--spacer--md)'}}
         />
         {tagDetails.is_sparse && (
           <Alert
             variant="warning"
             isInline
             title="Sparse Manifest List"
-            style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
+            style={{marginTop: 'var(--pf-t--global--spacer--md)'}}
             data-testid="sparse-manifest-alert"
           >
             This is a sparse manifest list - not all architectures are present
@@ -187,10 +182,7 @@ export default function TagDetails() {
           </Alert>
         )}
       </PageSection>
-      <PageSection
-        variant={PageSectionVariants.light}
-        padding={{default: 'noPadding'}}
-      >
+      <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
         <ErrorBoundary
           hasError={isErrorString(err)}
           fallback={<RequestError message={err} />}

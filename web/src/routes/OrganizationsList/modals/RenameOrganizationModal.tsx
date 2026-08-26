@@ -1,12 +1,15 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useRenameOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
@@ -70,11 +73,35 @@ export default function RenameOrganizationModal(
 
   return (
     <Modal
-      title="Rename Organization"
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title="Rename Organization" />
+      <ModalBody>
+        <Form>
+          <FormGroup label="Enter a new name for the organization:" isRequired>
+            <TextInput
+              id="new-organization-name"
+              value={newName}
+              onChange={(_event, value) => setNewName(value)}
+              placeholder="New organization name"
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit();
+                }
+              }}
+            />
+          </FormGroup>
+          {error && (
+            <Alert variant="danger" title="Error" isInline>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -83,33 +110,11 @@ export default function RenameOrganizationModal(
           isDisabled={isLoading || !newName.trim()}
         >
           OK
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Enter a new name for the organization:" isRequired>
-          <TextInput
-            id="new-organization-name"
-            value={newName}
-            onChange={(_event, value) => setNewName(value)}
-            placeholder="New organization name"
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSubmit();
-              }
-            }}
-          />
-        </FormGroup>
-        {error && (
-          <Alert variant="danger" title="Error" isInline>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

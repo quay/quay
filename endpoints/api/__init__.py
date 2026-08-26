@@ -33,7 +33,7 @@ from auth.permissions import (
     UserReadPermission,
 )
 from data import model as data_model
-from data.database import RepositoryState
+from data.database import RepositoryState, User
 from data.logs_model import logs_model
 from digest import digest_tools
 from endpoints.csrf import csrf_protect
@@ -544,14 +544,16 @@ def allow_if_any_superuser():
 def allow_if_global_readonly_superuser():
     ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
     config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
+    is_oidc = app.config.get("AUTHENTICATION_TYPE") == "OIDC"
 
     logger.debug(
-        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s",
+        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s, is_oidc=%s",
         ldap_filter,
         config_users,
+        is_oidc,
     )
 
-    if ldap_filter is None and config_users is None:
+    if ldap_filter is None and config_users is None and not is_oidc:
         logger.debug("allow_if_global_readonly_superuser: returning False - no config")
         return False
 
@@ -593,6 +595,43 @@ def allow_if_global_readonly_superuser():
     )
 
     return is_global_readonly
+
+
+def get_viewable_teams_for_org(orgname: str, user: User | None) -> set[str] | None:
+    """
+    Returns a set of team names that the user can view within the specified organization,
+    using request-scoped caching to avoid redundant database queries.
+
+    A user can view a team if:
+    1. They are a member of that team (any role)
+    2. They are an organization admin
+
+    If the user is an org admin, returns None to indicate all teams are viewable.
+    """
+    if user is None:
+        return set()
+
+    # Build cache key
+    cache_attr = "_viewable_teams_cache"
+    cache_key = f"{user.id}:{orgname}"
+
+    # Check cache first
+    if hasattr(g, cache_attr):
+        cached = getattr(g, cache_attr)
+        if cache_key in cached:
+            return cached[cache_key]
+    else:
+        setattr(g, cache_attr, {})
+
+    # Check if user is org admin - if so, they can view all teams
+    if data_model.permission.is_org_admin(user, orgname):
+        getattr(g, cache_attr)[cache_key] = None  # None means all teams viewable
+        return None
+
+    # Get the set of teams the user is a member of
+    user_teams = data_model.permission.get_user_teams_in_org(user, orgname)
+    getattr(g, cache_attr)[cache_key] = user_teams
+    return user_teams
 
 
 def verify_not_prod(func):
@@ -798,6 +837,7 @@ def deprecated():
 
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
+import endpoints.api.bootstrap
 import endpoints.api.build
 import endpoints.api.capabilities
 import endpoints.api.discovery
@@ -807,9 +847,12 @@ import endpoints.api.immutability_policy
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
+import endpoints.api.mirrorhealth
+import endpoints.api.namespacenotification
 import endpoints.api.namespacequota
 import endpoints.api.org_mirror
 import endpoints.api.organization
+import endpoints.api.organization_application_tokens
 import endpoints.api.permission
 import endpoints.api.policy
 import endpoints.api.prototype

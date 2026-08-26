@@ -26,6 +26,20 @@ import {Entity, EntityKind} from 'src/resources/UserResource';
 
 const ORG_MIRROR_QUERY_KEY = 'org-mirror-config';
 
+// Count repos that are actively syncing or pending worker pickup.
+// NEVER_RUN = scheduled and pending, SYNC_NOW/SYNCING = actively syncing.
+// Keep in sync with data/model/org_mirror.py:update_sync_status_to_sync_now().
+function getActiveRepoCount(
+  counts: Record<string, number> | undefined,
+): number {
+  if (!counts) return 0;
+  return (
+    (counts['NEVER_RUN'] ?? 0) +
+    (counts['SYNC_NOW'] ?? 0) +
+    (counts['SYNCING'] ?? 0)
+  );
+}
+
 // Valid values for runtime validation of API responses
 const VALID_REGISTRY_TYPES: SourceRegistryType[] = ['harbor', 'quay'];
 const VALID_VISIBILITIES: Visibility[] = ['public', 'private'];
@@ -82,6 +96,8 @@ export const useOrgMirroringConfig = (
   // so we don't overwrite user edits on background refetches.
   const hasPopulatedForm = useRef(false);
 
+  const [isCancellingSync, setIsCancellingSync] = useState(false);
+
   const {
     data: config = null,
     isLoading,
@@ -98,12 +114,35 @@ export const useOrgMirroringConfig = (
         throw err;
       }
     },
+    refetchInterval: (data) => {
+      if (isCancellingSync) return 5000;
+      const status = data?.sync_status;
+      if (status === 'SYNCING' || status === 'SYNC_NOW') return 5000;
+      return getActiveRepoCount(data?.repo_sync_status_counts) > 0
+        ? 5000
+        : false;
+    },
   });
 
   const error = queryError
     ? (queryError as Error).message ||
       'Failed to load organization mirror configuration'
     : null;
+
+  const activeRepoCount = getActiveRepoCount(config?.repo_sync_status_counts);
+
+  // True when any sync activity is happening (discovery or repo sync)
+  const isOrgSyncing =
+    config?.sync_status === 'SYNCING' ||
+    config?.sync_status === 'SYNC_NOW' ||
+    activeRepoCount > 0;
+
+  // Stop polling once cancellation is reflected in the config
+  useEffect(() => {
+    if (isCancellingSync && !isOrgSyncing) {
+      setIsCancellingSync(false);
+    }
+  }, [isCancellingSync, isOrgSyncing]);
 
   // Populate form once when config data first arrives
   useEffect(() => {
@@ -182,8 +221,8 @@ export const useOrgMirroringConfig = (
 
       // Credentials handling:
       // - On create: always include both fields
-      // - On update: always include username if present, only include
-      //   password when the user actually entered a new value
+      // - On update: always include username if present or previously set,
+      //   include password when entered or null when credentials are cleared
       const existingHasCredentials = config?.external_registry_username != null;
       if (!config) {
         mirrorConfig.external_registry_username = data.username || null;
@@ -194,6 +233,9 @@ export const useOrgMirroringConfig = (
         }
         if (data.password) {
           mirrorConfig.external_registry_password = data.password;
+        } else if (existingHasCredentials && !data.username) {
+          // Credentials are paired: clearing username also clears password
+          mirrorConfig.external_registry_password = null;
         }
       }
 
@@ -224,8 +266,13 @@ export const useOrgMirroringConfig = (
 
   // Cancel sync operation
   const handleCancelSync = useCallback(async () => {
-    await cancelOrgMirrorSync(orgName);
-    invalidateConfig();
+    setIsCancellingSync(true);
+    try {
+      await cancelOrgMirrorSync(orgName);
+      invalidateConfig();
+    } catch {
+      setIsCancellingSync(false);
+    }
   }, [orgName, invalidateConfig]);
 
   // Verify connection operation
@@ -259,6 +306,8 @@ export const useOrgMirroringConfig = (
     isSyncingNow,
     handleSyncNow,
     handleCancelSync,
+    isCancellingSync,
+    isOrgSyncing,
     isVerifying,
     handleVerifyConnection,
     handleToggleEnabled,

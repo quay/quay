@@ -2,10 +2,8 @@ import {
   Button,
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
   Page,
   PageSection,
-  EmptyStateHeader,
   EmptyStateFooter,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
@@ -13,13 +11,13 @@ import {ExclamationCircleIcon} from '@patternfly/react-icons';
 export default function SiteUnavailableError() {
   return (
     <Page>
-      <PageSection>
-        <EmptyState variant="full">
-          <EmptyStateHeader
-            titleText="This site is temporarily unavailable"
-            icon={<EmptyStateIcon icon={ExclamationCircleIcon} />}
-            headingLevel="h1"
-          />
+      <PageSection hasBodyWrapper={false}>
+        <EmptyState
+          headingLevel="h1"
+          icon={ExclamationCircleIcon}
+          titleText="This site is temporarily unavailable"
+          variant="full"
+        >
           <EmptyStateBody>
             {window?.location?.hostname === 'quay.io' ||
             window?.location?.hostname === 'stage.quay.io' ? (

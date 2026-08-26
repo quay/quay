@@ -1,7 +1,7 @@
 import {ReactElement, useEffect, useState} from 'react';
 import {
+  Alert,
   PageSection,
-  PageSectionVariants,
   Spinner,
   Title,
   PanelFooter,
@@ -30,6 +30,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -48,7 +49,7 @@ function RepoListHeader(props: RepoListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Repositories</Title>
         </div>
@@ -68,11 +69,19 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
+  const isQuotaManagementEnabled =
+    quayConfig?.features?.QUOTA_MANAGEMENT === true &&
+    quayConfig?.features?.EDIT_QUOTA === true;
 
   // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
   const viewMode = props.isUserOrganization ? 'self' : 'organization';
-  const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
-  const {repos, loading, error, search, setSearch, searchFilter} =
+  const {organizationQuota} = useFetchOrganizationQuota(
+    currentOrg,
+    viewMode,
+    isQuotaManagementEnabled,
+  );
+  const {repos, loading, error, search, setSearch, searchFilter, truncated} =
     useRepositories(currentOrg);
 
   repos?.sort((r1, r2) => {
@@ -292,6 +301,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state - only if there are truly no repositories
   // If filtered results are empty but repos exist, show the table with toolbar
   if (!loading && !repos?.length) {
@@ -299,15 +310,21 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       <Empty
         icon={CubesIcon}
         title="There are no viewable repositories"
-        body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
+        body={
+          isAuthenticated
+            ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
+            : 'No public repositories found. Sign in to view your private repositories.'
+        }
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create Repository"
-            Modal={createRepoModal}
-            isModalOpen={isCreateRepoModalOpen}
-            setModalOpen={setCreateRepoModalOpen}
-          />
+          isAuthenticated && !isReadOnlySuperUser ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create Repository"
+              Modal={createRepoModal}
+              isModalOpen={isCreateRepoModalOpen}
+              setModalOpen={setCreateRepoModalOpen}
+            />
+          ) : null
         }
       />
     );
@@ -316,35 +333,45 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   return (
     <>
       <RepoListHeader shouldRender={currentOrg === null} />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal
           title="Repository deletion failed"
           error={err}
           setError={setErr}
         />
-        {quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA &&
-          currentOrg && (
-            <div style={{marginBottom: '1em'}}>
-              <Title headingLevel="h4" size="md">
-                Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
-              </Title>
-            </div>
-          )}
+        {truncated && (
+          <Alert
+            variant="info"
+            isInline
+            title="Showing first 10,000 repositories. Filter by organization to narrow results."
+            style={{marginBottom: '1em'}}
+          />
+        )}
+        {isQuotaManagementEnabled && currentOrg && (
+          <div style={{marginBottom: '1em'}}>
+            <Title headingLevel="h4" size="md">
+              Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
+            </Title>
+          </div>
+        )}
         <RepositoryToolBar
           search={search}
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={createRepoModal}
-          showPageButton={true}
+          pageModal={
+            isAuthenticated && !isReadOnlySuperUser ? createRepoModal : null
+          }
+          showPageButton={isAuthenticated && !isReadOnlySuperUser}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={kebabItems}
-          selectedRepoNames={selectedRepoNames}
+          kebabItems={isAuthenticated && !isReadOnlySuperUser ? kebabItems : []}
+          selectedRepoNames={
+            isAuthenticated && !isReadOnlySuperUser ? selectedRepoNames : []
+          }
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -364,15 +391,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {isAuthenticated && !isReadOnlySuperUser && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
               <Th modifier="wrap" sort={getSortableSort(1)}>
                 {RepositoryListColumnNames.visibility}
               </Th>
-              {quayConfig?.features.QUOTA_MANAGEMENT &&
-              quayConfig?.features.EDIT_QUOTA ? (
+              {isQuotaManagementEnabled ? (
                 <Th modifier="wrap" sort={getSortableSort(2)}>
                   {RepositoryListColumnNames.size}
                 </Th>
@@ -386,24 +412,31 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           </Thead>
           <Tbody data-testid="repository-list-table">
             {filteredRepos.length === 0 ? (
-              // Repo table loading icon
-              <Tr>
-                <Td>
-                  <Spinner size="lg" />
-                </Td>
-              </Tr>
+              loading ? (
+                <Tr>
+                  <Td colSpan={5}>
+                    <Spinner size="lg" />
+                  </Td>
+                </Tr>
+              ) : (
+                <Tr>
+                  <Td colSpan={5}>No repositories found</Td>
+                </Tr>
+              )
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectRepo(repo, rowIndex, isSelecting),
-                      isSelected: isRepoSelected(repo),
-                      isDisabled: !isRepoSelectable(repo),
-                    }}
-                  />
+                  {isAuthenticated && !isReadOnlySuperUser && (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectRepo(repo, rowIndex, isSelecting),
+                        isSelected: isRepoSelected(repo),
+                        isDisabled: !isRepoSelectable(repo),
+                      }}
+                    />
+                  )}
                   <Td dataLabel={RepositoryListColumnNames.name}>
                     <Flex alignItems={{default: 'alignItemsCenter'}}>
                       <FlexItem spacer={{default: 'spacerSm'}}>
@@ -442,8 +475,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
                   </Td>
-                  {quayConfig?.features.QUOTA_MANAGEMENT &&
-                  quayConfig?.features.EDIT_QUOTA ? (
+                  {isQuotaManagementEnabled ? (
                     <Td dataLabel={RepositoryListColumnNames.size}>
                       {(() => {
                         const sizeDisplay =

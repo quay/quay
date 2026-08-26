@@ -3,7 +3,6 @@ import {
   DrawerContent,
   DrawerContentBody,
   PageSection,
-  PageSectionVariants,
   Tab,
   Tabs,
   TabTitleText,
@@ -205,6 +204,7 @@ export default function Organization() {
           organization={organizationName}
           repository={null}
           type="org"
+          isActive={activeTabKey === 'Logs'}
         />
       ),
       visible: isUserOrganization
@@ -233,18 +233,12 @@ export default function Organization() {
       <DrawerContent panelContent={drawerContentOptions[drawerContent]}>
         <DrawerContentBody>
           <QuayBreadcrumb />
-          <PageSection
-            variant={PageSectionVariants.light}
-            className="no-padding-bottom"
-          >
+          <PageSection hasBodyWrapper={false} className="no-padding-bottom">
             <Title data-testid="repo-title" headingLevel="h1">
               {organizationName}
             </Title>
           </PageSection>
-          <PageSection
-            variant={PageSectionVariants.light}
-            padding={{default: 'noPadding'}}
-          >
+          <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
             <Tabs
               activeKey={activeTabKey}
               onSelect={onTabSelect}

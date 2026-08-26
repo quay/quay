@@ -7,12 +7,6 @@ from moto import mock_s3
 from app import config_provider
 from storage import AkamaiS3Storage, StorageContext
 from test.fixtures import *
-from util.ipresolver import IPResolver
-from util.ipresolver.test.test_ipresolver import (
-    aws_ip_range_data,
-    test_aws_ip,
-    test_ip_range_cache,
-)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -29,8 +23,8 @@ def ipranges_populated(request):
 
 
 @mock_s3
-def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, app):
-    ipresolver = IPResolver(app)
+def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, mock_ipresolver):
+    ipresolver = mock_ipresolver
     if ipranges_populated:
         ipresolver.sync_token = test_ip_range_cache["sync_token"]
         ipresolver.amazon_ranges = test_ip_range_cache["all_amazon"]

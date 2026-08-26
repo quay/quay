@@ -211,9 +211,39 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
 	@echo "You can now access the frontend at http://localhost:8080"
 
+QUAY_BUILDER_IMAGE ?= quay.io/projectquay/quay-builder:3.17-unstable
+
+.PHONY: local-dev-extract-builder
+local-dev-extract-builder:
+	@if [ ! -f ./local-dev/quay-builder ]; then \
+	  echo "Extracting quay-builder binary from $(QUAY_BUILDER_IMAGE)..."; \
+	  $(DOCKER) rm -f quay-builder-extract 2>/dev/null || true; \
+	  $(DOCKER) create --name quay-builder-extract $(QUAY_BUILDER_IMAGE); \
+	  $(DOCKER) cp quay-builder-extract:/usr/local/bin/quay-builder ./local-dev/quay-builder; \
+	  $(DOCKER) rm -f quay-builder-extract; \
+	  chmod +x ./local-dev/quay-builder; \
+	else \
+	  echo "quay-builder binary already exists, skipping extraction"; \
+	fi
+
+.PHONY: enable-builds
+enable-builds: local-dev-extract-builder
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/builds/builds-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "Build support enabled in local-dev/stack/config.yaml"
+
+
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
-	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER_COMPOSE) stop quay-db quay || true
+	$(DOCKER) rm -f quay-quay quay-db || true
 	$(DOCKER) volume rm -f quay_quay-db-data
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
@@ -285,6 +315,16 @@ local-dev-down:
 	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean
 
+.PHONY: local-dev-reset-db
+local-dev-reset-db:
+	$(DOCKER_COMPOSE) stop quay-db quay || true
+	$(DOCKER) rm -f quay-quay quay-db || true
+	$(DOCKER) volume rm -f quay_quay-db-data
+	$(DOCKER_COMPOSE) up -d quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	@echo "Database has been reset. Quay will run migrations on startup."
+
 .PHONY: enable-ldap
 enable-ldap:
 	@echo "Merging LDAP config into local-dev/stack/config.yaml..."
@@ -303,6 +343,64 @@ enable-ldap:
 	@echo "✓ LDAP configuration merged"
 	@echo "  Backup: local-dev/stack/config.yaml.backup"
 	@echo "  Apply changes: docker-compose restart quay"
+
+.PHONY: enable-oidc
+enable-oidc:
+	@echo "Merging Keycloak OIDC config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/keycloak/keycloak-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "Keycloak OIDC configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+.PHONY: local-dev-up-with-keycloak
+local-dev-up-with-keycloak: local-dev-up
+	$(DOCKER_COMPOSE) up -d keycloak
+	@echo "Waiting for Keycloak to be ready..."
+	@curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+		http://localhost:8081/realms/quay > /dev/null \
+		|| { echo "Keycloak failed to start. Recent logs:"; $(DOCKER_COMPOSE) logs --tail 50 keycloak; exit 1; }
+	@echo "Keycloak is ready. Merging OIDC config..."
+	@$(MAKE) enable-oidc
+	$(DOCKER_COMPOSE) restart quay
+
+.PHONY: enable-jaeger
+enable-jaeger:
+	@echo "Merging Jaeger tracing config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps jaeger 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: Jaeger container not running. Start with: docker compose up -d jaeger"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/jaeger/jaeger-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ Jaeger tracing configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Jaeger UI: http://localhost:16686"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+.PHONY: local-dev-up-with-jaeger
+local-dev-up-with-jaeger: local-dev-up
+	$(DOCKER_COMPOSE) up -d jaeger
+	@echo "Waiting for Jaeger to be ready..."
+	@curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+		http://localhost:16686/api/services > /dev/null \
+		|| { echo "Jaeger failed to start. Recent logs:"; $(DOCKER_COMPOSE) logs --tail 50 jaeger; exit 1; }
+	@echo "Jaeger is ready. Merging tracing config..."
+	@$(MAKE) enable-jaeger
+	$(DOCKER_COMPOSE) restart quay
 
 .PHONY: enable-splunk
 enable-splunk:
@@ -358,15 +456,102 @@ enable-splunk:
 GO_BINARY_NAME = quay
 GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
+GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/mirrorregistry/cmd.version=$(GO_VERSION)")
 
-.PHONY: go-build go-test go-fmt go-vet go-clean
+SCHEMA_DIR := internal/dal/schema
+SCHEMA_TMP := /tmp/quay-schema-tmp
+
+# GO_SCHEMA_ALEMBIC_REVISION pins the Go binary's generated schema baseline.
+# The Go migration framework bridges OMR sources to this exact revision, so
+# generation must not silently follow a future Python Alembic head; advancing
+# it is a deliberate decision, not a side effect of an unrelated migration.
+GO_SCHEMA_ALEMBIC_REVISION := 9fa37f66a9b6
+
+.PHONY: go-schema go-schema-check
+
+go-schema:
+	@echo "=== Running Alembic migrations against SQLite ==="
+	@rm -rf $(SCHEMA_TMP)
+	@mkdir -p $(SCHEMA_TMP)/stack $(SCHEMA_DIR)/sqlite
+	@echo 'DB_URI: sqlite:///$(SCHEMA_TMP)/quay.db' > $(SCHEMA_TMP)/stack/config.yaml
+	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade $(GO_SCHEMA_ALEMBIC_REVISION)
+	@echo "=== Extracting schema DDL ==="
+	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql > $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp && mv $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@echo "=== Extracting seed data ==="
+	@sqlite3 $(SCHEMA_TMP)/quay.db \
+	  "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name;" \
+	  | while read table; do \
+	    count=$$(sqlite3 $(SCHEMA_TMP)/quay.db "SELECT COUNT(*) FROM \"$$table\";"); \
+	    if [ "$$count" -gt 0 ]; then \
+	      sqlite3 $(SCHEMA_TMP)/quay.db ".mode insert $$table" "SELECT * FROM \"$$table\" ORDER BY rowid;"; \
+	    fi; \
+	  done > $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/seed_data.sql > $(SCHEMA_DIR)/sqlite/seed_data.sql.tmp && mv $(SCHEMA_DIR)/sqlite/seed_data.sql.tmp $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@echo "=== Generating Go types ==="
+	sqlc generate
+	@echo "=== Cleanup ==="
+	@rm -rf $(SCHEMA_TMP)
+	@echo "Done."
+
+go-schema-check:
+	@echo "=== Checking for schema drift ==="
+	$(MAKE) go-schema SCHEMA_DIR=/tmp/quay-schema-check
+	@echo "=== Comparing database structure ==="
+	@rm -f /tmp/quay-drift-committed.db /tmp/quay-drift-fresh.db
+	@sqlite3 /tmp/quay-drift-committed.db < $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@sqlite3 /tmp/quay-drift-committed.db < $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@sqlite3 /tmp/quay-drift-fresh.db < /tmp/quay-schema-check/sqlite/quay_schema.sql
+	@sqlite3 /tmp/quay-drift-fresh.db < /tmp/quay-schema-check/sqlite/seed_data.sql
+	@diff \
+	  <(python3 tools/schema_fingerprint.py /tmp/quay-drift-committed.db) \
+	  <(python3 tools/schema_fingerprint.py /tmp/quay-drift-fresh.db) || \
+	  (echo "ERROR: Schema drift detected. Run 'make go-schema' and commit." && exit 1)
+	@rm -f /tmp/quay-drift-committed.db /tmp/quay-drift-fresh.db
+	@rm -rf /tmp/quay-schema-check
+	@echo "=== Checking generated Go code ==="
+	@sqlc generate
+	@git diff --exit-code internal/dal/daldb/ || \
+	  (echo "ERROR: Generated Go code is out of date. Run 'make go-schema' and commit." && exit 1)
+	@echo "All checks passed."
+
+.PHONY: go-build go-test go-test-postgres go-fmt go-vet go-clean
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
-	go build -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+	go build $(GO_LDFLAGS) -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
 
 go-test:
 	go test -cover -race ./...
+
+# Run PostgreSQL-source integration tests against a disposable Postgres 16.
+# Override DOCKER=podman when needed.
+GO_PG_TEST_CONTAINER := quay-go-postgres-testrunner
+GO_PG_TEST_PORT := 5434
+GO_PG_TEST_DATABASE := quay_migrate_test
+
+go-test-postgres:
+	@set -e; \
+	password="$$(openssl rand -hex 32)"; \
+	dsn="postgres://quay:$${password}@localhost:$(GO_PG_TEST_PORT)/$(GO_PG_TEST_DATABASE)?sslmode=disable"; \
+	trap '$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true' EXIT; \
+	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true; \
+	$(DOCKER) run --name $(GO_PG_TEST_CONTAINER) \
+		-e POSTGRES_USER=quay -e POSTGRES_PASSWORD="$${password}" -e POSTGRES_DB=$(GO_PG_TEST_DATABASE) \
+		-p $(GO_PG_TEST_PORT):5432 -d docker.io/library/postgres:16; \
+	ready=0; \
+	for attempt in $$(seq 1 60); do \
+		if $(DOCKER) exec $(GO_PG_TEST_CONTAINER) pg_isready -U quay -d $(GO_PG_TEST_DATABASE) >/dev/null 2>&1; then ready=1; break; fi; \
+		echo "waiting for postgres ($$attempt/60)"; sleep 1; \
+	done; \
+	if [ "$$ready" -ne 1 ]; then \
+		echo "postgres did not become ready after 60 seconds"; \
+		$(DOCKER) logs $(GO_PG_TEST_CONTAINER) || true; \
+		exit 1; \
+	fi; \
+	if QUAY_TEST_POSTGRES_DSN="$${dsn}" go test ./internal/migrate/... -run Postgres -v -count=1; then status=0; else status=$$?; fi; \
+	exit $$status
 
 go-fmt:
 	go fmt ./...

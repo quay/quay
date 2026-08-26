@@ -1,8 +1,4 @@
-import {
-  PageSection,
-  PageSectionVariants,
-  PanelFooter,
-} from '@patternfly/react-core';
+import {PageSection, PanelFooter} from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
@@ -30,6 +26,12 @@ import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 import {enrichTagsWithCosignData, isCosignSignatureTag} from 'src/libs/cosign';
+import {toEpochOrZero} from 'src/libs/utils';
+import {
+  extractLastModified,
+  extractExpires,
+  extractLastPulled,
+} from './tagColumnExtractors';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -56,10 +58,10 @@ export default function TagsList(props: TagsProps) {
     columns: {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
+      5: extractLastModified, // Last Modified
+      6: extractExpires, // Expires
       7: (item: Tag) => item.manifest_digest, // Manifest
-      8: (item: Tag) => item.last_pulled || '', // Last Pulled
+      8: extractLastPulled, // Last Pulled
       9: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,
@@ -155,7 +157,7 @@ export default function TagsList(props: TagsProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <ErrorBoundary
         hasError={isErrorString(err)}
         fallback={<RequestError message={err} />}
@@ -178,6 +180,9 @@ export default function TagsList(props: TagsProps) {
           org={props.organization}
           repo={props.repository}
           tags={paginatedTags}
+          allTags={sortedTags}
+          page={paginationProps.page}
+          perPage={paginationProps.perPage}
           loading={loading}
           selectAllTags={selectAllTags}
           selectedTags={selectedTags}

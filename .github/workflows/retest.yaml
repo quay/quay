@@ -1,0 +1,103 @@
+# Retest — re-run failed CI jobs from a PR comment.
+#
+# Usage: comment "/retest" on a pull request to re-run every failed or
+# cancelled workflow run for the PR's latest commit.  The commenter must
+# be a repository OWNER, org MEMBER, COLLABORATOR, or the PR author.
+#
+# How it works:
+#   1. Reacts with 🚀 to acknowledge the command.
+#   2. Looks up the PR's HEAD SHA via the GitHub API.
+#   3. Finds all workflow runs for that SHA with conclusion "failure" or
+#      "cancelled".
+#   4. Calls rerun-failed-jobs on failed runs and a full rerun on
+#      cancelled runs (rerun-failed-jobs only covers failed jobs and
+#      their dependents, not cancelled ones).
+#   5. If no eligible runs are found, posts a comment explaining that
+#      all checks are passing or still in progress.
+name: Retest
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  retest:
+    name: Re-run failed CI
+    # Only act on "/retest" comments on pull requests from authorised users.
+    if: >-
+      github.event.issue.pull_request
+      && github.event.comment.body == '/retest'
+      && (
+        github.event.comment.author_association == 'OWNER'
+        || github.event.comment.author_association == 'MEMBER'
+        || github.event.comment.author_association == 'COLLABORATOR'
+        || github.event.comment.user.login == github.event.issue.user.login
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: React to acknowledge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -X POST -f content='rocket' --silent
+
+      - name: Re-run failed workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.head.sha')
+          SHORT_SHA="${HEAD_SHA:0:7}"
+          echo "::notice::PR #${PR_NUMBER} HEAD SHA: ${HEAD_SHA}"
+
+          # Write API output to a file so that a query failure is caught
+          # by set -e (process substitution swallows the exit status).
+          TMPFILE=$(mktemp)
+          trap 'rm -f "${TMPFILE}"' EXIT
+          gh api "repos/${{ github.repository }}/actions/runs?head_sha=${HEAD_SHA}" \
+            --paginate --jq '.workflow_runs[] | select(.conclusion == "failure" or .conclusion == "cancelled") | "\(.id)\t\(.name)\t\(.conclusion)"' \
+            > "${TMPFILE}"
+
+          mapfile -t RUNS < "${TMPFILE}"
+
+          if [ "${#RUNS[@]}" -eq 0 ]; then
+            echo "::notice::No failed or cancelled runs for ${SHORT_SHA}"
+            gh pr comment "${PR_NUMBER}" \
+              --repo "${{ github.repository }}" \
+              --body "🔍 No failed or cancelled workflow runs found for \`${SHORT_SHA}\`. All checks may be passing or still in progress."
+            exit 0
+          fi
+
+          echo "Re-running ${#RUNS[@]} workflow run(s)"
+          ERRORS=0
+
+          for ENTRY in "${RUNS[@]}"; do
+            IFS=$'\t' read -r RUN_ID RUN_NAME CONCLUSION <<< "${ENTRY}"
+
+            # Use /rerun for cancelled runs (rerun-failed-jobs only handles
+            # failed jobs and their dependents, not cancelled ones).
+            if [ "${CONCLUSION}" = "cancelled" ]; then
+              ENDPOINT="repos/${{ github.repository }}/actions/runs/${RUN_ID}/rerun"
+            else
+              ENDPOINT="repos/${{ github.repository }}/actions/runs/${RUN_ID}/rerun-failed-jobs"
+            fi
+
+            echo "  → ${RUN_NAME} (${RUN_ID}, ${CONCLUSION}) via ${ENDPOINT##*/}"
+            if ! gh api "${ENDPOINT}" -X POST --silent 2>/dev/null; then
+              echo "::warning::Failed to re-run '${RUN_NAME}' (${RUN_ID})"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          if [ "${ERRORS}" -gt 0 ]; then
+            echo "::error::${ERRORS} re-run request(s) failed"
+            exit 1
+          fi

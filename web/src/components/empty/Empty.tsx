@@ -2,9 +2,7 @@ import React from 'react';
 import {
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
   PageSection,
-  EmptyStateHeader,
   EmptyStateFooter,
   EmptyStateActions,
 } from '@patternfly/react-core';
@@ -12,13 +10,13 @@ import {SVGIconProps} from '@patternfly/react-icons/dist/js/createIcon';
 
 export default function Empty(props: EmptyProps) {
   return (
-    <PageSection>
-      <EmptyState variant="lg">
-        <EmptyStateHeader
-          titleText={<>{props.title}</>}
-          icon={<EmptyStateIcon icon={props.icon} />}
-          headingLevel="h1"
-        />
+    <PageSection hasBodyWrapper={false}>
+      <EmptyState
+        headingLevel="h1"
+        icon={props.icon}
+        titleText={<>{props.title}</>}
+        variant="lg"
+      >
         <EmptyStateBody style={{paddingBottom: 20}}>
           {props.body}
         </EmptyStateBody>

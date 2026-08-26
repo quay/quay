@@ -2,10 +2,13 @@ import {useState} from 'react';
 import {
   Alert,
   Button,
-  Modal,
-  Text,
+  Content,
   TextInput,
-  TextVariants,
+  ContentVariants,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 
@@ -20,12 +23,33 @@ export default function DirectoryTeamSyncModal(
 
   return (
     <Modal
-      width="50%"
-      title={props.titleText}
       isOpen={props.isModalOpen}
       onClose={props.toggleModal}
       id="directory-sync-modal"
-      actions={[
+    >
+      <ModalHeader title={props.titleText} />
+      <ModalBody>
+        <Content component={ContentVariants.p}>{props.primaryText}</Content>
+        <br />
+        <div>
+          <Conditional if={props.secondaryText != null}>
+            <Content component={ContentVariants.p}>
+              {props.secondaryText}
+            </Content>
+          </Conditional>
+          <TextInput
+            value={groupName}
+            type="text"
+            onChange={(_event, value) => handleInputChange(value)}
+            id="team-sync-group-name"
+          />
+        </div>
+        <br />
+        <Conditional if={props.alertText != null}>
+          <Alert isInline variant="warning" title={props.alertText} />
+        </Conditional>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -33,29 +57,11 @@ export default function DirectoryTeamSyncModal(
           isDisabled={groupName == ''}
         >
           Enable Sync
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={props.toggleModal}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Text component={TextVariants.p}>{props.primaryText}</Text>
-      <br />
-      <div>
-        <Conditional if={props.secondaryText != null}>
-          <Text component={TextVariants.p}>{props.secondaryText}</Text>
-        </Conditional>
-        <TextInput
-          value={groupName}
-          type="text"
-          onChange={(_event, value) => handleInputChange(value)}
-          id="team-sync-group-name"
-        />
-      </div>
-      <br />
-      <Conditional if={props.alertText != null}>
-        <Alert isInline variant="warning" title={props.alertText} />
-      </Conditional>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

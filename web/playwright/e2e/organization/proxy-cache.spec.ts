@@ -88,6 +88,140 @@ test.describe(
       ).toBeDisabled();
     });
 
+    test('proxy cache form is functional when FEATURE_IMMUTABLE_TAGS is disabled (PROJQUAY-11119)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxynoimm');
+
+      // Override config to disable IMMUTABLE_TAGS (the bug scenario)
+      await authenticatedPage.route('**/config', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.features.IMMUTABLE_TAGS = false;
+        body.features.PROXY_CACHE = true;
+        await route.fulfill({response, body: JSON.stringify(body)});
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      // The immutability error alert should NOT be visible
+      await expect(
+        authenticatedPage.getByTestId('immutability-error-alert'),
+      ).not.toBeAttached();
+
+      // Save button should be enabled (not blocked by immutability check)
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('docker.io');
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+    });
+
+    test('proxy cache form is functional when FEATURE_ORG_MIRROR is disabled (PROJQUAY-11478)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxynomirr');
+
+      // Override config to disable ORG_MIRROR (the bug scenario)
+      await authenticatedPage.route('**/config', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.features.ORG_MIRROR = false;
+        body.features.PROXY_CACHE = true;
+        await route.fulfill({response, body: JSON.stringify(body)});
+      });
+
+      // Intercept the org mirror endpoint to return 405 (simulates unregistered route)
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          await route.fulfill({
+            status: 405,
+            contentType: 'application/json',
+            body: JSON.stringify({error_message: 'Method Not Allowed'}),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      // The org mirror error alert should NOT be visible
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-error-alert'),
+      ).not.toBeAttached();
+
+      // Save button should be enabled (not blocked by org mirror check)
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('docker.io');
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+    });
+
+    test('proxy cache rejects private IP as upstream registry (PROJQUAY-11180)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxyssrf');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('10.0.0.1');
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('The provided registry URL is not allowed')
+          .first(),
+      ).toBeVisible();
+
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      await expect(
+        authenticatedPage.getByTestId('delete-proxy-cache-btn'),
+      ).toBeDisabled();
+    });
+
+    test('proxy cache rejects cloud metadata endpoint as upstream registry (PROJQUAY-11180)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxymeta');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('169.254.169.254');
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('The provided registry URL is not allowed')
+          .first(),
+      ).toBeVisible();
+
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      await expect(
+        authenticatedPage.getByTestId('delete-proxy-cache-btn'),
+      ).toBeDisabled();
+    });
+
     test('proxy cache tab not visible for user namespaces', async ({
       authenticatedPage,
     }) => {

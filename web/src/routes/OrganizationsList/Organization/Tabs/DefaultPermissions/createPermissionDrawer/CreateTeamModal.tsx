@@ -2,12 +2,15 @@ import {
   Button,
   Form,
   FormGroup,
-  Modal,
-  ModalVariant,
   TextInput,
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
@@ -87,11 +90,57 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
 
   return (
     <Modal
-      title="Create team"
       variant={ModalVariant.medium}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
-      actions={[
+    >
+      <ModalHeader title="Create team" />
+      <ModalBody>
+        <Form>
+          <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
+            <TextInput
+              data-testid="new-team-name-input"
+              isRequired
+              type="text"
+              id="team-modal-form-name"
+              name="form-name"
+              value={inputTeamName}
+              onChange={handleNameChange}
+              validated={validatedName}
+            />
+
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem
+                  variant={validatedName}
+                  {...(validatedName === 'error' && {
+                    icon: <ExclamationCircleIcon />,
+                  })}
+                >
+                  {nameHelperText}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+          <FormGroup label={props.descriptionLabel} fieldId="form-description">
+            <TextInput
+              data-testid="new-team-description-input"
+              type="text"
+              id="team-modal-form-description"
+              name="form-description"
+              value={inputTeamDescription}
+              onChange={handleDescriptionChange}
+            />
+
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>{props.helperText}</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           data-testid="create-team-confirm"
           id="create-team-confirm"
@@ -102,7 +151,7 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
           isDisabled={validatedName !== 'success'}
         >
           Proceed
-        </Button>,
+        </Button>
         <Button
           id="create-team-cancel"
           key="cancel"
@@ -110,52 +159,8 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
           onClick={props.handleModalToggle}
         >
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
-          <TextInput
-            data-testid="new-team-name-input"
-            isRequired
-            type="text"
-            id="team-modal-form-name"
-            name="form-name"
-            value={inputTeamName}
-            onChange={handleNameChange}
-            validated={validatedName}
-          />
-
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={validatedName}
-                {...(validatedName === 'error' && {
-                  icon: <ExclamationCircleIcon />,
-                })}
-              >
-                {nameHelperText}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-        <FormGroup label={props.descriptionLabel} fieldId="form-description">
-          <TextInput
-            data-testid="new-team-description-input"
-            type="text"
-            id="team-modal-form-description"
-            name="form-description"
-            value={inputTeamDescription}
-            onChange={handleDescriptionChange}
-          />
-
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>{props.helperText}</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

@@ -1,16 +1,8 @@
 import React, {useEffect} from 'react';
-import {
-  Button,
-  Form,
-  FormGroup,
-  PageSection,
-  PageSectionVariants,
-} from '@patternfly/react-core';
+import {Button, Form, FormGroup, PageSection} from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
-import {
-  IOAuthApplication,
-  useUpdateOAuthApplication,
-} from 'src/hooks/UseOAuthApplications';
+import {useUpdateOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {OAuthApplicationFormData} from '../types';
@@ -21,7 +13,7 @@ interface SettingsTabProps {
   onSuccess: () => void;
 }
 
-export default function SettingsTab(props: SettingsTabProps) {
+const SettingsTab: React.FC<SettingsTabProps> = (props): React.ReactElement => {
   const {addAlert} = useUI();
 
   const {
@@ -72,7 +64,7 @@ export default function SettingsTab(props: SettingsTabProps) {
     }
   }, [props.application, reset]);
 
-  const onSubmit = (data: OAuthApplicationFormData) => {
+  const onSubmit = (data: OAuthApplicationFormData): void => {
     if (props.application?.client_id) {
       updateOAuthApplicationMutation({
         clientId: props.application.client_id,
@@ -86,7 +78,7 @@ export default function SettingsTab(props: SettingsTabProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Form>
         <FormTextInput
           name="name"
@@ -158,4 +150,6 @@ export default function SettingsTab(props: SettingsTabProps) {
       </Form>
     </PageSection>
   );
-}
+};
+
+export default SettingsTab;

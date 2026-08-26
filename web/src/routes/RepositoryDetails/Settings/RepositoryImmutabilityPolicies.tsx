@@ -4,8 +4,6 @@ import {
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Label,
   Spinner,
   Title,
@@ -40,25 +38,23 @@ function PolicyActionButtons({
 }) {
   return (
     <div
-      className="pf-v5-u-display-flex pf-v5-u-flex-direction-row pf-v5-u-align-items-center"
+      className="pf-v6-u-display-flex pf-v6-u-flex-direction-row pf-v6-u-align-items-center"
       style={{minHeight: '36px'}}
     >
       <Button
+        icon={<PencilAltIcon />}
         variant="plain"
         onClick={() => onEdit(uuid)}
         aria-label="Edit policy"
         data-testid="edit-immutability-policy-btn"
-      >
-        <PencilAltIcon />
-      </Button>
+      />
       <Button
+        icon={<TrashIcon />}
         variant="plain"
         onClick={() => onDelete(uuid)}
         aria-label="Delete policy"
         data-testid="delete-immutability-policy-btn"
-      >
-        <TrashIcon />
-      </Button>
+      />
     </div>
   );
 }
@@ -214,7 +210,7 @@ export default function RepositoryImmutabilityPolicies(
 
   return (
     <>
-      <div className="pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-center pf-v5-u-pb-sm">
+      <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center pf-v6-u-pb-sm">
         <Title headingLevel="h2">Immutability Policies</Title>
         {(hasPolicies || isAddingNew) && (
           <Button
@@ -227,19 +223,18 @@ export default function RepositoryImmutabilityPolicies(
           </Button>
         )}
       </div>
-      <p className="pf-v5-u-pb-md">
+      <p className="pf-v6-u-pb-md">
         Immutability policies automatically make tags immutable based on pattern
         matching. Tags that match the configured patterns cannot be modified or
         deleted.
       </p>
 
       {!hasPolicies && !isAddingNew && (
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="No immutability policies"
-            headingLevel="h4"
-            icon={<EmptyStateIcon icon={LockIcon} />}
-          />
+        <EmptyState
+          headingLevel="h4"
+          icon={LockIcon}
+          titleText="No immutability policies"
+        >
           <EmptyStateBody>
             Add a policy to automatically protect tags matching a pattern from
             modification or deletion.
@@ -334,7 +329,7 @@ export default function RepositoryImmutabilityPolicies(
                     )}
                     {policy.scope === 'namespace' && (
                       <div
-                        className="pf-v5-u-display-flex pf-v5-u-align-items-center pf-v5-u-color-200"
+                        className="pf-v6-u-display-flex pf-v6-u-align-items-center pf-v6-u-color-200"
                         style={{minHeight: '36px'}}
                       >
                         Inherited

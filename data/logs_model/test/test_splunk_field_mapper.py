@@ -220,6 +220,28 @@ class TestSplunkLogMapperParseDatetime:
         dt = field_mapper._parse_datetime("not a date")
         assert dt is None
 
+    def test_parse_datetime_epoch_int(self, field_mapper):
+        """Test parsing integer epoch timestamp (UTC)."""
+        # 1705314600 = 2024-01-15 10:30:00 UTC
+        dt = field_mapper._parse_datetime(1705314600)
+
+        assert isinstance(dt, datetime)
+        assert dt.year == 2024
+        assert dt.month == 1
+        assert dt.day == 15
+
+    def test_parse_datetime_epoch_float(self, field_mapper):
+        """Test parsing float epoch timestamp."""
+        dt = field_mapper._parse_datetime(1705314600.5)
+
+        assert isinstance(dt, datetime)
+        assert dt.year == 2024
+
+    def test_parse_datetime_invalid_epoch_returns_none(self, field_mapper):
+        """Test that _parse_datetime returns None for overflow epoch."""
+        dt = field_mapper._parse_datetime(99999999999999)
+        assert dt is None
+
 
 class TestSplunkLogMapperParseMetadata:
     """Tests for _parse_metadata method."""
@@ -275,18 +297,18 @@ class TestSplunkLogMapperBatchLookupUsers:
         assert result["user1"] is not None
         assert result["nonexistent"] is None
 
-    def test_batch_user_lookup_uses_cache(self, field_mapper):
-        """Test that _batch_lookup_users caches results."""
-        field_mapper._batch_lookup_users(["user1"])
-        field_mapper._batch_lookup_users(["user1", "user2"])
-
-        assert "user1" in field_mapper._user_cache
-        assert "user2" in field_mapper._user_cache
-
     def test_batch_user_lookup_empty_list(self, field_mapper):
         """Test that _batch_lookup_users handles empty list."""
         result = field_mapper._batch_lookup_users([])
         assert result == {}
+
+    def test_batch_user_lookup_falls_back_on_exception(self, field_mapper, mock_model):
+        """Test that _batch_lookup_users returns None values when query raises."""
+        mock_model.user.get_namespace_users_by_usernames = Mock(side_effect=Exception("db error"))
+
+        result = field_mapper._batch_lookup_users(["user1", "user2"])
+
+        assert result == {"user1": None, "user2": None}
 
 
 class TestSplunkLogMapperHandlesDeletedUser:
@@ -321,20 +343,3 @@ class TestSplunkLogMapperHandlesDeletedUser:
         assert logs[0].account_username == "deleted_user"
         assert logs[0].account_email is None
         assert logs[0].account_organization is None
-
-
-class TestSplunkLogMapperClearCache:
-    """Tests for clear_cache method."""
-
-    def test_clear_cache(self, field_mapper):
-        """Test that clear_cache clears internal caches."""
-        field_mapper._batch_lookup_users(["user1"])
-        field_mapper._get_kind_id("push_repo")
-
-        assert len(field_mapper._user_cache) > 0
-        assert field_mapper._kind_map is not None
-
-        field_mapper.clear_cache()
-
-        assert len(field_mapper._user_cache) == 0
-        assert field_mapper._kind_map is None

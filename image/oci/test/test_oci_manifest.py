@@ -336,6 +336,120 @@ def test_validate_helm_oci_manifest():
     manifest = OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
 
 
+def test_get_layers_for_custom_artifact():
+    HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
+    HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
+    register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
+
+    helm_manifest_bytes = json.dumps(
+        {
+            "schemaVersion": 2,
+            "config": {
+                "mediaType": "application/vnd.cncf.helm.config.v1+json",
+                "digest": "sha256:65a07b841ece031e6d0ec5eb948eacb17aa6d7294cdeb01d5348e86242951487",
+                "size": 141,
+            },
+            "layers": [
+                {
+                    "mediaType": "application/tar+gzip",
+                    "digest": "sha256:d84c9c29e0899862a0fa0f73da4d9f8c8c38e2da5d3258764aa7ba74bb914718",
+                    "size": 3562,
+                }
+            ],
+        }
+    )
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(helm_manifest_bytes))
+    assert not manifest.is_image_manifest
+
+    retriever = ContentRetrieverForTesting()
+    layers = list(manifest.get_layers(retriever))
+    assert len(layers) == 1
+
+    layer = layers[0]
+    assert (
+        layer.blob_digest
+        == "sha256:d84c9c29e0899862a0fa0f73da4d9f8c8c38e2da5d3258764aa7ba74bb914718"
+    )
+    assert layer.compressed_size == 3562
+    assert layer.is_remote is False
+    assert layer.command is None
+    assert layer.created_datetime is None
+    assert layer.author is None
+    assert layer.comment is None
+    assert layer.urls is None
+
+
+def test_get_layers_for_multi_layer_artifact():
+    CUSTOM_CONFIG = "application/vnd.example.config.v1+json"
+    CUSTOM_LAYER = "application/vnd.example.data.v1+tar"
+    register_artifact_type(CUSTOM_CONFIG, [CUSTOM_LAYER])
+
+    manifest_bytes = json.dumps(
+        {
+            "schemaVersion": 2,
+            "config": {
+                "mediaType": CUSTOM_CONFIG,
+                "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "size": 100,
+            },
+            "layers": [
+                {
+                    "mediaType": CUSTOM_LAYER,
+                    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                    "size": 1000,
+                },
+                {
+                    "mediaType": CUSTOM_LAYER,
+                    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+                    "size": 2000,
+                },
+            ],
+        }
+    )
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+    retriever = ContentRetrieverForTesting()
+    layers = list(manifest.get_layers(retriever))
+
+    assert len(layers) == 2
+    assert (
+        layers[0].blob_digest
+        == "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    )
+    assert layers[0].compressed_size == 1000
+    assert (
+        layers[1].blob_digest
+        == "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    )
+    assert layers[1].compressed_size == 2000
+
+
+def test_get_layers_still_works_for_image_manifest():
+    retriever = ContentRetrieverForTesting.for_config(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "foo"},
+                {"created": "2018-04-12T18:37:09.284840891Z", "created_by": "bar"},
+                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "baz"},
+            ],
+            "architecture": "amd64",
+            "os": "linux",
+        },
+        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        7023,
+    )
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
+    assert manifest.is_image_manifest
+
+    layers = list(manifest.get_layers(retriever))
+    assert len(layers) == 3
+    assert layers[0].command is not None
+
+
 INVALID_LAYER_SIZE_MANIFEST = json.dumps(
     {
         "schemaVersion": 2,

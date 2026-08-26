@@ -1,0 +1,11 @@
+* @quay/downstream @quay/service
+/data/migrations/ @quay/service
+
+# EUS Support — dependency files for CVE package bumps
+requirements*.txt @quay/eus-support
+go.mod @quay/eus-support
+go.sum @quay/eus-support
+package.json @quay/eus-support
+package-lock.json @quay/eus-support
+pnpm-lock.yaml @quay/eus-support
+Dockerfile @quay/eus-support

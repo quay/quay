@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 
 class NotificationWorker(QueueWorker):
     def process_queue_item(self, job_details):
+        notification_type = job_details.get("notification_type", "repo")
+
+        if notification_type == "namespace":
+            self._process_namespace_notification(job_details)
+        else:
+            self._process_repo_notification(job_details)
+
+    def _process_repo_notification(self, job_details):
         notification = model.get_enabled_notification(job_details["notification_uuid"])
         if notification is None:
             return
@@ -42,6 +50,32 @@ class NotificationWorker(QueueWorker):
                 model.reset_number_of_failures_to_zero(notification)
             except (JobException, KeyError) as exc:
                 model.increment_notification_failure_count(notification)
+                raise exc
+
+    def _process_namespace_notification(self, job_details):
+        notification = model.get_enabled_namespace_notification(job_details["notification_uuid"])
+        if notification is None:
+            return
+
+        event_name = notification.event_name
+        method_name = notification.method_name
+
+        try:
+            event_handler = NotificationEvent.get_event(event_name)
+            method_handler = NotificationMethod.get_method(method_name)
+        except InvalidNotificationMethodException as ex:
+            logger.exception("Cannot find notification method: %s", str(ex))
+            raise JobException("Cannot find notification method: %s" % str(ex))
+        except InvalidNotificationEventException as ex:
+            logger.exception("Cannot find notification event: %s", str(ex))
+            raise JobException("Cannot find notification event: %s" % str(ex))
+
+        if event_handler.should_perform(job_details["event_data"], notification):
+            try:
+                method_handler.perform(notification, event_handler, job_details)
+                model.reset_namespace_notification_failures(notification)
+            except (JobException, KeyError) as exc:
+                model.increment_namespace_notification_failure_count(notification)
                 raise exc
 
 

@@ -33,3 +33,39 @@ OCI_IMAGE_INDEX_MANIFEST_WITH_ARTIFACT_TYPE_AND_SUBJECT = '{"schemaVersion":2,"a
 
 
 OCI_IMAGE_WITH_ARTIFACT_TYPES_AND_ANNOTATIONS = '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.cyclonedx+json","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:f9d5ec3c9dd70ddccedc62cda9e91302635f217b44ebdeef6a67baff8fc73549","size":14,"annotations":{"org.opencontainers.image.title":"hi.txt"}}],"subject":{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:506db421764d1fb236de66d61fe81ccb92af2ab9b89f6ef7afbfeebd220b883f","size":521},"annotations":{"key1":"val1","org.opencontainers.image.created":"2024-07-18T14:43:47Z"}}'
+
+OCI_IMAGE_INDEX_MANIFEST_MISSING_PLATFORM = """{
+  "schemaVersion": 2,
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "size": 1334,
+      "digest": "sha256:aaaa111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "size": 1334,
+      "digest": "sha256:bbbb222222222222222222222222222222222222222222222222222222222222",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    }
+  ]
+}"""
+
+OCI_IMAGE_INDEX_MANIFEST_ALL_MISSING_PLATFORM = """{
+  "schemaVersion": 2,
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "size": 1334,
+      "digest": "sha256:aaaa111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "size": 1334,
+      "digest": "sha256:cccc333333333333333333333333333333333333333333333333333333333333"
+    }
+  ]
+}"""

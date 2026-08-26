@@ -1,0 +1,394 @@
+name: CI
+on:
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+jobs:
+  unit:
+    name: Unit Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: |
+        tox -e py312-unit -- --cov=./ --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: unit
+
+  sqlite:
+    name: SQLite Integration Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox (parallel)
+      run: |
+        tox -e py312-sqlite -- --cov=./ --cov-report=xml
+
+    - name: tox (legacy sequential)
+      run: |
+        tox -e py312-sqlite-legacy -- --cov=./ --cov-report=xml --cov-append
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: sqlite
+
+  types:
+    name: Types Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+
+    - name: Check requirements.txt
+      run: |
+        pip install wheel  # allow pip to use wheel instead of legacy 'setup.py install'
+        ./hack/verify-requirements.sh
+
+    - name: Install dependencies
+      run: |
+        pip install -r ./requirements-dev.txt
+
+    - name: Check Types
+      run: make types-test
+
+  registry:
+    name: Registry Protocol Test
+    runs-on: quay-001-large-ubuntu-24-x64
+    timeout-minutes: 45
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: |
+        tox -e py312-registry
+
+  postgres:
+    name: PostgreSQL Integration Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo systemctl unmask docker
+        sudo systemctl start docker
+        docker version
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      env:
+        TOX_DOCKER_GATEWAY: "0.0.0.0"
+      run: |
+        tox -e py312-psql
+
+  oci:
+    name: OCI Distribution Spec
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres_user
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: postgres_db
+          POSTGRES_PORT: 5432
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - name: Enable pg_trgm extension
+      run: |
+        psql "postgresql://postgres_user:postgres_password@localhost:5432/postgres_db" \
+          --command="create extension if not exists pg_trgm;"
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+        repository: opencontainers/distribution-spec
+        ref: v1.1.0-rc1
+        path: dist-spec
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # zizmor: ignore[cache-poisoning] v7.0.0
+      with:
+        go-version: 1.18
+
+    - name: Build conformance.test binary
+      run: |
+        cd dist-spec/conformance
+        CGO_ENABLED=0 go test -c -o conformance.test
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+    - name: Build and export to Docker
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: .
+        load: true
+        tags: localhost/quay
+        cache-from: type=gha
+        cache-to: type=gha
+
+    - name: Start Quay
+      run: |
+        IP=$(ip addr show dev eth0 | sed -n 's: *inet \([0-9.]*\)/.*:\1:p')
+        echo "Resolved host IP for DB/Redis: ${IP:-<empty>}"
+
+        mkdir -p /tmp/config
+        cat >/tmp/config/config.yaml <<EOF
+        BUILDLOGS_REDIS: {"host": "$IP", "port": 6379}
+        DATABASE_SECRET_KEY: anothercrazykey!
+        DB_URI: postgresql://postgres_user:postgres_password@$IP:5432/postgres_db
+        DISTRIBUTED_STORAGE_CONFIG: {"default": ["LocalStorage", {"storage_path": "/datastorage/registry"}]}
+        DISTRIBUTED_STORAGE_PREFERENCE: ["default"]
+        SERVER_HOSTNAME: localhost
+        SETUP_COMPLETE: true
+        USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
+        PULL_METRICS_REDIS: {"host": "$IP", "port": 6379}
+
+        DATA_MODEL_CACHE_CONFIG:
+          engine: redis
+          redis_config:
+            primary:
+              host: "$IP"
+              port: 6379
+          repository_blob_cache_ttl: 60s
+          catalog_page_cache_ttl: 60s
+          active_repo_tags_cache_ttl: 60s
+        EOF
+
+        # Run the Quay container. See also:
+        # https://access.redhat.com/documentation/en-us/red_hat_quay/3.8/html/deploy_red_hat_quay_-_high_availability/deploying_red_hat_quay
+        docker run \
+          --detach \
+          --health-cmd="curl -fsS http://localhost:8080/health/instance" \
+          --health-interval=10s \
+          --health-retries=5 \
+          --health-timeout=5s \
+          --name=quay \
+          --publish=127.0.0.1:443:8443/tcp \
+          --publish=127.0.0.1:80:8080/tcp \
+          --volume=/tmp/config:/conf/stack:Z \
+          localhost/quay
+
+        status="starting"
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+          status=$(docker inspect -f '{{.State.Health.Status}}' quay 2>/dev/null || echo "not-running")
+          printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
+          if [ "$status" == "healthy" ] || [ "$status" == "not-running" ]; then
+            break
+          fi
+          sleep 10
+        done
+
+        if [ "$status" != "healthy" ]; then
+          echo "::error::Quay container failed to become healthy (status=$status)"
+          echo "=== Resolved IP ==="
+          echo "${IP:-<empty>}"
+          echo "=== docker inspect quay ==="
+          inspect_stop=$(uuidgen)
+          echo "::stop-commands::$inspect_stop"
+          docker inspect quay || true
+          echo "::$inspect_stop::"
+          echo "=== docker logs quay ==="
+          logs_stop=$(uuidgen)
+          echo "::stop-commands::$logs_stop"
+          docker logs quay || true
+          echo "::$logs_stop::"
+          exit 1
+        fi
+
+        docker inspect --format='{{json .State.Health}}' quay
+
+        docker exec -i quay python <<EOF
+        from app import app
+        from data import model
+        from data.database import configure
+        configure(app.config)
+        myuser = model.user.create_user("myuser", "p@ssw0rd", "admin@localhost.local", auto_verify=True)
+        myorg = model.organization.create_organization("myorg", "myorg@localhost.local", myuser)
+        EOF
+
+    - name: Run conformance tests
+      run: |
+        # Registry details
+        export OCI_ROOT_URL="http://localhost"
+        export OCI_NAMESPACE="myuser/myrepo"
+        export OCI_CROSSMOUNT_NAMESPACE="myorg/other"
+        export OCI_USERNAME="myuser"
+        export OCI_PASSWORD="p@ssw0rd"
+
+        # Which workflows to run
+        export OCI_TEST_PULL=1
+        export OCI_TEST_PUSH=1
+        export OCI_TEST_CONTENT_DISCOVERY=1
+        export OCI_TEST_CONTENT_MANAGEMENT=1
+
+        # Extra settings
+        export OCI_HIDE_SKIPPED_WORKFLOWS=0
+        export OCI_DEBUG=1
+        export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
+
+        # Direct blob deletion via API is NOT SUPPORTED because of blob sharing in the background.
+        # We need to permanently disable blob deletion tests to make sure OCI conformance test
+        # pass.
+        ./dist-spec/conformance/conformance.test -ginkgo.skip="Blob delete"
+
+    - name: Create report
+      run: |
+        mkdir -p .oci-test-results/ .logs/
+        mv report.html junit.xml .oci-test-results/ || true
+        docker logs quay >.logs/quay.log 2>&1 || true
+      if: always()
+
+    - name: Check logs
+      run: |
+        # Tracebacks should not appear in the logs under normal circumstances.
+        # Unfortunately, 3 trackbacks are logged immediately after the Quay
+        # container is started, and extra one is generated during OCI tests.
+        # To accommodate the current state and avoid further regressions until
+        # these issues are fixed, we allow a maximum of 4 trackbacks.
+        TRACEBACKS=$(grep Traceback .logs/quay.log | wc -l)
+        if [ "$TRACEBACKS" -gt 4 ]; then
+          echo >&2 ERROR: Traceback detected, check Quay logs.
+          exit 1
+        fi
+      if: always()
+
+    - name: Stop Quay
+      run: |
+        docker rm --force --volumes quay
+      if: always()
+
+    - name: Upload test results
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: oci-test-results
+        path: .oci-test-results/
+      if: always()
+
+    - name: Upload Quay logs
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: logs
+        path: .logs/
+      if: always()

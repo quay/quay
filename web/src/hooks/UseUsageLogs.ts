@@ -2,6 +2,11 @@ import axios from 'src/libs/axios';
 import {AxiosResponse} from 'axios';
 import {assertHttpCode, ResourceError} from 'src/resources/ErrorHandling';
 
+export interface LogsUnavailable {
+  unavailable: true;
+  message: string;
+}
+
 export async function exportLogs(
   org: string,
   repo: string = null,
@@ -59,6 +64,14 @@ export async function getAggregateLogs(
   });
 
   assertHttpCode(response.status, 200);
+
+  if (response.data.search_unavailable) {
+    return {
+      unavailable: true,
+      message: response.data.message || 'Log viewing is not available',
+    } as LogsUnavailable;
+  }
+
   return response.data.aggregated;
 }
 
@@ -88,6 +101,16 @@ export async function getLogs(
       next_page: next_page ? next_page : '',
     },
   });
+
+  if (response.data.search_unavailable) {
+    return {
+      logs: [],
+      nextPage: undefined,
+      unavailable: true,
+      message: response.data.message || 'Log viewing is not available',
+    };
+  }
+
   return {
     logs: response.data.logs,
     nextPage: response.data.next_page,

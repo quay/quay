@@ -79,13 +79,10 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
 
   return (
     <Modal
-      id="create-robot-account-modal"
-      aria-label="CreateRobotAccount"
+      id="setup-build-trigger-modal"
+      aria-label="SetupBuildTrigger"
       variant={ModalVariant.large}
       isOpen={props.isOpen}
-      onClose={props.onClose}
-      showClose={true}
-      hasNoBodyWrapper
     >
       {modalContent}
     </Modal>

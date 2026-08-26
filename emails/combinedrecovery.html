@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Account recovery</h3>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+<table>
+	<tr>
+		<td style="font-size: 13px;">A recovery request was made for this email address at <a href="{{ app_link() }}">{{ app_link() }}</a>.</td>
+	</tr>
+</table>
+
+{% if reset_token %}
+<table style="margin-top: 25px; border-left: 3px solid #40B4E5; padding-left: 15px;">
+	<tr>
+		<td>
+			<strong style="font-size: 14px;">Personal Account</strong>
+			<table style="margin-top: 10px;">
+				<tr>
+					<td style="font-size: 13px;">To recover the personal account registered to this email address:</td>
+				</tr>
+			</table>
+			<table style="margin: 15px 0;">
+				<tr>
+					<td style="background: #40B4E5; padding: 10px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="{{ app_link('recovery?code=' + reset_token) }}">Recover Account</a></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+{% endif %}
+
+{% if organizations %}
+<table style="margin-top: 25px; border-left: 3px solid #40B4E5; padding-left: 15px;">
+	<tr>
+		<td>
+			<strong style="font-size: 14px;">Organization{{ 's' if organizations|length > 1 }}</strong>
+			<table style="margin-top: 10px;">
+				<tr>
+					<td style="font-size: 13px;">To recover the organization{{ 's' if organizations|length > 1 }} associated with this email address, login with one of the admin accounts listed below:</td>
+				</tr>
+			</table>
+			{% for org in organizations %}
+			<table style="margin-top: 15px;">
+				<tr>
+					<td style="font-size: 13px; font-weight: 500;"><strong>{{ org.org_name }}</strong></td>
+				</tr>
+			</table>
+			<table>
+				<tr>
+					<td>
+					<ul style="margin: 0; padding-left: 20px;">
+						{% for admin_user in org.admin_usernames %}
+						<li style="font-weight: 500; font-size: 13px; margin-top: 10px;">{{ admin_user | user_reference }}</li>
+						{% endfor %}
+					</ul>
+					</td>
+				</tr>
+			</table>
+			{% endfor %}
+			<table style="margin: 15px 0;">
+				<tr>
+					<td style="background: #40B4E5; padding: 10px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="{{ app_link('signin/') }}">Login to Recover</a></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+{% endif %}
+
+<table style="margin: 25px 0 35px">
+	<tr>
+		<td style="font-size: 13px;">If you did not make this request, you can safely ignore this message. No changes have been made to any accounts.</td>
+	</tr>
+</table>
+
+
+<span style="font-size: 13px;">Best Wishes,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

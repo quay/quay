@@ -1,12 +1,11 @@
 import {
-  Button,
   DescriptionList,
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
   Title,
 } from '@patternfly/react-core';
-import {PlusCircleIcon} from '@patternfly/react-icons';
+
 import Conditional from 'src/components/empty/Conditional';
 import {isNullOrUndefined} from 'src/libs/utils';
 

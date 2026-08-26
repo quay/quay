@@ -1,5 +1,13 @@
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {Button, Modal, ModalVariant, Spinner} from '@patternfly/react-core';
+import {
+  Button,
+  Spinner,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import Empty from 'src/components/empty/Empty';
 import {CubesIcon} from '@patternfly/react-icons';
@@ -155,11 +163,77 @@ export default function SetRepoPermissionForTeamModal(
 
   return (
     <Modal
-      title={`Set repository permissions for ${props.teamName}`}
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
-      actions={[
+    >
+      <ModalHeader title={`Set repository permissions for ${props.teamName}`} />
+      <ModalBody>
+        {!teamRepoPerms?.length ? (
+          emptyPermComponent
+        ) : (
+          <SetRepoPermissionsToolbar
+            selectedRepoPerms={selectedRepoPerms}
+            deSelectAll={() => setSelectedRepoPerms([])}
+            allItems={filteredTeamRepoPerms}
+            paginatedItems={paginatedTeamRepoPerms}
+            onItemSelect={onSelectRepoPerm}
+            page={page}
+            setPage={setPage}
+            perPage={perPage}
+            setPerPage={setPerPage}
+            search={search}
+            setSearch={setSearch}
+            searchOptions={[setRepoPermForTeamColumnNames.repoName]}
+            isKebabOpen={isKebabOpen}
+            setKebabOpen={setKebabOpen}
+            updateModifiedRepoPerms={updateModifiedRepoPerms}
+          >
+            <Table aria-label="Selectable table" variant="compact">
+              <Thead>
+                <Tr>
+                  <Th />
+                  <Th>{setRepoPermForTeamColumnNames.repoName}</Th>
+                  <Th>{setRepoPermForTeamColumnNames.permissions}</Th>
+                  <Th>{setRepoPermForTeamColumnNames.lastUpdate}</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {paginatedTeamRepoPerms?.map((repoPerm, rowIndex) => (
+                  <Tr key={rowIndex}>
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectRepoPerm(repoPerm, rowIndex, isSelecting),
+                        isSelected:
+                          isItemSelected(repoPerm) || repoPerm.role !== 'none',
+                      }}
+                    />
+                    <Td dataLabel={setRepoPermForTeamColumnNames.repoName}>
+                      {repoPerm.repoName}
+                    </Td>
+                    <Td dataLabel={setRepoPermForTeamColumnNames.permissions}>
+                      <SetRepoPermForTeamRoleDropDown
+                        organizationName={props.organizationName}
+                        teamName={props.teamName}
+                        repoPerm={repoPerm}
+                        updateModifiedRepoPerms={updateModifiedRepoPerms}
+                        isItemSelected={isItemSelected(repoPerm)}
+                        selectedVal={fetchRepoPermission(repoPerm)}
+                      />
+                    </Td>
+                    <Td dataLabel={setRepoPermForTeamColumnNames.lastUpdate}>
+                      {formatDate(repoPerm.lastModified)}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </SetRepoPermissionsToolbar>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
           id="update-team-repo-permissions"
           key="confirm"
@@ -169,7 +243,7 @@ export default function SetRepoPermissionForTeamModal(
           isDisabled={modifiedRepoPerms?.length === 0}
         >
           Update
-        </Button>,
+        </Button>
         <Button
           id="update-team-repo-permissions-cancel"
           key="cancel"
@@ -177,72 +251,8 @@ export default function SetRepoPermissionForTeamModal(
           onClick={props.handleModalToggle}
         >
           Cancel
-        </Button>,
-      ]}
-    >
-      {!teamRepoPerms?.length ? (
-        emptyPermComponent
-      ) : (
-        <SetRepoPermissionsToolbar
-          selectedRepoPerms={selectedRepoPerms}
-          deSelectAll={() => setSelectedRepoPerms([])}
-          allItems={filteredTeamRepoPerms}
-          paginatedItems={paginatedTeamRepoPerms}
-          onItemSelect={onSelectRepoPerm}
-          page={page}
-          setPage={setPage}
-          perPage={perPage}
-          setPerPage={setPerPage}
-          search={search}
-          setSearch={setSearch}
-          searchOptions={[setRepoPermForTeamColumnNames.repoName]}
-          isKebabOpen={isKebabOpen}
-          setKebabOpen={setKebabOpen}
-          updateModifiedRepoPerms={updateModifiedRepoPerms}
-        >
-          <Table aria-label="Selectable table" variant="compact">
-            <Thead>
-              <Tr>
-                <Th />
-                <Th>{setRepoPermForTeamColumnNames.repoName}</Th>
-                <Th>{setRepoPermForTeamColumnNames.permissions}</Th>
-                <Th>{setRepoPermForTeamColumnNames.lastUpdate}</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {paginatedTeamRepoPerms?.map((repoPerm, rowIndex) => (
-                <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectRepoPerm(repoPerm, rowIndex, isSelecting),
-                      isSelected:
-                        isItemSelected(repoPerm) || repoPerm.role !== 'none',
-                    }}
-                  />
-                  <Td dataLabel={setRepoPermForTeamColumnNames.repoName}>
-                    {repoPerm.repoName}
-                  </Td>
-                  <Td dataLabel={setRepoPermForTeamColumnNames.permissions}>
-                    <SetRepoPermForTeamRoleDropDown
-                      organizationName={props.organizationName}
-                      teamName={props.teamName}
-                      repoPerm={repoPerm}
-                      updateModifiedRepoPerms={updateModifiedRepoPerms}
-                      isItemSelected={isItemSelected(repoPerm)}
-                      selectedVal={fetchRepoPermission(repoPerm)}
-                    />
-                  </Td>
-                  <Td dataLabel={setRepoPermForTeamColumnNames.lastUpdate}>
-                    {formatDate(repoPerm.lastModified)}
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </SetRepoPermissionsToolbar>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

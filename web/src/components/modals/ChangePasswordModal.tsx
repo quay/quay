@@ -1,7 +1,5 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -10,6 +8,11 @@ import {
   HelperText,
   HelperTextItem,
   Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useUpdateUser} from 'src/hooks/UseCurrentUser';
 
@@ -115,11 +118,79 @@ export default function ChangePasswordModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Change Password"
       isOpen={isOpen}
       onClose={handleClose}
       data-testid="change-password-modal"
-      actions={[
+    >
+      <ModalHeader title="Change Password" />
+      <ModalBody>
+        <Form>
+          <p>
+            Enter a new password. Passwords must be at least 8 characters long.
+          </p>
+
+          {error && (
+            <Alert
+              variant="danger"
+              isInline
+              title="Error"
+              className="pf-v6-u-mb-md"
+            >
+              {error}
+            </Alert>
+          )}
+
+          <FormGroup fieldId="new-password">
+            <TextInput
+              id="new-password"
+              type="password"
+              value={newPassword}
+              onChange={(_event, value) => handleNewPasswordChange(value)}
+              validated={newPasswordValidation}
+              placeholder="Your new password"
+            />
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem
+                  variant={
+                    newPasswordValidation === 'error' ? 'error' : 'default'
+                  }
+                >
+                  {newPasswordValidation === 'error' && newPassword.length > 0
+                    ? 'Password must be at least 8 characters long'
+                    : 'Enter your new password'}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+
+          <FormGroup fieldId="confirm-password">
+            <TextInput
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(_event, value) => handleConfirmPasswordChange(value)}
+              validated={confirmPasswordValidation}
+              placeholder="Verify your new password"
+            />
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem
+                  variant={
+                    confirmPasswordValidation === 'error' ? 'error' : 'default'
+                  }
+                >
+                  {confirmPasswordValidation === 'error' &&
+                  confirmPassword.length > 0
+                    ? 'Passwords must match'
+                    : 'Re-enter your new password'}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="change"
           variant="primary"
@@ -129,77 +200,11 @@ export default function ChangePasswordModal({
           data-testid="change-password-submit"
         >
           Change Password
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <p>
-          Enter a new password. Passwords must be at least 8 characters long.
-        </p>
-
-        {error && (
-          <Alert
-            variant="danger"
-            isInline
-            title="Error"
-            className="pf-v5-u-mb-md"
-          >
-            {error}
-          </Alert>
-        )}
-
-        <FormGroup fieldId="new-password">
-          <TextInput
-            id="new-password"
-            type="password"
-            value={newPassword}
-            onChange={(_event, value) => handleNewPasswordChange(value)}
-            validated={newPasswordValidation}
-            placeholder="Your new password"
-          />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={
-                  newPasswordValidation === 'error' ? 'error' : 'default'
-                }
-              >
-                {newPasswordValidation === 'error' && newPassword.length > 0
-                  ? 'Password must be at least 8 characters long'
-                  : 'Enter your new password'}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-
-        <FormGroup fieldId="confirm-password">
-          <TextInput
-            id="confirm-password"
-            type="password"
-            value={confirmPassword}
-            onChange={(_event, value) => handleConfirmPasswordChange(value)}
-            validated={confirmPasswordValidation}
-            placeholder="Verify your new password"
-          />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={
-                  confirmPasswordValidation === 'error' ? 'error' : 'default'
-                }
-              >
-                {confirmPasswordValidation === 'error' &&
-                confirmPassword.length > 0
-                  ? 'Passwords must match'
-                  : 'Re-enter your new password'}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

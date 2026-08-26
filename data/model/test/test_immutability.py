@@ -1,3 +1,4 @@
+import time
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +9,7 @@ from data.model import (
     ImmutabilityPolicyDoesNotExist,
     InvalidImmutabilityPolicy,
 )
+from data.model import config as model_config
 from data.model.immutability import (
     _matches_policy,
     _validate_policy,
@@ -78,6 +80,16 @@ class TestMatchesPolicy:
         # tag_pattern_matches=False: non-matching tags become immutable
         assert _matches_policy("dev-branch", "^dev-.*$", False) is False
         assert _matches_policy("v1.0.0", "^dev-.*$", False) is True
+
+    def test_star_quantifier_without_anchors(self):
+        # [0-9]* should only fully match all-digit tags
+        assert _matches_policy("123", "[0-9]*", True) is True
+        assert _matches_policy("redis", "[0-9]*", True) is False
+
+    def test_inverted_star_quantifier(self):
+        # "NOT matching [0-9]*" should make non-digit tags immutable
+        assert _matches_policy("redis", "[0-9]*", False) is True
+        assert _matches_policy("123", "[0-9]*", False) is False
 
 
 class TestNamespacePolicyCRUD:
@@ -735,3 +747,209 @@ class TestNamespaceHasImmutableTags:
         _create_tag(repo, manifest, "v1.0.0", immutable=True, hidden=True)
 
         assert namespace_has_immutable_tags(org.id) is False
+
+
+@pytest.mark.usefixtures("initialized_db")
+class TestImmutabilityAuditLogging:
+    def test_create_namespace_policy_logs_retroactive_changes(self):
+        """Verify audit log when namespace policy retroactively marks tags immutable."""
+        org = create_org("audituser1", "audit1@example.com", "auditorg1", "auditorg1@example.com")
+        repo = create_repository(org.username, "auditrepo1", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "v1.0.0")
+        _create_tag(repo, manifest, "v2.0.0")
+        _create_tag(repo, manifest, "latest")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["namespace_name"] == org.username
+            assert call_args[1]["repository_name"] is None
+            assert call_args[1]["metadata"]["count"] == 2
+            assert call_args[1]["metadata"]["tag_pattern"] == "^v.*$"
+
+    def test_create_namespace_policy_no_log_when_no_tags_affected(self):
+        """Verify no audit log when policy doesn't match any existing tags."""
+        org = create_org("audituser2", "audit2@example.com", "auditorg2", "auditorg2@example.com")
+        repo = create_repository(org.username, "auditrepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "latest")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^nomatch-.*$"})
+            mock_log.assert_not_called()
+
+    def test_create_repository_policy_logs_retroactive_changes(self):
+        """Verify audit log when repo policy retroactively marks tags immutable."""
+        org = create_org("audituser3", "audit3@example.com", "auditorg3", "auditorg3@example.com")
+        repo = create_repository(org.username, "auditrepo3", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "release-1.0")
+        _create_tag(repo, manifest, "dev-branch")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_repository_immutability_policy(
+                org.username, repo.name, {"tag_pattern": "^release-.*$"}
+            )
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["namespace_name"] == org.username
+            assert call_args[1]["repository_name"] == repo.name
+            assert call_args[1]["metadata"]["count"] == 1
+            assert call_args[1]["metadata"]["repo"] == repo.name
+
+    def test_update_namespace_policy_logs_retroactive_changes(self):
+        """Verify audit log when updated policy retroactively marks new tags."""
+        org = create_org("audituser4", "audit4@example.com", "auditorg4", "auditorg4@example.com")
+        repo = create_repository(org.username, "auditrepo4", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "v1.0.0")
+        _create_tag(repo, manifest, "release-1.0")
+
+        policy = create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            update_namespace_immutability_policy(
+                org.username, policy.uuid, {"tag_pattern": "^release-.*$"}
+            )
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["metadata"]["tag_pattern"] == "^release-.*$"
+            assert call_args[1]["metadata"]["count"] == 1
+
+
+class TestRetroactiveImmutabilityClearsExpiration:
+    def test_retroactive_policy_clears_expiration(self, initialized_db):
+        """Verify that applying a policy clears lifetime_end_ms when
+        FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False."""
+        org = create_org(
+            "expclruser1", "expclr1@example.com", "expclrorg1", "expclrorg1@example.com"
+        )
+        repo = create_repository(org.username, "expclrrepo1", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+        assert manifest is not None
+
+        # Create a tag with an expiration
+        now_ms = get_epoch_timestamp_ms()
+        tag = Tag.create(
+            name="v1.0.0",
+            repository=repo.id,
+            manifest=manifest,
+            lifetime_start_ms=now_ms - 10000,
+            lifetime_end_ms=now_ms + 86400000,  # expires in 1 day
+            hidden=False,
+            immutable=False,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+        # Verify expiration is set
+        assert Tag.get(Tag.id == tag.id).lifetime_end_ms is not None
+
+        with patch.dict(model_config.app_config, {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}):
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Tag should be immutable AND expiration should be cleared
+        updated_tag = Tag.get(Tag.id == tag.id)
+        assert updated_tag.immutable is True
+        assert updated_tag.lifetime_end_ms is None
+
+    def test_retroactive_policy_preserves_expiration_when_can_expire(self, initialized_db):
+        """Verify that applying a policy preserves lifetime_end_ms when
+        FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True."""
+        org = create_org(
+            "expclruser2", "expclr2@example.com", "expclrorg2", "expclrorg2@example.com"
+        )
+        repo = create_repository(org.username, "expclrrepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+        assert manifest is not None
+
+        now_ms = get_epoch_timestamp_ms()
+        expected_end_ms = now_ms + 86400000
+        tag = Tag.create(
+            name="v1.0.0",
+            repository=repo.id,
+            manifest=manifest,
+            lifetime_start_ms=now_ms - 10000,
+            lifetime_end_ms=expected_end_ms,
+            hidden=False,
+            immutable=False,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+        with patch.dict(model_config.app_config, {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}):
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Tag should be immutable but expiration should be preserved
+        updated_tag = Tag.get(Tag.id == tag.id)
+        assert updated_tag.immutable is True
+        assert updated_tag.lifetime_end_ms == expected_end_ms
+
+
+class TestReDoSProtection:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "^latest$",
+            "^release-.*$",
+            "^dev-[a-z0-9]+$",
+            "a+" * 50,  # long but not nested
+        ],
+    )
+    def test_safe_patterns_accepted(self, pattern):
+        """Legitimate patterns pass validation."""
+        _validate_policy({"tag_pattern": pattern})
+
+    def test_matches_policy_does_not_hang(self):
+        """Verify _matches_policy completes quickly even with a backtracking pattern.
+
+        The regex module handles this efficiently, plus the timeout acts as a safety net.
+        """
+        # This pattern could cause catastrophic backtracking with stdlib re,
+        # but regex module handles it efficiently
+        evil_pattern = "(a+)+b"
+        evil_input = "a" * 30
+
+        start = time.monotonic()
+        result = _matches_policy(evil_input, evil_pattern, True)
+        elapsed = time.monotonic() - start
+
+        assert result is False
+        assert elapsed < 2.0, f"_matches_policy took {elapsed:.2f}s, expected < 2s"
+
+    def test_timeout_fallback_respects_inversion(self):
+        """Verify TimeoutError fallback respects tag_pattern_matches inversion."""
+        mock_compiled = type(
+            "MockPattern", (), {"fullmatch": lambda *a, **kw: (_ for _ in ()).throw(TimeoutError)}
+        )()
+
+        with patch("data.model.immutability._compile_pattern", return_value=mock_compiled):
+            # tag_pattern_matches=True: timeout → matches=False → return False
+            assert _matches_policy("tag", "pattern", True) is False
+            # tag_pattern_matches=False: timeout → matches=False → return not False = True
+            assert _matches_policy("tag", "pattern", False) is True

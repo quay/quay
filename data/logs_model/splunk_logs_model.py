@@ -10,7 +10,11 @@ from data.logs_model.interface import ActionLogsDataInterface, LogsIterationTime
 from data.logs_model.logs_producer import LogProducerProxy, LogSendException
 from data.logs_model.logs_producer.splunk_hec_logs_producer import SplunkHECLogsProducer
 from data.logs_model.logs_producer.splunk_logs_producer import SplunkLogsProducer
-from data.logs_model.shared import InvalidLogsDateRangeError, SharedModel
+from data.logs_model.shared import (
+    InvalidLogsDateRangeError,
+    SearchNotConfiguredError,
+    SharedModel,
+)
 from data.logs_model.splunk_field_mapper import SplunkLogMapper
 from data.logs_model.splunk_search_client import SplunkSearchClient
 from data.model import config
@@ -65,34 +69,38 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
                 raise Exception("splunk_config must be provided for 'splunk' producer")
             self._logs_producer.initialize(SplunkLogsProducer(**splunk_config))
             self._field_mapper = SplunkLogMapper()
+            self._search_enabled = True
         elif producer == "splunk_hec":
             if splunk_hec_config is None:
                 raise Exception("splunk_hec_config must be provided for 'splunk_hec' producer")
-            if "search_token" not in splunk_hec_config:
-                raise Exception(
-                    "search_token is required in splunk_hec_config. "
-                    "HEC tokens are ingest-only and cannot be used for searching. "
-                    "See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens"
+            token_raw = splunk_hec_config.get("search_token")
+            token_str = "" if token_raw is None else str(token_raw)
+            self._search_token = token_str.strip()
+            self._search_enabled = bool(self._search_token)
+            if not self._search_enabled:
+                logger.warning(
+                    "search_token not configured for Splunk HEC — audit log viewing "
+                    "in the UI will be unavailable. Logs are still being forwarded to Splunk."
                 )
             self._logs_producer.initialize(SplunkHECLogsProducer(**splunk_hec_config))
             self._field_mapper = SplunkLogMapper()
         else:
             raise Exception("Invalid log producer: %s" % producer)
 
-    def _get_search_client(self) -> SplunkSearchClient:
+    def _get_search_client(self) -> Optional[SplunkSearchClient]:
         """
         Get or create the Splunk search client.
 
         For 'splunk' producer, uses splunk_config directly.
         For 'splunk_hec' producer, builds search config from HEC config,
-        using search_token (required) and optionally search_host/search_port.
+        using search_token and optionally search_host/search_port.
 
         Returns:
-            SplunkSearchClient instance
-
-        Raises:
-            Exception: If no valid config is available
+            SplunkSearchClient instance, or None if search is not configured
         """
+        if not self._search_enabled:
+            return None
+
         if self._search_client is not None:
             return self._search_client
 
@@ -100,12 +108,12 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             self._search_client = SplunkSearchClient(**self._splunk_config)
         elif self._producer == "splunk_hec" and self._splunk_hec_config is not None:
             # Build search client config from HEC config
-            # search_token is required (validated in __init__) because HEC tokens cannot search
+            # search_token is needed because HEC tokens cannot search
             hec_config = self._splunk_hec_config
             search_config = {
                 "host": hec_config.get("search_host", hec_config.get("host")),
                 "port": hec_config.get("search_port", 8089),
-                "bearer_token": hec_config["search_token"],
+                "bearer_token": self._search_token,
                 "url_scheme": hec_config.get("url_scheme", "https"),
                 "verify_ssl": hec_config.get("verify_ssl", True),
                 "ssl_ca_path": hec_config.get("ssl_ca_path"),
@@ -184,12 +192,10 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
         metadata_json = metadata or {}
 
-        # Only extract performer email when extended logging is enabled
-        # This avoids triggering lazy DB loads on performer which can cause deadlocks
+        # Only include performer_email in log_data when extended logging is disabled
+        # When extended logging is enabled, performer_email is intentionally excluded
+        # for ESS EOI compliance to avoid logging PII (email addresses)
         extended_logging_enabled = request_url is not None or http_method is not None
-        performer_email = None
-        if extended_logging_enabled and performer is not None:
-            performer_email = getattr(performer, "email", None)
 
         log_data = {
             "kind": kind_name,
@@ -203,7 +209,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             "request_url": request_url,
             "http_method": http_method,
             "performer_username": performer_name,
-            "performer_email": performer_email,
             "performer_kind": performer_kind,
             "auth_type": auth_type,
             "user_agent": user_agent,
@@ -213,6 +218,10 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             "x_forwarded_for": x_forwarded_for,
         }
 
+        # Add performer_email as None only when extended logging is disabled
+        if not extended_logging_enabled:
+            log_data["performer_email"] = None
+
         try:
             self._logs_producer.send(log_data)
         except LogSendException as lse:
@@ -221,7 +230,14 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
                 and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
             )
             if strict_logging_disabled:
-                logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
+                logger.exception(
+                    "log_action failed: kind=%s account=%s performer=%s repository=%s",
+                    kind_name,
+                    username,
+                    performer_name,
+                    repo_name,
+                    extra={"exception": lse, **log_data},
+                )
             else:
                 raise
 
@@ -273,6 +289,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         """Retrieve paginated logs from Splunk within the specified date range."""
         PAGE_SIZE = 20
 
+        search_client = self._get_search_client()
+        if search_client is None:
+            raise SearchNotConfiguredError(
+                "Audit log viewing requires a search_token to be configured "
+                "for Splunk HEC. Logs are still being forwarded to Splunk."
+            )
+
         if start_datetime is None or end_datetime is None:
             raise ValueError("start_datetime and end_datetime are required")
 
@@ -298,7 +321,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         offset = page_token.get("offset", 0) if page_token else 0
 
         # Execute search with pagination
-        search_client = self._get_search_client()
         results = search_client.search(
             query=spl_query,
             earliest_time=start_datetime.isoformat(),
@@ -330,6 +352,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         size=20,
     ) -> List[Log]:
         """Retrieve the most recent logs from Splunk (last 32 days)."""
+        search_client = self._get_search_client()
+        if search_client is None:
+            raise SearchNotConfiguredError(
+                "Audit log viewing requires a search_token to be configured "
+                "for Splunk HEC. Logs are still being forwarded to Splunk."
+            )
+
         DATE_RANGE_LIMIT = 32
 
         end_datetime = datetime.now()
@@ -342,7 +371,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             filter_kinds=filter_kinds,
         )
 
-        search_client = self._get_search_client()
         results = search_client.search(
             query=spl_query,
             earliest_time=start_datetime.isoformat(),
@@ -364,6 +392,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         filter_kinds=None,
     ) -> List[AggregatedLogCount]:
         """Get aggregated log counts grouped by kind and date."""
+        search_client = self._get_search_client()
+        if search_client is None:
+            raise SearchNotConfiguredError(
+                "Audit log viewing requires a search_token to be configured "
+                "for Splunk HEC. Logs are still being forwarded to Splunk."
+            )
+
         DATE_RANGE_LIMIT = 32
 
         if end_datetime - start_datetime > timedelta(days=DATE_RANGE_LIMIT):
@@ -385,7 +420,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             f"| stats count by kind, log_date"
         )
 
-        search_client = self._get_search_client()
         results = search_client.search_with_stats(
             query=spl_query,
             earliest_time=start_datetime.isoformat(),
@@ -408,6 +442,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
     def count_repository_actions(self, repository, day) -> int:
         """Count audit log entries for a repository on a specific day."""
+        search_client = self._get_search_client()
+        if search_client is None:
+            raise SearchNotConfiguredError(
+                "Audit log viewing requires a search_token to be configured "
+                "for Splunk HEC. Logs are still being forwarded to Splunk."
+            )
+
         COUNT_TIMEOUT = 30
 
         if isinstance(day, datetime):
@@ -425,7 +466,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         spl_query = f'account="{escaped_namespace}" repository="{escaped_repo}"'
 
         try:
-            search_client = self._get_search_client()
             return search_client.count(
                 query=spl_query,
                 earliest_time=start_datetime.isoformat(),
@@ -454,6 +494,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         max_query_time=None,
     ) -> Generator[List[Log], None, None]:
         """Yield batches of logs for export."""
+        search_client = self._get_search_client()
+        if search_client is None:
+            raise SearchNotConfiguredError(
+                "Audit log viewing requires a search_token to be configured "
+                "for Splunk HEC. Logs are still being forwarded to Splunk."
+            )
+
         batch_size = self._get_export_batch_size()
         DEFAULT_MAX_QUERY_TIME = 300
 
@@ -483,7 +530,6 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             repository_name=repository_name,
         )
 
-        search_client = self._get_search_client()
         field_mapper = self._get_field_mapper()
         offset = 0
 

@@ -8,8 +8,9 @@ objects:
     metadata:
       name: quay
     spec:
+      feoConfigEnabled: true
       envName: ${ENV_NAME}
-      title: Quay
+      title: Quay.io
       deploymentRepo: https://github.com/quay/quay
       API:
         versions:
@@ -20,16 +21,43 @@ objects:
       image: ${IMAGE}:${IMAGE_TAG}
       navItems:
         - appId: "quay"
-          title: "Quay"
-          href: "/containers/quay"
+          title: "Quay.io"
+          href: "/quay/organization"
           product: "Red Hat Quay.io"
+      bundleSegments:
+        - segmentId: quay-main
+          bundleId: quay
+          position: 100
+          navItems:
+            - id: quayOverview
+              title: Overview
+              href: /quay/overview
+            - id: quayOrganizations
+              title: Organizations
+              href: /quay/organization
+            - id: quayRepositories
+              title: Repositories
+              href: /quay/repository
+      widgetRegistry:
+        - scope: "landing"
+          module: "./QuayWidget"
+          defaults:
+            w: 1
+            h: 4
+            maxH: 10
+            minH: 1
+          config:
+            title: "Quay.io"
+            icon: "QuayIcon"
       module:
         manifestLocation: "/apps/quay/fed-mods.json"
         modules:
           - id: "quay"
             module: "./QuayPluginMain"
             routes:
-              - pathname: /containers/quay
+              - pathname: /quay/overview
+              - pathname: /quay/organization
+              - pathname: /quay/repository
 parameters:
   - name: ENV_NAME
     required: true
@@ -37,4 +65,3 @@ parameters:
     required: true
   - name: IMAGE
     value: quay.io/app-sre/quayio-frontend
-

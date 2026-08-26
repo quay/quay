@@ -259,7 +259,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             resp = self._perform(actions["Index"](body))
         except BadRequestResponseException as ex:
             raise InvalidContentSent(ex)
-        except (Non200ResponseException, IncompatibleAPIResponse) as ex:
+        except IncompatibleAPIResponse as ex:
             raise APIRequestFailure(ex)
 
         # Required clair indexer hash.
@@ -390,30 +390,38 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         return token
 
 
+@functools.lru_cache(maxsize=1)
+def _load_openapi_schema():
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clair-v4.openapi.json")
+    with open(filename) as openapi_file:
+        return json.load(openapi_file)
+
+
+_SCHEMA_FOR = {
+    "IndexState": "State",
+    "Index": "IndexReport",
+    "GetIndexReport": "IndexReport",
+    "GetVulnerabilityReport": "VulnerabilityReport",
+    "GetNotification": "PagedNotifications",
+    "DeleteNotification": None,
+    "DeleteIndexReport": None,
+}
+
+
 def is_valid_response(action, resp):
     assert action.name in actions.keys()
 
-    schema_for = {
-        "IndexState": "State",
-        "Index": "IndexReport",
-        "GetIndexReport": "IndexReport",
-        "GetVulnerabilityReport": "VulnerabilityReport",
-        "GetNotification": "PagedNotifications",
-        "DeleteNotification": None,
-    }
-    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clair-v4.openapi.json")
-
-    if schema_for[action.name] is None:
+    schema_name = _SCHEMA_FOR[action.name]
+    if schema_name is None:
         return True
 
-    with open(filename) as openapi_file:
-        openapi = json.load(openapi_file)
-        resolver = RefResolver(base_uri="", referrer=openapi)
-        schema = openapi["components"]["schemas"][schema_for[action.name]]
+    openapi = _load_openapi_schema()
+    resolver = RefResolver(base_uri="", referrer=openapi)
+    schema = openapi["components"]["schemas"][schema_name]
 
-        try:
-            validate(resp.json(), schema, resolver=resolver)
-            return True
-        except Exception:
-            logger.exception("Security scanner response failed OpenAPI validation")
-            return False
+    try:
+        validate(resp.json(), schema, resolver=resolver)
+        return True
+    except Exception:
+        logger.exception("Security scanner response failed OpenAPI validation")
+        return False

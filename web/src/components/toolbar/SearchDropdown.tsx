@@ -30,7 +30,7 @@ export function SearchDropdown(props: SearchDropdownProps) {
   };
 
   return (
-    <ToolbarItem spacer={{default: 'spacerNone'}}>
+    <ToolbarItem gap={{default: 'gapNone'}}>
       <Dropdown
         onSelect={onSelect}
         toggle={(toggleRef: React.Ref<MenuToggleElement>) => (

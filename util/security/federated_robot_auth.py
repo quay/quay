@@ -75,21 +75,35 @@ def verify_federated_robot_jwt_token(robot, token):
         raise InvalidRobotCredentialException("Robot does not have federated login configured")
 
     matched_subs = []
+    matched_audiences = None
     for item in fed_config:
         if item.get("issuer") == token_issuer:
             matched_subs.append(item.get("subject"))
+            item_audiences = item.get("audiences")
+            if item_audiences:
+                matched_audiences = item_audiences
 
     if not matched_subs:
         raise InvalidRobotCredentialException(
             f"issuer {token_issuer} not configured for this robot"
         )
 
-    # verify the token
-    service_config = {"quayrobot": {"OIDC_SERVER": token_issuer}}
+    service_config_block = {"OIDC_SERVER": token_issuer}
+    if matched_audiences:
+        service_config_block["OIDC_AUDIENCES"] = matched_audiences
+        options = {"verify_nbf": False}
+    else:
+        options = {"verify_aud": False, "verify_nbf": False}
+        logger.warning(
+            "Federated robot '%s' authenticated without audience validation. "
+            "Configure 'audiences' in federation config to suppress this warning. "
+            "Audience-less federation is deprecated and will be removed in a future release.",
+            robot.username,
+        )
+
+    service_config = {"quayrobot": service_config_block}
     service = OIDCLoginService(service_config, "quayrobot", client=app.config["HTTPCLIENT"])
 
-    # throws an exception if we cannot decode/verify the token
-    options = {"verify_aud": False, "verify_nbf": False}
     try:
         decoded_token = service.decode_user_jwt(token, options=options)
     except InvalidTokenError as e:

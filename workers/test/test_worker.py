@@ -1,6 +1,11 @@
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from workers.worker import Worker
+from workers.worker import (
+    Worker,
+    worker_operation_duration,
+    worker_operation_in_progress,
+)
 
 
 def test_worker_name_defined_outside_sentry_condition():
@@ -81,6 +86,77 @@ def test_exception_capture_in_operation():
         mock_sentry_sdk.capture_exception.assert_called_once()
 
 
+def test_operation_timing_metrics():
+    """Test that worker operations record duration and in-progress metrics."""
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.UseThenDisconnect") as mock_utd,
+    ):
+        mock_app.config.get.return_value = "FakeSentry"
+
+        worker = Worker()
+
+        call_count = [0]
+
+        def sample_operation():
+            call_count[0] += 1
+
+        worker.add_operation(sample_operation, 60)
+        wrapped = worker._operations[0][0]
+
+        before = worker_operation_duration.labels(
+            worker="Worker", operation="sample_operation"
+        )._sum.get()
+
+        wrapped()
+
+        assert call_count[0] == 1
+
+        after = worker_operation_duration.labels(
+            worker="Worker", operation="sample_operation"
+        )._sum.get()
+        assert after > before
+
+        in_progress_val = worker_operation_in_progress.labels(
+            worker="Worker", operation="sample_operation"
+        )._value.get()
+        assert in_progress_val == 0.0
+
+
+def test_operation_timing_metrics_on_exception():
+    """Test that metrics are recorded even when the operation raises an exception."""
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.sentry_sdk") as mock_sentry_sdk,
+        patch("workers.worker.UseThenDisconnect") as mock_utd,
+    ):
+        mock_app.config.get.return_value = "FakeSentry"
+
+        worker = Worker()
+
+        def failing_operation():
+            raise RuntimeError("boom")
+
+        worker.add_operation(failing_operation, 60)
+        wrapped = worker._operations[0][0]
+
+        before = worker_operation_duration.labels(
+            worker="Worker", operation="failing_operation"
+        )._sum.get()
+
+        wrapped()
+
+        after = worker_operation_duration.labels(
+            worker="Worker", operation="failing_operation"
+        )._sum.get()
+        assert after > before
+
+        in_progress_val = worker_operation_in_progress.labels(
+            worker="Worker", operation="failing_operation"
+        )._value.get()
+        assert in_progress_val == 0.0
+
+
 def test_default_sentry_config_values():
     """Test that default Sentry configuration values are used when not specified."""
     with (
@@ -109,3 +185,75 @@ def test_default_sentry_config_values():
 
         # Verify the SDK was called exactly once
         assert mock_sentry_sdk.init.call_count == 1
+
+
+def test_start_schedules_job_with_5s_buffer():
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.signal"),
+    ):
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "SETUP_COMPLETE": True,
+            "REGISTRY_STATE": "normal",
+        }.get(key, default)
+
+        worker = Worker()
+        worker.add_operation(lambda: None, 86400)
+
+        mock_sched = MagicMock()
+        worker._sched = mock_sched
+
+        stop_event = MagicMock()
+        stop_event.wait.return_value = True
+        worker._stop = stop_event
+
+        before = datetime.now()
+        worker.start()
+        after = datetime.now()
+
+        mock_sched.add_job.assert_called_once()
+        call_kwargs = mock_sched.add_job.call_args
+        start_date = call_kwargs.kwargs.get("start_date") or call_kwargs[1].get("start_date")
+        if start_date is None:
+            start_date = call_kwargs[0][2] if len(call_kwargs[0]) > 2 else None
+
+        assert start_date is not None
+        assert start_date >= before + timedelta(seconds=4)
+        assert start_date <= after + timedelta(seconds=6)
+        seconds = call_kwargs.kwargs.get("seconds") or call_kwargs[1].get("seconds")
+        assert seconds == 86400
+
+
+def test_start_stagger_workers_adds_random_delay():
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.signal"),
+        patch("workers.worker.randint", return_value=100) as mock_randint,
+    ):
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "SETUP_COMPLETE": True,
+            "REGISTRY_STATE": "normal",
+            "STAGGER_WORKERS": True,
+        }.get(key, default)
+
+        worker = Worker()
+        worker.add_operation(lambda: None, 86400)
+
+        mock_sched = MagicMock()
+        worker._sched = mock_sched
+
+        stop_event = MagicMock()
+        stop_event.wait.return_value = True
+        worker._stop = stop_event
+
+        before = datetime.now()
+        worker.start()
+
+        mock_randint.assert_called_once_with(1, 86400)
+
+        call_kwargs = mock_sched.add_job.call_args
+        start_date = call_kwargs.kwargs.get("start_date") or call_kwargs[1].get("start_date")
+        if start_date is None:
+            start_date = call_kwargs[0][2] if len(call_kwargs[0]) > 2 else None
+
+        assert start_date >= before + timedelta(seconds=104)

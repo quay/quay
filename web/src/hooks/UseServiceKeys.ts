@@ -1,5 +1,5 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchServiceKeys,
@@ -44,7 +44,7 @@ export function useServiceKeys() {
   // Apply search filter
   const filteredKeys = search.query
     ? serviceKeys.filter((key) => {
-        const searchQuery = search.query.toLowerCase();
+        const searchQuery = search.query.trim().toLowerCase();
         return (
           (key.name && key.name.toLowerCase().includes(searchQuery)) ||
           key.service.toLowerCase().includes(searchQuery) ||
@@ -136,6 +136,11 @@ export function useServiceKeys() {
       queryClient.invalidateQueries({queryKey: ['serviceKeys']});
     },
   });
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    setPage(1);
+  }, [search.query]);
 
   // Sort handler function following PatternFly pattern
   const handleSort = (

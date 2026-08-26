@@ -11,7 +11,7 @@ import pytest
 from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, model_cache, storage
+from app import docker_v2_signing_key, model_cache, repository_gc_queue, storage
 from data import model
 from data.cache import cache_key
 from data.cache.impl import InMemoryDataModelCache
@@ -42,6 +42,7 @@ from image.docker.schema1 import (
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from image.oci.manifest import OCIManifest, OCIManifestBuilder
 from image.shared.types import ManifestImageLayer
 from test.fixtures import *
 from util.bytes import Bytes
@@ -445,6 +446,70 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
 
     # Ensure all tags have been deleted.
     tags = registry_model.list_all_active_repository_tags(repository_ref)
+    assert not len(tags)
+
+    # Ensure that the tags all live in history.
+    history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(history) == len(previous_history)
+
+
+@pytest.mark.parametrize(
+    "repo_namespace, repo_name",
+    [
+        ("devtable", "simple"),
+        ("devtable", "complex"),
+        ("devtable", "history"),
+        ("buynlarge", "orgrepo"),
+    ],
+)
+@pytest.mark.parametrize(
+    "via_manifest",
+    [
+        False,
+        True,
+    ],
+)
+def test_deleting_tags_properly_invalidates_cache(
+    repo_namespace, repo_name, via_manifest, registry_model
+):
+    """
+    Ensures that after tag deletion we rebuild cache for a specific repository instead of
+    returning stale results from cache back.
+    """
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    tags = []
+
+    repository_ref = registry_model.lookup_repository(repo_namespace, repo_name)
+
+    # read all tags and populate cache
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
+    assert len(tags)
+
+    # Save history before the deletions.
+    previous_history, _ = registry_model.list_repository_tag_history(repository_ref, size=1000)
+    assert len(previous_history) >= len(tags)
+
+    # Delete every tag in the repository.
+    for tag in tags:
+        if via_manifest:
+            assert registry_model.delete_tag(model_cache, repository_ref, tag.name)
+        else:
+            full_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            manifest = registry_model.get_manifest_for_tag(full_tag)
+            if manifest is not None:
+                registry_model.delete_tags_for_manifest(model_cache, manifest)
+
+        # Make sure the tag is no longer found.
+        with assert_query_count(1):
+            found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
+            assert found_tag is None
+
+    # Ensure all tags have been deleted and we don't return any stale results
+    tags, _ = registry_model.lookup_cached_active_repository_tags(
+        model_cache, repository_ref, None, limit=100
+    )
     assert not len(tags)
 
     # Ensure that the tags all live in history.
@@ -929,6 +994,134 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     assert yet_another_tag.lifetime_end_ms is not None
 
 
+@pytest.fixture
+def _enable_immutable_tags():
+    import features
+
+    original = getattr(features, "IMMUTABLE_TAGS", False)
+    features.IMMUTABLE_TAGS = True
+    yield
+    features.IMMUTABLE_TAGS = original
+
+
+def _create_schema2_manifest_with_labels(repository_ref, labels):
+    """Helper to create a Schema2 manifest with the given config labels."""
+    config_json = json.dumps(
+        {
+            "config": {"Labels": labels},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    app_config = {"TESTING": True}
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    return builder.build()
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label(oci_model, _enable_immutable_tags):
+    """Test that pushing a manifest with quay.immutable=true makes the tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "immutable_tag", storage
+    )
+    assert created_manifest is not None
+    assert tag is not None
+    assert tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_existing_manifest(
+    oci_model, _enable_immutable_tags
+):
+    """Test that retargeting an existing manifest with quay.immutable=true to a new tag
+    also makes the new tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    # First push creates the manifest
+    first_manifest, first_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "first_immutable", storage
+    )
+    assert first_manifest is not None
+    assert first_tag.immutable is True
+
+    # Second push reuses the existing manifest with a different tag
+    second_manifest, second_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "second_immutable", storage
+    )
+    assert second_manifest is not None
+    assert second_manifest == first_manifest
+    assert second_tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_api_retarget(
+    oci_model, _enable_immutable_tags
+):
+    """Test that API-driven retarget also picks up immutability from manifest labels."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    created_manifest, _ = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "api_immutable_src", storage
+    )
+    assert created_manifest is not None
+
+    # Retarget via the API path
+    api_tag = oci_model.retarget_tag(
+        repository_ref, "api_immutable_dst", created_manifest, storage, docker_v2_signing_key
+    )
+    assert api_tag is not None
+    assert api_tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_false(
+    oci_model, _enable_immutable_tags
+):
+    """Test that quay.immutable=false does NOT make the tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "false"})
+
+    created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "mutable_tag", storage
+    )
+    assert created_manifest is not None
+    assert tag is not None
+    assert tag.immutable is False
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_feature_disabled(oci_model):
+    """Test that quay.immutable=true has no effect when IMMUTABLE_TAGS feature is disabled."""
+    import features
+
+    original = getattr(features, "IMMUTABLE_TAGS", False)
+    features.IMMUTABLE_TAGS = False
+    try:
+        repository_ref = oci_model.lookup_repository("devtable", "simple")
+        manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+        created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+            repository_ref, manifest, "disabled_immutable", storage
+        )
+        assert created_manifest is not None
+        assert tag is not None
+        assert tag.immutable is False
+    finally:
+        features.IMMUTABLE_TAGS = original
+
+
 def test_manifest_list_expiration_multiple_tags(oci_model):
     """
     Test that when a manifest list is pushed with multiple tags,
@@ -1280,3 +1473,227 @@ def test_tag_names_for_manifest(initialized_db, registry_model):
                 found_tag = registry_model.get_repo_tag(repo_ref, found_name)
                 assert registry_model.get_manifest_for_tag(found_tag) == manifest
     assert verified_tag
+
+
+def test_lookup_repository_cache_invalidated_on_delete(initialized_db, registry_model):
+    """
+    Verifies that the repository cache key has been invalidated after deletion.
+
+    Regression: If a repo is deleted and then content is immediately pushed to the new repo of the same name,
+    push might fail because of the stale cached repo ID.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    # Check that repo reference exists and cache response
+    assert repo_ref is not None
+    old_repo_id = repo_ref._db_id
+    cache_key_for_lookup = cache_key.for_repository_lookup(namespace, repo, None, None, {})
+    cached_result = model_cache.cache.get(cache_key_for_lookup.key)
+
+    # Verify cache
+    assert cached_result is not None
+    assert json.loads(cached_result)["id"] == old_repo_id
+
+    # Delete repository
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+
+    # Invalidate cache
+    model_cache.invalidate(cache_key_for_lookup)
+
+    # Create repo with the same name
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+    assert new_repo.id != old_repo_id
+
+    # New lookup should give us a new repo, not the deleted one
+    repo_ref_after = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    assert repo_ref_after is not None
+    assert repo_ref_after._db_id == new_repo.id
+    assert repo_ref_after._db_id != old_repo_id
+
+
+def test_lookup_repository_cache_stale_after_delete_without_invalidation(
+    registry_model, initialized_db
+):
+    """
+    Demo for the regression bug: without invalidation, the cache returns
+    the deleted repo's ID after delete + recreate.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    old_repo_id = repo_ref._db_id
+
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+
+    repo_ref_stale = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    assert repo_ref_stale._db_id == old_repo_id  # Points to a deleted repo
+    assert repo_ref_stale._db_id != new_repo.id
+
+
+def _create_oci_manifest_with_blobs(org_name, repo_name, config_content=None):
+    """Helper to create an OCI manifest with populated blobs."""
+    if config_content is None:
+        config_content = json.dumps({"config": {}, "rootfs": {"type": "layers", "diff_ids": []}})
+    config = json.loads(config_content)
+    config.setdefault("architecture", "amd64")
+    config.setdefault("os", "linux")
+    config_content = json.dumps(config)
+    _, config_digest = _populate_blob_with_content(config_content, org_name, repo_name)
+    blob_content = "layer-" + sha256_digest(config_content.encode())[:8]
+    _, blob_digest = _populate_blob_with_content(blob_content, org_name, repo_name)
+
+    builder = OCIManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_content.encode("utf-8")))
+    builder.add_layer(blob_digest, len(blob_content.encode("utf-8")))
+    return builder
+
+
+def test_referrers_cache_invalidated_on_push(initialized_db, registry_model):
+    """
+    When a manifest with a subject is pushed, the referrers cache for the
+    subject digest must be invalidated so that the new referrer is visible
+    immediately without waiting for the TTL to expire.
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+    # Build the subject manifest (manifest A).
+    builder_a = _create_oci_manifest_with_blobs("devtable", "simple")
+    manifest_a = builder_a.build()
+
+    created_a, tag_a = registry_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_a, "subject-tag", storage, raise_on_error=True
+    )
+    assert created_a is not None
+
+    # Prime the referrers cache with an empty list.
+    referrers_before = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert referrers_before == []
+
+    # Build the referrer manifest (manifest B) pointing to A.
+    builder_b = _create_oci_manifest_with_blobs(
+        "devtable",
+        "simple",
+        config_content=json.dumps(
+            {
+                "config": {"extra": "referrer"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        ),
+    )
+    builder_b.set_subject(
+        manifest_a.digest,
+        len(manifest_a.bytes.as_encoded_str()),
+        manifest_a.media_type,
+    )
+    manifest_b = builder_b.build()
+
+    # Push the referrer by tag with model_cache so the cache is invalidated.
+    created_b, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref,
+        manifest_b,
+        "referrer-tag",
+        storage,
+        model_cache=test_cache,
+    )
+    assert created_b is not None
+
+    # Query referrers again — the new referrer must appear immediately.
+    referrers_after = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(referrers_after) == 1
+    assert referrers_after[0].digest == manifest_b.digest
+
+
+def test_referrers_cache_artifact_type_isolation(initialized_db, registry_model):
+    """
+    Referrers queries filtered by artifactType must use separate cache
+    entries, so that a cached filtered result does not serve an unfiltered
+    request (or vice-versa).
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+    # Build the subject manifest.
+    builder_a = _create_oci_manifest_with_blobs("devtable", "simple")
+    manifest_a = builder_a.build()
+
+    created_a, _ = registry_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_a, "artifact-subject", storage, raise_on_error=True
+    )
+    assert created_a is not None
+
+    # Push a referrer with a subject pointing to manifest A.
+    builder_b = _create_oci_manifest_with_blobs(
+        "devtable",
+        "simple",
+        config_content=json.dumps(
+            {
+                "config": {"kind": "sig"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        ),
+    )
+    builder_b.set_subject(
+        manifest_a.digest,
+        len(manifest_a.bytes.as_encoded_str()),
+        manifest_a.media_type,
+    )
+    manifest_b = builder_b.build()
+    artifact_type = "application/vnd.example.signature"
+    manifest_b_dict = json.loads(manifest_b.bytes.as_unicode())
+    manifest_b_dict["artifactType"] = artifact_type
+    manifest_b = OCIManifest(Bytes.for_string_or_unicode(json.dumps(manifest_b_dict)))
+
+    # Prime the matching filtered cache before the referrer is pushed.
+    filtered_before = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert filtered_before == []
+
+    registry_model.create_manifest_with_temp_tag(
+        repository_ref, manifest_b, 300, storage, model_cache=test_cache
+    )
+
+    # Query referrers without a filter — should find the referrer.
+    unfiltered = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(unfiltered) == 1
+
+    # Query with the matching artifactType — the filtered cache must have
+    # been invalidated along with the unfiltered entry.
+    filtered_match = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type=artifact_type
+    )
+    assert len(filtered_match) == 1
+
+    # Query with a non-matching artifactType — should return empty.
+    filtered_miss = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a, artifact_type="application/vnd.nonexistent"
+    )
+    assert filtered_miss == []
+
+    # The unfiltered cache must still return the referrer (not the
+    # empty filtered result).
+    unfiltered_again = registry_model.lookup_cached_referrers_for_manifest(
+        test_cache, repository_ref, created_a
+    )
+    assert len(unfiltered_again) == 1

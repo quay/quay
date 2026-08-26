@@ -11,17 +11,18 @@ from random import SystemRandom
 
 import bitmath
 from cryptography.hazmat.primitives import serialization
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response, request, send_file
 
 import features
 from _init import ROOT_DIR
-from app import app, authentication, avatar, config_provider, usermanager
+from app import app, authentication, avatar, config_provider, log_archive, usermanager
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
 from data import model
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
+from data.logs_model.shared import SearchNotConfiguredError
 from data.model import DataModelException, InvalidNamespaceQuota, namespacequota, user
 from data.model.quota import get_registry_size, queue_registry_size_calculation
 from endpoints.api import (
@@ -51,6 +52,7 @@ from endpoints.api import (
 )
 from endpoints.api.build import get_logs_or_log_url
 from endpoints.api.logs import _validate_logs_arguments
+from endpoints.api.mirrorhealth import _CACHE_CONTROL_NO_STORE, get_mirror_health_data
 from endpoints.api.namespacequota import get_quota, limit_view, quota_view
 from endpoints.api.superuser_models_pre_oci import (
     InvalidRepositoryBuildException,
@@ -60,6 +62,7 @@ from endpoints.api.superuser_models_pre_oci import (
 )
 from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
+from util.registry.gzipinputstream import GzipInputStream
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name
@@ -99,7 +102,14 @@ class SuperUserAggregateLogs(ApiResource):
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )
-            aggregated_logs = logs_model.get_aggregated_log_counts(start_time, end_time)
+            try:
+                aggregated_logs = logs_model.get_aggregated_log_counts(start_time, end_time)
+            except SearchNotConfiguredError as e:
+                return {
+                    "aggregated": [],
+                    "search_unavailable": True,
+                    "message": str(e),
+                }
             return {"aggregated": [log.to_dict() for log in aggregated_logs]}
 
         raise Unauthorized()
@@ -133,7 +143,19 @@ class SuperUserLogs(ApiResource):
             end_time = parsed_args["endtime"]
 
             (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
-            log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
+            try:
+                log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
+            except SearchNotConfiguredError as e:
+                return (
+                    {
+                        "start_time": format_date(start_time),
+                        "end_time": format_date(end_time),
+                        "logs": [],
+                        "search_unavailable": True,
+                        "message": str(e),
+                    },
+                    None,
+                )
             return (
                 {
                     "start_time": format_date(start_time),
@@ -854,6 +876,12 @@ class SuperUserOrganizationManagement(ApiResource):
         Deletes the specified organization.
         """
         if SuperUserPermission().can():
+            try:
+                model.organization.get_organization(name)
+            except model.InvalidOrganizationException:
+                raise NotFound()
+
+            log_action("org_delete", name, {"namespace": name})
             pre_oci_model.mark_organization_for_deletion(name)
             return "", 204
 
@@ -1309,6 +1337,42 @@ class SuperUserRepositoryBuildLogs(ApiResource):
         raise Unauthorized()
 
 
+@resource("/v1/superuser/<build_uuid>/logs/archive")
+@path_param("build_uuid", "The UUID of the build")
+@show_if(features.SUPER_USERS)
+class SuperUserRepositoryBuildLogsArchive(ApiResource):
+    """
+    Resource for serving archived build log content for the superuser.
+    The /logarchive/ route checks repository-level permissions, which fails for
+    superusers who are not repo members. This endpoint bypasses that by streaming
+    the archive directly from object storage under superuser authorization.
+    """
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("getRepoBuildLogsArchiveSuperUser")
+    @require_scope(scopes.SUPERUSER)
+    def get(self, build_uuid):
+        """
+        Return the archived build log content for the build specified by the build uuid.
+        """
+        if allow_if_any_superuser():
+            try:
+                pre_oci_model.get_repository_build(build_uuid)
+            except InvalidRepositoryBuildException as e:
+                raise InvalidResponse(str(e))
+
+            try:
+                path = log_archive.get_file_id_path(build_uuid)
+                data_stream = log_archive._storage.stream_read_file(log_archive._locations, path)
+                return send_file(GzipInputStream(data_stream), mimetype="application/json")
+            except IOError:
+                logger.exception("Could not read archived build logs")
+                raise InvalidResponse("Archived logs not available")
+
+        raise Unauthorized()
+
+
 @resource("/v1/superuser/<build_uuid>/status")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("build_uuid", "The UUID of the build")
@@ -1442,3 +1506,34 @@ class SuperUserDumpConfig(ApiResource):
             if features.SUPERUSER_CONFIGDUMP:
                 return process_config()
         raise Unauthorized()
+
+
+@resource("/v1/superuser/mirror/health")
+@show_if(features.REPO_MIRROR)
+@show_if(features.SUPER_USERS)
+class SuperUserRepositoryMirrorHealth(ApiResource):
+    """
+    Resource for checking global repository mirror health from the superuser panel.
+    """
+
+    @require_fresh_login
+    @nickname("getSuperUserRepositoryMirrorHealth")
+    def get(self):
+        """
+        Get a global mirror health summary without repository-identifying samples.
+        """
+        if not allow_if_any_superuser():
+            raise Unauthorized()
+
+        health_data = get_mirror_health_data(
+            detailed=False,
+            include_repository_details=False,
+        )
+
+        status_code = 200 if health_data["healthy"] else 503
+
+        return (
+            health_data,
+            status_code,
+            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
+        )

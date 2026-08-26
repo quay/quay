@@ -692,21 +692,121 @@ class TestSplunkLogsModelConfiguration:
                 assert model_instance._splunk_hec_config == hec_config
                 assert model_instance._producer == "splunk_hec"
 
-    def test_init_raises_error_without_search_token(self, mock_model):
-        """Test that __init__ raises exception when search_token is missing for splunk_hec."""
+    def test_init_succeeds_without_search_token(self, mock_model):
+        """Test that __init__ succeeds when search_token is missing for splunk_hec."""
         hec_config = {
             "host": "hec.splunk.example",
             "hec_token": "hec_token_123",
-            # Missing search_token
+            # Missing search_token — should still initialize
         }
         with patch("data.logs_model.splunk_logs_model.model", mock_model):
             with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
                 mock_producer.return_value = Mock()
-                with pytest.raises(Exception) as exc_info:
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                assert model_instance._search_enabled is False
+                assert model_instance._producer == "splunk_hec"
+
+    def test_init_without_search_token_logs_warning(self, mock_model, caplog):
+        """Test that __init__ logs a warning when search_token is missing."""
+        import logging
+
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                with caplog.at_level(logging.WARNING):
                     SplunkLogsModel(producer="splunk_hec", splunk_hec_config=hec_config)
 
-                assert "search_token is required" in str(exc_info.value)
-                assert "HEC tokens are ingest-only" in str(exc_info.value)
+                assert "search_token not configured" in caplog.text
+                assert "audit log viewing" in caplog.text
+
+    def test_search_enabled_when_search_token_present(self, mock_model):
+        """Test that _search_enabled is True when search_token is provided."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+            "search_token": "search_token_456",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                assert model_instance._search_enabled is True
+
+    def test_get_search_client_returns_none_without_search_token(self, mock_model):
+        """Test that _get_search_client returns None when search is not configured."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                assert model_instance._get_search_client() is None
+
+    def test_read_methods_raise_error_without_search_token(self, mock_model):
+        """Test that all read methods raise SearchNotConfiguredError when search_token is missing."""
+        from data.logs_model.shared import SearchNotConfiguredError
+
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                start = datetime(2024, 1, 1)
+                end = datetime(2024, 1, 31)
+
+                with pytest.raises(SearchNotConfiguredError):
+                    model_instance.lookup_logs(start, end)
+
+                with pytest.raises(SearchNotConfiguredError):
+                    model_instance.lookup_latest_logs()
+
+                with pytest.raises(SearchNotConfiguredError):
+                    model_instance.get_aggregated_log_counts(start, end)
+
+                with pytest.raises(SearchNotConfiguredError):
+                    mock_repo = _make_mock_repository(1)
+                    model_instance.count_repository_actions(mock_repo, start)
+
+                with pytest.raises(SearchNotConfiguredError):
+                    list(model_instance.yield_logs_for_export(start, end))
+
+    def test_log_action_works_without_search_token(self, mock_model):
+        """Test that log_action (HEC ingest) works even without search_token."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_instance = Mock()
+                mock_producer.return_value = mock_instance
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                # log_action should work — it uses the HEC producer, not search
+                model_instance.log_action("push_repo", namespace_name="testorg")
 
     def test_get_search_client_with_splunk_config(self, splunk_config, mock_model):
         """Test that _get_search_client uses splunk_config directly."""

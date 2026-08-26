@@ -1,4 +1,6 @@
+import {type Page} from '@playwright/test';
 import {test, expect} from '../../fixtures';
+import {TEST_USERS} from '../../global-setup';
 
 test.describe('Organization Settings', {tag: ['@organization']}, () => {
   test.describe('General Settings', {tag: ['@feature:USER_METADATA']}, () => {
@@ -14,6 +16,10 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       const emailInput = authenticatedPage.locator('#org-settings-email');
       await expect(emailInput).toBeVisible();
 
+      // Check save button is disabled before any edits (form is not dirty)
+      const saveButton = authenticatedPage.locator('#save-org-settings');
+      await expect(saveButton).toBeDisabled();
+
       // Type a bad email
       await emailInput.clear();
       await emailInput.fill('this is not a good e-mail');
@@ -21,14 +27,8 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         authenticatedPage.getByText('Please enter a valid email address'),
       ).toBeVisible();
 
-      // Leave empty (email field is not required, so no error should appear)
-      await emailInput.clear();
-
-      // Check save button is disabled when form is not dirty or invalid
-      const saveButton = authenticatedPage.locator('#save-org-settings');
-      await expect(saveButton).toBeDisabled();
-
       // Type a good email and save
+      await emailInput.clear();
       await emailInput.fill('good-email@redhat.com');
       await expect(saveButton).toBeEnabled();
       await saveButton.click();
@@ -114,4 +114,559 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       authenticatedPage.getByRole('tab', {name: 'CLI configuration'}),
     ).not.toBeVisible();
   });
+
+  async function gotoSettingsAndWaitForExclusionAPIs(
+    page: Page,
+    orgName: string,
+    action: 'goto' | 'reload' = 'goto',
+  ) {
+    const waitForAPIs = Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/mirror`) &&
+          resp.request().method() === 'GET',
+      ),
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/proxycache`) &&
+          resp.request().method() === 'GET',
+      ),
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/immutabilitypolicy/`) &&
+          resp.request().method() === 'GET',
+      ),
+    ]);
+
+    if (action === 'goto') {
+      await page.goto(`/organization/${orgName}?tab=Settings`);
+    } else {
+      await page.reload();
+    }
+
+    await waitForAPIs;
+  }
+
+  test.describe(
+    'Mutual Exclusion: Org Mirror, Proxy Cache, Immutability',
+    {
+      tag: [
+        '@feature:ORG_MIRROR',
+        '@feature:PROXY_CACHE',
+        '@feature:IMMUTABLE_TAGS',
+      ],
+    },
+    () => {
+      test('hides Proxy Cache and Immutability tabs when org mirror is configured', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexmirr');
+        const robot = await api.robot(org.name, 'mirrorbot');
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createOrgMirrorConfig(org.name, {
+          external_registry_type: 'quay',
+          external_registry_url: 'https://quay.io',
+          external_namespace: 'projectquay',
+          robot_username: robot.fullName,
+          visibility: 'private',
+          sync_interval: 3600,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+        });
+
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
+
+        // Organization state tab should be visible
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+
+        // Proxy Cache, Immutability, and Auto-Prune tabs should be hidden
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
+        ).not.toBeAttached();
+      });
+
+      test('hides Organization state and Immutability tabs when proxy cache is configured', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexproxy');
+
+        // Create proxy cache via UI (API requires upstream validation)
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await authenticatedPage.getByTestId('Proxy Cache').click();
+        await authenticatedPage
+          .getByTestId('remote-registry-input')
+          .fill('docker.io');
+        await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+        await expect(
+          authenticatedPage
+            .getByText('Successfully configured proxy cache')
+            .first(),
+        ).toBeVisible();
+
+        // Reload to see mutual exclusion take effect
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
+
+        // Proxy Cache tab should be visible
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).toBeVisible();
+
+        // Organization state and Immutability tabs should be hidden
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
+      });
+
+      test('hides Organization state and Proxy Cache tabs when immutability policies exist', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('meximm');
+
+        await api.orgImmutabilityPolicy(org.name, 'v.*', true);
+
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
+
+        // Immutability Policies tab should be visible
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+
+        // Organization state and Proxy Cache tabs should be hidden
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+      });
+
+      test('shows all three tabs when none are configured', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnone');
+
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
+
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
+        ).toBeVisible();
+      });
+
+      test('tabs reappear after removing conflicting config', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexreapp');
+
+        // Create proxy cache via UI -> org state and immutability should be hidden
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await authenticatedPage.getByTestId('Proxy Cache').click();
+        await authenticatedPage
+          .getByTestId('remote-registry-input')
+          .fill('docker.io');
+        await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+        await expect(
+          authenticatedPage
+            .getByText('Successfully configured proxy cache')
+            .first(),
+        ).toBeVisible();
+
+        // Reload to see mutual exclusion take effect
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
+
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+
+        // Delete proxy cache via API
+        await api.raw.deleteProxyCacheConfig(org.name);
+
+        // Reload and verify tabs reappear
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
+
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
+        ).toBeVisible();
+      });
+
+      test('hides all three exclusive tabs when immutability fetch errors', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexerr');
+
+        // Intercept the immutability policies endpoint and return a 500 error
+        await authenticatedPage.route(
+          '**/api/v1/organization/*/immutabilitypolicy/',
+          async (route) => {
+            await route.fulfill({
+              status: 500,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error_message: 'Internal Server Error',
+              }),
+            });
+          },
+        );
+
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
+
+        // General settings should still be visible
+        await expect(
+          authenticatedPage.getByTestId('General settings'),
+        ).toBeVisible();
+
+        // All three mutually-exclusive tabs should be hidden
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
+      });
+    },
+  );
+
+  test.describe(
+    'Organization state tab with IMMUTABLE_TAGS disabled',
+    {tag: ['@feature:ORG_MIRROR']},
+    () => {
+      test('shows Organization state tab when FEATURE_IMMUTABLE_TAGS is disabled (PROJQUAY-11028)', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnoimmtag');
+
+        // Override config to disable IMMUTABLE_TAGS
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.IMMUTABLE_TAGS = false;
+          body.features.ORG_MIRROR = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Organization state tab should be visible even without IMMUTABLE_TAGS
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+      });
+    },
+  );
+
+  test.describe(
+    'Organization state tab with PROXY_CACHE disabled',
+    {tag: ['@feature:ORG_MIRROR']},
+    () => {
+      test('shows Organization state tab when FEATURE_PROXY_CACHE is disabled (PROJQUAY-11080)', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnoproxy');
+
+        // Override config to disable PROXY_CACHE
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.PROXY_CACHE = false;
+          body.features.ORG_MIRROR = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Organization state tab should be visible even without PROXY_CACHE
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+      });
+    },
+  );
+
+  test.describe(
+    'Mutual exclusion tabs with ORG_MIRROR disabled',
+    {tag: ['@feature:PROXY_CACHE', '@feature:IMMUTABLE_TAGS']},
+    () => {
+      test('shows Proxy Cache and Immutability tabs when FEATURE_ORG_MIRROR is disabled', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnomirror');
+
+        // Override config to disable ORG_MIRROR
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.ORG_MIRROR = false;
+          body.features.PROXY_CACHE = true;
+          body.features.IMMUTABLE_TAGS = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Proxy Cache and Immutability tabs should be visible
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+
+        // Organization state tab should not be visible (feature disabled)
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
+    },
+  );
+
+  test.describe(
+    'User Namespace Settings: Auto-Prune Policies tab',
+    {tag: ['@feature:AUTO_PRUNE', '@user']},
+    () => {
+      test('shows Auto-Prune tab and hides org-only tabs for user namespace', async ({
+        authenticatedPage,
+      }) => {
+        const username = TEST_USERS.user.username;
+
+        // Regression: React Query v4 keeps disabled queries in isLoading=true.
+        // useOrgMirrorExists and useFetchProxyCacheConfig are disabled for user
+        // orgs (enabled = flag && !isUserOrg), but isLoading stays true when
+        // no cached data exists, blocking mutualExclusionLoaded and hiding the
+        // Auto-Prune tab. Enable both flags to cover both short-circuit paths.
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          Object.assign(body.features, {
+            AUTO_PRUNE: true,
+            PROXY_CACHE: true,
+            ORG_MIRROR: true,
+            IMMUTABLE_TAGS: false,
+          });
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/user/${username}?tab=Settings`);
+        await expect(authenticatedPage.locator('#form-name')).toBeVisible();
+
+        // Auto-Prune tab must be visible and navigable
+        const autoPruneTab = authenticatedPage.getByTestId(
+          'Auto-Prune Policies',
+        );
+        await expect(autoPruneTab).toBeVisible();
+        await autoPruneTab.click();
+        await expect(
+          authenticatedPage.getByRole('heading', {
+            name: 'Auto-Pruning Policies',
+            level: 2,
+          }),
+        ).toBeVisible();
+
+        // CLI configuration is user-namespace only
+        await expect(
+          authenticatedPage.getByTestId('CLI configuration'),
+        ).toBeVisible();
+
+        // Org-only tabs must not render in user namespace
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
+    },
+  );
+
+  test.describe('Email (PROJQUAY-10593)', {tag: ['@PROJQUAY-10593']}, () => {
+    test('shows Email label and helper text for organizations', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('contactlbl');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      await expect(
+        authenticatedPage.locator('label[for="org-settings-email"]'),
+      ).toHaveText(/Email/);
+      await expect(
+        authenticatedPage.getByText(
+          'Optional. Used for organization recovery and billing notifications.',
+        ),
+      ).toBeVisible();
+    });
+
+    test('allows duplicate emails across organizations', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org1 = await api.organization('dupmail');
+      const org2 = await api.organization('dupmail');
+
+      await authenticatedPage.goto(`/organization/${org1.name}?tab=Settings`);
+      const emailInput1 = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput1).toBeVisible();
+      await emailInput1.fill('shared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+
+      await authenticatedPage.goto(`/organization/${org2.name}?tab=Settings`);
+      const emailInput2 = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput2).toBeVisible();
+      await emailInput2.fill('shared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+    });
+
+    test('sends email in PUT request', async ({authenticatedPage, api}) => {
+      const org = await api.organization('putcheck');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      const emailInput = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput).toBeVisible();
+      await emailInput.fill('contact-test@example.com');
+
+      const putPromise = authenticatedPage.waitForRequest(
+        (req) =>
+          req.url().includes(`/api/v1/organization/${org.name}`) &&
+          req.method() === 'PUT',
+      );
+
+      await authenticatedPage.locator('#save-org-settings').click();
+
+      const putRequest = await putPromise;
+      const body = putRequest.postDataJSON();
+      expect(body).toHaveProperty('email');
+      expect(body.email).toBe('contact-test@example.com');
+    });
+
+    test('allows clearing email', async ({authenticatedPage, api}) => {
+      const org = await api.organization('clearmail');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      const emailInput = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput).toBeVisible();
+      await emailInput.fill('to-be-cleared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+
+      await authenticatedPage.reload();
+      await expect(emailInput).toHaveValue('to-be-cleared@example.com');
+
+      await emailInput.clear();
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+
+      await authenticatedPage.reload();
+      await expect(emailInput).toHaveValue('');
+    });
+  });
+
+  test.describe(
+    'Repository Settings: Org Mirror Mutual Exclusion',
+    {
+      tag: ['@repository', '@feature:ORG_MIRROR', '@feature:IMMUTABLE_TAGS'],
+    },
+    () => {
+      test('shows Immutability tab for non-mirrored repos', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexreponorm');
+        const repo = await api.repository(org.name, 'normalrepo');
+
+        await authenticatedPage.goto(
+          `/repository/${repo.fullName}?tab=settings`,
+        );
+
+        // Immutability tab should be visible for a normal repo
+        await expect(
+          authenticatedPage.getByTestId(
+            'settings-tab-repositoryimmutabilitypolicies',
+          ),
+        ).toBeVisible();
+
+        // No org mirror banner
+        await expect(
+          authenticatedPage.getByTestId('org-mirror-repo-settings-banner'),
+        ).not.toBeAttached();
+      });
+    },
+  );
 });

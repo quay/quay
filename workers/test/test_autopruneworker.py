@@ -10,6 +10,8 @@ import pytest
 from app import storage
 from data import model
 from data.database import AutoPruneTaskStatus, ImageStorageLocation, Tag
+from data.model import ImmutableTagException
+from data.model.autoprune import prune_tags
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
     get_tag,
@@ -1289,3 +1291,29 @@ def test_prune_by_creation_date_excludes_immutable_tags(initialized_db):
 
     task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
     assert task1.status == "success"
+
+
+def test_prune_tags_skips_immutable_tags(initialized_db):
+    """Test that prune_tags gracefully skips immutable tags instead of failing."""
+    repo = model.repository.create_repository(
+        "sellnsmall", "prune_tags_immutable_test", None, repo_kind="image", visibility="public"
+    )
+    namespace = model.organization.get_organization("sellnsmall")
+    manifest_result = create_manifest("sellnsmall", repo)
+
+    # Create 2 mutable and 1 immutable tag
+    mutable_tag_1 = create_tag(repo, manifest_result.manifest, name="mutable-1", immutable=False)
+    mutable_tag_2 = create_tag(repo, manifest_result.manifest, name="mutable-2", immutable=False)
+    immutable_tag = create_tag(repo, manifest_result.manifest, name="immutable-1", immutable=True)
+
+    _assert_repo_tag_count(repo, 3)
+
+    # Pass all tags including immutable to prune_tags - should not raise
+    tags_to_prune = [mutable_tag_1, mutable_tag_2, immutable_tag]
+    prune_tags(tags_to_prune, repo, namespace)
+
+    # Only immutable tag should remain
+    remaining_tags = list_alive_tags(repo)
+    remaining_names = [t.name for t in remaining_tags]
+    assert len(remaining_names) == 1
+    assert "immutable-1" in remaining_names

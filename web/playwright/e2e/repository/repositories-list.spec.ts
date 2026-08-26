@@ -1,6 +1,7 @@
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {API_URL} from '../../utils/config';
+import {pushImage} from '../../utils/container';
 
 /**
  * Helper to get the search input inside the PatternFly SearchInput component
@@ -95,7 +96,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify modal opens
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box__title-text'),
+        authenticatedPage.locator('.pf-v6-c-modal-box__title-text'),
       ).toHaveText('Create repository');
 
       // Select user namespace from dropdown
@@ -124,7 +125,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close (auto-wait handles the success alert)
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
 
       // Search for the new repo
@@ -132,7 +133,9 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
         `${testUser}/${publicRepoName}`,
       );
       await expect(
-        authenticatedPage.getByText(`${testUser}/${publicRepoName}`),
+        authenticatedPage
+          .getByTestId('repository-list-table')
+          .getByText(`${testUser}/${publicRepoName}`),
       ).toBeVisible();
 
       // Verify visibility is public
@@ -178,7 +181,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
 
       await getSearchInput(authenticatedPage).fill(
@@ -230,7 +233,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
       await expect(reposPanel.getByText(orgRepoName)).toBeVisible();
 
@@ -499,5 +502,77 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       const count = await rows.count();
       expect(count).toBeGreaterThanOrEqual(2);
     });
+
+    test('shows empty state instead of spinner when search matches nothing (PROJQUAY-11217)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('searchnomatch');
+      await api.repositoryWithName(org.name, 'exists-repo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Wait for initial load to complete — repo should be visible
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+
+      // Search for a name that will never match
+      await getSearchInput(authenticatedPage).fill('zzz-no-such-repo');
+
+      // Regression: old code showed a spinner here forever
+      await expect(reposPanel.getByRole('progressbar')).not.toBeVisible();
+      await expect(reposPanel.getByText('No repositories found')).toBeVisible();
+
+      // Clear search — repo should reappear
+      await getSearchInput(authenticatedPage).fill('');
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+    });
   });
+
+  // domainRoute's repository branch only runs when the current path is under
+  // /repository/...; org-page team links cannot exercise it.
+  test.describe(
+    'domainRoute repository keyword',
+    {tag: ['@PROJQUAY-11202', '@container']},
+    () => {
+      test('tag link stays correct from /repository/.../testrepository... path', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('kwrepo');
+        const repo = await api.repository(org.name, 'testrepository');
+        await pushImage(
+          org.name,
+          repo.name,
+          'latest',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+
+        const repoPath = `/repository/${org.name}/${repo.name}`;
+        const expectedTagPath = `${repoPath}/tag/latest`;
+
+        // Current path includes /repository and a later "repository" substring.
+        await authenticatedPage.goto(`${repoPath}?tab=tags`);
+        await expect(authenticatedPage.getByTestId('repo-title')).toContainText(
+          repo.name,
+        );
+
+        const tagLink = authenticatedPage.getByRole('link', {name: 'latest'});
+        const href = await tagLink.getAttribute('href');
+        expect(href, `malformed tag link href: ${href}`).toContain(
+          expectedTagPath,
+        );
+        expect(href).not.toContain(`${repoPath}/repository/`);
+
+        await tagLink.click();
+        await expect(authenticatedPage).toHaveURL(
+          (url) => url.pathname === expectedTagPath,
+        );
+      });
+    },
+  );
 });

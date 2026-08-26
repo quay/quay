@@ -18,7 +18,7 @@ export function LoginPageLayout({
   title,
   description,
   children,
-  className = 'pf-u-background-color-100 pf-v5-u-text-align-left',
+  className = 'pf-u-background-color-100 pf-v6-u-text-align-left',
 }: LoginPageLayoutProps) {
   const {config: quayConfig, isLoading: configLoading} =
     useQuayConfigWithLoading();

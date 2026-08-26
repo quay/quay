@@ -2,10 +2,12 @@
 
 ## Prerequisites
 
-- Docker or Podman
-- docker-compose
+- Docker or Podman (both fully supported)
+- Docker Compose plugin (`docker compose` or `podman compose`)
 - Python 3.12
-- Node 16+
+- Node 20+
+- pnpm (for frontend development)
+- pre-commit (`pip install pre-commit`)
 
 ## Starting the Environment
 
@@ -107,8 +109,8 @@ npm run watch  # Auto-rebuilds on changes
 ### React (in web/)
 ```bash
 cd web
-npm install
-npm start      # Dev server on :9000
+pnpm install
+pnpm start     # Dev server on :9000
 ```
 
 ## Pre-commit Hooks

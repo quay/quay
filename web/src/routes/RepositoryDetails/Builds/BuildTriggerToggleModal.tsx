@@ -1,4 +1,11 @@
-import {Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {
+  Button,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
+} from '@patternfly/react-core';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useToggleBuildTrigger} from 'src/hooks/UseBuildTriggers';
 
@@ -22,7 +29,7 @@ export default function BuildTriggerToggleModal(
       onError: (error) => {
         addAlert({
           variant: AlertVariant.Failure,
-          title: `Failed to ${props.enabled ? 'disabled' : 'enabled'} trigger`,
+          title: `Failed to ${props.enabled ? 'disable' : 'enable'} trigger`,
         });
       },
     },
@@ -34,16 +41,21 @@ export default function BuildTriggerToggleModal(
   return (
     <Modal
       id="build-trigger-toggle-modal"
-      title={title}
       isOpen={props.isOpen}
       onClose={() => props.onClose()}
       variant={ModalVariant.medium}
-      actions={[
-        <Button key="cancel" variant="primary" onClick={() => props.onClose()}>
-          Cancel
-        </Button>,
+      style={{
+        overflowX: 'visible',
+        overflowY: 'visible',
+      }}
+    >
+      <ModalHeader title={title} />
+      <ModalBody>
+        Are you sure you want to {props.enabled ? 'disable' : 'enable'} this
+        build trigger?
+      </ModalBody>
+      <ModalFooter>
         <Button
-          key="modal-action-button"
           variant="primary"
           onClick={() => {
             toggleTrigger(!props.enabled);
@@ -51,15 +63,11 @@ export default function BuildTriggerToggleModal(
           }}
         >
           {title}
-        </Button>,
-      ]}
-      style={{
-        overflowX: 'visible',
-        overflowY: 'visible',
-      }}
-    >
-      Are you sure you want to {props.enabled ? 'disable' : 'enable'} this build
-      trigger?
+        </Button>
+        <Button variant="link" onClick={() => props.onClose()}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -191,11 +191,6 @@
   },
   {
     "format": "Python",
-    "license": "Apache Software License 2.0",
-    "project": "geoip2"
-  },
-  {
-    "format": "Python",
     "license": "MIT License",
     "project": "gevent"
   },
@@ -3813,5 +3808,10 @@
     "format": "JavaScript",
     "license": "MIT License",
     "project": "zeroclipboard"
+  },
+  {
+    "format": "Data",
+    "license": "CC BY-SA 4.0",
+    "project": "ip-to-country (IPLocate.io)"
   }
 ]

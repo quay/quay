@@ -20,7 +20,7 @@ def _location_aware(unbound_func, requires_write=False):
                 break
 
         if not storage:
-            storage = self._storages[random.sample(locations, 1)[0]]
+            storage = self._storages[random.sample(sorted(locations), 1)[0]]
 
         storage_func = getattr(storage, unbound_func.__name__)
         return storage_func(*args, **kwargs)
@@ -110,6 +110,9 @@ class DistributedStorage(StoragePaths):
     get_checksum = _location_aware(BaseStorage.get_checksum)
     get_supports_resumable_downloads = _location_aware(BaseStorage.get_supports_resumable_downloads)
     clean_partial_uploads = _location_aware(BaseStorage.clean_partial_uploads, requires_write=True)
+    clean_orphaned_multipart_uploads = _location_aware(
+        BaseStorage.clean_orphaned_multipart_uploads, requires_write=True
+    )
 
     initiate_chunked_upload = _location_aware(
         BaseStorageV2.initiate_chunked_upload, requires_write=True

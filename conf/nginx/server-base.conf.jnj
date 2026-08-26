@@ -9,15 +9,19 @@ if ($host = "www.quay.io") {
 # Disable the ability to be embedded into iframes
 add_header X-Frame-Options DENY;
 
-
 # Proxy Headers
 proxy_set_header X-Forwarded-For $proper_forwarded_for;
-proxy_set_header X-Forwarded-Proto $proper_scheme;
-proxy_set_header Host $host;
+
+# Pass trusted protocol to Werkzeug
+proxy_set_header X-Forwarded-Proto $final_proto;
+
 proxy_redirect off;
 
-proxy_set_header Transfer-Encoding $http_transfer_encoding;
 absolute_redirect off;
+
+# Pass safe host for non standard external ports
+proxy_set_header Host $safe_host;
+proxy_set_header X-Forwarded-Host $safe_host;
 
 location /angular {
     # Set cookie to switch to angular UI
@@ -46,8 +50,10 @@ location / {
 
     # Show new UI if cookie or default is set to react
     if ($user_requested_ui ~* "^react$") {
-        # catch new static paths and direct to /index.html
+        # catch known React UI routes and direct to /index.html
         rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security) /index.html break;
+        # catch-all for shorthand URLs (/<org>, /<org>/<repo>) handled by React Router
+        rewrite ^/[^.]*$ /index.html break;
     }
 
     # Show old UI if cookie is set to angular
@@ -127,6 +133,7 @@ location ~ ^/v2/_catalog(.*)$ {
 
 location /secscan/ {
     proxy_pass http://secscan_app_server;
+    proxy_http_version 1.1;
 }
 
 {% if signing_enabled %}
@@ -136,6 +143,28 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
   proxy_set_header Host "{{ tuf_host }}";
 }
 {% endif %}
+
+location = /api/v1/bootstrap/renew/ {
+    return 307 /api/v1/bootstrap/renew;
+}
+
+location = /api/v1/bootstrap/renew {
+    proxy_pass   http://web_app_server;
+
+    proxy_set_header X-Forwarded-For $proper_forwarded_for;
+    proxy_set_header X-Quay-Bootstrap-Renewal-Location $quay_bootstrap_renewal_location;
+    proxy_set_header X-Forwarded-Proto $final_proto;
+    proxy_set_header Transfer-Encoding $http_transfer_encoding;
+    proxy_set_header Host $safe_host;
+    proxy_set_header X-Forwarded-Host $safe_host;
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=25 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;
+    {% endif %}
+
+    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+}
 
 location /api/ {
     proxy_pass   http://web_app_server;
@@ -185,7 +214,7 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -212,7 +241,7 @@ location ~ /v2/([^/]+)\/[^/]+/tags/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -239,7 +268,7 @@ location ~ /v2/([^/]+)\/[^/]+/manifests/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -267,7 +296,7 @@ location = /v2/auth {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -298,7 +327,7 @@ location ~ ^/v2 {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -316,7 +345,7 @@ location /v1/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_buffering off;
 
@@ -350,4 +379,16 @@ location /static/ {
     error_page 404 /404;
 }
 
-error_page 502 {{static_dir}}/502.html;
+location /nginx_status {
+    stub_status on;
+    allow 127.0.0.1;
+    allow ::1;
+    deny all;
+}
+
+error_page 502 =502 /502.html;
+
+location = /502.html {
+    root {{static_dir}};
+    internal;
+}

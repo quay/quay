@@ -27,16 +27,20 @@ import {
   APIRequestContext,
   BrowserContext,
 } from '@playwright/test';
-import {TEST_USERS} from './global-setup';
-import {API_URL} from './utils/config';
+import {uniqueName} from './utils/test-utils';
+import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
+import {API_URL, BASE_URL} from './utils/config';
 import {
   ApiClient,
+  AutoPrunePolicy,
   PrototypeRole,
+  RawApiClient,
   RepositoryVisibility,
   ServiceKey,
   TeamRole,
 } from './utils/api';
 import {isContainerRuntimeAvailable} from './utils/container';
+import {WebhookReceiver} from './utils/webhook';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -79,6 +83,7 @@ export interface CreatedRobot {
   orgName: string;
   shortname: string;
   fullName: string;
+  token: string;
 }
 
 /**
@@ -128,6 +133,16 @@ export interface CreatedBuild {
 }
 
 /**
+ * Created OAuth application info
+ */
+export interface CreatedOAuthApp {
+  orgName: string;
+  name: string;
+  clientId: string;
+  clientSecret?: string;
+}
+
+/**
  * Created immutability policy info
  */
 export interface CreatedImmutabilityPolicy {
@@ -154,9 +169,11 @@ export interface CreatedImmutabilityPolicy {
 export class TestApi {
   private client: ApiClient;
   private cleanupStack: CleanupAction[] = [];
+  private defaultNamespace: string;
 
-  constructor(client: ApiClient) {
+  constructor(client: ApiClient, defaultNamespace?: string) {
     this.client = client;
+    this.defaultNamespace = defaultNamespace ?? TEST_USERS.user.username;
   }
 
   /**
@@ -171,11 +188,11 @@ export class TestApi {
    * Create a unique organization.
    * Automatically deleted after test.
    */
-  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+  async organization(namePrefix = 'org', email?: string): Promise<CreatedOrg> {
     const name = uniqueName(namePrefix);
-    const email = `${name}@example.com`;
+    const orgEmail = email ?? `${name}@example.com`;
 
-    await this.client.createOrganization(name, email);
+    await this.client.createOrganization(name, orgEmail);
 
     this.cleanupStack.push(async () => {
       try {
@@ -185,7 +202,7 @@ export class TestApi {
       }
     });
 
-    return {name, email};
+    return {name, email: orgEmail};
   }
 
   /**
@@ -199,7 +216,7 @@ export class TestApi {
     namePrefix = 'repo',
     visibility: RepositoryVisibility = 'private',
   ): Promise<CreatedRepo> {
-    const ns = namespace ?? TEST_USERS.user.username;
+    const ns = namespace ?? this.defaultNamespace;
     const name = uniqueName(namePrefix);
 
     await this.client.createRepository(ns, name, visibility);
@@ -313,7 +330,11 @@ export class TestApi {
     // Robot names can't have dashes, only underscores
     const shortname = uniqueName(namePrefix).replace(/-/g, '_');
 
-    await this.client.createRobot(orgName, shortname, description);
+    const result = await this.client.createRobot(
+      orgName,
+      shortname,
+      description,
+    );
 
     this.cleanupStack.push(async () => {
       try {
@@ -327,6 +348,7 @@ export class TestApi {
       orgName,
       shortname,
       fullName: `${orgName}+${shortname}`,
+      token: result.token,
     };
   }
 
@@ -447,6 +469,68 @@ export class TestApi {
     });
 
     return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create a namespace notification for an organization.
+   * Automatically deleted after test.
+   */
+  async namespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createNamespaceNotification(
+      orgName,
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteNamespaceNotification(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create a namespace notification for the authenticated user.
+   * Automatically deleted after test.
+   */
+  async userNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const result = await this.client.createUserNamespaceNotification(
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserNamespaceNotification(result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid};
   }
 
   /**
@@ -613,11 +697,13 @@ export class TestApi {
     namespace: string,
     repoName: string,
     dockerfileContent = 'FROM scratch\n',
+    dockerTags: string[] = [],
   ): Promise<CreatedBuild> {
     const result = await this.client.startDockerfileBuild(
       namespace,
       repoName,
       dockerfileContent,
+      dockerTags,
     );
 
     // No cleanup needed - builds are deleted when the repository is deleted
@@ -707,6 +793,103 @@ export class TestApi {
   }
 
   /**
+   * Create an auto-prune policy for an organization.
+   * Automatically deleted after test.
+   */
+  async orgAutoPrunePolicy(
+    orgName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createOrgAutoPrunePolicy(orgName, policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgAutoPrunePolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create an auto-prune policy for a repository.
+   * Automatically deleted after test.
+   */
+  async repoAutoPrunePolicy(
+    namespace: string,
+    repoName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepoAutoPrunePolicy(
+      namespace,
+      repoName,
+      policy,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoAutoPrunePolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create an auto-prune policy for the current user.
+   * Automatically deleted after test.
+   */
+  async userAutoPrunePolicy(policy: AutoPrunePolicy): Promise<{uuid: string}> {
+    const result = await this.client.createUserAutoPrunePolicy(policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserAutoPrunePolicy(result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid};
+  }
+
+  /**
+   * Create an OAuth application in an organization.
+   * Automatically deleted after test.
+   */
+  async oauthApplication(
+    orgName: string,
+    namePrefix = 'oauth-app',
+  ): Promise<CreatedOAuthApp> {
+    const name = uniqueName(namePrefix);
+
+    const result = await this.client.createOAuthApplication(orgName, name);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOAuthApplication(orgName, result.client_id);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      orgName,
+      name,
+      clientId: result.client_id,
+      clientSecret: result.client_secret,
+    };
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -728,6 +911,7 @@ export class TestApi {
  * Known Quay feature flags that can be enabled/disabled
  */
 export type QuayFeature =
+  | 'ANONYMOUS_ACCESS'
   | 'BILLING'
   | 'QUOTA_MANAGEMENT'
   | 'EDIT_QUOTA'
@@ -741,7 +925,15 @@ export type QuayFeature =
   | 'MAILING'
   | 'IMAGE_EXPIRY_TRIGGER'
   | 'SUPERUSERS_FULL_ACCESS'
-  | 'IMMUTABLE_TAGS';
+  | 'IMMUTABLE_TAGS'
+  | 'SPARSE_INDEX'
+  | 'TEAM_SYNCING'
+  | 'DIRECT_LOGIN'
+  | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
+  | 'BUILD_SUPPORT'
+  | 'STORAGE_REPLICATION'
+  | 'SPAM_DETECTION'
+  | 'SUPER_USERS';
 
 /**
  * Quay configuration from /config endpoint
@@ -819,17 +1011,55 @@ export function skipUnlessAuthType(
   ];
 }
 
+function getTestUsers(config?: QuayConfig | null) {
+  const authType = config?.config?.AUTHENTICATION_TYPE;
+  if (authType === 'OIDC') return TEST_USERS_OIDC;
+  if (authType === 'LDAP') return TEST_USERS_LDAP;
+  return TEST_USERS;
+}
+
+async function setReactUICookie(context: BrowserContext): Promise<void> {
+  const domain = new URL(BASE_URL).hostname;
+  await context.addCookies([
+    {name: 'defaultui', value: 'react', domain, path: '/'},
+  ]);
+}
+
 /**
- * Login a user and return the API client (with cached CSRF token)
+ * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
+ * Detects the auth type from config and uses the appropriate method.
+ * The browser context retains session cookies either way.
  */
 async function loginUser(
-  request: APIRequestContext,
+  context: BrowserContext,
   username: string,
   password: string,
-): Promise<ApiClient> {
-  const api = new ApiClient(request);
-  await api.signIn(username, password);
-  return api;
+  config?: QuayConfig | null,
+): Promise<void> {
+  const isOIDC = config?.config?.AUTHENTICATION_TYPE === 'OIDC';
+
+  if (isOIDC) {
+    const page = await context.newPage();
+    try {
+      await page.goto('/signin');
+      await page.locator('[data-testid^="external-login-"]').first().click();
+      await page.waitForURL(/.*realms\/.*/, {timeout: 15000});
+      await page.fill('#username', username);
+      await page.fill('#password', password);
+      await page.click('#kc-login');
+      // Wait for redirect back to Quay (exclude Keycloak realm paths)
+      await page.waitForURL(
+        (url) =>
+          url.hostname === 'localhost' && !url.pathname.includes('/realms/'),
+        {timeout: 15000},
+      );
+    } finally {
+      await page.close();
+    }
+  } else {
+    const api = new ApiClient(context.request);
+    await api.signIn(username, password);
+  }
 }
 
 /**
@@ -866,17 +1096,32 @@ type TestFixtures = {
   // API client for superuser with auto-cleanup
   superuserApi: TestApi;
 
+  // RawApiClient authenticated as admin/superuser (no browser required)
+  adminClient: RawApiClient;
+
+  // RawApiClient authenticated as normal user (no browser required)
+  userClient: RawApiClient;
+
+  // Unauthenticated RawApiClient (no browser required)
+  anonClient: RawApiClient;
+
+  // Isolated user with its own API client (no shared namespace state)
+  freshUser: {user: CreatedUser; api: TestApi};
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
 
-  // Container runtime availability (cached per worker)
+  // Registry image tooling availability (cached per worker)
   containerAvailable: boolean;
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
+
+  // WebhookReceiver that auto-starts and auto-stops per test
+  webhook: WebhookReceiver;
 };
 
 /**
@@ -895,7 +1140,7 @@ type WorkerFixtures = {
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
 
-  // Cached container runtime availability (checked once per worker)
+  // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
 };
 
@@ -908,17 +1153,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   userContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as regular user
+      await setReactUICookie(context);
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
-        request,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        context,
+        users.user.username,
+        users.user.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -926,17 +1170,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   superuserContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as admin (superuser)
+      await setReactUICookie(context);
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
-        request,
-        TEST_USERS.admin.username,
-        TEST_USERS.admin.password,
+        context,
+        users.admin.username,
+        users.admin.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -944,17 +1187,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   readonlyContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as readonly user
+      await setReactUICookie(context);
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
-        request,
-        TEST_USERS.readonly.username,
-        TEST_USERS.readonly.password,
+        context,
+        users.readonly.username,
+        users.readonly.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -962,17 +1204,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   cachedQuayConfig: [
-    async ({browser}, use) => {
-      // Create a temporary context just to fetch config
-      const context = await browser.newContext();
-      const response = await context.request.get(`${API_URL}/config`);
-      if (!response.ok()) {
-        await context.close();
-        throw new Error(`Failed to fetch Quay config: ${response.status()}`);
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const raw = process.env.QUAY_CONFIG_JSON;
+      if (!raw) {
+        throw new Error(
+          'QUAY_CONFIG_JSON not set -- globalSetup must run before workers',
+        );
       }
-      const config = (await response.json()) as QuayConfig;
-      await context.close();
-      await use(config);
+      await use(JSON.parse(raw) as QuayConfig);
     },
     {scope: 'worker'},
   ],
@@ -990,12 +1230,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // Test-scoped fixtures (created fresh for each test)
   // =========================================================================
 
-  csrfToken: async ({request}, use) => {
-    const api = await loginUser(
-      request,
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
-    );
+  csrfToken: async ({userContext}, use) => {
+    const api = new ApiClient(userContext.request);
     const token = await api.getToken();
     await use(token);
   },
@@ -1039,18 +1275,85 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(cachedQuayConfig);
   },
 
-  api: async ({authenticatedRequest}, use) => {
+  api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
+    const users = getTestUsers(quayConfig);
+    client.setCredentials(users.user.username, users.user.password);
+    const testApi = new TestApi(client, users.user.username);
+    await use(testApi);
+    await testApi.cleanup();
+  },
+
+  superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
+    const client = new ApiClient(superuserRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
   },
 
-  superuserApi: async ({superuserRequest}, use) => {
-    const client = new ApiClient(superuserRequest);
-    const testApi = new TestApi(client);
-    await use(testApi);
+  freshUser: async ({superuserApi, playwright}, use) => {
+    const created = await superuserApi.user('iso');
+    await superuserApi.raw.updateUserAsSuperuser(created.username, {
+      email: created.email,
+    });
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    const client = new ApiClient(request);
+    await client.signIn(created.username, created.password);
+    client.setCredentials(created.username, created.password);
+    const testApi = new TestApi(client, created.username);
+
+    await use({user: created, api: testApi});
+
     await testApi.cleanup();
+    await request.dispose();
+  },
+
+  // =========================================================================
+  // API-only fixtures (no browser required)
+  // =========================================================================
+
+  adminClient: async ({playwright, cachedQuayConfig}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users = getTestUsers(cachedQuayConfig);
+      await client.signIn(users.admin.username, users.admin.password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  userClient: async ({playwright, cachedQuayConfig}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users = getTestUsers(cachedQuayConfig);
+      await client.signIn(users.user.username, users.user.password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  anonClient: async ({playwright}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
   },
 
   // =========================================================================
@@ -1131,7 +1434,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   // =========================================================================
-  // Container runtime availability
+  // Registry image tooling availability
   // =========================================================================
 
   containerAvailable: async ({cachedContainerAvailable}, use) => {
@@ -1143,14 +1446,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   /**
-   * Automatically skip tests that have @container tag when no
-   * container runtime (podman/docker) is available.
+   * Automatically skip tests that have @container tag when registry
+   * image tooling (skopeo) is not available.
    *
    * @example
    * ```typescript
    * test.describe('Push Tests', {tag: ['@container']}, () => {
    *   test('pushes image', async ({authenticatedPage}) => {
-   *     // Auto-skipped if no container runtime available!
+   *     // Auto-skipped if registry image tooling is unavailable!
    *   });
    * });
    * ```
@@ -1159,25 +1462,26 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     async ({containerAvailable}, use, testInfo) => {
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
-        testInfo.skip(true, 'Container runtime (podman/docker) required');
+        testInfo.skip(true, 'Registry image tooling (skopeo) required');
       }
       await use();
     },
     {auto: true},
   ],
+
+  // eslint-disable-next-line no-empty-pattern
+  webhook: async ({}, use) => {
+    const receiver = new WebhookReceiver();
+    await receiver.start();
+    await use(receiver);
+    await receiver.stop();
+  },
 });
 
 // Re-export expect for convenience
 export {expect};
 
-/**
- * Utility to generate unique names for test resources
- */
-export function uniqueName(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 8)}`;
-}
+export {uniqueName} from './utils/test-utils';
 
 // ============================================================================
 // Mailpit: Re-export from utils for backward compatibility
@@ -1185,3 +1489,10 @@ export function uniqueName(prefix: string): string {
 
 export {mailpit} from './utils/mailpit';
 export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';
+
+// ============================================================================
+// Webhook: Re-export from utils
+// ============================================================================
+
+export {WebhookReceiver} from './utils/webhook';
+export type {WebhookRequest} from './utils/webhook';

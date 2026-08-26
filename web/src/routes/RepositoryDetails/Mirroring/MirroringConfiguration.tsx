@@ -5,7 +5,7 @@ import {
   FormHelperText,
   TextInput,
   Button,
-  Text,
+  Content,
   Title,
   InputGroup,
   InputGroupText,
@@ -26,6 +26,7 @@ import {
   syncMirror,
 } from 'src/resources/MirroringResource';
 import {MirroringFormData} from './types';
+import {FormDateTimePicker} from 'src/components/FormDateTimePicker';
 import {ArchitectureFilter} from './ArchitectureFilter';
 
 interface MirroringConfigurationProps {
@@ -156,22 +157,20 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               }}
               render={({field: {value, onChange}}) => (
                 <div style={{flex: 1}}>
-                  <TextInput
-                    type="datetime-local"
-                    id="sync_start_date"
+                  <FormDateTimePicker
                     value={value}
-                    onChange={(_event, newValue) => onChange(newValue)}
-                    validated={
-                      errors.syncStartDate
-                        ? ValidatedOptions.error
-                        : ValidatedOptions.default
-                    }
+                    onChange={onChange}
+                    dateAriaLabel="Sync start date"
+                    timeAriaLabel="Sync start time"
                   />
                   {errors.syncStartDate && (
                     <FormHelperText>
-                      <Text component="p" className="pf-m-error pf-v5-u-mt-sm">
+                      <Content
+                        component="p"
+                        className="pf-m-error pf-v6-u-mt-sm"
+                      >
                         {errors.syncStartDate.message}
-                      </Text>
+                      </Content>
                     </FormHelperText>
                   )}
                 </div>
@@ -208,15 +207,31 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             </Button>
           </div>
         ) : (
-          <FormTextInput
+          <Controller
             name="syncStartDate"
             control={control}
-            errors={errors}
-            label=""
-            fieldId="sync_start_date"
-            type="datetime-local"
-            required
-            isStack={false}
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
+            render={({field: {value, onChange}}) => (
+              <>
+                <FormDateTimePicker
+                  value={value}
+                  onChange={onChange}
+                  dateAriaLabel="Sync start date"
+                  timeAriaLabel="Sync start time"
+                />
+                {errors.syncStartDate && (
+                  <FormHelperText>
+                    <Content component="p" className="pf-m-error">
+                      {errors.syncStartDate.message}
+                    </Content>
+                  </FormHelperText>
+                )}
+              </>
+            )}
           />
         )}
       </FormGroup>
@@ -225,7 +240,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         <InputGroup
           onPointerEnterCapture={() => setIsHovered(true)}
           onPointerLeaveCapture={() => setIsHovered(false)}
-          className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+          className={isHovered ? 'pf-v6-u-background-color-200' : ''}
         >
           <Controller
             name="syncValue"
@@ -298,9 +313,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         </InputGroup>
         {errors.syncValue && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.syncValue.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
       </FormGroup>
@@ -329,15 +344,21 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             <InputGroup
               onPointerEnterCapture={() => setIsHovered(true)}
               onPointerLeaveCapture={() => setIsHovered(false)}
-              className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+              className={isHovered ? 'pf-v6-u-background-color-200' : ''}
             >
               <TextInput
                 type="number"
                 id="skopeo_timeout_interval"
                 value={value?.toString() || ''}
                 onChange={(_event, newValue) => {
-                  const numericValue = parseInt(newValue) || 300;
-                  onChange(numericValue);
+                  if (newValue === '') {
+                    onChange(null);
+                    return;
+                  }
+                  const parsed = parseInt(newValue, 10);
+                  if (!isNaN(parsed)) {
+                    onChange(parsed);
+                  }
                 }}
                 min="300"
                 max="43200"
@@ -355,20 +376,20 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         />
         {errors.skopeoTimeoutInterval && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.skopeoTimeoutInterval.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
         <FormHelperText>
-          <Text component="p">
+          <Content component="p">
             Minimum timeout length: 300 seconds (5 minutes). Maximum timeout
             length: 43200 seconds (12 hours).
-          </Text>
+          </Content>
         </FormHelperText>
       </FormGroup>
 
-      <FormGroup label="Robot User" fieldId="robot_username" isStack>
+      <FormGroup label="Robot User" fieldId="robot_username" isStack isRequired>
         <Controller
           name="robotUsername"
           control={control}
@@ -405,9 +426,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               />
               {errors.robotUsername && (
                 <FormHelperText>
-                  <Text component="p" className="pf-m-error">
+                  <Content component="p" className="pf-m-error">
                     {errors.robotUsername.message}
-                  </Text>
+                  </Content>
                 </FormHelperText>
               )}
             </>

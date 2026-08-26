@@ -29,6 +29,8 @@ func TestValidateAccessSettings(t *testing.T) {
 		{name: "checkInviteUser4", config: map[string]interface{}{"FEATURE_USER_CREATION": false, "FEATURE_INVITE_ONLY_USER_CREATION": false}, want: "valid"},
 		{name: "checkIncorrectPattern", config: map[string]interface{}{"FEATURE_USER_CREATION": false, "FEATURE_INVITE_ONLY_USER_CREATION": false, "USER_RECOVERY_TOKEN_LIFETIME": "badpattern"}, want: "invalid"},
 		{name: "checkCorrectPattern", config: map[string]interface{}{"FEATURE_USER_CREATION": false, "FEATURE_INVITE_ONLY_USER_CREATION": false, "USER_RECOVERY_TOKEN_LIFETIME": "1m"}, want: "valid"},
+		{name: "checkIncorrectSessionTimeoutPattern", config: map[string]interface{}{"SESSION_TIMEOUT": "badpattern"}, want: "invalid"},
+		{name: "checkCorrectSessionTimeoutPattern", config: map[string]interface{}{"SESSION_TIMEOUT": "12h"}, want: "valid"},
 	}
 
 	// Iterate through tests

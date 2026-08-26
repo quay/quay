@@ -1,6 +1,4 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -8,6 +6,11 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import {useState} from 'react';
@@ -92,11 +95,39 @@ export function CreateNewUser(props: CreateNewUserProps) {
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Confirm Username"
-      description={fetchDescription()}
       isOpen={props.isModalOpen}
       onClose={handleModalToggle}
-      actions={[
+    >
+      <ModalHeader title="Confirm Username" description={fetchDescription()} />
+      <ModalBody>
+        <Form id="confirm-username-form">
+          <FormGroup isRequired fieldId="confirm-username-form-group">
+            <TextInput
+              isRequired
+              type="text"
+              id="confirm-username-input"
+              name="confirm-username-input"
+              value={username}
+              onChange={(_event, value) => handleUsernameChange(value)}
+              validated={validatedUsername}
+            />
+
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem
+                  variant={validatedUsername}
+                  {...(validatedUsername === 'error' && {
+                    icon: <ExclamationCircleIcon />,
+                  })}
+                >
+                  {helperText}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="create"
           variant="primary"
@@ -104,38 +135,11 @@ export function CreateNewUser(props: CreateNewUserProps) {
           onClick={() => updateUsername()}
         >
           Confirm Username
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleModalToggle}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form id="confirm-username-form">
-        <FormGroup isRequired fieldId="confirm-username-form-group">
-          <TextInput
-            isRequired
-            type="text"
-            id="confirm-username-input"
-            name="confirm-username-input"
-            value={username}
-            onChange={(_event, value) => handleUsernameChange(value)}
-            validated={validatedUsername}
-          />
-
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={validatedUsername}
-                {...(validatedUsername === 'error' && {
-                  icon: <ExclamationCircleIcon />,
-                })}
-              >
-                {helperText}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

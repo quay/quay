@@ -29,7 +29,6 @@ from endpoints.decorators import (
     anon_protect,
     check_pushes_disabled,
     check_readonly,
-    check_region_blacklisted,
     disallow_for_account_recovery_mode,
     inject_registry_model,
     parse_repository_name,
@@ -37,7 +36,6 @@ from endpoints.decorators import (
 from endpoints.metrics import image_pulled_bytes
 from endpoints.v2 import get_input_stream, require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
-    BlobDownloadGeoBlocked,
     BlobUnknown,
     BlobUploadInvalid,
     BlobUploadUnknown,
@@ -94,7 +92,6 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
-@check_region_blacklisted(BlobDownloadGeoBlocked)
 @cache_control(max_age=31536000)
 @inject_registry_model()
 def download_blob(namespace_name, repo_name, digest, registry_model):
@@ -272,6 +269,8 @@ def start_blob_upload(namespace_name, repo_name):
         "FEATURE_VERIFY_QUOTA", True
     ):
         quota = namespacequota.verify_namespace_quota(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
@@ -369,21 +368,24 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
-        "FEATURE_VERIFY_QUOTA", True
-    ):
-        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(
-                repository_ref, "quota_error", {"severity": "Reject"}
-            )
-            raise QuotaExceeded
-
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
         raise BlobUploadUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_VERIFY_QUOTA", True
+    ):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
+            uploader.cancel_upload()
+            raise QuotaExceeded
 
     # Upload the chunk for the blob.
     _upload_chunk(uploader)
@@ -418,21 +420,24 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
-        "FEATURE_VERIFY_QUOTA", True
-    ):
-        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(
-                repository_ref, "quota_error", {"severity": "Reject"}
-            )
-            raise QuotaExceeded
-
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
         raise BlobUploadUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_VERIFY_QUOTA", True
+    ):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
+            uploader.cancel_upload()
+            raise QuotaExceeded
 
     # Upload the chunk for the blob and commit it once complete.
     with complete_when_uploaded(uploader):

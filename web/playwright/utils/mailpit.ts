@@ -13,7 +13,8 @@
  * ```
  */
 
-const MAILPIT_API = 'http://localhost:8025/api/v1';
+const MAILPIT_API =
+  process.env.MAILPIT_API_URL || 'http://localhost:8025/api/v1';
 
 /**
  * Email message from Mailpit API

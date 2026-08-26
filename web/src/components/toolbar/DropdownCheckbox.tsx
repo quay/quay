@@ -68,28 +68,26 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
   const toggleOpen = () => setIsOpen(() => !isOpen);
 
   return (
-    <ToolbarItem variant="bulk-select" onClick={toggleOpen}>
+    <ToolbarItem onClick={toggleOpen}>
       <Dropdown
         toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
           <MenuToggle
             ref={toggleRef}
-            splitButtonOptions={{
-              items: [
-                <MenuToggleCheckbox
-                  id={props.id ? props.id : 'split-button-text-checkbox'}
-                  key="split-checkbox"
-                  aria-label="Select all"
-                  isChecked={props.selectedItems?.length > 0 ? true : false}
-                  onChange={(checked) =>
-                    checked ? selectPageItems() : deSelectAll()
-                  }
-                >
-                  {props.selectedItems?.length != 0 ? (
-                    <Badge>{props.selectedItems.length}</Badge>
-                  ) : null}
-                </MenuToggleCheckbox>,
-              ],
-            }}
+            splitButtonItems={[
+              <MenuToggleCheckbox
+                id={props.id ? props.id : 'split-button-text-checkbox'}
+                key="split-checkbox"
+                aria-label="Select all"
+                isChecked={props.selectedItems?.length > 0 ? true : false}
+                onChange={(checked) =>
+                  checked ? selectPageItems() : deSelectAll()
+                }
+              >
+                {props.selectedItems?.length != 0 ? (
+                  <Badge>{props.selectedItems.length}</Badge>
+                ) : null}
+              </MenuToggleCheckbox>,
+            ]}
             id="toolbar-dropdown-checkbox"
             onChange={toggleOpen}
             onClick={toggleOpen}

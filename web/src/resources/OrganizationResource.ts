@@ -107,7 +107,7 @@ interface CreateOrgRequest {
 
 export async function createOrg(name: string, email?: string) {
   const createOrgUrl = `/api/v1/organization/`;
-  const reqBody: CreateOrgRequest = {name: name};
+  const reqBody: CreateOrgRequest = {name};
   if (email) {
     reqBody.email = email;
   }

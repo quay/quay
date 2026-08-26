@@ -4,7 +4,7 @@ import time
 from peewee import JOIN
 
 import features
-from app import app, proxy_cache_blob_queue
+from app import app, proxy_cache_blob_queue, storage
 from data.database import (
     ImageStorage,
     ImageStoragePlacement,
@@ -15,8 +15,10 @@ from data.database import (
     db_transaction,
 )
 from data.model import repository, user
+from data.model.storage import get_image_location_for_id, get_layer_path
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
+from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import (
@@ -157,8 +159,26 @@ class ProxyCacheBlobWorker(QueueWorker):
                 return False
 
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
         except ImageStoragePlacement.DoesNotExist:
+            return True
+
+        try:
+            layer_path = get_layer_path(blob)
+            location_name = get_image_location_for_id(placement.location_id).name
+            if not storage.exists([location_name], layer_path):
+                logger.warning(
+                    "Blob %s has placements in DB but is missing from storage, will re-download",
+                    digest,
+                )
+                return True
+        except (IOError, OSError):
+            logger.exception(
+                "Failed to verify blob %s existence in storage",
+                digest,
+            )
             return True
 
         return False
@@ -193,6 +213,11 @@ if __name__ == "__main__":
     if not features.PROXY_CACHE or not features.PROXY_CACHE_BLOB_DOWNLOAD:
         while True:
             time.sleep(100000)
+
+    # Configure global locking.
+    # For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
+    if not app.config.get("TESTING", False):
+        GlobalLock.configure(app.config)
 
     logger.debug("Starting proxy cache blob worker")
     worker = ProxyCacheBlobWorker(

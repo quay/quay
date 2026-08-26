@@ -115,6 +115,15 @@
       "ct-validate": "",
       "ct-fieldgroups": ["AccessSettings"]
     },
+    "SESSION_TIMEOUT": {
+      "x-example": "24h",
+      "type": "string",
+      "description": "The lifetime for permanent browser sessions. Used when FEATURE_PERMANENT_SESSIONS is enabled.",
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "ct-default": "31d",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
     "FEATURE_ACTION_LOG_ROTATION": {
       "x-example": false,
       "type": "boolean",
@@ -994,6 +1003,24 @@
       "type": "string",
       "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset",
       "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
+      "x-example": 10485760,
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum size in bytes of manifest list JSON to parse during mirroring. Prevents DoS via oversized manifests. Defaults to 10485760 (10MB).",
+      "ct-default": 10485760,
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_MAX_MANIFEST_ENTRIES": {
+      "x-example": 1000,
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of manifest entries to process during architecture-filtered mirroring. Prevents DoS via manifest lists with excessive entries. Defaults to 1000.",
+      "ct-default": 1000,
       "ct-validate": "",
       "ct-fieldgroups": ["RepoMirror"]
     },

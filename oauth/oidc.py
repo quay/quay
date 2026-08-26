@@ -18,7 +18,7 @@ from oauth.base import (
     OAuthService,
 )
 from oauth.login import OAuthLoginException
-from oauth.login_utils import get_sub_username_email_from_token
+from oauth.login_utils import get_jwt_issuer, get_sub_username_email_from_token
 from util.security.jwtutil import InvalidTokenError, decode
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,24 @@ class OIDCLoginService(OAuthService):
         self._http_client = client or config.get("HTTPCLIENT")
         self._mailing = config.get("FEATURE_MAILING", False)
         self._public_key_cache = _PublicKeyCache(self, 1, PUBLIC_KEY_CACHE_TTL)
+
+        self._validate_multi_config()
+
+    def _validate_multi_config(self):
+        issuer = self.config.get("OIDC_ISSUER")
+        if issuer is not None and not isinstance(issuer, str):
+            raise ValueError(f"OIDC_ISSUER must be a string, got {type(issuer).__name__}")
+
+        for field in ("OIDC_ISSUERS", "OIDC_AUDIENCES", "OIDC_ALLOWED_CLIENTS"):
+            value = self.config.get(field)
+            if value is None:
+                continue
+            if not isinstance(value, list):
+                raise ValueError(f"{field} must be a list, got {type(value).__name__}")
+            if len(value) == 0:
+                raise ValueError(f"{field} must not be empty")
+            if not all(isinstance(item, str) for item in value):
+                raise ValueError(f"{field} must contain only strings")
 
     def service_id(self):
         return self._id
@@ -242,6 +260,40 @@ class OIDCLoginService(OAuthService):
     def get_issuer(self):
         return self._issuer
 
+    @property
+    def _issuers(self):
+        issuers_list = self.config.get("OIDC_ISSUERS")
+        if issuers_list:
+            if self.config.get("OIDC_ISSUER"):
+                logger.warning(
+                    "Both OIDC_ISSUER and OIDC_ISSUERS configured; OIDC_ISSUERS takes precedence"
+                )
+            return issuers_list
+
+        single_issuer = self.config.get("OIDC_ISSUER")
+        if single_issuer:
+            return [single_issuer]
+
+        single_issuer = self._issuer
+        return [single_issuer] if single_issuer else []
+
+    def get_issuers(self):
+        return self._issuers
+
+    @property
+    def _audiences(self):
+        audiences_list = self.config.get("OIDC_AUDIENCES", [])
+        client_id = self.client_id()
+        if not audiences_list:
+            return [client_id] if client_id else []
+        if client_id and client_id not in audiences_list:
+            return audiences_list + [client_id]
+        return audiences_list
+
+    @property
+    def allowed_clients(self):
+        return self.config.get("OIDC_ALLOWED_CLIENTS")
+
     @lru_cache(maxsize=1)
     def _oidc_config(self):
         if self.config.get("OIDC_SERVER"):
@@ -281,71 +333,74 @@ class OIDCLoginService(OAuthService):
         Raises an InvalidTokenError exception on an invalid token or a PublicKeyLoadException if the
         public key could not be loaded for decoding.
         """
-        # Find the key to use.
         headers = jwt.get_unverified_header(token)
         kid = headers.get("kid", None)
         if kid is None:
             raise InvalidTokenError("Missing `kid` header")
 
+        audiences = self._audiences
+        issuers = self._issuers
+
+        effective_audience = None if options.get("verify_aud") is False else audiences
+
+        token_issuer = get_jwt_issuer(token)
+
+        if options.get("verify_iss", True) and token_issuer and issuers:
+            normalized_issuers = [i.rstrip("/") for i in issuers]
+            if token_issuer.rstrip("/") not in normalized_issuers:
+                raise InvalidTokenError(
+                    f"Issuer '{token_issuer}' not in configured issuers: {issuers}"
+                )
+
+        effective_issuer = token_issuer if token_issuer else (issuers[0] if issuers else None)
+
         logger.debug(
-            "Using key `%s`, attempting to decode token `%s` with aud `%s` and iss `%s`",
+            "Using key `%s`, attempting to decode token with aud `%s` and iss `%s`",
             kid,
-            token,
-            self.client_id(),
-            self._issuer,
+            effective_audience,
+            effective_issuer,
         )
 
         key = ""
         if options.get("verify_signature", True):
             key = self._get_public_key(kid)
 
+        decode_kwargs = dict(
+            algorithms=ALLOWED_ALGORITHMS,
+            issuer=effective_issuer,
+            leeway=JWT_CLOCK_SKEW_SECONDS,
+            options=dict(require=["iat", "exp"], **options),
+        )
+        if effective_audience is not None:
+            decode_kwargs["audience"] = effective_audience
+
         try:
-            return decode(
-                token,
-                key,
-                algorithms=ALLOWED_ALGORITHMS,
-                audience=self.client_id(),
-                issuer=self._issuer,
-                leeway=JWT_CLOCK_SKEW_SECONDS,
-                options=dict(require=["iat", "exp"], **options),
-            )
+            return decode(token, key, **decode_kwargs)
         except InvalidTokenError as ite:
             logger.warning(
-                "Could not decode token `%s` for OIDC: %s. Will attempt again after "
-                + "retrieving public keys.",
-                token,
+                "Could not decode token for OIDC: %s. Will attempt again after "
+                "retrieving public keys.",
                 ite,
             )
 
-            # Public key may have expired. Try to retrieve an updated public key and use it to decode.
             try:
                 return decode(
                     token,
                     self._get_public_key(kid, force_refresh=True),
-                    algorithms=ALLOWED_ALGORITHMS,
-                    audience=self.client_id(),
-                    issuer=self._issuer,
-                    leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require=["iat", "exp"], **options),
+                    **decode_kwargs,
                 )
             except InvalidTokenError as ite:
                 logger.warning(
-                    "Could not decode token `%s` for OIDC: %s. Attempted again after "
-                    + "retrieving public keys.",
-                    token,
+                    "Could not decode token for OIDC: %s. Attempted again after "
+                    "retrieving public keys.",
                     ite,
                 )
 
-                # Decode again with verify_signature=False, and log the decoded token to allow for easier debugging.
-                nonverified = decode(
-                    token,
-                    None,  # No key needed for non-verified decode
-                    algorithms=ALLOWED_ALGORITHMS,
-                    audience=self.client_id(),
-                    issuer=self._issuer,
-                    leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require=["iat", "exp"], verify_signature=False, **options),
-                )
+                nonverified_kwargs = dict(decode_kwargs)
+                nonverified_opts = dict(nonverified_kwargs.get("options", {}))
+                nonverified_opts["verify_signature"] = False
+                nonverified_kwargs["options"] = nonverified_opts
+                nonverified = decode(token, None, **nonverified_kwargs)
                 logger.debug("Got an error when trying to verify OIDC JWT: %s", nonverified)
                 raise ite
 

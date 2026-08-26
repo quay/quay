@@ -55,6 +55,8 @@ INTERNAL_ONLY_PROPERTIES = {
     "QUEUE_WORKER_METRICS_REFRESH_SECONDS",
     "PUSH_TEMP_TAG_EXPIRATION_SEC",
     "GARBAGE_COLLECTION_FREQUENCY",
+    "NAMESPACE_GC_GRACE_PERIOD_SECONDS",
+    "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST",
     "PAGE_TOKEN_KEY",
     "BUILD_MANAGER",
     "SECURITY_SCANNER_V4_REINDEX_THRESHOLD",
@@ -74,10 +76,14 @@ INTERNAL_ONLY_PROPERTIES = {
     "USE_CDN",
     "ANALYTICS_TYPE",
     "LAST_ACCESSED_UPDATE_THRESHOLD_S",
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S",
     "GREENLET_TRACING",
     "EXCEPTION_LOG_TYPE",
     "SENTRY_DSN",
     "SENTRY_PUBLIC_DSN",
+    "PROFILING_TYPE",
+    "PYROSCOPE_SERVER_ADDRESS",
+    "PYROSCOPE_APPLICATION_NAME",
     "BILLED_NAMESPACE_MAXIMUM_BUILD_COUNT",
     "THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT",
     "IP_DATA_API_KEY",
@@ -116,6 +122,18 @@ CONFIG_SCHEMA = {
         "DISTRIBUTED_STORAGE_PREFERENCE",
         "DEFAULT_TAG_EXPIRATION",
         "TAG_EXPIRATION_OPTIONS",
+    ],
+    "allOf": [
+        {
+            "if": {
+                "properties": {"FEATURE_PROGRAMMATIC_BOOTSTRAP": {"const": True}},
+                "required": ["FEATURE_PROGRAMMATIC_BOOTSTRAP"],
+            },
+            "then": {
+                "required": ["BOOTSTRAP_TOKEN_OWNER"],
+                "properties": {"BOOTSTRAP_TOKEN_OWNER": {"type": "string", "minLength": 1}},
+            },
+        }
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -211,6 +229,11 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Whether emails are enabled. Defaults to True",
             "x-example": True,
+        },
+        "FEATURE_ORG_SHARED_EMAIL": {
+            "type": "boolean",
+            "description": "Whether organizations can share email addresses with existing user accounts. Defaults to False",
+            "x-example": False,
         },
         "MAIL_SERVER": {
             "type": "string",
@@ -316,6 +339,20 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
             "x-example": True,
         },
+        "GUNICORN_REGISTRY_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 300,
+            "description": "Timeout in seconds for gunicorn-registry workers. Workers that do not respond within this window are killed and restarted. Must be between 30 and 300 (5 minutes). Defaults to 30",
+            "x-example": 300,
+        },
+        "GUNICORN_WEB_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 300,
+            "description": "Timeout in seconds for gunicorn-web workers. Workers that do not respond within this window are killed and restarted. Must be between 30 and 300 (5 minutes). Defaults to 30",
+            "x-example": 60,
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",
@@ -419,6 +456,12 @@ CONFIG_SCHEMA = {
             "x-reference": "https://coreos.com/quay-enterprise/docs/latest/direct-oauth.html",
             "uniqueItems": True,
             "items": {"type": "string"},
+        },
+        "OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Optional maximum number of non-expired OAuth access tokens allowed per OAuth application. If omitted or null, no cap is enforced.",
+            "x-example": 1000,
         },
         # Redis.
         "BUILDLOGS_REDIS": {
@@ -823,6 +866,32 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "SECURITY_SCANNER_V4_INDEXING": {
+            "type": "boolean",
+            "description": "Whether to enable the legacy V4 security scanner indexing operations. When set to False, the old indexing paths are disabled while the V2 indexer and security scan query APIs remain functional. Defaults to True",
+            "x-example": True,
+        },
+        "FEATURE_SECURITY_SCANNER_V2": {
+            "type": "boolean",
+            "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
+            "x-example": False,
+        },
+        "SECURITY_SCANNER_V2_BATCH_SIZE": {
+            "type": "number",
+            "description": "The number of manifests to claim per indexing cycle in the V2 security scanner. Defaults to 50.",
+            "x-example": 50,
+        },
+        "SECURITY_SCANNER_V2_INDEXING_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
+            "x-example": 30,
+        },
+        "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 5.",
+            "x-example": 5,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
@@ -1087,9 +1156,14 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
             "x-example": 30,
         },
+        "ORG_MIRROR_MAX_DISCOVERY_DURATION": {
+            "type": "number",
+            "description": "Maximum time in seconds allowed for the tag discovery phase of organization mirror sync. Configs that exceed this duration during discovery are released so other workers can process them. Defaults to 1800 (30 minutes).",
+            "x-example": 1800,
+        },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries. Use for enterprise deployments where source registries are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
@@ -1108,6 +1182,18 @@ CONFIG_SCHEMA = {
             "type": ["boolean", "null"],
             "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
             "x-example": "true",
+        },
+        "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum size in bytes of manifest list JSON to parse during mirroring. Prevents DoS via oversized manifests. Defaults to 10485760 (10MB).",
+            "x-example": 10485760,
+        },
+        "REPO_MIRROR_MAX_MANIFEST_ENTRIES": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of manifest entries to process during architecture-filtered mirroring. Prevents DoS via manifest lists with excessive entries. Defaults to 1000.",
+            "x-example": 1000,
         },
         # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
@@ -1424,11 +1510,11 @@ CONFIG_SCHEMA = {
                         },
                         "search_token": {
                             "type": "string",
-                            "description": "Bearer token for Splunk search API. Required because HEC tokens are ingest-only and cannot search. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
+                            "description": "Bearer token for Splunk search API. Optional. HEC tokens are ingest-only and cannot search, so a separate token is needed for reading logs. When not configured, audit log viewing in the UI is unavailable but log forwarding still works. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
                             "x-example": "your-search-bearer-token",
                         },
                     },
-                    "required": ["host", "hec_token", "search_token"],
+                    "required": ["host", "hec_token"],
                 },
             },
         },
@@ -1448,6 +1534,12 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
+        },
+        "SESSION_TIMEOUT": {
+            "type": "string",
+            "description": "The lifetime for permanent browser sessions. Used when FEATURE_PERMANENT_SESSIONS is enabled.",
+            "pattern": "^[0-9]+(w|m|d|h|s)$",
+            "x-example": "24h",
         },
         # Webhook blacklist.
         "WEBHOOK_HOSTNAME_BLACKLIST": {
@@ -1470,6 +1562,68 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
+        },
+        "FEATURE_PROGRAMMATIC_BOOTSTRAP": {
+            "type": "boolean",
+            "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
+            "x-example": False,
+        },
+        "BOOTSTRAP_TOKEN_OWNER": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Username that owns the programmatic bootstrap OAuth application and tokens. Required when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled, and the user must also be listed in SUPER_USERS.",
+            "x-example": "admin",
+        },
+        "BOOTSTRAP_TOKEN_PATH": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": r"^/[^\x00]*$",
+            "description": "Filesystem path where the bootstrap token JSON is written.",
+            "x-example": "/var/lib/quay/quay-machine-token.json",
+        },
+        "PROGRAMMATIC_TOKEN_PATH": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "pattern": r"^/[^\x00]*$",
+            "description": "Operator-rendered mounted programmatic bootstrap token path accepted for config compatibility.",
+            "x-example": "/var/lib/quay/bootstrap-token/token.json",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_SECRET": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 253,
+            "pattern": r"^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)*$",
+            "description": "Kubernetes Secret name used to store the programmatic bootstrap token when Quay is running in Kubernetes.",
+            "x-example": "quay-bootstrap-token",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_KEY": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": r"^[A-Za-z0-9._-]+$",
+            "description": "Kubernetes Secret data key used to store the programmatic bootstrap token JSON.",
+            "x-example": "token.json",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_NAMESPACE": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+            "description": "Kubernetes namespace containing the programmatic bootstrap token Secret. If unset, Quay uses the pod service account namespace.",
+            "x-example": "quay-enterprise",
+        },
+        "BOOTSTRAP_TOKEN_EXPIRATION": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Bootstrap token lifetime in seconds. Defaults to 3600 (60 minutes).",
+            "x-example": 3600,
+        },
+        "BOOTSTRAP_TOKEN_SCOPE": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "Space-separated OAuth scopes for the bootstrap token.",
+            "x-example": "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read",
         },
         # OCI artifact types
         "ALLOWED_OCI_ARTIFACT_TYPES": {
@@ -1497,6 +1651,11 @@ CONFIG_SCHEMA = {
         "FEATURE_QUOTA_MANAGEMENT": {
             "type": "boolean",
             "description": "Enables configuration, caching, and validation for quota management feature",
+            "x-example": False,
+        },
+        "FEATURE_QUOTA_NOTIFICATIONS": {
+            "type": "boolean",
+            "description": "Enables quota threshold notifications via namespace notification channels",
             "x-example": False,
         },
         "FEATURE_QUOTA_SUPPRESS_FAILURES": {
@@ -1528,6 +1687,11 @@ CONFIG_SCHEMA = {
             "type": "int",
             "description": "The amount of namespaces that will be calculated for quota backfill on wakeup of the backfill worker.",
             "x-example": 100,
+        },
+        "QUOTA_NOTIFICATION_COOLDOWN_SECONDS": {
+            "type": "int",
+            "description": "Minimum seconds between duplicate quota notifications for the same namespace and threshold",
+            "x-example": 86400,
         },
         "QUOTA_INVALIDATE_TOTALS": {
             "type": "boolean",
@@ -1757,6 +1921,36 @@ CONFIG_SCHEMA = {
             "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
             "x-example": False,
         },
+        "FEATURE_SPAM_DETECTION": {
+            "type": "boolean",
+            "description": "Enables repository-description spam detection at API ingress. Defaults to False.",
+            "x-example": False,
+        },
+        "SPAM_DETECTION_DRY_RUN": {
+            "type": "boolean",
+            "description": "Evaluates repository descriptions without rejecting create or update requests. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_FAIL_OPEN": {
+            "type": "boolean",
+            "description": "Allows repository create and update requests if the local spam classifier cannot be evaluated. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_CLASSIFIER_PATH": {
+            "type": ["string", "null"],
+            "description": "Path to the in-image Bayesian spam classifier JSON artifact used for repository-description ingress evaluation. Defaults to /conf/spam-detection/classifier.json.",
+            "x-example": "/conf/spam-detection/classifier.json",
+        },
+        "SPAM_DETECTION_CLASSIFIER_VERSION": {
+            "type": ["string", "null"],
+            "description": "Expected version of the local spam classifier artifact. If set, Quay rejects or fail-opens classifier evaluation when the artifact version differs.",
+            "x-example": "2026-06-20.1",
+        },
+        "SPAM_DETECTION_CLASSIFIER_SHA256": {
+            "type": ["string", "null"],
+            "description": "Optional SHA-256 checksum for the local spam classifier artifact.",
+            "x-example": "a3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        },
         "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
             "type": "string",
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
@@ -1774,15 +1968,8 @@ CONFIG_SCHEMA = {
         },
         "FEATURE_SPARSE_INDEX": {
             "type": "boolean",
-            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped if they cannot be loaded. Defaults to False",
+            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for missing architectures will be skipped instead of raising errors. Defaults to False",
             "x-example": False,
-        },
-        "SPARSE_INDEX_REQUIRED_ARCHS": {
-            "type": "array",
-            "description": "List of architectures that are required to be present in manifest indexes when FEATURE_SPARSE_INDEX is enabled. Manifests for architectures not in this list will be skipped if they cannot be loaded.",
-            "uniqueItems": True,
-            "items": {"type": "string"},
-            "x-example": ["amd64", "arm64"],
         },
         "OTEL_CONFIG": {
             "type": "object",
@@ -1803,12 +1990,27 @@ CONFIG_SCHEMA = {
                     "description": "token for dynatrace api",
                     "x-example": "sometoken",
                 },
+                "endpoint": {
+                    "type": "string",
+                    "description": "OTLP collector endpoint. Defaults to http://jaeger:4318/v1/traces.",
+                    "x-example": "http://jaeger:4318/v1/traces",
+                },
+                "sample_rate": {
+                    "type": "number",
+                    "description": "Fraction of traces to sample (0.0–1.0). Defaults to 0.001.",
+                    "x-example": 1.0,
+                },
             },
         },
         "OTEL_TRACING_EXCLUDED_URLS": {
             "type": "string",
             "description": "Comma separated list of urls to exclude from tracing",
             "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
+        },
+        "FEATURE_ENABLE_STALE_MPU_CLEANUP": {
+            "type": "boolean",
+            "description": "Enables cleanup of stale multipart uploads on the backend bucket. This feature flag is only applicable to S3 storage engines.",
+            "x-example": True,
         },
     },
     "DEBUG": {
@@ -2194,6 +2396,22 @@ CONFIG_SCHEMA = {
         "x-example": 30,
         "x-reference": None,
     },
+    "NAMESPACE_GC_GRACE_PERIOD_SECONDS": {
+        "type": "number",
+        "description": "Grace period in seconds before deleted namespaces (orgs/users) are permanently purged by GC. Only applies to namespaces listed in NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST. Defaults to 0 (immediate).",
+        "x-example": 1209600,
+        "x-reference": None,
+        "minimum": 0,
+    },
+    "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": {
+        "type": "array",
+        "description": "Allowlist of namespace names that receive the GC grace period. When empty, no namespaces are protected.",
+        "x-example": ["important-org"],
+        "x-reference": None,
+        "items": {
+            "type": "string",
+        },
+    },
     "GREENLET_TRACING": {
         "type": "boolean",
         "description": "[QUAY.IO] GREENLET_TRACING. Defaults to True",
@@ -2245,6 +2463,14 @@ CONFIG_SCHEMA = {
     "LAST_ACCESSED_UPDATE_THRESHOLD_S": {
         "type": "number",
         "description": "Update the LAST_ACCESSED database column. Defaults to 60 in seconds",
+        "x-example": 60,
+        "x-reference": None,
+    },
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": {
+        "type": "number",
+        "description": (
+            "Update the OAuth token LAST_ACCESSED database column. Defaults to 60 seconds"
+        ),
         "x-example": 60,
         "x-reference": None,
     },
@@ -2300,6 +2526,24 @@ CONFIG_SCHEMA = {
         "type": "string",
         "description": "Prometheus PushGateway URL. Defaults to http://localhost:9091",
         "x-example": "http://localhost:9091",
+        "x-reference": None,
+    },
+    "PROFILING_TYPE": {
+        "type": "string",
+        "description": "Continuous profiling type. Use 'Pyroscope' to enable; default is empty (disabled).",
+        "x-example": "",
+        "x-reference": None,
+    },
+    "PYROSCOPE_SERVER_ADDRESS": {
+        "type": ["string", "null"],
+        "description": "Pyroscope server URL when PROFILING_TYPE is Pyroscope.",
+        "x-example": "http://localhost:4040",
+        "x-reference": None,
+    },
+    "PYROSCOPE_APPLICATION_NAME": {
+        "type": "string",
+        "description": "Application name sent to Pyroscope. Defaults to 'quay'.",
+        "x-example": "quay",
         "x-reference": None,
     },
     "PUSH_TEMP_TAG_EXPIRATION_SEC": {
@@ -2506,6 +2750,33 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
         "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_CONNECTION_POOLING": {
+        "type": "boolean",
+        "description": "Enable admin LDAP connection pooling to reuse connections across requests. Set false to fall back to per-request connections. Defaults to True.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_POOL_SIZE": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Maximum number of pooled admin LDAP connections per worker process. Defaults to 10.",
+        "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_POOL_MAX_WAIT": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Seconds to wait for a pooled LDAP connection before creating an overflow connection. Defaults to 5.0.",
+        "x-example": 5.0,
+        "x-reference": None,
+    },
+    "LDAP_POOL_CONNECTION_LIFETIME": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Maximum age in seconds of a pooled LDAP connection before it is rotated. Defaults to 300.",
+        "x-example": 300,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {

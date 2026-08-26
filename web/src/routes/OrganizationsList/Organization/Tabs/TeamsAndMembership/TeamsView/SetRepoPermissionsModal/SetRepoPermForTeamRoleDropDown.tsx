@@ -54,6 +54,7 @@ export function SetRepoPermForTeamRoleDropDown(
       <DropdownList>
         {RepoPermissionDropdownItems.map((item) => (
           <DropdownItem
+            component="button"
             data-testid={`${props.repoPerm.repoName}-${item.name}`}
             key={item.name}
             description={item.description}

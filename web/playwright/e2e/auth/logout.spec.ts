@@ -73,7 +73,7 @@ const test = base.extend<LogoutTestFixtures>({
 });
 
 test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
-  test('logs out successfully', async ({logoutPage}) => {
+  test('logs out successfully', {tag: '@superuser'}, async ({logoutPage}) => {
     // Navigate to organization page (where a logged-in user would be)
     await logoutPage.goto('/organization');
     await expect(logoutPage).toHaveURL(/\/organization/);
@@ -91,69 +91,84 @@ test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
     await expect(logoutPage).toHaveURL(/\/signin/);
   });
 
-  test('redirects to signin even when logout API fails', async ({
-    logoutPage,
-  }) => {
-    // Mock API to return 500 error - this is an acceptable mock for error scenarios
-    await logoutPage.route('**/api/v1/signout', (route) =>
-      route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({message: 'Internal server error'}),
-      }),
-    );
+  test(
+    'redirects to signin even when logout API fails',
+    {tag: '@superuser'},
+    async ({logoutPage}) => {
+      // Mock API to return 500 error - this is an acceptable mock for error scenarios
+      await logoutPage.route('**/api/v1/signout', (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({message: 'Internal server error'}),
+        }),
+      );
 
-    // Navigate to organization page
-    await logoutPage.goto('/organization');
-    await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
+      // Navigate to organization page
+      await logoutPage.goto('/organization');
+      await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
 
-    // Click user menu
-    await logoutPage.getByTestId('user-menu-toggle').click();
+      // Click user menu
+      await logoutPage.getByTestId('user-menu-toggle').click();
 
-    // Click logout
-    await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
+      // Click logout
+      await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
 
-    // Should STILL redirect to signin page despite API error
-    // The frontend handles this gracefully in a finally block
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Should STILL redirect to signin page despite API error
+      // The frontend handles this gracefully in a finally block
+      await expect(logoutPage).toHaveURL(/\/signin/);
 
-    // Should NOT show error modal
-    await expect(logoutPage.getByText('Unable to log out')).not.toBeVisible();
-  });
+      // Should NOT show error modal
+      await expect(logoutPage.getByText('Unable to log out')).not.toBeVisible();
+    },
+  );
 
-  test('clears session and prevents access to protected pages', async ({
-    logoutPage,
-    logoutUsername,
-  }) => {
-    // Navigate to organization page
-    await logoutPage.goto('/organization');
-    await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
+  test(
+    'clears session and prevents access to protected pages',
+    {tag: '@superuser'},
+    async ({logoutPage, logoutUsername, quayConfig}) => {
+      const anonymousAccessEnabled =
+        quayConfig?.features?.ANONYMOUS_ACCESS === true;
 
-    // Click user menu
-    await logoutPage.getByTestId('user-menu-toggle').click();
+      // Navigate to organization page
+      await logoutPage.goto('/organization');
+      await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
 
-    // Click logout
-    await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
+      // Click user menu
+      await logoutPage.getByTestId('user-menu-toggle').click();
 
-    // Should be on signin page
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Click logout
+      await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
 
-    // Verify login form is visible
-    await expect(
-      logoutPage.getByRole('textbox', {name: /username/i}),
-    ).toBeVisible();
+      // Should be on signin page
+      await expect(logoutPage).toHaveURL(/\/signin/);
 
-    // Try to navigate to a protected page (use the temp user's namespace)
-    await logoutPage.goto(`/organization/${logoutUsername}`);
+      // Verify login form is visible
+      await expect(
+        logoutPage.getByRole('textbox', {name: /username/i}),
+      ).toBeVisible();
 
-    // Should redirect back to signin (not authenticated)
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Try to navigate to a page (use the temp user's namespace)
+      await logoutPage.goto(`/organization/${logoutUsername}`);
 
-    // Verify still on login page
-    await expect(
-      logoutPage.getByRole('textbox', {name: /username/i}),
-    ).toBeVisible();
-  });
+      if (anonymousAccessEnabled) {
+        // When ANONYMOUS_ACCESS is enabled, anonymous users stay on the page
+        // and see a Sign In link instead of user menu
+        await expect(
+          logoutPage.getByTestId('user-menu-toggle'),
+        ).not.toBeVisible();
+        await expect(
+          logoutPage.getByRole('link', {name: /sign in/i}),
+        ).toBeVisible();
+      } else {
+        // When ANONYMOUS_ACCESS is disabled, should redirect to signin
+        await expect(logoutPage).toHaveURL(/\/signin/);
+        await expect(
+          logoutPage.getByRole('textbox', {name: /username/i}),
+        ).toBeVisible();
+      }
+    },
+  );
 
   test('logout menu item has danger styling', async ({authenticatedPage}) => {
     // This test doesn't perform logout, so it's safe to use the shared context

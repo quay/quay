@@ -268,9 +268,8 @@ export function Signin() {
               title=""
               style={{marginBottom: '20px'}}
             >
-              Instructions on how to reset your password have been sent to{' '}
-              {recoveryEmail}. If you do not receive the email, please try again
-              shortly.
+              Recovery instructions have been sent to {recoveryEmail} for any
+              accounts associated to the email.
             </Alert>
           )}
 
@@ -427,7 +426,9 @@ export function Signin() {
                 <Link
                   to="/createaccount"
                   data-testid="signin-create-account-link"
-                  style={{color: 'var(--pf-v5-global--link--Color)'}}
+                  style={{
+                    color: 'var(--pf-t--global--text--color--link--default)',
+                  }}
                 >
                   Create account
                 </Link>

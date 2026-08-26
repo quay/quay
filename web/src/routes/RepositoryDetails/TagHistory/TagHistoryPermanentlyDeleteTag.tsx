@@ -1,4 +1,13 @@
-import {Alert, Button, Label, Modal, Tooltip} from '@patternfly/react-core';
+import {
+  Alert,
+  Button,
+  Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  Tooltip,
+} from '@patternfly/react-core';
 import {TagAction, TagEntry} from './types';
 import ManifestDigest from 'src/components/ManifestDigest';
 import {useEffect, useState} from 'react';
@@ -56,11 +65,22 @@ export default function PermanentlyDeleteTag(props: RestoreTagProps) {
         <InfoCircleIcon />
       </Tooltip>
       <Modal
-        title="Permanently Delete Tag"
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         variant="medium"
-        actions={[
+      >
+        <ModalHeader title="Permanently Delete Tag" />
+        <ModalBody>
+          <Alert
+            isInline
+            variant="warning"
+            title="The tag deleted cannot be restored within the time machine window and references to the tag will be removed from tag history. Any alive tags with the same name and digest will not be effected."
+          />
+          Are you sure you want to permanently delete tag{' '}
+          <Label isCompact>{tagEntry.tag.name}</Label> @{' '}
+          <ManifestDigest digest={digest} />?
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="modal-action-button"
             variant="primary"
@@ -69,24 +89,15 @@ export default function PermanentlyDeleteTag(props: RestoreTagProps) {
             }
           >
             Permanently delete tag
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="secondary"
             onClick={() => setIsModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Alert
-          isInline
-          variant="warning"
-          title="The tag deleted cannot be restored within the time machine window and references to the tag will be removed from tag history. Any alive tags with the same name and digest will not be effected."
-        />
-        Are you sure you want to permanently delete tag{' '}
-        <Label isCompact>{tagEntry.tag.name}</Label> @{' '}
-        <ManifestDigest digest={digest} />?
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

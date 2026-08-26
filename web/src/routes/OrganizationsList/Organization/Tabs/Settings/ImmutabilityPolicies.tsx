@@ -1,11 +1,10 @@
 import {
+  Alert,
   Button,
   EmptyState,
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Spinner,
   Title,
 } from '@patternfly/react-core';
@@ -14,6 +13,8 @@ import {LockIcon, PencilAltIcon, TrashIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import RequestError from 'src/components/errors/RequestError';
+import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
+import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import {
   useCreateNamespaceImmutabilityPolicy,
   useDeleteNamespaceImmutabilityPolicy,
@@ -35,23 +36,21 @@ function PolicyActionButtons({
   onDelete: (uuid: string) => void;
 }) {
   return (
-    <div className="pf-v5-u-display-flex pf-v5-u-flex-direction-row">
+    <div className="pf-v6-u-display-flex pf-v6-u-flex-direction-row">
       <Button
+        icon={<PencilAltIcon />}
         variant="plain"
         onClick={() => onEdit(uuid)}
         aria-label="Edit policy"
         data-testid="edit-immutability-policy-btn"
-      >
-        <PencilAltIcon />
-      </Button>
+      />
       <Button
+        icon={<TrashIcon />}
         variant="plain"
         onClick={() => onDelete(uuid)}
         aria-label="Delete policy"
         data-testid="delete-immutability-policy-btn"
-      >
-        <TrashIcon />
-      </Button>
+      />
     </div>
   );
 }
@@ -63,6 +62,17 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
   );
   const [isAddingNew, setIsAddingNew] = useState(false);
   const {addAlert} = useUI();
+
+  const {
+    isOrgMirrored,
+    isLoading: isOrgMirrorLoading,
+    isError: isOrgMirrorError,
+  } = useOrgMirrorExists(props.org);
+  const {
+    isProxyCacheConfigured,
+    isLoadingProxyCacheConfig: isProxyCacheLoading,
+    isErrorProxyCacheConfig: isProxyCacheError,
+  } = useFetchProxyCacheConfig(props.org);
 
   const {
     error,
@@ -166,32 +176,75 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
 
   return (
     <>
-      <div className="pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-center pf-v5-u-pb-sm">
+      <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center pf-v6-u-pb-sm">
         <Title headingLevel="h2">Immutability Policies</Title>
         {(hasPolicies || isAddingNew) && (
           <Button
             variant="primary"
             onClick={handleAddNew}
             data-testid="add-immutability-policy-btn"
-            isDisabled={isAddingNew}
+            isDisabled={
+              isAddingNew ||
+              isOrgMirrorLoading ||
+              isOrgMirrorError ||
+              isOrgMirrored ||
+              isProxyCacheLoading ||
+              isProxyCacheError ||
+              isProxyCacheConfigured
+            }
           >
             Add Policy
           </Button>
         )}
       </div>
-      <p className="pf-v5-u-pb-md">
+      <p className="pf-v6-u-pb-md">
         Immutability policies automatically make tags immutable based on pattern
         matching. Tags that match the configured patterns cannot be modified or
         deleted.
       </p>
+      {isOrgMirrorError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to determine organization mirror status. Adding immutability policies is disabled until the mirror status can be verified."
+          className="pf-v6-u-mb-md"
+          data-testid="org-mirror-error-alert"
+        />
+      )}
+      {isOrgMirrored && (
+        <Alert
+          isInline
+          variant="warning"
+          title="Immutability policies cannot be added while organization-level mirroring is active. Remove the organization mirror configuration first."
+          className="pf-v6-u-mb-md"
+          data-testid="org-mirror-conflict-alert"
+        />
+      )}
+      {isProxyCacheError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to determine proxy cache status. Adding immutability policies is disabled until the proxy cache status can be verified."
+          className="pf-v6-u-mb-md"
+          data-testid="proxy-cache-error-alert"
+        />
+      )}
+      {isProxyCacheConfigured && (
+        <Alert
+          isInline
+          variant="warning"
+          title="Immutability policies cannot be added while a proxy cache is configured. Remove the proxy cache configuration first."
+          className="pf-v6-u-mb-md"
+          data-testid="proxy-cache-conflict-alert"
+        />
+      )}
 
       {!hasPolicies && !isAddingNew && (
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="No immutability policies"
-            headingLevel="h4"
-            icon={<EmptyStateIcon icon={LockIcon} />}
-          />
+        <EmptyState
+          headingLevel="h4"
+          icon={LockIcon}
+          titleText="No immutability policies"
+        >
           <EmptyStateBody>
             Add a policy to automatically protect tags matching a pattern from
             modification or deletion.
@@ -202,6 +255,14 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
                 variant="primary"
                 onClick={handleAddNew}
                 data-testid="add-immutability-policy-btn"
+                isDisabled={
+                  isOrgMirrorLoading ||
+                  isOrgMirrorError ||
+                  isOrgMirrored ||
+                  isProxyCacheLoading ||
+                  isProxyCacheError ||
+                  isProxyCacheConfigured
+                }
               >
                 Add Policy
               </Button>

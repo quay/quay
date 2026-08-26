@@ -27,3 +27,8 @@ export function useMirrorArchitectures() {
     error,
   };
 }
+
+export function useSparseManifestsSupported() {
+  const {capabilities} = useRegistryCapabilities();
+  return capabilities?.sparse_manifests?.supported ?? false;
+}

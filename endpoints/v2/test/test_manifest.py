@@ -10,6 +10,8 @@ from app import app as realapp
 from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
+from data.cache.impl import InMemoryDataModelCache
+from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.model.oci.tag import set_tag_immutable
 from data.registry_model import registry_model
 from endpoints.test.shared import conduct_call, toggle_feature
@@ -392,6 +394,61 @@ def test_delete_manifest_by_tag_immutable_returns_409(client, app):
         assert response_data["errors"][0]["code"] == "TAG_IMMUTABLE"
 
 
+def test_delete_manifest_by_digest_immutable_returns_409(client, app):
+    """Test that DELETE manifest by digest returns 409 when any tag is immutable."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        manifest = registry_model.get_manifest_for_tag(tag)
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        params = {
+            "repository": "devtable/simple",
+            "manifest_ref": manifest.digest,
+        }
+
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        rv = conduct_call(
+            client,
+            "v2.delete_manifest_by_digest",
+            url_for,
+            "DELETE",
+            params,
+            expected_code=409,
+            headers=headers,
+        )
+
+        # Verify TAG_IMMUTABLE error in response
+        response_data = json.loads(rv.data)
+        assert "errors" in response_data
+        assert len(response_data["errors"]) == 1
+
+        error = response_data["errors"][0]
+        assert error["code"] == "TAG_IMMUTABLE"
+        assert "immutable" in error["message"].lower()
+        assert "detail" in error
+        assert "latest" in error["detail"]["message"]
+
+
 def test_write_manifest_by_tagname_immutable_returns_409(client, app):
     """Test that PUT manifest on an immutable tag returns 409 with TAG_IMMUTABLE error."""
     with toggle_feature("IMMUTABLE_TAGS", True):
@@ -446,3 +503,178 @@ def test_write_manifest_by_tagname_immutable_returns_409(client, app):
         assert "immutable" in error["message"].lower()
         assert "detail" in error
         assert "latest" in error["detail"]["message"]
+
+
+def test_tag_deletion_doesnt_return_stale_results(client, app):
+    """
+    Tests that deletion of a tag and subsequent pull does not return stale results for the tag
+    from cache.
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+
+    with (
+        patch("endpoints.v2.tag.model_cache", test_cache),
+        patch("endpoints.v2.manifest.model_cache", test_cache),
+    ):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        assert repo_ref
+
+        params_get_tags = {
+            "repository": "devtable/simple",
+        }
+
+        params_delete_tag = {
+            "repository": "devtable/simple",
+            "manifest_ref": "latest",
+        }
+
+        # user info and access parameters
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        # build context and auth
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        # conduct GET tags/list to populate cache
+        rv = conduct_call(
+            client,
+            "v2.list_all_tags",
+            url_for,
+            "GET",
+            params_get_tags,
+            expected_code=200,
+            headers=headers,
+        )
+
+        # load response
+        response_data = json.loads(rv.data)
+        assert "latest" in response_data["tags"]
+
+        # call delete method on the tag
+        rv = conduct_call(
+            client,
+            "v2.delete_manifest_by_tag",
+            url_for,
+            "DELETE",
+            params_delete_tag,
+            expected_code=202,
+            headers=headers,
+        )
+
+        # request another listing of tags, the tag "latest" should not be present
+        rv = conduct_call(
+            client,
+            "v2.list_all_tags",
+            url_for,
+            "GET",
+            params_get_tags,
+            expected_code=200,
+            headers=headers,
+        )
+
+        # load response
+        response_data = json.loads(rv.data)
+        assert "latest" not in response_data["tags"]
+
+
+def test_manifest_deletion_doesnt_return_stale_results(client, app):
+    """
+    Tests that tag listing does not show tags associated with the deleted manifest when
+    caching is enabled.
+    """
+    test_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+
+    with (
+        patch("endpoints.v2.tag.model_cache", test_cache),
+        patch("endpoints.v2.manifest.model_cache", test_cache),
+    ):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        assert repo_ref
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag
+
+        params_get_tags = {
+            "repository": "devtable/simple",
+        }
+
+        # look up manifest digest for the "latest" tag in the repository
+        manifest = registry_model.get_manifest_for_tag(tag)
+
+        params_delete_manifest = {
+            "repository": "devtable/simple",
+            "manifest_ref": manifest.digest,
+        }
+
+        # user info and access parameters
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        # build context and auth
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        # conduct GET tags/list to populate cache
+        rv = conduct_call(
+            client,
+            "v2.list_all_tags",
+            url_for,
+            "GET",
+            params_get_tags,
+            expected_code=200,
+            headers=headers,
+        )
+
+        # load response
+        response_data = json.loads(rv.data)
+        assert "latest" in response_data["tags"]
+
+        # call delete method on the tag
+        rv = conduct_call(
+            client,
+            "v2.delete_manifest_by_tag",
+            url_for,
+            "DELETE",
+            params_delete_manifest,
+            expected_code=202,
+            headers=headers,
+        )
+
+        # request another listing of tags, the tag "latest" should not be present
+        rv = conduct_call(
+            client,
+            "v2.list_all_tags",
+            url_for,
+            "GET",
+            params_get_tags,
+            expected_code=200,
+            headers=headers,
+        )
+
+        # load response
+        response_data = json.loads(rv.data)
+        assert "latest" not in response_data["tags"]

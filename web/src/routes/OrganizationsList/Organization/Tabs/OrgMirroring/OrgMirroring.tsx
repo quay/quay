@@ -20,10 +20,12 @@ import {
   Spinner,
   SelectOption,
   SelectGroup,
+  Content,
   Modal,
   ModalVariant,
-  Text,
-  TextContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
 import {useUI, AlertVariant} from 'src/contexts/UIContext';
@@ -44,7 +46,15 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   const {addAlert} = useUI();
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isInSetupMode, setIsInSetupMode] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Persist setup flag in state so it survives tab switches that clear URL params
+  React.useEffect(() => {
+    if (searchParams.get('setup') === 'true') {
+      setIsInSetupMode(true);
+    }
+  }, [searchParams]);
 
   // Initialize form hook (no external dependencies)
   const formHook = useOrgMirroringForm();
@@ -58,6 +68,13 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
 
   // Form submission handler - composes both hooks without circular dependency
   const onSubmit = async (data: OrgMirroringFormData) => {
+    if (
+      data.externalRegistryType === 'quay' &&
+      data.password &&
+      !data.username?.trim()
+    ) {
+      data.username = '$oauthtoken';
+    }
     try {
       await configHook.submitConfig(data);
       formHook.reset({...data, password: ''});
@@ -122,24 +139,21 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   }
 
   // When no config exists and user hasn't opted to set up, show the "state is NORMAL" message
-  const isSetupMode = searchParams.get('setup') === 'true';
-  if (!configHook.config && !isSetupMode) {
+  if (!configHook.config && !isInSetupMode) {
     return (
-      <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
-        <TextContent>
-          <Text>
-            This organization&apos;s state is <strong>NORMAL</strong>. Use the{' '}
-            <Button
-              variant="link"
-              isInline
-              onClick={() => setSearchParams({tab: 'Settings'})}
-            >
-              Settings tab
-            </Button>{' '}
-            and change it to <strong>Mirror</strong> to manage its mirroring
-            configuration.
-          </Text>
-        </TextContent>
+      <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
+        <Content component="p">
+          This organization&apos;s state is <strong>NORMAL</strong>. Use the{' '}
+          <Button
+            variant="link"
+            isInline
+            onClick={() => setSearchParams({tab: 'Settings'})}
+          >
+            Settings tab
+          </Button>{' '}
+          and change it to <strong>Mirror</strong> to manage its mirroring
+          configuration.
+        </Content>
       </div>
     );
   }
@@ -149,6 +163,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
       await deleteOrgMirrorConfig(orgName);
       queryClient.invalidateQueries({queryKey: ['org-mirror-repos', orgName]});
       configHook.setConfig(null);
+      setIsInSetupMode(false);
       formHook.reset(defaultFormValues);
       formHook.setSelectedRobot(null);
       addAlert({
@@ -167,7 +182,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   };
 
   return (
-    <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
+    <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
       <Form
         isWidthLimited
         data-testid="org-mirror-form"
@@ -183,6 +198,8 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           setSelectedRobot={formHook.setSelectedRobot}
           robotOptions={robotOptions}
           isSyncingNow={configHook.isSyncingNow}
+          isCancellingSync={configHook.isCancellingSync}
+          isOrgSyncing={configHook.isOrgSyncing}
           onSyncNow={async () => {
             try {
               await configHook.handleSyncNow();
@@ -235,6 +252,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         <OrgMirroringStatus
           config={configHook.config}
           isVerifying={configHook.isVerifying}
+          isCancellingSync={configHook.isCancellingSync}
           onCancelSync={async () => {
             try {
               await configHook.handleCancelSync();
@@ -275,11 +293,15 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             }
           }}
         />
-        <OrgMirroringRepos config={configHook.config} orgName={orgName} />
+        <OrgMirroringRepos
+          config={configHook.config}
+          orgName={orgName}
+          isOrgSyncing={configHook.isOrgSyncing}
+        />
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
-            className="pf-v5-u-display-block pf-v5-u-mx-auto"
+            className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="submit"
             isDisabled={
               !formHook.isValid || (configHook.config && !formHook.isDirty)
@@ -327,10 +349,16 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         {/* Delete Confirmation Modal */}
         <Modal
           variant={ModalVariant.small}
-          title="Delete Mirror Configuration"
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
-          actions={[
+        >
+          <ModalHeader title="Delete Mirror Configuration" />
+          <ModalBody>
+            Are you sure you want to delete the organization mirror
+            configuration? This will stop all future syncs. Existing mirrored
+            repositories will remain.
+          </ModalBody>
+          <ModalFooter>
             <Button
               key="confirm"
               variant="danger"
@@ -338,19 +366,15 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               data-testid="confirm-delete-button"
             >
               Delete
-            </Button>,
+            </Button>
             <Button
               key="cancel"
               variant="link"
               onClick={() => setIsDeleteModalOpen(false)}
             >
               Cancel
-            </Button>,
-          ]}
-        >
-          Are you sure you want to delete the organization mirror configuration?
-          This will stop all future syncs. Existing mirrored repositories will
-          remain.
+            </Button>
+          </ModalFooter>
         </Modal>
       </Form>
     </div>

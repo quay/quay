@@ -6,17 +6,17 @@ import {VulnerabilitySeverity} from 'src/resources/TagResource';
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
     case VulnerabilitySeverity.Critical:
-      return 'var(--pf-v5-global--palette--red-200)';
+      return 'var(--pf-t--global--icon--color--severity--critical--default)';
     case VulnerabilitySeverity.High:
-      return 'var(--pf-v5-global--palette--red-100)';
+      return 'var(--pf-t--global--icon--color--severity--important--default)';
     case VulnerabilitySeverity.Medium:
-      return 'var(--pf-v5-global--palette--orange-300)';
+      return 'var(--pf-t--global--icon--color--severity--moderate--default)';
     case VulnerabilitySeverity.Low:
-      return 'var(--pf-v5-global--palette--gold-300)';
+      return 'var(--pf-t--global--icon--color--severity--minor--default)';
     case VulnerabilitySeverity.None:
-      return 'var(--pf-v5-global--palette--green-400)';
+      return 'var(--pf-t--global--icon--color--severity--none--default)';
     default:
-      return 'var(--pf-v5-global--palette--black-300)';
+      return 'var(--pf-t--global--icon--color--severity--undefined--default)';
   }
 }
 
@@ -34,6 +34,13 @@ export function formatDate(
     timeStyle,
     dateStyle: 'medium',
   });
+}
+
+/** Parse a date string to epoch millis, returning 0 for falsy or unparseable values. */
+export function toEpochOrZero(value?: string): number {
+  if (!value) return 0;
+  const ts = Date.parse(value);
+  return Number.isFinite(ts) ? ts : 0;
 }
 
 export function formatSize(sizeInBytes: number) {
@@ -62,6 +69,10 @@ export function isValidEmail(email: string): boolean {
 
 export const validateTeamName = (name: string) => {
   return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
+};
+
+export const validateRobotName = (name: string) => {
+  return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
 };
 
 export function parseRepoNameFromUrl(url: string): string {
@@ -251,14 +262,14 @@ export const convertFromSeconds = (
 // Convert ISO date to datetime-local format
 export const formatDateForInput = (isoDate: string): string => {
   if (!isoDate) return '';
-  try {
-    const date = new Date(isoDate);
-    // Format as YYYY-MM-DDTHH:MM (datetime-local format)
-    return date.toISOString().slice(0, 16);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
-  }
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
 export function formatRelativeTime(date: string | number): string {

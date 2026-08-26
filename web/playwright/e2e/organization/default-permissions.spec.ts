@@ -31,7 +31,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
       name: 'Default permissions',
     });
     const paginationInfo = tabPanel
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Wait for initial data load (with extended timeout for API response)
@@ -82,7 +82,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
     await searchInput.fill(robot.fullName);
     await expect(
-      tabPanel.locator('.pf-v5-c-pagination__total-items').first(),
+      tabPanel.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1');
 
     // Click on the permission dropdown toggle
@@ -95,7 +95,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert (use .last() to get most recent)
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText('Permission updated successfully');
   });
 
@@ -130,19 +130,19 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
     await searchInput.fill(robot.fullName);
     await expect(
-      tabPanel.locator('.pf-v5-c-pagination__total-items').first(),
+      tabPanel.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1');
 
     // Click kebab menu within the table
     const table = authenticatedPage.getByTestId('default-permissions-table');
     await table.getByTestId(`${robot.fullName}-toggle-kebab`).click();
 
-    // Click delete option
-    await table.getByTestId(`${robot.fullName}-del-option`).click();
+    // Click delete option (dropdown items render in a portal outside the table)
+    await authenticatedPage.getByTestId(`${robot.fullName}-del-option`).click();
 
     // Verify success alert (use .last() to get most recent)
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Permission created by: ${robot.fullName} successfully deleted`,
     );
@@ -200,7 +200,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
       // Verify success alert (use .last() to get most recent)
       const successAlert = authenticatedPage
-        .locator('.pf-v5-c-alert.pf-m-success')
+        .locator('.pf-v6-c-alert.pf-m-success')
         .last();
       if (userType === 'Specific user') {
         await expect(successAlert).toContainText(
@@ -253,7 +253,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify team creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully created new team: ${newTeamName}`);
 
     // Team wizard - Step: Name & Description (verify pre-filled)
@@ -266,7 +266,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await expect(
       authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
     ).toContainText('Read');
@@ -313,7 +316,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toBeVisible();
   });
 
@@ -327,7 +330,6 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     const newTeamName = uniqueName('newteam').substring(0, 20);
     const teamDescription = 'relegation club';
-    // Robot names must match ^[a-z][a-z0-9_]{1,254}$ - no dashes allowed
     const newRobotShortname = `newbot${Date.now()}`.substring(0, 20);
     const newRobotDescription = 'premier league manager';
 
@@ -358,7 +360,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify team creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully created new team: ${newTeamName}`);
 
     // Team wizard - Step: Name & Description
@@ -371,7 +373,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add team member - create new robot
@@ -423,7 +428,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toBeVisible();
   });
 
@@ -437,7 +442,6 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     const appliedToTeam = await api.team(org.name, 'team2');
     const addToRepo = await api.repository(org.name, 'testrepo');
 
-    // Robot names must match ^[a-z][a-z0-9_]{1,254}$ - no dashes allowed
     const newRobotShortname = `newbot${Date.now()}`.substring(0, 20);
     const newRobotDescription = 'premier league manager';
 
@@ -469,12 +473,14 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     // Step: Add to team (optional)
     await authenticatedPage
       .getByTestId(`checkbox-row-${addToTeam.name}`)
+      .locator('input')
       .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
     await authenticatedPage
       .getByTestId(`checkbox-row-${addToRepo.name}`)
+      .locator('input')
       .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
@@ -489,7 +495,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify robot creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Successfully created robot account with robot name: ${org.name}+${newRobotShortname}`,
     );
@@ -517,11 +523,92 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Successfully created default permission for creator: ${org.name}+${newRobotShortname}`,
     );
   });
+
+  test('default permissions tab is visible to org admin', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('rolevisorg');
+    const robot = await api.robot(org.name, 'visrobot');
+
+    // Create a default permission so the tab has content
+    await api.prototype(
+      org.name,
+      'read',
+      {name: 'owners', kind: 'team'},
+      {name: robot.fullName},
+    );
+
+    // As the org admin (creator), verify Default permissions tab is visible
+    await authenticatedPage.goto(`/organization/${org.name}`);
+    await expect(
+      authenticatedPage.getByRole('tab', {name: 'Default permissions'}),
+    ).toBeVisible();
+
+    // Navigate to defaults tab and verify content loads
+    await authenticatedPage
+      .getByRole('tab', {name: 'Default permissions'})
+      .click();
+    const defaultPermPanel = authenticatedPage.getByRole('tabpanel', {
+      name: 'Default permissions',
+    });
+    await expect(defaultPermPanel.getByText(robot.fullName)).toBeVisible();
+  });
+
+  test(
+    'Create Team wizard fits within modal without overflow (PROJQUAY-12151)',
+    {tag: '@PROJQUAY-12151'},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('teamoverflow');
+      const newTeamName = uniqueName('overflow').substring(0, 20);
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Defaultpermissions`,
+      );
+
+      await authenticatedPage
+        .getByTestId('create-default-permissions-btn')
+        .click();
+
+      await authenticatedPage.getByTestId('Anyone').click();
+
+      await authenticatedPage.locator('#applied-to-dropdown').click();
+      await authenticatedPage.getByTestId('create-new-team-btn').click();
+
+      await authenticatedPage
+        .getByTestId('new-team-name-input')
+        .fill(newTeamName);
+      await authenticatedPage.getByTestId('create-team-confirm').click();
+
+      await expect(
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
+      ).toContainText(`Successfully created new team: ${newTeamName}`);
+
+      const modal = authenticatedPage.locator('#create-team-modal');
+      await expect(modal).toBeVisible();
+
+      const wizard = modal.locator('.pf-v6-c-wizard');
+      await expect(wizard).toBeVisible();
+
+      const modalBox = await modal.boundingBox();
+      const wizardBox = await wizard.boundingBox();
+
+      expect(modalBox).not.toBeNull();
+      expect(wizardBox).not.toBeNull();
+      if (modalBox && wizardBox) {
+        expect(wizardBox.width).toBeLessThanOrEqual(modalBox.width);
+        expect(wizardBox.x).toBeGreaterThanOrEqual(modalBox.x);
+        expect(wizardBox.x + wizardBox.width).toBeLessThanOrEqual(
+          modalBox.x + modalBox.width + 1,
+        );
+      }
+    },
+  );
 
   test('can bulk delete default permissions', async ({
     authenticatedPage,
@@ -560,7 +647,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
       name: 'Default permissions',
     });
     const paginationInfo = tabPanel
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Search for prototypes in this org

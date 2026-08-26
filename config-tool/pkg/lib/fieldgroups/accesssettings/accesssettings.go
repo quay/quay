@@ -24,6 +24,7 @@ type AccessSettingsFieldGroup struct {
 	FeatureUserMetadata            bool   `default:"false" validate:"" json:"FEATURE_USER_METADATA" yaml:"FEATURE_USER_METADATA"`
 	FeatureUserRename              bool   `default:"false" validate:"" json:"FEATURE_USER_RENAME" yaml:"FEATURE_USER_RENAME"`
 	FreshLoginTimeout              string `default:"10m" validate:"" json:"FRESH_LOGIN_TIMEOUT,omitempty" yaml:"FRESH_LOGIN_TIMEOUT,omitempty"`
+	SessionTimeout                 string `default:"31d" validate:"" json:"SESSION_TIMEOUT,omitempty" yaml:"SESSION_TIMEOUT,omitempty"`
 	UserRecoveryTokenLifetime      string `default:"30m" validate:"" json:"USER_RECOVERY_TOKEN_LIFETIME,omitempty" yaml:"USER_RECOVERY_TOKEN_LIFETIME,omitempty"`
 	FeatureExtendedRepositoryNames bool   `default:"true" validate:"" json:"FEATURE_EXTENDED_REPOSITORY_NAMES,omitempty" yaml:"FEATURE_EXTENDED_REPOSITORY_NAMES,omitempty"`
 	CreateRepositoryOnPushPublic   bool   `default:"false" validate:"" json:"CREATE_REPOSITORY_ON_PUSH_PUBLIC,omitempty" yaml:"CREATE_REPOSITORY_ON_PUSH_PUBLIC,omitempty"`
@@ -117,6 +118,12 @@ func NewAccessSettingsFieldGroup(fullConfig map[string]interface{}) (*AccessSett
 		newAccessSettingsFieldGroup.FreshLoginTimeout, ok = value.(string)
 		if !ok {
 			return newAccessSettingsFieldGroup, errors.New("FRESH_LOGIN_TIMEOUT must be of type string")
+		}
+	}
+	if value, ok := fullConfig["SESSION_TIMEOUT"]; ok {
+		newAccessSettingsFieldGroup.SessionTimeout, ok = value.(string)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("SESSION_TIMEOUT must be of type string")
 		}
 	}
 	if value, ok := fullConfig["USER_RECOVERY_TOKEN_LIFETIME"]; ok {

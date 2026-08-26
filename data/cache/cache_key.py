@@ -1,5 +1,8 @@
+import hashlib
 import logging
 from collections import namedtuple
+
+from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -41,22 +44,29 @@ def for_catalog_page(auth_context_key, start_id, limit, cache_config):
     return CacheKey("catalog_page__%s_%s_%s" % params, cache_ttl)
 
 
-def for_namespace_geo_restrictions(namespace_name, cache_config):
+def for_active_repo_tags_gen(repository_id, cache_config):
     """
-    Returns a cache key for the geo restrictions for a namespace.
+    Returns a cache key for the specific generation of active tags in a repository.
     """
-    cache_ttl = cache_config.get("namespace_geo_restrictions_cache_ttl", "240s")
-    return CacheKey("geo_restrictions__%s" % namespace_name, cache_ttl)
+
+    # set generation cache to twice the amount of active_repo_tags_cache_ttl
+    page_ttl_sec = cache_config.get("active_repo_tags_cache_ttl", "120s")
+    page_seconds = int(convert_to_timedelta(page_ttl_sec).total_seconds())
+    gen_ttl = f"{page_seconds * 2}s"
+
+    return CacheKey(f"repo_active_tags_gen__{repository_id}", gen_ttl)
 
 
-def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, cache_config):
+def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, generation, cache_config):
     """
     Returns a cache key for the active tags in a repository.
     """
 
     cache_ttl = cache_config.get("active_repo_tags_cache_ttl", "120s")
     return CacheKey(
-        "repo_active_tags__%s_%s_%s" % (repository_id, last_pagination_tag_name, limit), cache_ttl
+        "repo_active_tags__%s_%s_%s_%s"
+        % (repository_id, last_pagination_tag_name, limit, generation),
+        cache_ttl,
     )
 
 
@@ -95,9 +105,16 @@ def for_repository_manifest(repository_id, digest, cache_config):
     return CacheKey("repository_manifest__%s_%s" % (repository_id, digest), cache_ttl)
 
 
-def for_manifest_referrers(repository_id, manifest_digest, cache_config):
+def for_manifest_referrers(repository_id, manifest_digest, cache_config, artifact_type=None):
     """
-    Returns a cache key for listing a manifest's referrers
+    Returns a cache key for listing a manifest's referrers.
+
+    When artifact_type is provided, the key is scoped to that type so that
+    filtered and unfiltered queries use separate cache entries.
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
-    return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+    key = f"manifest_referrers__{repository_id}_{manifest_digest}"
+    if artifact_type is not None:
+        artifact_type_hash = hashlib.sha256(artifact_type.encode("utf-8")).hexdigest()
+        key = f"{key}_artifact_type_{artifact_type_hash}"
+    return CacheKey(key, cache_ttl)

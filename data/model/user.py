@@ -18,10 +18,11 @@ from data.database import (
     LoginService,
     Namespace,
     NamespaceAutoPrunePolicy,
-    NamespaceGeoRestriction,
+    NamespaceNotification,
     OAuthApplication,
     OauthAssignedToken,
     QuotaNamespaceSize,
+    QuotaNotificationState,
     RepoMirrorConfig,
     Repository,
     RepositoryBuildTrigger,
@@ -141,27 +142,37 @@ def create_user_noverify(
     if not username_valid:
         raise InvalidUsernameException("Invalid namespace %s: %s" % (username, username_issue))
 
+    # Check username uniqueness (applies to all users and orgs).
     try:
-        existing = User.get((User.username == username) | (User.email == email))
-        logger.debug("Existing user with same username or email.")
+        existing = User.get(User.username == username)
+        assert not existing.robot
 
-        # A user already exists with either the same username or email
-        if existing.username == username:
-            assert not existing.robot
+        msg = (
+            "Username has already been taken by an organization and cannot be reused: %s" % username
+        )
+        if not existing.organization:
+            msg = "Username has already been taken by user cannot be reused: %s" % username
 
-            msg = (
-                "Username has already been taken by an organization and cannot be reused: %s"
-                % username
-            )
-            if not existing.organization:
-                msg = "Username has already been taken by user cannot be reused: %s" % username
-
-            raise InvalidUsernameException(msg)
-
-        raise InvalidEmailAddressException("Email has already been used: %s" % email)
+        raise InvalidUsernameException(msg)
     except User.DoesNotExist:
-        # This is actually the happy path
-        logger.debug("Email and username are unique!")
+        pass
+
+    try:
+        DeletedNamespace.get(DeletedNamespace.original_username == username)
+        raise InvalidUsernameException("Username is not available")
+    except DeletedNamespace.DoesNotExist:
+        pass
+
+    # Check email uniqueness only among non-organization users. Organizations are allowed
+    # to share emails (enforced by the partial unique index on User.email).
+    if email_required:
+        try:
+            User.get(User.email == email, User.organization == False)
+            raise InvalidEmailAddressException("Email has already been used: %s" % email)
+        except User.DoesNotExist:
+            pass
+
+    logger.debug("Email and username are unique!")
 
     # Create the user.
     try:
@@ -824,12 +835,9 @@ def confirm_user_email(token):
 
 def create_reset_password_email_code(email):
     try:
-        user = User.get(User.email == email)
+        user = User.get(User.email == email, User.organization == False)
     except User.DoesNotExist:
         raise InvalidEmailAddressException("Email address was not found")
-
-    if user.organization:
-        raise InvalidEmailAddressException("Organizations can not have passwords")
 
     verification_code, unhashed = Credential.generate()
     code = EmailConfirmation.create(user=user, pw_reset=True, verification_code=verification_code)
@@ -880,7 +888,7 @@ def find_user_by_email(email):
         return None
 
     try:
-        return User.get(User.email == email)
+        return User.get(User.email == email, User.organization == False)
     except User.DoesNotExist:
         return None
 
@@ -1150,8 +1158,13 @@ def verify_user(username_or_email, password):
         return None
 
     # Fetch the user with the matching username or e-mail address.
+    # For email matching, only consider non-organization users since orgs cannot log in
+    # and multiple orgs may share the same email.
     try:
-        fetched = User.get((User.username == username_or_email) | (User.email == username_or_email))
+        fetched = User.get(
+            (User.username == username_or_email)
+            | ((User.email == username_or_email) & (User.organization == False))
+        )
     except User.DoesNotExist:
         return None
 
@@ -1344,13 +1357,34 @@ def get_solely_admined_organizations(user_obj):
     return solely_admined
 
 
-def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
+def mark_namespace_for_deletion(
+    user, queues, namespace_gc_queue, force=False, available_after=None
+):
     """
     Marks a namespace (as referenced by the given user) for deletion.
 
     A queue item will be added to delete the namespace's repositories and storage, while the
     namespace itself will be renamed, disabled, and delinked from other tables.
+
+    When available_after > 0 (grace period), linked data (teams, OAuth apps, robots, etc.) is
+    preserved so the namespace can be recovered via direct DB operations during the grace window.
     """
+    if available_after is None:
+        if force:
+            available_after = 0
+        else:
+            grace_period = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_SECONDS", 0)
+            allowlist = config.app_config.get("NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST", [])
+            if grace_period > 0 and allowlist and user.username in allowlist:
+                available_after = grace_period
+                logger.info(
+                    "Namespace %s marked for deletion with %ds grace period",
+                    user.username,
+                    grace_period,
+                )
+            else:
+                available_after = 0
+
     if not user.enabled:
         return None
 
@@ -1374,8 +1408,10 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
     for queue in queues:
         queue.delete_namespaced_items(user.username)
 
-    # Delete non-repository related items. This operation is very quick, so we can do so here.
-    _delete_user_linked_data(user)
+    # When a grace period is active, defer linked data deletion so the namespace can be
+    # recovered. The GC worker (delete_user) will clean up linked data at purge time.
+    if available_after <= 0:
+        _delete_user_linked_data(user)
 
     with db_transaction():
         original_username = user.username
@@ -1404,6 +1440,7 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
                 "original_username": original_username,
             }
         ),
+        available_after=available_after,
     )
     marker.save()
     return marker.id
@@ -1440,6 +1477,13 @@ def delete_user(user, queues):
         queue.delete_namespaced_items(user.username)
 
     # Delete any repositories under the user's namespace.
+    # Bulk-mark all repos for deletion in one UPDATE to avoid N individual
+    # per-repo saves inside purge_repository() that held long-duration locks.
+    Repository.update(state=RepositoryState.MARKED_FOR_DELETION).where(
+        Repository.namespace_user == user,
+        Repository.state != RepositoryState.MARKED_FOR_DELETION,
+    ).execute()
+
     while True:
         is_progressing = False
         repositories = list(Repository.select().where(Repository.namespace_user == user))
@@ -1471,7 +1515,17 @@ def delete_user(user, queues):
         return False
 
 
+def _resolve_namespace_name(user):
+    """Returns the original namespace name, consulting the DeletedNamespace marker if the
+    username was replaced with a UUID during soft-delete."""
+    try:
+        return DeletedNamespace.get(DeletedNamespace.namespace == user).original_username
+    except DeletedNamespace.DoesNotExist:
+        return user.username
+
+
 def _delete_user_linked_data(user):
+    namespace_name = _resolve_namespace_name(user)
     if user.organization:
         # Delete the organization's teams.
         with db_transaction():
@@ -1496,18 +1550,28 @@ def _delete_user_linked_data(user):
             trigger.delete_instance(recursive=True, delete_nullable=False)
 
     with db_transaction():
-        quotas = namespacequota.get_namespace_quota_list(user.username)
+        quotas = namespacequota.get_namespace_quota_list(namespace_name)
         for quota in quotas:
             namespacequota.delete_namespace_quota(quota)
 
+    if user.organization:
+        from data.model.org_mirror import (
+            delete_org_mirror_config,
+            get_org_mirror_config,
+        )
+
+        org_mirror_config = get_org_mirror_config(user)
+        if org_mirror_config is not None:
+            delete_org_mirror_config(org_mirror_config)
+
     # Delete any mirrors with robots owned by this user.
     with db_transaction():
-        robots = list(list_namespace_robots(user.username))
+        robots = list(list_namespace_robots(namespace_name))
         RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
 
     # Delete any robots owned by this user.
     with db_transaction():
-        robots = list(list_namespace_robots(user.username))
+        robots = list(list_namespace_robots(namespace_name))
         for robot in robots:
             robot.delete_instance(recursive=True, delete_nullable=True)
 
@@ -1517,6 +1581,10 @@ def _delete_user_linked_data(user):
 
     # Delete any federated user links.
     FederatedLogin.delete().where(FederatedLogin.user == user).execute()
+
+    # Delete quota notification configs and state
+    NamespaceNotification.delete().where(NamespaceNotification.namespace == user).execute()
+    QuotaNotificationState.delete().where(QuotaNotificationState.namespace == user).execute()
 
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
@@ -1570,13 +1638,6 @@ def get_federated_logins(user_ids, service_name):
         .join(LoginService)
         .where(FederatedLogin.user << user_ids, LoginService.name == service_name)
     )
-
-
-def list_namespace_geo_restrictions(namespace_name):
-    """
-    Returns all of the defined geographic restrictions for the given namespace.
-    """
-    return NamespaceGeoRestriction.select().join(User).where(User.username == namespace_name)
 
 
 def get_minimum_user_id():

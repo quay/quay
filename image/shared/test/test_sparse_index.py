@@ -1,8 +1,8 @@
 """
 Unit tests for sparse manifest index functionality in LazyManifestLoader.
 
-Tests the FEATURE_SPARSE_INDEX and SPARSE_INDEX_REQUIRED_ARCHS configuration options
-which allow manifest lists/indexes to have optional architectures that can be missing.
+Tests the FEATURE_SPARSE_INDEX configuration option which allows manifest
+lists/indexes to have optional architectures that can be missing.
 """
 
 import json
@@ -19,6 +19,7 @@ from image.oci.index import OCIIndex
 from image.oci.manifest import OCIManifest
 from image.shared import ManifestException
 from image.shared.schemautil import ContentRetrieverForTesting, LazyManifestLoader
+from image.shared.types import SparseManifestList
 from util.bytes import Bytes
 
 # Docker Schema2 manifest bytes for testing (defined locally to avoid import chain)
@@ -247,65 +248,14 @@ class TestSparseIndexEnabled:
             media_type_key="mediaType",
             app_config={
                 "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],  # arm64 is optional
             },
         )
 
         result = loader.manifest_obj
         assert result is None
 
-    def test_required_architecture_raises_exception(self):
-        """Required architecture missing still raises exception."""
-        manifest_data = create_manifest_data(
-            digest="sha256:missing",
-            architecture="amd64",
-        )
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64", "arm64"],
-            },
-        )
-
-        with pytest.raises(ManifestException) as exc_info:
-            _ = loader.manifest_obj
-
-        assert "Could not find child manifest" in str(exc_info.value)
-
-    def test_empty_required_archs_treats_all_as_required(self):
-        """When SPARSE_INDEX_REQUIRED_ARCHS is empty, all architectures are required."""
-        manifest_data = create_manifest_data(
-            digest="sha256:missing",
-            architecture="arm64",
-        )
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": [],  # Empty list = all required
-            },
-        )
-
-        with pytest.raises(ManifestException):
-            _ = loader.manifest_obj
-
-    def test_no_architecture_in_manifest_treats_as_required(self):
-        """When manifest has no architecture specified, treat as required."""
+    def test_no_architecture_in_manifest_returns_none(self):
+        """When manifest has no architecture specified, still treated as optional."""
         manifest_data = create_manifest_data()  # No architecture
         retriever = ContentRetrieverForTesting()
 
@@ -318,55 +268,11 @@ class TestSparseIndexEnabled:
             media_type_key="mediaType",
             app_config={
                 "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
             },
         )
 
-        with pytest.raises(ManifestException):
-            _ = loader.manifest_obj
-
-    @pytest.mark.parametrize(
-        "required_archs,manifest_arch,should_skip",
-        [
-            pytest.param(["amd64"], "arm64", True, id="arm64_optional_when_amd64_required"),
-            pytest.param(["amd64"], "ppc64le", True, id="ppc64le_optional_when_amd64_required"),
-            pytest.param(
-                ["amd64", "arm64"], "s390x", True, id="s390x_optional_when_amd64_arm64_required"
-            ),
-            pytest.param(["amd64"], "amd64", False, id="amd64_required"),
-            pytest.param(["arm64"], "arm64", False, id="arm64_required"),
-            pytest.param(
-                ["amd64", "arm64", "ppc64le"], "ppc64le", False, id="ppc64le_in_required_list"
-            ),
-        ],
-    )
-    def test_architecture_required_matrix(self, required_archs, manifest_arch, should_skip):
-        """Test various combinations of required architectures and manifest architectures."""
-        manifest_data = create_manifest_data(
-            digest="sha256:missing",
-            architecture=manifest_arch,
-        )
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": required_archs,
-            },
-        )
-
-        if should_skip:
-            result = loader.manifest_obj
-            assert result is None
-        else:
-            with pytest.raises(ManifestException):
-                _ = loader.manifest_obj
+        result = loader.manifest_obj
+        assert result is None
 
 
 class TestManifestLoadingCaching:
@@ -415,7 +321,6 @@ class TestManifestLoadingCaching:
             media_type_key="mediaType",
             app_config={
                 "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
             },
         )
 
@@ -664,7 +569,6 @@ class TestManifestListIndex:
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
-            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],  # Only amd64 is required
         }
         with patch("data.model.config.app_config", config):
             manifests = manifest_list.manifests(retriever)
@@ -677,12 +581,12 @@ class TestManifestListIndex:
             assert len(loaded) == 1  # amd64
             assert len(skipped) == 2  # arm64, ppc64le
 
-    def test_manifest_list_missing_required_arch_raises(self, manifest_list_config):
-        """Test that missing required architecture raises exception."""
+    def test_manifest_list_missing_arch_raises_when_disabled(self, manifest_list_config):
+        """Test that missing architecture raises exception when sparse index is disabled."""
         list_class, bytes_factory, manifest_class, child_manifest_bytes = manifest_list_config
         manifest_list_bytes = bytes_factory()
 
-        # Only provide arm64, but amd64 is required
+        # Only provide arm64, amd64 is missing
         retriever = ContentRetrieverForTesting(
             {
                 "sha256:arm64manifest": child_manifest_bytes,
@@ -692,8 +596,7 @@ class TestManifestListIndex:
         manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
-            "FEATURE_SPARSE_INDEX": True,
-            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
+            "FEATURE_SPARSE_INDEX": False,
         }
         with patch("data.model.config.app_config", config):
             manifests = manifest_list.manifests(retriever)
@@ -720,7 +623,6 @@ class TestManifestListIndex:
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
-            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
         }
         with patch("data.model.config.app_config", config):
             # Validation should not raise even though some manifests are None
@@ -747,8 +649,8 @@ class TestIsArchitectureRequiredMethod:
 
         assert loader._is_architecture_required() is True
 
-    def test_returns_true_when_no_required_archs(self):
-        """Returns True when SPARSE_INDEX_REQUIRED_ARCHS is empty."""
+    def test_returns_false_when_sparse_enabled(self):
+        """Returns False when FEATURE_SPARSE_INDEX is enabled."""
         manifest_data = create_manifest_data(architecture="arm64")
         retriever = ContentRetrieverForTesting()
 
@@ -759,70 +661,7 @@ class TestIsArchitectureRequiredMethod:
             digest_key="digest",
             size_key="size",
             media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": [],
-            },
-        )
-
-        assert loader._is_architecture_required() is True
-
-    def test_returns_true_when_no_architecture(self):
-        """Returns True when manifest has no architecture specified."""
-        manifest_data = create_manifest_data()  # No architecture
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
-            },
-        )
-
-        assert loader._is_architecture_required() is True
-
-    def test_returns_true_when_in_required_list(self):
-        """Returns True when architecture is in required list."""
-        manifest_data = create_manifest_data(architecture="amd64")
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64", "arm64"],
-            },
-        )
-
-        assert loader._is_architecture_required() is True
-
-    def test_returns_false_when_not_in_required_list(self):
-        """Returns False when architecture is not in required list."""
-        manifest_data = create_manifest_data(architecture="ppc64le")
-        retriever = ContentRetrieverForTesting()
-
-        loader = LazyManifestLoader(
-            manifest_data,
-            retriever,
-            SUPPORTED_TYPES,
-            digest_key="digest",
-            size_key="size",
-            media_type_key="mediaType",
-            app_config={
-                "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64", "arm64"],
-            },
+            app_config={"FEATURE_SPARSE_INDEX": True},
         )
 
         assert loader._is_architecture_required() is False
@@ -848,7 +687,6 @@ class TestDebugLogging:
             media_type_key="mediaType",
             app_config={
                 "FEATURE_SPARSE_INDEX": True,
-                "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
             },
         )
 
@@ -859,3 +697,78 @@ class TestDebugLogging:
         assert "Skipping manifest with digest" in caplog.text
         assert "sha256:testdigest" in caplog.text
         assert "arm64" in caplog.text
+
+
+class TestSparseManifestListMissingPlatform:
+    """Tests for SparseManifestList.amd64_linux_manifest_digest with missing platform metadata."""
+
+    def test_amd64_digest_all_entries_missing_platform(self):
+        """amd64_linux_manifest_digest returns None when all entries lack platform."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:abc123",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:def456",
+                    "size": 1024,
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest is None
+
+    def test_amd64_digest_mixed_entries_with_and_without_platform(self):
+        """Returns correct digest when some entries have platform and some don't."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:no_platform",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:amd64_linux",
+                    "size": 946,
+                    "platform": {"architecture": "amd64", "os": "linux"},
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest == "sha256:amd64_linux"
+
+    def test_amd64_digest_no_matching_platform(self):
+        """Returns None when entries have platform but none match amd64+linux."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:no_platform",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:arm64_linux",
+                    "size": 946,
+                    "platform": {"architecture": "arm64", "os": "linux"},
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest is None

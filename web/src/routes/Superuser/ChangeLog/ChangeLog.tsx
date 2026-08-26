@@ -1,8 +1,7 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
-  TextContent,
+  Content,
   Spinner,
   Card,
   CardBody,
@@ -16,12 +15,13 @@ import {Navigate} from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 function ChangeLogHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Change Log</Title>
         </div>
@@ -46,7 +46,7 @@ export default function ChangeLog() {
   return (
     <>
       <ChangeLogHeader />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         {changeLogLoading ? (
           <div style={{textAlign: 'center', padding: '2rem'}}>
             <Spinner size="lg" />
@@ -60,10 +60,10 @@ export default function ChangeLog() {
         ) : changeLog?.log ? (
           <Card>
             <CardBody>
-              <TextContent>
+              <Content>
                 <Markdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
                   components={{
                     // Customize headings to be larger like Angular version
                     // H2 is used for both main title AND version headers
@@ -95,7 +95,7 @@ export default function ChangeLog() {
                 >
                   {changeLog.log}
                 </Markdown>
-              </TextContent>
+              </Content>
             </CardBody>
           </Card>
         ) : (

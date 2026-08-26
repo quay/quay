@@ -122,6 +122,9 @@ class PreOCIModel(RepositoryDataInterface):
             # there is a next page.
             start_id = model.modelutil.pagination_start(page_token)
             # Global readonly superusers can always see all repos, regular superusers need FULL_ACCESS
+            _is_superuser = allow_if_global_readonly_superuser() or (
+                features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            )
             repo_query = model.repository.get_visible_repositories(
                 username=username,
                 include_public=public,
@@ -129,10 +132,8 @@ class PreOCIModel(RepositoryDataInterface):
                 limit=REPOS_PER_PAGE + 1,
                 kind_filter=repo_kind,
                 namespace=namespace,
-                is_superuser=(
-                    allow_if_global_readonly_superuser()
-                    or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
-                ),
+                is_superuser=_is_superuser,
+                return_all=_is_superuser and not namespace,
             )
 
             repos, next_page_token = model.modelutil.paginate_query(

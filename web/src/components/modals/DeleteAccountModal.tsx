@@ -1,13 +1,16 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
-  Text,
+  Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 
 interface DeleteAccountModalProps {
@@ -45,11 +48,44 @@ export default function DeleteAccountModal({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={`Delete ${namespaceTitle}`}
       isOpen={isOpen}
       onClose={handleClose}
       data-testid="delete-account-modal"
-      actions={[
+    >
+      <ModalHeader title={`Delete ${namespaceTitle}`} />
+      <ModalBody>
+        <Alert
+          variant="danger"
+          isInline
+          title="Warning"
+          className="pf-v6-u-mb-md"
+        >
+          <p>
+            Deleting an {namespaceTitle} is <strong>non-reversible</strong> and
+            will delete <strong>all of the {namespaceTitle}&apos;s data</strong>{' '}
+            including repositories, created build triggers, and notifications.
+          </p>
+        </Alert>
+
+        <Form>
+          <Content component="p" className="pf-v6-u-mb-md">
+            You must type <strong>{namespaceName}</strong> below to confirm
+            deletion is requested:
+          </Content>
+
+          <FormGroup fieldId="verification">
+            <TextInput
+              id="delete-confirmation-input"
+              type="text"
+              value={verification}
+              onChange={(_event, value) => setVerification(value)}
+              placeholder="Enter namespace here"
+              isRequired
+            />
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="delete"
           variant="danger"
@@ -59,42 +95,11 @@ export default function DeleteAccountModal({
           data-testid="delete-account-confirm"
         >
           Delete {namespaceTitle}
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Alert
-        variant="danger"
-        isInline
-        title="Warning"
-        className="pf-v5-u-mb-md"
-      >
-        <p>
-          Deleting an {namespaceTitle} is <strong>non-reversible</strong> and
-          will delete <strong>all of the {namespaceTitle}&apos;s data</strong>{' '}
-          including repositories, created build triggers, and notifications.
-        </p>
-      </Alert>
-
-      <Form>
-        <Text className="pf-v5-u-mb-md">
-          You must type <strong>{namespaceName}</strong> below to confirm
-          deletion is requested:
-        </Text>
-
-        <FormGroup fieldId="verification">
-          <TextInput
-            id="delete-confirmation-input"
-            type="text"
-            value={verification}
-            onChange={(_event, value) => setVerification(value)}
-            placeholder="Enter namespace here"
-            isRequired
-          />
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -1,5 +1,5 @@
 import json
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -11,7 +11,9 @@ from endpoints.api.robot import (
     OrgRobotFederation,
     OrgRobotList,
     UserRobot,
+    UserRobotFederation,
     UserRobotList,
+    _parse_federation_config,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -169,6 +171,86 @@ def test_duplicate_robot_creation(app):
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
 
 
+def test_globalreadonlysuperuser_org_robot_list_hides_token(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is None
+
+
+def test_globalreadonlysuperuser_org_robot_list_permissions(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl,
+            OrgRobotList,
+            "GET",
+            {"orgname": "buynlarge", "token": "true", "permissions": "true"},
+            None,
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is None
+            assert "teams" in robot
+            assert "repositories" in robot
+
+
+def test_globalreadonlysuperuser_org_robot_get_hides_token(app):
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        result = conduct_api_call(
+            cl,
+            OrgRobot,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        )
+        assert result.json["name"] == "buynlarge+coolrobot"
+        assert result.json.get("token") is None
+
+
+def test_org_admin_still_sees_robot_token(app):
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+        )
+        assert result.json["robots"]
+        for robot in result.json["robots"]:
+            assert robot.get("token") is not None
+
+        result = conduct_api_call(
+            cl,
+            OrgRobot,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        )
+        assert result.json["token"] is not None
+
+
+def test_full_access_superuser_sees_robot_token(app):
+    with patch(
+        "auth.permissions.usermanager.is_superuser", lambda username: username == "freshuser"
+    ):
+        with client_with_identity("freshuser", app) as cl:
+            result = conduct_api_call(
+                cl, OrgRobotList, "GET", {"orgname": "buynlarge", "token": "true"}, None
+            )
+            assert result.json["robots"]
+            for robot in result.json["robots"]:
+                assert robot.get("token") is not None
+
+            result = conduct_api_call(
+                cl,
+                OrgRobot,
+                "GET",
+                {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+                None,
+            )
+            assert result.json["token"] is not None
+
+
 def test_robot_federation_create(app):
     with client_with_identity("devtable", app) as cl:
         # Create the robot with the specified body.
@@ -225,6 +307,126 @@ def test_robot_federation_create(app):
         assert len(resp.json) == 0
 
 
+def test_user_robot_federation_create(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=200,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 1
+        assert resp.json[0].get("issuer") == "https://issuer1"
+        assert resp.json[0].get("subject") == "subject1"
+
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "DELETE",
+            {"robot_shortname": "dtrobot"},
+            expected_code=204,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 0
+
+
+def test_user_robot_federation_multiple_configs(app):
+    with client_with_identity("devtable", app) as cl:
+        fed_config = [
+            {"issuer": "https://issuer1", "subject": "subject1"},
+            {"issuer": "https://issuer2", "subject": "subject2"},
+        ]
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            fed_config,
+            expected_code=200,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 2
+
+
+def test_user_robot_federation_invalid_issuer(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"issuer": "not-a-url", "subject": "subject1"}],
+            expected_code=400,
+        )
+
+
+def test_user_robot_federation_empty_config(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{}],
+            expected_code=400,
+        )
+
+
+def test_org_robot_federation_unauthorized_reader(app):
+    with client_with_identity("reader", app) as cl:
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            expected_code=403,
+        )
+
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=403,
+        )
+
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "DELETE",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            expected_code=403,
+        )
+
+
 @pytest.mark.parametrize(
     "fed_config, raises_error, error_message",
     [
@@ -262,7 +464,7 @@ def test_parse_federation_config(app, fed_config, raises_error, error_message):
     with app.app_context():
         if raises_error:
             with pytest.raises(Exception) as ex:
-                parsed = OrgRobotFederation()._parse_federation_config(request)
+                parsed = _parse_federation_config(request)
             assert error_message in str(ex.value)
         else:
-            parsed = OrgRobotFederation()._parse_federation_config(request)
+            parsed = _parse_federation_config(request)

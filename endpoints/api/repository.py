@@ -12,6 +12,7 @@ import features
 from app import (
     app,
     dockerfile_build_queue,
+    model_cache,
     repository_gc_queue,
     tuf_metadata_api,
     usermanager,
@@ -24,10 +25,17 @@ from auth.permissions import (
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
 )
+from data.cache import cache_key
 from data.database import RepositoryState
+from data.model import DataModelException
+from data.model import repository as repository_model
+from data.model import spam_ingress
+from data.model.org_mirror import is_namespace_org_mirrored
+from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     format_date,
@@ -56,12 +64,104 @@ from endpoints.exception import (
     NotFound,
     Unauthorized,
 )
+from util.metrics.prometheus import spam_ingress_decisions
 from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
 
 MAX_DAYS_IN_3_MONTHS = 92
+
+
+def _check_spam_ingress(namespace, repository, description, visibility, action):
+    if not features.SPAM_DETECTION:
+        return
+
+    if action == "update":
+        repository_ref = registry_model.lookup_repository(namespace, repository)
+        if repository_ref is not None:
+            active_tags, _ = registry_model.lookup_active_repository_tags(repository_ref, None, 1)
+            if active_tags:
+                logger.info(
+                    "Spam detection ingress skipped for tagged repository %s/%s",
+                    namespace,
+                    repository,
+                )
+                spam_ingress_decisions.labels(action=action, outcome="allowed").inc()
+                return
+
+    context = spam_ingress.SpamIngressContext(
+        namespace=namespace,
+        repository=repository,
+        description=description,
+        visibility=visibility,
+        action=action,
+    )
+
+    try:
+        decision = spam_ingress.evaluate_description(context, app.config)
+    except spam_ingress.SpamIngressUnavailable:
+        if app.config.get("SPAM_DETECTION_FAIL_OPEN", True):
+            logger.exception(
+                "Spam detection ingress classifier unavailable; allowing %s for %s/%s",
+                action,
+                namespace,
+                repository,
+            )
+            spam_ingress_decisions.labels(action=action, outcome="fail_open").inc()
+            return
+
+        logger.exception(
+            "Spam detection ingress classifier unavailable; rejecting %s for %s/%s",
+            action,
+            namespace,
+            repository,
+        )
+        spam_ingress_decisions.labels(action=action, outcome="fail_closed").inc()
+        raise InvalidRequest("Repository description could not be evaluated")
+    except Exception:
+        if app.config.get("SPAM_DETECTION_FAIL_OPEN", True):
+            logger.exception(
+                "Unexpected spam detection ingress error; allowing %s for %s/%s",
+                action,
+                namespace,
+                repository,
+            )
+            spam_ingress_decisions.labels(action=action, outcome="fail_open").inc()
+            return
+
+        logger.exception(
+            "Unexpected spam detection ingress error; rejecting %s for %s/%s",
+            action,
+            namespace,
+            repository,
+        )
+        spam_ingress_decisions.labels(action=action, outcome="fail_closed").inc()
+        raise InvalidRequest("Repository description could not be evaluated")
+
+    logger.info(
+        "Spam detection ingress decision for %s/%s action=%s allowed=%s "
+        "dry_run=%s score=%s version=%s reason=%s",
+        namespace,
+        repository,
+        action,
+        decision.allowed,
+        app.config.get("SPAM_DETECTION_DRY_RUN", True),
+        decision.score,
+        decision.classifier_version,
+        decision.reason,
+    )
+
+    if decision.allowed:
+        spam_ingress_decisions.labels(action=action, outcome="allowed").inc()
+        return
+
+    if app.config.get("SPAM_DETECTION_DRY_RUN", True):
+        spam_ingress_decisions.labels(action=action, outcome="dry_run").inc()
+        return
+
+    spam_ingress_decisions.labels(action=action, outcome="blocked").inc()
+    raise InvalidRequest("Repository description was rejected by spam detection")
 
 
 def check_allowed_private_repos(namespace):
@@ -173,15 +273,32 @@ class RepositoryList(ApiResource):
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
+            if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+                raise InvalidRequest(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             kind = req.get("repo_kind", "image") or "image"
-            created = model.create_repo(
+            _check_spam_ingress(
                 namespace_name,
                 repository_name,
-                owner,
                 req["description"],
-                visibility=visibility,
-                repo_kind=kind,
+                visibility,
+                "create",
             )
+            try:
+                created = model.create_repo(
+                    namespace_name,
+                    repository_name,
+                    owner,
+                    req["description"],
+                    visibility=visibility,
+                    repo_kind=kind,
+                )
+            except DataModelException as e:
+                raise InvalidRequest(str(e)) from e
+
             if created is None:
                 raise InvalidRequest("Could not create repository")
 
@@ -324,6 +441,14 @@ class Repository(RepositoryParamResource):
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
 
+        # Grant superusers effective permissions for UI visibility
+        if allow_if_global_readonly_superuser():
+            repo_data["can_admin"] = True
+        elif features.SUPERUSERS_FULL_ACCESS and allow_if_superuser():
+            repo_data["can_admin"] = True
+            if repo.state == RepositoryState.NORMAL:
+                repo_data["can_write"] = True
+
         if parsed_args["includeStats"]:
             stats = []
             found_dates = {}
@@ -358,6 +483,18 @@ class Repository(RepositoryParamResource):
             raise NotFound()
 
         values = request.get_json()
+        repo = repository_model.get_repository(namespace, repository)
+        visibility = None
+        if repo is not None:
+            visibility = "public" if repository_model.is_repository_public(repo) else "private"
+
+        _check_spam_ingress(
+            namespace,
+            repository,
+            values["description"],
+            visibility,
+            "update",
+        )
         model.set_description(namespace, repository, values["description"])
 
         log_action(
@@ -375,6 +512,14 @@ class Repository(RepositoryParamResource):
         Delete a repository.
         """
         username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
+
+        # Invalidate the repository lookup cache to prevent stale repository ID being returned on immediate new push
+        # to the repo of the same name.
+        for kind_filter in (None, "image"):
+            repository_lookup_key = cache_key.for_repository_lookup(
+                namespace, repository, None, kind_filter, model_cache.cache_config
+            )
+            model_cache.invalidate(repository_lookup_key)
 
         if features.BILLING:
             plan = get_namespace_plan(namespace)
@@ -534,6 +679,12 @@ class RepositoryStateResource(RepositoryParamResource):
 
         if state == RepositoryState.ORG_MIRROR:
             return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+            return {
+                "detail": "Repository state changes are not allowed in an "
+                "organization managed by organization-level mirroring"
+            }, 400
 
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400

@@ -3,6 +3,7 @@ from playhouse.test_utils import assert_query_count
 
 from data.model.organization import (
     create_organization,
+    find_organizations_by_email,
     get_organization,
     get_organization_member_set,
     get_organizations,
@@ -12,11 +13,13 @@ from data.model.team import add_user_to_team, get_organization_team
 from data.model.user import (
     create_robot,
     create_user,
+    find_user_by_email,
     get_user,
     mark_namespace_for_deletion,
 )
 from data.queue import WorkQueue
 from test.fixtures import *
+from util.validation import validate_email
 
 
 @pytest.mark.parametrize(
@@ -175,3 +178,136 @@ class TestGetOrganizationMemberSet:
             members = get_organization_member_set(org)
 
         assert len(members) > 0
+
+
+class TestCreateOrganizationEmail:
+    """Tests for create_organization with email stored directly in User.email."""
+
+    def test_create_org_with_email_stores_in_user_email(self, initialized_db):
+        """Test that create_organization with email stores it in User.email."""
+        admin = get_user("devtable")
+        org = create_organization("emailorg1", "real@example.com", admin)
+        assert org.email == "real@example.com"
+
+    def test_create_org_without_email_generates_uuid(self, initialized_db):
+        """Test that create_organization without email generates a non-email UUID in User.email."""
+        admin = get_user("devtable")
+        org = create_organization("uuidorg1", None, admin)
+        assert not validate_email(org.email), f"Expected non-email UUID, got: {org.email}"
+
+    def test_create_org_contact_email_takes_priority(self, initialized_db):
+        """Test that contact_email parameter takes priority over email parameter."""
+        admin = get_user("devtable")
+        org = create_organization(
+            "contactorg1", "fallback@example.com", admin, contact_email="contact@example.com"
+        )
+        assert org.email == "contact@example.com"
+
+    def test_create_org_email_fallback(self, initialized_db):
+        """Test that email parameter is used when contact_email is not provided."""
+        admin = get_user("devtable")
+        org = create_organization("emailfallbackorg", "fallback@example.com", admin)
+        assert org.email == "fallback@example.com"
+
+    def test_two_orgs_can_share_same_email(self, initialized_db):
+        """Test that two organizations can have the same email address."""
+        admin = get_user("devtable")
+        shared = "shared@example.com"
+        org1 = create_organization("sharedorg1", shared, admin)
+        org2 = create_organization("sharedorg2", shared, admin)
+        assert org1.email == shared
+        assert org2.email == shared
+        assert org1.id != org2.id
+
+    def test_org_can_share_email_with_user(self, initialized_db):
+        """Test that an org can be created with the same email as an existing user
+        when FEATURE_ORG_SHARED_EMAIL is enabled.
+
+        Regression test: create_user_noverify INSERTs with organization=false,
+        so the partial unique index fires during INSERT. The fix is to insert
+        with a placeholder email, set organization=true, then apply the real email.
+        """
+        from unittest.mock import patch
+
+        from features import FeatureNameValue
+
+        admin = get_user("devtable")
+        user_email = admin.email  # devtable's email
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org = create_organization("overlaporg", user_email, admin)
+        assert org.email == user_email
+        assert org.organization is True
+        # The original user still has their email
+        admin_refreshed = get_user("devtable")
+        assert admin_refreshed.email == user_email
+
+    def test_org_shared_email_blocked_when_flag_off(self, initialized_db):
+        """Test that creating an org with a user's email is blocked when
+        FEATURE_ORG_SHARED_EMAIL is disabled (the default)."""
+        from data.model import InvalidEmailAddressException
+
+        admin = get_user("devtable")
+        with pytest.raises(InvalidEmailAddressException):
+            create_organization("blockedorg", admin.email, admin)
+
+    def test_find_organizations_by_email_single_match(self, initialized_db):
+        """Test find_organizations_by_email returns a single matching org."""
+        admin = get_user("devtable")
+        org = create_organization("findorg1", "find@example.com", admin)
+        results = list(find_organizations_by_email("find@example.com"))
+        assert len(results) == 1
+        assert results[0].id == org.id
+
+    def test_find_organizations_by_email_multiple_matches(self, initialized_db):
+        """Test find_organizations_by_email returns multiple matching orgs."""
+        admin = get_user("devtable")
+        shared = "shared-find@example.com"
+        org1 = create_organization("findorg2a", shared, admin)
+        org2 = create_organization("findorg2b", shared, admin)
+        results = list(find_organizations_by_email(shared))
+        assert len(results) == 2
+        result_ids = {r.id for r in results}
+        assert org1.id in result_ids
+        assert org2.id in result_ids
+
+    def test_find_organizations_by_email_no_match(self, initialized_db):
+        """Test find_organizations_by_email returns empty when no match."""
+        results = list(find_organizations_by_email("nonexistent@example.com"))
+        assert len(results) == 0
+
+    def test_recovery_lookup_shared_email_finds_user_and_orgs(self, initialized_db):
+        """Integration test: when a user and orgs share an email, the recovery
+        query functions return both independently — find_user_by_email returns
+        only the user, find_organizations_by_email returns only the orgs.
+
+        Regression test for the combined recovery email flow where a single
+        email may now match a personal user AND multiple organizations.
+        """
+        from unittest.mock import patch
+
+        from features import FeatureNameValue
+
+        admin = get_user("devtable")
+        shared = admin.email  # e.g. devtable@devtable.com
+
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org1 = create_organization("recoveryorg1", shared, admin)
+            org2 = create_organization("recoveryorg2", shared, admin)
+
+        # find_user_by_email should return ONLY the non-org user
+        found_user = find_user_by_email(shared)
+        assert found_user is not None
+        assert found_user.organization is False
+        assert found_user.username == "devtable"
+
+        # find_organizations_by_email should return ONLY the orgs
+        found_orgs = list(find_organizations_by_email(shared))
+        assert len(found_orgs) == 2
+        org_names = {o.username for o in found_orgs}
+        assert "recoveryorg1" in org_names
+        assert "recoveryorg2" in org_names
+
+        # Neither function returns the wrong type
+        for org in found_orgs:
+            assert org.organization is True
+        assert found_user.id not in {o.id for o in found_orgs}

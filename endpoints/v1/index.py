@@ -5,6 +5,7 @@ from functools import wraps
 
 from flask import jsonify, make_response, request, session
 
+import features
 from app import app, docker_v2_signing_key, storage, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import CredentialKind, validate_credentials
@@ -19,6 +20,7 @@ from auth.permissions import (
 )
 from auth.signedgrant import generate_signed_token
 from data import model
+from data.model.org_mirror import is_namespace_org_mirrored
 from data.registry_model import registry_model
 from data.registry_model.manifestbuilder import (
     create_manifest_builder,
@@ -244,6 +246,13 @@ def create_repository(namespace_name, repo_name):
             )
             msg = 'You do not have permission to create repositories in namespace "%(namespace)s"'
             abort(403, message=msg, issue="no-create-permission", namespace=namespace_name)
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+            abort(
+                403,
+                message="Cannot create repository: organization is managed by "
+                "organization-level mirroring",
+            )
 
         # Attempt to create the new repository.
         logger.debug(

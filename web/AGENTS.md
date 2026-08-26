@@ -45,9 +45,6 @@ web/
 │   │   ├── axios.ts         # Configured Axios instance (CSRF tokens)
 │   │   └── utils.ts         # Common utilities
 │   └── assets/              # Static assets
-├── cypress/
-│   ├── e2e/                 # Integration tests
-│   └── fixtures/            # Test data
 ├── webpack.dev.js           # Dev server + proxy config
 ├── webpack.prod.js          # Production build
 └── webpack.plugin.js        # OpenShift Console plugin build
@@ -57,28 +54,26 @@ web/
 
 ```bash
 # Local Development
-npm install              # Install dependencies
-npm start                # Dev server on http://localhost:9000 (hot-reload)
-MOCK_API=true npm start  # Mock API (no backend required)
-npm run format           # Prettier formatting
+pnpm install             # Install dependencies
+pnpm start               # Dev server on http://localhost:9000 (hot-reload)
+MOCK_API=true pnpm start # Mock API (no backend required)
+pnpm run format          # Prettier formatting
 
-# Testing
-npm test                 # Unit tests (watch mode)
-npm run test:integration # Cypress e2e tests (requires app on :9000)
-npm run start:integration # Serve production build for testing
+# Unit Testing (Vitest + React Testing Library)
+pnpm test                # Run all unit tests
+pnpm run test:watch      # Watch mode for development
+pnpm run test:coverage   # Run with coverage report
+pnpm vitest run src/libs/utils.test.ts  # Single test file
+
+# E2E Testing (Playwright)
+pnpm run test:e2e        # Run all Playwright e2e tests
+pnpm run test:e2e:ui     # Playwright UI mode
+pnpm run test:api        # API-only tests
 
 # Building
-npm run build            # Production build → dist/
-npm run build-plugin     # OpenShift Console plugin build
-npm run start-plugin     # Plugin dev server
-
-# Database Seeding (for integration tests)
-npm run quay:dump        # Dump current DB state
-npm run quay:seed        # Seed test DB + storage
-
-# Single Test
-npx cypress run --spec "cypress/e2e/test-name.cy.ts"
-npm test -- --testPathPattern=ComponentName
+pnpm run build           # Production build → dist/
+pnpm run build-plugin    # OpenShift Console plugin build
+pnpm run start-plugin    # Plugin dev server
 ```
 
 ## Quay-Specific Patterns
@@ -151,6 +146,20 @@ const RepositoriesList = lazy(() => import('./RepositoriesList'));
 
 **Legacy:** Recoil atoms in `src/atoms/` (avoid for new code)
 
+### Anonymous Access
+
+When `FEATURE_ANONYMOUS_ACCESS` is enabled, unauthenticated users can browse public repositories without signing in. This cross-cutting pattern touches auth, routing, data fetching, and the UI shell.
+
+**Anonymous user sentinel:** `fetchUser()` in `UserResource.ts` catches 401 from `/api/v1/user/` and returns an `ANONYMOUS_USER` object (`anonymous: true`) instead of throwing. After user loading completes, check `user?.anonymous` to detect the anonymous state. During loading, `user` may be null; do not treat a missing user as anonymous.
+
+**Route protection:** Use `ProtectedRepositoryRoute` (`src/routes/ProtectedRepositoryRoute.tsx`) to guard repository routes. It pre-checks repo accessibility for anonymous users: redirects 401/403 to `/signin` and renders `<RequestError>` for other errors (never returns `null` for terminal errors). All routes — including anonymous ones — must render inside the shared `<Page>` shell (`StandaloneMain.tsx`) so `SystemStatusBanner`, `GlobalMessages`, `Alerts`, and `QuayFooter` remain visible.
+
+**Hook gating:** Data-fetching hooks that require authentication (notifications, teams, user-specific data) must use the `enabled` parameter to skip queries for anonymous users. Gate on the user being non-null and not anonymous: `useQuery([...], fn, { enabled: user != null && !user.anonymous })`. Using `!!user` alone is insufficient because the `ANONYMOUS_USER` sentinel is truthy. New hooks fetching user-specific data should follow this pattern.
+
+**Axios interceptor ordering:** The 401 interceptor in `src/libs/axios.ts` refreshes OpenShift plugin tokens (`window.insights.chrome.auth`) *before* checking `shouldSkipRedirect`. The anonymous-mode skip logic (`_anonymousMode`) lives in the standalone-only `else` branch. Never move anonymous skip logic before the plugin token refresh — doing so wedges OpenShift Console sessions.
+
+**Pagination:** `fetchRepositories()` and `fetchRepositoriesForNamespace()` in `RepositoryResource.ts` recursively follow `next_page` cursors. Any new public-data fetch that returns paginated results must do the same — dropping cursors truncates results for anonymous users browsing large public namespaces.
+
 ## Critical Rules
 
 1. **No Early Returns with Loading Spinners**
@@ -209,15 +218,28 @@ import type { Repository } from 'src/types/Repository';
 
 ### Testing
 
-**Unit Tests:** Jest + React Testing Library
-- Co-located with source files
-- Mock API calls with `axios-mock-adapter`
+**Unit Tests:** Vitest + React Testing Library + happy-dom
+- Co-located with source files: `Component.test.tsx` next to `Component.tsx`
+- Config: `vitest.config.ts`, setup: `vitest.setup.ts`
+- Custom render wrapper: `src/test-utils.tsx` (provides QueryClient, RecoilRoot, UIProvider)
+- Mock API calls with `axios-mock-adapter` (already in devDependencies)
+- Use `getByRole` queries for accessibility-focused testing
+- See `agent_docs/web-unit-test-roadmap.md` for coverage roadmap
 
-**Integration Tests:** Cypress e2e
-- Located in `cypress/e2e/`
-- Requires running app on `:9000`
-- Backend at `:8080` with seeded test data
-- Base URL configurable in `cypress.config.ts`
+**What to unit test (priority order):**
+1. Pure utility functions (`src/libs/`)
+2. Data transformation logic (`src/resources/` helpers)
+3. Custom hooks (`src/hooks/`) with `renderHook`
+4. Components with branching/validation logic
+
+**What NOT to unit test (use Playwright E2E instead):**
+- Routing, page layouts, auth flows, CSS
+
+**E2E Tests:** Playwright
+- Located in `playwright/e2e/`
+- Config: `playwright.config.ts`
+- Fixtures: `playwright/fixtures.ts`
+- Requires running Quay stack (see CI workflow)
 
 ### Environment Variables
 

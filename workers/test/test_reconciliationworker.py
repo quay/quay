@@ -7,7 +7,9 @@ from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
 from data import model
 from test.fixtures import *
+from util.locking import LockNotAcquiredException
 from workers.reconciliationworker import (
+    RECONCILIATION_TIMEOUT,
     ReconciliationWorker,
     reconciliation_api_call_duration,
     reconciliation_api_call_errors,
@@ -42,8 +44,11 @@ def test_reconcile_org_user(initialized_db):
     org_user = model.organization.create_organization("org_user", "org_user@test.com", user)
     org_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
     org_user.save()
-    with patch.object(marketplace_users, "lookup_customer_id") as mock:
-        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    # Mock get_active_users to only return our test organization
+    with patch.object(model.user, "get_active_users", return_value=[org_user]):
+        with patch.object(marketplace_users, "lookup_customer_id") as mock:
+            worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
     mock.assert_called_with(org_user.email, raise_exception=True)
 
@@ -439,3 +444,45 @@ def test_reconciliation_duration_recorded():
     # Check that duration was recorded (gauge will have a value greater than 0)
     final_duration = reconciliation_duration_seconds._value.get()
     assert final_duration > 0
+
+
+def test_reconcile_acquires_lock_with_auto_renewal():
+    with (
+        patch("workers.reconciliationworker.GlobalLock") as mock_lock_cls,
+        patch.object(worker, "_perform_reconciliation") as mock_perform,
+    ):
+        mock_lock_cls.return_value.__enter__ = MagicMock(return_value=None)
+        mock_lock_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        worker._reconcile_entitlements()
+
+        mock_lock_cls.assert_called_once_with(
+            "RECONCILIATION_WORKER",
+            lock_ttl=RECONCILIATION_TIMEOUT,
+            auto_renewal=True,
+        )
+        mock_perform.assert_called_once()
+
+
+def test_reconcile_skips_on_lock_not_acquired():
+    with (
+        patch("workers.reconciliationworker.GlobalLock") as mock_lock_cls,
+        patch.object(worker, "_perform_reconciliation") as mock_perform,
+    ):
+        mock_lock_cls.return_value.__enter__ = MagicMock(side_effect=LockNotAcquiredException)
+        mock_lock_cls.return_value.__exit__ = MagicMock(return_value=True)
+
+        worker._reconcile_entitlements()
+
+        mock_perform.assert_not_called()
+
+
+def test_reconcile_skip_lock_for_testing():
+    with (
+        patch("workers.reconciliationworker.GlobalLock") as mock_lock_cls,
+        patch.object(worker, "_perform_reconciliation") as mock_perform,
+    ):
+        worker._reconcile_entitlements(skip_lock_for_testing=True)
+
+        mock_lock_cls.assert_not_called()
+        mock_perform.assert_called_once()

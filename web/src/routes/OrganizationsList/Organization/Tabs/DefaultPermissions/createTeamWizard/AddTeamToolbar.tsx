@@ -58,7 +58,7 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
     <>
       <Toolbar>
         <ToolbarContent>
-          <ToolbarItem variant="search-filter">
+          <ToolbarItem>
             <EntitySearch
               id={'search-member-dropdown'}
               org={props.orgName}

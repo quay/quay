@@ -1,4 +1,11 @@
-import {Modal, ModalVariant, Button} from '@patternfly/react-core';
+import {
+  Button,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 
 export default function DisplayModal(props: DisplayModalProps) {
   const handleModalToggle = () => {
@@ -34,18 +41,16 @@ export default function DisplayModal(props: DisplayModalProps) {
   return (
     <Modal
       variant={ModalVariant.large}
-      title={props.title}
       isOpen={props.isModalOpen}
       onClose={handleModalToggle}
-      footer={
-        props.showFooter
-          ? props.showSave
-            ? footerWithSave
-            : footerWithoutSave
-          : null
-      }
     >
-      {props.Component}
+      <ModalHeader title={props.title} />
+      <ModalBody>{props.Component}</ModalBody>
+      {props.showFooter && (
+        <ModalFooter>
+          {props.showSave ? footerWithSave : footerWithoutSave}
+        </ModalFooter>
+      )}
     </Modal>
   );
 }

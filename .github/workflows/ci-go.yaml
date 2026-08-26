@@ -1,0 +1,1693 @@
+name: Go
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: make go-build
+
+      - name: Upload binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quay-binary
+          path: bin/quay
+          retention-days: 1
+
+  lint:
+    name: Lint
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: latest
+          args: --timeout=5m
+
+  test:
+    name: Test
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: make go-test
+
+  schema-sync:
+    name: Schema Drift Check
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgpgme-dev libldap2-dev libsasl2-dev swig
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+
+      - name: Check schema drift
+        run: make go-schema-check
+
+  oci-conformance:
+    name: OCI Conformance
+    runs-on: ubuntu-latest
+    needs: [test]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Checkout distribution-spec
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          repository: opencontainers/distribution-spec
+          ref: v1.1.1
+          path: dist-spec
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: dist-spec/conformance/go.mod
+          cache: false
+
+      - name: Build conformance test binary
+        run: |
+          cd dist-spec/conformance
+          CGO_ENABLED=0 go test -c -o conformance.test
+
+      - name: Build registry image
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test . \
+            2>&1 | tee /tmp/oci-conformance-logs/image-build.log
+          podman save quay-mirror:test -o /tmp/quay-mirror.tar \
+            2>&1 | tee /tmp/oci-conformance-logs/image-save.log
+
+      - name: Install registry
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          sudo bin/quay install \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -image-archive=/tmp/quay-mirror.tar \
+            2>&1 | tee /tmp/oci-conformance-logs/install.log
+
+      - name: Run conformance tests
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+
+          export OCI_ROOT_URL="https://localhost:8443"
+          export OCI_NAMESPACE="admin/conformance"
+          export OCI_CROSSMOUNT_NAMESPACE="admin/crossmount"
+          export OCI_USERNAME="admin"
+          export OCI_PASSWORD="$PASSWORD"
+
+          export OCI_TEST_PULL=1
+          export OCI_TEST_PUSH=1
+          export OCI_TEST_CONTENT_DISCOVERY=1
+          export OCI_TEST_CONTENT_MANAGEMENT=1
+
+          export OCI_HIDE_SKIPPED_WORKFLOWS=0
+          export OCI_DEBUG=0
+          export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
+
+          ./dist-spec/conformance/conformance.test \
+            2>&1 | tee /tmp/oci-conformance-logs/conformance-output.log
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/oci-conformance-results /tmp/oci-conformance-logs
+          mv report.html junit.xml /tmp/oci-conformance-results/ 2>/dev/null || true
+          sudo podman ps -a > /tmp/oci-conformance-logs/podman-ps.txt 2>&1 || true
+          sudo podman images > /tmp/oci-conformance-logs/podman-images.txt 2>&1 || true
+          sudo podman system info > /tmp/oci-conformance-logs/podman-system-info.txt 2>&1 || true
+          sudo podman inspect systemd-quay > /tmp/oci-conformance-logs/container-inspect.json 2>&1 || true
+          sudo podman logs systemd-quay > /tmp/oci-conformance-logs/container.log 2>&1 || true
+          sudo journalctl -u quay.service --no-pager > /tmp/oci-conformance-logs/systemd.log 2>&1 || true
+          sudo systemctl status quay.service --no-pager > /tmp/oci-conformance-logs/service-status.txt 2>&1 || true
+          sudo systemctl cat quay.service > /tmp/oci-conformance-logs/service-unit.txt 2>&1 || true
+          sudo ls -laR /var/lib/quay/ > /tmp/oci-conformance-logs/data-dir.txt 2>&1 || true
+          sudo find /var/lib/quay -maxdepth 5 -type f -printf '%p %s bytes\n' > /tmp/oci-conformance-logs/data-files.txt 2>&1 || true
+          sudo cat /etc/containers/systemd/quay.container > /tmp/oci-conformance-logs/quadlet.txt 2>&1 || true
+          curl -kfsS https://localhost:8443/healthz > /tmp/oci-conformance-logs/healthz.json 2>&1 || true
+          if sudo test -f /var/lib/quay/auth/admin-password; then
+            PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+            curl -kfsS -u "admin:${PASSWORD}" \
+              https://localhost:8443/v2/_catalog > /tmp/oci-conformance-logs/catalog.json 2>&1 || true
+          fi
+          ss -tlnp > /tmp/oci-conformance-logs/ports.txt 2>&1 || true
+
+      - name: Summarize conformance results
+        if: always()
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import os
+          import textwrap
+          import xml.etree.ElementTree as ET
+
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          results_dir = Path("/tmp/oci-conformance-results")
+          logs_dir = Path("/tmp/oci-conformance-logs")
+          junit_path = results_dir / "junit.xml"
+          report_path = results_dir / "report.html"
+
+          lines = ["## OCI Distribution Spec Conformance", ""]
+
+          if not junit_path.exists():
+              lines.extend([
+                  "No `junit.xml` was produced. Check the uploaded `oci-conformance-logs` artifact for install, registry, and conformance output.",
+                  "",
+              ])
+          else:
+              tree = ET.parse(junit_path)
+              root = tree.getroot()
+              suites = root.findall("testsuite") if root.tag == "testsuites" else [root]
+              tests = sum(int(s.get("tests", 0)) for s in suites)
+              failures = sum(int(s.get("failures", 0)) for s in suites)
+              errors = sum(int(s.get("errors", 0)) for s in suites)
+              skipped = sum(int(s.get("skipped", 0)) for s in suites)
+              passed = tests - failures - errors - skipped
+              lines.extend([
+                  "| Total | Passed | Failed | Errors | Skipped |",
+                  "| ---: | ---: | ---: | ---: | ---: |",
+                  f"| {tests} | {passed} | {failures} | {errors} | {skipped} |",
+                  "",
+              ])
+
+              failed_cases = []
+              for case in root.iter("testcase"):
+                  problems = list(case.findall("failure")) + list(case.findall("error"))
+                  if problems:
+                      failed_cases.append((case, problems[0]))
+
+              if failed_cases:
+                  print(f"::error title=OCI conformance failures::{failures} failures, {errors} errors")
+                  lines.append("### Failed Tests")
+                  for case, problem in failed_cases[:20]:
+                      name = case.get("name", "unknown")
+                      classname = case.get("classname", "")
+                      message = problem.get("message") or (problem.text or "")
+                      message = " ".join(message.split())
+                      message = textwrap.shorten(message, width=240, placeholder="...")
+                      label = f"{classname} - {name}" if classname else name
+                      lines.append(f"- `{label}`")
+                      if message:
+                          lines.append(f"  {message}")
+                  if len(failed_cases) > 20:
+                      lines.append(f"- ...and {len(failed_cases) - 20} more failures. See `junit.xml` in the uploaded results artifact.")
+                  lines.append("")
+              else:
+                  lines.append("All reported conformance tests passed.")
+                  lines.append("")
+
+          lines.extend([
+              "### Artifacts",
+              "- `oci-conformance-results`: `junit.xml` and `report.html` when produced.",
+              "- `oci-conformance-logs`: conformance stdout, install logs, registry logs, systemd status, Podman state, health check, catalog, and data directory listings.",
+              "",
+          ])
+
+          for log_name in ("conformance-output.log", "install.log", "container.log"):
+              log_path = logs_dir / log_name
+              if not log_path.exists():
+                  continue
+              content = log_path.read_text(errors="replace").splitlines()
+              tail = "\n".join(content[-80:])
+              if tail:
+                  lines.extend([
+                      f"<details><summary>Last lines from {log_name}</summary>",
+                      "",
+                      "```text",
+                      tail,
+                      "```",
+                      "</details>",
+                      "",
+                  ])
+
+          if report_path.exists():
+              lines.append("The HTML conformance report is available in the `oci-conformance-results` artifact.")
+              lines.append("")
+
+          summary_path.write_text("\n".join(lines))
+          PY
+
+      - name: Stop registry
+        if: always()
+        run: |
+          sudo systemctl stop quay.service || true
+          sudo podman rm --force systemd-quay quay || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-conformance-results
+          path: /tmp/oci-conformance-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload registry logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-conformance-logs
+          path: /tmp/oci-conformance-logs/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-mirror-rootful:
+    name: E2E Mirror Install (rootful)
+    runs-on: ubuntu-latest
+    needs: [test, schema-sync]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Build container image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+
+      - name: Save image archive
+        run: podman save quay-mirror:test -o /tmp/quay-mirror.tar
+
+      - name: Install registry
+        run: |
+          sudo bin/quay install \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -image-archive=/tmp/quay-mirror.tar
+
+      - name: Trust registry TLS certificate
+        run: |
+          sudo install -m 644 /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo update-ca-certificates
+
+          sudo mkdir -p /etc/containers/certs.d/localhost:8443
+          sudo install -m 644 /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+
+      - name: Set up auth
+        run: |
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+          mkdir -p ~/.docker
+          echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
+            > ~/.docker/config.json
+
+      - name: Install registry test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Install oc-mirror
+        run: |
+          curl -fsSL -o /tmp/oc-mirror.tar.gz \
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+          sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
+          sudo chmod 755 /usr/local/bin/oc-mirror
+          oc-mirror version
+
+      - name: Write ImageSetConfiguration
+        run: |
+          cat > /tmp/imageset.yaml <<'EOF'
+          apiVersion: mirror.openshift.io/v2alpha1
+          kind: ImageSetConfiguration
+          mirror:
+            additionalImages:
+            # Multi-arch OCI indexes — no format conversion in diskToMirror.
+            # Docker-format manifest lists are excluded because oc-mirror's
+            # PreserveDigests=true conflicts with OCI layout format conversion
+            # during diskToMirror (see https://github.com/containers/skopeo/issues/2778).
+            - name: quay.io/projectquay/quay:3.13.2
+            - name: quay.io/projectquay/quay-builder:3.13.0
+            - name: quay.io/projectquay/clair:4.7.4
+            - name: quay.io/fedora/fedora:41
+            - name: quay.io/fedora/fedora-minimal:41
+            - name: quay.io/centos/centos:stream9
+            - name: quay.io/keycloak/keycloak:26.0
+            # Single-arch image
+            - name: quay.io/quay/quay-operator:latest
+          EOF
+
+      - name: Mirror to disk
+        run: |
+          oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
+            -c /tmp/imageset.yaml \
+            file:///tmp/mirror-workspace
+
+      - name: Mirror to registry
+        run: |
+          oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
+            -c /tmp/imageset.yaml \
+            --from file:///tmp/mirror-workspace \
+            docker://localhost:8443
+
+      - name: Verify healthz
+        run: curl -fs https://localhost:8443/healthz
+
+      - name: Verify mirrored repositories
+        run: |
+          expected_repos=(
+            projectquay/quay
+            projectquay/quay-builder
+            projectquay/clair
+            fedora/fedora
+            fedora/fedora-minimal
+            centos/centos
+            keycloak/keycloak
+            quay/quay-operator
+          )
+
+          for repo in "${expected_repos[@]}"; do
+            safe_repo="${repo//\//-}"
+            skopeo list-tags --authfile "$HOME/.docker/config.json" \
+              "docker://localhost:8443/${repo}" \
+              | tee "/tmp/tags-${safe_repo}.json"
+            jq -e --arg repo "$repo" \
+              '.Repository == ("localhost:8443/" + $repo)
+                and (.Tags | type == "array") and (.Tags | length > 0)' \
+              "/tmp/tags-${safe_repo}.json"
+          done
+          echo "All repositories verified"
+
+      - name: Pull mirrored image
+        run: |
+          echo "Pulling localhost:8443/projectquay/quay:3.13.2"
+          podman pull "localhost:8443/projectquay/quay:3.13.2"
+          echo "Successfully pulled mirrored image"
+
+      - name: Uninstall registry
+        run: |
+          sudo bin/quay uninstall -auto-approve -data-dir=/var/lib/quay
+
+      - name: Verify uninstall cleanup
+        run: |
+          set -euo pipefail
+
+          if sudo test -e /etc/containers/systemd/quay.container; then
+            echo "FAIL: quadlet file still exists"
+            exit 1
+          fi
+          echo "Quadlet file removed"
+
+          if sudo systemctl is-active quay.service 2>/dev/null; then
+            echo "FAIL: quay.service is still active"
+            exit 1
+          fi
+          echo "Service is not active"
+
+          if sudo test -d /var/lib/quay; then
+            echo "FAIL: data directory still exists"
+            exit 1
+          fi
+          echo "Data directory removed"
+
+          if ss -tlnp | grep -q ':8443 '; then
+            echo "FAIL: port 8443 is still listening"
+            exit 1
+          fi
+          echo "Port 8443 is not listening"
+
+          if sudo podman ps --format '{{.Names}}' | grep -q quay; then
+            echo "FAIL: quay container is still running"
+            exit 1
+          fi
+          echo "No quay container running"
+
+          echo "All uninstall assertions passed"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-diagnostics
+          sudo podman logs systemd-quay > /tmp/e2e-diagnostics/container.log 2>&1 || true
+          sudo journalctl -u quay.service --no-pager > /tmp/e2e-diagnostics/systemd.log 2>&1 || true
+          sudo systemctl status quay.service > /tmp/e2e-diagnostics/service-status.txt 2>&1 || true
+          sudo ls -la /var/lib/quay/ > /tmp/e2e-diagnostics/data-dir.txt 2>&1 || true
+          sudo cat /etc/containers/systemd/quay.container > /tmp/e2e-diagnostics/quadlet.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-mirror-diagnostics
+          path: /tmp/e2e-diagnostics/
+          retention-days: 7
+
+  e2e-mirror-rootless:
+    name: E2E Mirror Install (rootless)
+    runs-on: ubuntu-latest
+    needs: [test, schema-sync]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Enable rootless podman prerequisites
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y uidmap slirp4netns skopeo
+
+          sudo loginctl enable-linger "$USER"
+
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+            sudo mkdir -p "$XDG_RUNTIME_DIR"
+            sudo chown "$(id -u):$(id -g)" "$XDG_RUNTIME_DIR"
+          fi
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
+
+          systemctl --user show-environment >/dev/null
+          test "$(podman info --format '{{.Host.CgroupsVersion}}')" = "v2"
+
+      - name: Build container image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+
+      - name: Save image archive
+        run: podman save quay-mirror:test -o /tmp/quay-mirror.tar
+
+      - name: Install registry (rootless)
+        run: |
+          bin/quay install \
+            -hostname=localhost \
+            -data-dir="$HOME/.local/share/quay" \
+            -image-archive=/tmp/quay-mirror.tar
+
+      - name: Verify rootless install
+        run: |
+          set -euo pipefail
+
+          QUADLET_DIR="$HOME/.config/containers/systemd"
+          test -f "$QUADLET_DIR/quay.container"
+          echo "Quadlet unit file exists"
+
+          grep -q ':/data:Z' "$QUADLET_DIR/quay.container"
+          echo "Volume mount uses :Z"
+
+          systemctl --user is-active quay.service
+          echo "quay.service is active"
+
+      - name: Trust registry TLS certificate
+        run: |
+          mkdir -p "$HOME/.config/containers/certs.d/localhost:8443"
+          cp "$HOME/.local/share/quay/ssl.cert" \
+            "$HOME/.config/containers/certs.d/localhost:8443/ca.crt"
+
+      - name: Set up auth
+        run: |
+          PASSWORD=$(cat "$HOME/.local/share/quay/auth/admin-password")
+          mkdir -p "$HOME/.docker"
+          echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
+            > "$HOME/.docker/config.json"
+
+      - name: Install oc-mirror
+        run: |
+          curl -fsSL -o /tmp/oc-mirror.tar.gz \
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+          sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
+          sudo chmod 755 /usr/local/bin/oc-mirror
+          oc-mirror version
+
+      - name: Write ImageSetConfiguration
+        run: |
+          cat > /tmp/imageset.yaml <<'EOF'
+          apiVersion: mirror.openshift.io/v2alpha1
+          kind: ImageSetConfiguration
+          mirror:
+            additionalImages:
+            - name: quay.io/projectquay/quay:3.13.2
+            - name: quay.io/fedora/fedora-minimal:41
+            - name: quay.io/quay/quay-operator:latest
+          EOF
+
+      - name: Mirror to disk
+        run: |
+          oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
+            -c /tmp/imageset.yaml \
+            file:///tmp/mirror-workspace
+
+      - name: Mirror to registry
+        run: |
+          oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
+            -c /tmp/imageset.yaml \
+            --from file:///tmp/mirror-workspace \
+            docker://localhost:8443
+
+      - name: Verify healthz
+        run: curl --cacert "$HOME/.local/share/quay/ssl.cert" -fs https://localhost:8443/healthz
+
+      - name: Verify mirrored repositories
+        run: |
+          expected_repos=(
+            projectquay/quay
+            fedora/fedora-minimal
+            quay/quay-operator
+          )
+
+          for repo in "${expected_repos[@]}"; do
+            safe_repo="${repo//\//-}"
+            skopeo list-tags --authfile "$HOME/.docker/config.json" \
+              "docker://localhost:8443/${repo}" \
+              | tee "/tmp/tags-${safe_repo}.json"
+            jq -e --arg repo "$repo" \
+              '.Repository == ("localhost:8443/" + $repo)
+                and (.Tags | type == "array") and (.Tags | length > 0)' \
+              "/tmp/tags-${safe_repo}.json"
+          done
+          echo "All repositories verified"
+
+      - name: Pull mirrored image
+        run: |
+          echo "Pulling localhost:8443/projectquay/quay:3.13.2"
+          podman pull "localhost:8443/projectquay/quay:3.13.2"
+          echo "Successfully pulled mirrored image"
+
+      - name: Uninstall registry (rootless)
+        run: |
+          bin/quay uninstall -auto-approve -data-dir="$HOME/.local/share/quay"
+
+      - name: Verify uninstall cleanup
+        run: |
+          set -euo pipefail
+
+          QUADLET_DIR="$HOME/.config/containers/systemd"
+          if test -e "$QUADLET_DIR/quay.container"; then
+            echo "FAIL: quadlet file still exists"
+            exit 1
+          fi
+          echo "Quadlet file removed"
+
+          if systemctl --user is-active quay.service 2>/dev/null; then
+            echo "FAIL: quay.service is still active"
+            exit 1
+          fi
+          echo "Service is not active"
+
+          if test -d "$HOME/.local/share/quay"; then
+            echo "FAIL: data directory still exists"
+            exit 1
+          fi
+          echo "Data directory removed"
+
+          if ss -tlnp | grep -q ':8443 '; then
+            echo "FAIL: port 8443 is still listening"
+            exit 1
+          fi
+          echo "Port 8443 is not listening"
+
+          if podman ps --format '{{.Names}}' | grep -q quay; then
+            echo "FAIL: quay container is still running"
+            exit 1
+          fi
+          echo "No quay container running"
+
+          echo "All rootless uninstall assertions passed"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-rootless-diagnostics
+          podman logs systemd-quay > /tmp/e2e-rootless-diagnostics/container.log 2>&1 || true
+          journalctl --user -u quay.service --no-pager > /tmp/e2e-rootless-diagnostics/systemd.log 2>&1 || true
+          systemctl --user status quay.service > /tmp/e2e-rootless-diagnostics/service-status.txt 2>&1 || true
+          ls -la "$HOME/.local/share/quay/" > /tmp/e2e-rootless-diagnostics/data-dir.txt 2>&1 || true
+          cat "$HOME/.config/containers/systemd/quay.container" > /tmp/e2e-rootless-diagnostics/quadlet.txt 2>&1 || true
+          podman info > /tmp/e2e-rootless-diagnostics/podman-info.txt 2>&1 || true
+          id > /tmp/e2e-rootless-diagnostics/uid-info.txt 2>&1 || true
+          cat /proc/self/uid_map > /tmp/e2e-rootless-diagnostics/uid-map.txt 2>&1 || true
+          podman unshare cat /proc/self/uid_map > /tmp/e2e-rootless-diagnostics/podman-uid-map.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-mirror-rootless-diagnostics
+          path: /tmp/e2e-rootless-diagnostics/
+          retention-days: 7
+
+  e2e-migrate-sqlite:
+    name: E2E Mirror Migrate (SQLite)
+    runs-on: ubuntu-26.04
+    needs: [test, schema-sync]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Build container image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+
+      - name: Save image archive next to binary
+        run: podman save quay-mirror:test -o bin/quay-mirror.tar
+
+      - name: Install migration test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo sqlite3
+
+      - name: Verify podman is available for OMR
+        run: |
+          set -euo pipefail
+          # OMR v2.0.x hard-codes /usr/bin/podman in its image-import
+          # commands, so fail clearly if the expected runner binary is absent.
+          test -x /usr/bin/podman
+          /usr/bin/podman --version
+
+      - name: Download and install old OMR
+        run: |
+          set -xo pipefail
+
+          curl -fsSL -o /tmp/mirror-registry.tar.gz \
+            https://github.com/quay/mirror-registry/releases/download/v2.0.11/mirror-registry-offline.tar.gz
+          mkdir -p /tmp/omr && tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
+          cd /tmp/omr
+          mkdir -p /tmp/e2e-migrate-diagnostics
+
+          sudo ./mirror-registry install \
+            --verbose \
+            --initPassword testpassword123 \
+            --quayHostname localhost 2>&1 | tee /tmp/e2e-migrate-diagnostics/omr-install.log
+
+      - name: Wait for old OMR
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for OMR health endpoint..."
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            https://localhost:8443/health/instance
+          echo "OMR is healthy"
+
+      - name: Push test content to old OMR
+        run: |
+          set -euo pipefail
+          sudo podman login localhost:8443 -u init -p testpassword123 --tls-verify=false
+          sudo podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/test-image:v1
+          sudo podman push localhost:8443/init/test-image:v1 --tls-verify=false
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/test-image-2:latest
+          sudo podman push localhost:8443/init/test-image-2:latest --tls-verify=false
+
+          # Same manifest under two tags.
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared:v1
+          sudo podman push localhost:8443/init/shared:v1 --tls-verify=false
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared:v2
+          sudo podman push localhost:8443/init/shared:v2 --tls-verify=false
+
+          # Same blob set across repositories.
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared-a:v1
+          sudo podman push localhost:8443/init/shared-a:v1 --tls-verify=false
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared-b:v1
+          sudo podman push localhost:8443/init/shared-b:v1 --tls-verify=false
+
+          # Manifest-list/index coverage. A single-platform list still drives
+          # distribution through the manifest-list code path.
+          sudo podman manifest create localhost:8443/init/test-index:latest
+          sudo podman manifest add localhost:8443/init/test-index:latest registry.access.redhat.com/ubi9/ubi-micro:latest
+          sudo podman manifest push --all --tls-verify=false \
+            localhost:8443/init/test-index:latest docker://localhost:8443/init/test-index:latest
+
+      - name: Create and verify old OMR robot token
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/e2e-migrate-state
+          secret_dir="/tmp/e2e-migrate-secrets"
+          mkdir -p "$secret_dir"
+          chmod 700 "$secret_dir"
+
+          cookie_jar="${secret_dir}/omr-api.cookies"
+          signin_json="${secret_dir}/omr-signin.json"
+          robot_json="${secret_dir}/omr-robot.json"
+          permission_json="/tmp/e2e-migrate-state/omr-robot-permission.json"
+          robot_env="${secret_dir}/robot.env"
+          robot_authfile="${secret_dir}/robot-source-auth.json"
+
+          get_csrf_token() {
+            curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+              https://localhost:8443/csrf_token \
+              | jq -r '.csrf_token // empty'
+          }
+
+          csrf_token=$(get_csrf_token)
+          if [ -z "$csrf_token" ]; then
+            echo "FAIL: old OMR did not return an initial CSRF token"
+            exit 1
+          fi
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"username":"init","password":"testpassword123"}' \
+            -o "$signin_json" \
+            https://localhost:8443/api/v1/signin
+
+          csrf_token=$(get_csrf_token)
+          if [ -z "$csrf_token" ]; then
+            echo "FAIL: old OMR did not return a post-login CSRF token"
+            exit 1
+          fi
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X PUT \
+            -d '{"description":"migration e2e robot token compatibility"}' \
+            -o "$robot_json" \
+            https://localhost:8443/api/v1/user/robots/migratebot
+
+          robot_username=$(jq -r '.name // empty' "$robot_json")
+          robot_token=$(jq -r '.token // empty' "$robot_json")
+          if [ "$robot_username" != "init+migratebot" ]; then
+            echo "FAIL: expected old OMR robot username init+migratebot, got ${robot_username}"
+            exit 1
+          fi
+          if [ -z "$robot_token" ]; then
+            echo "FAIL: old OMR robot create response did not include a token"
+            exit 1
+          fi
+          echo "::add-mask::${robot_token}"
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X PUT \
+            -d '{"role":"write"}' \
+            -o "$permission_json" \
+            https://localhost:8443/api/v1/repository/init/test-image/permissions/user/init%2Bmigratebot
+          jq -e '.role == "write"' "$permission_json"
+
+          {
+            printf 'ROBOT_USERNAME=%s\n' "$robot_username"
+            printf 'ROBOT_TOKEN=%s\n' "$robot_token"
+          } > "$robot_env"
+          chmod 600 "$robot_env"
+
+          printf '%s\n' "$robot_token" | sudo podman login localhost:8443 \
+            -u "$robot_username" \
+            --password-stdin \
+            --authfile "$robot_authfile" \
+            --tls-verify=false
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+            localhost:8443/init/test-image:robot-source
+          sudo podman push --authfile "$robot_authfile" --tls-verify=false \
+            localhost:8443/init/test-image:robot-source
+          sudo podman pull --authfile "$robot_authfile" --tls-verify=false \
+            localhost:8443/init/test-image:robot-source
+
+      - name: Record source registry state
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/e2e-migrate-state
+          ACCEPT_HEADER='Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+          auth_param() {
+            local challenge="$1"
+            local key="$2"
+            printf '%s\n' "$challenge" | sed -n "s/.*${key}=\"\\([^\"]*\\)\".*/\\1/p"
+          }
+
+          fetch_manifest() {
+            local repo="$1"
+            local ref="$2"
+            local headers="$3"
+            local body="$4"
+            local url="https://localhost:8443/v2/${repo}/manifests/${ref}"
+
+            # Registry clients follow the Bearer challenge automatically;
+            # reproduce that token flow here so curl can capture manifests.
+            if curl -skf -D "$headers" -o "$body" \
+              -u init:testpassword123 \
+              -H "$ACCEPT_HEADER" \
+              "$url"; then
+              return 0
+            fi
+
+            local challenge_headers="${headers%.headers}.challenge.headers"
+            local token_json="${headers%.headers}.token.json"
+            cp "$headers" "$challenge_headers" 2>/dev/null || true
+
+            local challenge
+            challenge=$(tr -d '\r' < "$challenge_headers" | awk -F': ' 'tolower($1) == "www-authenticate" {print $2; exit}')
+            if ! printf '%s' "$challenge" | grep -qi '^Bearer '; then
+              echo "FAIL: manifest request for ${repo}:${ref} did not return a Bearer challenge"
+              return 1
+            fi
+
+            local realm service scope token
+            realm=$(auth_param "$challenge" realm)
+            service=$(auth_param "$challenge" service)
+            scope=$(auth_param "$challenge" scope)
+            if [ -z "$scope" ]; then
+              scope="repository:${repo}:pull"
+            fi
+            if [ -z "$realm" ]; then
+              echo "FAIL: Bearer challenge for ${repo}:${ref} did not include realm"
+              return 1
+            fi
+
+            if [ -n "$service" ]; then
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "service=${service}" \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            else
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            fi
+
+            token=$(jq -r '.token // .access_token // empty' "$token_json")
+            if [ -z "$token" ]; then
+              echo "FAIL: token response for ${repo}:${ref} did not include a token"
+              return 1
+            fi
+
+            curl -skfsS -D "$headers" -o "$body" \
+              -H "$ACCEPT_HEADER" \
+              -H "Authorization: Bearer ${token}" \
+              "$url"
+          }
+
+          manifest_digest() {
+            local repo="$1"
+            local ref="$2"
+            local safe_ref
+            safe_ref=$(echo "$repo-$ref" | tr '/:' '--')
+            local headers="/tmp/e2e-migrate-state/source-${safe_ref}.headers"
+            local body="/tmp/e2e-migrate-state/source-${safe_ref}.json"
+
+            fetch_manifest "$repo" "$ref" "$headers" "$body"
+            tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "docker-content-digest" {print $2}' | tail -n1
+          }
+
+          record_digest() {
+            local name="$1"
+            local repo="$2"
+            local ref="$3"
+            local digest
+            digest=$(manifest_digest "$repo" "$ref")
+            if [ -z "$digest" ]; then
+              echo "FAIL: ${name} was not captured from ${repo}:${ref}"
+              return 1
+            fi
+            echo "${name}=${digest}" | tee -a /tmp/e2e-migrate-state/digests.env
+          }
+
+          : > /tmp/e2e-migrate-state/digests.env
+          record_digest TEST_IMAGE_DIGEST init/test-image v1
+          record_digest TEST_IMAGE_2_DIGEST init/test-image-2 latest
+          record_digest SHARED_V1_DIGEST init/shared v1
+          record_digest SHARED_V2_DIGEST init/shared v2
+          record_digest SHARED_A_DIGEST init/shared-a v1
+          record_digest SHARED_B_DIGEST init/shared-b v1
+          record_digest INDEX_DIGEST init/test-index latest
+          record_digest ROBOT_SOURCE_DIGEST init/test-image robot-source
+
+          . /tmp/e2e-migrate-state/digests.env
+          for var in TEST_IMAGE_DIGEST TEST_IMAGE_2_DIGEST SHARED_V1_DIGEST SHARED_V2_DIGEST SHARED_A_DIGEST SHARED_B_DIGEST INDEX_DIGEST ROBOT_SOURCE_DIGEST; do
+            if [ -z "${!var}" ]; then
+              echo "FAIL: ${var} was not captured"
+              exit 1
+            fi
+          done
+          if [ "$SHARED_V1_DIGEST" != "$SHARED_V2_DIGEST" ]; then
+            echo "FAIL: expected init/shared:v1 and init/shared:v2 to share a manifest digest"
+            exit 1
+          fi
+
+          SQLITE_DIR=$(sudo podman volume inspect sqlite-storage --format '{{.Mountpoint}}')
+          SOURCE_DB="${SQLITE_DIR}/quay_sqlite.db"
+          echo "$SOURCE_DB" | tee /tmp/e2e-migrate-state/source-db-path.txt
+          sudo test -f "$SOURCE_DB"
+
+          if ! source_key_fingerprint=$(sudo podman exec quay-app \
+            cat /quay-registry/conf/quay.pem \
+            | openssl pkey -pubout -outform DER \
+            | sha256sum \
+            | awk '{print $1}'); then
+            echo "FAIL: source registry JWT key could not be read or parsed"
+            exit 1
+          fi
+          if [ -z "$source_key_fingerprint" ]; then
+            echo "FAIL: source registry JWT key fingerprint was not captured"
+            exit 1
+          fi
+          printf '%s\n' "$source_key_fingerprint" \
+            | tee /tmp/e2e-migrate-state/source-jwt-key-fingerprint.txt
+
+          sudo sqlite3 "$SOURCE_DB" 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/source-integrity.txt
+          grep -qx ok /tmp/e2e-migrate-state/source-integrity.txt
+
+          : > /tmp/e2e-migrate-state/source-counts.env
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo sqlite3 "$SOURCE_DB" "SELECT COUNT(*) FROM ${table};")
+            echo "${table}=${count}" | tee -a /tmp/e2e-migrate-state/source-counts.env
+          done
+          version=$(sudo sqlite3 "$SOURCE_DB" "SELECT version_num FROM alembic_version;")
+          echo "alembic_version=${version}" | tee -a /tmp/e2e-migrate-state/source-counts.env
+
+          sudo podman volume inspect sqlite-storage quay-storage \
+            > /tmp/e2e-migrate-state/source-volumes.json
+          sudo systemctl status quay-app.service quay-redis.service quay-pod.service --no-pager \
+            > /tmp/e2e-migrate-state/source-services.txt || true
+          sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
+
+      - name: Run quay migrate
+        run: sudo bin/quay migrate
+
+      - name: Trust registry TLS certificate
+        run: |
+          sudo install -m 644 /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo update-ca-certificates
+          sudo mkdir -p /etc/containers/certs.d/localhost:8443
+          sudo install -m 644 /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+
+      - name: Verify migrated content
+        run: |
+          set -euo pipefail
+
+          curl -fs https://localhost:8443/healthz
+          echo "Health check passed"
+
+          source_key_fingerprint=$(cat /tmp/e2e-migrate-state/source-jwt-key-fingerprint.txt)
+          if ! target_key_fingerprint=$(sudo openssl pkey \
+            -in /var/lib/quay/registry-jwt.pem \
+            -pubout -outform DER \
+            | sha256sum \
+            | awk '{print $1}'); then
+            echo "FAIL: target registry JWT key could not be read or parsed"
+            exit 1
+          fi
+          if [ "$target_key_fingerprint" != "$source_key_fingerprint" ]; then
+            echo "FAIL: registry JWT signing key changed during migration"
+            exit 1
+          fi
+          echo "Registry JWT signing key continuity verified"
+
+          # Verify root CA certificate was preserved during migration.
+          # OMR 2.0.x generates self-signed certs by default, placing the root CA
+          # at <quayRoot>/quay-rootCA/rootCA.pem. Clients trust this CA.
+          if ! sudo test -f /var/lib/quay/rootCA.pem; then
+            echo "FAIL: rootCA.pem was not copied to target data directory"
+            exit 1
+          fi
+          echo "Root CA certificate preserved"
+
+          sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/target-integrity.txt
+          grep -qx ok /tmp/e2e-migrate-state/target-integrity.txt
+
+          : > /tmp/e2e-migrate-state/target-counts.env
+          for table in repository tag manifest manifestblob imagestorage; do
+            expected=$(awk -F= -v key="$table" '$1 == key {print $2}' /tmp/e2e-migrate-state/source-counts.env)
+            actual=$(sudo sqlite3 /var/lib/quay/quay.db "SELECT COUNT(*) FROM ${table};")
+            echo "${table}=${actual}" | tee -a /tmp/e2e-migrate-state/target-counts.env
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${table} count changed during migration: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+          done
+
+          expected_version=$(sed -n 's/^const TargetVersion = "\(.*\)"/\1/p' internal/dal/dbcore/migrate.go)
+          actual_version=$(sudo sqlite3 /var/lib/quay/quay.db "SELECT version_num FROM alembic_version;")
+          echo "alembic_version=${actual_version}" | tee -a /tmp/e2e-migrate-state/target-counts.env
+          if [ "$actual_version" != "$expected_version" ]; then
+            echo "FAIL: expected alembic version ${expected_version}, got ${actual_version}"
+            exit 1
+          fi
+
+          . /tmp/e2e-migrate-state/digests.env
+          ACCEPT_HEADER='Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+          auth_param() {
+            local challenge="$1"
+            local key="$2"
+            printf '%s\n' "$challenge" | sed -n "s/.*${key}=\"\\([^\"]*\\)\".*/\\1/p"
+          }
+
+          fetch_manifest() {
+            local repo="$1"
+            local ref="$2"
+            local headers="$3"
+            local body="$4"
+            local url="https://localhost:8443/v2/${repo}/manifests/${ref}"
+
+            if curl -skf -D "$headers" -o "$body" \
+              -u init:testpassword123 \
+              -H "$ACCEPT_HEADER" \
+              "$url"; then
+              return 0
+            fi
+
+            local challenge_headers="${headers%.headers}.challenge.headers"
+            local token_json="${headers%.headers}.token.json"
+            cp "$headers" "$challenge_headers" 2>/dev/null || true
+
+            local challenge
+            challenge=$(tr -d '\r' < "$challenge_headers" | awk -F': ' 'tolower($1) == "www-authenticate" {print $2; exit}')
+            if ! printf '%s' "$challenge" | grep -qi '^Bearer '; then
+              echo "FAIL: manifest request for ${repo}:${ref} did not return a Bearer challenge"
+              return 1
+            fi
+
+            local realm service scope token
+            realm=$(auth_param "$challenge" realm)
+            service=$(auth_param "$challenge" service)
+            scope=$(auth_param "$challenge" scope)
+            if [ -z "$scope" ]; then
+              scope="repository:${repo}:pull"
+            fi
+            if [ -z "$realm" ]; then
+              echo "FAIL: Bearer challenge for ${repo}:${ref} did not include realm"
+              return 1
+            fi
+
+            if [ -n "$service" ]; then
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "service=${service}" \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            else
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            fi
+
+            token=$(jq -r '.token // .access_token // empty' "$token_json")
+            if [ -z "$token" ]; then
+              echo "FAIL: token response for ${repo}:${ref} did not include a token"
+              return 1
+            fi
+
+            curl -skfsS -D "$headers" -o "$body" \
+              -H "$ACCEPT_HEADER" \
+              -H "Authorization: Bearer ${token}" \
+              "$url"
+          }
+
+          verify_manifest_digest() {
+            local repo="$1"
+            local ref="$2"
+            local expected="$3"
+            local safe_ref
+            safe_ref=$(echo "$repo-$ref" | tr '/:' '--')
+            local headers="/tmp/e2e-migrate-state/target-${safe_ref}.headers"
+            local body="/tmp/e2e-migrate-state/target-${safe_ref}.json"
+            local actual
+
+            fetch_manifest "$repo" "$ref" "$headers" "$body"
+            actual=$(tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "docker-content-digest" {print $2}' | tail -n1)
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${repo}:${ref} digest changed: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+            test -s "$body"
+          }
+
+          verify_manifest_digest init/test-image v1 "$TEST_IMAGE_DIGEST"
+          verify_manifest_digest init/test-image "$TEST_IMAGE_DIGEST" "$TEST_IMAGE_DIGEST"
+          verify_manifest_digest init/test-image-2 latest "$TEST_IMAGE_2_DIGEST"
+          verify_manifest_digest init/shared v1 "$SHARED_V1_DIGEST"
+          verify_manifest_digest init/shared v2 "$SHARED_V2_DIGEST"
+          verify_manifest_digest init/shared-a v1 "$SHARED_A_DIGEST"
+          verify_manifest_digest init/shared-b v1 "$SHARED_B_DIGEST"
+          verify_manifest_digest init/test-index latest "$INDEX_DIGEST"
+          verify_manifest_digest init/test-image robot-source "$ROBOT_SOURCE_DIGEST"
+
+          skopeo list-tags --creds init:testpassword123 \
+            docker://localhost:8443/init/shared \
+            | tee /tmp/e2e-migrate-state/shared-tags.json
+          jq -e '.Tags | index("v1") and index("v2")' /tmp/e2e-migrate-state/shared-tags.json
+
+          sudo podman pull "localhost:8443/init/test-image@${TEST_IMAGE_DIGEST}"
+          sudo podman pull localhost:8443/init/test-image:v1
+          sudo podman pull localhost:8443/init/test-image-2:latest
+          sudo podman pull localhost:8443/init/shared:v2
+          sudo podman pull localhost:8443/init/test-index:latest
+
+          . /tmp/e2e-migrate-secrets/robot.env
+          echo "::add-mask::${ROBOT_TOKEN}"
+          robot_authfile="/tmp/e2e-migrate-secrets/robot-target-auth.json"
+          printf '%s\n' "$ROBOT_TOKEN" | sudo podman login localhost:8443 \
+            -u "$ROBOT_USERNAME" \
+            --password-stdin \
+            --authfile "$robot_authfile"
+
+          sudo podman pull --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-source
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+            localhost:8443/init/test-image:robot-target
+          sudo podman push --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-target
+          sudo podman pull --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-target
+
+          sudo podman login localhost:8443 -u init -p testpassword123
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/post-migrate:latest
+          sudo podman push localhost:8443/init/post-migrate:latest
+          sudo podman pull localhost:8443/init/post-migrate:latest
+
+          echo "All migration verifications passed"
+
+      - name: Clean up old OMR
+        run: |
+          set -euo pipefail
+
+          sudo bin/quay migrate -cleanup
+          echo "Cleanup completed"
+
+          for unit in quay-app.service quay-redis.service quay-pod.service; do
+            if sudo test -e "/etc/systemd/system/${unit}"; then
+              echo "FAIL: old OMR unit still exists: ${unit}"
+              exit 1
+            fi
+          done
+
+          if sudo podman volume exists sqlite-storage; then
+            echo "FAIL: old sqlite-storage volume still exists"
+            exit 1
+          fi
+          if sudo podman volume exists quay-storage; then
+            echo "FAIL: old quay-storage volume still exists"
+            exit 1
+          fi
+          if sudo podman secret inspect redis_pass >/dev/null 2>&1; then
+            echo "FAIL: old redis_pass secret still exists"
+            exit 1
+          fi
+          if sudo test -e /var/lib/quay/.migration-in-progress; then
+            echo "FAIL: migration marker still exists"
+            exit 1
+          fi
+
+          curl -fs https://localhost:8443/healthz
+          echo "Cleanup assertions passed"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-migrate-diagnostics
+          cp -a /tmp/e2e-migrate-state/. /tmp/e2e-migrate-diagnostics/ 2>/dev/null || true
+
+          sudo podman ps -a > /tmp/e2e-migrate-diagnostics/podman-ps.txt 2>&1 || true
+          sudo podman images > /tmp/e2e-migrate-diagnostics/podman-images.txt 2>&1 || true
+          sudo podman volume ls > /tmp/e2e-migrate-diagnostics/podman-volumes.txt 2>&1 || true
+          sudo podman volume inspect sqlite-storage quay-storage > /tmp/e2e-migrate-diagnostics/podman-volume-inspect.json 2>&1 || true
+          sudo podman secret ls > /tmp/e2e-migrate-diagnostics/podman-secrets.txt 2>&1 || true
+          podman ps -a >> /tmp/e2e-migrate-diagnostics/podman-ps.txt 2>&1 || true
+          sudo podman logs quay-app > /tmp/e2e-migrate-diagnostics/omr-quay-app.log 2>&1 || true
+          podman logs quay-app >> /tmp/e2e-migrate-diagnostics/omr-quay-app.log 2>&1 || true
+          sudo podman logs quay-redis > /tmp/e2e-migrate-diagnostics/omr-redis.log 2>&1 || true
+          sudo podman logs systemd-quay > /tmp/e2e-migrate-diagnostics/new-quay.log 2>&1 || true
+          sudo journalctl --no-pager -n 200 > /tmp/e2e-migrate-diagnostics/journal.log 2>&1 || true
+          sudo journalctl -u quay-app.service -u quay-redis.service -u quay-pod.service -u quay.service --no-pager > /tmp/e2e-migrate-diagnostics/quay-units-journal.log 2>&1 || true
+          sudo systemctl list-units 'quay*' --all --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-units.txt 2>&1 || true
+          sudo systemctl list-unit-files 'quay*' --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-unit-files.txt 2>&1 || true
+          sudo systemctl status quay.service > /tmp/e2e-migrate-diagnostics/service-status.txt 2>&1 || true
+          sudo ls -laR /var/lib/quay/ > /tmp/e2e-migrate-diagnostics/data-dir.txt 2>&1 || true
+          sudo find /var/lib/quay -maxdepth 4 -type f -printf '%p %s bytes\n' > /tmp/e2e-migrate-diagnostics/data-files.txt 2>&1 || true
+          sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' > /tmp/e2e-migrate-diagnostics/target-integrity-latest.txt 2>&1 || true
+          sudo sqlite3 /var/lib/quay/quay.db "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'index') ORDER BY type, name;" > /tmp/e2e-migrate-diagnostics/target-schema-objects.txt 2>&1 || true
+          skopeo list-tags --creds init:testpassword123 \
+            docker://localhost:8443/init/shared \
+            > /tmp/e2e-migrate-diagnostics/shared-tags-latest.json 2>&1 || true
+          curl -kfsS https://localhost:8443/healthz > /tmp/e2e-migrate-diagnostics/healthz.txt 2>&1 || true
+          ss -tlnp > /tmp/e2e-migrate-diagnostics/ports.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-migrate-diagnostics
+          path: /tmp/e2e-migrate-diagnostics/
+          retention-days: 7
+
+  e2e-migrate-postgres:
+    name: E2E Mirror Migrate (PostgreSQL)
+    runs-on: ubuntu-26.04
+    needs: [test, schema-sync]
+    timeout-minutes: 30
+    env:
+      # The KCS RHEL PostgreSQL image requires credentials that PR workflows do not receive.
+      POSTGRES_IMAGE: quay.io/sclorg/postgresql-16-c9s@sha256:95e64c83d48743e590c393f293181cccb3abba1e87c35d50365fc3560f0520d0
+      POSTGRES_USER: quay
+      POSTGRES_DB: quay
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Generate test credentials
+        run: |
+          set -euo pipefail
+          postgres_password=$(openssl rand -hex 32)
+          registry_password=$(openssl rand -hex 32)
+          echo "::add-mask::$postgres_password"
+          echo "::add-mask::$registry_password"
+          {
+            printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
+            printf 'REGISTRY_PASSWORD=%s\n' "$registry_password"
+          } >> "$GITHUB_ENV"
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Install test dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml sqlite3
+
+      - name: Build target registry image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+          podman save quay-mirror:test -o bin/quay-mirror.tar
+
+      - name: Install old SQLite OMR
+        run: |
+          set -euo pipefail
+
+          curl -fsSL -o /tmp/mirror-registry.tar.gz \
+            https://github.com/quay/mirror-registry/releases/download/v2.0.11/mirror-registry-offline.tar.gz
+          mkdir -p /tmp/omr
+          tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
+          cd /tmp/omr
+          sudo ./mirror-registry install \
+            --verbose \
+            --initPassword "$REGISTRY_PASSWORD" \
+            --quayHostname localhost
+
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            https://localhost:8443/health/instance
+
+      - name: Switch old OMR to PostgreSQL
+        run: |
+          set -euo pipefail
+
+          sudo systemctl stop quay-app.service
+          sudo podman pull "$POSTGRES_IMAGE"
+          mkdir -p "$RUNNER_TEMP/quay-postgres"
+          sudo chown -R 26:26 "$RUNNER_TEMP/quay-postgres"
+
+          sudo tee /etc/systemd/system/quay-postgres.service > /dev/null <<EOF
+          [Unit]
+          Description=PostgreSQL Podman Container for Quay
+          Wants=network.target
+          After=network-online.target quay-pod.service
+          Requires=quay-pod.service
+
+          [Service]
+          Type=simple
+          TimeoutStartSec=5m
+          ExecStartPre=-/usr/bin/podman rm --force quay-postgres
+          ExecStart=/usr/bin/podman run \\
+            --name quay-postgres \\
+            -v ${RUNNER_TEMP}/quay-postgres:/var/lib/pgsql/data:Z \\
+            --image-volume=ignore \\
+            -e POSTGRESQL_USER=${POSTGRES_USER} \\
+            -e POSTGRESQL_DATABASE=${POSTGRES_DB} \\
+            -e POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD} \\
+            -e POSTGRESQL_MAX_CONNECTIONS=500 \\
+            --pod=quay-pod \\
+            --conmon-pidfile=%t/quay-postgres.pid \\
+            --cidfile=%t/quay-postgres.cid \\
+            --cgroups=no-conmon \\
+            --replace \\
+            ${POSTGRES_IMAGE}
+          ExecStop=/usr/bin/podman stop --ignore --cidfile %t/quay-postgres.cid -t 10
+          ExecStopPost=/usr/bin/podman rm --ignore --force --cidfile %t/quay-postgres.cid
+          PIDFile=%t/quay-postgres.pid
+          KillMode=none
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          sudo systemctl daemon-reload
+          sudo systemctl start quay-postgres.service
+
+          for _ in $(seq 1 60); do
+            if sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+              break
+            fi
+            sleep 2
+          done
+          sudo podman exec quay-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          sudo podman exec quay-postgres psql -v ON_ERROR_STOP=1 \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+
+          config_dir=$(grep -oE -- '-v [^:]+:/(quay-registry/)?conf/stack' \
+            /etc/systemd/system/quay-app.service | head -n1 | awk '{print $2}' | cut -d: -f1)
+          sudo test -f "$config_dir/config.yaml"
+          sudo env CONFIG_DIR="$config_dir" \
+            POSTGRES_USER="$POSTGRES_USER" \
+            POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            POSTGRES_DB="$POSTGRES_DB" \
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          import yaml
+
+          path = Path(os.environ["CONFIG_DIR"]) / "config.yaml"
+          config = yaml.safe_load(path.read_text())
+          config["DB_URI"] = (
+              f"postgresql://{os.environ['POSTGRES_USER']}:"
+              f"{os.environ['POSTGRES_PASSWORD']}@quay-postgres/{os.environ['POSTGRES_DB']}"
+          )
+          config["DB_CONNECTION_ARGS"] = {"max_connections": 5, "stale_timeout": 120}
+          path.write_text(yaml.safe_dump(config, sort_keys=False))
+          PY
+
+          sudo systemctl start quay-app.service
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            -o /dev/null \
+            https://localhost:8443/health/instance
+
+          curl -kfsS \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"init\",\"password\":\"$REGISTRY_PASSWORD\",\"email\":\"init@quay.io\"}" \
+            -o /dev/null \
+            https://localhost:8443/api/v1/user/initialize
+          revision=$(sudo podman exec quay-postgres psql -At \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'SELECT version_num FROM alembic_version;')
+          test "$revision" = 3f8d7acdf7f9
+          service_keys=$(sudo podman exec quay-postgres psql -At \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c 'SELECT COUNT(*) FROM servicekey;')
+          test "$service_keys" -gt 0
+
+      - name: Seed and record PostgreSQL source content
+        run: |
+          set -euo pipefail
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          mkdir -p "$state_dir"
+          printf '%s\n' "$REGISTRY_PASSWORD" | sudo podman login localhost:8443 \
+            -u init --password-stdin --tls-verify=false
+          sudo podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+
+          for target in postgres-source:v1 postgres-source:v2 postgres-shared:latest; do
+            sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+              "localhost:8443/init/${target}"
+            sudo podman push --tls-verify=false "localhost:8443/init/${target}"
+          done
+
+          sudo podman exec quay-postgres psql -At -F '|' \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                FROM tag AS t
+                JOIN repository AS r ON r.id = t.repository_id
+                JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                JOIN manifest AS m ON m.id = t.manifest_id
+                WHERE u.username = 'init'
+                  AND r.name IN ('postgres-source', 'postgres-shared')
+                  AND t.lifetime_end_ms IS NULL
+                ORDER BY r.name, t.name" \
+            > "$state_dir/source-manifests.txt"
+          test "$(wc -l < "$state_dir/source-manifests.txt")" -eq 3
+          test "$(grep -Ec '^init/postgres-(shared|source)\|[^|]+\|sha256:[0-9a-f]{64}$' \
+            "$state_dir/source-manifests.txt")" -eq 3
+
+          : > "$state_dir/source-counts.env"
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo podman exec quay-postgres psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT COUNT(*) FROM ${table};")
+            printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
+          done
+
+      - name: Migrate PostgreSQL OMR to v3
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e2e-migrate-postgres"
+          sudo bin/quay migrate \
+            -data-dir="$RUNNER_TEMP/quay-v3" \
+            -image-archive="$PWD/bin/quay-mirror.tar" \
+            2>&1 | tee "$RUNNER_TEMP/e2e-migrate-postgres/migrate.log"
+
+      - name: Verify migrated registry
+        run: |
+          set -euo pipefail
+
+          curl -kfsS https://localhost:8443/healthz
+          test "$(sudo systemctl is-active quay.service)" = active
+          for unit in quay-app quay-postgres quay-redis quay-pod; do
+            if sudo systemctl is-active "${unit}.service" >/dev/null 2>&1; then
+              echo "FAIL: old OMR service is still active: ${unit}.service"
+              exit 1
+            fi
+          done
+
+          target_dir="$RUNNER_TEMP/quay-v3"
+          test "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;')" = ok
+          test -z "$(sudo sqlite3 "$target_dir/quay.db" 'PRAGMA foreign_key_check;')"
+          expected_revision=$(sed -n 's/^const TargetVersion = "\(.*\)"/\1/p' internal/dal/dbcore/migrate.go)
+          actual_revision=$(sudo sqlite3 "$target_dir/quay.db" \
+            'SELECT version_num FROM alembic_version;')
+          test "$actual_revision" = "$expected_revision"
+          sudo test ! -e "$target_dir/quay.db.partial"
+          sudo test ! -e "$target_dir/.migration-in-progress"
+          test "$(sudo sqlite3 "$target_dir/quay.db" \
+            "SELECT COUNT(*) FROM \"user\" WHERE username = 'init';")" = 1
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_authfile="$RUNNER_TEMP/postgres-target-auth.json"
+          verify_container=quay-postgres-verify
+          trap 'sudo podman rm -f "$verify_container" >/dev/null 2>&1 || true; sudo rm -f "$target_authfile"' EXIT
+          printf '%s\n' "$REGISTRY_PASSWORD" | sudo podman login localhost:8443 \
+            -u init --password-stdin \
+            --authfile "$target_authfile" --tls-verify=false
+          sudo sqlite3 -separator '|' "$target_dir/quay.db" \
+            "SELECT u.username || '/' || r.name, t.name, m.digest
+             FROM tag AS t
+             JOIN repository AS r ON r.id = t.repository_id
+             JOIN \"user\" AS u ON u.id = r.namespace_user_id
+             JOIN manifest AS m ON m.id = t.manifest_id
+             WHERE u.username = 'init'
+               AND r.name IN ('postgres-source', 'postgres-shared')
+               AND t.lifetime_end_ms IS NULL
+             ORDER BY r.name, t.name;" \
+            > "$state_dir/target-manifests.txt"
+          diff -u "$state_dir/source-manifests.txt" "$state_dir/target-manifests.txt"
+          for table in repository tag manifest manifestblob imagestorage; do
+            expected=$(awk -F= -v key="$table" '$1 == key {print $2}' \
+              "$state_dir/source-counts.env")
+            actual=$(sudo sqlite3 "$target_dir/quay.db" "SELECT COUNT(*) FROM ${table};")
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${table} count changed during PostgreSQL migration: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+          done
+          sudo podman pull --authfile "$target_authfile" \
+            --tls-verify=false localhost:8443/init/postgres-source:v1
+
+          sudo python3 - "$target_dir/config.yaml" <<'PY'
+          import sys
+
+          import yaml
+
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              config = yaml.safe_load(stream)
+          assert config["DB_URI"].startswith("sqlite:///")
+          PY
+
+          sudo podman rm -f "$verify_container" >/dev/null 2>&1 || true
+          sudo podman run -d --name "$verify_container" \
+            -v "$RUNNER_TEMP/quay-postgres:/var/lib/pgsql/data:Z" \
+            --image-volume=ignore \
+            -e POSTGRESQL_USER="$POSTGRES_USER" \
+            -e POSTGRESQL_DATABASE="$POSTGRES_DB" \
+            -e POSTGRESQL_PASSWORD="$POSTGRES_PASSWORD" \
+            "$POSTGRES_IMAGE"
+          for attempt in $(seq 1 60); do
+            if sudo podman exec "$verify_container" pg_isready \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "FAIL: retained PostgreSQL data did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          sudo podman exec "$verify_container" psql -At -F '|' \
+            -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                FROM tag AS t
+                JOIN repository AS r ON r.id = t.repository_id
+                JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                JOIN manifest AS m ON m.id = t.manifest_id
+                WHERE u.username = 'init'
+                  AND r.name IN ('postgres-source', 'postgres-shared')
+                  AND t.lifetime_end_ms IS NULL
+                ORDER BY r.name, t.name" \
+            > "$state_dir/retained-manifests.txt"
+          diff -u "$state_dir/source-manifests.txt" "$state_dir/retained-manifests.txt"
+          : > "$state_dir/retained-counts.env"
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo podman exec "$verify_container" psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT COUNT(*) FROM ${table};")
+            printf '%s=%s\n' "$table" "$count" >> "$state_dir/retained-counts.env"
+          done
+          diff -u "$state_dir/source-counts.env" "$state_dir/retained-counts.env"
+
+      - name: Collect PostgreSQL migration diagnostics
+        if: always()
+        run: |
+          diagnostics="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_dir="$RUNNER_TEMP/quay-v3"
+          mkdir -p "$diagnostics"
+          sudo podman ps -a > "$diagnostics/podman-ps.txt" 2>&1 || true
+          for unit in quay quay-app quay-postgres quay-redis quay-pod; do
+            printf '%s=' "$unit"
+            sudo systemctl is-active "${unit}.service" 2>/dev/null || true
+          done > "$diagnostics/service-states.txt"
+          sudo podman logs systemd-quay > "$diagnostics/target-registry.log" 2>&1 || true
+          sudo find "$target_dir" -maxdepth 3 -type f -printf '%p %s bytes\n' \
+            > "$diagnostics/target-files.txt" 2>&1 || true
+          sudo sqlite3 "$target_dir/quay.db" 'PRAGMA integrity_check;' \
+            > "$diagnostics/target-integrity.txt" 2>&1 || true
+
+      - name: Upload PostgreSQL migration diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-migrate-postgres-diagnostics
+          path: ${{ runner.temp }}/e2e-migrate-postgres/
+          retention-days: 7

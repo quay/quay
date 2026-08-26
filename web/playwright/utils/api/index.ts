@@ -3,7 +3,15 @@
  */
 
 export {ApiClient} from './client';
+export {RawApiClient} from './raw-client';
+export {
+  initializeSuperuser,
+  getAccessToken,
+  createOAuthToken,
+  getV2Token,
+} from './auth';
 export type {
+  AutoPrunePolicy,
   CreateRobotResponse,
   CreateUserResponse,
   GetPrototypesResponse,

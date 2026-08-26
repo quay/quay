@@ -1,4 +1,12 @@
-import {Alert, Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {
+  Alert,
+  Button,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useEffect} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useDeleteCollaborator} from 'src/hooks/UseMembers';
@@ -43,12 +51,18 @@ export default function CollaboratorsDeleteModal(
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={'Remove user from organization'}
-      titleIconVariant="warning"
-      description={deleteAlert}
       isOpen={props.isModalOpen}
       onClose={props.toggleModal}
-      actions={[
+    >
+      <ModalHeader
+        title={'Remove user from organization'}
+        titleIconVariant="warning"
+        description={deleteAlert}
+      />
+      <ModalBody>
+        Are you sure you want to delete <b> {props.collaborator.name} </b>?
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="delete"
           variant="danger"
@@ -60,13 +74,11 @@ export default function CollaboratorsDeleteModal(
           data-testid={`${props.collaborator.name}-del-btn`}
         >
           Delete
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={props.toggleModal}>
           Cancel
-        </Button>,
-      ]}
-    >
-      Are you sure you want to delete <b> {props.collaborator.name} </b>?
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

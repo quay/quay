@@ -1,5 +1,14 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {
+  Button,
+  Content,
+  Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useToggleUserStatus} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
@@ -50,11 +59,45 @@ export default function ToggleUserStatusModal(
 
   return (
     <Modal
-      title={`${action} User`}
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title={`${action} User`} />
+      <ModalBody>
+        <Content component="p">
+          Are you sure you want to {actionLower} user{' '}
+          <strong>{props.username}</strong>?
+        </Content>
+        {props.currentlyEnabled && (
+          <Alert
+            variant="warning"
+            title="Note"
+            isInline
+            style={{marginTop: 16}}
+          >
+            Disabling this user will prevent them from logging in and accessing
+            their repositories.
+          </Alert>
+        )}
+        {!props.currentlyEnabled && (
+          <Alert variant="info" title="Note" isInline style={{marginTop: 16}}>
+            Enabling this user will allow them to log in and access their
+            repositories.
+          </Alert>
+        )}
+        {error && (
+          <Alert
+            variant="danger"
+            title="Error"
+            isInline
+            style={{marginTop: 16}}
+          >
+            {error}
+          </Alert>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant={props.currentlyEnabled ? 'warning' : 'primary'}
@@ -63,33 +106,11 @@ export default function ToggleUserStatusModal(
           isDisabled={isLoading}
         >
           {action} User
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Text>
-        Are you sure you want to {actionLower} user{' '}
-        <strong>{props.username}</strong>?
-      </Text>
-      {props.currentlyEnabled && (
-        <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
-          Disabling this user will prevent them from logging in and accessing
-          their repositories.
-        </Alert>
-      )}
-      {!props.currentlyEnabled && (
-        <Alert variant="info" title="Note" isInline style={{marginTop: 16}}>
-          Enabling this user will allow them to log in and access their
-          repositories.
-        </Alert>
-      )}
-      {error && (
-        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
-          {error}
-        </Alert>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

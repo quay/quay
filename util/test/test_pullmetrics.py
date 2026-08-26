@@ -139,6 +139,23 @@ class TestPullMetricsBuilderModule:
 
         assert builder._max_workers == 10
 
+    def test_module_bool_true_when_initialized(self):
+        """Test that PullMetricsBuilderModule is truthy when state is initialized."""
+        app = Mock()
+        app.config = {
+            "PULL_METRICS_REDIS": {"host": "localhost", "port": 6379},
+            "TESTING": True,
+        }
+        app.extensions = {}
+
+        module = PullMetricsBuilderModule(app)
+        assert bool(module) is True
+
+    def test_module_bool_false_when_not_initialized(self):
+        """Test that PullMetricsBuilderModule is falsy when state is None."""
+        module = PullMetricsBuilderModule()
+        assert bool(module) is False
+
     def test_module_getattr(self):
         """Test module __getattr__ delegates to state."""
         app = Mock()

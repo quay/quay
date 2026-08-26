@@ -1,6 +1,4 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -8,6 +6,11 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import './css/Organizations.scss';
@@ -18,7 +21,6 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useUI} from 'src/contexts/UIContext';
 import {AlertVariant} from 'src/contexts/UIContext';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface Validation {
   message: string;
@@ -37,15 +39,13 @@ export const CreateOrganizationModal = (
   props: CreateOrganizationModalProps,
 ): JSX.Element => {
   const [organizationName, setOrganizationName] = useState('');
-  const [organizationEmail, setOrganizationEmail] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [invalidEmailFlag, setInvalidEmailFlag] = useState(false);
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
 
   const {createOrganization} = useOrganizations();
   const {addAlert} = useUI();
-  const quayConfig = useQuayConfig();
-  const mailingEnabled = quayConfig?.features?.MAILING === true;
 
   const handleNameInputChange = (value: string) => {
     const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
@@ -77,15 +77,12 @@ export const CreateOrganizationModal = (
   };
 
   const handleEmailInputChange = (value: string) => {
-    setOrganizationEmail(value);
+    setContactEmail(value);
   };
 
   const createOrganizationHandler = async () => {
     try {
-      await createOrganization(
-        organizationName,
-        mailingEnabled ? organizationEmail : undefined,
-      );
+      await createOrganization(organizationName, contactEmail || undefined);
       addAlert({
         variant: AlertVariant.Success,
         title: `Successfully created organization ${organizationName}`,
@@ -101,89 +98,59 @@ export const CreateOrganizationModal = (
   };
 
   const onInputBlur = () => {
-    if (organizationEmail.length !== 0) {
-      isValidEmail(organizationEmail)
+    if (contactEmail.length !== 0) {
+      isValidEmail(contactEmail)
         ? setInvalidEmailFlag(false)
         : setInvalidEmailFlag(true);
     } else {
-      return;
+      setInvalidEmailFlag(false);
     }
   };
 
   return (
     <Modal
-      title="Create Organization"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
-      actions={[
-        <Button
-          id="create-org-confirm"
-          key="confirm"
-          variant="primary"
-          onClick={createOrganizationHandler}
-          form="modal-with-form-form"
-          isDisabled={
-            invalidEmailFlag ||
-            !organizationName ||
-            (mailingEnabled && !organizationEmail) ||
-            !validation.isValid
-          }
-        >
-          Create
-        </Button>,
-        <Button
-          id="create-org-cancel"
-          key="cancel"
-          variant="link"
-          onClick={props.handleModalToggle}
-        >
-          Cancel
-        </Button>,
-      ]}
     >
-      <FormError message={err} setErr={setErr} />
-      <Form id="create-org-modal" isWidthLimited>
-        <FormGroup
-          isInline
-          label="Organization Name"
-          isRequired
-          fieldId="create-org-name"
-        >
-          <TextInput
-            isRequired
-            type="text"
-            id="create-org-name-input"
-            value={organizationName}
-            onChange={(_event, value) => handleNameInputChange(value)}
-            validated={validation.type}
-          />
-
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={validation.type}
-                {...(validation.type === 'error' && {
-                  icon: <ExclamationCircleIcon />,
-                })}
-              >
-                {validation.message}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-        {mailingEnabled && (
+      <ModalHeader title="Create Organization" />
+      <ModalBody>
+        <FormError message={err} setErr={setErr} />
+        <Form id="create-org-modal" isWidthLimited>
           <FormGroup
-            label="Organization Email"
+            isInline
+            label="Organization Name"
             isRequired
-            fieldId="create-org-email"
+            fieldId="create-org-name"
           >
             <TextInput
               isRequired
+              type="text"
+              id="create-org-name-input"
+              value={organizationName}
+              onChange={(_event, value) => handleNameInputChange(value)}
+              validated={validation.type}
+            />
+
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem
+                  variant={validation.type}
+                  {...(validation.type === 'error' && {
+                    icon: <ExclamationCircleIcon />,
+                  })}
+                >
+                  {validation.message}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+          <FormGroup label="Email (Optional)" fieldId="create-org-email">
+            <TextInput
               type="email"
               id="create-org-email-input"
               name="create-org-email-input"
-              value={organizationEmail}
+              value={contactEmail}
               onChange={(_event, value) => handleEmailInputChange(value)}
               validated={invalidEmailFlag ? 'error' : 'default'}
               onBlur={onInputBlur}
@@ -200,15 +167,37 @@ export const CreateOrganizationModal = (
                   </HelperTextItem>
                 ) : (
                   <HelperTextItem>
-                    {"This address must be different from your account's email"}
+                    Optional. Used for organization recovery and notifications.
                   </HelperTextItem>
                 )}
               </HelperText>
             </FormHelperText>
           </FormGroup>
-        )}
-        <br />
-      </Form>
+          <br />
+        </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          id="create-org-confirm"
+          key="confirm"
+          variant="primary"
+          onClick={createOrganizationHandler}
+          form="modal-with-form-form"
+          isDisabled={
+            invalidEmailFlag || !organizationName || !validation.isValid
+          }
+        >
+          Create
+        </Button>
+        <Button
+          id="create-org-cancel"
+          key="cancel"
+          variant="link"
+          onClick={props.handleModalToggle}
+        >
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

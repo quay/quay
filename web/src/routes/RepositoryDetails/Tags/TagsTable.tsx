@@ -1,4 +1,4 @@
-import {Label, Spinner, Tooltip} from '@patternfly/react-core';
+import {Button, Label, Spinner, Tooltip} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -27,6 +27,7 @@ import {
   ShieldAltIcon,
   TagIcon,
   CubeIcon,
+  CopyIcon,
 } from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import Labels from 'src/components/labels/Labels';
@@ -38,6 +39,9 @@ import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 import {useTagPullStatistics} from 'src/hooks/UseTags';
 import TagExpiration from './TagsTableExpiration';
+import {useManifestTracks, TrackEntry} from './useManifestTracks';
+import ManifestTrackCell from './ManifestTrackCell';
+import './Tags.css';
 
 function SubRow(props: SubRowProps) {
   const isMissing = props.manifest.is_present === false;
@@ -45,7 +49,7 @@ function SubRow(props: SubRowProps) {
 
   return (
     <Tr
-      key={`${props.manifest.platform.os}-${props.manifest.platform.architecture}-${props.rowIndex}`}
+      key={`${props.manifest.platform?.os}-${props.manifest.platform?.architecture}-${props.rowIndex}`}
       isExpanded={props.isTagExpanded(props.tag)}
     >
       <Td />
@@ -54,7 +58,9 @@ function SubRow(props: SubRowProps) {
           <ExpandableRowContent>
             {isMissing ? (
               <Tooltip content="This architecture is not present locally. It will be pulled on first access.">
-                <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                <span
+                  style={{color: 'var(--pf-t--global--text--color--subtle)'}}
+                >
                   <ExclamationTriangleIcon
                     style={{marginRight: '4px'}}
                     aria-label="Missing architecture"
@@ -92,7 +98,7 @@ function SubRow(props: SubRowProps) {
         <Td dataLabel="security" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
             {isMissing ? (
-              <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+              <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
                 N/A
               </span>
             ) : (
@@ -110,7 +116,9 @@ function SubRow(props: SubRowProps) {
       <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
           {isMissing ? (
-            <span style={{color: 'var(--pf-v5-global--Color--200)'}}>N/A</span>
+            <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
+              N/A
+            </span>
           ) : (
             <ChildManifestSize
               org={props.org}
@@ -126,7 +134,7 @@ function SubRow(props: SubRowProps) {
             <span
               style={
                 isMissing
-                  ? {color: 'var(--pf-v5-global--Color--200)'}
+                  ? {color: 'var(--pf-t--global--text--color--subtle)'}
                   : undefined
               }
             >
@@ -136,6 +144,17 @@ function SubRow(props: SubRowProps) {
         </Td>
       ) : (
         <Td />
+      )}
+      {props.trackCount > 0 && (
+        <Td className="manifest-track-cell">
+          <ManifestTrackCell
+            trackCount={props.trackCount}
+            rowIndex={props.parentRowIndex}
+            getTrackEntry={props.getTrackEntry}
+            getLineClass={props.getLineClass}
+            mode="continuation"
+          />
+        </Td>
       )}
       <Td
         colSpan={
@@ -154,6 +173,11 @@ function TagsTableRow(props: RowProps) {
   const rowIndex = props.rowIndex;
   const expandedView = useRecoilValue(expandedViewState);
   const location = useLocation();
+  const [isTagHovered, setIsTagHovered] = useState(false);
+  const [isDigestHovered, setIsDigestHovered] = useState(false);
+
+  const isTagCopied = props.copiedKey === `tag-${tag.name}`;
+  const isDigestCopied = props.copiedKey === `digest-${tag.name}`;
 
   // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
   // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
@@ -203,7 +227,11 @@ function TagsTableRow(props: RowProps) {
             isSelected: props.selectedTags.includes(tag.name),
           }}
         />
-        <Td dataLabel={ColumnNames.name}>
+        <Td
+          dataLabel={ColumnNames.name}
+          onMouseEnter={() => setIsTagHovered(true)}
+          onMouseLeave={() => setIsTagHovered(false)}
+        >
           <Link
             to={getTagDetailPath(
               location.pathname,
@@ -227,7 +255,8 @@ function TagsTableRow(props: RowProps) {
               <LockIcon
                 style={{
                   marginLeft: '8px',
-                  color: 'var(--pf-v5-global--info-color--100)',
+                  color:
+                    'var(--pf-t--global--icon--color--status--info--default)',
                 }}
                 aria-label="Immutable tag"
                 data-testid="immutable-tag-icon"
@@ -246,6 +275,33 @@ function TagsTableRow(props: RowProps) {
               </Label>
             </Tooltip>
           )}
+          <span
+            className="copy-icon"
+            style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                icon={<CopyIcon />}
+                variant="plain"
+                aria-label="Copy pull spec to clipboard"
+                onClick={() => {
+                  const hostname =
+                    config?.config?.SERVER_HOSTNAME || window.location.host;
+                  props.copyToClipboard(
+                    `${hostname}/${props.org}/${props.repo}:${tag.name}`,
+                    `tag-${tag.name}`,
+                  );
+                }}
+              />
+            </Tooltip>
+          </span>
         </Td>
         <Conditional if={config?.features?.SECURITY_SCANNER}>
           <Td dataLabel={ColumnNames.security}>
@@ -280,11 +336,53 @@ function TagsTableRow(props: RowProps) {
             expiration={tag.expiration}
             loadTags={props.loadTags}
             immutable={tag.immutable}
+            repoState={props.repoDetails?.state}
           />
         </Td>
-        <Td dataLabel={ColumnNames.digest}>
+        <Td
+          dataLabel={ColumnNames.digest}
+          onMouseEnter={() => setIsDigestHovered(true)}
+          onMouseLeave={() => setIsDigestHovered(false)}
+        >
           {tag.manifest_digest.substring(0, 19)}
+          <span
+            className="copy-icon"
+            style={{visibility: isDigestHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isDigestCopied ? 'Copied to clipboard!' : `Copy digest`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                icon={<CopyIcon />}
+                variant="plain"
+                aria-label="Copy manifest digest to clipboard"
+                onClick={() => {
+                  props.copyToClipboard(
+                    tag.manifest_digest,
+                    `digest-${tag.name}`,
+                  );
+                }}
+              />
+            </Tooltip>
+          </span>
         </Td>
+        {props.trackCount > 0 && (
+          <Td className="manifest-track-cell">
+            <ManifestTrackCell
+              trackCount={props.trackCount}
+              rowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
+              onDotClick={props.selectTagsByManifest}
+              mode="tag"
+            />
+          </Td>
+        )}
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
             {isLoadingPullStats ? (
@@ -340,16 +438,20 @@ function TagsTableRow(props: RowProps) {
         </Conditional>
       </Tr>
       {tag.manifest_list
-        ? tag.manifest_list.manifests.map((manifest, rowIndex) => (
+        ? tag.manifest_list.manifests.map((manifest, manifestIdx) => (
             <SubRow
-              key={rowIndex}
+              key={manifestIdx}
               org={props.org}
               repo={props.repo}
               tag={tag}
-              rowIndex={rowIndex}
+              rowIndex={manifestIdx}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
               config={config}
+              trackCount={props.trackCount}
+              parentRowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
             />
           ))
         : null}
@@ -419,6 +521,17 @@ function TagsTableRow(props: RowProps) {
               )}
             </div>
           </Td>
+          {props.trackCount > 0 && (
+            <Td className="manifest-track-cell">
+              <ManifestTrackCell
+                trackCount={props.trackCount}
+                rowIndex={rowIndex}
+                getTrackEntry={props.getTrackEntry}
+                getLineClass={props.getLineClass}
+                mode="continuation"
+              />
+            </Td>
+          )}
           <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
             <Td />
           </Conditional>
@@ -443,6 +556,31 @@ export default function TagsTable(props: TableProps) {
         : otherExpandedtagNames;
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
+
+  // Shared clipboard state
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  // Calculate manifest tracks for visual grouping of tags sharing the same digest
+  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+    props.tags,
+  );
+
+  // Select all tags sharing a given manifest digest
+  const selectTagsByManifest = (manifestDigest: string) => {
+    const tagsWithManifest = props.allTags.filter(
+      (t) => t.manifest_digest === manifestDigest,
+    );
+    tagsWithManifest.forEach((t) => props.selectTag(t, undefined, true));
+  };
 
   return (
     <>
@@ -473,6 +611,12 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
               Manifest
             </Th>
+            {trackCount > 0 && (
+              <Th
+                className="manifest-track-header"
+                aria-label="Manifest tracks"
+              />
+            )}
             <Conditional if={config?.features?.IMAGE_PULL_STATS}>
               <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
                 Last Pulled
@@ -485,13 +629,13 @@ export default function TagsTable(props: TableProps) {
             <Th />
           </Tr>
         </Thead>
-        {props.tags.map((tag: Tag, rowIndex: number) => (
+        {props.tags.map((tag: Tag, localIndex: number) => (
           <TagsTableRow
-            key={rowIndex}
+            key={localIndex}
             org={props.org}
             repo={props.repo}
             tag={tag}
-            rowIndex={rowIndex}
+            rowIndex={localIndex}
             selectedTags={props.selectedTags}
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}
@@ -500,6 +644,12 @@ export default function TagsTable(props: TableProps) {
             repoDetails={props.repoDetails}
             labelCache={props.labelCache}
             setLabelCache={props.setLabelCache}
+            copyToClipboard={copyToClipboard}
+            copiedKey={copiedKey}
+            trackCount={trackCount}
+            getTrackEntry={getTrackEntry}
+            getLineClass={getLineClass}
+            selectTagsByManifest={selectTagsByManifest}
           />
         ))}
       </Table>
@@ -516,6 +666,9 @@ interface TableProps {
   org: string;
   repo: string;
   tags: Tag[];
+  allTags: Tag[];
+  page: number;
+  perPage: number;
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
   selectedTags: string[];
@@ -540,6 +693,15 @@ interface RowProps {
   repoDetails: RepositoryDetails;
   labelCache?: Record<string, ManifestLabel[]>;
   setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
+  copyToClipboard: (text: string, key: string) => void;
+  copiedKey: string | null;
+  trackCount: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
+  selectTagsByManifest: (manifestDigest: string) => void;
 }
 
 interface SubRowProps {
@@ -555,4 +717,11 @@ interface SubRowProps {
       SECURITY_SCANNER?: boolean;
     };
   } | null;
+  trackCount: number;
+  parentRowIndex: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
 }

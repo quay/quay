@@ -1,13 +1,16 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Form,
   FormGroup,
   TextInput,
   Button,
   Alert,
   ClipboardCopy,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
@@ -98,140 +101,142 @@ export function CreateUserModal(props: CreateUserModalProps) {
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="Create New User"
       isOpen={props.isOpen}
       onClose={handleClose}
       data-testid="create-user-modal"
-      actions={
-        generatedPassword
-          ? [
-              <Button
-                key="close"
-                variant="primary"
-                onClick={handleClose}
-                data-testid="create-user-done"
-              >
-                Done
-              </Button>,
-            ]
-          : [
-              <Button
-                key="submit"
-                type="submit"
-                variant="primary"
-                isDisabled={!isValid || isLoading}
-                isLoading={isLoading}
-                onClick={handleSubmit(onSubmit)}
-                data-testid="create-user-submit"
-              >
-                Create User
-              </Button>,
-              <Button
-                key="cancel"
-                variant="link"
-                onClick={handleClose}
-                data-testid="create-user-cancel"
-              >
-                Cancel
-              </Button>,
-            ]
-      }
     >
-      {generatedPassword ? (
-        <>
-          <Alert
-            variant="success"
-            title="User created successfully"
-            isInline
-            style={{marginBottom: '1em'}}
-          >
-            The user has been created with a temporary password. Please provide
-            this password to the user securely.
-          </Alert>
-          <FormGroup
-            label="Temporary Password"
-            fieldId="generated-password"
-            helperText="This password will only be displayed once. Make sure to copy it before closing."
-          >
-            <ClipboardCopy
-              isReadOnly
-              hoverTip="Copy"
-              clickTip="Copied"
-              data-testid="generated-password-copy"
-            >
-              {generatedPassword}
-            </ClipboardCopy>
-          </FormGroup>
-        </>
-      ) : (
-        <Form onSubmit={handleSubmit(onSubmit)}>
-          {errorMessage && (
+      <ModalHeader title="Create New User" />
+      <ModalBody>
+        {generatedPassword ? (
+          <>
             <Alert
-              variant="danger"
-              title="Error creating user"
+              variant="success"
+              title="User created successfully"
               isInline
               style={{marginBottom: '1em'}}
             >
-              {errorMessage}
+              The user has been created with a temporary password. Please
+              provide this password to the user securely.
             </Alert>
-          )}
+            <FormGroup
+              label="Temporary Password"
+              fieldId="generated-password"
+              helperText="This password will only be displayed once. Make sure to copy it before closing."
+            >
+              <ClipboardCopy
+                isReadOnly
+                hoverTip="Copy"
+                clickTip="Copied"
+                data-testid="generated-password-copy"
+              >
+                {generatedPassword}
+              </ClipboardCopy>
+            </FormGroup>
+          </>
+        ) : (
+          <Form onSubmit={handleSubmit(onSubmit)}>
+            {errorMessage && (
+              <Alert
+                variant="danger"
+                title="Error creating user"
+                isInline
+                style={{marginBottom: '1em'}}
+              >
+                {errorMessage}
+              </Alert>
+            )}
 
-          <FormGroup
-            label="Username"
-            isRequired
-            fieldId="username"
-            helperTextInvalid={errors.username?.message}
-            validated={errors.username ? 'error' : 'default'}
-          >
-            <TextInput
-              id="username"
-              type="text"
-              data-testid="username-input"
+            <FormGroup
+              label="Username"
+              isRequired
+              fieldId="username"
+              helperTextInvalid={errors.username?.message}
               validated={errors.username ? 'error' : 'default'}
-              isDisabled={isLoading}
-              {...register('username', {
-                required: 'Username is required',
-                minLength: {
-                  value: 2,
-                  message: 'Username must be at least 2 characters',
-                },
-                maxLength: {
-                  value: 255,
-                  message: 'Username must be less than 255 characters',
-                },
-                pattern: {
-                  value: /^[a-z0-9_][a-z0-9_-]*$/,
-                  message:
-                    'Username must contain only lowercase letters, numbers, hyphens, and underscores',
-                },
-              })}
-            />
-          </FormGroup>
+            >
+              <TextInput
+                id="username"
+                type="text"
+                data-testid="username-input"
+                validated={errors.username ? 'error' : 'default'}
+                isDisabled={isLoading}
+                {...register('username', {
+                  required: 'Username is required',
+                  minLength: {
+                    value: 2,
+                    message: 'Username must be at least 2 characters',
+                  },
+                  maxLength: {
+                    value: 255,
+                    message: 'Username must be less than 255 characters',
+                  },
+                  pattern: {
+                    value: /^[a-z0-9_][a-z0-9_-]*$/,
+                    message:
+                      'Username must contain only lowercase letters, numbers, hyphens, and underscores',
+                  },
+                })}
+              />
+            </FormGroup>
 
-          <FormGroup
-            label="Email"
-            isRequired
-            fieldId="email"
-            helperTextInvalid={errors.email?.message}
-            validated={errors.email ? 'error' : 'default'}
-          >
-            <TextInput
-              id="email"
-              type="email"
-              data-testid="email-input"
+            <FormGroup
+              label="Email"
+              isRequired
+              fieldId="email"
+              helperTextInvalid={errors.email?.message}
               validated={errors.email ? 'error' : 'default'}
-              isDisabled={isLoading}
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address',
-                },
-              })}
-            />
-          </FormGroup>
-        </Form>
-      )}
+            >
+              <TextInput
+                id="email"
+                type="email"
+                data-testid="email-input"
+                validated={errors.email ? 'error' : 'default'}
+                isDisabled={isLoading}
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address',
+                  },
+                })}
+              />
+            </FormGroup>
+          </Form>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        {generatedPassword ? (
+          <Button
+            key="close"
+            variant="primary"
+            onClick={handleClose}
+            data-testid="create-user-done"
+          >
+            Done
+          </Button>
+        ) : (
+          <>
+            <Button
+              key="submit"
+              type="submit"
+              variant="primary"
+              isDisabled={!isValid || isLoading}
+              isLoading={isLoading}
+              onClick={handleSubmit(onSubmit)}
+              data-testid="create-user-submit"
+            >
+              Create User
+            </Button>
+            <Button
+              key="cancel"
+              variant="link"
+              onClick={handleClose}
+              data-testid="create-user-cancel"
+            >
+              Cancel
+            </Button>
+          </>
+        )}
+      </ModalFooter>
     </Modal>
   );
 }

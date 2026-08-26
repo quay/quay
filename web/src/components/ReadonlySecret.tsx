@@ -33,13 +33,12 @@ export default function ReadonlySecret(props: ReadonlySecretProps) {
         </InputGroupItem>
         <InputGroupItem>
           <Button
+            icon={secretHidden ? <EyeIcon /> : <EyeSlashIcon />}
             variant="plain"
             onClick={() => setSecretHidden(!secretHidden)}
             aria-label={secretHidden ? 'Show secret' : 'Hide secret'}
             style={{paddingLeft: 0}}
-          >
-            {secretHidden ? <EyeIcon /> : <EyeSlashIcon />}
-          </Button>
+          />
         </InputGroupItem>
       </InputGroup>
     </Flex>

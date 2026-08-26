@@ -37,7 +37,7 @@ def get_robot_password(username):
 
 def _create_org_mirror_repo(org_name, repo_name, robot):
     """Create a repository with ORG_MIRROR state and associated OrgMirrorConfig."""
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from data.database import OrgMirrorStatus
 
@@ -67,7 +67,7 @@ def _create_org_mirror_repo(org_name, repo_name, robot):
             internal_robot=robot,
             visibility=visibility,
             sync_interval=3600,
-            sync_start_date=datetime.utcnow(),
+            sync_start_date=datetime.now(timezone.utc),
             sync_status=OrgMirrorStatus.NEVER_RUN,
             sync_retries_remaining=3,
             skopeo_timeout=300,
@@ -299,3 +299,79 @@ class TestV2AuthOrgMirror:
         assert len(decoded["access"]) == 1
         access = decoded["access"][0]
         assert "*" not in access["actions"]
+
+    def test_push_to_nonexistent_repo_in_org_mirror_namespace_denied(self, app, client):
+        """
+        Pushing to a non-existent repo in an org-mirrored namespace should NOT
+        create the repo. This guards the push-on-create path in v2auth.
+        """
+        from datetime import datetime, timezone
+        from unittest.mock import patch
+
+        from data.database import OrgMirrorStatus
+        from features import FeatureNameValue
+
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        visibility = Visibility.get(name="private")
+
+        # Create OrgMirrorConfig for buynlarge organization
+        config = None
+        try:
+            config = OrgMirrorConfig.get(OrgMirrorConfig.organization == org)
+        except OrgMirrorConfig.DoesNotExist:
+            config = OrgMirrorConfig.create(
+                organization=org,
+                is_enabled=True,
+                external_registry_type=SourceRegistryType.QUAY,
+                external_registry_url="https://registry.example.com",
+                external_namespace="source-namespace",
+                internal_robot=robot,
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.now(timezone.utc),
+                sync_status=OrgMirrorStatus.NEVER_RUN,
+                sync_retries_remaining=3,
+                skopeo_timeout=300,
+            )
+
+        try:
+            # Enable ORG_MIRROR feature flag for this test
+            with patch("features.ORG_MIRROR", FeatureNameValue("ORG_MIRROR", True)):
+                # Push to a repo that does NOT exist yet — should not be created
+                params = {
+                    "service": original_app.config["SERVER_HOSTNAME"],
+                    "scope": "repository:buynlarge/newrepo_orgmirror_blocked:push",
+                }
+
+                headers = {"Authorization": gen_basic_auth("devtable", "password")}
+
+                resp = conduct_call(
+                    client,
+                    "v2.generate_registry_jwt",
+                    url_for,
+                    "GET",
+                    params,
+                    {},
+                    200,
+                    headers=headers,
+                )
+
+                token = resp.json["token"]
+                decoded = decode_bearer_token(token, instance_keys, original_app.config)
+
+                # Push should be denied — repo must not be created
+                if decoded["access"]:
+                    access = decoded["access"][0]
+                    assert "push" not in access["actions"]
+                else:
+                    assert decoded["access"] == []
+
+                # Verify the repo was NOT created
+                assert (
+                    model.repository.get_repository("buynlarge", "newrepo_orgmirror_blocked")
+                    is None
+                )
+        finally:
+            if config:
+                config.delete_instance()

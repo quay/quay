@@ -4,6 +4,7 @@ Unit tests for organization-level mirror configuration business logic.
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -13,24 +14,33 @@ from data.database import (
     OrgMirrorRepository,
     OrgMirrorRepoStatus,
     OrgMirrorStatus,
+    Repository,
+    RepositoryState,
     SourceRegistryType,
     User,
     Visibility,
 )
 from data.model import DataModelException
 from data.model.org_mirror import (
+    DEFAULT_MAX_DISCOVERY_DURATION,
     MAX_SYNC_RETRIES,
+    claim_org_mirror_config,
     claim_org_mirror_repo,
     create_org_mirror_config,
+    deactivate_excluded_repos,
     delete_org_mirror_config,
     expire_org_mirror_repo,
     get_eligible_org_mirror_repos,
     get_enabled_org_mirror_config_count,
     get_max_id_for_org_mirror_repo,
     get_min_id_for_org_mirror_repo,
+    get_or_create_org_mirror_repo,
     get_org_mirror_config,
     get_org_mirror_config_count,
+    get_org_mirror_repo_status_counts,
+    propagate_status_to_repos,
     release_org_mirror_repo,
+    sync_discovered_repos,
     update_org_mirror_config,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
@@ -130,7 +140,7 @@ class TestGetOrgMirrorConfig:
         Test that getting config with QUAY registry type works correctly.
         """
         org, robot = _create_org_and_robot("org_mirror_test4")
-        config = _create_org_mirror_config(
+        _create_org_mirror_config(
             org,
             robot,
             external_registry_type=SourceRegistryType.QUAY,
@@ -151,7 +161,7 @@ class TestGetOrgMirrorConfig:
         """
         org, robot = _create_org_and_robot("org_mirror_test5")
         filters = ["ubuntu*", "debian*", "alpine"]
-        config = _create_org_mirror_config(org, robot, repository_filters=filters)
+        _create_org_mirror_config(org, robot, repository_filters=filters)
 
         result = get_org_mirror_config(org)
 
@@ -270,6 +280,56 @@ class TestCreateOrgMirrorConfig:
 
         assert "belong to the organization" in str(excinfo.value)
 
+    @patch("features.PROXY_CACHE", True)
+    def test_create_org_mirror_config_blocked_by_proxy_cache(self, initialized_db):
+        """
+        Creating org mirror config should fail when the organization already has
+        a proxy cache configuration.
+        """
+        from data.model.proxy_cache import create_proxy_cache_config
+
+        org, robot = _create_org_and_robot("create_test_proxy_block")
+        visibility = Visibility.get(name="private")
+
+        # Create proxy cache config first
+        create_proxy_cache_config(org.username, "quay.io")
+
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "proxy cache" in str(excinfo.value).lower()
+
+    @patch("features.PROXY_CACHE", False)
+    def test_create_org_mirror_config_skips_proxy_cache_check_when_disabled(self, initialized_db):
+        """
+        When features.PROXY_CACHE is disabled, the proxy cache check should be skipped
+        and org mirror creation should succeed even if a proxy cache config exists.
+        """
+        org, robot = _create_org_and_robot("create_test_proxy_skip")
+        visibility = Visibility.get(name="private")
+
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        assert config is not None
+
     def test_create_org_mirror_config_already_exists(self, initialized_db):
         """
         Creating a second config for the same org should raise an error.
@@ -327,6 +387,84 @@ class TestCreateOrgMirrorConfig:
         assert retrieved is not None
         assert retrieved.id == created.id
         assert retrieved.external_registry_url == created.external_registry_url
+
+    def test_create_org_mirror_config_allows_deleted_repos(self, initialized_db):
+        """
+        Creating org mirror config should succeed when the organization only has
+        repositories in MARKED_FOR_DELETION state (pending garbage collection).
+
+        Regression test for PROJQUAY-10982.
+        """
+        org, robot = _create_org_and_robot("create_test_deleted_repos")
+        visibility = Visibility.get(name="private")
+
+        # Create a repo and mark it for deletion (simulating user-deleted repos
+        # that haven't been garbage collected yet)
+        repo = model.repository.create_repository(
+            org.username, "deleted-repo", None, visibility="private"
+        )
+        repo.state = RepositoryState.MARKED_FOR_DELETION
+        repo.save()
+
+        # Verify the repo exists in the DB but is marked for deletion
+        assert (
+            Repository.select()
+            .where(
+                (Repository.namespace_user == org)
+                & (Repository.state == RepositoryState.MARKED_FOR_DELETION)
+            )
+            .exists()
+        )
+
+        # Should succeed — MARKED_FOR_DELETION repos should not block creation
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        assert config is not None
+        assert config.organization == org
+
+    def test_create_org_mirror_config_rejects_normal_repos_with_deleted(self, initialized_db):
+        """
+        Creating org mirror config should still be rejected when the organization
+        has NORMAL-state repositories, even if it also has MARKED_FOR_DELETION ones.
+
+        Regression test for PROJQUAY-10982.
+        """
+        org, robot = _create_org_and_robot("create_test_mixed_repos")
+        visibility = Visibility.get(name="private")
+
+        # Create a repo marked for deletion
+        deleted_repo = model.repository.create_repository(
+            org.username, "deleted-repo", None, visibility="private"
+        )
+        deleted_repo.state = RepositoryState.MARKED_FOR_DELETION
+        deleted_repo.save()
+
+        # Create a normal repo
+        model.repository.create_repository(org.username, "normal-repo", None, visibility="private")
+
+        # Should still reject — a NORMAL repo exists
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "already contains repositories" in str(excinfo.value)
 
 
 class TestDeleteOrgMirrorConfig:
@@ -473,6 +611,66 @@ class TestDeleteOrgMirrorConfig:
         assert config2.external_registry_url == "https://quay.io"
         assert config2.external_namespace == "project2"
 
+    def test_delete_org_mirror_config_resets_repository_state(self, initialized_db):
+        """
+        Deleting a config should reset all previously-mirrored repositories from
+        ORG_MIRROR state back to NORMAL state so they can be used as regular repos.
+
+        Regression test for PROJQUAY-11382.
+        """
+        org, robot = _create_org_and_robot("delete_test_state_reset")
+        config = _create_org_mirror_config(org, robot)
+
+        # Create actual Repository records and link them to OrgMirrorRepository
+        repo1 = model.repository.create_repository(
+            org.username, "mirrored-repo1", robot, visibility="private"
+        )
+        repo1.state = RepositoryState.ORG_MIRROR
+        repo1.save()
+
+        repo2 = model.repository.create_repository(
+            org.username, "mirrored-repo2", robot, visibility="private"
+        )
+        repo2.state = RepositoryState.ORG_MIRROR
+        repo2.save()
+
+        # Create OrgMirrorRepository entries linked to actual repos
+        org_mirror_repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="mirrored-repo1",
+            repository=repo1,
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+
+        org_mirror_repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="mirrored-repo2",
+            repository=repo2,
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+
+        # Verify repos are in ORG_MIRROR state
+        assert Repository.get_by_id(repo1.id).state == RepositoryState.ORG_MIRROR
+        assert Repository.get_by_id(repo2.id).state == RepositoryState.ORG_MIRROR
+
+        # Delete the config
+        result = delete_org_mirror_config(config)
+
+        assert result is True
+        assert get_org_mirror_config(org) is None
+
+        # Verify OrgMirrorRepository records are deleted
+        assert (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+            == 0
+        )
+
+        # Verify repositories are reset to NORMAL state
+        assert Repository.get_by_id(repo1.id).state == RepositoryState.NORMAL
+        assert Repository.get_by_id(repo2.id).state == RepositoryState.NORMAL
+
 
 class TestUpdateOrgMirrorConfig:
     """Tests for update_org_mirror_config function."""
@@ -483,7 +681,6 @@ class TestUpdateOrgMirrorConfig:
         """
         org, robot = _create_org_and_robot("update_test1")
         config = _create_org_mirror_config(org, robot)
-        original_url = config.external_registry_url
 
         # Update the config
         updated = update_org_mirror_config(
@@ -514,7 +711,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating the is_enabled field.
         """
         org, robot = _create_org_and_robot("update_test3")
-        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Disable mirroring
         updated = update_org_mirror_config(org, is_enabled=False)
@@ -534,7 +731,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot = _create_org_and_robot("update_test4")
         private_visibility = Visibility.get(name="private")
         public_visibility = Visibility.get(name="public")
-        config = _create_org_mirror_config(org, robot, visibility=private_visibility)
+        _create_org_mirror_config(org, robot, visibility=private_visibility)
 
         # Update to public
         updated = update_org_mirror_config(org, visibility=public_visibility)
@@ -549,7 +746,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot1 = _create_org_and_robot("update_test5")
         # Create a second robot for the same org
         robot2, _ = create_robot("mirrorbot2", org)
-        config = _create_org_mirror_config(org, robot1)
+        _create_org_mirror_config(org, robot1)
 
         # Update to use the second robot
         updated = update_org_mirror_config(org, internal_robot=robot2)
@@ -563,7 +760,7 @@ class TestUpdateOrgMirrorConfig:
         """
         org1, robot1 = _create_org_and_robot("update_test6a")
         org2, robot2 = _create_org_and_robot("update_test6b")
-        config = _create_org_mirror_config(org1, robot1)
+        _create_org_mirror_config(org1, robot1)
 
         with pytest.raises(DataModelException) as excinfo:
             update_org_mirror_config(org1, internal_robot=robot2)
@@ -575,7 +772,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating repository filters.
         """
         org, robot = _create_org_and_robot("update_test7")
-        config = _create_org_mirror_config(org, robot, repository_filters=["ubuntu*"])
+        _create_org_mirror_config(org, robot, repository_filters=["ubuntu*"])
 
         # Update filters
         new_filters = ["debian*", "alpine", "nginx*"]
@@ -589,7 +786,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating external_registry_config.
         """
         org, robot = _create_org_and_robot("update_test8")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
 
         new_config = {
             "verify_tls": False,
@@ -605,7 +802,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating multiple fields at once.
         """
         org, robot = _create_org_and_robot("update_test9")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
         new_start_date = datetime.utcnow() + timedelta(hours=1)
 
         updated = update_org_mirror_config(
@@ -630,7 +827,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating external registry credentials.
         """
         org, robot = _create_org_and_robot("update_test10")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
 
         updated = update_org_mirror_config(
             org,
@@ -643,6 +840,37 @@ class TestUpdateOrgMirrorConfig:
         assert updated.external_registry_username is not None
         assert updated.external_registry_password is not None
 
+    def test_update_org_mirror_config_clear_credentials(self, initialized_db):
+        """
+        Test that passing None explicitly clears credentials,
+        while omitting credential args preserves them (_UNSET sentinel).
+        """
+        org, robot = _create_org_and_robot("update_test_clear_creds")
+        _create_org_mirror_config(org, robot)
+
+        # Set credentials first
+        updated = update_org_mirror_config(
+            org,
+            external_registry_username="myuser",
+            external_registry_password="mypassword",
+        )
+        assert updated.external_registry_username is not None
+        assert updated.external_registry_password is not None
+
+        # Omitting credential args should NOT clear them (sentinel behavior)
+        updated = update_org_mirror_config(org, sync_interval=7200)
+        assert updated.external_registry_username is not None
+        assert updated.external_registry_password is not None
+
+        # Passing None explicitly should clear them
+        updated = update_org_mirror_config(
+            org,
+            external_registry_username=None,
+            external_registry_password=None,
+        )
+        assert updated.external_registry_username is None
+        assert updated.external_registry_password is None
+
     def test_update_org_mirror_config_preserves_unchanged_fields(self, initialized_db):
         """
         Updating specific fields should not affect other fields.
@@ -650,7 +878,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot = _create_org_and_robot("update_test11")
         public_visibility = Visibility.get(name="public")
         filters = ["redis*", "mysql*"]
-        config = _create_org_mirror_config(
+        _create_org_mirror_config(
             org,
             robot,
             external_registry_url="https://original.example.com",
@@ -693,7 +921,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a ready repo (past due, retries remaining, not syncing)
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="ready-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -715,7 +943,7 @@ class TestGetEligibleOrgMirrorRepos:
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Create a SYNC_NOW repo
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="sync-now-repo",
             sync_status=OrgMirrorRepoStatus.SYNC_NOW,
@@ -739,7 +967,7 @@ class TestGetEligibleOrgMirrorRepos:
         # Create an expired syncing repo
         past_time = datetime.utcnow() - timedelta(hours=2)
         expired_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="expired-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
@@ -763,7 +991,7 @@ class TestGetEligibleOrgMirrorRepos:
         # Create a currently syncing repo with future expiration
         past_time = datetime.utcnow() - timedelta(hours=1)
         future_time = datetime.utcnow() + timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="syncing-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
@@ -785,7 +1013,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a repo with no retries left
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="no-retries-repo",
             sync_status=OrgMirrorRepoStatus.FAIL,
@@ -807,7 +1035,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a ready repo
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="disabled-config-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -829,7 +1057,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a repo scheduled for the future
         future_time = datetime.utcnow() + timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="future-repo",
             sync_status=OrgMirrorRepoStatus.SUCCESS,
@@ -851,21 +1079,21 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create repos with different start dates
         now = datetime.utcnow()
-        repo3 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-3",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=now - timedelta(hours=1),  # Most recent
             sync_retries_remaining=3,
         )
-        repo1 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-1",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=now - timedelta(hours=3),  # Oldest
             sync_retries_remaining=3,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-2",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -891,14 +1119,14 @@ class TestGetEligibleOrgMirrorRepos:
 
         past_time = datetime.utcnow() - timedelta(hours=1)
 
-        repo1 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config1,
             repository_name="org1-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=past_time,
             sync_retries_remaining=3,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config2,
             repository_name="org2-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -935,7 +1163,7 @@ class TestGetMinMaxIdForOrgMirrorRepo:
         org, robot = _create_org_and_robot("minmax_test1")
         config = _create_org_mirror_config(org, robot)
 
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="single-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -960,7 +1188,7 @@ class TestGetMinMaxIdForOrgMirrorRepo:
             repository_name="repo-a",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-b",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -1339,7 +1567,6 @@ class TestExpireOrgMirrorRepo:
             sync_expiration_date=expired_time,
         )
 
-        repo_id = repo.id
         original_get_by_id = OrgMirrorRepository.get_by_id
 
         def mock_get_by_id(id_val):
@@ -1370,10 +1597,11 @@ class TestUpdateSyncStatusToSyncNow:
         assert config.sync_status == OrgMirrorStatus.NEVER_RUN
 
         before = datetime.utcnow()
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
         after = datetime.utcnow()
 
         assert result is not None
+        assert reason is None
         assert result.sync_status == OrgMirrorStatus.SYNC_NOW
         assert result.sync_start_date >= before
         assert result.sync_start_date <= after
@@ -1393,9 +1621,10 @@ class TestUpdateSyncStatusToSyncNow:
         config.sync_status = OrgMirrorStatus.SYNCING
         config.save()
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is None
+        assert "discovery" in reason
 
     def test_sync_now_restores_retries(self, initialized_db):
         """
@@ -1411,37 +1640,113 @@ class TestUpdateSyncStatusToSyncNow:
         config.sync_status = OrgMirrorStatus.FAIL
         config.save()
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is not None
+        assert reason is None
         assert result.sync_retries_remaining >= 1
 
-    def test_sync_now_does_not_update_repos(self, initialized_db):
+    def test_sync_now_blocked_when_repos_syncing(self, initialized_db):
         """
-        Should only update the config, not the repos.
-        Repos are updated by the worker after discovery via propagate_status_to_repos.
+        Should return None when repos are in SYNCING or SYNC_NOW state.
         """
         from data.model.org_mirror import update_sync_status_to_sync_now
 
         org, robot = _create_org_and_robot("sync_now_test4")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
-        # Create repos in various states
-        syncing_repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="syncing-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
             sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
         )
-        never_run_repo = OrgMirrorRepository.create(
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_repos_sync_now(self, initialized_db):
+        """
+        Should return None when repos are in SYNC_NOW state.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test5")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_repos_never_run(self, initialized_db):
+        """
+        Should return None when repos are in NEVER_RUN state.
+        NEVER_RUN repos are scheduled and pending worker pickup — triggering
+        a new sync would restart discovery and conflict with queued work.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test6")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="never-run-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
         )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_mixed_active_and_terminal(self, initialized_db):
+        """
+        Should return None when ANY repo is in an active state, even if
+        other repos are in terminal states.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test_mixed")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_allowed_with_terminal_state_repos(self, initialized_db):
+        """
+        Should succeed when all repos are in terminal states (SUCCESS, FAIL, CANCEL).
+        Config update should not modify repo statuses — the worker propagates after discovery.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test7")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
         fail_repo = OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="fail-repo",
             sync_status=OrgMirrorRepoStatus.FAIL,
+            sync_retries_remaining=0,
         )
         success_repo = OrgMirrorRepository.create(
             org_mirror_config=config,
@@ -1449,22 +1754,41 @@ class TestUpdateSyncStatusToSyncNow:
             sync_status=OrgMirrorRepoStatus.SUCCESS,
         )
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is not None
+        assert reason is None
         assert result.sync_status == OrgMirrorStatus.SYNC_NOW
 
-        # Verify repos are NOT updated - they retain their original status
-        # The worker will propagate the status after discovery
-        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
-        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        # Verify repos retain their original status
         fail_repo = OrgMirrorRepository.get_by_id(fail_repo.id)
         success_repo = OrgMirrorRepository.get_by_id(success_repo.id)
 
-        assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
-        assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
         assert fail_repo.sync_status == OrgMirrorRepoStatus.FAIL
         assert success_repo.sync_status == OrgMirrorRepoStatus.SUCCESS
+
+    def test_sync_now_blocked_when_fail_with_retries_remaining(self, initialized_db):
+        """
+        Should reject sync-now when FAIL repos still have retries remaining,
+        since the worker will retry them (matching get_eligible_org_mirror_repos).
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_fail_retry")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="retryable-fail-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+            sync_retries_remaining=2,
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+
+        assert result is None
+        assert reason is not None
+        assert "syncing" in reason.lower()
 
 
 class TestUpdateSyncStatusToCancel:
@@ -1472,12 +1796,14 @@ class TestUpdateSyncStatusToCancel:
 
     def test_cancel_when_syncing(self, initialized_db):
         """
-        Should cancel when status is SYNCING.
+        Should cancel when status is SYNCING and preserve sync_start_date.
         """
         from data.model.org_mirror import update_sync_status_to_cancel
 
         org, robot = _create_org_and_robot("cancel_test1")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        original_sync_start_date = config.sync_start_date
 
         # Set to SYNCING
         config.sync_status = OrgMirrorStatus.SYNCING
@@ -1488,7 +1814,8 @@ class TestUpdateSyncStatusToCancel:
 
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.CANCEL
-        assert result.sync_expiration_date is None
+        assert result.sync_expiration_date is not None
+        assert abs((result.sync_start_date - original_sync_start_date).total_seconds()) < 2
         assert result.sync_retries_remaining == 0
 
     def test_cancel_when_sync_now(self, initialized_db):
@@ -1609,6 +1936,448 @@ class TestUpdateSyncStatusToCancel:
         assert sync_now_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
         assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
 
+    def test_cancel_not_eligible_after_release(self, initialized_db):
+        """
+        Regression test for PROJQUAY-10798: after the worker processes a cancel
+        and releases the config, it must NOT be re-picked by get_eligible_org_mirror_configs.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_loop_test")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Simulate: config is syncing, user cancels
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        # Worker picks up the cancel
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id in eligible_ids
+
+        # Worker claims, processes, and releases
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # After release, config must NOT be eligible again immediately
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id not in eligible_ids
+        # Cancel transitions to SUCCESS after processing (PROJQUAY-11027)
+        assert config.sync_status == OrgMirrorStatus.SUCCESS
+        assert config.sync_expiration_date is None
+
+    def test_cancel_preserves_sync_start_date(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: cancelling a sync must preserve
+        sync_start_date so that future scheduled syncs continue.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_preserve_date")
+        future_date = datetime.utcnow() + timedelta(hours=2)
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_start_date=future_date)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.CANCEL
+        assert result.sync_start_date is not None
+        assert abs((result.sync_start_date - future_date).total_seconds()) < 2
+
+    def test_cancel_release_schedules_next_sync(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed by the
+        worker, release_org_mirror_config must schedule the next sync instead
+        of clearing sync_start_date.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_release_schedule")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+        assert released.sync_start_date is not None
+        assert released.sync_start_date > datetime.utcnow()
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert released.sync_expiration_date is None
+
+    def test_cancel_release_with_no_sync_start_date(self, initialized_db):
+        """
+        Cover the else branch in release_org_mirror_config when sync_start_date
+        is None at cancel time — next sync should still be scheduled using
+        sync_interval from now.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_release_no_start")
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_start_date=None)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+
+        before = datetime.utcnow()
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+        assert released.sync_start_date is not None
+        assert released.sync_start_date > before
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES
+
+    def test_cancel_full_flow_preserves_future_syncs(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: end-to-end cancel flow.
+        After cancel → release, config must have a future sync_start_date
+        and must become eligible again once that date arrives.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_full_flow")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # User cancels
+        update_sync_status_to_cancel(config)
+
+        # Worker processes cancel
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Status transitions to SUCCESS so next pickup runs normal discovery
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+
+        # Not eligible immediately (sync_start_date is in the future)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert released.id not in eligible_ids
+
+        # Simulate time passing: set sync_start_date to the past
+        OrgMirrorConfig.update(sync_start_date=datetime.utcnow() - timedelta(seconds=1)).where(
+            OrgMirrorConfig.id == released.id
+        ).execute()
+
+        # Now the config should be eligible for syncing again
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert released.id in eligible_ids
+
+    def test_cancel_does_not_create_recancel_loop(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed, the
+        config must NOT re-enter the cancel path on the next worker pickup.
+        The status must be SUCCESS so the worker runs normal discovery.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_no_loop")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # Cancel and process
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Simulate time passing so config becomes eligible
+        OrgMirrorConfig.update(sync_start_date=datetime.utcnow() - timedelta(seconds=1)).where(
+            OrgMirrorConfig.id == config.id
+        ).execute()
+
+        # Config is eligible
+        eligible = list(get_eligible_org_mirror_configs())
+        matched = [c for c in eligible if c.id == config.id]
+        assert len(matched) == 1
+
+        # Worker picks it up — status must be SUCCESS, NOT CANCEL
+        picked_up = matched[0]
+        assert picked_up.sync_status == OrgMirrorStatus.SUCCESS
+
+    def test_cancel_repos_transition_to_sync_now_on_next_cycle(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed,
+        schedule_org_mirror_repos_for_sync must transition CANCEL repos
+        to SYNC_NOW so they rejoin the sync cycle. SKIP repos are untouched.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            propagate_status_to_repos,
+            release_org_mirror_config,
+            schedule_org_mirror_repos_for_sync,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_repo_sync_now")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-a",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=datetime.utcnow(),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+        repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-b",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+            sync_start_date=datetime.utcnow(),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+        repo_skip = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-skip",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # Cancel and propagate to repos
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        # Repos are CANCEL with retries=0, sync_start_date=None
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert repo1.sync_retries_remaining == 0
+        assert repo1.sync_start_date is None
+
+        # Worker releases config (cancel → success)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Repos stay CANCEL after release — no bulk reset
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert repo2.sync_status == OrgMirrorRepoStatus.CANCEL
+
+        # Next discovery cycle: schedule picks up CANCEL repos → SYNC_NOW
+        config = OrgMirrorConfig.get_by_id(config.id)
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+        assert scheduled == 2
+
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        repo_skip = OrgMirrorRepository.get_by_id(repo_skip.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo1.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert repo1.sync_start_date is not None
+        assert repo2.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo2.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert repo_skip.sync_status == OrgMirrorRepoStatus.SKIP
+
+
+class TestScheduleOrgMirrorReposForSync:
+    """Tests for schedule_org_mirror_repos_for_sync function."""
+
+    def test_schedules_never_run_repos(self, initialized_db):
+        """NEVER_RUN repos with no sync_start_date are transitioned to SYNC_NOW."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_never_run")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 1
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo.sync_start_date is not None
+        assert repo.sync_retries_remaining == MAX_SYNC_RETRIES
+
+    def test_skips_repos_with_existing_sync_start_date(self, initialized_db):
+        """Repos that already have a sync_start_date set are NOT rescheduled."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_skip_dated")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # CANCEL repo with a sync_start_date already set — must not be picked up
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-dated-repo",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=datetime.utcnow() + timedelta(hours=1),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 0
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.CANCEL  # unchanged
+
+    def test_returns_zero_when_no_eligible_repos(self, initialized_db):
+        """Returns 0 when no repos need scheduling (all SKIP/SUCCESS)."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_no_eligible")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="skip-repo",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 0
+
+    def test_schedules_both_cancel_and_never_run(self, initialized_db):
+        """Both CANCEL and NEVER_RUN repos (with no sync_start_date) are scheduled together."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_mixed")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        cancel_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-repo",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+        skip_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="skip-repo",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 2
+        cancel_repo = OrgMirrorRepository.get_by_id(cancel_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        skip_repo = OrgMirrorRepository.get_by_id(skip_repo.id)
+        assert cancel_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert cancel_repo.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert skip_repo.sync_status == OrgMirrorRepoStatus.SKIP  # unchanged
+
+    def test_clears_sync_expiration_date_on_cancel_repos(self, initialized_db):
+        """
+        Regression: CANCEL repos that had sync_expiration_date set (e.g. from
+        a SYNCING state) must have it cleared when transitioned to SYNC_NOW,
+        otherwise get_eligible_org_mirror_repos() will skip them.
+        """
+        from data.model.org_mirror import (
+            get_eligible_org_mirror_repos,
+            schedule_org_mirror_repos_for_sync,
+        )
+
+        org, robot = _create_org_and_robot("schedule_clear_exp")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-with-expiry",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+            sync_expiration_date=datetime.utcnow() - timedelta(minutes=5),
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 1
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo.sync_expiration_date is None
+
+        eligible_ids = [r.id for r in get_eligible_org_mirror_repos()]
+        assert repo.id in eligible_ids
+
 
 class TestPropagateStatusToRepos:
     """Tests for propagate_status_to_repos function."""
@@ -1712,7 +2481,7 @@ class TestPropagateStatusToRepos:
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Create repos - some already in SYNC_NOW
-        sync_now_repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="sync-now-repo",
             sync_status=OrgMirrorRepoStatus.SYNC_NOW,
@@ -1899,3 +2668,829 @@ class TestGetOrgMirrorConfigCount:
         _create_org_mirror_config(org3, robot3, is_enabled=False)
 
         assert get_enabled_org_mirror_config_count() == baseline + 2
+
+
+class TestSyncDiscoveredRepos:
+    """Tests for sync_discovered_repos batch query optimization."""
+
+    def test_sync_empty_list(self, initialized_db):
+        """
+        Syncing an empty list should return (0, 0) and create nothing.
+        """
+        org, robot = _create_org_and_robot("sync_disc_empty")
+        config = _create_org_mirror_config(org, robot)
+
+        total, created = sync_discovered_repos(config, [])
+
+        assert total == 0
+        assert created == 0
+
+    def test_sync_all_new_repos(self, initialized_db):
+        """
+        All discovered repos should be created when none exist.
+        """
+        org, robot = _create_org_and_robot("sync_disc_new")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["repo-a", "repo-b", "repo-c"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 3
+        assert created == 3
+
+        # Verify all repos exist in DB
+        db_names = {
+            r.repository_name
+            for r in OrgMirrorRepository.select().where(
+                OrgMirrorRepository.org_mirror_config == config
+            )
+        }
+        assert db_names == {"repo-a", "repo-b", "repo-c"}
+
+    def test_sync_mixed_existing_and_new(self, initialized_db):
+        """
+        Only repos that don't exist yet should be created.
+        """
+        org, robot = _create_org_and_robot("sync_disc_mixed")
+        config = _create_org_mirror_config(org, robot)
+
+        # Pre-create some repos
+        get_or_create_org_mirror_repo(config, "existing-1")
+        get_or_create_org_mirror_repo(config, "existing-2")
+
+        names = ["existing-1", "existing-2", "new-1", "new-2"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 4
+        assert created == 2
+
+        db_names = {
+            r.repository_name
+            for r in OrgMirrorRepository.select().where(
+                OrgMirrorRepository.org_mirror_config == config
+            )
+        }
+        assert db_names == {"existing-1", "existing-2", "new-1", "new-2"}
+
+    def test_sync_all_existing(self, initialized_db):
+        """
+        No repos should be created when all already exist.
+        """
+        org, robot = _create_org_and_robot("sync_disc_existing")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["repo-x", "repo-y"]
+        # Create them first
+        for name in names:
+            get_or_create_org_mirror_repo(config, name)
+
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 2
+        assert created == 0
+
+    def test_sync_idempotent(self, initialized_db):
+        """
+        Calling sync twice with the same names should not create duplicates.
+        """
+        org, robot = _create_org_and_robot("sync_disc_idempotent")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["alpha", "beta", "gamma"]
+
+        total1, created1 = sync_discovered_repos(config, names)
+        total2, created2 = sync_discovered_repos(config, names)
+
+        assert created1 == 3
+        assert created2 == 0
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 3
+
+    def test_sync_large_batch(self, initialized_db):
+        """
+        Handles 1500+ repos, exercising the chunking logic for both
+        SELECT IN (chunks of 900) and INSERT (chunks of 100).
+        """
+        org, robot = _create_org_and_robot("sync_disc_large")
+        config = _create_org_mirror_config(org, robot)
+
+        names = [f"repo-{i:04d}" for i in range(1500)]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 1500
+        assert created == 1500
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 1500
+
+    def test_sync_duplicate_names_in_input(self, initialized_db):
+        """
+        Duplicate names in input should be deduplicated, not cause errors.
+        """
+        org, robot = _create_org_and_robot("sync_disc_dupes")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["dup-repo", "dup-repo", "unique-repo", "dup-repo"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 2  # deduplicated count
+        assert created == 2
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 2
+
+    def test_sync_sets_transaction_id(self, initialized_db):
+        """
+        Batch-inserted repos must have non-null sync_transaction_id
+        for optimistic locking in claim_org_mirror_repo.
+        """
+        org, robot = _create_org_and_robot("sync_disc_txnid")
+        config = _create_org_mirror_config(org, robot)
+
+        sync_discovered_repos(config, ["txn-repo-1", "txn-repo-2"])
+
+        for repo in OrgMirrorRepository.select().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ):
+            assert repo.sync_transaction_id is not None
+            assert len(repo.sync_transaction_id) == 36  # UUID format
+
+    def test_sync_concurrent_insert_does_not_raise(self, initialized_db):
+        """
+        Simulates a race condition: another worker inserts a conflicting row
+        between the SELECT and INSERT phases. The on_conflict_ignore clause
+        should allow the function to complete without raising IntegrityError.
+        """
+        org, robot = _create_org_and_robot("sync_disc_race")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["race-repo-1", "race-repo-2", "race-repo-3"]
+
+        original_insert_many = OrgMirrorRepository.insert_many
+
+        def insert_many_with_simulated_race(rows, *args, **kwargs):
+            """
+            On the first call to insert_many, insert a conflicting row before
+            the batch insert runs, simulating a concurrent worker.
+            """
+            insert_many_with_simulated_race.called = True
+            # Simulate a concurrent worker inserting "race-repo-2"
+            get_or_create_org_mirror_repo(config, "race-repo-2")
+            return original_insert_many(rows, *args, **kwargs)
+
+        insert_many_with_simulated_race.called = False
+
+        with patch.object(
+            OrgMirrorRepository, "insert_many", side_effect=insert_many_with_simulated_race
+        ):
+            total, created = sync_discovered_repos(config, names)
+
+        assert insert_many_with_simulated_race.called
+        assert total == 3
+        # created is 3: the mock inserts "race-repo-2" inside the same
+        # connection/transaction, so COUNT-after minus COUNT-before includes
+        # it. In a real multi-connection scenario (PostgreSQL), the delta
+        # would be 2 if the concurrent insert committed before count_before.
+        assert created == 3
+
+        # But only 3 rows exist in DB (not 4), because on_conflict_ignore
+        # silently skipped the duplicate
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 3
+
+
+class TestClaimOrgMirrorConfig:
+    """Tests for claim_org_mirror_config function."""
+
+    def test_claim_uses_default_duration(self, initialized_db):
+        """
+        When no max_discovery_duration is passed and no app config is set,
+        claim_org_mirror_config should use DEFAULT_MAX_DISCOVERY_DURATION (30 min).
+        """
+        org, robot = _create_org_and_robot("org_claim_default")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+        assert claimed.sync_expiration_date is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_uses_custom_duration(self, initialized_db):
+        """
+        When a custom max_discovery_duration is passed,
+        claim_org_mirror_config should use that value for the expiration.
+        """
+        org, robot = _create_org_and_robot("org_claim_custom")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        custom_duration = 7200  # 2 hours
+        claimed = claim_org_mirror_config(config, max_discovery_duration=custom_duration)
+
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+        expected_min = datetime.utcnow() + timedelta(seconds=custom_duration - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=custom_duration + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_reads_from_app_config(self, initialized_db):
+        """
+        When no explicit duration is passed, claim_org_mirror_config should
+        read ORG_MIRROR_MAX_DISCOVERY_DURATION from app config.
+        """
+        org, robot = _create_org_and_robot("org_claim_appconfig")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = 3600  # 1 hour
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=3600 - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=3600 + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+        mock_app.config.get.assert_called_once_with(
+            "ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION
+        )
+
+    def test_claim_falls_back_on_invalid_app_config(self, initialized_db):
+        """
+        When app config returns a non-numeric value for ORG_MIRROR_MAX_DISCOVERY_DURATION,
+        claim_org_mirror_config should fall back to DEFAULT_MAX_DISCOVERY_DURATION.
+        """
+        org, robot = _create_org_and_robot("org_claim_invalid")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = "not_a_number"
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_falls_back_on_zero_or_negative_app_config(self, initialized_db):
+        """
+        When app config returns 0 or a negative value for ORG_MIRROR_MAX_DISCOVERY_DURATION,
+        claim_org_mirror_config should fall back to DEFAULT_MAX_DISCOVERY_DURATION.
+        """
+        org, robot = _create_org_and_robot("org_claim_zero")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = 0
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_fails_when_already_syncing(self, initialized_db):
+        """
+        When a config is already SYNCING with a valid expiration,
+        claim_org_mirror_config should return None.
+        """
+        org, robot = _create_org_and_robot("org_claim_busy")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        result = claim_org_mirror_config(config, max_discovery_duration=1800)
+
+        assert result is None
+
+    def test_claim_does_not_expire_cancelled_config(self, initialized_db):
+        """
+        Regression: claim_org_mirror_config must not reset a CANCEL config
+        to NEVER_RUN via expire_org_mirror_config, even when
+        sync_expiration_date is in the past.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("org_claim_cancel_no_expire")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        # Cancel the config — sets sync_expiration_date=now
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+
+        # Simulate time passing so sync_expiration_date is in the past
+        OrgMirrorConfig.update(
+            sync_expiration_date=datetime.utcnow() - timedelta(seconds=10),
+        ).where(OrgMirrorConfig.id == config.id).execute()
+        config = OrgMirrorConfig.get_by_id(config.id)
+
+        # Spy on expire_org_mirror_config to verify it is never called
+        with patch("data.model.org_mirror.expire_org_mirror_config", wraps=None) as expire_spy:
+            claimed = claim_org_mirror_config(config)
+            assert claimed is not None
+            assert claimed.sync_status == OrgMirrorStatus.SYNCING
+
+            # Verify expire_org_mirror_config was never invoked —
+            # the claim transitions CANCEL -> SYNCING directly via atomic update
+            expire_spy.assert_not_called()
+
+
+class TestGetOrgMirrorRepoStatusCounts:
+    """Tests for get_org_mirror_repo_status_counts()."""
+
+    def test_mixed_states_returns_correct_counts(self, initialized_db):
+        """Repos in various states return correct per-status counts."""
+        org, robot = _create_org_and_robot("testorgstatuscounts")
+        config = _create_org_mirror_config(org, robot)
+
+        statuses = [
+            OrgMirrorRepoStatus.SUCCESS,
+            OrgMirrorRepoStatus.SUCCESS,
+            OrgMirrorRepoStatus.SYNCING,
+            OrgMirrorRepoStatus.FAIL,
+            OrgMirrorRepoStatus.NEVER_RUN,
+        ]
+        for i, status in enumerate(statuses):
+            get_or_create_org_mirror_repo(config, f"repo-{i}")
+            OrgMirrorRepository.update(sync_status=status).where(
+                (OrgMirrorRepository.repository_name == f"repo-{i}")
+                & (OrgMirrorRepository.org_mirror_config == config)
+            ).execute()
+
+        counts = get_org_mirror_repo_status_counts(config)
+
+        assert counts["SUCCESS"] == 2
+        assert counts["SYNCING"] == 1
+        assert counts["FAIL"] == 1
+        assert counts["NEVER_RUN"] == 1
+        assert counts["CANCEL"] == 0
+        assert counts["SYNC_NOW"] == 0
+
+    def test_no_repos_returns_all_zeros(self, initialized_db):
+        """Config with no repos returns all statuses as zero."""
+        org, robot = _create_org_and_robot("testorgzerocounts")
+        config = _create_org_mirror_config(org, robot)
+
+        counts = get_org_mirror_repo_status_counts(config)
+
+        for status in OrgMirrorRepoStatus:
+            assert counts[status.name] == 0
+
+
+class TestDeactivateExcludedRepos:
+    """Tests for deactivate_excluded_repos()."""
+
+    def test_deleted_repos_get_skipped(self, initialized_db):
+        """Repos no longer in source are marked SKIP with a source-specific message."""
+        org, robot = _create_org_and_robot("testdeact_deleted")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+        get_or_create_org_mirror_repo(config, "repo-c")
+
+        # repo-b no longer in source
+        count = deactivate_excluded_repos(
+            config, ["repo-a", "repo-c"], source_repo_names=["repo-a", "repo-c"]
+        )
+
+        assert count == 1
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+        assert repo_b.status_message == "Repository no longer in source registry"
+        assert repo_b.sync_start_date is None
+        assert repo_b.sync_expiration_date is None
+
+    def test_filtered_repos_get_skipped(self, initialized_db):
+        """Repos excluded by filters are marked SKIP with a filter-specific message."""
+        org, robot = _create_org_and_robot("testdeact_filtered")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "keep-me")
+        get_or_create_org_mirror_repo(config, "filter-me-out")
+
+        # filter-me-out exists in source but excluded by filters
+        count = deactivate_excluded_repos(
+            config, ["keep-me"], source_repo_names=["keep-me", "filter-me-out"]
+        )
+
+        assert count == 1
+        filtered = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "filter-me-out")
+        )
+        assert filtered.sync_status == OrgMirrorRepoStatus.SKIP
+        assert filtered.status_message == "Repository excluded by filters"
+
+    def test_active_repos_unaffected(self, initialized_db):
+        """Repos in the active list are not changed."""
+        org, robot = _create_org_and_robot("testdeact_active")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        count = deactivate_excluded_repos(config, ["repo-a", "repo-b"])
+
+        assert count == 0
+        for name in ["repo-a", "repo-b"]:
+            repo = OrgMirrorRepository.get(
+                (OrgMirrorRepository.org_mirror_config == config)
+                & (OrgMirrorRepository.repository_name == name)
+            )
+            assert repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+    def test_skip_repos_reactivated_when_back_in_active_list(self, initialized_db):
+        """Previously SKIP'd repos are reactivated to NEVER_RUN when they return."""
+        org, robot = _create_org_and_robot("testdeact_reactivate")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        # Manually set to SKIP with stale dates to verify they are cleared
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.SKIP,
+            status_message="Previously skipped",
+            sync_start_date=past_time,
+            sync_expiration_date=past_time,
+        ).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        ).execute()
+
+        # repo-a is back in active list
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 0
+        repo_a = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        )
+        assert repo_a.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert repo_a.status_message is None
+        assert repo_a.sync_start_date is None
+        assert repo_a.sync_expiration_date is None
+
+    def test_already_skipped_repos_not_re_updated(self, initialized_db):
+        """Repos already SKIP'd and still excluded are not re-updated."""
+        org, robot = _create_org_and_robot("testdeact_idempotent")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        # First deactivation — repo-b excluded
+        deactivate_excluded_repos(config, ["repo-a"])
+
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+
+        # Second deactivation — repo-b still excluded, should return 0
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 0
+
+    def test_empty_active_list_skips_all(self, initialized_db):
+        """Empty active_repo_names SKIPs all tracked repos (filters excluded everything)."""
+        org, robot = _create_org_and_robot("testdeact_empty")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+
+        count = deactivate_excluded_repos(config, [])
+
+        assert count == 1
+        repo_a = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        )
+        assert repo_a.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_mixed_vanished_and_filtered_repos(self, initialized_db):
+        """Repos get distinct messages based on whether they vanished or were filtered."""
+        org, robot = _create_org_and_robot("testdeact_mixed")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active")
+        get_or_create_org_mirror_repo(config, "vanished")
+        get_or_create_org_mirror_repo(config, "filtered-out")
+
+        # Source has "active" and "filtered-out", but filters only keep "active"
+        count = deactivate_excluded_repos(
+            config,
+            ["active"],
+            source_repo_names=["active", "filtered-out"],
+        )
+
+        assert count == 2
+
+        vanished = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "vanished")
+        )
+        assert vanished.sync_status == OrgMirrorRepoStatus.SKIP
+        assert vanished.status_message == "Repository no longer in source registry"
+
+        filtered = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "filtered-out")
+        )
+        assert filtered.sync_status == OrgMirrorRepoStatus.SKIP
+        assert filtered.status_message == "Repository excluded by filters"
+
+    def test_no_source_names_uses_generic_message(self, initialized_db):
+        """Without source_repo_names, all skipped repos get the vanished message."""
+        org, robot = _create_org_and_robot("testdeact_nosource")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 1
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+        assert repo_b.status_message == "Repository no longer in source registry"
+
+    def test_syncing_repos_not_skipped(self, initialized_db):
+        """Repos currently SYNCING are not marked SKIP — they'll be caught next cycle."""
+        org, robot = _create_org_and_robot("testdeact_syncing")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "syncing-repo")
+        get_or_create_org_mirror_repo(config, "idle-repo")
+
+        # Set syncing-repo to SYNCING (simulating an active worker)
+        OrgMirrorRepository.update(sync_status=OrgMirrorRepoStatus.SYNCING).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "syncing-repo")
+        ).execute()
+
+        # Both repos excluded from active list
+        count = deactivate_excluded_repos(config, [])
+
+        # Only idle-repo should be skipped; syncing-repo left alone
+        assert count == 1
+
+        syncing = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "syncing-repo")
+        )
+        assert syncing.sync_status == OrgMirrorRepoStatus.SYNCING
+
+        idle = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "idle-repo")
+        )
+        assert idle.sync_status == OrgMirrorRepoStatus.SKIP
+
+
+class TestDeactivateExcludedReposRotatesTransactionId:
+    """Tests that deactivate_excluded_repos rotates sync_transaction_id to
+    prevent in-flight workers from overwriting the new state via release."""
+
+    def test_skip_rotates_transaction_id(self, initialized_db):
+        """Skipping a repo must change its sync_transaction_id so an old
+        claim token can no longer match."""
+        org, robot = _create_org_and_robot("testdeact_txn_skip")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+        original_txn_id = repo.sync_transaction_id
+
+        deactivate_excluded_repos(config, [])  # skip all
+
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SKIP
+        assert repo.sync_transaction_id != original_txn_id
+
+    def test_reactivate_rotates_transaction_id(self, initialized_db):
+        """Reactivating a SKIP'd repo must change its sync_transaction_id."""
+        org, robot = _create_org_and_robot("testdeact_txn_react")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+
+        # First skip it
+        deactivate_excluded_repos(config, [])
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        skipped_txn_id = repo.sync_transaction_id
+
+        # Now reactivate it
+        deactivate_excluded_repos(config, ["repo-a"])
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert repo.sync_transaction_id != skipped_txn_id
+
+    def test_release_fails_after_skip_with_old_token(self, initialized_db):
+        """Simulates the race: a repo is skipped via discovery while a worker
+        holds an old claim token — release with the stale token must fail."""
+        org, robot = _create_org_and_robot("testdeact_txn_race")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+        # Grab the token before discovery changes it
+        claimed_repo = OrgMirrorRepository.get_by_id(repo.id)
+
+        # Discovery runs and skips this repo (rotates sync_transaction_id)
+        deactivate_excluded_repos(config, [])
+
+        # Attempt release with the old token — must fail
+        result = release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.SUCCESS)
+
+        assert result is None
+
+        # Repo must still be in SKIP state
+        repo = OrgMirrorRepository.get_by_id(claimed_repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SKIP
+
+
+class TestReleaseOrgMirrorRepoStatusMessage:
+    """Tests for status_message handling in release_org_mirror_repo()."""
+
+    def test_fail_preserves_status_message(self, initialized_db):
+        """On FAIL, the status_message is persisted."""
+        org, robot = _create_org_and_robot("testrelease_msg_fail")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+
+        claimed = claim_org_mirror_repo(repo)
+        assert claimed is not None
+
+        released = release_org_mirror_repo(
+            claimed,
+            OrgMirrorRepoStatus.FAIL,
+            status_message="Tag sync failed: 2/5 tags",
+        )
+
+        assert released is not None
+        assert released.status_message == "Tag sync failed: 2/5 tags"
+        assert released.sync_status == OrgMirrorRepoStatus.FAIL
+
+    def test_success_clears_status_message(self, initialized_db):
+        """On SUCCESS, status_message is cleared even if caller provides one."""
+        org, robot = _create_org_and_robot("testrelease_msg_success")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+        # Set an existing message
+        OrgMirrorRepository.update(status_message="old failure message").where(
+            OrgMirrorRepository.id == repo.id
+        ).execute()
+
+        claimed = claim_org_mirror_repo(repo)
+        assert claimed is not None
+
+        released = release_org_mirror_repo(
+            claimed,
+            OrgMirrorRepoStatus.SUCCESS,
+            status_message="should be cleared",
+        )
+
+        assert released is not None
+        assert released.status_message is None
+        assert released.sync_status == OrgMirrorRepoStatus.SUCCESS
+
+
+class TestPropagateStatusSkipsSkipRepos:
+    """Tests for propagate_status_to_repos() skipping SKIP repos."""
+
+    def test_sync_now_skips_skip_repos(self, initialized_db):
+        """SYNC_NOW propagation does not affect SKIP repos."""
+        org, robot = _create_org_and_robot("testprop_syncnow_skip")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active-repo")
+        get_or_create_org_mirror_repo(config, "skipped-repo")
+
+        OrgMirrorRepository.update(sync_status=OrgMirrorRepoStatus.SKIP).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.SYNC_NOW)
+
+        active = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "active-repo")
+        )
+        skipped = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        )
+
+        assert active.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert skipped.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_cancel_skips_skip_repos(self, initialized_db):
+        """CANCEL propagation does not affect SKIP repos."""
+        org, robot = _create_org_and_robot("testprop_cancel_skip")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active-repo")
+        get_or_create_org_mirror_repo(config, "skipped-repo")
+
+        OrgMirrorRepository.update(sync_status=OrgMirrorRepoStatus.SKIP).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        active = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "active-repo")
+        )
+        skipped = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        )
+
+        assert active.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert skipped.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_sync_now_clears_status_message(self, initialized_db):
+        """SYNC_NOW propagation clears stale status_message from prior failures."""
+        org, robot = _create_org_and_robot("testprop_syncnow_msg")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "failed-repo")
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.FAIL,
+            status_message="Sync failed: 2/5 tags failed",
+        ).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "failed-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.SYNC_NOW)
+
+        repo = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "failed-repo")
+        )
+        assert repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo.status_message is None
+
+    def test_cancel_clears_status_message(self, initialized_db):
+        """CANCEL propagation clears stale status_message from prior failures."""
+        org, robot = _create_org_and_robot("testprop_cancel_msg")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "failed-repo")
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.FAIL,
+            status_message="Sync failed: 3/5 tags failed",
+        ).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "failed-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        repo = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "failed-repo")
+        )
+        assert repo.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert repo.status_message is None

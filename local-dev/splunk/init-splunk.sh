@@ -9,6 +9,7 @@ INDEX_NAME="quay_logs"
 AUTH="${SPLUNK_USER}:${SPLUNK_PASS}"
 BASE_URL="https://localhost:8089"
 TOKEN_OUTPUT_FILE="/tmp/quay_splunk_bearer_token"
+PYTHON=$(command -v python3 2>/dev/null || echo "/opt/splunk/bin/python3")
 
 echo "Waiting for Splunk to be fully ready..."
 timeout=120
@@ -36,7 +37,22 @@ else
     echo "  Index created"
 fi
 
-# 2. Enable token authentication and create bearer token
+# 2. Wait for KVStore to be ready (required for token auth)
+echo "Waiting for KVStore to be ready..."
+kvtimeout=120
+while [ $kvtimeout -gt 0 ]; do
+    if curl -sf -k -u "${AUTH}" "${BASE_URL}/services/kvstore/status" 2>/dev/null | grep -qi "backupRestoreStatus.*Ready"; then
+        echo "  KVStore is ready"
+        break
+    fi
+    sleep 5
+    kvtimeout=$((kvtimeout - 5))
+done
+if [ $kvtimeout -le 0 ]; then
+    echo "  WARNING: KVStore did not become ready in time, token creation may fail"
+fi
+
+# 3. Enable token authentication and create bearer token
 echo "Enabling token authentication..."
 curl -sf -k -u "${AUTH}" \
     "${BASE_URL}/services/admin/token-auth/tokens_auth" \
@@ -62,7 +78,7 @@ if [ -z "${BEARER_TOKEN:-}" ]; then
     BEARER_TOKEN=""
     if [ -n "${BEARER_RESPONSE}" ]; then
         BEARER_TOKEN=$(echo "${BEARER_RESPONSE}" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); print(d['entry'][0]['content']['token'])" 2>/dev/null || echo "")
+            $PYTHON -c "import sys,json; d=json.load(sys.stdin); print(d['entry'][0]['content']['token'])" 2>/dev/null || echo "")
     fi
 
     if [ -n "${BEARER_TOKEN}" ]; then

@@ -48,8 +48,23 @@ services:
     user: nobody
     container_name: quay-redis
     image: docker.io/library/redis:latest
+    # Disable RDB persistence: the default image runs as 'nobody' which cannot
+    # write snapshot files to /data, causing stop-writes-on-bgsave-error to
+    # block all writes and break the /health/endtoend check.
+    command: ["redis-server", "--save", ""]
     ports:
       - "6379:6379"
+
+  # Pyroscope server for continuous profiling (optional). Opt-in via profile — start explicitly when needed:
+  #   docker compose --profile profiling up -d pyroscope
+  # UI: http://localhost:4040. Set PROFILING_TYPE and PYROSCOPE_SERVER_ADDRESS in config when using.
+  pyroscope:
+    profiles: ["profiling"]
+    container_name: quay-pyroscope
+    image: docker.io/grafana/pyroscope:latest
+    command: ["-server.http-listen-address=0.0.0.0", "-server.grpc-listen-address=0.0.0.0"]
+    ports:
+      - "4040:4040"
 
   ldap:
     container_name: quay-ldap
@@ -74,7 +89,8 @@ services:
   # Web UI: http://localhost:8000 (admin/changeme1)
   splunk:
     container_name: quay-splunk
-    image: docker.io/splunk/splunk:latest
+    platform: linux/amd64
+    image: docker.io/splunk/splunk:8.2
     environment:
       SPLUNK_START_ARGS: "--accept-license"
       SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
@@ -90,6 +106,53 @@ services:
       timeout: 10s
       retries: 12
       start_period: 90s
+
+  # Jaeger all-in-one for distributed tracing (optional). Start via:
+  #   make local-dev-up-with-jaeger   (recommended — also merges OTEL config)
+  #   docker compose up -d jaeger     (manual, run make enable-jaeger separately)
+  # UI: http://localhost:16686. OTLP gRPC: 4317, OTLP HTTP: 4318.
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
+  garage:
+    container_name: quay-garage
+    image: dxflrs/garage:v1.0.1
+    volumes:
+      - "./local-dev/garage/garage.toml:/etc/garage.toml:ro,z"
+    ports:
+      - "3900:3900"
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  keycloak:
+    container_name: quay-keycloak
+    image: quay.io/keycloak/keycloak:26.2
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "http://localhost:8081"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - "./local-dev/keycloak/quay-realm-export.json:/opt/keycloak/data/import/quay-realm.json:ro"
+    ports:
+      - "8081:8080"
+    command:
+      - start-dev
+      - --import-realm
 
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
@@ -133,6 +196,9 @@ services:
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       args:
@@ -145,9 +211,12 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
+      QUAY_DISTRIBUTED_STORAGE_PREFERENCE: "${QUAY_DISTRIBUTED_STORAGE_PREFERENCE:-}"
+      DOCKER_HOST: "${QUAY_DOCKER_HOST:-}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
@@ -168,7 +237,7 @@ services:
       - "./local-dev/stack:/quay-registry/conf/stack"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
@@ -189,14 +258,11 @@ services:
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.7.2
     volumes:
-      - "./local-dev/clair:/src/clair/"
+      - "./local-dev/clair/config.yaml:/etc/clair/config.yaml:z"
     environment:
-      CLAIR_CONF: "/src/clair/config.yaml"
+      CLAIR_CONF: "/etc/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
-    cpus: 2
-    command:
-      ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
 
   # Mailpit - local email testing server
   # Web UI: http://localhost:8025

@@ -18,7 +18,7 @@ from auth.permissions import (
 )
 from data import model
 from data.database import RepositoryState
-from data.model.org_mirror import get_org_mirroring_robot
+from data.model.org_mirror import get_org_mirroring_robot, is_namespace_org_mirrored
 from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -257,6 +257,19 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
         raise Unknown(message="Unknown repository")
 
+    # Ensure that the namespace where we want to push the repo exists,
+    # If the namespace doesn't exist and we dont have namespace creation enabled,
+    # exit immediately with empty scopes.
+    namespace_exists = model.user.get_namespace_user(namespace) is not None
+    if not namespace_exists and not app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
+        return scopeResult(
+            actions=[],
+            namespace=namespace,
+            repository=reponame,
+            registry_and_repo=registry_and_repo,
+            tuf_root=_get_tuf_root(repository_ref, namespace, reponame),
+        )
+
     if "push" in requested_actions:
         # Check if there is a valid user or token, as otherwise the repository cannot be
         # accessed.
@@ -278,14 +291,17 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         # In NORMAL mode, if the user has permission, then they can push.
                         final_actions.append("push")
                     elif repository_ref.state == RepositoryState.MIRROR:
-                        # In MIRROR mode, only the mirroring robot can push.
-                        # Check repo-level mirror first
+                        # In MIRROR mode, only the repo-level mirroring robot can push.
                         mirror = model.repo_mirror.get_mirror(repository_ref.id)
                         robot = mirror.internal_robot if mirror is not None else None
 
-                        # If no repo-level mirror, check org-level mirror
                         if robot is None:
-                            robot = get_org_mirroring_robot(repository_ref.id)
+                            logger.error(
+                                "Repository %s/%s is in MIRROR state but has no "
+                                "RepoMirrorConfig — possible corrupt state",
+                                namespace,
+                                reponame,
+                            )
 
                         if robot is not None and user is not None and robot == user:
                             assert robot.robot
@@ -352,10 +368,15 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                                 user,
                                 email_required=features.MAILING,
                             )
+                            namespace_exists = True
                         except model.DataModelException as ex:
                             raise Unsupported(message="Cannot create organization")
 
-                if CreateRepositoryPermission(namespace).can() and user is not None:
+                if (
+                    CreateRepositoryPermission(namespace).can()
+                    and user is not None
+                    and namespace_exists
+                ):
                     if (
                         features.RESTRICTED_USERS
                         and usermanager.is_restricted_user(user.username)
@@ -363,6 +384,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                     ):
                         logger.debug(
                             "Restricted users cannot create repository %s/%s", namespace, reponame
+                        )
+                    # Block push-on-create for org-mirrored namespaces — repos are
+                    # managed exclusively by the org mirror sync worker.
+                    elif features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+                        logger.debug(
+                            "Repository creation blocked: namespace %s is "
+                            "managed by organization-level mirroring",
+                            namespace,
                         )
                     else:
                         logger.debug("Creating repository: %s/%s", namespace, reponame)

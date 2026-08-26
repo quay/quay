@@ -8,6 +8,7 @@ import {
   FailedState,
   UnsupportedState,
 } from 'src/routes/TagDetails/SecurityReport/SecurityReportScanStates';
+import {Layer} from 'src/resources/TagResource';
 
 export function Packages(props: PackagesProps) {
   const {data, error} = useSecurityDetails(props.org, props.repo, props.digest);
@@ -31,7 +32,7 @@ export function Packages(props: PackagesProps) {
     <>
       <PackagesChart features={features} />
       <hr />
-      <PackagesTable features={features} />
+      <PackagesTable features={features} layers={props.layers} />
     </>
   );
 }
@@ -40,4 +41,5 @@ export interface PackagesProps {
   org: string;
   repo: string;
   digest: string;
+  layers?: Layer[];
 }

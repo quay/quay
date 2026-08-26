@@ -48,7 +48,7 @@ export default function Avatar({
 
   return (
     <div
-      className={`pf-v5-c-avatar ${className}`}
+      className={`pf-v6-c-avatar ${className}`}
       style={avatarStyle}
       title={`${avatar.name} avatar`}
       aria-label={`${avatar.name} avatar`}

@@ -12,9 +12,20 @@ from jinja2 import Template
 import release
 from _init import CONF_DIR
 from app import app
-from data.model import ServiceKeyDoesNotExist
+from data.model import ServiceKeyDoesNotExist, db_transaction
+from data.model.oauth import (
+    create_bootstrap_application,
+    create_bootstrap_oauth_api_token,
+    delete_applications,
+    get_bootstrap_app_name,
+    get_bootstrap_managed_applications,
+    get_singleton_bootstrap_application_candidates,
+    lock_bootstrap_token_operation,
+)
 from data.model.release import set_region_release
 from data.model.service_keys import get_service_key
+from data.model.user import get_user
+from util.bootstrap_token import delete_bootstrap_token, write_bootstrap_token
 from util.config.database import sync_database_with_config
 from util.generatepresharedkey import generate_key
 
@@ -93,6 +104,130 @@ def setup_instance_service_key():
             )
 
 
+def setup_bootstrap_token():
+    """Provision or revoke the startup bootstrap token based on feature configuration."""
+    if app.config.get("REGISTRY_STATE", "normal") == "readonly":
+        logger.debug("Registry is in read-only mode, skipping bootstrap token setup")
+        return
+
+    if "FEATURE_PROGRAMMATIC_BOOTSTRAP" not in app.config:
+        logger.debug("Programmatic bootstrap feature is not configured, skipping token setup")
+        return
+
+    if app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"]:
+        logger.debug("FEATURE_PROGRAMMATIC_BOOTSTRAP is true, will attempt to use bootstrap token")
+        _provision_bootstrap_token()
+    else:
+        logger.debug(
+            "FEATURE_PROGRAMMATIC_BOOTSTRAP exists and is false, "
+            "will attempt to delete the bootstrap token"
+        )
+        _revoke_bootstrap_tokens()
+
+
+def _get_bootstrap_token_owner_user():
+    owner_name = app.config.get("BOOTSTRAP_TOKEN_OWNER")
+    if not owner_name:
+        logger.error(
+            "BOOTSTRAP_TOKEN_OWNER must be set when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled"
+        )
+        return None
+
+    if owner_name not in (app.config.get("SUPER_USERS") or []):
+        logger.error("BOOTSTRAP_TOKEN_OWNER must be listed in SUPER_USERS")
+        return None
+
+    owner = get_user(owner_name)
+    if owner is None:
+        logger.error(
+            "Bootstrap token owner '%s' was not found in the database; "
+            "skipping bootstrap token provisioning",
+            owner_name,
+        )
+        return None
+
+    return owner
+
+
+def _provision_bootstrap_token():
+    owner = _get_bootstrap_token_owner_user()
+    if owner is None:
+        return
+
+    scope = app.config["BOOTSTRAP_TOKEN_SCOPE"]
+    expiration = app.config["BOOTSTRAP_TOKEN_EXPIRATION"]
+
+    try:
+        with db_transaction():
+            lock_bootstrap_token_operation()
+
+            bootstrap_application, stale_applications = (
+                get_singleton_bootstrap_application_candidates(owner)
+            )
+            if bootstrap_application is not None:
+                if stale_applications:
+                    delete_applications(stale_applications)
+                    logger.info(
+                        "Deleted %s stale bootstrap applications",
+                        len(stale_applications),
+                    )
+
+                # Treat the database as the startup source of truth for Phase 1 local
+                # host-file storage in standalone installations. In multi-node setups
+                # using node-local files, this host may legitimately not have the file
+                # that another host wrote. The plaintext token cannot be reconstructed
+                # from the DB, so do not rotate or recreate it solely because the local
+                # file is missing or malformed.
+                logger.info("Bootstrap token already provisioned, skipping")
+                return
+
+            bootstrap_application = create_bootstrap_application(get_bootstrap_app_name(), owner)
+            _, access_token = create_bootstrap_oauth_api_token(
+                bootstrap_application,
+                owner,
+                scope,
+                expiration_seconds=expiration,
+            )
+            if stale_applications:
+                delete_applications(stale_applications)
+                logger.info(
+                    "Deleted %s stale bootstrap applications",
+                    len(stale_applications),
+                )
+            write_bootstrap_token(app.config, access_token)
+            logger.info("Bootstrap token provisioned")
+            return
+    except OSError:
+        logger.exception("Failed to write bootstrap token, rolled back")
+        return
+
+
+def _revoke_bootstrap_tokens():
+    with db_transaction():
+        lock_bootstrap_token_operation()
+
+        # Cleanup intentionally ignores the current owner config. Bootstrap credentials
+        # created under a previous owner remain valid until deleted or expired.
+        bootstrap_applications = get_bootstrap_managed_applications()
+
+        delete_applications(bootstrap_applications)
+
+    try:
+        deleted_token_file = delete_bootstrap_token(app.config)
+    except OSError:
+        logger.exception("Failed to delete local bootstrap token file")
+    else:
+        if deleted_token_file:
+            logger.info("Deleted local bootstrap token file")
+        else:
+            logger.debug("Local bootstrap token file did not exist, skipping deletion")
+
+    logger.info(
+        "Deleted %s bootstrap applications (feature disabled)",
+        len(bootstrap_applications),
+    )
+
+
 def main():
     if not app.config.get("SETUP_COMPLETE", False):
         raise Exception(
@@ -101,6 +236,7 @@ def main():
 
     sync_database_with_config(app.config)
     setup_instance_service_key()
+    setup_bootstrap_token()
 
     # Record deploy
     if release.REGION and release.GIT_HEAD:

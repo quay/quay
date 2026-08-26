@@ -208,7 +208,7 @@ export default function AutoPruning(props: AutoPruning) {
           onSave={onSave}
           policy={policy}
           index={index}
-          key={index}
+          key={policy.uuid || index}
           successFetchingPolicies={successFetchingPolicies}
         />
       ))}
