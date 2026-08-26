@@ -9,6 +9,7 @@ from data.database import (
     QuotaRepositorySize,
     QuotaTypes,
     Tag,
+    User,
 )
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.namespacequota import (
@@ -18,7 +19,7 @@ from data.model.namespacequota import (
     get_namespace_size,
 )
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.oci.tag import get_tag, retarget_tag
+from data.model.oci.tag import find_repository_with_garbage, get_tag, retarget_tag
 from data.model.organization import create_organization
 from data.model.quota import get_namespace_size as get_namespace_size_row
 from data.model.quota import get_repository_size as get_repository_size_row
@@ -108,7 +109,15 @@ def delete_tag_by_name(repository, tag_name):
 
 def run_gc_worker(skip_lock=True):
     """
-    Execute the garbage collection worker.
+    Execute the garbage collection worker deterministically.
+
+    The GC worker normally (1) selects a *random* namespace GC policy via
+    ``get_random_gc_policy`` and (2) collects at most one repository per
+    invocation. That is unusable for deterministic tests. Tests make expired
+    tags immediately collectable by dropping the owning namespace's
+    ``removed_tag_expiration_s`` to 0 (see ``expire_tag``), so here we force the
+    worker onto the 0-second policy and loop until no repository has
+    collectable garbage left under that policy.
 
     Args:
         skip_lock: If True, skip locking for testing
@@ -117,7 +126,13 @@ def run_gc_worker(skip_lock=True):
         GarbageCollectionWorker instance
     """
     worker = GarbageCollectionWorker()
-    worker._garbage_collection_repos(skip_lock_for_testing=skip_lock)
+    with patch("workers.gc.gcworker.get_random_gc_policy", return_value=0):
+        # Each call collects at most one repository; drain them all. The bound
+        # is a safety net against an unexpected non-terminating condition.
+        for _ in range(1000):
+            if find_repository_with_garbage(0) is None:
+                break
+            worker._garbage_collection_repos(skip_lock_for_testing=skip_lock)
     return worker
 
 
@@ -203,23 +218,51 @@ def get_namespace_quota_severity(org_or_user):
 
 def expire_tag(repository, tag_name):
     """
-    Expire a tag by setting its lifetime_end_ms to the past.
+    Expire a tag and make its manifest immediately eligible for GC.
+
+    Expires the named tag *and* every other tag that still references the same
+    manifest, then drops the owning namespace's removed_tag_expiration_s to 0.
+
+    Expiring all tags on the manifest is required because get_or_create_manifest
+    creates a temporary hidden "$temp-*" tag (with a short future expiration) to
+    protect a freshly-pushed manifest. In real usage that temp tag expires soon
+    after the push and a later GC pass collects the now-unreferenced manifest;
+    here we simulate that elapsed time so the manifest becomes fully
+    unreferenced and its blobs are collectable in a single GC run. Only tags for
+    this specific manifest are touched, so other manifests in the repository are
+    unaffected.
+
+    GC only collects tags expired *beyond* the namespace's expiration window
+    (default 14 days); setting the window to 0 means a tag expired even one
+    second ago is past the window and collectable on the next GC run (see
+    find_repository_with_garbage / run_gc_worker).
 
     Args:
         repository: Repository object
         tag_name: Name of tag to expire
 
     Returns:
-        True if tag was expired, False otherwise
+        True if the tag was found and expired, False otherwise
     """
     try:
         past_time = int((time.time() - 3600) * 1000)  # 1 hour ago
-        count = (
-            Tag.update(lifetime_end_ms=past_time)
-            .where(Tag.repository == repository, Tag.name == tag_name)
-            .execute()
-        )
-        return count > 0
+
+        target = Tag.select().where(Tag.repository == repository, Tag.name == tag_name).first()
+        if target is None:
+            return False
+
+        # Expire the named tag along with any temporary/hidden tag protecting
+        # the same manifest.
+        Tag.update(lifetime_end_ms=past_time).where(
+            Tag.repository == repository, Tag.manifest == target.manifest_id
+        ).execute()
+
+        # Collapse the namespace's expiration window so the just-expired tags
+        # are past it and can be collected immediately.
+        User.update(removed_tag_expiration_s=0).where(
+            User.id == repository.namespace_user_id
+        ).execute()
+        return True
     except Tag.DoesNotExist:
         return False
 
