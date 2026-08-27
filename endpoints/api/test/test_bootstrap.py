@@ -4,6 +4,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
 from httmock import HTTMock, urlmatch
 
 from app import app as real_app
@@ -103,6 +104,83 @@ def _k8s_secret_access_token(secret, key="token.json"):
 
 def _expired_time():
     return datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+
+
+def test_authorize_workload_scope_requires_exact_issuer_and_subject_match():
+    from endpoints.api.bootstrap import (
+        WorkloadScopeAuthorizationError,
+        authorize_workload_scope,
+    )
+
+    authorized_subjects = [
+        {
+            "ISSUER": "https://cluster.example.com",
+            "SUBJECT": "system:serviceaccount:quay:operator",
+            "SCOPES": "org:admin repo:read",
+        }
+    ]
+
+    assert (
+        authorize_workload_scope(
+            authorized_subjects,
+            "https://cluster.example.com",
+            "system:serviceaccount:quay:operator",
+            "repo:read",
+        )
+        == "repo:read"
+    )
+
+    for issuer, subject in (
+        ("https://other.example.com", "system:serviceaccount:quay:operator"),
+        ("https://cluster.example.com", "system:serviceaccount:quay:operator-extra"),
+        ("https://cluster.example.com", "system:serviceaccount:quay:*"),
+    ):
+        with pytest.raises(WorkloadScopeAuthorizationError):
+            authorize_workload_scope(authorized_subjects, issuer, subject, "repo:read")
+
+
+def test_authorize_workload_scope_rejects_malformed_or_excessive_scope():
+    from endpoints.api.bootstrap import (
+        WorkloadScopeAuthorizationError,
+        authorize_workload_scope,
+    )
+
+    authorized_subjects = [
+        {
+            "ISSUER": "https://cluster.example.com",
+            "SUBJECT": "system:serviceaccount:quay:operator",
+            "SCOPES": "org:admin repo:read",
+        }
+    ]
+
+    for requested_scope in ("repo:write", "repo:read unknown", "repo:read,org:admin"):
+        with pytest.raises(WorkloadScopeAuthorizationError):
+            authorize_workload_scope(
+                authorized_subjects,
+                "https://cluster.example.com",
+                "system:serviceaccount:quay:operator",
+                requested_scope,
+            )
+
+
+def test_authorize_workload_scope_uses_all_allowed_scopes_when_omitted():
+    from endpoints.api.bootstrap import authorize_workload_scope
+
+    assert (
+        authorize_workload_scope(
+            [
+                {
+                    "ISSUER": "https://cluster.example.com",
+                    "SUBJECT": "system:serviceaccount:quay:operator",
+                    "SCOPES": "repo:read org:admin repo:read",
+                }
+            ],
+            "https://cluster.example.com",
+            "system:serviceaccount:quay:operator",
+            "",
+        )
+        == "org:admin repo:read"
+    )
 
 
 def _assert_expired_renew_rejected_without_rotation(resp, config, application, access_token):

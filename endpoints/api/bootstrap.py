@@ -61,6 +61,34 @@ def _exchange_error(error, description, status_code):
     raise BootstrapExchangeError(error, description, status_code)
 
 
+class WorkloadScopeAuthorizationError(Exception):
+    """Raised when a ServiceAccount is not authorized for its requested scope."""
+
+
+def authorize_workload_scope(authorized_subjects, issuer, subject, requested_scope):
+    """Return the effective scope authorized for an exact issuer and subject."""
+    mapping = next(
+        (
+            item
+            for item in authorized_subjects
+            if item.get("ISSUER") == issuer and item.get("SUBJECT") == subject
+        ),
+        None,
+    )
+    if mapping is None:
+        raise WorkloadScopeAuthorizationError("Kubernetes ServiceAccount is not authorized")
+
+    allowed_scope = mapping.get("SCOPES", "")
+    allowed = set(allowed_scope.split())
+    requested = set(requested_scope.split()) if requested_scope else allowed
+    if not allowed or not requested or not requested.issubset(allowed):
+        raise WorkloadScopeAuthorizationError(
+            "requested scope is not authorized for the Kubernetes ServiceAccount"
+        )
+
+    return " ".join(sorted(requested))
+
+
 def _raise_invalid_bootstrap_token() -> None:
     raise InvalidToken(_INVALID_BOOTSTRAP_TOKEN_MESSAGE)
 
@@ -105,24 +133,15 @@ class BootstrapTokenExchange(ApiResource):
             )
         issuer = validated.issuer
         subject = validated.subject
-        mapping = next(
-            (
-                item
-                for item in _exchange_config().get("AUTHORIZED_SUBJECTS", [])
-                if item.get("ISSUER") == issuer and item.get("SUBJECT") == subject
-            ),
-            None,
-        )
-        if mapping is None:
-            _exchange_error("access_denied", "Kubernetes ServiceAccount is not authorized", 403)
-        allowed = set(mapping.get("SCOPES", "").split())
-        requested = set(values.get("scope", "").split()) or allowed
-        if not requested.issubset(allowed):
-            _exchange_error(
-                "access_denied",
-                "requested scope is not authorized for the Kubernetes ServiceAccount",
-                403,
+        try:
+            effective_scope = authorize_workload_scope(
+                _exchange_config().get("AUTHORIZED_SUBJECTS", []),
+                issuer,
+                subject,
+                values.get("scope", ""),
             )
+        except WorkloadScopeAuthorizationError as exc:
+            _exchange_error("access_denied", str(exc), 403)
         owner = model.user.get_user(app.config.get("BOOTSTRAP_TOKEN_OWNER"))
         if owner is None:
             _exchange_error("server_error", "bootstrap token owner does not exist", 500)
@@ -134,7 +153,7 @@ class BootstrapTokenExchange(ApiResource):
         record, token = create_bootstrap_oauth_api_token(
             application,
             owner,
-            " ".join(sorted(requested)),
+            effective_scope,
             expiration_seconds=min(
                 app.config.get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
                 app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
@@ -150,7 +169,7 @@ class BootstrapTokenExchange(ApiResource):
             "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
             "token_type": "Bearer",
             "expires_in": expires,
-            "scope": " ".join(sorted(requested)),
+            "scope": effective_scope,
         }, 200
 
 
