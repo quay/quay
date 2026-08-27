@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import UTC, datetime
 from urllib.parse import urlparse
@@ -17,6 +16,7 @@ from data.database import OAuthAccessToken
 from data.model import db_transaction
 from data.model.oauth import (
     create_bootstrap_oauth_api_token,
+    create_workload_identity_oauth_token,
     delete_bootstrap_tokens,
     lock_bootstrap_token_operation,
     validate_bootstrap_token,
@@ -150,20 +150,18 @@ class BootstrapTokenExchange(ApiResource):
             application = model.oauth.create_bootstrap_application(
                 model.oauth.get_bootstrap_app_name(), owner
             )
-        record, token = create_bootstrap_oauth_api_token(
+        expires = min(
+            _exchange_config().get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
+            app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
+        )
+        _, token = create_workload_identity_oauth_token(
             application,
             owner,
             effective_scope,
-            expiration_seconds=min(
-                app.config.get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
-                app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
-            ),
+            issuer,
+            subject,
+            expiration_seconds=expires,
         )
-        data = json.loads(record.data)
-        data["subject"] = subject
-        record.data = json.dumps(data)
-        record.save()
-        expires = app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600)
         return {
             "access_token": token,
             "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
