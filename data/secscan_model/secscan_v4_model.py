@@ -68,6 +68,16 @@ IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Erro
     "IndexFinished", "IndexError"
 )
 
+# OCI "empty" config sentinel: an artifact carrying no real config blob.
+OCI_EMPTY_CONFIG_MEDIA_TYPE = "application/vnd.oci.empty.v1+json"
+
+# Config media types that provably identify a non-image artifact, letting us skip layer listing
+# and Clair. Kept as a denylist, not an image-config allowlist: config media type is verbatim
+# client input and many real images use non-standard values (e.g. "a"). `oci.empty` qualifies
+# because a real image always has a config blob, and these artifacts often reuse standard tar
+# layer types, so the `_has_container_layers` backstop misses them.
+NON_IMAGE_ARTIFACT_CONFIG_TYPES = frozenset((OCI_EMPTY_CONFIG_MEDIA_TYPE,))
+
 
 class ScanToken(namedtuple("NextScanToken", ["min_id"])):
     """
@@ -163,6 +173,14 @@ def _has_container_layers(layers):
             return False
 
     return True
+
+
+def _is_non_image_artifact_config(config_media_type):
+    """
+    True if the config media type provably identifies a non-image artifact Clair cannot index.
+    Anything else falls through to the `_has_container_layers` backstop.
+    """
+    return config_media_type in NON_IMAGE_ARTIFACT_CONFIG_TYPES
 
 
 def maybe_urlencoded(fixed_in: str) -> str:
@@ -576,6 +594,12 @@ class V4SecurityScanner(SecurityScannerInterface):
                 mark_manifest_unsupported(manifest)
                 continue
 
+            # Skip non-image artifacts before listing layers or calling Clair; the backstop below
+            # misses them when they reuse standard tar layer types.
+            if _is_non_image_artifact_config(manifest.config_media_type):
+                mark_manifest_unsupported(manifest)
+                continue
+
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
 
             if layers is None or len(layers) == 0:
@@ -654,7 +678,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     continue
 
             try:
-                (report, state) = self._secscan_api.index(manifest, layers)
+                report, state = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.warning("Failed to perform indexing, invalid content sent")
