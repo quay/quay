@@ -1,11 +1,18 @@
+import json
 import logging
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from flask import Request, request
 
 import features
 from app import app
 from auth.auth_context import get_validated_oauth_token
+from auth.kubernetes_sa import (
+    KubernetesSATokenValidationError,
+    KubernetesSATokenValidator,
+)
+from data import model
 from data.database import OAuthAccessToken
 from data.model import db_transaction
 from data.model.oauth import (
@@ -16,7 +23,13 @@ from data.model.oauth import (
 )
 from endpoints.api import ApiResource, nickname, resource, show_if
 from endpoints.decorators import anon_allowed
-from endpoints.exception import InvalidToken, TokenRotationError, Unauthorized
+from endpoints.exception import (
+    ApiErrorType,
+    ApiException,
+    InvalidToken,
+    TokenRotationError,
+    Unauthorized,
+)
 from util.bootstrap_token import write_bootstrap_token
 
 logger = logging.getLogger(__name__)
@@ -30,23 +43,141 @@ class BootstrapTokenCleanupError(Exception):
     pass
 
 
+class BootstrapExchangeError(ApiException):
+    def __init__(self, error, description, status_code):
+        super().__init__(
+            ApiErrorType.invalid_token if status_code == 401 else ApiErrorType.unauthorized,
+            status_code,
+            description,
+            {"error": error, "error_description": description},
+        )
+
+
+def _exchange_config():
+    """Return the configured Kubernetes ServiceAccount exchange settings."""
+    return app.config.get("KUBERNETES_SA_BOOTSTRAP_CONFIG") or {}
+
+
+def _exchange_error(error, description, status_code):
+    """Raise a structured OAuth token-exchange error."""
+    raise BootstrapExchangeError(error, description, status_code)
+
+
+def _exchange_response(payload):
+    """Return a successful token-exchange response that cannot be cached."""
+    return payload, 200, {"Cache-Control": "no-store", "Pragma": "no-cache"}
+
+
+def _normalize_exchange_issuer(issuer):
+    """Normalize an issuer for comparison with configured authorization mappings."""
+    return (issuer or "").rstrip("/")
+
+
+def _exchange_expiration_seconds():
+    """Return the configured token lifetime bounded by the exchange maximum."""
+    return min(
+        _exchange_config().get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
+        app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
+    )
+
+
 def _raise_invalid_bootstrap_token() -> None:
+    """Raise the standard invalid bootstrap-token error."""
     raise InvalidToken(_INVALID_BOOTSTRAP_TOKEN_MESSAGE)
 
 
 def _utcnow_naive() -> datetime:
+    """Return the current UTC time without timezone information."""
     return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _is_expired(token: OAuthAccessToken) -> bool:
+    """Return whether a bootstrap token has expired."""
     return token.expires_at <= _utcnow_naive()
 
 
 def _is_local_bootstrap_renewal_request(req: Request) -> bool:
+    """Return whether a request is an internal local renewal request."""
     return (
         req.headers.get(_QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER)
         == _QUAY_BOOTSTRAP_RENEWAL_LOCATION_LOCAL
     )
+
+
+@resource("/v1/bootstrap/exchange")
+@show_if(features.KUBERNETES_SA_BOOTSTRAP)
+class BootstrapTokenExchange(ApiResource):
+    @anon_allowed
+    @nickname("exchangeBootstrapToken")
+    def post(self):
+        """Exchange a Kubernetes ServiceAccount JWT for a scoped token."""
+        values = request.form
+        required = ("grant_type", "subject_token", "subject_token_type")
+        if (
+            any(not values.get(key) for key in required)
+            or values.get("grant_type") != "urn:ietf:params:oauth:grant-type:token-exchange"
+            or values.get("subject_token_type") != "urn:ietf:params:oauth:token-type:jwt"
+        ):
+            _exchange_error("invalid_request", "invalid token exchange request", 400)
+        raw = values["subject_token"]
+        try:
+            validated = KubernetesSATokenValidator(
+                _exchange_config(), app.config["HTTPCLIENT"]
+            ).validate(raw)
+        except KubernetesSATokenValidationError:
+            _exchange_error(
+                "invalid_token", "Kubernetes ServiceAccount token failed validation", 401
+            )
+        issuer = validated.issuer
+        subject = validated.subject
+        normalized_issuer = _normalize_exchange_issuer(issuer)
+        mapping = next(
+            (
+                item
+                for item in _exchange_config().get("AUTHORIZED_SUBJECTS", [])
+                if _normalize_exchange_issuer(item.get("ISSUER")) == normalized_issuer
+                and item.get("SUBJECT") == subject
+            ),
+            None,
+        )
+        if mapping is None:
+            _exchange_error("access_denied", "Kubernetes ServiceAccount is not authorized", 403)
+        allowed = set(mapping.get("SCOPES", "").split())
+        requested = set(values.get("scope", "").split()) or allowed
+        if not requested.issubset(allowed):
+            _exchange_error(
+                "access_denied",
+                "requested scope is not authorized for the Kubernetes ServiceAccount",
+                403,
+            )
+        owner = model.user.get_user(app.config.get("BOOTSTRAP_TOKEN_OWNER"))
+        if owner is None:
+            _exchange_error("server_error", "bootstrap token owner does not exist", 500)
+        application = model.oauth.get_canonical_bootstrap_application(owner)
+        if application is None:
+            application = model.oauth.create_bootstrap_application(
+                model.oauth.get_bootstrap_app_name(), owner
+            )
+        record, token = create_bootstrap_oauth_api_token(
+            application,
+            owner,
+            " ".join(sorted(requested)),
+            expiration_seconds=_exchange_expiration_seconds(),
+        )
+        data = json.loads(record.data)
+        data["subject"] = subject
+        record.data = json.dumps(data)
+        record.save()
+        expiration_seconds = _exchange_expiration_seconds()
+        return _exchange_response(
+            {
+                "access_token": token,
+                "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "token_type": "Bearer",
+                "expires_in": expiration_seconds,
+                "scope": " ".join(sorted(requested)),
+            }
+        )
 
 
 @resource("/v1/bootstrap/renew")
