@@ -2,8 +2,13 @@ import datetime
 import inspect
 import os
 import shutil
+import subprocess
+import sys
 from collections import namedtuple
+from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import psycopg2  # type: ignore[import]
 import pytest
 from filelock import FileLock
 from flask import Flask, jsonify
@@ -13,6 +18,7 @@ from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
 from peewee import InternalError, SqliteDatabase
+from psycopg2 import sql
 
 import features
 
@@ -98,28 +104,101 @@ def _init_db_path(tmpdir_factory):
     return _init_db_path_sqlite(tmpdir_factory)
 
 
+def _test_database_schema():
+    """Return the isolated PostgreSQL schema for this pytest process."""
+    db_uri = os.environ.get("TEST_DATABASE_URI", "")
+    if not db_uri.startswith("postgresql"):
+        return None
+
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    return "quay_test_{}".format(worker_id.replace("-", "_"))
+
+
+def _database_uri_for_schema(db_uri, schema):
+    """Add a PostgreSQL search path for the isolated test schema."""
+    parsed = urlsplit(db_uri)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["options"] = "-c search_path={},public".format(schema)
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
+    )
+
+
+def _create_test_schema(db_uri, schema):
+    """Create a clean schema for one pytest-xdist worker."""
+    connection = psycopg2.connect(db_uri)
+    try:
+        connection.autocommit = True
+        with connection.cursor() as cursor:
+            identifier = sql.Identifier(schema)
+            cursor.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(identifier))
+            cursor.execute(sql.SQL("CREATE SCHEMA {}").format(identifier))
+            cursor.execute(
+                sql.SQL(
+                    "CREATE TABLE {}.alembic_version "
+                    "(version_num VARCHAR(32) NOT NULL, "
+                    "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+                ).format(identifier)
+            )
+    finally:
+        connection.close()
+
+
 def _init_db_path_real_db(db_uri):
     """
-    Initializes a real database for testing by populating it from scratch. Note that this does.
+    Initializes a real database for testing by populating it from scratch.
 
-    *not* add the tables (merely data). Callers must have migrated the database before calling
-    the test suite.
+    Each pytest-xdist worker gets a separate PostgreSQL schema. The schema is migrated before the
+    application connects so that all unqualified table names resolve inside that schema.
     """
+    schema = _test_database_schema()
+    if schema is None:
+        configure(
+            {
+                "DB_URI": db_uri,
+                "SECRET_KEY": "superdupersecret!!!1",
+                "DB_CONNECTION_ARGS": {
+                    "threadlocals": True,
+                    "autorollback": True,
+                },
+                "DB_TRANSACTION_FACTORY": _create_transaction,
+                "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
+            }
+        )
+        populate_database()
+        return db_uri
+
+    worker_db_uri = _database_uri_for_schema(db_uri, schema)
+    _create_test_schema(db_uri, schema)
+
+    migration_environment = os.environ.copy()
+    migration_environment["TEST_DATABASE_URI"] = worker_db_uri
+    migration_environment["DB_URI"] = worker_db_uri
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env=migration_environment,
+        timeout=300,
+    )
+
+    connection_args = {
+        "threadlocals": True,
+        "autorollback": True,
+        "options": "-c search_path={},public".format(schema),
+    }
     configure(
         {
-            "DB_URI": db_uri,
+            "DB_URI": worker_db_uri,
             "SECRET_KEY": "superdupersecret!!!1",
-            "DB_CONNECTION_ARGS": {
-                "threadlocals": True,
-                "autorollback": True,
-            },
+            "DB_CONNECTION_ARGS": connection_args,
             "DB_TRANSACTION_FACTORY": _create_transaction,
-            "DATABASE_SECRET_KEY": "anothercrazykey!",
+            "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
         }
     )
 
     populate_database()
-    return db_uri
+    return worker_db_uri
 
 
 def _init_db_path_sqlite(tmpdir_factory):
@@ -133,7 +212,7 @@ def _init_db_path_sqlite(tmpdir_factory):
         "TESTING": True,
         "DEBUG": True,
         "SECRET_KEY": "superdupersecret!!!1",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",
+        "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
         "DB_URI": sqlitedb,
     }
     os.environ["DB_URI"] = str(sqlitedb)
@@ -160,7 +239,7 @@ def database_uri(monkeypatch, init_db_path, sqlitedb_file):
     reference to the existing database URI is returned.
     """
     if os.environ.get("TEST_DATABASE_URI"):
-        db_uri = os.environ["TEST_DATABASE_URI"]
+        db_uri = init_db_path
         monkeypatch.setenv("DB_URI", db_uri)
         yield db_uri
     else:
@@ -201,10 +280,14 @@ def appconfig(database_uri):
         "DEBUG": True,
         "DB_URI": database_uri,
         "SECRET_KEY": "superdupersecret!!!1",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",
         "DB_CONNECTION_ARGS": {
             "threadlocals": True,
             "autorollback": True,
+            **(
+                {"options": "-c search_path={},public".format(_test_database_schema())}
+                if database_uri.startswith("postgresql")
+                else {}
+            ),
         },
         "DB_TRANSACTION_FACTORY": _create_transaction,
         "DATA_MODEL_CACHE_CONFIG": {
@@ -213,7 +296,7 @@ def appconfig(database_uri):
         "USERFILES_PATH": "userfiles/",
         "MAIL_SERVER": "",
         "MAIL_DEFAULT_SENDER": "admin@example.com",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",
+        "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
         "FEATURE_PROXY_CACHE": True,
         "ACTION_LOG_AUDIT_LOGINS": True,
         "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,
