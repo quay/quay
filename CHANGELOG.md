@@ -825,7 +825,7 @@
 - [48aed52f8](https://github.com/quay/quay/commit/48aed52f86896d9971eb30737789827010d38d35): isolate PostgreSQL xdist schemas ([#6623](https://github.com/quay/quay/issues/6623))
 ### [Redhat-3.18] NO-ISSUE: Fix(Playwright)
 - [b6573b81b](https://github.com/quay/quay/commit/b6573b81b3108a08faa3a207d928f8a70b11110f): update BUSYBOX_IMAGE to valid digest ([#6551](https://github.com/quay/quay/issues/6551))
-### [Redhat-3.18] NO-ISSUE: Fix(Playwright): Use Busybox 
+### [Redhat-3.18] NO-ISSUE: Fix(Playwright): Use Busybox
 - [8c4a1a8dd](https://github.com/quay/quay/commit/8c4a1a8dd3bf0030e43aea1416c5b35dc23c98f5): latest tag instead of pinned digest ([#6579](https://github.com/quay/quay/issues/6579))
 ### [Redhat-3.18] NO-ISSUE: Fix(Quota)
 - [2d9637461](https://github.com/quay/quay/commit/2d96374615e10a22bc057d08e806264b9f775388): backport retroactive notification payload serialization ([#6595](https://github.com/quay/quay/issues/6595))
@@ -5568,7 +5568,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Dev
 - [d3cc640fe](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a4](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc 
+### Doc
 - [34cd7d091](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b7](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
