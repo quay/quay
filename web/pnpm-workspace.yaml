@@ -1,0 +1,4 @@
+overrides:
+  postcss: '>=8.5.18'
+allowBuilds:
+  '@parcel/watcher': set this to true or false
