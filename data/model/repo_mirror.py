@@ -63,11 +63,18 @@ def get_eligible_mirrors():
         & (RepoMirrorConfig.is_enabled == True)
     )
 
+    failed_candidates_filter = (
+        (RepoMirrorConfig.sync_start_date <= now)
+        & (RepoMirrorConfig.sync_retries_remaining > 0)
+        & (RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL)
+        & (RepoMirrorConfig.is_enabled == True)
+    )
+
     return (
         RepoMirrorConfig.select()
         .join(Repository)
         .where(Repository.state == RepositoryState.MIRROR)
-        .where(immediate_candidates_filter | ready_candidates_filter | expired_candidates_filter)
+        .where(immediate_candidates_filter | ready_candidates_filter | expired_candidates_filter | failed_candidates_filter )
         .order_by(RepoMirrorConfig.sync_start_date.asc())
     )
 
@@ -99,10 +106,7 @@ def claim_mirror(mirror):
         now = datetime.utcnow()
         expiration_date = now + timedelta(seconds=MAX_SYNC_DURATION)
 
-        if mirror.sync_status == RepoMirrorStatus.SYNCING:
-            return None
-
-        if mirror.sync_expiration_date and now > mirror.sync_expiration_date:
+        if mirror.sync_expiration_date and now > mirror.sync_expiration_date and mirror.sync_status != RepoMirrorStatus.FAIL:
             expire_mirror(mirror)
             return None
 
@@ -188,8 +192,7 @@ def expire_mirror(mirror):
         sync_retries_remaining=MAX_SYNC_RETRIES,
     ).where(
         RepoMirrorConfig.sync_transaction_id == mirror.sync_transaction_id,
-        RepoMirrorConfig.id == mirror.id,
-        RepoMirrorConfig.state != RepoMirrorStatus.SYNCING,
+        RepoMirrorConfig.id == mirror.id
     )
 
     # Fetch and return the latest updates
