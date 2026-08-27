@@ -260,6 +260,9 @@ var knownUnmapped = map[string]bool{
 	"SPAM_DETECTION_FAIL_OPEN":                       true,
 	"SESSION_TIMEOUT":                                true,
 	"WEBHOOK_NOTIFICATION_CONFIG":                    true,
+
+	"GUNICORN_REGISTRY_TIMEOUT": true,
+	"GUNICORN_WEB_TIMEOUT":      true,
 }
 
 // goOnlyFields lists Go struct fields that intentionally have no corresponding

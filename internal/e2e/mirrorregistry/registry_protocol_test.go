@@ -1,8 +1,12 @@
 package mirrorregistry_test
 
 import (
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -88,6 +92,60 @@ func TestRegistryTagPagination(t *testing.T) {
 	assert.Equal(t, repository, second.Name)
 	assert.Equal(t, []string{"gamma"}, second.Tags)
 	assert.Empty(t, second.Link)
+}
+
+func TestRegistryConcurrentSameTagPushes(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const (
+		repository       = "admin/e2e-concurrent-tag"
+		concurrentPushes = 50
+	)
+	image := pushImage(t, h, repository, "v1", []byte(`{}`), []byte("concurrent tag layer"))
+	token, err := h.Registry().RequestToken(ctx, repository, "pull", "push")
+	require.NoError(t, err)
+
+	var baseManifest v1.Manifest
+	require.NoError(t, json.Unmarshal(image.manifest, &baseManifest))
+	manifests := make([][]byte, concurrentPushes)
+	for i := range concurrentPushes {
+		manifest := baseManifest
+		manifest.Annotations = map[string]string{"test.generation": strconv.Itoa(i)}
+		manifests[i], err = json.Marshal(manifest)
+		require.NoError(t, err)
+	}
+
+	start := make(chan struct{})
+	pushErrors := make(chan error, concurrentPushes)
+	var workers sync.WaitGroup
+	workers.Add(concurrentPushes)
+	for i := range concurrentPushes {
+		manifest := manifests[i]
+		go func() {
+			defer workers.Done()
+			<-start
+			_, err := h.Registry().PutManifestWithToken(ctx, repository, "v1", manifest, v1.MediaTypeImageManifest, token)
+			pushErrors <- err
+		}()
+	}
+
+	close(start)
+	workers.Wait()
+	close(pushErrors)
+
+	var failures []error
+	for err := range pushErrors {
+		if err != nil {
+			failures = append(failures, err)
+		}
+	}
+	require.NoError(t, errors.Join(failures...))
+
+	lastWriter := pushImage(t, h, repository, "v1", []byte(`{"generation":"last"}`), []byte("last writer layer"))
+	pulled, err := h.Registry().GetManifest(ctx, repository, "v1")
+	require.NoError(t, err)
+	assert.Equal(t, lastWriter.digest, pulled.Digest)
+	assert.Equal(t, lastWriter.manifest, pulled.Body)
 }
 
 func TestRegistryCatalogIsRejected(t *testing.T) {

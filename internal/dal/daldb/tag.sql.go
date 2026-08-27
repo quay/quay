@@ -53,16 +53,31 @@ func (q *Queries) GetActiveTagDigest(ctx context.Context, arg GetActiveTagDigest
 	return digest, err
 }
 
+const getActiveTagLifetimeStart = `-- name: GetActiveTagLifetimeStart :one
+SELECT lifetime_start_ms
+FROM tag
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+ORDER BY lifetime_start_ms DESC
+LIMIT 1
+`
+
+type GetActiveTagLifetimeStartParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Name         string `json:"name"`
+}
+
+func (q *Queries) GetActiveTagLifetimeStart(ctx context.Context, arg GetActiveTagLifetimeStartParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getActiveTagLifetimeStart, arg.RepositoryID, arg.Name)
+	var lifetime_start_ms int64
+	err := row.Scan(&lifetime_start_ms)
+	return lifetime_start_ms, err
+}
+
 const getTagsByRepository = `-- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag
-WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0
+WHERE repository_id = ? AND lifetime_end_ms IS NULL AND hidden = 0
 `
-
-type GetTagsByRepositoryParams struct {
-	RepositoryID  int64         `json:"repository_id"`
-	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
-}
 
 type GetTagsByRepositoryRow struct {
 	ID              int64         `json:"id"`
@@ -74,8 +89,8 @@ type GetTagsByRepositoryRow struct {
 	TagKindID       int64         `json:"tag_kind_id"`
 }
 
-func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByRepositoryParams) ([]GetTagsByRepositoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTagsByRepository, arg.RepositoryID, arg.LifetimeEndMs)
+func (q *Queries) GetTagsByRepository(ctx context.Context, repositoryID int64) ([]GetTagsByRepositoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTagsByRepository, repositoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +161,27 @@ func (q *Queries) InsertHiddenTag(ctx context.Context, arg InsertHiddenTagParams
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const tagLifetimeEndExists = `-- name: TagLifetimeEndExists :one
+SELECT EXISTS(
+    SELECT 1
+    FROM tag
+    WHERE repository_id = ? AND name = ? AND lifetime_end_ms = ?
+)
+`
+
+type TagLifetimeEndExistsParams struct {
+	RepositoryID  int64         `json:"repository_id"`
+	Name          string        `json:"name"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+func (q *Queries) TagLifetimeEndExists(ctx context.Context, arg TagLifetimeEndExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, tagLifetimeEndExists, arg.RepositoryID, arg.Name, arg.LifetimeEndMs)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const upsertTag = `-- name: UpsertTag :one

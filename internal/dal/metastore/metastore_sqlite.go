@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -424,13 +425,8 @@ func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord)
 // This avoids the NULL != NULL issue on the
 // (repository_id, name, lifetime_end_ms) unique index.
 func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string) (int64, error) {
-	now := time.Now().UnixMilli()
-
-	if _, err := q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
-		RepositoryID:  repoID,
-		Name:          tag,
-	}); err != nil {
+	transitionMs, err := expireActiveTag(ctx, q, repoID, tag, time.Now().UnixMilli())
+	if err != nil {
 		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
 	}
 
@@ -438,7 +434,7 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 		Name:            tag,
 		RepositoryID:    repoID,
 		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
-		LifetimeStartMs: now,
+		LifetimeStartMs: transitionMs,
 		TagKindID:       s.tagKindTag,
 	})
 	if err != nil {
@@ -447,18 +443,76 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 	return id, nil
 }
 
-// DeleteTag expires the active tag by setting lifetime_end_ms.
-func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) error {
-	q := daldb.New(s.db)
-	now := time.Now().UnixMilli()
+// expireActiveTag chooses an unused transition millisecond no earlier than the
+// active tag's lifetime start. After the first collision it re-samples wall
+// time once, then advances logically while probing each candidate.
+// q must be transaction-bound so the reads and update cannot interleave with
+// another tag mutation.
+func expireActiveTag(ctx context.Context, q *daldb.Queries, repoID int64, tag string, requestedEnd int64) (int64, error) {
+	activeStart, err := q.GetActiveTagLifetimeStart(ctx, daldb.GetActiveTagLifetimeStartParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return requestedEnd, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get active tag lifetime start: %w", err)
+	}
 
-	_, err := q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
+	candidate := max(requestedEnd, activeStart)
+	resampledWallClock := false
+	for {
+		exists, err := q.TagLifetimeEndExists(ctx, daldb.TagLifetimeEndExistsParams{
+			RepositoryID:  repoID,
+			Name:          tag,
+			LifetimeEndMs: sql.NullInt64{Int64: candidate, Valid: true},
+		})
+		if err != nil {
+			return 0, fmt.Errorf("check lifetime end %d: %w", candidate, err)
+		}
+		if exists == 0 {
+			break
+		}
+
+		if !resampledWallClock {
+			resampledWallClock = true
+			next := max(time.Now().UnixMilli(), activeStart)
+			if next != candidate {
+				candidate = next
+				continue
+			}
+		}
+		if candidate == math.MaxInt64 {
+			return 0, fmt.Errorf("no lifetime end available after %d", candidate)
+		}
+		candidate++
+	}
+
+	_, err = q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
+		LifetimeEndMs: sql.NullInt64{Int64: candidate, Valid: true},
 		RepositoryID:  repoID,
 		Name:          tag,
 	})
 	if err != nil {
+		return 0, err
+	}
+	return candidate, nil
+}
+
+// DeleteTag expires the active tag by setting lifetime_end_ms.
+func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	if _, err := expireActiveTag(ctx, daldb.New(tx), repoID, tag, time.Now().UnixMilli()); err != nil {
 		return fmt.Errorf("expire tag %q: %w", tag, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
 }
@@ -560,11 +614,7 @@ func (s *SQLiteStore) BlobExists(ctx context.Context, dgst digest.Digest) (bool,
 // ListTags returns all active tags for a repository.
 func (s *SQLiteStore) ListTags(ctx context.Context, repoID int64) ([]string, error) {
 	q := daldb.New(s.db)
-	now := time.Now().UnixMilli()
-	rows, err := q.GetTagsByRepository(ctx, daldb.GetTagsByRepositoryParams{
-		RepositoryID:  repoID,
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
-	})
+	rows, err := q.GetTagsByRepository(ctx, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
 	}
