@@ -276,7 +276,9 @@ test.describe(
         // Filtered referrer queries must return only the requested artifact
         // type and use a cache entry distinct from the unfiltered result.
         const filtered = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}?artifactType=${encodeURIComponent('application/spdx+json')}`,
+          `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}?artifactType=${encodeURIComponent(
+            'application/spdx+json',
+          )}`,
           {headers: {authorization: `Bearer ${v2Token}`}},
         );
         expect(filtered.status()).toBe(200);
@@ -686,6 +688,44 @@ test.describe(
         }
       },
     );
+  },
+);
+
+// ============================================================================
+// V2 Invalid Bearer Token (QUAYIO-2183)
+// ============================================================================
+
+test.describe(
+  'V2 Invalid Bearer Token',
+  {tag: ['@api', '@v2', '@auth:Database']},
+  () => {
+    test('malformed bearer token returns 401', async ({playwright}) => {
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const resp = await request.get(`${API_URL}/v2/`, {
+          headers: {authorization: 'Bearer invalidtokenvalue'},
+        });
+        expect(resp.status()).toBe(401);
+      } finally {
+        await request.dispose();
+      }
+    });
+
+    test('garbage authorization header returns 401', async ({playwright}) => {
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const resp = await request.get(`${API_URL}/v2/`, {
+          headers: {authorization: 'Bearer: notavalidformat'},
+        });
+        expect(resp.status()).toBe(401);
+      } finally {
+        await request.dispose();
+      }
+    });
   },
 );
 
