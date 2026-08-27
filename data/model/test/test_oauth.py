@@ -83,6 +83,36 @@ def test_oauth_access_token_created_defaults_to_now(initialized_db):
     assert before <= token.created <= after
 
 
+def test_create_workload_identity_oauth_token_populates_lifecycle_metadata(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(), owner
+    )
+
+    before = datetime.utcnow()
+    token, access_token = model.oauth.create_workload_identity_oauth_token(
+        application,
+        owner,
+        "repo:read",
+        "https://cluster.example.com",
+        "system:serviceaccount:quay:operator",
+        expiration_seconds=120,
+    )
+
+    assert token.authorized_user == owner
+    assert token.scope == "repo:read"
+    assert token.token_type == "Bearer"
+    assert before + timedelta(seconds=119) <= token.expires_at <= before + timedelta(seconds=121)
+    assert model.oauth.workload_identity_token_data(token) == {
+        "kind": "workload_identity",
+        "owner": "devtable",
+        "application_name": model.oauth.get_bootstrap_app_name(),
+        "issuer": "https://cluster.example.com",
+        "subject": "system:serviceaccount:quay:operator",
+    }
+    assert model.oauth.validate_access_token(access_token).uuid == token.uuid
+
+
 def test_create_oauth_api_token_populates_fields(initialized_db):
     owner = model.user.get_user("devtable")
     application = model.oauth.create_application(owner, "api-token-fields", "", "")

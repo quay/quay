@@ -58,7 +58,6 @@ def _valid_kubernetes_sa_bootstrap_config():
                 "SCOPES": "org:admin repo:create repo:read repo:write",
             }
         ],
-        "JWKS_CACHE_TTL_SECONDS": 3600,
         "BOOTSTRAP_TOKEN_MAX_TTL": 86400,
     }
 
@@ -232,7 +231,6 @@ def test_kubernetes_sa_bootstrap_config_accepts_valid_subject_names(subject):
                 }
             ],
         },
-        {**_valid_kubernetes_sa_bootstrap_config(), "JWKS_CACHE_TTL_SECONDS": 0},
         {**_valid_kubernetes_sa_bootstrap_config(), "BOOTSTRAP_TOKEN_MAX_TTL": 0},
         {**_valid_kubernetes_sa_bootstrap_config(), "UNKNOWN_SETTING": True},
         # SUBJECT must be a valid Kubernetes namespace:ServiceAccount pair,

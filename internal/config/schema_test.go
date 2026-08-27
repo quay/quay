@@ -37,6 +37,10 @@ var knownUnmapped = map[string]bool{
 	"ALLOW_PULLS_WITHOUT_STRICT_LOGGING": true,
 	"ALLOW_WITHOUT_STRICT_LOGGING":       true,
 
+	// Gunicorn worker tuning (PROJQUAY-12278)
+	"GUNICORN_REGISTRY_TIMEOUT": true,
+	"GUNICORN_WEB_TIMEOUT":      true,
+
 	// Storage extras
 	"FEATURE_PROXY_CACHE":               true,
 	"FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": true,
