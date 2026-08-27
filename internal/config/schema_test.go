@@ -110,6 +110,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_BLACKLISTED_EMAILS":                    true,
 	"FEATURE_DISABLE_OIDC_FALLBACK_GROUPS_CREATION": true,
 	"FEATURE_EDIT_QUOTA":                            true,
+	"FEATURE_ENABLE_STALE_MPU_CLEANUP":              true,
 	"FEATURE_ENTITLEMENT_RECONCILIATION":            true,
 	"FEATURE_EXPORT_COMPLIANCE":                     true,
 	"FEATURE_EXTENDED_REPOSITORY_NAMES":             true,
