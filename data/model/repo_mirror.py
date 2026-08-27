@@ -190,6 +190,7 @@ def expire_mirror(mirror):
         sync_transaction_id=uuid_generator(),
         sync_expiration_date=datetime.utcnow(),
         sync_retries_remaining=MAX_SYNC_RETRIES,
+        sync_status=RepoMirrorStatus.FAIL,
     ).where(
         RepoMirrorConfig.sync_transaction_id == mirror.sync_transaction_id,
         RepoMirrorConfig.id == mirror.id
