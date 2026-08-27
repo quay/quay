@@ -1691,13 +1691,6 @@ CONFIG_SCHEMA = {
                         },
                     },
                 },
-                "JWKS_CACHE_TTL_SECONDS": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 3600,
-                    "description": "JWKS cache lifetime in seconds. Defaults to 3600.",
-                    "x-example": 3600,
-                },
                 "BOOTSTRAP_TOKEN_MAX_TTL": {
                     "type": "integer",
                     "minimum": 1,

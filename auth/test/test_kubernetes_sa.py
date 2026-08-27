@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import jwt
 import pytest
@@ -18,19 +18,6 @@ NAMESPACE = "quay-operator"
 SA_NAME = "controller-manager"
 SA_UID = "72bcb00a-38f0-4b1a-9b8e-1f6c3a2d9e11"
 SUBJECT = f"system:serviceaccount:{NAMESPACE}:{SA_NAME}"
-
-
-class _FakeClock:
-    """Deterministic stand-in for time.monotonic() so cache-age math is exact in tests."""
-
-    def __init__(self, start: float = 0.0):
-        self.value = start
-
-    def __call__(self) -> float:
-        return self.value
-
-    def advance(self, seconds: float) -> None:
-        self.value += seconds
 
 
 def _rsa_key():
@@ -127,7 +114,7 @@ def _token(private_key, kid=KID, no_kid=False, **claim_overrides):
     return jwt.encode(claims, private_key, algorithm="RS256", headers=headers)
 
 
-def test_validates_service_account_token_and_caches_oidc_data():
+def test_validates_service_account_token_and_refetches_oidc_data():
     private_key = _rsa_key()
     validator, client = _validator(private_key)
 
@@ -138,7 +125,7 @@ def test_validates_service_account_token_and_caches_oidc_data():
     assert first.subject == SUBJECT
     assert first.claims["sub"] == SUBJECT
     assert second.subject == SUBJECT
-    assert client.get.call_count == 2
+    assert client.get.call_count == 4
 
 
 @pytest.mark.parametrize(
@@ -371,128 +358,68 @@ def test_untrusted_issuer_is_rejected_without_network_call():
     assert client.get.call_count == 0
 
 
-def test_cold_cache_fetches_once_then_reuses_fresh_cache():
-    private_key = _rsa_key()
-    validator, client = _validator(private_key)
-
-    for _ in range(5):
-        validator.validate(_token(private_key))
-
-    assert client.get.call_count == 2
-
-
-def test_cache_refetches_after_ttl_expiry():
+def test_each_validation_fetches_current_discovery_and_jwks():
     private_key = _rsa_key()
     second_key = _rsa_key()
     jwks_fn = _sequence(
         _jwks_response([_jwk(private_key)]),
         _jwks_response([_jwk(second_key, kid="second-key")]),
     )
-    validator, client = _validator(private_key, jwks_fn=jwks_fn, JWKS_CACHE_TTL_SECONDS=60)
-    clock = _FakeClock()
-
-    with patch("auth.kubernetes_sa.time.monotonic", clock):
-        validator.validate(_token(private_key))
-        clock.advance(200)  # past the TTL, but within an authoritative successful refresh
-        result = validator.validate(_token(second_key, kid="second-key"))
-
-    assert result.subject == SUBJECT
-    assert client.get.call_count == 4
-
-
-def test_bounded_stale_fallback_on_refresh_failure():
-    private_key = _rsa_key()
-    jwks_fn = _sequence(
-        _jwks_response([_jwk(private_key)]),
-        Mock(status_code=503, json=Mock(return_value={})),
-    )
-    validator, _ = _validator(private_key, jwks_fn=jwks_fn, JWKS_CACHE_TTL_SECONDS=60)
-    clock = _FakeClock()
-
-    with patch("auth.kubernetes_sa.time.monotonic", clock):
-        validator.validate(_token(private_key))
-        clock.advance(100)  # within the bounded grace window: ttl < age <= 2*ttl
-        result = validator.validate(_token(private_key))
-
-    assert result.subject == SUBJECT
-
-
-def test_unbounded_staleness_is_rejected_past_grace_window():
-    private_key = _rsa_key()
-    jwks_fn = _sequence(
-        _jwks_response([_jwk(private_key)]),
-        Mock(status_code=503, json=Mock(return_value={})),
-    )
-    validator, _ = _validator(private_key, jwks_fn=jwks_fn, JWKS_CACHE_TTL_SECONDS=60)
-    clock = _FakeClock()
-
-    with patch("auth.kubernetes_sa.time.monotonic", clock):
-        validator.validate(_token(private_key))
-        clock.advance(500)  # past the bounded grace window (2 * ttl): no fallback allowed
-        with pytest.raises(KubernetesSATokenValidationError):
-            validator.validate(_token(private_key))
-
-
-def test_rotated_key_no_longer_in_successful_refresh_fails_closed():
-    private_key = _rsa_key()
-    new_key = _rsa_key()
-    jwks_fn = _sequence(
-        _jwks_response([_jwk(private_key)]),
-        _jwks_response([_jwk(new_key, kid="new-key")]),
-    )
-    validator, _ = _validator(private_key, jwks_fn=jwks_fn, JWKS_CACHE_TTL_SECONDS=60)
-    clock = _FakeClock()
-
-    with patch("auth.kubernetes_sa.time.monotonic", clock):
-        validator.validate(_token(private_key))
-        clock.advance(100)  # within the bounded grace window, but this refresh succeeds
-        # Kubernetes has authoritatively rotated the key out: this must fail closed
-        # immediately, not receive the bounded stale-key grace period.
-        with pytest.raises(KubernetesSATokenValidationError):
-            validator.validate(_token(private_key))
-
-
-def test_unknown_kid_forces_immediate_refresh_and_succeeds_on_rotation():
-    private_key = _rsa_key()
-    new_key = _rsa_key()
-    jwks_fn = _sequence(
-        _jwks_response([_jwk(private_key)]),
-        _jwks_response([_jwk(new_key, kid="new-key")]),
-    )
     validator, client = _validator(private_key, jwks_fn=jwks_fn)
 
     validator.validate(_token(private_key))
-    result = validator.validate(_token(new_key, kid="new-key"))
+    result = validator.validate(_token(second_key, kid="second-key"))
 
     assert result.subject == SUBJECT
     assert client.get.call_count == 4
 
 
-def test_unknown_kid_fails_closed_when_forced_refresh_still_missing_it():
+def test_refresh_failure_rejects_instead_of_using_previous_keys():
+    private_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(private_key)]),
+        Mock(status_code=503, json=Mock(return_value={})),
+    )
+    validator, _ = _validator(private_key, jwks_fn=jwks_fn)
+
+    validator.validate(_token(private_key))
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_rotated_key_no_longer_published_fails_closed():
+    private_key = _rsa_key()
+    new_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(private_key)]),
+        _jwks_response([_jwk(new_key, kid="new-key")]),
+    )
+    validator, _ = _validator(private_key, jwks_fn=jwks_fn)
+
+    validator.validate(_token(private_key))
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_unknown_kid_fails_closed_when_current_jwks_does_not_contain_it():
     private_key = _rsa_key()
     unknown_key = _rsa_key()
     validator, client = _validator(private_key)
 
-    validator.validate(_token(private_key))
     with pytest.raises(KubernetesSATokenValidationError):
         validator.validate(_token(unknown_key, kid="never-seen"))
 
-    assert client.get.call_count == 4
+    assert client.get.call_count == 2
 
 
-def test_signature_failure_on_known_kid_does_not_trigger_refresh():
+def test_signature_failure_fetches_current_oidc_data_once():
     private_key = _rsa_key()
     forged_key = _rsa_key()
     validator, client = _validator(private_key)
 
-    validator.validate(_token(private_key))
-    forged_token = _token(forged_key, kid=KID)
-
     with pytest.raises(KubernetesSATokenValidationError):
-        validator.validate(forged_token)
+        validator.validate(_token(forged_key, kid=KID))
 
-    # Only the initial cold-cache fetch happened; a bad signature on an already-known
-    # kid must not trigger a cache invalidation/refresh storm.
     assert client.get.call_count == 2
 
 

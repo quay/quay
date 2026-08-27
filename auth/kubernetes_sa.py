@@ -2,10 +2,9 @@
 
 import logging
 import re
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import jwt
@@ -13,11 +12,11 @@ from authlib.jose import JsonWebKey
 from jwt import InvalidTokenError
 
 from oauth.oidc import JWT_CLOCK_SKEW_SECONDS
+from util.security.jwtutil import decode
 
 logger = logging.getLogger(__name__)
 
 OIDC_WELL_KNOWN = ".well-known/openid-configuration"
-_DEFAULT_CACHE_TTL_SECONDS = 3600
 
 # Only RS256 is trusted for Kubernetes ServiceAccount JWTs. This is intentionally
 # separate from the generic OIDC login allow-list, which may support other algorithms.
@@ -37,52 +36,6 @@ class ValidatedKubernetesSA:
     claims: dict[str, Any]
 
 
-@dataclass
-class _CacheEntry:
-    value: Any
-    fetched_at: float
-
-
-class _StaleTolerantCache:
-    """Caches loader() results with a bounded grace period for refresh failures.
-
-    A value is reused without calling loader() until `ttl_seconds` elapses. Past
-    that, a refresh is attempted; if loader() raises, the previous value is reused
-    for one additional `ttl_seconds` window (bounded staleness) before the entry is
-    dropped entirely and callers must obtain a fresh value or fail. A successful
-    refresh always replaces the previous value, even if it no longer contains what
-    the caller is looking for -- there is no stale fallback once the issuer has
-    authoritatively responded.
-    """
-
-    def __init__(self, ttl_seconds: float):
-        self._ttl_seconds = ttl_seconds
-        self._entries: dict[str, _CacheEntry] = {}
-
-    def get(self, key: str, loader: Callable[[], Any], force: bool = False) -> tuple[Any, bool]:
-        now = time.monotonic()
-        entry = self._entries.get(key)
-
-        if entry is not None and not force:
-            age = now - entry.fetched_at
-            if age <= self._ttl_seconds:
-                return entry.value, False
-            if age <= 2 * self._ttl_seconds:
-                try:
-                    value = loader()
-                except Exception:
-                    return entry.value, True
-                self._entries[key] = _CacheEntry(value, now)
-                return value, False
-            # Past the bounded grace window: no more stale fallback is permitted.
-            self._entries.pop(key, None)
-
-        # Cold cache, forced refresh, or expired past the grace window: must succeed.
-        value = loader()
-        self._entries[key] = _CacheEntry(value, now)
-        return value, False
-
-
 class KubernetesSATokenValidator:
     """Validate Kubernetes ServiceAccount JWTs using OIDC discovery and JWKS.
 
@@ -94,9 +47,6 @@ class KubernetesSATokenValidator:
     def __init__(self, config: dict[str, Any], http_client):
         self._config = config
         self._http_client = http_client
-        ttl = config.get("JWKS_CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS)
-        self._metadata_cache = _StaleTolerantCache(ttl)
-        self._jwks_cache = _StaleTolerantCache(ttl)
 
     def validate(self, token: str) -> ValidatedKubernetesSA:
         try:
@@ -142,7 +92,7 @@ class KubernetesSATokenValidator:
         )
 
     def _decode(self, token: str, key: Any, issuer: str) -> dict[str, Any]:
-        return jwt.decode(
+        return decode(
             token,
             key,
             algorithms=KUBERNETES_SA_ALLOWED_ALGORITHMS,
@@ -193,34 +143,13 @@ class KubernetesSATokenValidator:
         raise KubernetesSATokenValidationError("Token issuer is not trusted")
 
     def _get_key(self, issuer_config: dict[str, Any], kid: str):
-        issuer = issuer_config["ISSUER"]
-
-        keys_by_kid, stale = self._jwks_cache.get(issuer, lambda: self._fetch_jwks(issuer_config))
-        if stale:
-            logger.warning(
-                "Kubernetes ServiceAccount JWKS refresh failed for issuer '%s'; using cached "
-                "signing keys for the remainder of the bounded grace period",
-                issuer,
-            )
-        if kid in keys_by_kid:
-            return keys_by_kid[kid]
-
-        # The kid may be unknown because Kubernetes rotated its signing key. Force an
-        # immediate, uncached refresh -- there is no stale fallback for an unknown kid.
-        logger.info(
-            "Kubernetes ServiceAccount signing key '%s' not found for issuer '%s'; forcing refresh",
-            kid,
-            issuer,
-        )
-        keys_by_kid, _ = self._jwks_cache.get(
-            issuer, lambda: self._fetch_jwks(issuer_config, force=True), force=True
-        )
+        keys_by_kid = self._fetch_jwks(issuer_config)
         if kid not in keys_by_kid:
             raise KubernetesSATokenValidationError("Token signing key was not found")
         return keys_by_kid[kid]
 
-    def _fetch_jwks(self, issuer_config: dict[str, Any], force: bool = False) -> dict[str, Any]:
-        metadata = self._metadata(issuer_config, force=force)
+    def _fetch_jwks(self, issuer_config: dict[str, Any]) -> dict[str, Any]:
+        metadata = self._metadata(issuer_config)
         jwks = self._get_json(metadata["jwks_uri"], issuer_config)
 
         keys_by_kid = {}
@@ -242,43 +171,32 @@ class KubernetesSATokenValidator:
                 )
         return keys_by_kid
 
-    def _metadata(self, issuer_config: dict[str, Any], force: bool = False) -> dict[str, Any]:
+    def _metadata(self, issuer_config: dict[str, Any]) -> dict[str, Any]:
         issuer = issuer_config["ISSUER"]
+        endpoint = issuer_config.get("DISCOVERY_ENDPOINT", issuer).rstrip("/") + "/"
+        discovery_url = urljoin(endpoint, OIDC_WELL_KNOWN)
+        metadata = self._get_json(discovery_url, issuer_config)
 
-        def load() -> dict[str, Any]:
-            endpoint = issuer_config.get("DISCOVERY_ENDPOINT", issuer).rstrip("/") + "/"
-            discovery_url = urljoin(endpoint, OIDC_WELL_KNOWN)
-            metadata = self._get_json(discovery_url, issuer_config)
-
-            discovered_issuer = metadata.get("issuer")
-            if not discovered_issuer or discovered_issuer.rstrip("/") != issuer.rstrip("/"):
-                raise KubernetesSATokenValidationError(
-                    "OIDC discovery issuer does not match configuration"
-                )
-
-            jwks_uri = metadata.get("jwks_uri")
-            if not isinstance(jwks_uri, str) or not jwks_uri.startswith("https://"):
-                raise KubernetesSATokenValidationError(
-                    "OIDC discovery did not provide a secure JWKS URI"
-                )
-
-            # Never trust a JWKS URI outside the origin we just fetched discovery from --
-            # otherwise a compromised or misconfigured issuer could redirect Quay's mounted
-            # ServiceAccount credential to an arbitrary host (SSRF / credential exfiltration).
-            if _origin(jwks_uri) != _origin(discovery_url):
-                raise KubernetesSATokenValidationError(
-                    "OIDC discovery returned a JWKS URI outside the trusted origin"
-                )
-
-            return metadata
-
-        metadata, stale = self._metadata_cache.get(issuer, load, force=force)
-        if stale:
-            logger.warning(
-                "Kubernetes ServiceAccount OIDC discovery refresh failed for issuer '%s'; using "
-                "cached metadata for the remainder of the bounded grace period",
-                issuer,
+        discovered_issuer = metadata.get("issuer")
+        if not discovered_issuer or discovered_issuer.rstrip("/") != issuer.rstrip("/"):
+            raise KubernetesSATokenValidationError(
+                "OIDC discovery issuer does not match configuration"
             )
+
+        jwks_uri = metadata.get("jwks_uri")
+        if not isinstance(jwks_uri, str) or not jwks_uri.startswith("https://"):
+            raise KubernetesSATokenValidationError(
+                "OIDC discovery did not provide a secure JWKS URI"
+            )
+
+        # Never trust a JWKS URI outside the origin we just fetched discovery from --
+        # otherwise a compromised or misconfigured issuer could redirect Quay's mounted
+        # ServiceAccount credential to an arbitrary host (SSRF / credential exfiltration).
+        if _origin(jwks_uri) != _origin(discovery_url):
+            raise KubernetesSATokenValidationError(
+                "OIDC discovery returned a JWKS URI outside the trusted origin"
+            )
+
         return metadata
 
     def _get_json(self, url: str, issuer_config: dict[str, Any]) -> dict[str, Any]:
