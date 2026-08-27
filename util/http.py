@@ -62,7 +62,10 @@ def abort(status_code, message=None, issue=None, headers=None, **kwargs):
         message = "%s (authorized: %s)" % (message, auth_context.description)
 
     # Log the abort.
-    logger.error("Error %s: %s; Arguments: %s" % (status_code, message, params))
+    if status_code < 500:
+        logger.warning("Error %s: %s; Arguments: %s" % (status_code, message, params))
+    else:
+        logger.error("Error %s: %s; Arguments: %s" % (status_code, message, params))
 
     # Create the final response data and message.
     data = {}
