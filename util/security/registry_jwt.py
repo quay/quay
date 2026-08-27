@@ -85,18 +85,18 @@ def decode_bearer_token(bearer_token, instance_keys, config):
     try:
         headers = jwt.get_unverified_header(bearer_token)
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.warning("Invalid token reason: %s", ite)
         raise InvalidBearerTokenException(ite)
 
     kid = headers.get("kid", None)
     if kid is None:
-        logger.error("Missing kid header on encoded JWT")
+        logger.warning("Missing kid header on encoded JWT")
         raise InvalidBearerTokenException("Missing kid header")
 
     # Find the matching public key.
     public_key = instance_keys.get_service_key_public_key(kid)
     if public_key is None:
-        logger.error("Could not find requested service key %s with encoded JWT", kid)
+        logger.warning("Could not find requested service key %s with encoded JWT", kid)
         raise InvalidBearerTokenException("Unknown service key")
 
     # Load the JWT returned.
@@ -115,7 +115,7 @@ def decode_bearer_token(bearer_token, instance_keys, config):
             leeway=JWT_CLOCK_SKEW_SECONDS,
         )
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.warning("Invalid token reason: %s", ite)
         raise InvalidBearerTokenException(ite)
 
     if not "sub" in payload:
