@@ -36,6 +36,7 @@ from image.oci import (
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
 )
 from image.shared.schemas import parse_manifest_from_bytes
+from proxy import Proxy, UpstreamAuthError, UpstreamRegistryError
 from proxy.fixtures import *  # noqa: F401, F403
 from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
@@ -869,6 +870,293 @@ class TestManifestPullThroughStorage:
             # a placeholder blob, not yet downloaded from the upstream registry.
             placements = ImageStoragePlacement.filter(ImageStoragePlacement.storage == blob)
             assert placements.count() == 0
+
+
+class TestManifestPullThroughUpstreamDown:
+    """Tests that cached images can be served when the upstream registry is unavailable."""
+
+    orgname = "cache-library-offline"
+    registry = "docker.io/library"
+    config = None
+    org = None
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, app):
+        model_cache.empty_for_testing()
+
+        self.client = client
+
+        self.user = model.user.get_user("devtable")
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=self.user))
+        self.ctx = context
+        self.sub = subject
+
+        if self.org is None:
+            self.org = model.organization.create_organization(
+                self.orgname, f"{self.orgname}@devtable.com", self.user
+            )
+            self.org.save()
+            self.config = model.proxy_cache.create_proxy_cache_config(
+                org_name=self.orgname,
+                upstream_registry=self.registry,
+                expiration_s=3600,
+            )
+
+    def _cache_manifest(
+        self, proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+    ):
+        """Cache a manifest via a first pull with a mocked upstream."""
+        repo = f"{self.orgname}/{image_name}"
+        params = {"repository": repo, "manifest_ref": tag_name}
+        proxy_mock = proxy_manifest_response(tag_name, manifest_json, manifest_type)
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=200,
+                headers=headers,
+            )
+        repository_ref = registry_model.lookup_repository(self.orgname, image_name)
+        assert repository_ref is not None
+
+    def test_returns_cached_tag_when_upstream_is_down(self, proxy_manifest_response):
+        """
+        When a manifest is already cached and the upstream registry is unreachable,
+        the cached manifest should be returned instead of an error.
+
+        Uses the real Proxy class with _safe_request patched to simulate network
+        failure, exercising the deferred-auth path introduced by PROJQUAY-8440.
+        """
+        image_name = "hello-world"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+        params = {"repository": repo, "manifest_ref": tag_name}
+
+        self._cache_manifest(
+            proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+        )
+
+        # Step 2: upstream is down — real Proxy, patched _safe_request
+        with patch.object(
+            Proxy, "_safe_request", side_effect=UpstreamRegistryError("Connection refused")
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=200,
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
+        manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(manifest_json), manifest_type
+        )
+        assert resp.headers.get("docker-content-digest") == manifest.digest
+        assert resp.headers.get("content-type") == manifest_type
+
+    def test_no_cached_fallback_on_auth_failure(self, proxy_manifest_response):
+        """
+        When upstream credentials are rejected (401/403), Quay must NOT serve
+        cached content — auth failures are distinct from transient outages.
+        """
+        image_name = "hello-world-auth"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+        params = {"repository": repo, "manifest_ref": tag_name}
+
+        self._cache_manifest(
+            proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+        )
+
+        # Step 2: upstream rejects auth — real Proxy, token endpoint returns 403
+        call_count = 0
+
+        def mock_safe_request(self_proxy, request_func, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # /v2/ ping returns 401 with www-authenticate header
+                resp = MagicMock(status_code=401, ok=False)
+                resp.headers = {
+                    "www-authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com"'
+                }
+                return resp
+            # token request returns 403 — credentials rejected
+            return MagicMock(status_code=403, ok=False)
+
+        with patch.object(Proxy, "_safe_request", mock_safe_request):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=404,
+                headers=headers,
+            )
+
+    def test_no_cached_fallback_on_auth_failure_by_digest(self, proxy_manifest_response):
+        """
+        Digest-based lookups must also reject cached content on auth failures,
+        exercising lookup_manifest_by_digest's UpstreamAuthError handler.
+        """
+        image_name = "hello-world-digest-auth"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+
+        self._cache_manifest(
+            proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+        )
+
+        # Resolve the cached manifest digest for the digest-based lookup
+        manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(manifest_json), manifest_type
+        )
+        params = {"repository": repo, "manifest_ref": manifest.digest}
+
+        call_count = 0
+
+        def mock_safe_request(self_proxy, request_func, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                resp = MagicMock(status_code=401, ok=False)
+                resp.headers = {
+                    "www-authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com"'
+                }
+                return resp
+            return MagicMock(status_code=403, ok=False)
+
+        with patch.object(Proxy, "_safe_request", mock_safe_request):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_digest",
+                url_for,
+                "GET",
+                params,
+                expected_code=404,
+                headers=headers,
+            )
+
+    def test_pull_upstream_manifest_auth_error_propagates(self, proxy_manifest_response):
+        """
+        When manifest_exists returns no digest and the follow-up get_manifest
+        raises UpstreamAuthError, it must propagate (not convert to
+        ManifestDoesNotExist), covering _pull_upstream_manifest's auth handler.
+        """
+        image_name = "hello-world-no-digest"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+
+        self._cache_manifest(
+            proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+        )
+
+        params = {"repository": repo, "manifest_ref": tag_name}
+
+        # manifest_exists succeeds but returns no digest; get_manifest raises auth error
+        no_digest_then_auth_mock = MagicMock()
+        no_digest_then_auth_mock.manifest_exists.return_value = None
+        no_digest_then_auth_mock.get_manifest.side_effect = UpstreamAuthError(403, status_code=403)
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(return_value=no_digest_then_auth_mock),
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=404,
+                headers=headers,
+            )
+
+    def test_pull_upstream_manifest_404_becomes_manifest_not_exist(self, proxy_manifest_response):
+        """
+        When get_manifest returns a 404 UpstreamRegistryError inside
+        _pull_upstream_manifest, it should be converted to ManifestDoesNotExist.
+        """
+        image_name = "hello-world-404"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+
+        self._cache_manifest(
+            proxy_manifest_response, image_name, tag_name, manifest_json, manifest_type
+        )
+
+        params = {"repository": repo, "manifest_ref": tag_name}
+
+        not_found_mock = MagicMock()
+        not_found_mock.manifest_exists.return_value = None
+        not_found_mock.get_manifest.side_effect = UpstreamRegistryError(404, status_code=404)
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(return_value=not_found_mock),
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=404,
+                headers=headers,
+            )
 
 
 @pytest.mark.e2e
