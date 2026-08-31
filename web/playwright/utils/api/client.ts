@@ -3055,9 +3055,7 @@ export class ApiClient {
     }
 
     const triggers = await this.listTriggers(namespace, repo);
-    const bbTrigger = triggers.triggers.find(
-      (t) => t.service === 'bitbucket',
-    );
+    const bbTrigger = triggers.triggers.find((t) => t.service === 'bitbucket');
     if (bbTrigger && typeof bbTrigger.id === 'string') {
       return bbTrigger.id;
     }

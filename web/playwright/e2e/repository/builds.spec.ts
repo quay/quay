@@ -866,9 +866,7 @@ test.describe(
 
         // Verify trigger appears in the trigger list
         const triggers = await api.raw.listTriggers(org.name, repo.name);
-        const bbTrigger = triggers.triggers.find(
-          (t) => t.id === triggerUuid,
-        );
+        const bbTrigger = triggers.triggers.find((t) => t.id === triggerUuid);
         expect(bbTrigger).toBeTruthy();
         expect(bbTrigger?.service).toBe('bitbucket');
 
@@ -904,10 +902,7 @@ test.describe(
         await api.raw.toggleTrigger(org.name, repo.name, triggerUuid, true);
 
         // Verify trigger is enabled again
-        const enabledTriggers = await api.raw.listTriggers(
-          org.name,
-          repo.name,
-        );
+        const enabledTriggers = await api.raw.listTriggers(org.name, repo.name);
         const enabledTrigger = enabledTriggers.triggers.find(
           (t) => t.id === triggerUuid,
         );
@@ -917,10 +912,7 @@ test.describe(
         await api.raw.deleteTrigger(org.name, repo.name, triggerUuid);
 
         // Verify trigger is removed
-        const finalTriggers = await api.raw.listTriggers(
-          org.name,
-          repo.name,
-        );
+        const finalTriggers = await api.raw.listTriggers(org.name, repo.name);
         const deletedTrigger = finalTriggers.triggers.find(
           (t) => t.id === triggerUuid,
         );
