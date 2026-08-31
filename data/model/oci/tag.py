@@ -16,6 +16,8 @@ from data.database import (
     Tag,
     TagPullStatistics,
     User,
+    compute_advisory_lock_id,
+    db_advisory_xact_lock,
     db_random_func,
     db_regex_search,
     db_transaction,
@@ -453,15 +455,26 @@ def retarget_tag(
     now_ms = now_ms or get_epoch_timestamp_ms()
 
     with db_transaction():
-        # Lookup an existing tag in the repository with the same name and, if present, mark it
-        # as expired.
+        # Acquire an advisory lock keyed on the repository ID to serialize
+        # tag mutations for this repo. Unlike SELECT FOR UPDATE on the
+        # Repository row, advisory locks don't block unrelated reads and
+        # avoid lock-queue pileups under heavy push traffic.
+        lock_id = compute_advisory_lock_id("retarget_tag", manifest.repository_id)
+        db_advisory_xact_lock(lock_id)
+
+        try:
+            Repository.select(Repository.namespace_user).where(
+                Repository.id == manifest.repository_id
+            ).get()
+        except Repository.DoesNotExist:
+            if raise_on_error:
+                raise RetargetTagException("Repository no longer exists")
+            return None
+
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
-            _, okay = set_tag_end_ms(existing_tag, now_ms)
-
-            # TODO: should we retry here and/or use a for-update?
-            if not okay:
-                return None
+            delete_tag_notifications_for_tag(existing_tag)
+            Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
 
         # Create a new tag pointing to the manifest with a lifetime start of now.
         created = Tag.create(
