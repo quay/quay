@@ -205,10 +205,10 @@ def get_transformed_webhook_payload(bb_payload, default_branch=None):
     except Exception as exc:
         logger.exception(
             "Exception when validating Bitbucket webhook payload: %s from %s",
-            str(exc),
+            exc.message,
             bb_payload,
         )
-        raise InvalidPayloadException(str(exc))
+        raise InvalidPayloadException(exc.message)
 
     payload = JSONPathDict(bb_payload)
     change = payload["push.changes[-1].new"]
