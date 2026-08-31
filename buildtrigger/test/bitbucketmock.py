@@ -173,10 +173,30 @@ def get_visible_repos():
     return (True, repos, None)
 
 
+def get_profile_mock(email_address):
+    if email_address == "foo@bar.com":
+        return (
+            True,
+            {
+                "display_name": "Foo User",
+                "links": {"avatar": {"href": "avatarurl"}},
+            },
+            None,
+        )
+    return (False, None, None)
+
+
+def get_accounts_mock():
+    accounts_mock = Mock()
+    accounts_mock.get_profile = Mock(side_effect=get_profile_mock)
+    return accounts_mock
+
+
 def get_authed_mock(token):
     authed_mock = Mock()
     authed_mock.for_namespace = Mock(side_effect=get_namespace_mock)
     authed_mock.get_visible_repositories = Mock(side_effect=get_visible_repos)
+    authed_mock.accounts = Mock(side_effect=get_accounts_mock)
     return authed_mock
 
 
