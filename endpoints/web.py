@@ -941,18 +941,15 @@ def attach_bitbucket_trigger(namespace_name, repo_name):
         )
 
         try:
-            oauth_info = BuildTriggerHandler.get_handler(trigger).get_oauth_url()
+            oauth_url = BuildTriggerHandler.get_handler(trigger).get_oauth_url()
         except TriggerProviderException:
             trigger.delete_instance()
             logger.debug("Could not retrieve Bitbucket OAuth URL")
             abort(500)
 
-        config = {"access_token": oauth_info["access_token"]}
+        model.build.update_build_trigger(trigger, {})
 
-        access_token_secret = oauth_info["access_token_secret"]
-        model.build.update_build_trigger(trigger, config, auth_token=access_token_secret)
-
-        return redirect(oauth_info["url"])
+        return redirect(oauth_url)
 
     abort(403)
 

@@ -134,20 +134,25 @@ BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA = {
 BITBUCKET_COMMIT_INFO_SCHEMA = {
     "type": "object",
     "properties": {
-        "node": {
+        "hash": {
             "type": "string",
         },
         "message": {
             "type": "string",
         },
-        "timestamp": {
+        "date": {
             "type": "string",
         },
-        "raw_author": {
-            "type": "string",
+        "author": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string",
+                },
+            },
         },
     },
-    "required": ["node", "message", "timestamp"],
+    "required": ["hash", "message", "date"],
 }
 
 
@@ -160,30 +165,31 @@ def get_transformed_commit_info(bb_commit, ref, default_branch, repository_name,
     except Exception as exc:
         logger.exception(
             "Exception when validating Bitbucket commit information: %s from %s",
-            exc.message,
+            str(exc),
             bb_commit,
         )
-        raise InvalidPayloadException(exc.message)
+        raise InvalidPayloadException(str(exc))
 
     commit = JSONPathDict(bb_commit)
 
     config = SafeDictSetter()
-    config["commit"] = commit["node"]
+    config["commit"] = commit["hash"]
     config["ref"] = ref
     config["default_branch"] = default_branch
     config["git_url"] = "git@bitbucket.org:%s.git" % repository_name
 
-    config["commit_info.url"] = _BITBUCKET_COMMIT_URL % (repository_name, commit["node"])
+    config["commit_info.url"] = _BITBUCKET_COMMIT_URL % (repository_name, commit["hash"])
     config["commit_info.message"] = commit["message"]
-    config["commit_info.date"] = commit["timestamp"]
+    config["commit_info.date"] = commit["date"]
 
-    match = _RAW_AUTHOR_REGEX.match(commit["raw_author"])
+    raw_author = commit["author.raw"] if commit["author.raw"] else ""
+    match = _RAW_AUTHOR_REGEX.match(raw_author)
     if match:
         author = lookup_author(match.group(1))
         author_info = JSONPathDict(author) if author is not None else None
         if author_info:
-            config["commit_info.author.username"] = author_info["user.display_name"]
-            config["commit_info.author.avatar_url"] = author_info["user.avatar"]
+            config["commit_info.author.username"] = author_info["display_name"]
+            config["commit_info.author.avatar_url"] = author_info["links.avatar.href"]
 
     return config.dict_value()
 
@@ -199,10 +205,10 @@ def get_transformed_webhook_payload(bb_payload, default_branch=None):
     except Exception as exc:
         logger.exception(
             "Exception when validating Bitbucket webhook payload: %s from %s",
-            exc.message,
+            str(exc),
             bb_payload,
         )
-        raise InvalidPayloadException(exc.message)
+        raise InvalidPayloadException(str(exc))
 
     payload = JSONPathDict(bb_payload)
     change = payload["push.changes[-1].new"]
@@ -246,26 +252,21 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         """
         Returns a BitBucket API client for this trigger's config.
         """
-        key = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CONSUMER_KEY", "")
-        secret = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CONSUMER_SECRET", "")
+        client_id = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CLIENT_ID", "")
+        client_secret = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CLIENT_SECRET", "")
 
         trigger_uuid = self.trigger.uuid
-        callback_url = "%s/oauth1/bitbucket/callback/trigger/%s" % (get_app_url(), trigger_uuid)
+        callback_url = "%s/oauth2/bitbucket/callback/trigger/%s" % (get_app_url(), trigger_uuid)
 
-        return BitBucket(key, secret, callback_url, timeout=15)
+        return BitBucket(client_id, client_secret, callback_url, timeout=15)
 
     def _get_authorized_client(self):
         """
         Returns an authorized API client.
         """
         base_client = self._get_client()
-        auth_token = self.auth_token or "invalid:invalid"
-        token_parts = auth_token.split(":")
-        if len(token_parts) != 2:
-            token_parts = ["invalid", "invalid"]
-
-        (access_token, access_token_secret) = token_parts
-        return base_client.get_authorized_client(access_token, access_token_secret)
+        access_token = self.auth_token or "invalid"
+        return base_client.get_authorized_client(access_token)
 
     def _get_repository_client(self):
         """
@@ -288,41 +289,41 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
     def get_oauth_url(self):
         """
-        Returns the OAuth URL to authorize Bitbucket.
+        Returns the OAuth2 URL to authorize Bitbucket.
         """
         bitbucket_client = self._get_client()
-        (result, data, err_msg) = bitbucket_client.get_authorization_url()
+        (result, url, err_msg) = bitbucket_client.get_authorization_url()
         if not result:
             raise TriggerProviderException(err_msg)
 
-        return data
+        return url
 
-    def exchange_verifier(self, verifier):
+    def exchange_verifier(self, code):
         """
-        Exchanges the given verifier token to setup this trigger.
+        Exchanges the given authorization code to setup this trigger.
         """
         bitbucket_client = self._get_client()
-        access_token = self.config.get("access_token", "")
-        access_token_secret = self.auth_token
 
-        # Exchange the verifier for a new access token.
-        (result, data, _) = bitbucket_client.verify_token(
-            access_token, access_token_secret, verifier
-        )
+        # Exchange the authorization code for access and refresh tokens.
+        (result, token_data, _) = bitbucket_client.exchange_code_for_token(code)
         if not result:
             return False
 
-        # Save the updated access token and secret.
-        self.set_auth_token(data[0] + ":" + data[1])
+        access_token = token_data.get("access_token", "")
+        refresh_token = token_data.get("refresh_token", "")
 
-        # Retrieve the current authorized user's information and store the username in the config.
+        # Save the access token as the auth token and refresh token in config.
+        self.set_auth_token(access_token)
+        self.put_config_key("refresh_token", refresh_token)
+
+        # Retrieve the current authorized user's information.
         authorized_client = self._get_authorized_client()
         (result, data, _) = authorized_client.get_current_user()
         if not result:
             return False
 
-        self.put_config_key("account_id", data["user"]["account_id"])
-        self.put_config_key("nickname", data["user"]["nickname"])
+        self.put_config_key("account_id", data.get("account_id", ""))
+        self.put_config_key("nickname", data.get("nickname", ""))
         return True
 
     def is_active(self):
@@ -349,7 +350,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             msg = "Unable to add deploy key to repository: %s" % err_msg
             raise TriggerActivationException(msg)
 
-        config["deploy_key_id"] = created_deploykey["pk"]
+        config["deploy_key_id"] = created_deploykey["id"]
 
         # Add a webhook callback.
         description = "Webhook for invoking builds on %s" % app.config["REGISTRY_TITLE_SHORT"]
@@ -397,16 +398,17 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         namespaces = {}
         for repo in data:
-            owner = repo["owner"]
+            owner = repo.get("workspace", {}).get("slug", "")
 
             if owner in namespaces:
                 namespaces[owner]["score"] = namespaces[owner]["score"] + 1
             else:
+                avatar_url = repo.get("links", {}).get("avatar", {}).get("href", "")
                 namespaces[owner] = {
                     "personal": owner == self.config.get("nickname", self.config.get("username")),
                     "id": owner,
                     "title": owner,
-                    "avatar_url": repo["logo"],
+                    "avatar_url": avatar_url,
                     "url": "https://bitbucket.org/%s" % (owner),
                     "score": 1,
                 }
@@ -415,16 +417,16 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
     def list_build_sources_for_namespace(self, namespace):
         def repo_view(repo):
-            last_modified = dateutil.parser.parse(repo["utc_last_updated"])
+            last_modified = dateutil.parser.parse(repo["updated_on"])
 
             return {
                 "name": repo["slug"],
-                "full_name": "%s/%s" % (repo["owner"], repo["slug"]),
-                "description": repo["description"] or "",
+                "full_name": repo.get("full_name", "%s/%s" % (namespace, repo["slug"])),
+                "description": repo.get("description", "") or "",
                 "last_updated": timegm(last_modified.utctimetuple()),
-                "url": "https://bitbucket.org/%s/%s" % (repo["owner"], repo["slug"]),
-                "has_admin_permissions": repo["read_only"] is False,
-                "private": repo["is_private"],
+                "url": "https://bitbucket.org/%s/%s" % (namespace, repo["slug"]),
+                "has_admin_permissions": "admin" in repo.get("permission", ""),
+                "private": repo.get("is_private", False),
             }
 
         bitbucket_client = self._get_authorized_client()
@@ -432,7 +434,11 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         if not result:
             raise RepositoryReadException("Could not read repository list: " + err_msg)
 
-        repos = [repo_view(repo) for repo in data if repo["owner"] == namespace]
+        repos = [
+            repo_view(repo)
+            for repo in data
+            if repo.get("workspace", {}).get("slug", "") == namespace
+        ]
         return BuildTriggerHandler.build_sources_response(repos)
 
     def list_build_subdirs(self):
@@ -449,7 +455,11 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         if not result:
             raise RepositoryReadException(err_msg)
 
-        files = set([f["path"] for f in data["files"]])
+        if isinstance(data, dict) and "values" in data:
+            files = set([f["path"] for f in data["values"] if f.get("type") == "commit_file"])
+        else:
+            files = set([f["path"] for f in data.get("files", [])])
+
         return [
             "/" + file_path
             for file_path in files
@@ -493,7 +503,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             if not result:
                 return None
 
-            tags = list(data.keys())
+            tags = [t["name"] for t in data]
             if limit:
                 tags = tags[0:limit]
 
@@ -504,7 +514,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             if not result:
                 return None
 
-            branches = list(data.keys())
+            branches = [b["name"] for b in data]
             if limit:
                 branches = branches[0:limit]
 
