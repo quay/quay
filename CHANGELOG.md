@@ -3,12 +3,35 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.26"></a>
+## [v3.9.26] - 2026-08-25
+### [Redhat-3.9] NO-ISSUE: Fix(Ci)
+- [5665b3215](https://github.com/quay/quay/commit/5665b3215cffa9242aea7010059f034e8915d6c1): pin s390x buildkit to v0.30.0 to avoid runc masking regression ([#6753](https://github.com/quay/quay/issues/6753))
+### [Redhat-3.9] PROJQUAY-12427: Fix(Api)
+- [09cad921f](https://github.com/quay/quay/commit/09cad921fda2e2c2dfa19df8b0607360c844ec72): hide robot account tokens from global readonly superusers ([#6864](https://github.com/quay/quay/issues/6864))
+### [Redhat-3.9] PROJQUAY-12466: Fix(Cve)
+- [809f3a587](https://github.com/quay/quay/commit/809f3a5879f23077443d6b6213c9fbe0942b1fc4): CVE-2026-69153 - postcss ([#6944](https://github.com/quay/quay/issues/6944))
+### [Redhat-3.9] PROJQUAY-12468: Fix(Cve)
+- [073c25b3e](https://github.com/quay/quay/commit/073c25b3e793be18951cba243b4ad88bf33cf015): CVE-2026-69152 - brace-expansion ([#6839](https://github.com/quay/quay/issues/6839))
+### [Redhat-3.9] PROJQUAY-12481: Fix(Cve)
+- [4e04b70c8](https://github.com/quay/quay/commit/4e04b70c8a96704d98a5e982502b89c2ba79a188): CVE-2026-44705 - tmp ([#6870](https://github.com/quay/quay/issues/6870))
+### [Redhat-3.9] PROJQUAY-12517: Deps
+- [e52b45b35](https://github.com/quay/quay/commit/e52b45b3578b34d4d97000339f254b3fa4c2e1df): Bump soupsieve to 2.8.4 ([#6884](https://github.com/quay/quay/issues/6884))
+### [Redhat-3.9] PROJQUAY-12581: Fix(Cve)
+- [fc67b7084](https://github.com/quay/quay/commit/fc67b7084c444e07978d6de8eeb6c8f2a4fb1913): CVE-2026-73089 - bump browserslist ([#6959](https://github.com/quay/quay/issues/6959))
+### [Redhat-3.9] PROJQUAY-12586: Fix(Cve)
+- [2fd64919d](https://github.com/quay/quay/commit/2fd64919db65a91637467b13188286f2b2bc7a22): CVE-2026-56852 - x/text bump ([#6853](https://github.com/quay/quay/issues/6853))
+### [Redhat-3.9] PROJQUAY-12740: Fix(Cve)
+- [7d398a798](https://github.com/quay/quay/commit/7d398a7983585291ee27590d8f0ef14c62905b9b): CVE-2026-67320 - bump axios to 1.19.0 ([#6927](https://github.com/quay/quay/issues/6927))
+
 <a name="v3.9.25"></a>
-## [v3.9.25] - 2026-07-30
+## [v3.9.25] - 2026-08-05
 ### PROJQUAY-12126: Chore(Deps)
 - [a00545664](https://github.com/quay/quay/commit/a005456649c16678bb993312c946b1d1bc2cb751): override brace-expansion to address CVE-2026-13149 ([#6657](https://github.com/quay/quay/issues/6657))
 ### PROJQUAY-12217: Chore(Deps): Chore(Deps)
 - [d75ba3776](https://github.com/quay/quay/commit/d75ba3776a3a8ef7f54c9bed1695edc8392da488): override js-yaml to address CVE-2026-59869 ([#6680](https://github.com/quay/quay/issues/6680))
+### PROJQUAY-12352: Fix(Mirroring)
+- [8bb1f7db8](https://github.com/quay/quay/commit/8bb1f7db8127d412f73f5d7bdb539d8a11ddae9f): prevent SSRF in repository sources ([#6724](https://github.com/quay/quay/issues/6724))
 ### [Redhat-3.9] PROJQUAY-12277: Chore(Deps)
 - [0d1924c51](https://github.com/quay/quay/commit/0d1924c511d95d6ea1173137e77e99fb01cf79bc): upgrade pyasn1 from 0.6.3 to 0.6.4 for CVE-2026-59885 ([#6611](https://github.com/quay/quay/issues/6611))
 ### [Redhat-3.9] PROJQUAY-12329: Chore(Deps)
@@ -1753,7 +1776,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.25...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.26...HEAD
+[v3.9.26]: https://github.com/quay/quay/compare/v3.9.25...v3.9.26
 [v3.9.25]: https://github.com/quay/quay/compare/v3.9.24...v3.9.25
 [v3.9.24]: https://github.com/quay/quay/compare/v3.9.23...v3.9.24
 [v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
