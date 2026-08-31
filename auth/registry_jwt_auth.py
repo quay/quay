@@ -101,7 +101,7 @@ def identity_from_bearer_token(bearer_header):
     try:
         payload = decode_bearer_header(bearer_header, instance_keys, app.config)
     except InvalidBearerTokenException as bte:
-        logger.exception("Invalid bearer token: %s", bte)
+        logger.warning("Invalid bearer token: %s", bte)
         raise InvalidJWTException(bte)
 
     loaded_identity = Identity(payload["sub"], "signed_jwt")
