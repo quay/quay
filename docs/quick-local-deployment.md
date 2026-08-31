@@ -22,14 +22,16 @@ $ cat /etc/hosts
 
 ## Set Up Postgres
 
-Quay will need a database to hold its image metadata (we will store images themselves on local disk in this tutorial).  Postgres is the recommended database, especially for highly available configurations.  Below we are pulling Red Hat's Postgres image but you should be able to use an image from other sources
+Quay will need a database to hold its image metadata (we will store images themselves on local disk in this tutorial).  Postgres is the recommended database, especially for highly available configurations.  Below we are pulling Red Hat's Postgres image but you should be able to use an image from other sources.
+
+Choose a `<postgres-user>` and `<postgres-password>` for this deployment and use the same values in `config.yaml` later.
 
 ```
 $ mkdir -p $QUAY/postgres
 $ setfacl -m u:26:-wx $QUAY/postgres
 $ sudo podman run -d --rm --name postgresql \
-	-e POSTGRES_USER=user \
-	-e POSTGRES_PASSWORD=pass \
+	-e POSTGRES_USER=<postgres-user> \
+	-e POSTGRES_PASSWORD=<postgres-password> \
 	-e POSTGRES_DB=quay \
 	-p 5432:5432 \
 	-v $QUAY/postgres:/var/lib/postgresql/data:Z \
@@ -38,7 +40,7 @@ $ sudo podman run -d --rm --name postgresql \
 Quay needs the `pg_trgm` module installed, so we can do so as follows:
 
 ```
-$ sudo podman exec -it postgresql /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U user'
+$ sudo podman exec -it postgresql /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U <postgres-user>'
 CREATE EXTENSION
 ```
 Let's also grab the IP address of our Postgres container so we can refer to it later:
@@ -49,13 +51,13 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" postgresql
 
 ## Set Up Redis
 
-Quay also requires a Redis runtime to hold user events and if configured, build coordination and build logs.  This instance can be ephemeral as it doesn't hold any data we can't live without.  We should also get the redis IP address at this time:
+Quay also requires a Redis runtime to hold user events and if configured, build coordination and build logs.  This instance can be ephemeral as it doesn't hold any data we can't live without.  Choose a `<redis-password>` and use the same value in `config.yaml`.  We should also get the redis IP address at this time:
 
 ```
 $ sudo podman run -d --rm --name redis \
         -p 6379:6379 \
         redis:5.0.7 \
-        --requirepass strongpassword
+        --requirepass <redis-password>
 
 $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" redis
 10.88.0.14
@@ -67,19 +69,47 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" redis
 
 NOTE: The configuration tool web UI was removed from the Quay image in version 3.17 ([quay/quay#4769](https://github.com/quay/quay/pull/4769)). On current images, create `config.yaml` manually or use the [local development environment](./getting-started.md#running-quay-for-development) for a working reference configuration.
 
-Create a Quay configuration directory and a minimal `config.yaml` that matches the Postgres and Redis containers started above. At minimum, set database connection settings (`DB_URI` or equivalent fields), Redis settings, `SERVER_HOSTNAME` (for example `quay:8080`), and `SETUP_COMPLETE: true`. See the [Manage Quay](https://docs.projectquay.io/manage_quay.html) documentation for the full set of configuration fields.
+Create a Quay configuration directory and a minimal `config.yaml` that matches the Postgres and Redis containers started above. Replace the placeholders with the values you used when starting the database and Redis containers, and generate your own `SECRET_KEY` and `DATABASE_SECRET_KEY` values (for example with `openssl rand -hex 32`).
 
 ```shell
 mkdir -p $QUAY/config
-# Create and edit $QUAY/config/config.yaml with your database, Redis, and server settings.
 ```
 
-Optionally validate the configuration with the config-tool CLI (validation only; no web UI):
+Create `$QUAY/config/config.yaml` with content similar to the following (substitute `<postgres-ip>` and `<redis-ip>` with the container IP addresses obtained above):
+
+```yaml
+AUTHENTICATION_TYPE: Database
+DB_URI: postgresql://<postgres-user>:<postgres-password>@<postgres-ip>/quay
+DATABASE_SECRET_KEY: "<generate-a-random-secret>"
+SECRET_KEY: "<generate-a-random-secret>"
+BUILDLOGS_REDIS:
+  host: <redis-ip>
+  port: 6379
+  password: <redis-password>
+USER_EVENTS_REDIS:
+  host: <redis-ip>
+  port: 6379
+  password: <redis-password>
+DISTRIBUTED_STORAGE_CONFIG:
+  default:
+    - LocalStorage
+    - storage_path: /datastorage/registry
+DISTRIBUTED_STORAGE_PREFERENCE:
+  - default
+SERVER_HOSTNAME: quay:8080
+SETUP_COMPLETE: true
+SUPER_USERS:
+  - admin
+```
+
+See the [Manage Quay](https://docs.projectquay.io/manage_quay.html) documentation for the full set of configuration fields.
+
+Validate the configuration with the config-tool CLI before starting Quay (validation only; no web UI):
 
 ```shell
 podman run --rm -v $QUAY/config:/conf/stack:Z \
   quay.io/projectquay/quay:latest \
-  /quay-registry/config-tool validate -c /conf/stack
+  config-tool validate -c /conf/stack -m offline
 ```
 
 Set up a directory to hold image blobs:
@@ -157,33 +187,33 @@ Quay and Clair can also be run as services on a Kubernetes cluster.  This is bec
 ## Troubleshooting
 
 ### I need to change my Quay configuration!
-Edit `config.yaml` directly in `$QUAY/config`, then restart the Quay container. To enable Clair security scanning on a standalone deployment, see [clair-standalone-configuration.md](clair-standalone-configuration.md).
-
-Optionally validate changes with the config-tool CLI:
+Edit `config.yaml` directly in `$QUAY/config`. Validate changes with the config-tool CLI before restarting the Quay container:
 
 ```shell
 podman run --rm -v $QUAY/config:/conf/stack:Z \
   quay.io/projectquay/quay:latest \
-  /quay-registry/config-tool validate -c /conf/stack
+  config-tool validate -c /conf/stack -m offline
 ```
+
+Restart the Quay container to load the updated configuration. To enable Clair security scanning on a standalone deployment, see [clair-standalone-configuration.md](clair-standalone-configuration.md).
 
 
 
 ### I'd like to see inside the Quay database!
 ```
 $  podman exec -it postgresql /bin/bash
-bash-4.4$ psql -d quay -U user
+bash-4.4$ psql -d quay -U <postgres-user>
 psql (10.6)
 Type "help" for help.
 ```
 
 ### I'd like to use MySQL instead of Postgres!
 
-Not a problem.  Just replace the Postgres setup steps above with
+Not a problem. Choose a `<mysql-root-password>` for the MySQL container and use the same value in `DB_URI` when configuring Quay. Just replace the Postgres setup steps above with
 ```
 $ mkdir -p $QUAY/mysql
 $ setfacl -m u:26:-wx $QUAY/mysql
-$ sudo podman run --name mysql -v $QUAY/mysql:/var/lib/mysql:Z -e MYSQL_ROOT_PASSWORD=password -d mysql:5.7.31
+$ sudo podman run --name mysql -v $QUAY/mysql:/var/lib/mysql:Z -e MYSQL_ROOT_PASSWORD=<mysql-root-password> -d mysql:5.7.31
 ```
 
 Once MySQL is running, you'll want to get the IP address for the database:
@@ -195,8 +225,8 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" mysql
 
 Then you'll need to create a database for Quay by connecting to the IP address you just found (this step isn't needed for Postgres)
 ```
-$ sudo podman run -it --rm mysql:5.7.31 mysql -h10.88.0.108 -uroot -p
-Enter password:
+$ sudo podman run -it --rm mysql:5.7.31 mysql -h<mysql-ip> -uroot -p
+Enter password:  # enter <mysql-root-password>
 Welcome to the MySQL monitor.  Commands end with ; or \g.
 Your MySQL connection id is 2
 Server version: 5.7.31 MySQL Community Server (GPL)
@@ -220,7 +250,7 @@ mysql> create database quay character set latin1;
 Query OK, 1 row affected (0.02 sec)
 ```
 
-Lastly, when configuring Quay manually, set the database type to `MySQL` and use the credentials `root/password` and database name `quay`. The legacy ConfigTool UI workflow is obsolete on Quay 3.17+; see [Legacy configuration tool workflow (obsolete)](#legacy-configuration-tool-workflow-obsolete-in-quay-317).
+Lastly, when configuring Quay manually, set `DB_URI` to `mysql+pymysql://root:<mysql-root-password>@<mysql-ip>/quay` (add `?charset=latin1` for MySQL 8.0 or higher). The legacy ConfigTool UI workflow is obsolete on Quay 3.17+; see [Legacy configuration tool workflow (obsolete)](#legacy-configuration-tool-workflow-obsolete-in-quay-317).
 
 ## Legacy configuration tool workflow (obsolete in Quay 3.17+)
 
@@ -228,22 +258,22 @@ The ConfigTool web UI historically resided on the Quay image and let you generat
 
 This workflow no longer works on Quay 3.17+ images. It is preserved here only for reference when working with older images.
 
-The legacy workflow ran the Quay image with runtime flags set to launch ConfigTool:
+The legacy workflow ran the Quay image with runtime flags set to launch ConfigTool (replace `<config-tool-password>` with a password of your choice):
 
 ```shell
-sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay:3.16.2 config secret
+sudo podman run --rm -it --name quay_config -p 8080:8080 quay.io/projectquay/quay:3.16.2 config <config-tool-password>
 ```
 
 1. Open https://localhost:8080 in browser
-1. Log in with quayconfig/secret
+1. Log in with quayconfig/`<config-tool-password>`
 1. Start New Registry Setup
 
 ### Database Setup
 
 1. Choose Postgres database type...
 1. host: (enter the postgres IP address you obtained previously)
-1. user: `user`
-1. password: `pass`
+1. user: `<postgres-user>`
+1. password: `<postgres-password>`
 1. database: `quay`
 
 Hit `Validate Database Settings`.  This will begin setting up your database automatically.
@@ -260,7 +290,7 @@ On main config screen, you will have a few fields to fill out:
 #### redis
 
 1. For `Redis Hostname` enter the IP address for your Redis container obtained earlier.
-2. For `Redis password` enter `strongpassword` or whatever you used when you launched the redis container.
+2. For `Redis password` enter the `<redis-password>` value you used when you launched the Redis container.
 
 Click on `Save Configuration Changes` at bottom of page.  Popup window should show settings confirmed.
 

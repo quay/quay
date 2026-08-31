@@ -110,10 +110,10 @@ sudo podman run -d --name clairv4 \
   -e CLAIR_CONF=/clair/config.yaml \
   -e CLAIR_MODE=combo \
   -v /etc/opt/clairv4/config:/clair:Z \
-  quay.io/projectquay/clair:latest
+  quay.io/projectquay/clair:4.7.2
 ```
 
-Use a port that is not already in use on the Quay host for `http_listen_addr` (for example, `8081`). If you change `http_listen_addr`, also update the Podman `-p` port mapping, `SECURITY_SCANNER_V4_ENDPOINT` in Quay, and the notifier `webhook.target` and `webhook.callback` URLs so they reference the same port.
+Use a port that is not already in use on the Quay host for `http_listen_addr` (for example, `8081`). If you change `http_listen_addr`, also update the Podman `-p` port mapping, `SECURITY_SCANNER_V4_ENDPOINT` in Quay, and the notifier `webhook.callback` URL. Keep `webhook.target` on Quay's HTTP port, and change it only if Quay's HTTP listener changes.
 
 ## Configure Quay for security scanning
 
@@ -123,12 +123,13 @@ Edit your Quay `config.yaml` (for example, `$QUAY/config/config.yaml`) and add o
 FEATURE_SECURITY_SCANNER: true
 SECURITY_SCANNER_V4_ENDPOINT: http://quay-server.example.com:8081
 SECURITY_SCANNER_V4_PSK: "<base64-encoded-psk>"
+SECURITY_SCANNER_ISSUER_NAME: quay
 FEATURE_SECURITY_NOTIFICATIONS: true
 ```
 
 - `SECURITY_SCANNER_V4_ENDPOINT` must reach Clair's HTTP listener from the Quay container.
 - `SECURITY_SCANNER_V4_PSK` must match the `auth.psk.key` value in Clair's configuration.
-- Quay signs Clair JWTs with issuer `quay`; Clair's `auth.psk.iss` must include `quay`.
+- `SECURITY_SCANNER_ISSUER_NAME` must match an entry in Clair's `auth.psk.iss` list (both are `quay` in the examples above).
 - Set `FEATURE_SECURITY_NOTIFICATIONS` to `true` when using Clair's notifier webhook.
 
 Optionally validate `config.yaml` with the config-tool CLI (validation only; no web UI):
@@ -136,7 +137,7 @@ Optionally validate `config.yaml` with the config-tool CLI (validation only; no 
 ```shell
 podman run --rm -v $QUAY/config:/conf/stack:Z \
   quay.io/projectquay/quay:latest \
-  /quay-registry/config-tool validate -c /conf/stack
+  config-tool validate -c /conf/stack -m offline
 ```
 
 Restart the Quay registry container to load the updated configuration.
