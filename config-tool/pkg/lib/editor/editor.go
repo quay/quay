@@ -93,7 +93,7 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
 	if opts.operatorEndpoint != "" {
-		log.Printf("Using Operator Endpoint: " + opts.operatorEndpoint)
+		log.Printf("Using Operator Endpoint: %s", opts.operatorEndpoint)
 	}
 
 	r := chi.NewRouter()
@@ -134,7 +134,7 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	// Try to load TLS
 	tlsConfig, err := loadTLS(opts.publicKeyPath, opts.privateKeyPath)
 	if err != nil {
-		log.Warningf("An error occurred loading TLS: " + err.Error() + ". Server falling back to HTTP.")
+		log.Warningf("An error occurred loading TLS: %s. Server falling back to HTTP.", err.Error())
 		log.Infof("Running the configuration editor with HTTP on port %v with username %s", opts.port, opts.username)
 		log.Fatal(s.ListenAndServe())
 	} else {

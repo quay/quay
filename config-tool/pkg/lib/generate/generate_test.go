@@ -18,7 +18,7 @@ func TestGenerateBaseConfig(t *testing.T) {
 
 	baseConfig, err := GenerateBaseConfig(options)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 	}
 
 	spew.Dump(baseConfig)

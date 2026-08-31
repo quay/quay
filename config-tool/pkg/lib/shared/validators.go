@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	goOIDC "github.com/coreos/go-oidc"
+	goOIDC "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-sql-driver/mysql"

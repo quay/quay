@@ -56,7 +56,7 @@ func TestValidateDatabase(t *testing.T) {
 			if tt.want != received {
 				t.Errorf("Expected %s. Received %s", tt.want, received)
 				for _, err := range validationErrors {
-					t.Errorf(err.Message)
+					t.Errorf("%s", err.Message)
 				}
 			}
 

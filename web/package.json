@@ -21,7 +21,8 @@
     "@types/jest": "^29.5.3",
     "@types/node": "^20.6.5",
     "@types/react": "^17.0.2",
-    "axios": "^1.13.5",
+    "axios": "^1.19.0",
+    "buffer": "^4.9.2",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
     "null-loader": "^4.0.1",
@@ -89,7 +90,6 @@
     "moment": "^2.29.4",
     "prettier": "^3.0.3",
     "raw-loader": "^4.0.2",
-    "react-docgen-typescript-loader": "^3.7.2",
     "react-dom": "^17.0.2",
     "sass": "^1.64.1",
     "serve": "^14.2.0",
@@ -116,13 +116,17 @@
     "@patternfly/react-core": "^5.1.0",
     "@patternfly/react-icons": "^5.1.0",
     "@patternfly/react-table": "^5.1.0",
-    "node-forge": "^1.3.2",
-    "axios": "^1.13.5",
+    "node-forge": "^1.4.0",
+    "axios": "^1.19.0",
     "minimatch": "^3.1.5",
     "filelist": {
       "minimatch": "^5.0.1"
     },
     "immutable": "^5.1.5",
-    "svgo": "4.0.1"
+    "decode-uri-component": "^0.5.0",
+    "svgo": "4.0.1",
+    "brace-expansion": "^1.1.18",
+    "js-yaml": "4.3.0",
+    "browserslist": ">=4.28.7"
   }
 }
