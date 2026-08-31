@@ -455,10 +455,12 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         if not result:
             raise RepositoryReadException(err_msg)
 
-        if isinstance(data, dict) and "values" in data:
+        if isinstance(data, list):
+            files = set([f["path"] for f in data if f.get("type") == "commit_file"])
+        elif isinstance(data, dict) and "values" in data:
             files = set([f["path"] for f in data["values"] if f.get("type") == "commit_file"])
         else:
-            files = set([f["path"] for f in data.get("files", [])])
+            files = set()
 
         return [
             "/" + file_path

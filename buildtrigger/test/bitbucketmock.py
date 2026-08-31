@@ -23,9 +23,10 @@ def get_bitbucket_trigger(dockerfile_path=""):
 
 
 def get_repo_path_contents(path, revision):
-    data = {
-        "values": [{"path": "Dockerfile", "type": "commit_file"}],
-    }
+    data = [
+        {"path": "Dockerfile", "type": "commit_file"},
+        {"path": "README.md", "type": "commit_file"},
+    ]
 
     return (True, data, None)
 
