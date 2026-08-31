@@ -249,3 +249,9 @@ def test_bitbucket_trigger_config_requires_client_id_and_secret():
 
     with pytest.raises(ValidationError):
         validate({}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_ID": "", "CLIENT_SECRET": "mysecret"}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_ID": "myid", "CLIENT_SECRET": ""}, schema)

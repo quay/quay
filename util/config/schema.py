@@ -590,11 +590,13 @@ CONFIG_SCHEMA = {
             "properties": {
                 "CLIENT_ID": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The OAuth2 client ID for this Quay instance",
                     "x-example": "0e8dbe15c4c7630b6780",
                 },
                 "CLIENT_SECRET": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The OAuth2 client secret for this Quay instance",
                     "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
                 },
