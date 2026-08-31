@@ -18,6 +18,7 @@
     "@types/node": "^20.6.5",
     "@types/react": "^18.2.0",
     "axios": "^1.19.0",
+    "brace-expansion": "^1.1.18",
     "https-proxy-agent": "^5.0.1",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
@@ -139,7 +140,7 @@
     "immutable": "^5.1.5",
     "fast-uri": "^3.1.4",
     "js-yaml": "^4.3.0",
-    "brace-expansion": "^1.1.16",
+    "brace-expansion": "^1.1.18",
     "browserslist": ">=4.28.7"
   },
   "pnpm": {
@@ -158,7 +159,7 @@
       "svgo": "4.0.1",
       "immutable": "^5.1.5",
       "js-yaml": "^4.3.0",
-      "brace-expansion": "^1.1.16",
+      "brace-expansion": "^1.1.18",
       "browserslist": ">=4.28.7"
     }
   }
