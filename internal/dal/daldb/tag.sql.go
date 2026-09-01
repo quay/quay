@@ -135,6 +135,62 @@ func (q *Queries) HasNonExpiringTagForManifest(ctx context.Context, manifestID s
 	return has_tag, err
 }
 
+const hasProtectingTagForManifest = `-- name: HasProtectingTagForManifest :one
+SELECT EXISTS(
+    SELECT 1 FROM tag
+    WHERE manifest_id = ?
+      AND (lifetime_end_ms IS NULL OR lifetime_end_ms >= ?)
+) AS has_tag
+`
+
+type HasProtectingTagForManifestParams struct {
+	ManifestID    sql.NullInt64 `json:"manifest_id"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+// True if the manifest already has a tag that has not ended yet (non-expiring
+// OR lifetime_end_ms >= now_ms). Used to skip duplicate $temp- tags on repeat
+// digest PUTs. Compare against now, not now+expiration: a tag created 1ms ago
+// with a 1h end is still protecting, but would fail >= now+1h.
+func (q *Queries) HasProtectingTagForManifest(ctx context.Context, arg HasProtectingTagForManifestParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasProtectingTagForManifest, arg.ManifestID, arg.LifetimeEndMs)
+	var has_tag int64
+	err := row.Scan(&has_tag)
+	return has_tag, err
+}
+
+const insertHiddenExpiringTag = `-- name: InsertHiddenExpiringTag :one
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, ?, 1)
+RETURNING id
+`
+
+type InsertHiddenExpiringTagParams struct {
+	Name            string        `json:"name"`
+	RepositoryID    int64         `json:"repository_id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+	TagKindID       int64         `json:"tag_kind_id"`
+}
+
+// Hidden $temp- tag with an explicit lifetime_end_ms. Matches Python
+// create_temporary_tag_if_necessary(expiration_sec, skip_expiration=False)
+// used for digest-only manifest PUTs (PUSH_TEMP_TAG_EXPIRATION_SEC).
+func (q *Queries) InsertHiddenExpiringTag(ctx context.Context, arg InsertHiddenExpiringTagParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertHiddenExpiringTag,
+		arg.Name,
+		arg.RepositoryID,
+		arg.ManifestID,
+		arg.LifetimeStartMs,
+		arg.LifetimeEndMs,
+		arg.TagKindID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertHiddenTag = `-- name: InsertHiddenTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
 VALUES (?, ?, ?, ?, ?, 1)
