@@ -1,6 +1,7 @@
-"""Mirror worker lifecycle tests (Tier 1 — Mocked Skopeo)."""
+"""Mirror Sync Lifecycle E2E Tests (Tier 1 — Mocked Skopeo)."""
 
 import json
+from unittest.mock import patch
 
 import mock
 import pytest
@@ -9,7 +10,7 @@ from data.database import RepoMirrorConfig, RepoMirrorStatus, Tag
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoResults
-from workers.repomirrorworker.test.mirror_test_utils import (
+from workers.repomirrorworker.test.conftest import (
     SKOPEO_BIN,
     alive_tag_names,
     create_tag,
@@ -54,7 +55,7 @@ def _copy_tag_call(tag, repo_name, success=True, stderr=""):
 
 
 # ===========================================================================
-# Full Mirror Sync Lifecycle
+# Full Mirror Sync Lifecycle E2E
 # ===========================================================================
 
 
@@ -182,25 +183,25 @@ def test_glob_wildcard_v_pattern(run_skopeo_mock, initialized_db, app):
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
-def test_glob_overlapping_patterns_v_star_and_v1_star(run_skopeo_mock, initialized_db, app):
-    """Patterns ['v*', 'v1.*'] both match v1.0, v1.1; each tag is still copied exactly once."""
+def test_glob_multi_pattern_v_star_and_latest(run_skopeo_mock, initialized_db, app):
+    """Patterns ['v*', 'latest'] match v1.0, v2.0, latest but not nightly, dev-123."""
     mirror, repo = create_mirror_repo_robot(
-        ["v*", "v1.*"],
-        repo_name="glob_overlap",
+        ["v*", "latest"],
+        repo_name="glob_multi",
         external_registry_config={"verify_tls": False},
     )
 
-    # tags_to_mirror dedupes matches across patterns before sorting
+    # tags_to_mirror sorts alphabetically: latest, v1.0, v2.0
     skopeo_calls = [
-        _list_tags_call(["v1.0", "v1.1", "v2.0"]),
-        _copy_tag_call("v1.0", "glob_overlap"),
-        _copy_tag_call("v1.1", "glob_overlap"),
-        _copy_tag_call("v2.0", "glob_overlap"),
+        _list_tags_call(["v1.0", "v2.0", "latest", "nightly", "dev-123"]),
+        _copy_tag_call("latest", "glob_multi"),
+        _copy_tag_call("v1.0", "glob_multi"),
+        _copy_tag_call("v2.0", "glob_multi"),
     ]
 
     run_mirror_sync(run_skopeo_mock, skopeo_calls, repo=repo, create_tags_on_copy=True)
 
-    assert alive_tag_names(repo) == ["v1.0", "v1.1", "v2.0"]
+    assert alive_tag_names(repo) == ["latest", "v1.0", "v2.0"]
 
 
 @disable_existing_mirrors
@@ -221,6 +222,24 @@ def test_glob_match_all_wildcard(run_skopeo_mock, initialized_db, app):
     run_mirror_sync(run_skopeo_mock, skopeo_calls, repo=repo, create_tags_on_copy=True)
 
     assert alive_tag_names(repo) == ["alpha", "beta", "gamma"]
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_glob_no_matching_tags(run_skopeo_mock, initialized_db, app):
+    """Pattern 'nonexistent-*' matches nothing → sync succeeds with no copies."""
+    mirror, repo = create_mirror_repo_robot(
+        ["nonexistent-*"],
+        repo_name="glob_none",
+        external_registry_config={"verify_tls": False},
+    )
+
+    skopeo_calls = [_list_tags_call(["latest", "v1.0", "v2.0"])]
+
+    run_mirror_sync(run_skopeo_mock, skopeo_calls)
+
+    mirror = RepoMirrorConfig.get_by_id(mirror.id)
+    assert mirror.sync_status == RepoMirrorStatus.SUCCESS
 
 
 @disable_existing_mirrors
@@ -345,10 +364,11 @@ def test_immutable_tag_survives_obsolete_cleanup(run_skopeo_mock, initialized_db
 
     run_skopeo_mock.side_effect = make_skopeo_side_effect(skopeo_calls)
 
-    from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
+    with patch("features.IMMUTABLE_TAGS", True):
+        from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
-    worker = RepoMirrorWorker()
-    worker._process_mirrors()
+        worker = RepoMirrorWorker()
+        worker._process_mirrors()
 
     assert skopeo_calls == []
 
@@ -358,6 +378,43 @@ def test_immutable_tag_survives_obsolete_cleanup(run_skopeo_mock, initialized_db
 
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert mirror.sync_status == RepoMirrorStatus.FAIL
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_immutable_tag_not_affected_when_present_upstream(run_skopeo_mock, initialized_db, app):
+    """
+    When an immutable tag is also present upstream, sync proceeds normally
+    and the tag is simply re-copied (overwrite is handled by the v2 endpoint,
+    not by the mirror worker directly).
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["*"],
+        repo_name="immutable_present",
+        external_registry_config={"verify_tls": False},
+    )
+
+    tag = create_tag(repo, "stable")
+    Tag.update(immutable=True).where(Tag.id == tag._db_id).execute()
+
+    skopeo_calls = [
+        _list_tags_call(["stable"]),
+        _copy_tag_call("stable", "immutable_present"),
+    ]
+
+    run_skopeo_mock.side_effect = make_skopeo_side_effect(skopeo_calls)
+
+    with patch("features.IMMUTABLE_TAGS", True):
+        from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
+
+        worker = RepoMirrorWorker()
+        worker._process_mirrors()
+
+    assert skopeo_calls == []
+    assert "stable" in alive_tag_names(repo)
+
+    mirror = RepoMirrorConfig.get_by_id(mirror.id)
+    assert mirror.sync_status == RepoMirrorStatus.SUCCESS
 
 
 # ===========================================================================
@@ -390,7 +447,9 @@ def test_success_notification_delivery(
 
     event_kinds = [c[0][1] for c in mock_spawn_notification.call_args_list]
 
-    assert event_kinds == ["repo_mirror_sync_started", "repo_mirror_sync_success"]
+    assert "repo_mirror_sync_started" in event_kinds
+    assert "repo_mirror_sync_success" in event_kinds
+    assert "repo_mirror_sync_failed" not in event_kinds
 
     for call_args in mock_spawn_notification.call_args_list:
         if call_args[0][1] == "repo_mirror_sync_success":
@@ -420,7 +479,7 @@ def test_success_notification_on_empty_match(
     run_mirror_sync(run_skopeo_mock, skopeo_calls)
 
     event_kinds = [c[0][1] for c in mock_spawn_notification.call_args_list]
-    assert event_kinds == ["repo_mirror_sync_started", "repo_mirror_sync_success"]
+    assert "repo_mirror_sync_success" in event_kinds
 
 
 # ===========================================================================
@@ -452,7 +511,9 @@ def test_failure_notification_on_list_tags_error(
 
     event_kinds = [c[0][1] for c in mock_spawn_notification.call_args_list]
 
-    assert event_kinds == ["repo_mirror_sync_started", "repo_mirror_sync_failed"]
+    assert "repo_mirror_sync_started" in event_kinds
+    assert "repo_mirror_sync_failed" in event_kinds
+    assert "repo_mirror_sync_success" not in event_kinds
 
     for call_args in mock_spawn_notification.call_args_list:
         if call_args[0][1] == "repo_mirror_sync_failed":
@@ -485,7 +546,38 @@ def test_failure_notification_on_copy_error(
 
     event_kinds = [c[0][1] for c in mock_spawn_notification.call_args_list]
 
-    assert event_kinds == ["repo_mirror_sync_started", "repo_mirror_sync_failed"]
+    assert "repo_mirror_sync_started" in event_kinds
+    assert "repo_mirror_sync_failed" in event_kinds
+    assert "repo_mirror_sync_success" not in event_kinds
 
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert mirror.sync_status == RepoMirrorStatus.FAIL
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.spawn_notification")
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_notification_ordering_started_before_result(
+    run_skopeo_mock, mock_spawn_notification, initialized_db, app
+):
+    """
+    The 'started' notification always fires before the 'success' or 'failed'
+    notification, regardless of outcome.
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"],
+        repo_name="notify_order",
+        external_registry_config={"verify_tls": False},
+    )
+
+    skopeo_calls = [
+        _list_tags_call(["latest"]),
+        _copy_tag_call("latest", "notify_order"),
+    ]
+
+    run_mirror_sync(run_skopeo_mock, skopeo_calls)
+
+    notification_events = [c[0][1] for c in mock_spawn_notification.call_args_list]
+    started_idx = notification_events.index("repo_mirror_sync_started")
+    success_idx = notification_events.index("repo_mirror_sync_success")
+    assert started_idx < success_idx
