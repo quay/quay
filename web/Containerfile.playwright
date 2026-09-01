@@ -1,26 +1,35 @@
-# Playwright E2E test runner for Quay web frontend.
+# Playwright E2E test runner for the Quay web frontend.
 # Runs tests against a live Quay instance (e.g. on OpenShift).
 #
-# Build (from repo root - web/.dockerignore excludes playwright/):
-#   podman build -f web/Containerfile.playwright -t quay-playwright .
-#
-# Run:
-#   podman run --rm \
-#     -e PLAYWRIGHT_BASE_URL=https://quay.example.com \
-#     -e REACT_QUAY_APP_API_URL=https://quay.example.com \
-#     quay-playwright
-#
-# Run specific tests:
-#   podman run --rm \
-#     -e PLAYWRIGHT_BASE_URL=https://quay.example.com \
-#     -e REACT_QUAY_APP_API_URL=https://quay.example.com \
-#     quay-playwright --grep "signin"
+# Two supported uses:
+#   1. Standalone (local / podman) — self-contained runner with the suite baked
+#      in; ENTRYPOINT runs `npx playwright test`:
+#        podman build -f web/Containerfile.playwright -t quay-playwright .
+#        podman run --rm \
+#          -e PLAYWRIGHT_BASE_URL=https://quay.example.com \
+#          -e REACT_QUAY_APP_API_URL=https://quay.example.com \
+#          quay-playwright                       # add: --grep "signin"
+#   2. OpenShift CI (ci-operator) — built via `dockerfile_path` and used as the
+#      base image for the e2e step, which clones the version-matched suite at
+#      runtime and drives `playwright test` itself (the ENTRYPOINT is overridden).
+#      For that path this image also ships git + the registry CLIs
+#      (skopeo / crane / regctl) that the @container / cli-interop specs drive,
+#      and installs browsers to a shared /opt/playwright usable by any UID.
 
 FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
 
-# Install Chromium system dependencies
 USER root
+
+# Chromium system libraries + CI tooling.
+#   skopeo, git : used by the OpenShift CI e2e step (runtime clone + @container specs)
+#   tar, gzip   : needed to extract the crane / regctl static binaries below
+# Scope to the freely-accessible ubi-9 repos so the build works on any host: on a
+# subscribed RHEL host, buildah/podman auto-inject the entitled `rhel-9-*` repos,
+# which 403 without a valid entitlement cert. UBI content needs no entitlement.
 RUN microdnf install -y --setopt=install_weak_deps=0 --nodocs \
+    --disablerepo='*' \
+    --enablerepo='ubi-9-baseos-rpms' \
+    --enablerepo='ubi-9-appstream-rpms' \
     nss \
     nspr \
     atk \
@@ -43,24 +52,36 @@ RUN microdnf install -y --setopt=install_weak_deps=0 --nodocs \
     dbus-libs \
     expat \
     glib2 \
+    skopeo \
+    git \
+    tar \
+    gzip \
     && microdnf clean all
+
+# Registry CLIs for the @container / cli-interop Playwright specs.
+RUN curl -fsSL "https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz" \
+      | tar -xzf - -C /usr/local/bin crane && \
+    curl -fsSL -o /usr/local/bin/regctl "https://github.com/regclient/regclient/releases/download/v0.7.1/regctl-linux-amd64" && \
+    chmod +x /usr/local/bin/crane /usr/local/bin/regctl
 
 WORKDIR /app
 
-# Install only Playwright (the only external dependency the tests need).
-# Version is read from package.json so it stays in sync with the project.
+# Install Playwright (version pinned from package.json so it stays in sync with
+# the project) and the Chromium browser. Browsers live in a shared /opt/playwright
+# so an arbitrary OpenShift UID (group 0) can read/write them; the CI step points
+# PLAYWRIGHT_BROWSERS_PATH here and reuses them instead of re-downloading.
 COPY web/package.json /tmp/package.json
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-
-# Install Playwright and Chromium browser, then clean caches.
-# Version is read from package.json so it stays in sync with the project.
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
 RUN PW_VERSION=$(node -p "require('/tmp/package.json').devDependencies['@playwright/test']") \
     && npm init -y > /dev/null 2>&1 \
     && npm install --no-package-lock "@playwright/test@${PW_VERSION}" \
-    && npx playwright install chromium --only-shell \
+    && npx playwright install chromium \
+    && mkdir -p /opt/playwright \
+    && chgrp -R 0 /opt/playwright && chmod -R g+rwX /opt/playwright \
     && rm -rf /tmp/package.json /opt/app-root/src/.npm /tmp/npm-*
 
-# Copy test files only (no app source needed - this is a test runner)
+# Bake the test files for standalone use. The OpenShift CI step ignores these and
+# clones the version-matched suite at runtime, so this only serves use #1.
 COPY web/playwright.config.ts ./
 COPY web/playwright/ ./playwright/
 COPY web/tsconfig.json ./
@@ -69,7 +90,8 @@ COPY web/tsconfig.json ./
 ENV OPENSHIFT_CI=1 \
     CI=1
 
-# Run as non-root (UBI default UID)
+# Run as non-root (UBI default UID). OpenShift assigns an arbitrary UID in group
+# 0 at runtime; /opt/playwright is group-writable so both cases work.
 USER 1001
 
 ENTRYPOINT ["npx", "playwright", "test"]
