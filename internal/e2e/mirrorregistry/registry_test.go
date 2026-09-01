@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -319,6 +320,237 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, gotLayer)
 	}
+}
+
+func TestRegistryIndexOnlyChildLayersSurviveUploadExpiry(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-only"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("index-only child layer")
+	configDigest, err := h.Registry().PushBlob(ctx, repository, configBytes)
+	require.NoError(t, err)
+	layerDigest, err := h.Registry().PushBlob(ctx, repository, layerBytes)
+	require.NoError(t, err)
+
+	childManifest, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config:    v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: configDigest, Size: int64(len(configBytes))},
+		Layers:    []v1.Descriptor{{MediaType: v1.MediaTypeImageLayerGzip, Digest: layerDigest, Size: int64(len(layerBytes))}},
+	})
+	require.NoError(t, err)
+	childDigest := digest.FromBytes(childManifest)
+	_, err = h.Registry().PushBlob(ctx, repository, childManifest)
+	require.NoError(t, err)
+
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageManifest,
+			Digest:    childDigest,
+			Size:      int64(len(childManifest)),
+			Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
+		}},
+	})
+	require.NoError(t, err)
+	indexResponse, err := h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	require.NoError(t, err)
+	assert.Equal(t, digest.FromBytes(indexBytes), indexResponse.Digest)
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted, "tagged index must keep the child manifest")
+	// The child JSON was uploaded as a blob so distribution would accept the
+	// index; that blob is not a layer and may be collected. Config/layers must remain.
+
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, layerDigest)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+	gotConfig, err := h.Registry().GetBlob(ctx, repository, configDigest)
+	require.NoError(t, err)
+	assert.Equal(t, configBytes, gotConfig)
+	gotChild, err := h.Registry().GetManifest(ctx, repository, childDigest.String())
+	require.NoError(t, err)
+	assert.Equal(t, childManifest, gotChild.Body)
+	gotIndex, err := h.Registry().GetManifest(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, indexBytes, gotIndex.Body)
+
+	tags, err := h.Registry().ListTags(ctx, repository)
+	require.NoError(t, err)
+	assert.Contains(t, tags, "latest")
+	for _, tag := range tags {
+		assert.False(t, strings.HasPrefix(tag, "$temp-"), "hidden child temp tag leaked through tag listing")
+	}
+}
+
+func TestRegistryIndexOnlyChildSurvivesIndexDeleteUntilTempTagExpires(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-only-temp"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("index-only child after delete")
+	configDigest, err := h.Registry().PushBlob(ctx, repository, configBytes)
+	require.NoError(t, err)
+	layerDigest, err := h.Registry().PushBlob(ctx, repository, layerBytes)
+	require.NoError(t, err)
+
+	childManifest, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config:    v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: configDigest, Size: int64(len(configBytes))},
+		Layers:    []v1.Descriptor{{MediaType: v1.MediaTypeImageLayerGzip, Digest: layerDigest, Size: int64(len(layerBytes))}},
+	})
+	require.NoError(t, err)
+	childDigest := digest.FromBytes(childManifest)
+	_, err = h.Registry().PushBlob(ctx, repository, childManifest)
+	require.NoError(t, err)
+
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageManifest,
+			Digest:    childDigest,
+			Size:      int64(len(childManifest)),
+			Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
+		}},
+	})
+	require.NoError(t, err)
+	indexResponse, err := h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Registry().DeleteManifest(ctx, repository, indexResponse.Digest))
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted, "Python keeps index-created children for 1h via $temp- after the index is deleted")
+	gotChild, err := h.Registry().GetManifest(ctx, repository, childDigest.String())
+	require.NoError(t, err)
+	assert.Equal(t, childManifest, gotChild.Body)
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, layerDigest)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+
+	require.NoError(t, h.ExpireTempTags(ctx))
+	stats, err = h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.NotZero(t, stats.ManifestsDeleted)
+	assertRegistryMissing(t, h, repository, childDigest.String())
+	assertBlobMissing(t, h, repository, layerDigest)
+}
+
+func TestRegistryIndexPutAfterChildDigestDoesNotClobber(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-after-child"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("digest-then-index child layer")
+	child := pushImage(t, h, repository, "", configBytes, layerBytes)
+
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageManifest,
+			Digest:    child.digest,
+			Size:      int64(len(child.manifest)),
+			Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
+		}},
+	})
+	require.NoError(t, err)
+	_, err = h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	require.NoError(t, err)
+
+	gotChild, err := h.Registry().GetManifest(ctx, repository, child.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, child.manifest, gotChild.Body, "index PUT must not replace child manifest_bytes with {}")
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted)
+
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, child.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+	gotChild, err = h.Registry().GetManifest(ctx, repository, child.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, child.manifest, gotChild.Body)
+}
+
+func TestRegistryIndexPutWhileChildRowMissingDoesNotClobber(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-child-race"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("racy child layer")
+	configDigest, err := h.Registry().PushBlob(ctx, repository, configBytes)
+	require.NoError(t, err)
+	layerDigest, err := h.Registry().PushBlob(ctx, repository, layerBytes)
+	require.NoError(t, err)
+
+	childManifest, err := json.Marshal(v1.Manifest{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageManifest,
+		Config:    v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: configDigest, Size: int64(len(configBytes))},
+		Layers:    []v1.Descriptor{{MediaType: v1.MediaTypeImageLayerGzip, Digest: layerDigest, Size: int64(len(layerBytes))}},
+	})
+	require.NoError(t, err)
+	childDigest := digest.FromBytes(childManifest)
+	_, err = h.Registry().PushBlob(ctx, repository, childManifest)
+	require.NoError(t, err)
+
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageManifest,
+			Digest:    childDigest,
+			Size:      int64(len(childManifest)),
+			Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
+		}},
+	})
+	require.NoError(t, err)
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var childErr, indexErr error
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		_, childErr = h.Registry().PutManifest(ctx, repository, childDigest.String(), childManifest, v1.MediaTypeImageManifest)
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		_, indexErr = h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	}()
+	close(start)
+	wg.Wait()
+	require.NoError(t, childErr)
+	require.NoError(t, indexErr)
+
+	gotChild, err := h.Registry().GetManifest(ctx, repository, childDigest.String())
+	require.NoError(t, err)
+	assert.Equal(t, childManifest, gotChild.Body, "index PUT must not clobber a concurrent child digest PUT to {}")
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted)
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, layerDigest)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
 }
 
 func TestRegistryCrossRepositoryMountSurvivesGarbageCollection(t *testing.T) {

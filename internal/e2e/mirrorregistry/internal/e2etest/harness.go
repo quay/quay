@@ -171,6 +171,23 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 	return nil
 }
 
+// ExpireTempTags advances hidden $temp- tags past the namespace tag-grace
+// window so a collector cycle can reclaim digest-only manifests that are no
+// longer referenced by a user tag.
+func (h *Harness) ExpireTempTags(ctx context.Context) error {
+	if h == nil || h.gcDB == nil {
+		return fmt.Errorf("expire temp tags with uninitialized E2E harness")
+	}
+	_, err := h.gcDB.ExecContext(ctx, `
+		UPDATE tag
+		SET lifetime_end_ms = (strftime('%s', 'now') * 1000) - (16 * 24 * 60 * 60 * 1000)
+		WHERE hidden = 1 AND name LIKE '$temp-%' AND lifetime_end_ms IS NOT NULL`)
+	if err != nil {
+		return fmt.Errorf("expire E2E temp tags: %w", err)
+	}
+	return nil
+}
+
 // BaseURL returns the HTTP URL of the in-process registry.
 func (h *Harness) BaseURL() string {
 	if h == nil || h.server == nil {

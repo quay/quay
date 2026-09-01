@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -212,6 +213,7 @@ type mockBlobStore struct {
 	createHook func(options []distribution.BlobCreateOption)
 	resumeWr   distribution.BlobWriter
 	resumeErr  error
+	blobs      map[digest.Digest][]byte
 }
 
 func (bs *mockBlobStore) Put(_ context.Context, _ string, p []byte) (v1.Descriptor, error) {
@@ -219,6 +221,18 @@ func (bs *mockBlobStore) Put(_ context.Context, _ string, p []byte) (v1.Descript
 		bs.putHook(p)
 	}
 	return bs.putDesc, bs.putErr
+}
+
+func (bs *mockBlobStore) Get(_ context.Context, dgst digest.Digest) ([]byte, error) {
+	if bs == nil {
+		return nil, distribution.ErrBlobUnknown
+	}
+	if bs.blobs != nil {
+		if content, ok := bs.blobs[dgst]; ok {
+			return content, nil
+		}
+	}
+	return nil, distribution.ErrBlobUnknown
 }
 
 func (bs *mockBlobStore) Create(_ context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
@@ -529,6 +543,59 @@ func TestManifestPut_IndexClassifiesChildDigests(t *testing.T) {
 	}
 	if len(store.putManifestRec.BlobDigests) != 0 {
 		t.Errorf("blob digests = %d, want 0 (should be classified as children)", len(store.putManifestRec.BlobDigests))
+	}
+}
+
+func TestManifestPut_IndexMaterializesChildrenFromCAS(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("index")
+	configDgst := digest.FromString("config")
+	layerDgst := digest.FromString("layer")
+	childContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"` + configDgst.String() + `","size":10},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip","digest":"` + layerDgst.String() + `","size":20}]}`)
+	childDgst := digest.FromBytes(childContent)
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+		bs:   &mockBlobStore{blobs: map[digest.Digest][]byte{childDgst: childContent}},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := &mockManifest{
+		mediaType:  v1.MediaTypeImageIndex,
+		payload:    []byte(`{}`),
+		references: []v1.Descriptor{{MediaType: v1.MediaTypeImageManifest, Digest: childDgst, Size: int64(len(childContent))}},
+	}
+	if _, err := ms.Put(context.Background(), manifest); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(store.putManifestRec.ChildManifests) != 1 {
+		t.Fatalf("child manifests = %d, want 1", len(store.putManifestRec.ChildManifests))
+	}
+	got := store.putManifestRec.ChildManifests[0]
+	if got.Digest != childDgst {
+		t.Errorf("child digest = %s, want %s", got.Digest, childDgst)
+	}
+	if !bytes.Equal(got.Content, childContent) {
+		t.Errorf("child content = %q, want CAS bytes", got.Content)
+	}
+	if len(got.BlobDigests) != 2 {
+		t.Fatalf("child blob digests = %d, want 2", len(got.BlobDigests))
+	}
+	gotBlobs := map[digest.Digest]oci.BlobRef{}
+	for _, ref := range got.BlobDigests {
+		gotBlobs[ref.Digest] = ref
+	}
+	if _, ok := gotBlobs[configDgst]; !ok {
+		t.Errorf("missing config blob %s", configDgst)
+	}
+	if _, ok := gotBlobs[layerDgst]; !ok {
+		t.Errorf("missing layer blob %s", layerDgst)
 	}
 }
 

@@ -66,8 +66,12 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 
 	// Classify references as blobs or child manifests based on parent media type.
 	if isIndexMediaType(mt) {
+		blobs := ms.repo.Repository.Blobs(ctx)
 		for _, ref := range manifest.References() {
 			record.ChildDigests = append(record.ChildDigests, ref.Digest)
+			if child, ok := loadChildFromCAS(ctx, blobs, ref); ok {
+				record.ChildManifests = append(record.ChildManifests, child)
+			}
 		}
 	} else {
 		for _, ref := range manifest.References() {
@@ -135,4 +139,77 @@ func parseSubjectAndArtifactType(payload []byte) (subject digest.Digest, artifac
 func isIndexMediaType(mt string) bool {
 	return mt == manifestlist.MediaTypeManifestList ||
 		mt == v1.MediaTypeImageIndex
+}
+
+// loadChildFromCAS reads a child manifest from the blob store and classifies
+// its config/layers (or nested children). A miss is not fatal: Python only
+// fails the whole create on a hard load error, and distribution already
+// accepted the index. The metastore then either finds an existing row or
+// inserts a non-clobbering stub.
+func loadChildFromCAS(ctx context.Context, blobs distribution.BlobStore, ref v1.Descriptor) (oci.ManifestRecord, bool) { //nolint:gocritic // descriptor comes from distribution by value
+	if blobs == nil || ref.Digest == "" {
+		return oci.ManifestRecord{}, false
+	}
+	content, err := blobs.Get(ctx, ref.Digest)
+	if err != nil || len(content) == 0 {
+		return oci.ManifestRecord{}, false
+	}
+	rec := parseChildRecord(ref, content)
+	if len(rec.ChildDigests) == 0 {
+		return rec, true
+	}
+	var nested struct {
+		Manifests []v1.Descriptor `json:"manifests"`
+	}
+	_ = json.Unmarshal(content, &nested)
+	for _, childRef := range nested.Manifests {
+		if child, ok := loadChildFromCAS(ctx, blobs, childRef); ok {
+			rec.ChildManifests = append(rec.ChildManifests, child)
+		}
+	}
+	return rec, true
+}
+
+func parseChildRecord(ref v1.Descriptor, content []byte) oci.ManifestRecord { //nolint:gocritic // descriptor comes from distribution by value
+	var parsed struct {
+		MediaType string          `json:"mediaType"`
+		Config    *v1.Descriptor  `json:"config"`
+		Layers    []v1.Descriptor `json:"layers"`
+		Manifests []v1.Descriptor `json:"manifests"`
+	}
+	_ = json.Unmarshal(content, &parsed)
+
+	mt := ref.MediaType
+	if mt == "" {
+		mt = parsed.MediaType
+	}
+	rec := oci.ManifestRecord{
+		Digest:    ref.Digest,
+		MediaType: mt,
+		Content:   content,
+	}
+	rec.Subject, rec.ArtifactType = parseSubjectAndArtifactType(content)
+
+	if isIndexMediaType(mt) || len(parsed.Manifests) > 0 {
+		for _, m := range parsed.Manifests {
+			rec.ChildDigests = append(rec.ChildDigests, m.Digest)
+		}
+		return rec
+	}
+	if parsed.Config != nil && parsed.Config.Digest != "" {
+		rec.BlobDigests = append(rec.BlobDigests, oci.BlobRef{
+			Digest: parsed.Config.Digest,
+			Size:   parsed.Config.Size,
+		})
+	}
+	for _, layer := range parsed.Layers {
+		if layer.Digest == "" {
+			continue
+		}
+		rec.BlobDigests = append(rec.BlobDigests, oci.BlobRef{
+			Digest: layer.Digest,
+			Size:   layer.Size,
+		})
+	}
+	return rec
 }
