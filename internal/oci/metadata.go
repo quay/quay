@@ -48,9 +48,11 @@ type ManifestRecord struct {
 	Content      []byte
 	BlobDigests  []BlobRef
 	ChildDigests []digest.Digest
-	Tag          string
-	Subject      digest.Digest
-	ArtifactType string
+	// ChildManifests holds CAS-loaded child manifests for an index PUT.
+	ChildManifests []ManifestRecord
+	Tag            string
+	Subject        digest.Digest
+	ArtifactType   string
 	// TempTagExpiration, when >0 and Tag is empty, creates a hidden $temp-
 	// tag that expires after this duration (Python create_manifest_with_temp_tag).
 	TempTagExpiration time.Duration
