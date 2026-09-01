@@ -41,6 +41,25 @@ VALUES (?, ?, ?, ?, ?, 1)
 ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
+-- name: InsertHiddenExpiringTag :one
+-- Hidden $temp- tag with an explicit lifetime_end_ms. Matches Python
+-- create_temporary_tag_if_necessary(expiration_sec, skip_expiration=False)
+-- used for digest-only manifest PUTs (PUSH_TEMP_TAG_EXPIRATION_SEC).
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, ?, 1)
+RETURNING id;
+
+-- name: HasProtectingTagForManifest :one
+-- True if the manifest already has a tag that has not ended yet (non-expiring
+-- OR lifetime_end_ms >= now_ms). Used to skip duplicate $temp- tags on repeat
+-- digest PUTs. Compare against now, not now+expiration: a tag created 1ms ago
+-- with a 1h end is still protecting, but would fail >= now+1h.
+SELECT EXISTS(
+    SELECT 1 FROM tag
+    WHERE manifest_id = ?
+      AND (lifetime_end_ms IS NULL OR lifetime_end_ms >= ?)
+) AS has_tag;
+
 -- name: HasNonExpiringTagForManifest :one
 -- Returns true if the manifest already has at least one non-expiring tag
 -- (lifetime_end_ms IS NULL). Used to skip creating duplicate protection tags.
