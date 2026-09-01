@@ -3,8 +3,41 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.17/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.17.5"></a>
+## [v3.17.5] - 2026-08-25
+### [Redhat-3.17] NO-ISSUE: Ci
+- [bf02079c7](https://github.com/quay/quay/commit/bf02079c772fc102ff09d00bc8de943eecd8949d): consolidate workflows into sentinel gate ([#6295](https://github.com/quay/quay/issues/6295))
+### [Redhat-3.17] NO-ISSUE: Fix(Ci)
+- [9a3056be4](https://github.com/quay/quay/commit/9a3056be44f6763054dd21b899d5a219309e499c): pin s390x buildkit to v0.30.0 to avoid runc masking regression ([#6783](https://github.com/quay/quay/issues/6783))
+### [Redhat-3.17] NO-ISSUE: Fix(Cve)
+- [b512c6a70](https://github.com/quay/quay/commit/b512c6a708785c31a414a30a7071256ac418db22): CVE-2026-73089 - bump browserslist ([#6962](https://github.com/quay/quay/issues/6962))
+### [Redhat-3.17] PROJQUAY-11685: Feat(Ldap)
+- [037ae6e31](https://github.com/quay/quay/commit/037ae6e313cbc5dc3930ad852afd038ff7ac3f21): add queue-based admin connection pool ([#6119](https://github.com/quay/quay/issues/6119))
+### [Redhat-3.17] PROJQUAY-12461: Fix(Cve)
+- [8b8886baf](https://github.com/quay/quay/commit/8b8886baf00a285a5f168a92d052518894b79269): CVE-2026-69153 - postcss ([#6939](https://github.com/quay/quay/issues/6939))
+### [Redhat-3.17] PROJQUAY-12476: Fix(Cve)
+- [e41aa88a4](https://github.com/quay/quay/commit/e41aa88a499a7fb5feca55e0e8ef1799fb209819): CVE-2026-44705 - tmp ([#6845](https://github.com/quay/quay/issues/6845))
+### [Redhat-3.17] PROJQUAY-12516: Deps
+- [a6751766b](https://github.com/quay/quay/commit/a6751766b8dd64f318c01c4ea3db73e7963d74fb): Bump soupsieve to 2.8.4 ([#6878](https://github.com/quay/quay/issues/6878))
+### [Redhat-3.17] PROJQUAY-12554: Fix(Api)
+- [674daa016](https://github.com/quay/quay/commit/674daa0163ef45687da89ea88d5077c008ac5777): hide robot account tokens from global readonly superusers ([#6761](https://github.com/quay/quay/issues/6761))
+### [Redhat-3.17] PROJQUAY-12588: Fix(Cve)
+- [7afe066e7](https://github.com/quay/quay/commit/7afe066e7fc9ce9541edfb823b2a785128910a73): CVE-2026-56852 - x/text bump ([#6823](https://github.com/quay/quay/issues/6823))
+### [Redhat-3.17] PROJQUAY-12635: Fix
+- [d0590dfe8](https://github.com/quay/quay/commit/d0590dfe875d3c6a470b0c745b14389a035e6562): Set secscan endpoint to explicitly communicate via HTTP/1.1 ([#6807](https://github.com/quay/quay/issues/6807))
+### [Redhat-3.17] PROJQUAY-12738: Fix(Cve)
+- [f68eda74d](https://github.com/quay/quay/commit/f68eda74ddb6e0305f85fb92c18a67a48ba85bef): CVE-2026-67320 - bump axios to 1.19.0 ([#6921](https://github.com/quay/quay/issues/6921))
+### [Redhat-3.17] PROJQUAY-12792: Fix
+- [5bc549c5a](https://github.com/quay/quay/commit/5bc549c5a471f093ed93d5d3e5f78d566a96f66e): Clean up orphaned multipart uploads as part of blob cleanup ([#6974](https://github.com/quay/quay/issues/6974))
+### [Redhat-3.17] PROJQUAY-9998: Feat(Secscan)
+- [937b6eff9](https://github.com/quay/quay/commit/937b6eff9ab061178da2afd276b4886a1556789a): add retry limiting via metadata_json ([#6659](https://github.com/quay/quay/issues/6659))
+### [Redhat-3.17] QUAYIO-2123: Fix
+- [6f7ba5ad2](https://github.com/quay/quay/commit/6f7ba5ad2e669fb721f3312ce9b8f18eb4fa1d97): platform KeyError ([#6803](https://github.com/quay/quay/issues/6803))
+### [Redhat-3.17] QUAYIO-2123: Fix(#6768)
+- [a3aab697e](https://github.com/quay/quay/commit/a3aab697e663710a692dccf050c2b39f12d07af1): use defensive .get() ([#6801](https://github.com/quay/quay/issues/6801))
+
 <a name="v3.17.4"></a>
-## [v3.17.4] - 2026-07-30
+## [v3.17.4] - 2026-08-05
 ### Chore(Deps)
 - [d63baa2b8](https://github.com/quay/quay/commit/d63baa2b8159dbd0753059c4a182d00bb10dcbf5): update go version to 1.25.0 (PROJQUAY-11712) ([#6305](https://github.com/quay/quay/issues/6305))
 ### PROJQUAY-11598: Fix(Cve)
@@ -17,6 +50,8 @@
 - [480e11f80](https://github.com/quay/quay/commit/480e11f80509f90d4fed0736eb8e23dfec8b4455): CVE-2026-9277 - shell-quote ([#6168](https://github.com/quay/quay/issues/6168))
 ### PROJQUAY-12317: Chore(Deps)
 - [ef71dd6f2](https://github.com/quay/quay/commit/ef71dd6f25a541ee280315986c4732fe032d13ea): upgrade pyasn1 from 0.6.3 to 0.6.4 to address CVE-2026-59885 ([#6567](https://github.com/quay/quay/issues/6567))
+### PROJQUAY-12355: Fix(Mirroring)
+- [124182e9d](https://github.com/quay/quay/commit/124182e9d5baa2a4a056ce969d4bbfec913cea44): prevent SSRF in repository sources ([#6725](https://github.com/quay/quay/issues/6725))
 ### PROJQUAY-12402: Chore(Deps)
 - [2f8f9f7f6](https://github.com/quay/quay/commit/2f8f9f7f665b32830e07b87501995be66cc0f55d): override brace-expansion to address CVE-2026-13149 ([#6691](https://github.com/quay/quay/issues/6691))
 ### [Redhat-3.17] NO-ISSUE: Chore(Config-Tool)
@@ -1198,6 +1233,20 @@
 LDAP lookup of robot accounts in the UI for granting permission has been dropped in context of permissions granting. This impacts Users from LDAP if they have not logged in to Quay already (pre provisioning) as a Federation User will only be available after logging in or being part of a Team.
 
 
+<a name="v3.15.7"></a>
+## [v3.15.7] - 2026-07-31
+### PROJQUAY-12124: Chore(Deps)
+- [677025ffa](https://github.com/quay/quay/commit/677025ffa3abe095772ae39dfc0ca84067643f2d): override brace-expansion to address CVE-2026-13149 ([#6653](https://github.com/quay/quay/issues/6653))
+### [Redhat-3.15] PROJQUAY-12115: Fix(Cve)
+- [0efec40fd](https://github.com/quay/quay/commit/0efec40fd85c12afea475f78387f6fed32ee9d76): CVE-2026-45822 - decode-uri-component ([#6393](https://github.com/quay/quay/issues/6393))
+### [Redhat-3.15] PROJQUAY-12274: Chore(Deps)
+- [13d37c992](https://github.com/quay/quay/commit/13d37c9926915099e91365d4bd3781857385830b): upgrade pyasn1 from 0.6.3 to 0.6.4 to address CVE-2026-59885 ([#6594](https://github.com/quay/quay/issues/6594))
+### [Redhat-3.15] PROJQUAY-12330: Chore(Deps)
+- [5a5dc486e](https://github.com/quay/quay/commit/5a5dc486e69308c712452efe3bed4ee259fe33af): Bump pillow to 12.3.0 ([#6622](https://github.com/quay/quay/issues/6622))
+### [Redhat-3.15] PROJQUAY-9998: Feat(Secscan)
+- [b7e23c7e6](https://github.com/quay/quay/commit/b7e23c7e60ba6b6c08756ad71bd705b883098b56): add retry limiting via metadata_json for v1 and v2 scanners ([#6577](https://github.com/quay/quay/issues/6577)) ([#6644](https://github.com/quay/quay/issues/6644))
+- [171136d92](https://github.com/quay/quay/commit/171136d9268d90137c19a6996b9f13c0dbe48aae): exhausted read ([#6638](https://github.com/quay/quay/issues/6638))
+
 <a name="v3.15.6"></a>
 ## [v3.15.6] - 2026-07-21
 ### NO-ISSUE: Chore
@@ -2259,6 +2308,21 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### [Redhat-3.13] Validator
 - [785a8bd6c](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
 
+<a name="v3.12.21"></a>
+## [v3.12.21] - 2026-08-05
+### PROJQUAY-12121: Chore(Deps)
+- [b3094b3df](https://github.com/quay/quay/commit/b3094b3df6c5edf107256d76c29626a73d45edfe): override brace-expansion to address CVE-2026-13149 ([#6655](https://github.com/quay/quay/issues/6655))
+### PROJQUAY-12219: Chore(Deps): Chore(Deps)
+- [db99f0cb6](https://github.com/quay/quay/commit/db99f0cb68b3501005b4fcda8c9915b3901e5ddd): override js-yaml to address CVE-2026-59869 ([#6678](https://github.com/quay/quay/issues/6678))
+### PROJQUAY-12358: Fix(Mirroring)
+- [a1626d9a0](https://github.com/quay/quay/commit/a1626d9a098245daa9b3890e18211c470cb71fae): prevent SSRF in repository sources ([#6719](https://github.com/quay/quay/issues/6719))
+### [Redhat-3.12] PROJQUAY-12115: Fix(Cve)
+- [830be3607](https://github.com/quay/quay/commit/830be36073e22b0ae0e04fb1b3b57c920abda548): CVE-2026-45822 - decode-uri-component ([#6515](https://github.com/quay/quay/issues/6515))
+### [Redhat-3.12] PROJQUAY-12271: Chore(Deps)
+- [026ed3b14](https://github.com/quay/quay/commit/026ed3b144c37dcd22cde9be5e0869bad9797824): upgrade pyasn1 from 0.6.3 to 0.6.4 to address CVE-2026-59885 ([#6602](https://github.com/quay/quay/issues/6602))
+### [Redhat-3.12] PROJQUAY-12328: Chore(Deps)
+- [86b608cc9](https://github.com/quay/quay/commit/86b608cc97f99c3d67360edbf44001e16ea5f1b1): Bump pillow to 12.3.0 ([#6625](https://github.com/quay/quay/issues/6625))
+
 <a name="v3.12.20"></a>
 ## [v3.12.20] - 2026-07-07
 ### PROJQUAY-11707: Deps
@@ -3042,6 +3106,21 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [5286c33f8](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd0](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.25"></a>
+## [v3.10.25] - 2026-08-05
+### PROJQUAY-12120: Chore(Deps)
+- [5b579c640](https://github.com/quay/quay/commit/5b579c640333f45cff8d99fdd2a15ec96b6667d5): override brace-expansion to address CVE-2026-13149 ([#6656](https://github.com/quay/quay/issues/6656))
+### PROJQUAY-12213: Chore(Deps): Chore(Deps)
+- [9ebee041b](https://github.com/quay/quay/commit/9ebee041b4566903f82e6877b68942bc18b6d8ff): override js-yaml to address CVE-2026-59869 ([#6679](https://github.com/quay/quay/issues/6679))
+### PROJQUAY-12270: Chore(Deps)
+- [1e347e934](https://github.com/quay/quay/commit/1e347e93431611512f2f130f56afca747a16954b): upgrade pyasn1 from 0.6.3 to 0.6.4 for CVE-2026-59885 ([#6609](https://github.com/quay/quay/issues/6609))
+### PROJQUAY-12356: Fix(Mirroring)
+- [038c50315](https://github.com/quay/quay/commit/038c50315e30c55e96ef84fce6241f81bb0737cc): prevent SSRF in repository sources ([#6718](https://github.com/quay/quay/issues/6718))
+### [Redhat-3.10] PROJQUAY-12115: Fix(Cve)
+- [d0ecd8c51](https://github.com/quay/quay/commit/d0ecd8c513df1cebee5f700fd0f615a07ec1d671): CVE-2026-45822 - decode-uri-component ([#6516](https://github.com/quay/quay/issues/6516))
+### [Redhat-3.10] PROJQUAY-12337: Chore(Deps)
+- [ae8e3de13](https://github.com/quay/quay/commit/ae8e3de1376e61eb52acbcc5252d8678d95535d2): Bump pillow to 12.3.0 ([#6626](https://github.com/quay/quay/issues/6626))
+
 <a name="v3.10.24"></a>
 ## [v3.10.24] - 2026-07-08
 ### PROJQUAY-11708: Deps
@@ -3685,6 +3764,19 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.25"></a>
+## [v3.9.25] - 2026-08-05
+### PROJQUAY-12126: Chore(Deps)
+- [a00545664](https://github.com/quay/quay/commit/a005456649c16678bb993312c946b1d1bc2cb751): override brace-expansion to address CVE-2026-13149 ([#6657](https://github.com/quay/quay/issues/6657))
+### PROJQUAY-12217: Chore(Deps): Chore(Deps)
+- [d75ba3776](https://github.com/quay/quay/commit/d75ba3776a3a8ef7f54c9bed1695edc8392da488): override js-yaml to address CVE-2026-59869 ([#6680](https://github.com/quay/quay/issues/6680))
+### PROJQUAY-12352: Fix(Mirroring)
+- [8bb1f7db8](https://github.com/quay/quay/commit/8bb1f7db8127d412f73f5d7bdb539d8a11ddae9f): prevent SSRF in repository sources ([#6724](https://github.com/quay/quay/issues/6724))
+### [Redhat-3.9] PROJQUAY-12277: Chore(Deps)
+- [0d1924c51](https://github.com/quay/quay/commit/0d1924c511d95d6ea1173137e77e99fb01cf79bc): upgrade pyasn1 from 0.6.3 to 0.6.4 for CVE-2026-59885 ([#6611](https://github.com/quay/quay/issues/6611))
+### [Redhat-3.9] PROJQUAY-12329: Chore(Deps)
+- [71cf59a90](https://github.com/quay/quay/commit/71cf59a90fd6a65a997dd51f0add4bd50ba89a78): Bump pillow to 12.3.0 ([#6627](https://github.com/quay/quay/issues/6627))
 
 <a name="v3.9.24"></a>
 ## [v3.9.24] - 2026-07-14
@@ -5425,7 +5517,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.17.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.17.5...HEAD
+[v3.17.5]: https://github.com/quay/quay/compare/v3.17.4...v3.17.5
 [v3.17.4]: https://github.com/quay/quay/compare/v3.17.3...v3.17.4
 [v3.17.3]: https://github.com/quay/quay/compare/v3.17.2...v3.17.3
 [v3.17.2]: https://github.com/quay/quay/compare/v3.17.1...v3.17.2
@@ -5436,7 +5529,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.16.3]: https://github.com/quay/quay/compare/v3.16.2...v3.16.3
 [v3.16.2]: https://github.com/quay/quay/compare/v3.16.1...v3.16.2
 [v3.16.1]: https://github.com/quay/quay/compare/v3.16.0...v3.16.1
-[v3.16.0]: https://github.com/quay/quay/compare/v3.15.6...v3.16.0
+[v3.16.0]: https://github.com/quay/quay/compare/v3.15.7...v3.16.0
+[v3.15.7]: https://github.com/quay/quay/compare/v3.15.6...v3.15.7
 [v3.15.6]: https://github.com/quay/quay/compare/v3.15.5...v3.15.6
 [v3.15.5]: https://github.com/quay/quay/compare/v3.15.4...v3.15.5
 [v3.15.4]: https://github.com/quay/quay/compare/v3.15.3...v3.15.4
@@ -5464,7 +5558,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.20...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.21...v3.13.0
+[v3.12.21]: https://github.com/quay/quay/compare/v3.12.20...v3.12.21
 [v3.12.20]: https://github.com/quay/quay/compare/v3.12.19...v3.12.20
 [v3.12.19]: https://github.com/quay/quay/compare/v3.12.18...v3.12.19
 [v3.12.18]: https://github.com/quay/quay/compare/v3.12.17...v3.12.18
@@ -5499,7 +5594,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.24...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.25...v3.11.0
+[v3.10.25]: https://github.com/quay/quay/compare/v3.10.24...v3.10.25
 [v3.10.24]: https://github.com/quay/quay/compare/v3.10.23...v3.10.24
 [v3.10.23]: https://github.com/quay/quay/compare/v3.10.22...v3.10.23
 [v3.10.22]: https://github.com/quay/quay/compare/v3.10.21...v3.10.22
@@ -5524,7 +5620,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.24...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.25...v3.10.0
+[v3.9.25]: https://github.com/quay/quay/compare/v3.9.24...v3.9.25
 [v3.9.24]: https://github.com/quay/quay/compare/v3.9.23...v3.9.24
 [v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
 [v3.9.22]: https://github.com/quay/quay/compare/v3.9.21...v3.9.22
