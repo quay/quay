@@ -204,9 +204,8 @@ class PullMetrics(object):
                 client.ping()
                 return client
             except (redis.ConnectionError, redis.TimeoutError, AttributeError):
-                # Connection is broken, reset and reconnect
+                # Connection is broken, reconnect
                 logger.debug("Redis connection lost, reconnecting...")
-                self._redis = None
 
         # If we don't have a working connection, we must establish the pool. To ensure that
         # we don't leak connections, first check if there's already a raised lock (greenlet is
@@ -223,6 +222,7 @@ class PullMetrics(object):
                     return self._redis
                 except (redis.ConnectionError, redis.TimeoutError, AttributeError):
                     logger.debug("Redis connection is not available, attempting to reconnect...")
+                    self._redis = None
 
             # retry loop runs under a lock, other threads need to wait until execution finishes
             # this ensures only one pool is created instead of multiple, leaking potential connections
