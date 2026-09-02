@@ -22,7 +22,6 @@ import pytest
 from authlib.jose import JsonWebKey
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from test.fixtures import *
 
 from data.database import ServiceKey, ServiceKeyApprovalType
 from data.model import ServiceKeyDoesNotExist
@@ -32,9 +31,9 @@ from data.model.service_keys import (
     get_service_key,
     get_service_key_for_status,
 )
+from test.fixtures import *
 from tools.manage_servicekey import expire_key
 from util.config.schema import INTERNAL_ONLY_PROPERTIES
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -104,8 +103,10 @@ class TestConfigFlag:
     def test_import_flag_in_internal_only_properties(self):
         assert "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES" in INTERNAL_ONLY_PROPERTIES
 
-    def test_import_flag_default_is_false(self, app):
-        assert app.config.get("INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES") is False
+    def test_import_flag_default_is_false(self):
+        from config import DefaultConfig
+
+        assert DefaultConfig.INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES is False
 
 
 # ---------------------------------------------------------------------------
@@ -240,13 +241,13 @@ class TestGetServiceKeyForStatus:
 
 class TestReadonlyDbWriteGuards:
     def test_readonly_skips_sync_and_release(self, app, initialized_db):
-        with patch("boot.sync_database_with_config") as mock_sync, patch(
-            "boot.set_region_release"
-        ) as mock_release, patch("boot.setup_instance_service_key"), patch(
-            "boot.setup_bootstrap_token"
-        ), patch(
-            "boot.release"
-        ) as mock_rel_module:
+        with (
+            patch("boot.sync_database_with_config") as mock_sync,
+            patch("boot.set_region_release") as mock_release,
+            patch("boot.setup_instance_service_key"),
+            patch("boot.setup_bootstrap_token"),
+            patch("boot.release") as mock_rel_module,
+        ):
             mock_rel_module.REGION = "us-east"
             mock_rel_module.GIT_HEAD = "abc123"
             mock_rel_module.SERVICE = "quay"
@@ -266,13 +267,13 @@ class TestReadonlyDbWriteGuards:
             mock_release.assert_not_called()
 
     def test_normal_calls_sync_and_release(self, app, initialized_db):
-        with patch("boot.sync_database_with_config") as mock_sync, patch(
-            "boot.set_region_release"
-        ) as mock_release, patch("boot.setup_instance_service_key"), patch(
-            "boot.setup_bootstrap_token"
-        ), patch(
-            "boot.release"
-        ) as mock_rel_module:
+        with (
+            patch("boot.sync_database_with_config") as mock_sync,
+            patch("boot.set_region_release") as mock_release,
+            patch("boot.setup_instance_service_key"),
+            patch("boot.setup_bootstrap_token"),
+            patch("boot.release") as mock_rel_module,
+        ):
             mock_rel_module.REGION = "us-east"
             mock_rel_module.GIT_HEAD = "abc123"
             mock_rel_module.SERVICE = "quay"
@@ -368,9 +369,7 @@ class TestFileBasedImport:
 
     def test_import_rejects_conflicting_created_by(self, app, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
-        create_service_key(
-            "manual-key", kid, "quay", public_jwk, {"created_by": "admin"}, None
-        )
+        create_service_key("manual-key", kid, "quay", public_jwk, {"created_by": "admin"}, None)
         approve_service_key(kid, ServiceKeyApprovalType.AUTOMATIC)
 
         with tempfile.TemporaryDirectory() as tmpdir:

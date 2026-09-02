@@ -22,9 +22,7 @@ test.describe(
         // Service keys created via the superuser API can be cleaned up.
         // If cleanup fails (key already gone), ignore.
         try {
-          await adminClient.delete(
-            `/api/v1/superuser/keys/${createdKid}`,
-          );
+          await adminClient.delete(`/api/v1/superuser/keys/${createdKid}`);
         } catch {
           // ignore
         }
@@ -46,14 +44,11 @@ test.describe(
       anonClient,
     }) => {
       // Create a service key via the superuser API
-      const createResp = await adminClient.post(
-        '/api/v1/superuser/keys',
-        {
-          service: 'quay',
-          expiration: null,
-          notes: 'e2e test key for status endpoint',
-        },
-      );
+      const createResp = await adminClient.post('/api/v1/superuser/keys', {
+        service: 'quay',
+        expiration: null,
+        notes: 'e2e test key for status endpoint',
+      });
       expect(createResp.status()).toBe(200);
       const createBody = await createResp.json();
       createdKid = createBody.kid;
@@ -88,14 +83,11 @@ test.describe(
       adminClient,
       anonClient,
     }) => {
-      const createResp = await adminClient.post(
-        '/api/v1/superuser/keys',
-        {
-          service: 'quay',
-          expiration: null,
-          notes: 'e2e test key for wrong service check',
-        },
-      );
+      const createResp = await adminClient.post('/api/v1/superuser/keys', {
+        service: 'quay',
+        expiration: null,
+        notes: 'e2e test key for wrong service check',
+      });
       expect(createResp.status()).toBe(200);
       const createBody = await createResp.json();
       createdKid = createBody.kid;

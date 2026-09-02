@@ -26,7 +26,11 @@ from data.model.oauth import (
     lock_bootstrap_token_operation,
 )
 from data.model.release import set_region_release
-from data.model.service_keys import approve_service_key, create_service_key, get_service_key
+from data.model.service_keys import (
+    approve_service_key,
+    create_service_key,
+    get_service_key,
+)
 from data.model.user import get_user
 from util.bootstrap_token import delete_bootstrap_token, write_bootstrap_token
 from util.config.database import sync_database_with_config
@@ -206,9 +210,7 @@ def _verify_service_key():
     try:
         key = get_service_key(kid, service=service, approved_only=True, alive_only=True)
     except ServiceKeyDoesNotExist:
-        logger.error(
-            "No approved, alive service key '%s' found for service '%s'", kid, service
-        )
+        logger.error("No approved, alive service key '%s' found for service '%s'", kid, service)
         return None
 
     try:
@@ -222,9 +224,7 @@ def _verify_service_key():
 
     computed_kid = public_jwk.get("kid")
     if computed_kid != kid:
-        logger.error(
-            "Computed thumbprint '%s' does not match key ID '%s'", computed_kid, kid
-        )
+        logger.error("Computed thumbprint '%s' does not match key ID '%s'", computed_kid, kid)
         return None
 
     db_jwk = key.jwk
