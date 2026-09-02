@@ -10,7 +10,7 @@ if ! whoami &> /dev/null; then
 fi
 
 display_usage() {
-    echo "Usage: ${0} <registry|config|migrate|repomirror|shell|help>"
+    echo "Usage: ${0} <registry|config|migrate|repomirror|servicekey-expire|shell|help>"
     echo
     echo "If the first argument isn't one of the above modes,"
     echo "the arguments will be exec'd directly, i.e.:"
@@ -105,6 +105,14 @@ case "$QUAYENTRY" in
             "$f" || exit
         done
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
+        ;;
+    "servicekey-expire")
+        echo "Expiring service key"
+        "${QUAYPATH}/conf/init/certs_install.sh" || exit
+        "${QUAYPATH}/conf/init/client_certs.sh" || exit
+        shift
+        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" python \
+            "${QUAYPATH}/tools/manage_servicekey.py" expire "$@"
         ;;
     *)
         echo "Running '$QUAYENTRY'"

@@ -241,6 +241,17 @@ def list_service_keys(service):
     return list(_list_service_keys_query(service=service))
 
 
+def get_service_key_for_status(kid, service):
+    try:
+        return (
+            ServiceKey.select()
+            .where(ServiceKey.kid == kid, ServiceKey.service == service)
+            .get()
+        )
+    except ServiceKey.DoesNotExist:
+        raise ServiceKeyDoesNotExist
+
+
 def get_service_key(kid, service=None, alive_only=True, approved_only=True):
     try:
         return _list_service_keys_query(

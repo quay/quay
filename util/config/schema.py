@@ -45,6 +45,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "INSTANCE_SERVICE_KEY_SERVICE",
     "INSTANCE_SERVICE_KEY_KID_LOCATION",
     "INSTANCE_SERVICE_KEY_EXPIRATION",
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES",
     "UNAPPROVED_SERVICE_KEY_TTL_SEC",
     "EXPIRED_SERVICE_KEY_TTL_SEC",
     "REGISTRY_JWT_AUTH_MAX_FRESH_S",
@@ -2422,6 +2423,12 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "Defineexpiration for instance service keys, in minutes. Defaults to 120",
         "x-example": 120,
+        "x-reference": None,
+    },
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES": {
+        "type": "boolean",
+        "description": "When true, import the instance service key from mounted files instead of generating a new one. Defaults to False",
+        "x-example": False,
         "x-reference": None,
     },
     "INSTANCE_SERVICE_KEY_KID_LOCATION": {
