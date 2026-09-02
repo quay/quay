@@ -3,12 +3,15 @@ import logging
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
-import jwt
 from flask import Request, request
 
 import features
 from app import app
 from auth.auth_context import get_validated_oauth_token
+from auth.kubernetes_sa import (
+    KubernetesSATokenValidationError,
+    KubernetesSATokenValidator,
+)
 from data import model
 from data.database import OAuthAccessToken
 from data.model import db_transaction
@@ -93,22 +96,15 @@ class BootstrapTokenExchange(ApiResource):
             _exchange_error("invalid_request", "invalid token exchange request", 400)
         raw = values["subject_token"]
         try:
-            claims = jwt.decode(raw, options={"verify_signature": False})
-        except jwt.InvalidTokenError:
+            validated = KubernetesSATokenValidator(
+                _exchange_config(), app.config["HTTPCLIENT"]
+            ).validate(raw)
+        except KubernetesSATokenValidationError:
             _exchange_error(
                 "invalid_token", "Kubernetes ServiceAccount token failed validation", 401
             )
-        issuer = claims.get("iss")
-        audience = _exchange_config().get("REQUIRED_AUDIENCE", "quay-bootstrap")
-        if issuer not in {
-            item.get("ISSUER") for item in _exchange_config().get("ISSUERS", [])
-        } or audience not in (
-            claims.get("aud") if isinstance(claims.get("aud"), list) else [claims.get("aud")]
-        ):
-            _exchange_error(
-                "invalid_token", "Kubernetes ServiceAccount token failed validation", 401
-            )
-        subject = claims.get("sub")
+        issuer = validated.issuer
+        subject = validated.subject
         mapping = next(
             (
                 item
