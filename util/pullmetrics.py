@@ -25,11 +25,16 @@ class PullMetricsBuilder(object):
     """
 
     def __init__(self, redis_config, max_workers=None):
+        self._instance = PullMetrics(redis_config, max_workers)
         self._redis_config = redis_config
         self._max_workers = max_workers
 
+    @property
+    def instance(self):
+        return self._instance
+
     def get_event(self):
-        return PullMetrics(self._redis_config, self._max_workers)
+        return self._instance
 
 
 class PullMetricsBuilderModule(object):
