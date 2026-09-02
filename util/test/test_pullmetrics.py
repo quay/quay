@@ -378,6 +378,7 @@ class TestPullMetrics:
         lock = threading.Lock()
         redis_config = {"host": "localhost", "port": 6379, "_testing": True}
 
+        # fake Redis constructor
         def fake_ctor(*args, **kwargs):
             nonlocal construct_count
             with lock:
@@ -385,6 +386,7 @@ class TestPullMetrics:
             time.sleep(0.05)
             return fakeredis.FakeStrictRedis()
 
+        # send 10 concurrent requests to the constructor
         with patch("redis.StrictRedis", side_effect=fake_ctor):
             pm = PullMetrics(redis_config)
             with ThreadPoolExecutor(max_workers=10) as ex:
@@ -394,6 +396,46 @@ class TestPullMetrics:
         assert construct_count == 1
 
         # make sure that all returned clients are identical
+        assert all(c is clients[0] for c in clients)
+
+    def test_redis_concurrent_reconnect_creates_single_client(self, mock_redis):
+        """
+        Verifies that after the original connection goes bad, concurrent requests to reconnect
+        must reconnect once and not create duplicate pools.
+        """
+        concurrent_count = 0
+        lock = threading.Lock()
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+
+        def make_client(healthy):
+            c = MagicMock()
+            c.ping.side_effect = None if healthy else redis.ConnectionError("Redis is down")
+            return c
+
+        # fake Redis constructor
+        def fake_ctor(*args, **kwargs):
+            nonlocal concurrent_count
+            with lock:
+                concurrent_count += 1
+            time.sleep(0.5)
+            return make_client(healthy=True)
+
+        # send 10 concurrent requests to the constructor
+        with patch("redis.StrictRedis", side_effect=fake_ctor):
+            pm = PullMetrics(redis_config)
+
+            # initial healthy client, then poison it so later requests create a new pool
+            pm._ensure_redis_connection()
+            assert concurrent_count == 1
+            pm._redis.ping.side_effect = redis.ConnectionError("connection dropped")
+
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                clients = list(ex.map(lambda _: pm._ensure_redis_connection(), range(10)))
+
+        # exactly one new client should be built, meaning that concurrent_count should be 2
+        assert concurrent_count == 2
+
+        # verify all clients are the same
         assert all(c is clients[0] for c in clients)
 
     def test_track_tag_pull_sync(self, pull_metrics_testing, mock_redis):
