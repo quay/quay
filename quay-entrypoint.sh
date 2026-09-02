@@ -111,7 +111,7 @@ case "$QUAYENTRY" in
         "${QUAYPATH}/conf/init/certs_install.sh" || exit
         "${QUAYPATH}/conf/init/client_certs.sh" || exit
         shift
-        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" python \
+        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" python3 \
             "${QUAYPATH}/tools/manage_servicekey.py" expire "$@"
         ;;
     *)

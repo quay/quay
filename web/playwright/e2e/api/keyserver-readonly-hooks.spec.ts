@@ -96,6 +96,12 @@ test.describe(
         `/keys/services/wrong-service/keys/${createdKid}/status`,
       );
       expect(statusResp.status()).toBe(404);
+
+      // Also verify the raw GET endpoint filters by service
+      const getResp = await anonClient.get(
+        `/keys/services/wrong-service/keys/${createdKid}`,
+      );
+      expect(getResp.status()).toBe(404);
     });
   },
 );

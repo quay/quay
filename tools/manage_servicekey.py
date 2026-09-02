@@ -25,8 +25,12 @@ def expire_key(kid, grace_seconds):
         print("Key '%s' does not exist, nothing to do." % kid)
         return 0
 
-    if key.service != "quay":
-        print("Key '%s' belongs to service '%s', expected 'quay'." % (kid, key.service))
+    expected_service = app.config["INSTANCE_SERVICE_KEY_SERVICE"]
+    if key.service != expected_service:
+        print(
+            "Key '%s' belongs to service '%s', expected '%s'."
+            % (kid, key.service, expected_service)
+        )
         return 1
 
     metadata = key.metadata if isinstance(key.metadata, dict) else {}
