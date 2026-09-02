@@ -251,6 +251,52 @@ def test_vulnerability_notification_normal():
     assert VulnerabilityFoundEvent().should_perform(info, notification_data)
 
 
+def test_vulnerability_notification_no_tag_regex():
+    # No tag-regex configured: fire regardless of tags (backward compatible).
+    notification_data = AttrDict({"event_config_dict": {}})
+    assert VulnerabilityFoundEvent().should_perform({"tags": ["v1.0"]}, notification_data)
+
+
+def test_vulnerability_notification_matching_tag_regex():
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "v2\\..*"}})
+    assert VulnerabilityFoundEvent().should_perform({"tags": ["v1.0", "v2.0"]}, notification_data)
+
+
+def test_vulnerability_notification_nonmatching_tag_regex():
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "v2\\..*"}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": ["v1.0"]}, notification_data)
+
+
+def test_vulnerability_notification_empty_tags_with_regex():
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "v2\\..*"}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": []}, notification_data)
+    assert not VulnerabilityFoundEvent().should_perform({}, notification_data)
+
+
+def test_vulnerability_notification_invalid_tag_regex():
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "]["}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": ["v2.0"]}, notification_data)
+
+
+def test_vulnerability_notification_tag_regex_and_level():
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "v2\\..*", "level": 3}})
+
+    # Tag matches and severity within level: fire.
+    assert VulnerabilityFoundEvent().should_perform(
+        {"tags": ["v2.0"], "vulnerability": {"priority": "Critical"}}, notification_data
+    )
+
+    # Tag matches but severity below the configured level: do not fire.
+    assert not VulnerabilityFoundEvent().should_perform(
+        {"tags": ["v2.0"], "vulnerability": {"priority": "Negligible"}}, notification_data
+    )
+
+    # Severity within level but no matching tag: do not fire.
+    assert not VulnerabilityFoundEvent().should_perform(
+        {"tags": ["v1.0"], "vulnerability": {"priority": "Critical"}}, notification_data
+    )
+
+
 class TestQuotaWarningEvent:
     def test_event_name(self):
         assert QuotaWarningEvent.event_name() == "quota_warning"

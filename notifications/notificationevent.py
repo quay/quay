@@ -170,6 +170,7 @@ def _build_summary(event_data):
 
 class VulnerabilityFoundEvent(NotificationEvent):
     CONFIG_LEVEL = "level"
+    CONFIG_TAG_REGEX = "tag-regex"
     PRIORITY_KEY = "priority"
     VULNERABILITY_KEY = "vulnerability"
     MULTIPLE_VULNERABILITY_KEY = "vulnerabilities"
@@ -207,8 +208,28 @@ class VulnerabilityFoundEvent(NotificationEvent):
             },
         )
 
+    def _matches_tag_filter(self, event_data, tag_regex):
+        # Try parsing the regex string as a regular expression. If we fail, we fail to fire
+        # the event.
+        try:
+            matcher = re.compile(str(tag_regex))
+        except Exception:
+            logger.warning("Regular expression error for vulnerability event filter: %s", tag_regex)
+            return False
+
+        # Only fire the event if at least one referencing tag matches the pattern. An empty
+        # tag list (or no tags at all) never matches.
+        return any(matcher.match(tag) for tag in event_data.get("tags", []))
+
     def should_perform(self, event_data, notification_data):
         event_config = notification_data.event_config_dict
+
+        # Filter on the referencing tags, if a tag pattern is configured. This is independent
+        # of the severity level filter below; when both are set, both must pass.
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX) or None
+        if tag_regex is not None and not self._matches_tag_filter(event_data, tag_regex):
+            return False
+
         if VulnerabilityFoundEvent.CONFIG_LEVEL not in event_config:
             return True
 

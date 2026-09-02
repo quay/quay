@@ -504,6 +504,66 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     },
   );
 
+  test(
+    'creates vulnerability notification with tag-regex filter',
+    {tag: '@feature:SECURITY_SCANNER'},
+    async ({authenticatedPage, api}) => {
+      // Create test organization with repository
+      const org = await api.organization('vulnnotif');
+      const repo = await api.repository(org.name, 'vulnrepo');
+
+      // Navigate to repository settings > Events and notifications tab
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+
+      // Create notification
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+
+      // Select the vulnerability found event
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Package Vulnerability Found'})
+        .click();
+
+      // The tag-regex input should now be visible and optional
+      const tagRegexInput = authenticatedPage.getByTestId(
+        'vulnerability-tag-regex',
+      );
+      await expect(tagRegexInput).toBeVisible();
+      await tagRegexInput.fill('v2\\..*');
+
+      // Select webhook method
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Webhook POST'})
+        .click();
+      await authenticatedPage
+        .getByTestId('webhook-url-field')
+        .fill('https://example.com/hook');
+
+      // Enter title and submit
+      await authenticatedPage
+        .getByTestId('notification-title')
+        .fill('Vuln Tag Filter');
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      // Verify notification appears in table
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: 'Vuln Tag Filter'}),
+      ).toBeVisible();
+    },
+  );
+
   test('recipient field: teams, users, and create team modal', async ({
     authenticatedPage,
     api,
