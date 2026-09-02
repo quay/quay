@@ -115,12 +115,19 @@ class TestConfigFlag:
 
 
 class TestKeyserverGetServiceFilter:
+    @pytest.fixture(autouse=True)
+    def _register_keyserver(self, app):
+        from endpoints.keyserver import key_server
+
+        if "key_server" not in app.blueprints:
+            app.register_blueprint(key_server, url_prefix="/keys")
+
     def test_get_key_wrong_service_returns_404(self, app, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, service="quay")
 
         client = app.test_client()
-        rv = client.get("/keys/services/wrong-service/keys/%s" % kid, follow_redirects=True)
+        rv = client.get("/keys/services/wrong-service/keys/%s" % kid)
         assert rv.status_code == 404
 
     def test_get_key_correct_service_returns_200(self, app, initialized_db):
@@ -128,7 +135,7 @@ class TestKeyserverGetServiceFilter:
         _create_operator_key(kid, public_jwk, service="quay")
 
         client = app.test_client()
-        rv = client.get("/keys/services/quay/keys/%s" % kid, follow_redirects=True)
+        rv = client.get("/keys/services/quay/keys/%s" % kid)
         assert rv.status_code == 200
         data = rv.get_json()
         assert data["kty"] == "RSA"
@@ -140,9 +147,16 @@ class TestKeyserverGetServiceFilter:
 
 
 class TestKeyserverStatus:
+    @pytest.fixture(autouse=True)
+    def _register_keyserver(self, app):
+        from endpoints.keyserver import key_server
+
+        if "key_server" not in app.blueprints:
+            app.register_blueprint(key_server, url_prefix="/keys")
+
     def test_status_unknown_kid_returns_404(self, app, initialized_db):
         client = app.test_client()
-        rv = client.get("/keys/services/quay/keys/nonexistent-kid/status", follow_redirects=True)
+        rv = client.get("/keys/services/quay/keys/nonexistent-kid/status")
         assert rv.status_code == 404
 
     def test_status_wrong_service_returns_404(self, app, initialized_db):
@@ -150,7 +164,7 @@ class TestKeyserverStatus:
         _create_operator_key(kid, public_jwk, service="quay")
 
         client = app.test_client()
-        rv = client.get("/keys/services/other/keys/%s/status" % kid, follow_redirects=True)
+        rv = client.get("/keys/services/other/keys/%s/status" % kid)
         assert rv.status_code == 404
 
     def test_status_returns_correct_fields(self, app, initialized_db):
@@ -158,7 +172,7 @@ class TestKeyserverStatus:
         _create_operator_key(kid, public_jwk, service="quay")
 
         client = app.test_client()
-        rv = client.get("/keys/services/quay/keys/%s/status" % kid, follow_redirects=True)
+        rv = client.get("/keys/services/quay/keys/%s/status" % kid)
         assert rv.status_code == 200
         data = rv.get_json()
         assert data["kid"] == kid
@@ -173,7 +187,7 @@ class TestKeyserverStatus:
         create_service_key("test-key", kid, "quay", public_jwk, {}, None)
 
         client = app.test_client()
-        rv = client.get("/keys/services/quay/keys/%s/status" % kid, follow_redirects=True)
+        rv = client.get("/keys/services/quay/keys/%s/status" % kid)
         assert rv.status_code == 200
         data = rv.get_json()
         assert data["operator_managed"] is False
@@ -185,11 +199,11 @@ class TestKeyserverStatus:
 
         client = app.test_client()
         # Raw GET returns 403 for expired
-        rv_get = client.get("/keys/services/quay/keys/%s" % kid, follow_redirects=True)
+        rv_get = client.get("/keys/services/quay/keys/%s" % kid)
         assert rv_get.status_code == 403
 
         # /status returns 200
-        rv_status = client.get("/keys/services/quay/keys/%s/status" % kid, follow_redirects=True)
+        rv_status = client.get("/keys/services/quay/keys/%s/status" % kid)
         assert rv_status.status_code == 200
         data = rv_status.get_json()
         assert data["operator_managed"] is True
@@ -200,11 +214,11 @@ class TestKeyserverStatus:
 
         client = app.test_client()
         # Raw GET returns 409 for unapproved
-        rv_get = client.get("/keys/services/quay/keys/%s" % kid, follow_redirects=True)
+        rv_get = client.get("/keys/services/quay/keys/%s" % kid)
         assert rv_get.status_code == 409
 
         # /status returns 200
-        rv_status = client.get("/keys/services/quay/keys/%s/status" % kid, follow_redirects=True)
+        rv_status = client.get("/keys/services/quay/keys/%s/status" % kid)
         assert rv_status.status_code == 200
 
 
