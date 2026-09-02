@@ -27,6 +27,7 @@ from data.model.oauth import (
 )
 from data.model.release import set_region_release
 from data.model.service_keys import (
+    OPERATOR_MANAGED_CREATED_BY,
     approve_service_key,
     create_service_key,
     get_service_key,
@@ -87,6 +88,10 @@ def _load_mounted_key_material():
     return kid, pem_data, public_jwk
 
 
+def _jwk_matches(jwk_a, jwk_b):
+    return jwk_a.get("n") == jwk_b.get("n") and jwk_a.get("e") == jwk_b.get("e")
+
+
 def _validate_existing_key(existing_key, kid, public_jwk, service):
     """
     Validates an existing DB key row against the mounted key material.
@@ -98,8 +103,7 @@ def _validate_existing_key(existing_key, kid, public_jwk, service):
             % (kid, existing_key.service, service)
         )
 
-    db_jwk = existing_key.jwk
-    if db_jwk.get("n") != public_jwk.get("n") or db_jwk.get("e") != public_jwk.get("e"):
+    if not _jwk_matches(existing_key.jwk, public_jwk):
         raise Exception(
             "Existing key '%s' public JWK does not match the mounted PEM-derived JWK" % kid
         )
@@ -107,7 +111,7 @@ def _validate_existing_key(existing_key, kid, public_jwk, service):
     metadata = existing_key.metadata if isinstance(existing_key.metadata, dict) else {}
     created_by = metadata.get("created_by")
 
-    if created_by and created_by != "quay-operator-readonly":
+    if created_by and created_by != OPERATOR_MANAGED_CREATED_BY:
         raise Exception(
             "Existing key '%s' has created_by='%s', refusing to claim as operator-managed"
             % (kid, created_by)
@@ -116,7 +120,7 @@ def _validate_existing_key(existing_key, kid, public_jwk, service):
     if not created_by:
         if not isinstance(existing_key.metadata, dict):
             existing_key.metadata = {}
-        existing_key.metadata["created_by"] = "quay-operator-readonly"
+        existing_key.metadata["created_by"] = OPERATOR_MANAGED_CREATED_BY
         existing_key.save()
         logger.info("Backfilled created_by metadata on existing key '%s'", kid)
 
@@ -140,8 +144,7 @@ def _import_service_key_from_files():
 
     if existing_key is not None:
         _validate_existing_key(existing_key, kid, public_jwk, service)
-        existing_key.expiration_date = expiration
-        existing_key.save()
+        ServiceKey.update(expiration_date=expiration).where(ServiceKey.kid == kid).execute()
         logger.info("Refreshed expiration for existing operator-managed key '%s'", kid)
     else:
         try:
@@ -150,7 +153,7 @@ def _import_service_key_from_files():
                 kid,
                 service,
                 public_jwk,
-                {"created_by": "quay-operator-readonly"},
+                {"created_by": OPERATOR_MANAGED_CREATED_BY},
                 expiration,
             )
             logger.info("Created operator-managed service key '%s'", kid)
@@ -163,8 +166,7 @@ def _import_service_key_from_files():
                     "IntegrityError creating key '%s' but row not found on re-read" % kid
                 )
             _validate_existing_key(existing_key, kid, public_jwk, service)
-            existing_key.expiration_date = expiration
-            existing_key.save()
+            ServiceKey.update(expiration_date=expiration).where(ServiceKey.kid == kid).execute()
             logger.info("Adopted key '%s' created by concurrent pod", kid)
 
     # Auto-approve if not already approved.
@@ -188,24 +190,13 @@ def _verify_service_key():
     Verifies the instance service key during readonly boot.
     Returns the kid on success, None on failure.
     """
-    kid_path = app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]
-    pem_path = app.config["INSTANCE_SERVICE_KEY_LOCATION"]
-    service = app.config["INSTANCE_SERVICE_KEY_SERVICE"]
-
     try:
-        with open(kid_path) as f:
-            kid = f.read().strip()
-    except IOError:
-        logger.exception("Could not read service key ID file")
+        kid, _pem_data, public_jwk = _load_mounted_key_material()
+    except Exception:
+        logger.exception("Failed to load or validate the mounted service key material")
         return None
 
-    if not kid:
-        logger.error("Service key ID file is empty")
-        return None
-
-    if not os.path.exists(pem_path):
-        logger.error("Service key PEM file does not exist: %s", pem_path)
-        return None
+    service = app.config["INSTANCE_SERVICE_KEY_SERVICE"]
 
     try:
         key = get_service_key(kid, service=service, approved_only=True, alive_only=True)
@@ -213,22 +204,7 @@ def _verify_service_key():
         logger.error("No approved, alive service key '%s' found for service '%s'", kid, service)
         return None
 
-    try:
-        with open(pem_path, "rb") as f:
-            pem_data = f.read()
-        jwk_obj = JsonWebKey.import_key(pem_data)
-        public_jwk = jwk_obj.as_dict()
-    except Exception:
-        logger.exception("Failed to load or parse PEM file for verification")
-        return None
-
-    computed_kid = public_jwk.get("kid")
-    if computed_kid != kid:
-        logger.error("Computed thumbprint '%s' does not match key ID '%s'", computed_kid, kid)
-        return None
-
-    db_jwk = key.jwk
-    if db_jwk.get("n") != public_jwk.get("n") or db_jwk.get("e") != public_jwk.get("e"):
+    if not _jwk_matches(key.jwk, public_jwk):
         logger.error("PEM-derived JWK does not match DB JWK for key '%s'", kid)
         return None
 
