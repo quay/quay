@@ -534,11 +534,6 @@ class ObservablePooledDatabase(ObservableDatabase):
             except Exception as ex:
                 logger.debug("Error closing stale connection: %s", ex)
 
-            # Small delay before retry to allow other requests to complete
-            if _retry_count > 0:
-                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
-                time.sleep(delay)
-
             # Recursively retry - pool will provide another connection (or create new one)
             return self._connect(_retry_count=_retry_count + 1)
 
