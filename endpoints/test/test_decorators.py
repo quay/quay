@@ -2,10 +2,10 @@ import pytest
 from flask import url_for
 from playhouse.pool import MaxConnectionsExceeded
 
-import endpoints.decorated
 from data import model
 from endpoints.api import api
 from endpoints.api.repository import Repository
+from endpoints.decorated import handle_max_connections_count
 from endpoints.test.shared import conduct_call
 from test.fixtures import *
 
@@ -50,6 +50,8 @@ def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
     Verifies that a 503 is returned back to the caller with a retry header if
     MaxConnectionsExceeded is raised by the app during access.
     """
+    app.register_error_handler(MaxConnectionsExceeded, handle_max_connections_count)
+
     with app.test_request_context("/v2/"):
         try:
             raise MaxConnectionsExceeded("pool full")
