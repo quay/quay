@@ -60,3 +60,4 @@ def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
 
     assert response.status_code == 503
     assert "Retry-After" in response.headers
+    assert response.headers["Retry-After"] == "1"
