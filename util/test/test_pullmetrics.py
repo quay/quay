@@ -50,7 +50,7 @@ class TestPullMetricsBuilder:
         """Test PullMetricsBuilder initialization."""
         redis_config = {"host": "localhost", "port": 6379}
         builder = PullMetricsBuilder(redis_config)
-        assert builder._redis_config == redis_config
+        assert builder.instance._redis_config == redis_config
         assert builder._max_workers is None
 
     def test_builder_initialization_with_workers(self):
@@ -67,6 +67,38 @@ class TestPullMetricsBuilder:
             builder = PullMetricsBuilder(redis_config)
             event = builder.get_event()
             assert isinstance(event, PullMetrics)
+
+    def test_builder_get_event_returns_shared_instance(self, mock_redis):
+        """
+        Verifies that the get_event returns the same instance of PullMetrics on successive calls.
+        """
+        with patch("util.pullmetrics.redis.StrictRedis") as mock_redis_class:
+            mock_redis_class.return_value = MagicMock()
+            redis_config = {"host": "localhost", "port": "6379", "_testing": True}
+            builder = PullMetricsBuilder(redis_config)
+
+            # create events
+            e1 = builder.get_event()
+            e2 = builder.get_event()
+
+            assert e1 is e2
+            assert e1 is builder.instance
+
+    def test_shared_client_reused_across_calls(self, mock_redis):
+        """
+        Verifies that successive calls to get_event reuse the same instantiated connection pool.
+        """
+        with patch("util.pullmetrics.redis.StrictRedis") as mock_redis_class:
+            mock_redis_class.return_value = MagicMock()
+            redis_config = {"host": "localhost", "port": "6379", "_testing": True}
+            builder = PullMetricsBuilder(redis_config)
+
+            # events
+            c1 = builder.get_event()._ensure_redis_connection()
+            c2 = builder.get_event()._ensure_redis_connection()
+
+            assert c1 is c2
+            assert mock_redis_class.call_count == 1
 
 
 class TestPullMetricsBuilderModule:
