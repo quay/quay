@@ -104,7 +104,7 @@ def get_service_key_status(service, kid):
         exp = key.expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     metadata = key.metadata if isinstance(key.metadata, dict) else {}
-    return jsonify(
+    resp = jsonify(
         {
             "kid": key.kid,
             "service": key.service,
@@ -112,6 +112,8 @@ def get_service_key_status(service, kid):
             "expiration_date": exp,
         }
     )
+    resp.cache_control.no_store = True
+    return resp
 
 
 @key_server.route("/services/<service>/keys/<kid>", methods=["PUT"])
