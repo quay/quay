@@ -13,6 +13,10 @@ DEFAULT_REDIS_CONNECTION_TIMEOUT = 5
 DEFAULT_REDIS_RETRY_ATTEMPTS = 3
 DEFAULT_REDIS_RETRY_DELAY = 1.0
 
+# default lock wait timeout, the amount of seconds we'll wait before
+# a lock can be acquired
+DEFAULT_REDIS_LOCK_WAIT = 2
+
 
 class CannotReadPullMetricsException(Exception):
     """
@@ -204,8 +208,14 @@ class PullMetrics(object):
                 logger.debug("Redis connection lost, reconnecting...")
                 self._redis = None
 
-        # Try to establish connection with retries
-        with self._redis_lock:
+        # If we don't have a working connection, we must establish the pool. To ensure that
+        # we don't leak connections, first check if there's already a raised lock (greenlet is
+        # trying to connect)
+        if not self._redis_lock.acquire(timeout=DEFAULT_REDIS_LOCK_WAIT):
+            raise redis.ConnectionError("Cannot acquire Redis lock, aborting")
+
+        # If there is no lock, try to establish the pool.
+        try:
             # recheck if there is a connection and return it
             if self._redis is not None:
                 try:
@@ -254,6 +264,8 @@ class PullMetrics(object):
             raise last_exception or redis.ConnectionError(
                 "Failed to connect to Redis for pull metrics"
             )
+        finally:
+            self._redis_lock.release()
 
     @staticmethod
     def _tag_pull_key(repository_id, tag_name, manifest_digest):
