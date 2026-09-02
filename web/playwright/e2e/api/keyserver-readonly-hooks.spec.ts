@@ -4,9 +4,6 @@
  * Tests the keyserver endpoints that the operator uses during the
  * read-only lifecycle: service filtering on the existing GET endpoint
  * and the new /status endpoint.
- *
- * These endpoints are unauthenticated (consistent with the keyserver
- * blueprint), so all requests use the anonClient fixture.
  */
 
 import {test, expect} from '../../fixtures';
@@ -19,18 +16,16 @@ test.describe(
 
     test.afterEach(async ({adminClient}) => {
       if (createdKid) {
-        // Service keys created via the superuser API can be cleaned up.
-        // If cleanup fails (key already gone), ignore.
         try {
           await adminClient.delete(`/api/v1/superuser/keys/${createdKid}`);
         } catch {
-          // ignore
+          // ignore — key may already be gone
         }
         createdKid = null;
       }
     });
 
-    test('GET /keys/services/<service>/keys/<kid>/status returns 404 for unknown kid', async ({
+    test('GET /keys/.../status returns 404 for unknown kid', async ({
       anonClient,
     }) => {
       const resp = await anonClient.get(
@@ -39,11 +34,11 @@ test.describe(
       expect(resp.status()).toBe(404);
     });
 
-    test('GET /keys/services/<service>/keys/<kid>/status returns correct fields for existing key', async ({
+    test('GET /keys/.../status returns correct fields for existing key', async ({
       adminClient,
       anonClient,
     }) => {
-      // Create a service key via the superuser API
+      // Superuser POST auto-approves the key
       const createResp = await adminClient.post('/api/v1/superuser/keys', {
         service: 'quay',
         expiration: null,
@@ -53,14 +48,6 @@ test.describe(
       const createBody = await createResp.json();
       createdKid = createBody.kid;
 
-      // Approve the key
-      const approveResp = await adminClient.put(
-        `/api/v1/superuser/keys/${createdKid}`,
-      );
-      // The approve endpoint may return 200 or 204
-      expect([200, 204]).toContain(approveResp.status());
-
-      // Now test the status endpoint
       const statusResp = await anonClient.get(
         `/keys/services/quay/keys/${createdKid}/status`,
       );
@@ -79,7 +66,7 @@ test.describe(
       ]);
     });
 
-    test('GET /keys/services/<wrong-service>/keys/<kid>/status returns 404 for wrong service', async ({
+    test('wrong service returns 404 on both GET and /status', async ({
       adminClient,
       anonClient,
     }) => {
@@ -92,12 +79,13 @@ test.describe(
       const createBody = await createResp.json();
       createdKid = createBody.kid;
 
+      // /status with wrong service
       const statusResp = await anonClient.get(
         `/keys/services/wrong-service/keys/${createdKid}/status`,
       );
       expect(statusResp.status()).toBe(404);
 
-      // Also verify the raw GET endpoint filters by service
+      // Raw GET with wrong service
       const getResp = await anonClient.get(
         `/keys/services/wrong-service/keys/${createdKid}`,
       );

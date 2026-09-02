@@ -254,7 +254,14 @@ class TestGetServiceKeyForStatus:
 
 
 class TestReadonlyDbWriteGuards:
-    def test_readonly_skips_sync_and_release(self, app, initialized_db):
+    def test_readonly_skips_sync_and_release(self, initialized_db):
+        import boot
+
+        original_state = boot.app.config.get("REGISTRY_STATE")
+        original_setup = boot.app.config.get("SETUP_COMPLETE")
+        boot.app.config["REGISTRY_STATE"] = "readonly"
+        boot.app.config["SETUP_COMPLETE"] = True
+
         with (
             patch("boot.sync_database_with_config") as mock_sync,
             patch("boot.set_region_release") as mock_release,
@@ -265,20 +272,24 @@ class TestReadonlyDbWriteGuards:
             mock_rel_module.REGION = "us-east"
             mock_rel_module.GIT_HEAD = "abc123"
             mock_rel_module.SERVICE = "quay"
-            app.config["REGISTRY_STATE"] = "readonly"
-            app.config["SETUP_COMPLETE"] = True
 
             try:
-                from boot import main
-
-                main()
+                boot.main()
             finally:
-                app.config["REGISTRY_STATE"] = "normal"
+                boot.app.config["REGISTRY_STATE"] = original_state or "normal"
+                boot.app.config["SETUP_COMPLETE"] = original_setup
 
             mock_sync.assert_not_called()
             mock_release.assert_not_called()
 
-    def test_normal_calls_sync_and_release(self, app, initialized_db):
+    def test_normal_calls_sync_and_release(self, initialized_db):
+        import boot
+
+        original_state = boot.app.config.get("REGISTRY_STATE")
+        original_setup = boot.app.config.get("SETUP_COMPLETE")
+        boot.app.config["REGISTRY_STATE"] = "normal"
+        boot.app.config["SETUP_COMPLETE"] = True
+
         with (
             patch("boot.sync_database_with_config") as mock_sync,
             patch("boot.set_region_release") as mock_release,
@@ -289,12 +300,12 @@ class TestReadonlyDbWriteGuards:
             mock_rel_module.REGION = "us-east"
             mock_rel_module.GIT_HEAD = "abc123"
             mock_rel_module.SERVICE = "quay"
-            app.config["REGISTRY_STATE"] = "normal"
-            app.config["SETUP_COMPLETE"] = True
 
-            from boot import main
-
-            main()
+            try:
+                boot.main()
+            finally:
+                boot.app.config["REGISTRY_STATE"] = original_state or "normal"
+                boot.app.config["SETUP_COMPLETE"] = original_setup
 
             mock_sync.assert_called_once()
             mock_release.assert_called_once()
