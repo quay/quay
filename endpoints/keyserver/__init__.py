@@ -76,7 +76,7 @@ def list_service_keys(service):
 @key_server.route("/services/<service>/keys/<kid>", methods=["GET"])
 def get_service_key(service, kid):
     try:
-        key = model.get_service_key(kid, alive_only=False, approved_only=False)
+        key = model.get_service_key(kid, service=service, alive_only=False, approved_only=False)
     except ServiceKeyDoesNotExist:
         abort(404)
 
@@ -90,6 +90,28 @@ def get_service_key(service, kid):
     lifetime = min(timedelta(days=1), ((key.expiration_date or datetime.max) - datetime.utcnow()))
     resp.cache_control.max_age = max(0, lifetime.total_seconds())
     return resp
+
+
+@key_server.route("/services/<service>/keys/<kid>/status", methods=["GET"])
+def get_service_key_status(service, kid):
+    try:
+        key = model.get_service_key_for_status(kid, service=service)
+    except ServiceKeyDoesNotExist:
+        abort(404)
+
+    exp = None
+    if key.expiration_date is not None:
+        exp = key.expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    metadata = key.metadata if isinstance(key.metadata, dict) else {}
+    return jsonify(
+        {
+            "kid": key.kid,
+            "service": key.service,
+            "operator_managed": metadata.get("created_by") == "quay-operator-readonly",
+            "expiration_date": exp,
+        }
+    )
 
 
 @key_server.route("/services/<service>/keys/<kid>", methods=["PUT"])

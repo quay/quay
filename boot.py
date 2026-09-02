@@ -5,14 +5,17 @@ import os.path
 from datetime import datetime, timedelta
 from urllib.parse import urlunparse
 
+from authlib.jose import JsonWebKey
 from cachetools.func import lru_cache
 from cryptography.hazmat.primitives import serialization
 from jinja2 import Template
+from peewee import IntegrityError
 
 import release
 from _init import CONF_DIR
 from app import app
-from data.model import ServiceKeyDoesNotExist, db_transaction
+from data.database import ServiceKey, ServiceKeyApprovalType
+from data.model import ServiceKeyAlreadyApproved, ServiceKeyDoesNotExist, db_transaction
 from data.model.oauth import (
     create_bootstrap_application,
     create_bootstrap_oauth_api_token,
@@ -23,7 +26,7 @@ from data.model.oauth import (
     lock_bootstrap_token_operation,
 )
 from data.model.release import set_region_release
-from data.model.service_keys import get_service_key
+from data.model.service_keys import approve_service_key, create_service_key, get_service_key
 from data.model.user import get_user
 from util.bootstrap_token import delete_bootstrap_token, write_bootstrap_token
 from util.config.database import sync_database_with_config
@@ -50,58 +53,229 @@ def get_audience():
     return urlunparse((scheme, hostname + ":" + port, "", "", "", ""))
 
 
-def _verify_service_key():
+def _load_mounted_key_material():
+    """
+    Reads the kid and PEM from the configured key file paths.
+    Returns (kid, pem_data, public_jwk) or raises on failure.
+    """
+    kid_path = app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]
+    pem_path = app.config["INSTANCE_SERVICE_KEY_LOCATION"]
+
+    with open(kid_path) as f:
+        kid = f.read().strip()
+
+    if not kid:
+        raise Exception("Mounted key ID file is empty: %s" % kid_path)
+
+    with open(pem_path, "rb") as f:
+        pem_data = f.read()
+
+    jwk_obj = JsonWebKey.import_key(pem_data)
+    public_jwk = jwk_obj.as_dict()
+
+    computed_kid = public_jwk.get("kid")
+    if computed_kid != kid:
+        raise Exception(
+            "Mounted key ID '%s' does not match computed RFC 7638 thumbprint '%s'"
+            % (kid, computed_kid)
+        )
+
+    return kid, pem_data, public_jwk
+
+
+def _validate_existing_key(existing_key, kid, public_jwk, service):
+    """
+    Validates an existing DB key row against the mounted key material.
+    Raises on mismatch. Backfills created_by metadata if absent.
+    """
+    if existing_key.service != service:
+        raise Exception(
+            "Existing key '%s' belongs to service '%s', expected '%s'"
+            % (kid, existing_key.service, service)
+        )
+
+    db_jwk = existing_key.jwk
+    if db_jwk.get("n") != public_jwk.get("n") or db_jwk.get("e") != public_jwk.get("e"):
+        raise Exception(
+            "Existing key '%s' public JWK does not match the mounted PEM-derived JWK" % kid
+        )
+
+    metadata = existing_key.metadata if isinstance(existing_key.metadata, dict) else {}
+    created_by = metadata.get("created_by")
+
+    if created_by and created_by != "quay-operator-readonly":
+        raise Exception(
+            "Existing key '%s' has created_by='%s', refusing to claim as operator-managed"
+            % (kid, created_by)
+        )
+
+    if not created_by:
+        if not isinstance(existing_key.metadata, dict):
+            existing_key.metadata = {}
+        existing_key.metadata["created_by"] = "quay-operator-readonly"
+        existing_key.save()
+        logger.info("Backfilled created_by metadata on existing key '%s'", kid)
+
+
+def _import_service_key_from_files():
+    """
+    Imports a service key from operator-mounted files. Used in normal (non-readonly) mode
+    when INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES is true.
+    """
+    kid, private_key, public_jwk = _load_mounted_key_material()
+
+    service = app.config["INSTANCE_SERVICE_KEY_SERVICE"]
+    minutes_until_expiration = app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
+    expiration = datetime.utcnow() + timedelta(minutes=minutes_until_expiration)
+
+    # Direct lookup by kid before any path that triggers _gc_expired().
     try:
-        with open(app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]) as f:
-            quay_key_id = f.read()
+        existing_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
+    except ServiceKey.DoesNotExist:
+        existing_key = None
 
+    if existing_key is not None:
+        _validate_existing_key(existing_key, kid, public_jwk, service)
+        existing_key.expiration_date = expiration
+        existing_key.save()
+        logger.info("Refreshed expiration for existing operator-managed key '%s'", kid)
+    else:
         try:
-            get_service_key(quay_key_id, approved_only=False)
-            assert os.path.exists(app.config["INSTANCE_SERVICE_KEY_LOCATION"])
-            return quay_key_id
-        except ServiceKeyDoesNotExist:
-            logger.exception(
-                "Could not find non-expired existing service key %s; creating a new one",
-                quay_key_id,
+            create_service_key(
+                "operator-managed-readonly",
+                kid,
+                service,
+                public_jwk,
+                {"created_by": "quay-operator-readonly"},
+                expiration,
             )
-            return None
+            logger.info("Created operator-managed service key '%s'", kid)
+        except IntegrityError:
+            # Concurrent pod raced to create the same key.
+            try:
+                existing_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
+            except ServiceKey.DoesNotExist:
+                raise Exception(
+                    "IntegrityError creating key '%s' but row not found on re-read" % kid
+                )
+            _validate_existing_key(existing_key, kid, public_jwk, service)
+            existing_key.expiration_date = expiration
+            existing_key.save()
+            logger.info("Adopted key '%s' created by concurrent pod", kid)
 
-        # Found a valid service key, so exiting.
+    # Auto-approve if not already approved.
+    try:
+        existing_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
+    except ServiceKey.DoesNotExist:
+        raise Exception("Key '%s' disappeared after import" % kid)
+
+    if existing_key.approval is None:
+        try:
+            approve_service_key(kid, ServiceKeyApprovalType.AUTOMATIC)
+            logger.info("Auto-approved operator-managed key '%s'", kid)
+        except ServiceKeyAlreadyApproved:
+            logger.info("Key '%s' already approved by concurrent pod", kid)
+
+    return kid
+
+
+def _verify_service_key():
+    """
+    Verifies the instance service key during readonly boot.
+    Returns the kid on success, None on failure.
+    """
+    kid_path = app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]
+    pem_path = app.config["INSTANCE_SERVICE_KEY_LOCATION"]
+    service = app.config["INSTANCE_SERVICE_KEY_SERVICE"]
+
+    try:
+        with open(kid_path) as f:
+            kid = f.read().strip()
     except IOError:
-        logger.exception("Could not load existing service key; creating a new one")
+        logger.exception("Could not read service key ID file")
         return None
+
+    if not kid:
+        logger.error("Service key ID file is empty")
+        return None
+
+    if not os.path.exists(pem_path):
+        logger.error("Service key PEM file does not exist: %s", pem_path)
+        return None
+
+    try:
+        key = get_service_key(kid, service=service, approved_only=True, alive_only=True)
+    except ServiceKeyDoesNotExist:
+        logger.error(
+            "No approved, alive service key '%s' found for service '%s'", kid, service
+        )
+        return None
+
+    try:
+        with open(pem_path, "rb") as f:
+            pem_data = f.read()
+        jwk_obj = JsonWebKey.import_key(pem_data)
+        public_jwk = jwk_obj.as_dict()
+    except Exception:
+        logger.exception("Failed to load or parse PEM file for verification")
+        return None
+
+    computed_kid = public_jwk.get("kid")
+    if computed_kid != kid:
+        logger.error(
+            "Computed thumbprint '%s' does not match key ID '%s'", computed_kid, kid
+        )
+        return None
+
+    db_jwk = key.jwk
+    if db_jwk.get("n") != public_jwk.get("n") or db_jwk.get("e") != public_jwk.get("e"):
+        logger.error("PEM-derived JWK does not match DB JWK for key '%s'", kid)
+        return None
+
+    return kid
 
 
 def setup_instance_service_key():
     """
-    Creates a service key for quay.
+    Creates or imports a service key for quay.
     """
-    # Ensure we have an existing key if in read-only mode.
     if app.config.get("REGISTRY_STATE", "normal") == "readonly":
         quay_key_id = _verify_service_key()
         if quay_key_id is None:
             raise Exception("No valid service key found for read-only registry.")
-    else:
-        # Generate the key for this Quay instance to use.
-        minutes_until_expiration = app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
-        expiration = datetime.utcnow() + timedelta(minutes=minutes_until_expiration)
-        quay_key, quay_key_id = generate_key(
-            app.config["INSTANCE_SERVICE_KEY_SERVICE"], get_audience(), expiration_date=expiration
-        )
+        return
 
-        with open(app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"], mode="w") as f:
-            f.truncate(0)
-            f.write(quay_key_id)
-
-        with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="wb") as f:
-            f.truncate(0)
-            f.write(
-                quay_key.private_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PrivateFormat.TraditionalOpenSSL,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
+    if app.config.get("INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES", False):
+        kid_path = app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]
+        pem_path = app.config["INSTANCE_SERVICE_KEY_LOCATION"]
+        if not os.path.exists(kid_path) or not os.path.exists(pem_path):
+            raise Exception(
+                "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES is true but key files are missing: "
+                "%s, %s" % (kid_path, pem_path)
             )
+        _import_service_key_from_files()
+        return
+
+    # Default: generate the key for this Quay instance.
+    minutes_until_expiration = app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
+    expiration = datetime.utcnow() + timedelta(minutes=minutes_until_expiration)
+    quay_key, quay_key_id = generate_key(
+        app.config["INSTANCE_SERVICE_KEY_SERVICE"], get_audience(), expiration_date=expiration
+    )
+
+    with open(app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"], mode="w") as f:
+        f.truncate(0)
+        f.write(quay_key_id)
+
+    with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="wb") as f:
+        f.truncate(0)
+        f.write(
+            quay_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
 
 
 def setup_bootstrap_token():
@@ -234,12 +408,17 @@ def main():
             "Your configuration bundle is either not mounted or setup has not been completed"
         )
 
-    sync_database_with_config(app.config)
+    readonly = app.config.get("REGISTRY_STATE") == "readonly"
+
+    if not readonly:
+        sync_database_with_config(app.config)
+    else:
+        logger.debug("Registry is in read-only mode, skipping config-to-database sync")
+
     setup_instance_service_key()
     setup_bootstrap_token()
 
-    # Record deploy
-    if release.REGION and release.GIT_HEAD:
+    if not readonly and release.REGION and release.GIT_HEAD:
         set_region_release(release.SERVICE, release.REGION, release.GIT_HEAD)
 
 
