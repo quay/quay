@@ -10,9 +10,13 @@ This test suite covers:
 - Error handling
 """
 
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
+import fakeredis
 import pytest
 import redis
 
@@ -364,6 +368,33 @@ class TestPullMetrics:
 
         # Should have attempted to reconnect
         assert mock_redis.ping.call_count >= 2
+
+    def test_redis_concurrent_first_use_creates_single_client(self, mock_redis):
+        """
+        Verifies that on concurrent requests we only get one pool issued instead of potentially two
+        in a race condition.
+        """
+        construct_count = 0
+        lock = threading.Lock()
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+
+        def fake_ctor(*args, **kwargs):
+            nonlocal construct_count
+            with lock:
+                construct_count += 1
+            time.sleep(0.05)
+            return fakeredis.FakeStrictRedis()
+
+        with patch("redis.StrictRedis", side_effect=fake_ctor):
+            pm = PullMetrics(redis_config)
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                clients = list(ex.map(lambda _: pm._ensure_redis_connection(), range(10)))
+
+        # make sure that the contructor is called only once
+        assert construct_count == 1
+
+        # make sure that all returned clients are identical
+        assert all(c is clients[0] for c in clients)
 
     def test_track_tag_pull_sync(self, pull_metrics_testing, mock_redis):
         """Test synchronous tag pull tracking."""
