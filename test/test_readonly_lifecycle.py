@@ -258,8 +258,6 @@ class TestReadonlyDbWriteGuards:
                 from boot import main
 
                 main()
-            except Exception:
-                pass
             finally:
                 app.config["REGISTRY_STATE"] = "normal"
 
@@ -405,11 +403,15 @@ class TestFileBasedImport:
 
         from boot import setup_instance_service_key
 
-        with patch("boot.generate_key") as mock_gen, patch("builtins.open", MagicMock()):
+        with (
+            patch("boot.generate_key") as mock_gen,
+            patch("boot._import_service_key_from_files") as mock_import,
+            patch("builtins.open", MagicMock()),
+        ):
             mock_gen.return_value = (MagicMock(), "test-kid")
-            # Should go to the generate path, not import
             setup_instance_service_key()
             mock_gen.assert_called_once()
+            mock_import.assert_not_called()
 
     def test_import_flag_true_missing_files_fails(self, app, initialized_db):
         app.config["INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES"] = True
