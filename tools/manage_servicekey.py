@@ -2,7 +2,9 @@ import argparse
 import sys
 from datetime import datetime, timedelta
 
-from app import app  # noqa: F401 (triggers config loading including QUAY_OVERRIDE_CONFIG)
+from app import (  # noqa: F401 (triggers config loading including QUAY_OVERRIDE_CONFIG)
+    app,
+)
 from data.database import ServiceKey
 from data.model import ServiceKeyDoesNotExist
 

@@ -243,11 +243,7 @@ def list_service_keys(service):
 
 def get_service_key_for_status(kid, service):
     try:
-        return (
-            ServiceKey.select()
-            .where(ServiceKey.kid == kid, ServiceKey.service == service)
-            .get()
-        )
+        return ServiceKey.select().where(ServiceKey.kid == kid, ServiceKey.service == service).get()
     except ServiceKey.DoesNotExist:
         raise ServiceKeyDoesNotExist
 
