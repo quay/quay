@@ -6,6 +6,7 @@ from jwt import get_unverified_header
 
 from app import app
 from data.logs_model import logs_model
+from data.model.service_keys import OPERATOR_MANAGED_CREATED_BY
 from endpoints.keyserver.models_interface import ServiceKeyDoesNotExist
 from endpoints.keyserver.models_pre_oci import pre_oci_model as model
 from util.request import get_request_ip
@@ -108,7 +109,7 @@ def get_service_key_status(service, kid):
         {
             "kid": key.kid,
             "service": key.service,
-            "operator_managed": metadata.get("created_by") == "quay-operator-readonly",
+            "operator_managed": metadata.get("created_by") == OPERATOR_MANAGED_CREATED_BY,
             "expiration_date": exp,
         }
     )

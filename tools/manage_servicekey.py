@@ -7,6 +7,7 @@ from app import (  # noqa: F401 (triggers config loading including QUAY_OVERRIDE
 )
 from data.database import ServiceKey
 from data.model import ServiceKeyDoesNotExist
+from data.model.service_keys import OPERATOR_MANAGED_CREATED_BY
 
 
 def _get_key_direct(kid):
@@ -34,7 +35,7 @@ def expire_key(kid, grace_seconds):
         return 1
 
     metadata = key.metadata if isinstance(key.metadata, dict) else {}
-    if metadata.get("created_by") != "quay-operator-readonly":
+    if metadata.get("created_by") != OPERATOR_MANAGED_CREATED_BY:
         print(
             "Key '%s' is not operator-managed (created_by='%s'), refusing to expire."
             % (kid, metadata.get("created_by"))

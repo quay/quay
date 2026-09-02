@@ -20,6 +20,8 @@ from data.model.notification import (
 
 _SERVICE_NAME_REGEX = re.compile(r"^[a-z0-9_]+$")
 
+OPERATOR_MANAGED_CREATED_BY = "quay-operator-readonly"
+
 
 def _expired_keys_clause(service):
     return (ServiceKey.service == service) & (ServiceKey.expiration_date <= datetime.utcnow())
