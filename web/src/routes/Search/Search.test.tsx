@@ -82,10 +82,20 @@ describe('Search', () => {
     expect(screen.getByPlaceholderText('Search repositories...')).toBeVisible();
   });
 
-  it('shows empty state when no results', () => {
+  it('shows "Search for repositories" when no query', () => {
     renderSearch();
 
+    expect(screen.getByText('Search for repositories')).toBeVisible();
+    expect(
+      screen.getByText('Enter a search term to find repositories.'),
+    ).toBeVisible();
+  });
+
+  it('shows "No matching repositories found" when query returns no results', () => {
+    renderSearch('/search?q=nonexistent');
+
     expect(screen.getByText('No matching repositories found')).toBeVisible();
+    expect(screen.getByText('Please try changing your query.')).toBeVisible();
   });
 
   it('shows loading spinner', () => {
@@ -236,5 +246,73 @@ describe('Search', () => {
     expect(
       screen.getByText(/maximum number of viewable results/),
     ).toBeVisible();
+  });
+
+  it('clamps page to maxPageCount when URL has over-limit page', () => {
+    renderSearch('/search?q=test&page=500');
+
+    expect(mockUseSearch).toHaveBeenCalledWith('test', 10);
+  });
+
+  it('navigates suggestions with ArrowDown and ArrowUp', async () => {
+    mockUseSearchSuggestions.mockReturnValue({
+      suggestions: [
+        {
+          kind: 'repository',
+          title: 'repo',
+          name: 'repo-a',
+          namespace: {name: 'org1', avatar: null},
+          href: '/repository/org1/repo-a',
+          score: 4,
+        },
+        {
+          kind: 'repository',
+          title: 'repo',
+          name: 'repo-b',
+          namespace: {name: 'org1', avatar: null},
+          href: '/repository/org1/repo-b',
+          score: 3,
+        },
+      ],
+      isLoading: false,
+    });
+
+    renderSearch();
+
+    const input = screen.getByPlaceholderText('Search repositories...');
+    fireEvent.change(input, {target: {value: 'repoxyz'}});
+
+    await waitFor(() => {
+      expect(screen.getByText('org1/repo-a')).toBeVisible();
+    });
+
+    fireEvent.keyDown(input, {key: 'ArrowDown'});
+    expect(
+      screen.getByText('org1/repo-a').closest('[role="option"]'),
+    ).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(input, {key: 'ArrowDown'});
+    expect(
+      screen.getByText('org1/repo-b').closest('[role="option"]'),
+    ).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(input, {key: 'ArrowUp'});
+    expect(
+      screen.getByText('org1/repo-a').closest('[role="option"]'),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('has combobox ARIA attributes on search input', () => {
+    renderSearch();
+
+    const input = screen.getByPlaceholderText('Search repositories...');
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute(
+      'aria-controls',
+      'search-suggestions-listbox',
+    );
+
+    const wrapper = screen.getByTestId('search-input');
+    expect(wrapper).toHaveAttribute('aria-expanded', 'false');
   });
 });

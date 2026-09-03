@@ -38,10 +38,10 @@ export default function Search() {
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
   const parsedPage = parseInt(searchParams.get('page') || '1', 10);
-  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
   const [inputValue, setInputValue] = useState(query);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
@@ -49,6 +49,11 @@ export default function Search() {
 
   const quayConfig = useQuayConfig();
   const maxPageCount = quayConfig?.config?.SEARCH_MAX_RESULT_PAGE_COUNT ?? 10;
+
+  const page = Math.min(
+    Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+    maxPageCount,
+  );
 
   const {results, hasAdditional, pageSize, startIndex, isLoading, error} =
     useSearch(query, page);
@@ -69,6 +74,10 @@ export default function Search() {
       isTyping && inputValue.trim().length >= 3 && suggestions.length > 0,
     );
   }, [suggestions, inputValue, query]);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(-1);
+  }, [suggestions]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -107,10 +116,30 @@ export default function Search() {
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
-      handleSearch();
+      if (
+        activeSuggestionIndex >= 0 &&
+        isDropdownOpen &&
+        suggestions[activeSuggestionIndex]
+      ) {
+        handleSuggestionSelect(suggestions[activeSuggestionIndex]);
+      } else {
+        handleSearch();
+      }
     }
     if (event.key === 'Escape') {
       setIsDropdownOpen(false);
+    }
+    if (event.key === 'ArrowDown' && isDropdownOpen && suggestions.length > 0) {
+      event.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0,
+      );
+    }
+    if (event.key === 'ArrowUp' && isDropdownOpen && suggestions.length > 0) {
+      event.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1,
+      );
     }
   };
 
@@ -153,6 +182,15 @@ export default function Search() {
           onKeyDown={handleKeyDown}
           ref={inputRef}
           data-testid="search-input"
+          role="combobox"
+          aria-expanded={isDropdownOpen}
+          aria-controls="search-suggestions-listbox"
+          aria-activedescendant={
+            activeSuggestionIndex >= 0
+              ? `search-suggestion-${activeSuggestionIndex}`
+              : undefined
+          }
+          aria-autocomplete="list"
         />
         <TextInputGroupUtilities>
           {inputValue && (
@@ -176,11 +214,17 @@ export default function Search() {
     <div ref={dropdownRef}>
       <Menu onSelect={() => setIsDropdownOpen(false)}>
         <MenuContent>
-          <MenuList>
+          <MenuList id="search-suggestions-listbox" role="listbox">
             {suggestions.map((s, i) => (
               <MenuItem
                 key={`${s.kind}-${s.name}-${i}`}
+                id={`search-suggestion-${i}`}
                 onClick={() => handleSuggestionSelect(s)}
+                className={
+                  i === activeSuggestionIndex ? 'search-suggestion-active' : ''
+                }
+                role="option"
+                aria-selected={i === activeSuggestionIndex}
               >
                 <Flex
                   alignItems={{default: 'alignItemsCenter'}}
@@ -261,10 +305,18 @@ export default function Search() {
           <EmptyState
             headingLevel="h2"
             icon={SearchIcon}
-            titleText="No matching repositories found"
+            titleText={
+              query && inputValue.trim()
+                ? 'No matching repositories found'
+                : 'Search for repositories'
+            }
             variant="lg"
           >
-            <EmptyStateBody>Please try changing your query.</EmptyStateBody>
+            <EmptyStateBody>
+              {query && inputValue.trim()
+                ? 'Please try changing your query.'
+                : 'Enter a search term to find repositories.'}
+            </EmptyStateBody>
           </EmptyState>
         )}
 

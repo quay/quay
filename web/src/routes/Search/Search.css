@@ -92,6 +92,11 @@
   text-transform: capitalize;
 }
 
+.search-suggestion-active {
+  background-color: var(--pf-t--global--color--brand--default);
+  color: var(--pf-t--global--text--color--on-brand--default);
+}
+
 .search-suggestion-description {
   font-size: var(--pf-t--global--font--size--sm);
   color: var(--pf-t--global--text--color--subtle);
