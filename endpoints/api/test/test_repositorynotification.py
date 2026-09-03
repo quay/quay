@@ -9,6 +9,7 @@ from endpoints.api.repositorynotification import (
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from notifications.notificationevent import MAX_TAG_REGEX_LENGTH
 from test.fixtures import *
 
 
@@ -85,6 +86,58 @@ def mock_get_notification(uuid):
                 title="test",
             ),
             201,
+        ),
+        # A valid vulnerability tag filter is accepted.
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": "^prod-.+$"},
+                title="test",
+            ),
+            201,
+        ),
+        # A blank tag filter means "no filter" and is accepted.
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": ""},
+                title="test",
+            ),
+            201,
+        ),
+        # An uncompilable tag filter is rejected at creation time.
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": "]["},
+                title="test",
+            ),
+            400,
+        ),
+        # A tag filter beyond the length bound is rejected at creation time.
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": "a" * (MAX_TAG_REGEX_LENGTH + 1)},
+                title="test",
+            ),
+            400,
         ),
     ],
 )

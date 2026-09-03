@@ -5,6 +5,7 @@ import pytest
 from notifications.notificationevent import (
     MAX_TAG_REGEX_LENGTH,
     BuildSuccessEvent,
+    InvalidNotificationEventConfigException,
     NotificationEvent,
     QuotaErrorEvent,
     QuotaWarningEvent,
@@ -298,6 +299,24 @@ def test_vulnerability_notification_tag_regex_and_level():
     assert not VulnerabilityFoundEvent().should_perform(
         {"tags": ["v1.0"], "vulnerability": {"priority": "Critical"}}, notification_data
     )
+
+
+def test_validate_event_config_accepts_valid_tag_regex():
+    # A compilable, in-bounds pattern (and a blank/absent one) passes validation.
+    VulnerabilityFoundEvent().validate_event_config({"tag-regex": "^prod-.+$"})
+    VulnerabilityFoundEvent().validate_event_config({"tag-regex": ""})
+    VulnerabilityFoundEvent().validate_event_config({})
+
+
+def test_validate_event_config_rejects_uncompilable_tag_regex():
+    with pytest.raises(InvalidNotificationEventConfigException):
+        VulnerabilityFoundEvent().validate_event_config({"tag-regex": "]["})
+
+
+def test_validate_event_config_rejects_too_long_tag_regex():
+    long_pattern = "a" * (MAX_TAG_REGEX_LENGTH + 1)
+    with pytest.raises(InvalidNotificationEventConfigException):
+        VulnerabilityFoundEvent().validate_event_config({"tag-regex": long_pattern})
 
 
 def test_vulnerability_notification_tag_regex_too_long():

@@ -35,6 +35,12 @@ class InvalidNotificationEventException(Exception):
     pass
 
 
+class InvalidNotificationEventConfigException(Exception):
+    """Raised when a notification's event config fails validation at creation time."""
+
+    pass
+
+
 class NotificationEvent(object):
     def __init__(self):
         pass
@@ -75,6 +81,17 @@ class NotificationEvent(object):
         By default returns True.
         """
         return True
+
+    def validate_event_config(self, event_config):
+        """
+        Validates the event-specific config supplied when creating a notification.
+
+        Called at notification-creation time so that invalid config is rejected with an API
+        validation error rather than silently breaking the notification when it later fires.
+        Subclasses raise InvalidNotificationEventConfigException for invalid config. By default
+        there is nothing to validate.
+        """
+        pass
 
     @classmethod
     def event_name(cls):
@@ -226,6 +243,28 @@ class VulnerabilityFoundEvent(NotificationEvent):
                 },
             },
         )
+
+    def validate_event_config(self, event_config):
+        # Validate the optional tag filter up front so a bad pattern is rejected with an API
+        # error at creation time, instead of silently suppressing every notification when it
+        # later fails to compile or is refused for being too long at match time.
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX) or None
+        if tag_regex is None:
+            return
+
+        pattern = str(tag_regex)
+        if len(pattern) > MAX_TAG_REGEX_LENGTH:
+            raise InvalidNotificationEventConfigException(
+                "Tag filter regular expression exceeds the maximum length of %d characters"
+                % MAX_TAG_REGEX_LENGTH
+            )
+
+        try:
+            _compile_tag_regex(pattern)
+        except regex.error as ex:
+            raise InvalidNotificationEventConfigException(
+                "Invalid tag filter regular expression: %s" % ex
+            )
 
     def _matches_tag_filter(self, event_data, tag_regex):
         # Reject overly long patterns outright: they only add to matching cost and a

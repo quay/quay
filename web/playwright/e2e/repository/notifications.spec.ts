@@ -564,6 +564,77 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     },
   );
 
+  test(
+    'rejects vulnerability notification with an invalid tag-regex at creation',
+    {tag: ['@feature:SECURITY_SCANNER', '@PROJQUAY-12540']},
+    async ({authenticatedPage, api}) => {
+      // Create test organization with repository
+      const org = await api.organization('vulnnotifbad');
+      const repo = await api.repository(org.name, 'vulnrepo');
+
+      // Navigate to repository settings > Events and notifications tab
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+
+      // Open the create-notification form and select the vulnerability event
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Package Vulnerability Found'})
+        .click();
+
+      // Provide an uncompilable regular expression as the tag filter
+      const tagRegexInput = authenticatedPage.getByTestId(
+        'vulnerability-tag-regex',
+      );
+      await expect(tagRegexInput).toBeVisible();
+      await tagRegexInput.fill('[');
+
+      // Configure a valid webhook method + title so only the tag-regex is invalid
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Webhook POST'})
+        .click();
+      await authenticatedPage
+        .getByTestId('webhook-url-field')
+        .fill('https://example.com/hook');
+      await authenticatedPage
+        .getByTestId('notification-title')
+        .fill('Bad Tag Filter');
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      // The API rejects the pattern and the form surfaces the validation error
+      // instead of silently creating a broken notification.
+      await expect(
+        authenticatedPage.getByText('Invalid tag filter regular expression', {
+          exact: false,
+        }),
+      ).toBeVisible();
+
+      // No notification was created for the rejected pattern.
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: 'Bad Tag Filter'}),
+      ).toHaveCount(0);
+
+      // Correcting the pattern lets the same submission succeed.
+      await tagRegexInput.fill('v2\\..*');
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: 'Bad Tag Filter'}),
+      ).toBeVisible();
+    },
+  );
+
   test('recipient field: teams, users, and create team modal', async ({
     authenticatedPage,
     api,
