@@ -176,67 +176,43 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		return 0, fmt.Errorf("upsert manifest %s: %w", m.Digest, err)
 	}
 
+	// check if we're dealing with a normal manifest
 	if len(m.BlobDigests) > 0 {
-		for _, id := range blobIDs {
-			if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
-				RepositoryID: repoID,
-				ManifestID:   manifestID,
-				BlobID:       id,
-			}); err != nil {
-				return 0, fmt.Errorf("link manifest blob failed: %w", err)
-			}
+		err = s.linkBlobs(ctx, q, repoID, manifestID, blobIDs)
+		if err != nil {
+			return 0, err
 		}
 	}
 
+	// check if we're dealing with a manifest list
 	if len(m.ChildDigests) > 0 {
-		for _, id := range childIDs {
-			if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
-				RepositoryID:    repoID,
-				ManifestID:      manifestID,
-				ChildManifestID: id,
-			}); err != nil {
-				return 0, fmt.Errorf("link child manifest failed: %w", err)
-			}
+		err = s.linkChildManifests(ctx, q, repoID, manifestID, childIDs)
+		if err != nil {
+			return 0, err
 		}
 	}
 
+	// if we push by tag, create a tag reference
 	if m.Tag != "" {
 		if _, err := s.putTag(ctx, q, repoID, manifestID, m.Tag); err != nil {
 			return 0, err
 		}
 	}
 
+	// if the manifest has a subject (we're dealing with referrers), insert a
+	// temporary tag and protect it
 	if m.Subject != "" {
 		if err := s.setSubjectAndProtect(ctx, q, repoID, manifestID, &m); err != nil {
 			return 0, err
 		}
 	}
 
+	// if we are missing both tag and subject, assume we're dealing with child images,
+	// insert temporary tag with a 1 hour expiry
 	if m.Subject == "" && m.Tag == "" {
-		hasTag, err := q.HasNonExpiringTagForManifest(ctx, sql.NullInt64{Int64: manifestID, Valid: true})
+		err := s.insertTempTag(ctx, q, repoID, manifestID)
 		if err != nil {
-			return 0, fmt.Errorf("check protection tag: %w", err)
-		}
-
-		fmt.Printf("DEBUG: manifestID=%d, hasTag=%v\n", manifestID, hasTag)
-
-		if !hasTag {
-			fmt.Printf("DEBUG: inserted temp tag for manifestID=%d\n", manifestID)
-			startMs := time.Now().UnixMilli()
-			// expiry time on temp tags should be 1 hour at least
-			expireMs := time.Now().Add(1 * time.Hour).UnixMilli()
-
-			if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
-				Name:            "$temp-" + uuid.NewString(),
-				RepositoryID:    repoID,
-				ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
-				LifetimeStartMs: startMs,
-				LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
-				TagKindID:       s.tagKindTag,
-				Hidden:          true,
-			}); err != nil {
-				return 0, fmt.Errorf("insert temporary protection tag: %w", err)
-			}
+			return 0, err
 		}
 	}
 
@@ -285,6 +261,65 @@ func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, 
 		childIDs = append(childIDs, id.ID)
 	}
 	return childIDs, nil
+}
+
+// linkBlobs links all blobs to the specific manifest.
+func (s *SQLiteStore) linkBlobs(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, blobIDs []int64) error {
+	for _, id := range blobIDs {
+		if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
+			RepositoryID: repoID,
+			ManifestID:   manifestID,
+			BlobID:       id,
+		}); err != nil {
+			return fmt.Errorf("link manifest blob failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// linkChildManifests links all child manifests of a specific parent.
+func (s *SQLiteStore) linkChildManifests(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, childIDs []int64) error {
+	for _, id := range childIDs {
+		if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+			RepositoryID:    repoID,
+			ManifestID:      manifestID,
+			ChildManifestID: id,
+		}); err != nil {
+			return fmt.Errorf("link child manifest failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// insertTempTag inserts a temporary tag for each manifest if that manifest is pushed by digest.
+func (s *SQLiteStore) insertTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64) error {
+	hasTemp, err := q.HasUnexpiredTemporaryTag(ctx, daldb.HasUnexpiredTemporaryTagParams{
+		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeEndMs: sql.NullInt64{Int64: time.Now().UnixMilli(), Valid: true},
+	})
+
+	if err != nil {
+		return fmt.Errorf("check temporary tag: %w", err)
+	}
+
+	if !hasTemp {
+		startMs := time.Now().UnixMilli()
+		// expiry time on temp tags should be 1 hour at least
+		expireMs := time.Now().Add(1 * time.Hour).UnixMilli()
+
+		if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
+			Name:            "$temp-" + uuid.NewString(),
+			RepositoryID:    repoID,
+			ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+			LifetimeStartMs: startMs,
+			LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
+			TagKindID:       s.tagKindTag,
+			Hidden:          true,
+		}); err != nil {
+			return fmt.Errorf("insert temporary protection tag: %w", err)
+		}
+	}
+	return nil
 }
 
 // setSubjectAndProtect sets the subject column on a manifest and creates a

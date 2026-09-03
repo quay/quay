@@ -515,7 +515,7 @@ func (s *errStubMetaStore) DeleteUploadedBlob(context.Context, int64, digest.Dig
 	return 0, errNotImplemented
 }
 func (s *errStubMetaStore) CleanExpiredUploadedBlobs(context.Context) error { return errNotImplemented }
-func (s *errStubMetaStore) GetManifestForServing(context.Context, int64, digest.Digest) ([]byte, string, error) {
+func (s *errStubMetaStore) GetManifestForServing(context.Context, int64, digest.Digest) (content []byte, mediaType string, err error) {
 	return nil, "", errNotImplemented
 }
 

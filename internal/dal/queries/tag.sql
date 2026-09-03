@@ -17,6 +17,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
+-- name: HasUnexpiredTemporaryTag :one
+-- Checks if we already have a temporary tag for a particular manifest.
+-- In addition to matching against a specific manifest, we also match by name where
+-- the name must be in the form '$temp-some_uuid'. This ensures that we don't match
+-- any tags that are properly alive.
+SELECT EXISTS (
+    SELECT 1 FROM tag
+    WHERE manifest_id = ?
+    AND hidden = 1
+    AND name LIKE '$temp-%'
+    AND lifetime_end_ms > ?
+) AS has_tag;
+
 -- name: ExpireActiveTag :execresult
 UPDATE tag SET lifetime_end_ms = ?
 WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL;
