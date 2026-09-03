@@ -1,6 +1,9 @@
+import time
+
 import pytest
 
 from notifications.notificationevent import (
+    MAX_TAG_REGEX_LENGTH,
     BuildSuccessEvent,
     NotificationEvent,
     QuotaErrorEvent,
@@ -295,6 +298,29 @@ def test_vulnerability_notification_tag_regex_and_level():
     assert not VulnerabilityFoundEvent().should_perform(
         {"tags": ["v1.0"], "vulnerability": {"priority": "Critical"}}, notification_data
     )
+
+
+def test_vulnerability_notification_tag_regex_too_long():
+    # A pattern beyond the length bound is rejected without attempting to match.
+    long_pattern = "a" * (MAX_TAG_REGEX_LENGTH + 1)
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": long_pattern}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": ["aaa"]}, notification_data)
+
+
+def test_vulnerability_notification_tag_regex_redos_bounded():
+    # A catastrophically-backtracking pattern against a long non-matching tag must not pin the
+    # CPU: the per-tag timeout aborts evaluation and the event does not fire, quickly.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "^(a+)+$"}})
+    evil_tag = "a" * 40 + "!"
+
+    start = time.perf_counter()
+    result = VulnerabilityFoundEvent().should_perform({"tags": [evil_tag]}, notification_data)
+    elapsed = time.perf_counter() - start
+
+    assert not result
+    # Without the timeout this pattern runs for many seconds; allow generous headroom over the
+    # 1.0s budget to stay stable in CI while still proving evaluation is bounded.
+    assert elapsed < 10
 
 
 class TestQuotaWarningEvent:

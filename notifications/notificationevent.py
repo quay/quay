@@ -2,6 +2,10 @@ import logging
 import re
 import time
 from datetime import datetime
+from functools import lru_cache
+
+import regex
+from regex import Pattern
 
 from notifications import build_namespace_event_data, build_repository_event_data
 from util.jinjautil import get_template_env
@@ -10,6 +14,21 @@ from util.secscan import PRIORITY_LEVELS, get_priority_for_index
 logger = logging.getLogger(__name__)
 
 TEMPLATE_ENV = get_template_env("events")
+
+# Upper bound on a configured vulnerability tag-filter pattern, mirroring the immutability
+# policy limit. A legitimate filter never needs to be larger, and bounding it reduces the
+# surface for catastrophic backtracking.
+MAX_TAG_REGEX_LENGTH = 256
+
+# Per-tag evaluation budget, in seconds, for the vulnerability tag filter. The `regex`
+# module aborts a match that exceeds this, protecting the notification worker from a crafted
+# ReDoS pattern (e.g. "^(a+)+$") that would otherwise pin CPU on a long non-matching tag.
+TAG_REGEX_MATCH_TIMEOUT = 1.0
+
+
+@lru_cache(maxsize=256)
+def _compile_tag_regex(pattern: str) -> Pattern[str]:
+    return regex.compile(pattern)
 
 
 class InvalidNotificationEventException(Exception):
@@ -209,17 +228,39 @@ class VulnerabilityFoundEvent(NotificationEvent):
         )
 
     def _matches_tag_filter(self, event_data, tag_regex):
+        # Reject overly long patterns outright: they only add to matching cost and a
+        # legitimate tag filter never needs to be this large.
+        pattern = str(tag_regex)
+        if len(pattern) > MAX_TAG_REGEX_LENGTH:
+            logger.warning(
+                "Vulnerability event tag filter pattern exceeds %d characters; not firing event",
+                MAX_TAG_REGEX_LENGTH,
+            )
+            return False
+
         # Try parsing the regex string as a regular expression. If we fail, we fail to fire
         # the event.
         try:
-            matcher = re.compile(str(tag_regex))
-        except Exception:
-            logger.warning("Regular expression error for vulnerability event filter: %s", tag_regex)
+            matcher = _compile_tag_regex(pattern)
+        except regex.error:
+            logger.warning("Regular expression error for vulnerability event filter: %s", pattern)
             return False
 
         # Only fire the event if at least one referencing tag matches the pattern. An empty
-        # tag list (or no tags at all) never matches.
-        return any(matcher.match(tag) for tag in event_data.get("tags", []))
+        # tag list (or no tags at all) never matches. Matching runs under a per-tag timeout so
+        # a crafted, catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS);
+        # on timeout we conservatively treat the tag as non-matching.
+        for tag in event_data.get("tags", []):
+            try:
+                if matcher.match(tag, timeout=TAG_REGEX_MATCH_TIMEOUT):
+                    return True
+            except TimeoutError:
+                logger.warning(
+                    "Regex match timed out for vulnerability event filter pattern %s against tag %s",
+                    pattern,
+                    tag,
+                )
+        return False
 
     def should_perform(self, event_data, notification_data):
         event_config = notification_data.event_config_dict
