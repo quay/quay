@@ -260,7 +260,15 @@ class VulnerabilityFoundEvent(NotificationEvent):
         if tag_regex is None:
             return
 
-        pattern = str(tag_regex)
+        # Require a string. Without this, a non-string value (e.g. 123, ["["], {"x": "y"}) would
+        # be coerced with str() and stored as a "regex" that can never behave as the caller
+        # intended.
+        if not isinstance(tag_regex, str):
+            raise InvalidNotificationEventConfigException(
+                "Tag filter regular expression must be a string"
+            )
+
+        pattern = tag_regex
         if len(pattern) > MAX_TAG_REGEX_LENGTH:
             raise InvalidNotificationEventConfigException(
                 "Tag filter regular expression exceeds the maximum length of %d characters"
@@ -275,9 +283,19 @@ class VulnerabilityFoundEvent(NotificationEvent):
             )
 
     def _matches_tag_filter(self, event_data, tag_regex):
+        # A non-string pattern cannot be a valid regex (validate_event_config now rejects one at
+        # creation time, but a config persisted before that check, or reached via another path,
+        # could still carry one). Treat it as no match rather than coercing it with str().
+        if not isinstance(tag_regex, str):
+            logger.warning(
+                "Vulnerability event tag filter is not a string (%s); not firing event",
+                type(tag_regex).__name__,
+            )
+            return False
+
         # Reject overly long patterns outright: they only add to matching cost and a
         # legitimate tag filter never needs to be this large.
-        pattern = str(tag_regex)
+        pattern = tag_regex
         if len(pattern) > MAX_TAG_REGEX_LENGTH:
             logger.warning(
                 "Vulnerability event tag filter pattern exceeds %d characters; not firing event",
