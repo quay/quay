@@ -2,8 +2,10 @@ import time
 
 import pytest
 
+import notifications.notificationevent as notificationevent
 from notifications.notificationevent import (
     MAX_TAG_REGEX_LENGTH,
+    PRODUCER_TAG_LIMIT,
     BuildSuccessEvent,
     InvalidNotificationEventConfigException,
     NotificationEvent,
@@ -340,6 +342,60 @@ def test_vulnerability_notification_tag_regex_redos_bounded():
     # Without the timeout this pattern runs for many seconds; allow generous headroom over the
     # 1.0s budget to stay stable in CI while still proving evaluation is bounded.
     assert elapsed < 10
+
+
+def test_vulnerability_notification_tag_regex_whole_tag_match():
+    # fullmatch semantics: a filter must match the whole tag, not just a prefix.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "latest"}})
+    assert VulnerabilityFoundEvent().should_perform({"tags": ["latest"]}, notification_data)
+    assert not VulnerabilityFoundEvent().should_perform(
+        {"tags": ["latest-extra"]}, notification_data
+    )
+
+
+def test_vulnerability_notification_tag_regex_skips_digest():
+    # Producers substitute the manifest digest for the tag list when a manifest has no tags. A
+    # broad filter must not match the digest, since it is not a tag reference.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": ".*"}})
+    assert not VulnerabilityFoundEvent().should_perform(
+        {"tags": ["sha256:" + "a" * 64]}, notification_data
+    )
+
+
+def test_vulnerability_notification_tag_regex_fails_open_at_producer_limit():
+    # A non-matching tag list at the producer cap may have had a matching tag truncated away, so
+    # the filter fails open and fires; just below the cap it does not.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "no-such-tag"}})
+
+    at_limit = ["tag-%d" % i for i in range(PRODUCER_TAG_LIMIT)]
+    assert len(at_limit) == PRODUCER_TAG_LIMIT
+    assert VulnerabilityFoundEvent().should_perform({"tags": at_limit}, notification_data)
+
+    below_limit = ["tag-%d" % i for i in range(PRODUCER_TAG_LIMIT - 1)]
+    assert not VulnerabilityFoundEvent().should_perform({"tags": below_limit}, notification_data)
+
+
+def test_validate_event_config_rejects_non_string_tag_regex():
+    for bad in (123, ["["], {"x": "y"}):
+        with pytest.raises(InvalidNotificationEventConfigException):
+            VulnerabilityFoundEvent().validate_event_config({"tag-regex": bad})
+
+
+def test_vulnerability_notification_non_string_tag_regex():
+    # A non-string pattern reaching the matcher (e.g. a config persisted before validation was
+    # added) is treated as no match rather than coerced.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": 123}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": ["123"]}, notification_data)
+
+
+def test_vulnerability_notification_tag_regex_timeout(monkeypatch):
+    # Deterministically exercise the timeout path: a catastrophically-backtracking pattern
+    # against a long non-matching tag with a tiny per-tag budget must abort and not fire, without
+    # raising.
+    monkeypatch.setattr(notificationevent, "TAG_REGEX_MATCH_TIMEOUT", 0.000001)
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "^(a+)+$"}})
+    evil_tag = "a" * 10000 + "b"
+    assert not VulnerabilityFoundEvent().should_perform({"tags": [evil_tag]}, notification_data)
 
 
 class TestQuotaWarningEvent:

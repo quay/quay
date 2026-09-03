@@ -139,6 +139,31 @@ def mock_get_notification(uuid):
             ),
             400,
         ),
+        # A non-string tag filter is rejected at creation time.
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": 123},
+                title="test",
+            ),
+            400,
+        ),
+        (
+            "devtable",
+            "simple",
+            dict(
+                config={"url": "http://example.com"},
+                event="vulnerability_found",
+                method="webhook",
+                eventConfig={"tag-regex": ["["]},
+                title="test",
+            ),
+            400,
+        ),
     ],
 )
 def test_create_repo_notification(namespace, repository, body, expected_code, authd_client):
