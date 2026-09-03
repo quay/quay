@@ -95,7 +95,7 @@ def _jwk_matches(jwk_a, jwk_b):
 def _validate_existing_key(existing_key, kid, public_jwk, service):
     """
     Validates an existing DB key row against the mounted key material.
-    Raises on mismatch. Backfills created_by metadata if absent.
+    Raises on mismatch.
     """
     if existing_key.service != service:
         raise Exception(
@@ -111,18 +111,11 @@ def _validate_existing_key(existing_key, kid, public_jwk, service):
     metadata = existing_key.metadata if isinstance(existing_key.metadata, dict) else {}
     created_by = metadata.get("created_by")
 
-    if created_by and created_by != OPERATOR_MANAGED_CREATED_BY:
+    if created_by != OPERATOR_MANAGED_CREATED_BY:
         raise Exception(
             "Existing key '%s' has created_by='%s', refusing to claim as operator-managed"
             % (kid, created_by)
         )
-
-    if not created_by:
-        if not isinstance(existing_key.metadata, dict):
-            existing_key.metadata = {}
-        existing_key.metadata["created_by"] = OPERATOR_MANAGED_CREATED_BY
-        existing_key.save()
-        logger.info("Backfilled created_by metadata on existing key '%s'", kid)
 
 
 def _import_service_key_from_files():
