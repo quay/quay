@@ -145,7 +145,7 @@ func (ms *manifestService) Exists(ctx context.Context, dgst digest.Digest) (_ bo
 // Get looks up the manifest on the provided digest and serves it directly to the client. Overrides normal Distribution lookup in the directory
 // tree, the database is the single source of truth for image metadata. If lookup is successful, the manifest is delivered to the client.
 // Otherwise, raises an error.
-func (ms *manifestService) Get(ctx context.Context, digest digest.Digest, options ...distribution.ManifestServiceOption) (_ distribution.Manifest, retErr error) {
+func (ms *manifestService) Get(ctx context.Context, dgst digest.Digest, options ...distribution.ManifestServiceOption) (_ distribution.Manifest, retErr error) {
 	defer ms.repo.metrics.recordOp("manifest_get", time.Now(), &retErr)
 
 	repoID, err := ms.repo.ensureRepo(ctx)
@@ -154,13 +154,15 @@ func (ms *manifestService) Get(ctx context.Context, digest digest.Digest, option
 	}
 
 	// look up the manifest
-	content, mediaType, err := ms.repo.store.GetManifestForServing(ctx, repoID, digest)
+	content, mediaType, err := ms.repo.store.GetManifestForServing(ctx, repoID, dgst)
 	if err != nil {
 		if errors.Is(err, oci.ErrNotExist) {
 			return nil, distribution.ErrManifestUnknownRevision{
 				Name:     ms.repo.Named().Name(),
-				Revision: digest,
+				Revision: dgst,
 			}
+		} else {
+			return nil, err
 		}
 	}
 

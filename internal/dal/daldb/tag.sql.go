@@ -135,6 +135,32 @@ func (q *Queries) HasNonExpiringTagForManifest(ctx context.Context, manifestID s
 	return has_tag, err
 }
 
+const hasUnexpiredTemporaryTag = `-- name: HasUnexpiredTemporaryTag :one
+SELECT EXISTS (
+    SELECT 1 FROM tag
+    WHERE manifest_id = ?
+    AND hidden = 1
+    AND name LIKE '$temp-%'
+    AND lifetime_end_ms > ?
+) AS has_tag
+`
+
+type HasUnexpiredTemporaryTagParams struct {
+	ManifestID    sql.NullInt64 `json:"manifest_id"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+// Checks if we already have a temporary tag for a particular manifest.
+// In addition to matching against a specific manifest, we also match by name where
+// the name must be in the form '$temp-some_uuid'. This ensures that we don't match
+// any tags that are properly alive.
+func (q *Queries) HasUnexpiredTemporaryTag(ctx context.Context, arg HasUnexpiredTemporaryTagParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, hasUnexpiredTemporaryTag, arg.ManifestID, arg.LifetimeEndMs)
+	var has_tag bool
+	err := row.Scan(&has_tag)
+	return has_tag, err
+}
+
 const insertHiddenTag = `-- name: InsertHiddenTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id, hidden)
 VALUES (?, ?, ?, ?, ?, 1)
