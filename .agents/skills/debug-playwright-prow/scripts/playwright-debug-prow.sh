@@ -1,0 +1,1 @@
+../../../../scripts/playwright-debug-prow.sh
