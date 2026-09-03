@@ -506,7 +506,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates vulnerability notification with tag-regex filter',
-    {tag: '@feature:SECURITY_SCANNER'},
+    {tag: ['@feature:SECURITY_SCANNER', '@PROJQUAY-12540']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('vulnnotif');
