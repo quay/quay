@@ -74,6 +74,9 @@ func (m *mockStore) DeleteUploadedBlob(context.Context, int64, digest.Digest) (i
 	return 0, nil
 }
 func (m *mockStore) CleanExpiredUploadedBlobs(context.Context) error { return nil }
+func (m *mockStore) GetManifestForServing(context.Context, int64, digest.Digest) ([]byte, string, error) {
+	return nil, "", nil
+}
 
 // --- tests ---
 

@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/distribution/distribution/v3"
@@ -16,26 +17,22 @@ import (
 // manifestService wraps a distribution.ManifestService to record metadata on
 // successful Put and Delete operations.
 type manifestService struct {
-	distribution.ManifestService
 	repo *repository
 }
 
 func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (_ digest.Digest, retErr error) {
 	defer ms.repo.metrics.recordOp("manifest_put", time.Now(), &retErr)
 
-	dgst, err := ms.ManifestService.Put(ctx, manifest, options...)
+	mt, payload, err := manifest.Payload()
 	if err != nil {
-		return dgst, err
+		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), "", err)
 	}
+
+	dgst := digest.FromBytes(payload)
 
 	repoID, err := ms.repo.ensureRepo(ctx)
 	if err != nil {
 		return "", err
-	}
-
-	mt, payload, err := manifest.Payload()
-	if err != nil {
-		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
 	record := oci.ManifestRecord{
@@ -81,10 +78,6 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retErr error) {
 	defer ms.repo.metrics.recordOp("manifest_delete", time.Now(), &retErr)
 
-	if err := ms.ManifestService.Delete(ctx, dgst); err != nil {
-		return err
-	}
-
 	repoID, err := ms.repo.ensureRepo(ctx)
 	if err != nil {
 		return err
@@ -128,4 +121,53 @@ func parseSubjectAndArtifactType(payload []byte) (subject digest.Digest, artifac
 func isIndexMediaType(mt string) bool {
 	return mt == manifestlist.MediaTypeManifestList ||
 		mt == v1.MediaTypeImageIndex
+}
+
+// Exists checks if the manifest with the provided digest is stored in the database.
+func (ms *manifestService) Exists(ctx context.Context, dgst digest.Digest) (_ bool, retErr error) {
+	repoID, err := ms.repo.ensureRepo(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = ms.repo.store.GetManifestDigest(ctx, repoID, dgst)
+
+	if err == nil {
+		return true, nil
+	}
+
+	if errors.Is(err, oci.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
+
+// Get looks up the manifest on the provided digest and serves it directly to the client. Overrides normal Distribution lookup in the directory
+// tree, the database is the single source of truth for image metadata. If lookup is successful, the manifest is delivered to the client.
+// Otherwise, raises an error.
+func (ms *manifestService) Get(ctx context.Context, digest digest.Digest, options ...distribution.ManifestServiceOption) (_ distribution.Manifest, retErr error) {
+	defer ms.repo.metrics.recordOp("manifest_get", time.Now(), &retErr)
+
+	repoID, err := ms.repo.ensureRepo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// look up the manifest
+	content, mediaType, err := ms.repo.store.GetManifestForServing(ctx, repoID, digest)
+	if err != nil {
+		if errors.Is(err, oci.ErrNotExist) {
+			return nil, distribution.ErrManifestUnknownRevision{
+				Name:     ms.repo.Named().Name(),
+				Revision: digest,
+			}
+		}
+	}
+
+	m, _, err := distribution.UnmarshalManifest(mediaType, content)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

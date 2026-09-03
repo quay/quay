@@ -144,6 +144,26 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		return 0, err
 	}
 
+	var childIDs []int64
+	var blobIDs []int64
+
+	// we need to verify that all blobs and children are stored before we commit to storing the image/manifest list
+	if len(m.BlobDigests) > 0 {
+		blobIDs, err = s.validateBlobs(ctx, q, m)
+		if err != nil {
+			return 0, err
+		}
+
+	}
+
+	if len(m.ChildDigests) > 0 {
+		childIDs, err = s.validateChildManifests(ctx, repoID, q, m)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// if we got to here, we can insert stuff
 	manifestID, err := q.UpsertManifest(ctx, daldb.UpsertManifestParams{
 		RepositoryID:  repoID,
 		Digest:        m.Digest.String(),
@@ -156,23 +176,27 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		return 0, fmt.Errorf("upsert manifest %s: %w", m.Digest, err)
 	}
 
-	for _, ref := range m.BlobDigests {
-		blobID, err := s.ensureBlob(ctx, tx, ref)
-		if err != nil {
-			return 0, err
-		}
-		if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
-			RepositoryID: repoID,
-			ManifestID:   manifestID,
-			BlobID:       blobID,
-		}); err != nil {
-			return 0, fmt.Errorf("link manifest blob %s: %w", ref.Digest, err)
+	if len(m.BlobDigests) > 0 {
+		for _, id := range blobIDs {
+			if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
+				RepositoryID: repoID,
+				ManifestID:   manifestID,
+				BlobID:       id,
+			}); err != nil {
+				return 0, fmt.Errorf("link manifest blob failed: %w", err)
+			}
 		}
 	}
 
-	for _, childDgst := range m.ChildDigests {
-		if err := s.linkChild(ctx, q, repoID, manifestID, mtID, childDgst); err != nil {
-			return 0, err
+	if len(m.ChildDigests) > 0 {
+		for _, id := range childIDs {
+			if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+				RepositoryID:    repoID,
+				ManifestID:      manifestID,
+				ChildManifestID: id,
+			}); err != nil {
+				return 0, fmt.Errorf("link child manifest failed: %w", err)
+			}
 		}
 	}
 
@@ -188,10 +212,79 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		}
 	}
 
+	if m.Subject == "" && m.Tag == "" {
+		hasTag, err := q.HasNonExpiringTagForManifest(ctx, sql.NullInt64{Int64: manifestID, Valid: true})
+		if err != nil {
+			return 0, fmt.Errorf("check protection tag: %w", err)
+		}
+
+		fmt.Printf("DEBUG: manifestID=%d, hasTag=%v\n", manifestID, hasTag)
+
+		if !hasTag {
+			fmt.Printf("DEBUG: inserted temp tag for manifestID=%d\n", manifestID)
+			startMs := time.Now().UnixMilli()
+			// expiry time on temp tags should be 1 hour at least
+			expireMs := time.Now().Add(1 * time.Hour).UnixMilli()
+
+			if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
+				Name:            "$temp-" + uuid.NewString(),
+				RepositoryID:    repoID,
+				ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+				LifetimeStartMs: startMs,
+				LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
+				TagKindID:       s.tagKindTag,
+				Hidden:          true,
+			}); err != nil {
+				return 0, fmt.Errorf("insert temporary protection tag: %w", err)
+			}
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return manifestID, nil
+}
+
+// validateBlobs validates that all blobs are committed to the database before the image manifest is stored.
+// This ensures consistency: manifests are stored only after all content for a particular image is stored,
+// with no orphaned blobs created.
+func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m oci.ManifestRecord) ([]int64, error) {
+	var blobIDs []int64
+	for _, blob := range m.BlobDigests {
+		id, err := q.GetBlobByChecksum(ctx, sql.NullString{String: blob.Digest.String(), Valid: true})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("blob unknown: %s", blob.Digest.String())
+			} else {
+				return nil, fmt.Errorf("error during blob lookup %s: %w", blob.Digest.String(), err)
+			}
+		}
+		blobIDs = append(blobIDs, id)
+	}
+	return blobIDs, nil
+}
+
+// validateChildManifests validates that all child manifests for a particular manifest list are stored in the database
+// before the image manifest is stored. This ensures consistency: we do not have indexes that have placeholder
+// manifests as children.
+func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, q *daldb.Queries, m oci.ManifestRecord) ([]int64, error) {
+	var childIDs []int64
+	for _, childDigest := range m.ChildDigests {
+		id, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+			RepositoryID: repoID,
+			Digest:       childDigest.String(),
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("child manifest unknown: %s", childDigest.String())
+			} else {
+				return nil, fmt.Errorf("error during child lookup %s: %w", childDigest.String(), err)
+			}
+		}
+		childIDs = append(childIDs, id.ID)
+	}
+	return childIDs, nil
 }
 
 // setSubjectAndProtect sets the subject column on a manifest and creates a
@@ -218,7 +311,7 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 	if err != nil {
 		return fmt.Errorf("check existing tag for manifest %d: %w", manifestID, err)
 	}
-	if hasTag != 0 {
+	if hasTag {
 		return nil
 	}
 
@@ -232,66 +325,6 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 		return fmt.Errorf("insert hidden protection tag: %w", err)
 	}
 	return nil
-}
-
-// linkChild resolves or creates a child manifest and links it to the parent
-// via manifestchild. Under concurrent multi-arch pushes, the child's metadata
-// write may not have committed yet even though distribution accepted the blob.
-// In that case, we create a placeholder manifest row so the FK link succeeds.
-func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, repoID, manifestID, mtID int64, childDgst digest.Digest) error {
-	child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
-		RepositoryID: repoID,
-		Digest:       childDgst.String(),
-	})
-	if errors.Is(err, sql.ErrNoRows) {
-		child.ID, err = q.UpsertManifest(ctx, daldb.UpsertManifestParams{
-			RepositoryID:  repoID,
-			Digest:        childDgst.String(),
-			MediaTypeID:   mtID,
-			ManifestBytes: "{}",
-		})
-		if err != nil {
-			return fmt.Errorf("ensure child manifest %s: %w", childDgst, err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
-	}
-	if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
-		RepositoryID:    repoID,
-		ManifestID:      manifestID,
-		ChildManifestID: child.ID,
-	}); err != nil {
-		return fmt.Errorf("link child manifest %s: %w", childDgst, err)
-	}
-	return nil
-}
-
-// ensureBlob inserts a blob into imagestorage if it doesn't already exist,
-// returning its ID. Uses SELECT-first because content_checksum has a
-// non-unique index (the sqlc UpsertImageStorage ON CONFLICT clause targets
-// content_checksum which won't work). The db parameter must be the same
-// handle (pool or tx) used by the caller to avoid deadlocks.
-func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.BlobRef) (int64, error) {
-	q := daldb.New(db)
-	checksum := sql.NullString{String: ref.Digest.String(), Valid: true}
-
-	id, err := q.GetBlobByChecksum(ctx, checksum)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("lookup blob %s: %w", ref.Digest, err)
-	}
-
-	id, err = q.InsertBlob(ctx, daldb.InsertBlobParams{
-		Uuid:            ref.Digest.Encoded(),
-		ContentChecksum: checksum,
-		ImageSize:       sql.NullInt64{Int64: ref.Size, Valid: ref.Size > 0},
-	})
-	if err != nil {
-		return 0, fmt.Errorf("insert blob %s: %w", ref.Digest, err)
-	}
-	return id, nil
 }
 
 // DeleteManifest removes a manifest and all its FK references within a transaction.
@@ -344,6 +377,34 @@ func (s *SQLiteStore) DeleteManifest(ctx context.Context, repoID int64, dgst dig
 		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
+}
+
+// ensureBlob inserts a blob into imagestorage if it doesn't already exist,
+// returning its ID. Uses SELECT-first because content_checksum has a
+// non-unique index (the sqlc UpsertImageStorage ON CONFLICT clause targets
+// content_checksum which won't work). The db parameter must be the same
+// handle (pool or tx) used by the caller to avoid deadlocks.
+func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.BlobRef) (int64, error) {
+	q := daldb.New(db)
+	checksum := sql.NullString{String: ref.Digest.String(), Valid: true}
+
+	id, err := q.GetBlobByChecksum(ctx, checksum)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("lookup blob %s: %w", ref.Digest, err)
+	}
+
+	id, err = q.InsertBlob(ctx, daldb.InsertBlobParams{
+		Uuid:            ref.Digest.Encoded(),
+		ContentChecksum: checksum,
+		ImageSize:       sql.NullInt64{Int64: ref.Size, Valid: ref.Size > 0},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("insert blob %s: %w", ref.Digest, err)
+	}
+	return id, nil
 }
 
 // PutBlob inserts or retrieves a blob by its content checksum.
@@ -471,7 +532,7 @@ func expireActiveTag(ctx context.Context, q *daldb.Queries, repoID int64, tag st
 		if err != nil {
 			return 0, fmt.Errorf("check lifetime end %d: %w", candidate, err)
 		}
-		if exists == 0 {
+		if !exists {
 			break
 		}
 
@@ -563,6 +624,24 @@ func (s *SQLiteStore) GetManifestDigest(ctx context.Context, repoID int64, dgst 
 		return "", fmt.Errorf("get manifest %s: %w", dgst, err)
 	}
 	return digest.Parse(d)
+}
+
+// GetManifestForServing verifies that a manifest exists in the database and returns both it and its media type for serving to the client.
+func (s *SQLiteStore) GetManifestForServing(ctx context.Context, repoID int64, dgst digest.Digest) (content []byte, mediaType string, err error) {
+	q := daldb.New(s.db)
+	row, err := q.GetManifestByDigestWithMediaType(ctx, daldb.GetManifestByDigestWithMediaTypeParams{
+		RepositoryID: repoID,
+		Digest:       dgst.String(),
+	})
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", fmt.Errorf("get manifest %s: %w", dgst, oci.ErrNotExist)
+		}
+		return nil, "", err
+	}
+
+	return []byte(row.ManifestBytes), row.MediaType, nil
 }
 
 // GetManifestContent returns manifest JSON stored in the database.

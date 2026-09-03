@@ -3,6 +3,12 @@ SELECT id, repository_id, digest, media_type_id, manifest_bytes
 FROM manifest
 WHERE repository_id = ? AND digest = ?;
 
+-- name: GetManifestByDigestWithMediaType :one
+SELECT m.manifest_bytes, mt.name as media_type
+FROM manifest m
+JOIN mediatype AS mt ON m.media_type_id = mt.id
+WHERE m.repository_id = ? AND m.digest = ?;
+
 -- name: UpsertManifest :one
 INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type, subject_backfilled, artifact_type_backfilled)
 VALUES (?, ?, ?, ?, ?, ?, 1, 1)
