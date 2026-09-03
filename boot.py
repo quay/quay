@@ -211,12 +211,39 @@ def _verify_service_key():
     return kid
 
 
+def _verify_legacy_service_key():
+    """
+    Preserves manual readonly behavior when mounted key import is not enabled.
+    """
+    try:
+        with open(app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]) as f:
+            quay_key_id = f.read()
+
+        try:
+            get_service_key(quay_key_id, approved_only=False)
+            assert os.path.exists(app.config["INSTANCE_SERVICE_KEY_LOCATION"])
+            return quay_key_id
+        except ServiceKeyDoesNotExist:
+            logger.exception(
+                "Could not find non-expired existing service key %s; creating a new one",
+                quay_key_id,
+            )
+            return None
+
+    except IOError:
+        logger.exception("Could not load existing service key; creating a new one")
+        return None
+
+
 def setup_instance_service_key():
     """
     Creates or imports a service key for quay.
     """
     if app.config.get("REGISTRY_STATE", "normal") == "readonly":
-        quay_key_id = _verify_service_key()
+        if app.config.get("INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES", False):
+            quay_key_id = _verify_service_key()
+        else:
+            quay_key_id = _verify_legacy_service_key()
         if quay_key_id is None:
             raise Exception("No valid service key found for read-only registry.")
         return

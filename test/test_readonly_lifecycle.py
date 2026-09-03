@@ -485,6 +485,29 @@ class TestFileBasedImport:
 
 
 class TestReadonlyVerification:
+    def test_manual_readonly_import_flag_false_uses_legacy_verification(self, initialized_db):
+        private_key, kid, public_jwk = _generate_test_rsa_key()
+        create_service_key(
+            "manual-readonly",
+            kid,
+            "quay",
+            public_jwk,
+            {},
+            datetime.utcnow() + timedelta(hours=1),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
+            with _boot_config(
+                REGISTRY_STATE="readonly",
+                INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES=False,
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import setup_instance_service_key
+
+                setup_instance_service_key()
+
     def test_verify_rejects_unapproved_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, approved=False)
