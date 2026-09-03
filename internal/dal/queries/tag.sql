@@ -9,6 +9,14 @@ VALUES (?, ?, ?, ?, ?)
 ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
+-- name: InsertTemporaryTag :one
+-- Inserts a temporary tag on child manifest insertion guarding them from the GC process.
+-- If there is no guard, GC will remove them causing multiarch images to fail push.
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
+RETURNING id;
+
 -- name: ExpireActiveTag :execresult
 UPDATE tag SET lifetime_end_ms = ?
 WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL;
