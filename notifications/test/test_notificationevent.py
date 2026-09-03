@@ -344,6 +344,26 @@ def test_vulnerability_notification_tag_regex_redos_bounded():
     assert elapsed < 10
 
 
+def test_vulnerability_notification_tag_regex_total_time_bounded(monkeypatch):
+    # A single deadline caps the whole tag loop, not each tag: even a full PRODUCER_TAG_LIMIT
+    # list of evil tags against a backtracking pattern is evaluated within roughly one budget,
+    # not PRODUCER_TAG_LIMIT budgets. With the list at the cap, the loop then fails open and fires.
+    monkeypatch.setattr(notificationevent, "TAG_REGEX_MATCH_TIMEOUT", 0.2)
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": "^(a+)+$"}})
+    evil_tags = ["a" * 40 + "!"] * PRODUCER_TAG_LIMIT
+    assert len(evil_tags) == PRODUCER_TAG_LIMIT
+
+    start = time.perf_counter()
+    result = VulnerabilityFoundEvent().should_perform({"tags": evil_tags}, notification_data)
+    elapsed = time.perf_counter() - start
+
+    # Per-tag timeouts would allow up to PRODUCER_TAG_LIMIT * 0.2 = 20s; the per-event deadline
+    # keeps the total well under that.
+    assert elapsed < 5
+    # The list is at the producer cap, so the fail-open rule fires even though nothing matched.
+    assert result
+
+
 def test_vulnerability_notification_tag_regex_whole_tag_match():
     # fullmatch semantics: a filter must match the whole tag, not just a prefix.
     notification_data = AttrDict({"event_config_dict": {"tag-regex": "latest"}})

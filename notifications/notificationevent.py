@@ -20,9 +20,10 @@ TEMPLATE_ENV = get_template_env("events")
 # surface for catastrophic backtracking.
 MAX_TAG_REGEX_LENGTH = 256
 
-# Per-tag evaluation budget, in seconds, for the vulnerability tag filter. The `regex`
-# module aborts a match that exceeds this, protecting the notification worker from a crafted
-# ReDoS pattern (e.g. "^(a+)+$") that would otherwise pin CPU on a long non-matching tag.
+# Per-event evaluation budget, in seconds, for the vulnerability tag filter. This is a single
+# deadline for the whole tag loop, not a per-tag timeout: the `regex` module aborts any match
+# that would run past the remaining budget, protecting the notification worker from a crafted
+# ReDoS pattern (e.g. "^(a+)+$") that would otherwise pin CPU across many non-matching tags.
 TAG_REGEX_MATCH_TIMEOUT = 1.0
 
 # Mirrors the TAG_LIMIT the notification producers apply when calling
@@ -324,11 +325,12 @@ class VulnerabilityFoundEvent(NotificationEvent):
         # We use fullmatch (not match, which anchors only at the start, so "latest" would match
         # "latest-extra") to keep the filter consistent with immutability tag patterns and the
         # UI placeholder "(v2\..*)|(latest)", which imply whole-tag matching. An empty tag list
-        # (or no tags at all) never matches. Matching runs under a per-tag timeout so a crafted,
-        # catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS); on timeout we
-        # conservatively treat the tag as non-matching.
+        # (or no tags at all) never matches. The whole tag loop runs under a single deadline so a
+        # crafted, catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS) even
+        # across many non-matching tags; on timeout we conservatively treat the tag as non-matching.
         tags = event_data.get("tags", [])
-        for tag in tags:
+        deadline = time.monotonic() + TAG_REGEX_MATCH_TIMEOUT
+        for i, tag in enumerate(tags):
             # Producers substitute the manifest digest (e.g. "sha256:...") for the tag list when
             # a manifest has no referencing tags. A digest is not a tag reference, and the UI
             # promises matching against tag(s), so it must never satisfy the filter. Per the
@@ -336,8 +338,18 @@ class VulnerabilityFoundEvent(NotificationEvent):
             # colon, so any entry with one is a digest (or otherwise not a tag) and is skipped.
             if not isinstance(tag, str) or ":" in tag:
                 continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                logger.warning(
+                    "Regex match budget exhausted for vulnerability event filter pattern %s; "
+                    "%d of %d tags left unevaluated",
+                    pattern,
+                    len(tags) - i,
+                    len(tags),
+                )
+                break
             try:
-                if matcher.fullmatch(tag, timeout=TAG_REGEX_MATCH_TIMEOUT):
+                if matcher.fullmatch(tag, timeout=remaining):
                     return True
             except TimeoutError:
                 logger.warning(
