@@ -19,6 +19,9 @@ http {
     {% if ssl_ciphers %}ssl_ciphers '{{ ssl_ciphers }}';{% endif %}
     {% if ssl_ciphersuites %}ssl_conf_command Ciphersuites {{ ssl_ciphersuites }};{% endif %}
     ssl_protocols {% for ssl_protocol in ssl_protocols %}{{ ssl_protocol }} {% endfor %};
+{% if ssl_ecdh_curves %}
+    ssl_ecdh_curve {{ ssl_ecdh_curves }};
+{% endif %}
     ssl_session_cache shared:SSL:60m;
     ssl_session_timeout 2h;
     ssl_session_tickets on;
