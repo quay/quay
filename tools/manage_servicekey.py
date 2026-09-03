@@ -9,6 +9,8 @@ from data.database import ServiceKey
 from data.model import ServiceKeyDoesNotExist
 from data.model.service_keys import OPERATOR_MANAGED_CREATED_BY
 
+DEFAULT_GRACE_SECONDS = 86400
+
 
 def _get_key_direct(kid):
     """
@@ -62,8 +64,8 @@ def main():
     expire_parser.add_argument(
         "--grace-seconds",
         type=int,
-        required=True,
-        help="Seconds from now until the key expires",
+        default=DEFAULT_GRACE_SECONDS,
+        help="Seconds from now until the key expires. Defaults to %(default)s",
     )
 
     args = parser.parse_args()

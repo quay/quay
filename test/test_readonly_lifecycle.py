@@ -15,6 +15,7 @@ Covers:
 import contextlib
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -33,7 +34,7 @@ from data.model.service_keys import (
     get_service_key_for_status,
 )
 from test.fixtures import *
-from tools.manage_servicekey import expire_key
+from tools.manage_servicekey import DEFAULT_GRACE_SECONDS, expire_key
 from util.config.schema import INTERNAL_ONLY_PROPERTIES
 
 # ---------------------------------------------------------------------------
@@ -590,6 +591,19 @@ class TestReadonlyVerification:
 
 
 class TestManageServiceKey:
+    def test_expire_cli_defaults_grace_seconds(self):
+        with (
+            patch.object(sys, "argv", ["manage_servicekey", "expire", "--kid", "test-kid"]),
+            patch("tools.manage_servicekey.expire_key", return_value=0) as mock_expire,
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            from tools.manage_servicekey import main
+
+            main()
+
+        assert excinfo.value.code == 0
+        mock_expire.assert_called_once_with("test-kid", DEFAULT_GRACE_SECONDS)
+
     def test_expire_missing_key_is_noop(self, initialized_db):
         assert expire_key("nonexistent-kid", 86400) == 0
 
