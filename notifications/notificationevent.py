@@ -39,6 +39,15 @@ def _compile_tag_regex(pattern: str) -> Pattern[str]:
     return regex.compile(pattern)
 
 
+def _tag_filter_unset(tag_regex) -> bool:
+    # None (absent key) or "" (the React form posts an empty string when the field is left
+    # blank) means no tag filter is configured. Every other value, including a falsey
+    # non-string like 0, False, [] or {}, is a real (and, unless a str, invalid) filter and
+    # must not be collapsed to "unset" -- doing so would disable the filter and notify on
+    # every tag.
+    return tag_regex is None or tag_regex == ""
+
+
 class InvalidNotificationEventException(Exception):
     pass
 
@@ -256,8 +265,8 @@ class VulnerabilityFoundEvent(NotificationEvent):
         # Validate the optional tag filter up front so a bad pattern is rejected with an API
         # error at creation time, instead of silently suppressing every notification when it
         # later fails to compile or is refused for being too long at match time.
-        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX) or None
-        if tag_regex is None:
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if _tag_filter_unset(tag_regex):
             return
 
         # Require a string. Without this, a non-string value (e.g. 123, ["["], {"x": "y"}) would
@@ -359,8 +368,8 @@ class VulnerabilityFoundEvent(NotificationEvent):
 
         # Filter on the referencing tags, if a tag pattern is configured. This is independent
         # of the severity level filter below; when both are set, both must pass.
-        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX) or None
-        if tag_regex is not None and not self._matches_tag_filter(event_data, tag_regex):
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if not _tag_filter_unset(tag_regex) and not self._matches_tag_filter(event_data, tag_regex):
             return False
 
         if VulnerabilityFoundEvent.CONFIG_LEVEL not in event_config:

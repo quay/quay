@@ -388,6 +388,34 @@ def test_vulnerability_notification_non_string_tag_regex():
     assert not VulnerabilityFoundEvent().should_perform({"tags": ["123"]}, notification_data)
 
 
+@pytest.mark.parametrize("bad", [0, False, [], {}])
+def test_validate_event_config_rejects_falsey_non_string_tag_regex(bad):
+    # Falsey non-strings (0, False, [], {}) must not be mistaken for "no filter": they are
+    # rejected at creation time, just like any other non-string pattern.
+    with pytest.raises(InvalidNotificationEventConfigException):
+        VulnerabilityFoundEvent().validate_event_config({"tag-regex": bad})
+
+
+@pytest.mark.parametrize("bad", [0, False, [], {}])
+def test_vulnerability_notification_falsey_non_string_tag_regex(bad):
+    # A falsey non-string filter persisted before validation must not disable filtering (which
+    # would notify on every tag); it is treated as no match, so the event does not fire.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": bad}})
+    assert not VulnerabilityFoundEvent().should_perform({"tags": ["v1.0"]}, notification_data)
+
+
+@pytest.mark.parametrize("empty", ["", None])
+def test_vulnerability_notification_empty_tag_regex_fires(empty):
+    # An empty string (the React form posts "" when the field is left blank) or an absent filter
+    # means no filter is configured, so the event fires regardless of tags.
+    notification_data = AttrDict({"event_config_dict": {"tag-regex": empty}})
+    assert VulnerabilityFoundEvent().should_perform({"tags": ["v1.0"]}, notification_data)
+    # Absent key behaves the same as an explicit empty value.
+    assert VulnerabilityFoundEvent().should_perform(
+        {"tags": ["v1.0"]}, AttrDict({"event_config_dict": {}})
+    )
+
+
 def test_vulnerability_notification_tag_regex_timeout(monkeypatch):
     # Deterministically exercise the timeout path: a catastrophically-backtracking pattern
     # against a long non-matching tag with a tiny per-tag budget must abort and not fire, without
