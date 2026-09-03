@@ -95,6 +95,7 @@ STEP_NAME="quay-test-e2e"
 # The workflow name is the first directory under artifacts/.
 # We'll try to download the JUnit XML to confirm the path.
 WORK_DIR=$(mktemp -d)
+trap 'rm -rf "${WORK_DIR:-}"' EXIT
 echo "Downloading artifacts to $WORK_DIR ..." >&2
 
 # Try to find the correct artifact path by probing for junit_playwright.xml
