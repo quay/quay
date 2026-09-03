@@ -12,6 +12,7 @@ Covers:
 - Cross-language thumbprint fixture
 """
 
+import contextlib
 import json
 import os
 import tempfile
@@ -71,6 +72,25 @@ def _write_key_files(tmpdir, private_key, kid):
         f.write(pem_bytes)
 
     return kid_path, pem_path
+
+
+@contextlib.contextmanager
+def _boot_config(**overrides):
+    """Temporarily override config values on boot.app.config (the real app instance)."""
+    import boot
+
+    originals = {}
+    for key, value in overrides.items():
+        originals[key] = boot.app.config.get(key)
+        boot.app.config[key] = value
+    try:
+        yield
+    finally:
+        for key, value in originals.items():
+            if value is None:
+                boot.app.config.pop(key, None)
+            else:
+                boot.app.config[key] = value
 
 
 def _create_operator_key(kid, public_jwk, service="quay", approved=True, expired=False):
@@ -317,25 +337,26 @@ class TestReadonlyDbWriteGuards:
 
 
 class TestFileBasedImport:
-    def test_import_creates_new_key(self, app, initialized_db):
+    def test_import_creates_new_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
-            app.config["INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES"] = True
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+                INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES=True,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                result_kid = _import_service_key_from_files()
 
-            result_kid = _import_service_key_from_files()
+                assert result_kid == kid
+                db_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
+                assert db_key.metadata.get("created_by") == "quay-operator-readonly"
+                assert db_key.approval is not None
 
-            assert result_kid == kid
-            db_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
-            assert db_key.metadata.get("created_by") == "quay-operator-readonly"
-            assert db_key.approval is not None
-
-    def test_import_refreshes_existing_key(self, app, initialized_db):
+    def test_import_refreshes_existing_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk)
 
@@ -343,37 +364,42 @@ class TestFileBasedImport:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                _import_service_key_from_files()
 
-            _import_service_key_from_files()
+                new_exp = ServiceKey.select().where(ServiceKey.kid == kid).get().expiration_date
+                assert new_exp > old_exp
 
-            new_exp = ServiceKey.select().where(ServiceKey.kid == kid).get().expiration_date
-            assert new_exp > old_exp
-
-    def test_import_rejects_wrong_service(self, app, initialized_db):
+    def test_import_rejects_wrong_service(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, service="other")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                with pytest.raises(Exception, match="belongs to service 'other'"):
+                    _import_service_key_from_files()
 
-            with pytest.raises(Exception, match="belongs to service 'other'"):
-                _import_service_key_from_files()
-
-    def test_import_rejects_mismatched_jwk(self, app, initialized_db):
+    def test_import_rejects_mismatched_jwk(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
-        # Create a key in DB with a different JWK but same kid (impossible in normal flow,
-        # but we test the validation)
         other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        other_jwk = JsonWebKey.import_key(other_key).as_dict()
-        other_jwk["kid"] = kid  # force same kid
+        other_pem = other_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        other_jwk = JsonWebKey.import_key(other_pem).as_dict()
+        other_jwk["kid"] = kid
 
         create_service_key(
             "test", kid, "quay", other_jwk, {"created_by": "quay-operator-readonly"}, None
@@ -382,72 +408,75 @@ class TestFileBasedImport:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                with pytest.raises(Exception, match="does not match"):
+                    _import_service_key_from_files()
 
-            with pytest.raises(Exception, match="does not match"):
-                _import_service_key_from_files()
-
-    def test_import_rejects_conflicting_created_by(self, app, initialized_db):
+    def test_import_rejects_conflicting_created_by(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         create_service_key("manual-key", kid, "quay", public_jwk, {"created_by": "admin"}, None)
         approve_service_key(kid, ServiceKeyApprovalType.AUTOMATIC)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                with pytest.raises(Exception, match="refusing to claim"):
+                    _import_service_key_from_files()
 
-            with pytest.raises(Exception, match="refusing to claim"):
-                _import_service_key_from_files()
-
-    def test_import_backfills_created_by(self, app, initialized_db):
+    def test_import_backfills_created_by(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         create_service_key("old-key", kid, "quay", public_jwk, {}, None)
         approve_service_key(kid, ServiceKeyApprovalType.AUTOMATIC)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _import_service_key_from_files
 
-            from boot import _import_service_key_from_files
+                _import_service_key_from_files()
 
-            _import_service_key_from_files()
+                db_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
+                assert db_key.metadata.get("created_by") == "quay-operator-readonly"
 
-            db_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
-            assert db_key.metadata.get("created_by") == "quay-operator-readonly"
-
-    def test_import_flag_false_does_not_trigger(self, app, initialized_db):
+    def test_import_flag_false_does_not_trigger(self, initialized_db):
         """Existing key files at default paths must not trigger import when flag is false."""
-        app.config["INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES"] = False
+        with _boot_config(INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES=False):
+            from boot import setup_instance_service_key
 
-        from boot import setup_instance_service_key
+            with (
+                patch("boot.generate_key") as mock_gen,
+                patch("boot._import_service_key_from_files") as mock_import,
+                patch("builtins.open", MagicMock()),
+            ):
+                mock_gen.return_value = (MagicMock(), "test-kid")
+                setup_instance_service_key()
+                mock_gen.assert_called_once()
+                mock_import.assert_not_called()
 
-        with (
-            patch("boot.generate_key") as mock_gen,
-            patch("boot._import_service_key_from_files") as mock_import,
-            patch("builtins.open", MagicMock()),
+    def test_import_flag_true_missing_files_fails(self, initialized_db):
+        with _boot_config(
+            INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES=True,
+            INSTANCE_SERVICE_KEY_KID_LOCATION="/nonexistent/quay.kid",
+            INSTANCE_SERVICE_KEY_LOCATION="/nonexistent/quay.pem",
+            REGISTRY_STATE="normal",
         ):
-            mock_gen.return_value = (MagicMock(), "test-kid")
-            setup_instance_service_key()
-            mock_gen.assert_called_once()
-            mock_import.assert_not_called()
+            from boot import setup_instance_service_key
 
-    def test_import_flag_true_missing_files_fails(self, app, initialized_db):
-        app.config["INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES"] = True
-        app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = "/nonexistent/quay.kid"
-        app.config["INSTANCE_SERVICE_KEY_LOCATION"] = "/nonexistent/quay.pem"
-        app.config["REGISTRY_STATE"] = "normal"
-
-        from boot import setup_instance_service_key
-
-        with pytest.raises(Exception, match="key files are missing"):
-            setup_instance_service_key()
+            with pytest.raises(Exception, match="key files are missing"):
+                setup_instance_service_key()
 
 
 # ---------------------------------------------------------------------------
@@ -456,47 +485,50 @@ class TestFileBasedImport:
 
 
 class TestReadonlyVerification:
-    def test_verify_rejects_unapproved_key(self, app, initialized_db):
+    def test_verify_rejects_unapproved_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, approved=False)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _verify_service_key
 
-            from boot import _verify_service_key
+                assert _verify_service_key() is None
 
-            assert _verify_service_key() is None
-
-    def test_verify_rejects_expired_key(self, app, initialized_db):
+    def test_verify_rejects_expired_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, expired=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+            ):
+                from boot import _verify_service_key
 
-            from boot import _verify_service_key
+                assert _verify_service_key() is None
 
-            assert _verify_service_key() is None
-
-    def test_verify_rejects_wrong_service(self, app, initialized_db):
+    def test_verify_rejects_wrong_service(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk, service="other")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
-            app.config["INSTANCE_SERVICE_KEY_SERVICE"] = "quay"
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+                INSTANCE_SERVICE_KEY_SERVICE="quay",
+            ):
+                from boot import _verify_service_key
 
-            from boot import _verify_service_key
+                assert _verify_service_key() is None
 
-            assert _verify_service_key() is None
-
-    def test_verify_rejects_missing_pem(self, app, initialized_db):
+    def test_verify_rejects_missing_pem(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk)
 
@@ -505,26 +537,28 @@ class TestReadonlyVerification:
             with open(kid_path, "w") as f:
                 f.write(kid)
 
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = os.path.join(tmpdir, "missing.pem")
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=os.path.join(tmpdir, "missing.pem"),
+            ):
+                from boot import _verify_service_key
 
-            from boot import _verify_service_key
+                assert _verify_service_key() is None
 
-            assert _verify_service_key() is None
-
-    def test_verify_succeeds_with_valid_key(self, app, initialized_db):
+    def test_verify_succeeds_with_valid_key(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         _create_operator_key(kid, public_jwk)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             kid_path, pem_path = _write_key_files(tmpdir, private_key, kid)
-            app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"] = kid_path
-            app.config["INSTANCE_SERVICE_KEY_LOCATION"] = pem_path
-            app.config["INSTANCE_SERVICE_KEY_SERVICE"] = "quay"
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+                INSTANCE_SERVICE_KEY_SERVICE="quay",
+            ):
+                from boot import _verify_service_key
 
-            from boot import _verify_service_key
-
-            assert _verify_service_key() == kid
+                assert _verify_service_key() == kid
 
 
 # ---------------------------------------------------------------------------
