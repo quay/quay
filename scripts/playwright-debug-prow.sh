@@ -280,8 +280,6 @@ suites = root.findall(".//testsuite") if root.tag == "testsuites" else [root]
 
 for suite in suites:
     suite_name = suite.get("name", "")
-    stats["total"] += int(suite.get("tests", "0"))
-    stats["skipped"] += int(suite.get("skipped", "0"))
     try:
         stats["duration"] += float(suite.get("time", "0"))
     except ValueError:
@@ -293,9 +291,16 @@ for suite in suites:
         tc_file = tc.get("file", tc_classname)
         tc_time = tc.get("time", "0")
 
+        # Count every testcase toward the total so summary counts reflect the
+        # classifications below rather than raw suite attributes.
+        stats["total"] += 1
+
         failure = tc.find("failure")
         error = tc.find("error")
         skipped = tc.find("skipped")
+
+        if skipped is not None:
+            stats["skipped"] += 1
 
         if failure is not None:
             error_msg = failure.get("message", "")
