@@ -434,7 +434,7 @@ class TestFileBasedImport:
                 with pytest.raises(Exception, match="refusing to claim"):
                     _import_service_key_from_files()
 
-    def test_import_backfills_created_by(self, initialized_db):
+    def test_import_rejects_missing_created_by(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         create_service_key("old-key", kid, "quay", public_jwk, {}, None)
         approve_service_key(kid, ServiceKeyApprovalType.AUTOMATIC)
@@ -447,10 +447,8 @@ class TestFileBasedImport:
             ):
                 from boot import _import_service_key_from_files
 
-                _import_service_key_from_files()
-
-                db_key = ServiceKey.select().where(ServiceKey.kid == kid).get()
-                assert db_key.metadata.get("created_by") == "quay-operator-readonly"
+                with pytest.raises(Exception, match="refusing to claim"):
+                    _import_service_key_from_files()
 
     def test_import_flag_false_does_not_trigger(self, initialized_db):
         """Existing key files at default paths must not trigger import when flag is false."""
