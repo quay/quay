@@ -25,9 +25,9 @@ export default function RepoEventVulnTagRegex(
       />
       <HelperText>
         <HelperTextItem>
-          An optional regular expression for matching the tag(s) referencing the
-          vulnerable image. If left blank, the notification will fire for all
-          tags.
+          An optional regular expression that must match the whole tag(s)
+          referencing the vulnerable image. If left blank, the notification will
+          fire for all tags.
         </HelperTextItem>
       </HelperText>
     </FormGroup>

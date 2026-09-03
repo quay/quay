@@ -25,6 +25,14 @@ MAX_TAG_REGEX_LENGTH = 256
 # ReDoS pattern (e.g. "^(a+)+$") that would otherwise pin CPU on a long non-matching tag.
 TAG_REGEX_MATCH_TIMEOUT = 1.0
 
+# Mirrors the TAG_LIMIT the notification producers apply when calling
+# tag_names_for_manifest (workers/securityscanningnotificationworker.py and
+# data/secscan_model/secscan_v4_model*.py). When a manifest carries more referencing tags than
+# this, the producer truncates the list before it reaches the filter, so a matching tag beyond
+# the cap would be invisible here. Kept as a local copy to avoid importing the worker/secscan
+# modules (which would create an import cycle); it must stay in sync with those producers.
+PRODUCER_TAG_LIMIT = 100
+
 
 @lru_cache(maxsize=256)
 def _compile_tag_regex(pattern: str) -> Pattern[str]:
@@ -285,13 +293,24 @@ class VulnerabilityFoundEvent(NotificationEvent):
             logger.warning("Regular expression error for vulnerability event filter: %s", pattern)
             return False
 
-        # Only fire the event if at least one referencing tag matches the pattern. An empty
-        # tag list (or no tags at all) never matches. Matching runs under a per-tag timeout so
-        # a crafted, catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS);
-        # on timeout we conservatively treat the tag as non-matching.
-        for tag in event_data.get("tags", []):
+        # Only fire the event if at least one referencing tag matches the pattern as a whole.
+        # We use fullmatch (not match, which anchors only at the start, so "latest" would match
+        # "latest-extra") to keep the filter consistent with immutability tag patterns and the
+        # UI placeholder "(v2\..*)|(latest)", which imply whole-tag matching. An empty tag list
+        # (or no tags at all) never matches. Matching runs under a per-tag timeout so a crafted,
+        # catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS); on timeout we
+        # conservatively treat the tag as non-matching.
+        tags = event_data.get("tags", [])
+        for tag in tags:
+            # Producers substitute the manifest digest (e.g. "sha256:...") for the tag list when
+            # a manifest has no referencing tags. A digest is not a tag reference, and the UI
+            # promises matching against tag(s), so it must never satisfy the filter. Per the
+            # Docker tag grammar ([A-Za-z0-9_][A-Za-z0-9_.-]{0,127}) a tag can never contain a
+            # colon, so any entry with one is a digest (or otherwise not a tag) and is skipped.
+            if not isinstance(tag, str) or ":" in tag:
+                continue
             try:
-                if matcher.match(tag, timeout=TAG_REGEX_MATCH_TIMEOUT):
+                if matcher.fullmatch(tag, timeout=TAG_REGEX_MATCH_TIMEOUT):
                     return True
             except TimeoutError:
                 logger.warning(
@@ -299,6 +318,22 @@ class VulnerabilityFoundEvent(NotificationEvent):
                     pattern,
                     tag,
                 )
+
+        # Fail open on truncation. The producers cap the referencing tags at PRODUCER_TAG_LIMIT,
+        # so when the delivered list is at (or above) that cap a matching tag may have been
+        # dropped before it reached us. Silently suppressing a security notification is worse
+        # than a possible false positive, so in that case we fire anyway.
+        if len(tags) >= PRODUCER_TAG_LIMIT:
+            logger.warning(
+                "Vulnerability event tag filter %s matched none of %d tags, at or above the "
+                "producer tag limit of %d; firing anyway to avoid suppressing a security "
+                "notification whose matching tag may have been truncated",
+                pattern,
+                len(tags),
+                PRODUCER_TAG_LIMIT,
+            )
+            return True
+
         return False
 
     def should_perform(self, event_data, notification_data):

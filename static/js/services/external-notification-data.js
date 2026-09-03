@@ -149,8 +149,9 @@ function(Config, Features, VulnerabilityService, DocumentationService) {
           'name': 'tag-regex',
           'type': 'regex',
           'title': 'matching tag(s)',
-          'help_text': 'An optional regular expression for matching the tag(s) referencing the ' +
-                       'vulnerable image. If left blank, the notification will fire for all tags.',
+          'help_text': 'An optional regular expression that must match the whole tag(s) ' +
+                       'referencing the vulnerable image. If left blank, the notification ' +
+                       'will fire for all tags.',
           'optional': true,
           'placeholder': '(v2\\..*)|(latest)'
         }
