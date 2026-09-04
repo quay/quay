@@ -75,6 +75,24 @@ def _write_key_files(tmpdir, private_key, kid):
     return kid_path, pem_path
 
 
+def _write_public_key_files(tmpdir, private_key, kid):
+    """Write .kid and public-only .pem files to tmpdir, return (kid_path, pem_path)."""
+    kid_path = os.path.join(tmpdir, "quay-readonly.kid")
+    pem_path = os.path.join(tmpdir, "quay-readonly.pem")
+
+    with open(kid_path, "w") as f:
+        f.write(kid)
+
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    with open(pem_path, "wb") as f:
+        f.write(public_pem)
+
+    return kid_path, pem_path
+
+
 @contextlib.contextmanager
 def _boot_config(**overrides):
     """Temporarily override config values on boot.app.config (the real app instance)."""
@@ -418,6 +436,21 @@ class TestFileBasedImport:
                 with pytest.raises(Exception, match="does not match"):
                     _import_service_key_from_files()
 
+    def test_import_rejects_public_only_pem(self, initialized_db):
+        private_key, kid, public_jwk = _generate_test_rsa_key()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            kid_path, pem_path = _write_public_key_files(tmpdir, private_key, kid)
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+                INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES=True,
+            ):
+                from boot import _import_service_key_from_files
+
+                with pytest.raises(Exception, match="must contain a private key"):
+                    _import_service_key_from_files()
+
     def test_import_rejects_conflicting_created_by(self, initialized_db):
         private_key, kid, public_jwk = _generate_test_rsa_key()
         create_service_key("manual-key", kid, "quay", public_jwk, {"created_by": "admin"}, None)
@@ -562,6 +595,21 @@ class TestReadonlyVerification:
             with _boot_config(
                 INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
                 INSTANCE_SERVICE_KEY_LOCATION=os.path.join(tmpdir, "missing.pem"),
+            ):
+                from boot import _verify_service_key
+
+                assert _verify_service_key() is None
+
+    def test_verify_rejects_public_only_pem(self, initialized_db):
+        private_key, kid, public_jwk = _generate_test_rsa_key()
+        _create_operator_key(kid, public_jwk)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            kid_path, pem_path = _write_public_key_files(tmpdir, private_key, kid)
+            with _boot_config(
+                INSTANCE_SERVICE_KEY_KID_LOCATION=kid_path,
+                INSTANCE_SERVICE_KEY_LOCATION=pem_path,
+                INSTANCE_SERVICE_KEY_SERVICE="quay",
             ):
                 from boot import _verify_service_key
 
