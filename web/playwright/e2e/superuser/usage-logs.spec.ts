@@ -84,6 +84,33 @@ test.describe(
       await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
     });
 
+    test('chart legend labels are not truncated', async ({superuserPage}) => {
+      await superuserPage.goto('/usage-logs');
+
+      // Ensure the chart is visible
+      const toggle = superuserPage.getByTestId('usage-logs-chart-toggle');
+      await expect(toggle).toBeVisible();
+      if ((await toggle.textContent())?.includes('Show Chart')) {
+        await toggle.click();
+      }
+
+      // Wait for chart to render
+      const chart = superuserPage.getByTestId('usage-logs-chart');
+      await expect(chart).toBeVisible();
+
+      // Verify the legend container does not clip its content horizontally
+      const container = superuserPage.locator('.usage-logs-legend-container');
+      await expect(container).toBeVisible();
+      const box = await container.boundingBox();
+      if (box) {
+        // scrollWidth should not exceed clientWidth (no hidden overflow)
+        const overflow = await container.evaluate((el) => {
+          return el.scrollWidth > el.clientWidth;
+        });
+        expect(overflow).toBe(false);
+      }
+    });
+
     test('shows info alert when Splunk search is not configured', async ({
       superuserPage,
     }) => {
