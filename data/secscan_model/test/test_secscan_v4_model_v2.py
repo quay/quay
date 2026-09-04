@@ -8,7 +8,13 @@ from peewee import fn
 import features
 from app import app as application
 from app import instance_keys, storage
-from data.database import IndexerVersion, IndexStatus, Manifest, ManifestSecurityStatus
+from data.database import (
+    IndexerVersion,
+    IndexStatus,
+    Manifest,
+    ManifestSecurityStatus,
+    db,
+)
 from data.registry_model import registry_model
 from data.secscan_model.secscan_v4_model import IndexReportState
 from data.secscan_model.secscan_v4_model_v2 import V4SecurityScannerV2
@@ -272,6 +278,50 @@ class TestFindAndClaimBatch:
             manifest_count, reindex_threshold, stale_threshold, "abc"
         )
         assert len(claimed) == manifest_count
+
+    def test_orphaned_mss_row_does_not_consume_batch_slot(self, initialized_db, scanner):
+        # Simulate a ManifestSecurityStatus row whose backing Manifest has been
+        # removed by some path other than the coordinated GC transaction (there
+        # is no ON DELETE CASCADE enforcing that these are always deleted
+        # together). Such a row should never be selected as a candidate, since
+        # it can never be claimed and would otherwise permanently occupy a
+        # batch slot without ever being processed or cleaned up.
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+
+        self._create_mss_for_all(IndexStatus.PENDING)
+
+        orphan = ManifestSecurityStatus.select().first()
+        orphan_manifest_id = orphan.manifest_id
+
+        # A plain ORM delete cannot produce this scenario today: the FK is
+        # enforced and the only coordinated deletion path (data/model/gc.py)
+        # deletes the Manifest and its ManifestSecurityStatus row in the same
+        # transaction. Disable FK enforcement for this one delete to emulate
+        # the "future code path, migration, or direct DB operation" that
+        # could violate that invariant, exactly as described in the issue.
+        db.obj.execute_sql("PRAGMA foreign_keys = OFF;")
+        try:
+            Manifest.delete().where(Manifest.id == orphan_manifest_id).execute()
+        finally:
+            db.obj.execute_sql("PRAGMA foreign_keys = ON;")
+
+        # Give the orphaned row the most recent last_indexed value so it is
+        # prioritized ahead of the still-live manifests below, guaranteeing it
+        # would occupy a candidate slot if it weren't excluded by the fix.
+        ManifestSecurityStatus.update(last_indexed=datetime.utcnow()).where(
+            ManifestSecurityStatus.id == orphan.id
+        ).execute()
+
+        live_manifest_count = Manifest.select().count()
+
+        claimed = scanner._find_and_claim_batch(
+            live_manifest_count, reindex_threshold, stale_threshold, "abc"
+        )
+
+        claimed_manifest_ids = {row.manifest_id for row in claimed}
+        assert orphan_manifest_id not in claimed_manifest_ids
+        assert len(claimed) == live_manifest_count
 
 
 class TestRetryCountTracking:
