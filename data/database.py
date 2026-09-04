@@ -503,26 +503,15 @@ class ObservablePooledDatabase(ObservableDatabase):
                 f"Unable to obtain healthy connection after {max_retries} attempts"
             )
 
-        try:
-            conn = super(ObservablePooledDatabase, self)._connect()
-        except MaxConnectionsExceeded:
-            # Pool exhausted - wait with exponential backoff before retrying
-            # Base delay: 10ms, max delay: 200ms to prevent long waits
-            delay = min(0.01 * (2**_retry_count), 0.2)
-            # Add jitter to prevent thundering herd (±25% randomization)
-            jitter = delay * (0.75 + uniform(0, 0.5))
-            logger.debug(
-                "Connection pool exhausted (attempt %d/%d), retrying after %.3fs",
-                _retry_count + 1,
-                max_retries,
-                jitter,
-            )
-            time.sleep(jitter)
-            return self._connect(_retry_count=_retry_count + 1)
+        # try and establish a connection
+        # if the call fails, the exception will propagate downwards, which is what we want
+        conn = super(ObservablePooledDatabase, self)._connect()
 
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT 1")
+                # roll back the request immediately so it doesn't end in IDLE_IN_TRANSACTION
+                conn.rollback()
             return conn  # Connection is healthy
         except Exception as e:
             # Catch ALL exceptions during liveness check - includes ProtocolViolation,
@@ -545,16 +534,34 @@ class ObservablePooledDatabase(ObservableDatabase):
             except Exception as ex:
                 logger.debug("Error closing stale connection: %s", ex)
 
-            # Small delay before retry to allow other requests to complete
-            if _retry_count > 0:
-                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
-                time.sleep(delay)
-
             # Recursively retry - pool will provide another connection (or create new one)
             return self._connect(_retry_count=_retry_count + 1)
 
     def connect(self, reuse_if_open=False):
-        ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
+        max_retries = 7
+        for attempt in range(max_retries):
+            try:
+                ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
+                break
+            except MaxConnectionsExceeded as e:
+                if attempt == max_retries - 1:
+                    logger.warning(
+                        f"Could not get a healthy connection after {max_retries} attempts: {e}"
+                    )
+                    raise
+                # Pool exhausted - wait with exponential backoff before retrying
+                # Base delay: 10ms, max delay: 200ms to prevent long waits
+                delay = min(0.01 * (2**attempt), 0.2)
+                # Add jitter to prevent thundering herd (±25% randomization)
+                jitter = delay * (0.75 + uniform(0, 0.5))
+                logger.debug(
+                    "Connection pool exhausted (attempt %d/%d), retrying after %.3fs",
+                    attempt + 1,
+                    max_retries,
+                    jitter,
+                )
+                time.sleep(jitter)
+
         db_pooled_connections_in_use.set(len(self._in_use))
         db_pooled_connections_available.set(len(self._connections))
         return ret
