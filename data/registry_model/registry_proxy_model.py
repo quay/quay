@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import queue
+import threading
 from typing import Callable
 
+import bitmath
 from peewee import Select, fn
 
 import features
 from app import app, proxy_cache_blob_queue, storage
+from data import database
 from data.database import ImageStorage, ImageStoragePlacement
 from data.database import Manifest as ManifestTable
 from data.database import ManifestBlob, ManifestChild
@@ -79,6 +84,41 @@ ACCEPTED_MEDIA_TYPES = [
     DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
 ]
+
+
+class QueueReader:
+    """A file-like object that pulls data from a thread-safe Queue."""
+
+    def __init__(self, q, timeout=10):
+        self.q = q
+        self.buffer = b""
+        self.timeout = timeout
+        # track EOF state
+        self._eof = False
+
+    def read(self, size=-1):
+        if self._eof:
+            return b""
+
+        if not self.buffer:
+            try:
+                # Wait for the generator to provide a chunk
+                chunk = self.q.get(timeout=self.timeout)
+                if chunk is None:  # None is our EOF signal
+                    self._eof = True
+                    return b""
+                self.buffer = chunk
+            except queue.Empty:
+                raise IOError("Timeout waiting for chunk from stream")
+
+        if size < 0 or size >= len(self.buffer):
+            res = self.buffer
+            self.buffer = b""
+            return res
+
+        res = self.buffer[:size]
+        self.buffer = self.buffer[size:]
+        return res
 
 
 class ProxyModel(OCIModel):
@@ -693,16 +733,9 @@ class ProxyModel(OCIModel):
                 self._rollback_created_blobs_and_quota(repository_ref, db_manifest, created_blobs)
             raise
 
-    def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
+    def _lookup_blob_by_digest(self, repository_ref, blob_digest):
         """
-        Returns the blob in the repository with the given digest.
-
-        If the blob is a placeholder, downloads it from the upstream registry.
-        Placeholder blobs are blobs that don't yet have a ImageStoragePlacement
-        associated with it.
-
-        Note that there may be multiple records in the same repository for the same blob digest, so
-        the return value of this function may change.
+        Fetches the ImageStorage row for a specified blob digest or None if the row doesn't exist
         """
         blob = self._get_shared_storage(blob_digest)
         if blob is None:
@@ -718,43 +751,242 @@ class ProxyModel(OCIModel):
                 )
             except ImageStorage.DoesNotExist:
                 return None
+        return blob
 
-        needs_download = False
+    def _needs_download(self, repository_ref, blob):
+        """
+        Returns true if a provided blob needs downloading, or false otherwise.
+        """
         try:
             placement = (
                 ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
             )
         except ImageStoragePlacement.DoesNotExist:
-            needs_download = True
+            return True
 
-        if not needs_download:
+        try:
+            layer_path = get_layer_path(blob)
+            location_name = get_image_location_for_id(placement.location_id).name
+            if not storage.exists([location_name], layer_path):
+                logger.warning(
+                    "Blob %s has placements in DB but is missing from storage, re-fetching from upstream",
+                    blob.content_checksum,
+                )
+                return True
+        except (IOError, OSError):
+            logger.exception(
+                "Failed to verify blob %s existence in storage, re-fetching from upstream",
+                blob.content_checksum,
+            )
+            return True
+
+        return False
+
+    def _queue_blob_for_download(self, repo_ref, blob_digest, available_after=5):
+        """
+        Enqueues the current blob for later download based on the available_after parameter
+        if streaming of blob fails.
+        """
+        username = self._user.username if self._user else None
+        try:
+            queue_id = proxy_cache_blob_queue.put(
+                [self._namespace_name, str(repo_ref.id), blob_digest],
+                json.dumps(
+                    {
+                        "digest": blob_digest,
+                        "repo_id": repo_ref.id,
+                        "username": username,
+                        "namespace": self._namespace_name,
+                    }
+                ),
+                available_after=available_after,
+            )
+        except Exception as e:
+            logger.error("Could not enqueue blob for download: %s", e)
+
+    def get_streaming_proxy_blob(self, namespace_name, repo_name, blob_digest):
+        """
+        Returns a (generator, content_length) tuple for tee-streaming, or None.
+        """
+
+        repo_ref = self.lookup_repository(namespace_name, repo_name)
+        if repo_ref is None:
+            return None
+
+        blob = self._lookup_blob_by_digest(repo_ref, blob_digest)
+        if blob is None or not self._needs_download(repo_ref, blob):
+            return None
+
+        # initialize fetch of upstream blob
+        try:
+            resp = self._proxy.get_blob(blob_digest)
+        except UpstreamRegistryError as e:
+            logger.warning("Could not fetch blob %s from upstream: %s", blob_digest, e)
+            return None
+
+        try:
+            content_length = int(resp.headers.get("content-length", -1))
+        except (TypeError, ValueError) as e:
+            logger.warning(
+                "Upstream returned an invalid contentn length for blob %s, setting content-length to -1",
+                blob_digest,
+            )
+            content_length = -1
+
+        # set expiration
+        expiration = (
+            self._config.expiration_s
+            if self._config.expiration_s
+            else app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
+        )
+
+        # chunk size
+        chunk_size = 64 * 1024
+
+        # set blob upload settings
+        settings = BlobUploadSettings(
+            maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
+            committed_blob_expiration=expiration,
+        )
+
+        # check if the blob content-length is larger than the max allowed layer size
+        max_blob_size = bitmath.parse_string_unsafe(app.config["MAXIMUM_LAYER_SIZE"])
+        if content_length != -1 and bitmath.Byte(content_length) > max_blob_size:
+            resp.close()
+            logger.warning("Blob %s too large, aborting tee stream upload", blob_digest)
+            raise BlobTooLargeException(
+                uploaded=content_length, max_allowed=int(max_blob_size.bytes)
+            )
+
+        def _stop_upload_thread(q: queue.Queue, upload_thread: threading.Thread):
+            """
+            Helper function that sends an EOF signal for the upload forcing the
+            upload thread to exit.
+            """
             try:
-                layer_path = get_layer_path(blob)
-                location_name = get_image_location_for_id(placement.location_id).name
-                if not storage.exists([location_name], layer_path):
+                q.put(None, timeout=2)
+            except queue.Full:
+                logger.warning(
+                    "Storage queue full for upload thread %s, continuing...", upload_thread.name
+                )
+                pass
+            upload_thread.join(timeout=5)
+
+        def generate():
+            """
+            Chunks upstream blobs into 64 KiB chunks to be streamed directly to the client and initializes
+            a thread to stream data to backend storage simultaneously. If streaming to storage fails, then
+            depending on the failure, blob will either be discarded or queued for later pull.
+
+            If upstream blob is avilable, the generator should **always** yield chunks of the upstream blob
+            to the requester.
+            """
+            # buffer up to 16 chunks in memory
+            q = queue.Queue(maxsize=16)
+            read_fp = QueueReader(q)
+
+            # upload exception list
+            upload_exception = []
+
+            # track errors during upload
+            upstream_complete = threading.Event()
+
+            # track stream outcomes
+            # can be 'complete', 'queue_full' or 'upstream_error'
+            stream_outcome = None
+
+            def do_upload():
+                """
+                Streams the content from upstream to Quay's local storage.
+                """
+                uploader = None
+                try:
+                    uploader = create_blob_upload(repo_ref, storage, settings)
+
+                    if uploader is None:
+                        upload_exception.append(BlobUploadException("Could not create blob upload"))
+                        return
+
+                    uploader.upload_chunk(app.config, read_fp, 0, content_length)
+
+                    if upstream_complete.is_set():
+                        uploader.commit_to_blob(app.config, blob_digest)
+                    else:
+                        uploader.cancel_upload()
+                except Exception as e:
+                    upload_exception.append(e)
+                    if uploader is not None and uploader.committed_blob is None:
+                        uploader.cancel_upload()
+                finally:
+                    database.close_db_filter(None)
+
+            upload_thread = threading.Thread(target=do_upload)
+            upload_thread.start()
+            logger.debug(
+                "Started upload thread %s for blob upload %s", upload_thread.name, blob_digest
+            )
+
+            try:
+                for chunk in resp.iter_content(chunk_size=chunk_size):
+                    if stream_outcome != "queue_full":
+                        try:
+                            q.put(chunk, timeout=2.0)
+                        except queue.Full:
+                            stream_outcome = "queue_full"
+
+                    # always yield the chunk
+                    yield chunk
+                else:
+                    if stream_outcome != "queue_full":
+                        stream_outcome = "complete"
+                        upstream_complete.set()
+            except Exception:
+                stream_outcome = "upstream_error"
+            finally:
+                _stop_upload_thread(q, upload_thread)
+                resp.close()
+
+                if upload_thread.is_alive():
                     logger.warning(
-                        "Blob %s has placements in DB but is missing from storage, re-fetching from upstream",
+                        "Upload thread did not finish in time for blob %s, queueing for re-download",
                         blob_digest,
                     )
-                    needs_download = True
-            except (IOError, OSError):
-                logger.exception(
-                    "Failed to verify blob %s existence in storage, re-fetching from upstream",
-                    blob_digest,
-                )
-                needs_download = True
+                    self._queue_blob_for_download(repo_ref, blob_digest, available_after=30)
 
-        if needs_download:
-            try:
-                self._download_blob(repository_ref, blob_digest)
-            except BlobDigestMismatchException:
-                raise UpstreamRegistryError("blob digest mismatch")
-            except BlobTooLargeException as e:
-                raise UpstreamRegistryError(f"blob too large, max allowed is {e.max_allowed}")
-            except BlobRangeMismatchException:
-                raise UpstreamRegistryError("range mismatch")
-            except BlobUploadException:
-                raise UpstreamRegistryError("invalid blob upload")
+                elif stream_outcome == "queue_full":
+                    logger.warning(
+                        "Backend storage too slow, aborting tee-stream upload for %s",
+                        blob_digest,
+                    )
+                    self._queue_blob_for_download(repo_ref, blob_digest)
+                elif upload_exception:
+                    if stream_outcome == "complete":
+                        self._queue_blob_for_download(repo_ref, blob_digest)
+                        logger.warning(
+                            "Tee-stream failed for blob %s, queueing for later download",
+                            blob_digest,
+                        )
+                    else:
+                        logger.warning(
+                            "Connection error raised during blob download, aborting tee stream upload for blob %s",
+                            blob_digest,
+                        )
+
+        return generate(), content_length
+
+    def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
+        """
+        Returns the blob in the repository with the given digest.
+
+        Returns None for missing blobs and placeholder blobs for the blobs to be streamed directly
+        from upstream. Callers should call get_streaming_proxy_blob if blob placement is missing.
+        """
+        blob = self._lookup_blob_by_digest(repository_ref, blob_digest)
+        if blob is None:
+            return None
+
+        if self._needs_download(repository_ref, blob):
+            return None
 
         return super().get_repo_blob_by_digest(repository_ref, blob_digest, include_placements)
 
