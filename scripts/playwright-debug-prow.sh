@@ -89,6 +89,7 @@ echo "Job status: $JOB_STATUS" >&2
 STEP_NAME="quay-test-e2e"
 
 WORK_DIR=$(mktemp -d)
+trap 'rm -rf "${WORK_DIR:-}"' EXIT
 echo "Downloading artifacts to $WORK_DIR ..." >&2
 
 RESULTS_FOUND=false
