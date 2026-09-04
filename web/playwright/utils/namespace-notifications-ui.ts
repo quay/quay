@@ -5,7 +5,12 @@ export function nsNotificationsTable(page: Page): Locator {
 }
 
 export function nsNotificationRow(page: Page, title: string | RegExp): Locator {
-  return nsNotificationsTable(page).getByRole('row', {name: title});
+  const table = nsNotificationsTable(page);
+  const titleCell =
+    typeof title === 'string'
+      ? table.getByRole('gridcell', {name: title, exact: true})
+      : table.getByRole('gridcell', {name: title});
+  return table.getByRole('row').filter({has: titleCell});
 }
 
 export async function expectNsNotificationRow(
@@ -34,7 +39,7 @@ export async function expectNsNotificationRow(
 
 export async function closeNotificationModal(page: Page): Promise<void> {
   const modal = page.getByRole('dialog');
-  await modal.getByRole('button', {name: 'Close'}).click();
+  await modal.getByLabel('Close', {exact: true}).click();
 }
 
 export async function selectTeamRecipient(

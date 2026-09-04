@@ -43,10 +43,16 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
   const effectivelyDisabled = isDisabled || !sparseSupported;
 
   useEffect(() => {
+    // Wait until capabilities are loaded before clearing. While the query is
+    // in flight, sparseSupported defaults to false and would wipe a filter
+    // that UseMirroringConfig just hydrated from the mirror API.
+    if (isLoading) {
+      return;
+    }
     if (!sparseSupported && selectedArchitectures.length > 0) {
       onChange([]);
     }
-  }, [sparseSupported, selectedArchitectures.length, onChange]);
+  }, [isLoading, sparseSupported, selectedArchitectures.length, onChange]);
 
   // Build available architectures from backend data
   const availableArchitectures = useMemo(() => {
@@ -191,10 +197,10 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
             {!sparseSupported
               ? 'Architecture filtering requires sparse manifest support (FEATURE_SPARSE_INDEX) to be enabled.'
               : selectedArchitectures.length === 0
-              ? 'All architectures will be mirrored from multi-arch images.'
-              : `Only ${selectedArchitectures.join(
-                  ', ',
-                )} architecture(s) will be mirrored.`}
+                ? 'All architectures will be mirrored from multi-arch images.'
+                : `Only ${selectedArchitectures.join(
+                    ', ',
+                  )} architecture(s) will be mirrored.`}
           </HelperTextItem>
         </HelperText>
       </FormHelperText>

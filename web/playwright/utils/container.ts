@@ -271,6 +271,64 @@ export async function pushImage(
 }
 
 /**
+ * Layer size used by quota-notification e2e tests. Two pushes to different
+ * repos reliably exceed typical warning thresholds (e.g. 80% of 3 MiB).
+ */
+export const QUOTA_NOTIFICATION_LAYER_BYTES = 1_400_000;
+
+/**
+ * Push an image whose layer content is at least `layerBytes` so quota usage
+ * crosses notification thresholds predictably in CI.
+ */
+export async function pushImageWithLayerSize(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+  layerBytes: number = QUOTA_NOTIFICATION_LAYER_BYTES,
+): Promise<void> {
+  await requireTool('crane');
+
+  const image = targetImage(namespace, repo, tag);
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'quay-sized-img-'));
+  const rootDir = path.join(tmpDir, 'root');
+  const authDir = path.join(tmpDir, 'auth');
+  const layerTar = path.join(tmpDir, 'layer.tar');
+
+  try {
+    await mkdir(rootDir);
+    await mkdir(authDir);
+    await writeFile(
+      path.join(rootDir, 'quota-fill'),
+      Buffer.alloc(layerBytes, 0),
+    );
+    await writeFile(path.join(rootDir, 'unique'), `${uniqueId}\n`);
+    await execFileAsync('tar', [
+      '-C',
+      rootDir,
+      '-cf',
+      layerTar,
+      'quota-fill',
+      'unique',
+    ]);
+
+    await craneLogin(REGISTRY_HOST, username, password, authDir);
+
+    await retryOperation(() =>
+      execFileAsync(
+        'crane',
+        ['append', '--insecure', '--new_layer', layerTar, '--new_tag', image],
+        {env: {...process.env, DOCKER_CONFIG: authDir}},
+      ).then(() => undefined),
+    );
+  } finally {
+    await rm(tmpDir, {recursive: true, force: true});
+  }
+}
+
+/**
  * Push an image with a unique layer to the registry, guaranteeing
  * unique blob digests (no deduplication with prior pushes).
  */

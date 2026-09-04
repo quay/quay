@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImage} from '../../utils/container';
+import {pushImageWithLayerSize} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 
 test.describe(
@@ -46,17 +46,17 @@ test.describe(
             'Dedup Webhook',
           );
 
-          // Push images to cross the 50% threshold (~1.2 MiB each)
+          // Push images to cross the 50% threshold (~1.4 MiB each)
           await api.repositoryWithName(org.name, 'deduprepo1');
           await api.repositoryWithName(org.name, 'deduprepo2');
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'deduprepo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'deduprepo2',
             'v2',
@@ -70,7 +70,7 @@ test.describe(
 
           // Push another image (still above threshold, within cooldown)
           await api.repositoryWithName(org.name, 'deduprepo3');
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'deduprepo3',
             'v3',
