@@ -3,6 +3,7 @@ import {TEST_USERS} from '../../global-setup';
 import {
   closeNotificationModal,
   expectNsNotificationRow,
+  nsNotificationRow,
 } from '../../utils/namespace-notifications-ui';
 
 test.describe(
@@ -44,6 +45,10 @@ test.describe(
 
       await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
+      const notificationRow = nsNotificationRow(
+        authenticatedPage,
+        'User Webhook Notification',
+      );
       await expectNsNotificationRow(
         authenticatedPage,
         'User Webhook Notification',
@@ -55,7 +60,7 @@ test.describe(
       );
 
       // Test the notification via kebab menu
-      const kebabToggle = authenticatedPage
+      const kebabToggle = notificationRow
         .locator('[data-testid$="-ns-toggle-kebab"]')
         .first();
       await kebabToggle.click();
@@ -196,8 +201,8 @@ test.describe(
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(authenticatedPage.getByText('User Webhook 1')).toBeVisible();
-      await expect(authenticatedPage.getByText('User Email 1')).toBeVisible();
+      await expectNsNotificationRow(authenticatedPage, 'User Webhook 1');
+      await expectNsNotificationRow(authenticatedPage, 'User Email 1');
     });
 
     test('Notifications tab is visible in user settings when feature flag enabled', async ({
@@ -285,21 +290,20 @@ test.describe(
       // Navigate to user settings — org notification should NOT appear
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'User Only Notification',
+      );
       await expect(
-        authenticatedPage.getByText('User Only Notification'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Org Only Notification'),
+        nsNotificationRow(authenticatedPage, 'Org Only Notification'),
       ).not.toBeVisible();
 
       // Navigate to org settings — user notification should NOT appear
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
+      await expectNsNotificationRow(authenticatedPage, 'Org Only Notification');
       await expect(
-        authenticatedPage.getByText('Org Only Notification'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('User Only Notification'),
+        nsNotificationRow(authenticatedPage, 'User Only Notification'),
       ).not.toBeVisible();
     });
   },

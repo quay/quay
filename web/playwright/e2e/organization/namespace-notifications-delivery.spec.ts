@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImageWithLayerSize} from '../../utils/container';
+import {pushImage, pushQuotaNotificationImage} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 import {mailpit} from '../../utils/mailpit';
 
@@ -20,7 +20,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const org = await api.organization('nsdelivwarn');
 
@@ -47,17 +47,17 @@ test.describe(
             'Warning Webhook',
           );
 
-          // Create repos and push images to exceed 80% of 3 MiB (~1.4 MiB each)
+          // Push pinned UBI image — one push exceeds threshold; second starts upload
           await api.repositoryWithName(org.name, 'repo1');
           await api.repositoryWithName(org.name, 'repo2');
-          await pushImageWithLayerSize(
+          await pushQuotaNotificationImage(
             org.name,
             'repo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushImageWithLayerSize(
+          await pushQuotaNotificationImage(
             org.name,
             'repo2',
             'v2',
@@ -122,9 +122,9 @@ test.describe(
             'Error Webhook',
           );
 
-          // Create repo and push first image (succeeds)
+          // busybox (~1.2 MiB): first push under 2 MiB quota, second rejected over limit
           await api.repositoryWithName(org.name, 'fillrepo');
-          await pushImageWithLayerSize(
+          await pushImage(
             org.name,
             'fillrepo',
             'v1',
@@ -134,7 +134,7 @@ test.describe(
 
           // Second push should be rejected (over quota)
           try {
-            await pushImageWithLayerSize(
+            await pushImage(
               org.name,
               'fillrepo',
               'v2',
@@ -168,7 +168,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const contactEmail = 'quota-warn-test@example.com';
         const org = await api.organization('nsdelivemail', contactEmail);
@@ -195,17 +195,17 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold (~1.4 MiB each)
+        // Push pinned UBI to exceed warning threshold
         await api.repositoryWithName(org.name, 'emailrepo1');
         await api.repositoryWithName(org.name, 'emailrepo2');
-        await pushImageWithLayerSize(
+        await pushQuotaNotificationImage(
           org.name,
           'emailrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushImageWithLayerSize(
+        await pushQuotaNotificationImage(
           org.name,
           'emailrepo2',
           'v2',
@@ -239,7 +239,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         // Create org WITHOUT explicit email (UUID placeholder used)
         const org = await api.organization('nsdelivfb');
@@ -269,14 +269,14 @@ test.describe(
         // Push images to exceed warning threshold (~1.4 MiB each)
         await api.repositoryWithName(org.name, 'fbrepo1');
         await api.repositoryWithName(org.name, 'fbrepo2');
-        await pushImageWithLayerSize(
+        await pushQuotaNotificationImage(
           org.name,
           'fbrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushImageWithLayerSize(
+        await pushQuotaNotificationImage(
           org.name,
           'fbrepo2',
           'v2',
@@ -375,24 +375,16 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const org = await api.organization('nsdelivretro');
 
-        // Push images FIRST (~2.8 MiB total) — before any quota is set
+        // Push pinned UBI before quota is configured
         await api.repositoryWithName(org.name, 'retrorepo1');
-        await api.repositoryWithName(org.name, 'retrorepo2');
-        await pushImageWithLayerSize(
+        await pushQuotaNotificationImage(
           org.name,
           'retrorepo1',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushImageWithLayerSize(
-          org.name,
-          'retrorepo2',
-          'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );

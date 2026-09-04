@@ -2,6 +2,7 @@ import {test, expect, uniqueName} from '../../fixtures';
 import {
   closeNotificationModal,
   expectNsNotificationRow,
+  nsNotificationRow,
   selectTeamRecipient,
 } from '../../utils/namespace-notifications-ui';
 
@@ -55,6 +56,10 @@ test.describe(
       await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
       // Verify notification appears in the list
+      const notificationRow = nsNotificationRow(
+        authenticatedPage,
+        'Test Webhook Notification',
+      );
       await expectNsNotificationRow(
         authenticatedPage,
         'Test Webhook Notification',
@@ -66,7 +71,7 @@ test.describe(
       );
 
       // Test the notification via kebab menu
-      const kebabToggle = authenticatedPage
+      const kebabToggle = notificationRow
         .locator('[data-testid$="-ns-toggle-kebab"]')
         .first();
       await kebabToggle.click();
@@ -263,11 +268,9 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(
-        authenticatedPage.getByText('Webhook Warning'),
-      ).toBeVisible();
-      await expect(authenticatedPage.getByText('Email Error')).toBeVisible();
-      await expect(authenticatedPage.getByText('Slack Warning')).toBeVisible();
+      await expectNsNotificationRow(authenticatedPage, 'Webhook Warning');
+      await expectNsNotificationRow(authenticatedPage, 'Email Error');
+      await expectNsNotificationRow(authenticatedPage, 'Slack Warning');
     });
 
     test('API-created notification appears in UI list', async ({
@@ -290,10 +293,11 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(
-        authenticatedPage.getByText('API-Created Notification'),
-      ).toBeVisible();
-      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'API-Created Notification',
+        {event: 'Quota Warning'},
+      );
     });
 
     test('both quota event types available in dropdown', async ({

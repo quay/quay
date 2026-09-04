@@ -208,8 +208,6 @@ jobs:
             SSRF_ALLOWED_HOSTS:
               - host.containers.internal
             FEATURE_QUOTA_NOTIFICATIONS: true
-            FEATURE_PROGRAMMATIC_BOOTSTRAP: true
-            BOOTSTRAP_TOKEN_OWNER: admin
             FEATURE_SUPERUSER_CONFIGDUMP: true
       - name: Start LDAP server (pre-initialize for later auth swap)
         run: |
@@ -286,6 +284,11 @@ jobs:
         uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
         with:
           version: v0.20.6
+
+      - name: Install ORAS for registry interaction tests
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.3.4
 
       - name: Install regctl for CLI interop tests
         uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0

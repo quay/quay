@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImageWithLayerSize} from '../../utils/container';
+import {pushQuotaNotificationImage} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 
 test.describe(
@@ -19,7 +19,7 @@ test.describe(
       'duplicate push within cooldown does not fire second notification',
       {tag: ['@superuser', '@webhook']},
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const org = await api.organization('nsdedup');
 
@@ -46,17 +46,17 @@ test.describe(
             'Dedup Webhook',
           );
 
-          // Push images to cross the 50% threshold (~1.4 MiB each)
+          // Push pinned UBI to cross the 50% threshold (~2.5 MiB of 5 MiB)
           await api.repositoryWithName(org.name, 'deduprepo1');
           await api.repositoryWithName(org.name, 'deduprepo2');
-          await pushImageWithLayerSize(
+          await pushQuotaNotificationImage(
             org.name,
             'deduprepo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushImageWithLayerSize(
+          await pushQuotaNotificationImage(
             org.name,
             'deduprepo2',
             'v2',
@@ -68,9 +68,9 @@ test.describe(
           const firstWebhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(firstWebhook).not.toBeNull();
 
-          // Push another image (still above threshold, within cooldown)
+          // Another upload while above threshold (within cooldown) — dedup should suppress
           await api.repositoryWithName(org.name, 'deduprepo3');
-          await pushImageWithLayerSize(
+          await pushQuotaNotificationImage(
             org.name,
             'deduprepo3',
             'v3',

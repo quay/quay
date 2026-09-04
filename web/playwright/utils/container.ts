@@ -22,6 +22,13 @@ const REGISTRY_HOST = new URL(API_URL).host;
 
 const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 
+/**
+ * Pinned UBI9 image (~77 MiB stored) used to cross quota notification thresholds
+ * reliably in e2e tests. Digest-pinned for reproducible blob sizes in CI.
+ */
+export const QUOTA_NOTIFICATION_SOURCE_IMAGE =
+  'registry.access.redhat.com/ubi9/ubi@sha256:25a147defd01e19674714f55d17538c8dbe55d8c305fa157ecc3f9c8977b05b6';
+
 type ToolAvailability = {
   skopeo: boolean;
   crane: boolean;
@@ -253,15 +260,34 @@ export async function pushImage(
   username: string,
   password: string,
 ): Promise<void> {
-  const image = targetImage(namespace, repo, tag);
+  await pushImageFrom(BUSYBOX_IMAGE, namespace, repo, tag, username, password);
+}
+
+/**
+ * Copy an image from an external registry into Quay via skopeo.
+ *
+ * @param sourceImage - Registry reference (with or without `docker://` prefix)
+ */
+export async function pushImageFrom(
+  sourceImage: string,
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const dest = targetImage(namespace, repo, tag);
+  const source = sourceImage.startsWith('docker://')
+    ? sourceImage
+    : `docker://${sourceImage}`;
 
   await withRegistryAuthFile(username, password, (authFile) =>
     retryOperation(() =>
       skopeoCopy([
         '--override-os=linux',
         '--override-arch=amd64',
-        `docker://${BUSYBOX_IMAGE}`,
-        `docker://${image}`,
+        source,
+        `docker://${dest}`,
         '--dest-tls-verify=false',
         '--dest-authfile',
         authFile,
@@ -271,61 +297,23 @@ export async function pushImage(
 }
 
 /**
- * Layer size used by quota-notification e2e tests. Two pushes to different
- * repos reliably exceed typical warning thresholds (e.g. 80% of 3 MiB).
+ * Push the pinned UBI9 image used by quota-notification e2e tests.
  */
-export const QUOTA_NOTIFICATION_LAYER_BYTES = 1_400_000;
-
-/**
- * Push an image whose layer content is at least `layerBytes` so quota usage
- * crosses notification thresholds predictably in CI.
- */
-export async function pushImageWithLayerSize(
+export async function pushQuotaNotificationImage(
   namespace: string,
   repo: string,
   tag: string,
   username: string,
   password: string,
-  layerBytes: number = QUOTA_NOTIFICATION_LAYER_BYTES,
 ): Promise<void> {
-  await requireTool('crane');
-
-  const image = targetImage(namespace, repo, tag);
-  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'quay-sized-img-'));
-  const rootDir = path.join(tmpDir, 'root');
-  const authDir = path.join(tmpDir, 'auth');
-  const layerTar = path.join(tmpDir, 'layer.tar');
-
-  try {
-    await mkdir(rootDir);
-    await mkdir(authDir);
-    await writeFile(
-      path.join(rootDir, 'quota-fill'),
-      Buffer.alloc(layerBytes, 0),
-    );
-    await writeFile(path.join(rootDir, 'unique'), `${uniqueId}\n`);
-    await execFileAsync('tar', [
-      '-C',
-      rootDir,
-      '-cf',
-      layerTar,
-      'quota-fill',
-      'unique',
-    ]);
-
-    await craneLogin(REGISTRY_HOST, username, password, authDir);
-
-    await retryOperation(() =>
-      execFileAsync(
-        'crane',
-        ['append', '--insecure', '--new_layer', layerTar, '--new_tag', image],
-        {env: {...process.env, DOCKER_CONFIG: authDir}},
-      ).then(() => undefined),
-    );
-  } finally {
-    await rm(tmpDir, {recursive: true, force: true});
-  }
+  await pushImageFrom(
+    QUOTA_NOTIFICATION_SOURCE_IMAGE,
+    namespace,
+    repo,
+    tag,
+    username,
+    password,
+  );
 }
 
 /**
