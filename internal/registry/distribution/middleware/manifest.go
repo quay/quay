@@ -52,6 +52,13 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		}
 	}
 
+	// Digest-only PUTs (no WithTag) match Python write_manifest_by_digest:
+	// a hidden $temp- tag keeps the manifest alive for 1 hour so multi-arch
+	// children are not collected before the index PUT links them.
+	if record.Tag == "" {
+		record.TempTagExpiration = oci.PushTempTagExpiration
+	}
+
 	record.Subject, record.ArtifactType = parseSubjectAndArtifactType(payload)
 	if record.Subject != "" {
 		SetSubject(ctx, record.Subject)

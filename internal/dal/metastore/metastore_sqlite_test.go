@@ -2,7 +2,9 @@ package metastore_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -197,6 +199,68 @@ func TestPutManifest_WithTag(t *testing.T) {
 
 	// Verify tag exists.
 	assertActiveTag(t, store.(*metastore.SQLiteStore), repoID, "latest")
+}
+
+func TestPutManifest_DigestOnlyCreatesExpiringTempTag(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("digest-only-child")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var name string
+	var hidden int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT name, hidden, lifetime_end_ms FROM tag WHERE manifest_id = ?`,
+		manifestID).Scan(&name, &hidden, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if hidden != 1 {
+		t.Errorf("hidden = %d, want 1", hidden)
+	}
+	if !strings.HasPrefix(name, "$temp-") {
+		t.Errorf("temp tag name %q, want $temp- prefix", name)
+	}
+	if !endMs.Valid {
+		t.Fatal("digest-only temp tag must expire (lifetime_end_ms set)")
+	}
+	wantMin := time.Now().Add(50 * time.Minute).UnixMilli()
+	wantMax := time.Now().Add(70 * time.Minute).UnixMilli()
+	if endMs.Int64 < wantMin || endMs.Int64 > wantMax {
+		t.Errorf("lifetime_end_ms = %d, want ~1 hour from now", endMs.Int64)
+	}
+
+	// Repeat PUT must not duplicate the temp tag (existing one still covers the window).
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("temp tags after repeat PUT: got %d, want 1", count)
+	}
 }
 
 func TestPutManifest_TagReplace(t *testing.T) {
