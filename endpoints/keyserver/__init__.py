@@ -6,6 +6,7 @@ from jwt import get_unverified_header
 
 from app import app
 from data.logs_model import logs_model
+from data.model.service_keys import OPERATOR_MANAGED_CREATED_BY
 from endpoints.keyserver.models_interface import ServiceKeyDoesNotExist
 from endpoints.keyserver.models_pre_oci import pre_oci_model as model
 from util.request import get_request_ip
@@ -76,7 +77,7 @@ def list_service_keys(service):
 @key_server.route("/services/<service>/keys/<kid>", methods=["GET"])
 def get_service_key(service, kid):
     try:
-        key = model.get_service_key(kid, alive_only=False, approved_only=False)
+        key = model.get_service_key(kid, service=service, alive_only=False, approved_only=False)
     except ServiceKeyDoesNotExist:
         abort(404)
 
@@ -89,6 +90,30 @@ def get_service_key(service, kid):
     resp = jsonify(key.jwk)
     lifetime = min(timedelta(days=1), ((key.expiration_date or datetime.max) - datetime.utcnow()))
     resp.cache_control.max_age = max(0, lifetime.total_seconds())
+    return resp
+
+
+@key_server.route("/services/<service>/keys/<kid>/status", methods=["GET"])
+def get_service_key_status(service, kid):
+    try:
+        key = model.get_service_key_for_status(kid, service=service)
+    except ServiceKeyDoesNotExist:
+        abort(404)
+
+    exp = None
+    if key.expiration_date is not None:
+        exp = key.expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    metadata = key.metadata if isinstance(key.metadata, dict) else {}
+    resp = jsonify(
+        {
+            "kid": key.kid,
+            "service": key.service,
+            "operator_managed": metadata.get("created_by") == OPERATOR_MANAGED_CREATED_BY,
+            "expiration_date": exp,
+        }
+    )
+    resp.cache_control.no_store = True
     return resp
 
 

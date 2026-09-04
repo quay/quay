@@ -653,6 +653,9 @@ class DefaultConfig(ImmutableConfig):
     # some additional window time.
     INSTANCE_SERVICE_KEY_REFRESH = 55
 
+    # If true, import the instance service key from mounted files instead of generating one.
+    INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES = False
+
     # The whitelist of client IDs for OAuth applications that allow for direct login.
     DIRECT_OAUTH_CLIENTID_WHITELIST: Optional[List[str]] = []
 
