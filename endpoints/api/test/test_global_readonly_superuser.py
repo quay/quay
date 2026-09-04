@@ -774,19 +774,22 @@ class TestUserAPIGlobalReadOnlySuperuserField:
             "endpoints.api.user.features.SUPER_USERS", FeatureNameValue("SUPER_USERS", True)
         ):
             with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm:
-                # Mock the permission to return True for regular superuser
-                mock_super_perm.return_value.can.return_value = True
+                with patch(
+                    "auth.permissions.usermanager.is_global_readonly_superuser", return_value=False
+                ):
+                    # Mock the permission to return True for regular superuser
+                    mock_super_perm.return_value.can.return_value = True
 
-                with client_with_identity("devtable", app) as cl:
-                    resp = conduct_api_call(cl, User, "GET", None, None, 200)
-                    assert resp.status_code == 200
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(cl, User, "GET", None, None, 200)
+                        assert resp.status_code == 200
 
-                    # Regular superuser should see super_user field
-                    assert "super_user" in resp.json
-                    assert resp.json["super_user"] is True
+                        # Regular superuser should see super_user field
+                        assert "super_user" in resp.json
+                        assert resp.json["super_user"] is True
 
-                    # But should NOT see global_readonly_super_user field since they're not one
-                    assert "global_readonly_super_user" not in resp.json
+                        # But should NOT see global_readonly_super_user field since they're not one
+                        assert "global_readonly_super_user" not in resp.json
 
     def test_regular_user_does_not_see_global_readonly_field(self, app):
         """
