@@ -359,7 +359,7 @@ func TestCollect_ManifestChildProtected(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// expire tag to explicitly test that the tag is protected
+	// Expire the temporary tag so this test verifies manifest-child protection.
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
 	expireTemporaryTag(t, env, childID, pastMs)
 
@@ -405,7 +405,7 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 	}
 	insertTag(t, env, repoID, "sig", referrerDgst)
 
-	// expire tag to explicitly test that the tag is protected
+	// Expire the temporary tag so this test verifies referrer-target protection.
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
 	expireTemporaryTag(t, env, baseManifestID, pastMs)
 
@@ -460,7 +460,7 @@ func TestCollect_CascadeParentToChildren(t *testing.T) {
 	}
 
 	if stats.TagsExpired != 3 {
-		t.Fatalf("expected 3 expired tag, got %d", stats.TagsExpired)
+		t.Fatalf("expected 3 expired tags, got %d", stats.TagsExpired)
 	}
 
 	// Parent + 2 children should all be deleted.
@@ -514,7 +514,7 @@ func TestCollect_MultipleRepos(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stats.TagsExpired != 1 {
-		t.Fatalf("expected 3 expired tag (from repo A), got %d", stats.TagsExpired)
+		t.Fatalf("expected 1 expired tag (from repo A), got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 1 {
 		t.Fatalf("expected 1 deleted manifest (from repo A), got %d", stats.ManifestsDeleted)
@@ -915,7 +915,7 @@ func TestCollect_DeepCascade_ThreeLevels(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stats.TagsExpired != 3 {
-		t.Fatalf("expected 3 expired tag, got %d", stats.TagsExpired)
+		t.Fatalf("expected 3 expired tags, got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 3 {
 		t.Fatalf("expected 3 deleted manifests (parent+child+grandchild), got %d", stats.ManifestsDeleted)
