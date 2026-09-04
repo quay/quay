@@ -126,19 +126,24 @@ if [ "$RESULTS_FOUND" != "true" ]; then
 
   for dir in $ARTIFACT_DIRS; do
     # dir looks like: logs/JOB_NAME/BUILD_ID/artifacts/WORKFLOW_NAME/
-    PROBE_URL="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${STEP_NAME}/artifacts/results.json"
-    if curl -sfL "${CURL_TIMEOUT[@]}" --head "$PROBE_URL" >/dev/null 2>&1; then
-      ARTIFACT_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${STEP_NAME}/artifacts"
-      RESULTS_FOUND=true
-      echo "  Found artifacts at: ${dir}${STEP_NAME}/artifacts/" >&2
-      break
-    fi
+    for step in "quay-test-e2e" "e2e" "e2e-test" "quay-e2e"; do
+      PROBE_URL="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${step}/artifacts/results.json"
+      if curl -sfL "${CURL_TIMEOUT[@]}" --head "$PROBE_URL" >/dev/null 2>&1; then
+        ARTIFACT_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${step}/artifacts"
+        STEP_NAME="$step"
+        RESULTS_FOUND=true
+        echo "  Found artifacts at: ${dir}${step}/artifacts/" >&2
+        break 2
+      fi
+    done
   done
 fi
 
 if [ "$RESULTS_FOUND" != "true" ]; then
   echo "ERROR: Could not locate results.json in artifacts" >&2
-  echo "  This run may predate the Playwright JSON reporter (results.json)." >&2
+  echo "  Tried step names: quay-test-e2e, e2e, e2e-test, quay-e2e" >&2
+  echo "  If this job uses a different step name, results.json was not found under any candidate." >&2
+  echo "  This run may also predate the Playwright JSON reporter (results.json)." >&2
   echo "  Browse the artifacts manually at: ${GCSWEB_BASE}/artifacts/" >&2
   exit 1
 fi
