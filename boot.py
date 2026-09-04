@@ -76,6 +76,9 @@ def _load_mounted_key_material():
         pem_data = f.read()
 
     jwk_obj = JsonWebKey.import_key(pem_data)
+    if jwk_obj.get_private_key() is None:
+        raise Exception("Mounted service key PEM must contain a private key: %s" % pem_path)
+
     public_jwk = jwk_obj.as_dict()
 
     computed_kid = public_jwk.get("kid")
