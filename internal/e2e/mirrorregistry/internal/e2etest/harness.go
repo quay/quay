@@ -171,6 +171,21 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 	return nil
 }
 
+// ExpireTemporaryTags forces expiration on the temporary pushed tags. Due to changes to how temporary tags are implemented,
+// we need to expire them explicitly so that all guards before a real GC process runs are removed.
+func (h *Harness) ExpireTemporaryTags(ctx context.Context) error {
+	if h == nil || h.gcDB == nil {
+		return fmt.Errorf("expire temp tags with uninitialized E2e harness")
+	}
+
+	query := `UPDATE tag SET lifetime_end_ms = strftime('%s', 'now', '-30 days') * 1000 WHERE hidden = 1 AND name LIKE '$temp-%'`
+	_, err := h.gcDB.ExecContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("expire E2E temporary tags: %w", err)
+	}
+	return nil
+}
+
 // BaseURL returns the HTTP URL of the in-process registry.
 func (h *Harness) BaseURL() string {
 	if h == nil || h.server == nil {

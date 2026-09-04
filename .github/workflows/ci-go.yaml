@@ -90,6 +90,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          go-version: "1.26"
           go-version-file: go.mod
           cache: true
 
@@ -102,7 +103,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install sqlc
-        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
       - name: Check schema drift
         run: make go-schema-check

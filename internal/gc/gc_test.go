@@ -118,14 +118,27 @@ func ensureRepo(t *testing.T, env *testEnv, ns, name string) int64 {
 	return id
 }
 
-// insertManifest creates a manifest and returns its ID.
-func insertManifest(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest) int64 {
+// insertManifest creates a manifest and returns its ID. It also optionally takes a tag name.
+func insertManifest(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest, tag string) int64 {
 	t.Helper()
-	id, err := env.store.PutManifest(t.Context(), repoID, oci.ManifestRecord{
-		Digest:    dgst,
-		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Content:   []byte(`{"schemaVersion":2}`),
-	})
+	var id int64
+	var err error
+
+	if tag != "" {
+		id, err = env.store.PutManifest(t.Context(), repoID, oci.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+			Tag:       tag,
+		})
+	} else {
+		id, err = env.store.PutManifest(t.Context(), repoID, oci.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+		})
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,14 +183,28 @@ func expireTag(t *testing.T, env *testEnv, repoID int64, name string, endMs int6
 	}
 }
 
+// expireTemporaryTag expires temporary tags by setting their expiration time to a specific value.
+func expireTemporaryTag(t *testing.T, env *testEnv, manifestID, pastMs int64) {
+	t.Helper()
+	query := `UPDATE tag SET lifetime_end_ms = ? WHERE manifest_id = ? AND hidden = 1 AND name LIKE '$temp-%'`
+	res, err := env.db.ExecContext(t.Context(), query, pastMs, manifestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		t.Fatalf("no active temporary tags found to expire")
+	}
+}
+
 func TestCollect_NoGarbage(t *testing.T) {
 	env := setup(t)
 	ctx := t.Context()
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("manifest-live")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "latest", dgst)
+	insertManifest(t, env, repoID, dgst, "latest")
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -194,8 +221,7 @@ func TestCollect_ExpiredTagAndOrphanedManifest(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("manifest-to-expire")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "old", dgst)
+	insertManifest(t, env, repoID, dgst, "old")
 
 	// Expire the tag far in the past (beyond the default 14-day grace period).
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
@@ -287,8 +313,7 @@ func TestCollect_BlobReferencedByManifest(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	manifestDgst := mustDigest("live-manifest")
-	manifestID := insertManifest(t, env, repoID, manifestDgst)
-	insertTag(t, env, repoID, "latest", manifestDgst)
+	manifestID := insertManifest(t, env, repoID, manifestDgst, "latest")
 
 	content := []byte("referenced-blob")
 	blobDgst := digest.FromBytes(content)
@@ -318,12 +343,11 @@ func TestCollect_ManifestChildProtected(t *testing.T) {
 
 	// Create parent manifest list (tagged).
 	parentDgst := mustDigest("parent-manifest-list")
-	insertManifest(t, env, repoID, parentDgst)
-	insertTag(t, env, repoID, "latest", parentDgst)
+	insertManifest(t, env, repoID, parentDgst, "latest")
 
 	// Create child manifest (untagged, but referenced by parent).
 	childDgst := mustDigest("child-platform-manifest")
-	childID := insertManifest(t, env, repoID, childDgst)
+	childID := insertManifest(t, env, repoID, childDgst, "")
 
 	// Link child to parent via manifestchild.
 	parentID := getManifestID(t, env, repoID, parentDgst)
@@ -334,6 +358,10 @@ func TestCollect_ManifestChildProtected(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+
+	// Expire the temporary tag so this test verifies manifest-child protection.
+	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
+	expireTemporaryTag(t, env, childID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -352,7 +380,7 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 
 	// Create the base manifest (UNTAGGED — would normally be orphaned).
 	baseDgst := mustDigest("base-manifest")
-	insertManifest(t, env, repoID, baseDgst)
+	baseManifestID := insertManifest(t, env, repoID, baseDgst, "")
 
 	// Create a referrer manifest (tagged) with subject pointing to base.
 	// This protects the BASE from GC because another manifest's subject
@@ -377,6 +405,10 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 	}
 	insertTag(t, env, repoID, "sig", referrerDgst)
 
+	// Expire the temporary tag so this test verifies referrer-target protection.
+	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
+	expireTemporaryTag(t, env, baseManifestID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -395,14 +427,13 @@ func TestCollect_CascadeParentToChildren(t *testing.T) {
 
 	// Parent manifest list with an expired tag.
 	parentDgst := mustDigest("parent-expired")
-	insertManifest(t, env, repoID, parentDgst)
-	insertTag(t, env, repoID, "old-list", parentDgst)
+	insertManifest(t, env, repoID, parentDgst, "old-list")
 
 	// Two children, untagged.
 	child1Dgst := mustDigest("child-1")
-	child1ID := insertManifest(t, env, repoID, child1Dgst)
+	child1ID := insertManifest(t, env, repoID, child1Dgst, "")
 	child2Dgst := mustDigest("child-2")
-	child2ID := insertManifest(t, env, repoID, child2Dgst)
+	child2ID := insertManifest(t, env, repoID, child2Dgst, "")
 
 	parentID := getManifestID(t, env, repoID, parentDgst)
 	for _, childID := range []int64{child1ID, child2ID} {
@@ -419,13 +450,19 @@ func TestCollect_CascadeParentToChildren(t *testing.T) {
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
 	expireTag(t, env, repoID, "old-list", pastMs)
 
+	// expire all children
+	expireTemporaryTag(t, env, child1ID, pastMs)
+	expireTemporaryTag(t, env, child2ID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.TagsExpired != 1 {
-		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+
+	if stats.TagsExpired != 3 {
+		t.Fatalf("expected 3 expired tags, got %d", stats.TagsExpired)
 	}
+
 	// Parent + 2 children should all be deleted.
 	if stats.ManifestsDeleted != 3 {
 		t.Fatalf("expected 3 deleted manifests (parent + 2 children), got %d", stats.ManifestsDeleted)
@@ -438,8 +475,7 @@ func TestCollect_TagWithinGracePeriodSurvives(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("recently-expired-manifest")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "recent", dgst)
+	insertManifest(t, env, repoID, dgst, "recent")
 
 	// Expire the tag 5 days ago — within the default 14-day grace period.
 	fiveDaysAgoMs := time.Now().Add(-5 * 24 * time.Hour).UnixMilli()
@@ -464,16 +500,14 @@ func TestCollect_MultipleRepos(t *testing.T) {
 	// Repo A: has an expired tag.
 	repoA := ensureRepo(t, env, "org", "app-a")
 	dgstA := mustDigest("manifest-a")
-	insertManifest(t, env, repoA, dgstA)
-	insertTag(t, env, repoA, "old", dgstA)
+	insertManifest(t, env, repoA, dgstA, "old")
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
 	expireTag(t, env, repoA, "old", pastMs)
 
 	// Repo B: has a live tag — should be untouched.
 	repoB := ensureRepo(t, env, "org", "app-b")
 	dgstB := mustDigest("manifest-b")
-	insertManifest(t, env, repoB, dgstB)
-	insertTag(t, env, repoB, "latest", dgstB)
+	insertManifest(t, env, repoB, dgstB, "latest")
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -515,14 +549,12 @@ func TestCollect_SharedBlobSurvivesPartialManifestDeletion(t *testing.T) {
 
 	// Manifest A (tagged "latest") references the shared blob.
 	dgstA := mustDigest("manifest-a-live")
-	manifestA := insertManifest(t, env, repoID, dgstA)
-	insertTag(t, env, repoID, "latest", dgstA)
+	manifestA := insertManifest(t, env, repoID, dgstA, "latest")
 	linkBlobToManifest(t, env, repoID, manifestA, sharedBlobID)
 
 	// Manifest B (tag expired) also references the shared blob.
 	dgstB := mustDigest("manifest-b-expired")
-	manifestB := insertManifest(t, env, repoID, dgstB)
-	insertTag(t, env, repoID, "old", dgstB)
+	manifestB := insertManifest(t, env, repoID, dgstB, "old")
 	linkBlobToManifest(t, env, repoID, manifestB, sharedBlobID)
 
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
@@ -665,8 +697,7 @@ func TestCollect_TwoTagsSharedManifest_PartialExpiry(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("shared-manifest")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "latest", dgst)
+	insertManifest(t, env, repoID, dgst, "latest")
 	insertTag(t, env, repoID, "v1.0", dgst)
 
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
@@ -696,8 +727,7 @@ func TestCollect_AllTagsExpired_ManifestCollected(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("both-tags-expire")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "v1.0", dgst)
+	insertManifest(t, env, repoID, dgst, "v1.0")
 	insertTag(t, env, repoID, "v2.0", dgst)
 
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
@@ -724,11 +754,10 @@ func TestCollect_CrossRepoManifestChildProtection(t *testing.T) {
 	repoB := ensureRepo(t, env, "org", "child-repo")
 
 	parentDgst := mustDigest("cross-repo-parent")
-	insertManifest(t, env, repoA, parentDgst)
-	insertTag(t, env, repoA, "latest", parentDgst)
+	insertManifest(t, env, repoA, parentDgst, "latest")
 
 	childDgst := mustDigest("cross-repo-child")
-	childID := insertManifest(t, env, repoB, childDgst)
+	childID := insertManifest(t, env, repoB, childDgst, "")
 
 	parentID := getManifestID(t, env, repoA, parentDgst)
 	if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
@@ -738,6 +767,10 @@ func TestCollect_CrossRepoManifestChildProtection(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+
+	// expire child explicitly
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTemporaryTag(t, env, childID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -756,7 +789,7 @@ func TestCollect_CrossRepoSubjectReferrerProtection(t *testing.T) {
 	repoB := ensureRepo(t, env, "org", "referrer-repo")
 
 	baseDgst := mustDigest("cross-repo-base")
-	insertManifest(t, env, repoA, baseDgst)
+	baseManifestID := insertManifest(t, env, repoA, baseDgst, "")
 
 	referrerDgst := mustDigest("cross-repo-referrer")
 	_, err := env.q.UpsertManifest(ctx, daldb.UpsertManifestParams{
@@ -777,6 +810,10 @@ func TestCollect_CrossRepoSubjectReferrerProtection(t *testing.T) {
 	}
 	insertTag(t, env, repoB, "sig", referrerDgst)
 
+	// expire child explicitly
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTemporaryTag(t, env, baseManifestID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -793,16 +830,15 @@ func TestCollect_ChildSharedByTwoParents(t *testing.T) {
 	repoID := ensureRepo(t, env, "library", "nginx")
 
 	childDgst := mustDigest("shared-child")
-	childID := insertManifest(t, env, repoID, childDgst)
+	childID := insertManifest(t, env, repoID, childDgst, "")
 
 	parentADgst := mustDigest("parent-a")
-	insertManifest(t, env, repoID, parentADgst)
-	insertTag(t, env, repoID, "v1", parentADgst)
+	insertManifest(t, env, repoID, parentADgst, "v1")
+
 	parentAID := getManifestID(t, env, repoID, parentADgst)
 
 	parentBDgst := mustDigest("parent-b")
-	insertManifest(t, env, repoID, parentBDgst)
-	insertTag(t, env, repoID, "v2", parentBDgst)
+	insertManifest(t, env, repoID, parentBDgst, "v2")
 	parentBID := getManifestID(t, env, repoID, parentBDgst)
 
 	for _, parentID := range []int64{parentAID, parentBID} {
@@ -816,11 +852,14 @@ func TestCollect_ChildSharedByTwoParents(t *testing.T) {
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
 	expireTag(t, env, repoID, "v1", pastMs)
 
+	// expire child image explicitly
+	expireTemporaryTag(t, env, childID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.TagsExpired != 1 {
+	if stats.TagsExpired != 2 {
 		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 1 {
@@ -841,14 +880,14 @@ func TestCollect_DeepCascade_ThreeLevels(t *testing.T) {
 	repoID := ensureRepo(t, env, "library", "nginx")
 
 	grandchildDgst := mustDigest("grandchild")
-	grandchildID := insertManifest(t, env, repoID, grandchildDgst)
+	grandchildID := insertManifest(t, env, repoID, grandchildDgst, "")
 
 	childDgst := mustDigest("child-mid")
-	childID := insertManifest(t, env, repoID, childDgst)
+	childID := insertManifest(t, env, repoID, childDgst, "")
 
 	parentDgst := mustDigest("parent-top")
-	insertManifest(t, env, repoID, parentDgst)
-	insertTag(t, env, repoID, "latest", parentDgst)
+	insertManifest(t, env, repoID, parentDgst, "latest")
+
 	parentID := getManifestID(t, env, repoID, parentDgst)
 
 	if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
@@ -863,14 +902,20 @@ func TestCollect_DeepCascade_ThreeLevels(t *testing.T) {
 	}
 
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+
+	// expire tag
 	expireTag(t, env, repoID, "latest", pastMs)
+
+	// expire temporary tag for our manifest
+	expireTemporaryTag(t, env, childID, pastMs)
+	expireTemporaryTag(t, env, grandchildID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.TagsExpired != 1 {
-		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+	if stats.TagsExpired != 3 {
+		t.Fatalf("expected 3 expired tags, got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 3 {
 		t.Fatalf("expected 3 deleted manifests (parent+child+grandchild), got %d", stats.ManifestsDeleted)
@@ -894,8 +939,7 @@ func TestCollect_SharedChecksumBlobDedup(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifestDgst := mustDigest("live-manifest-with-shared-blob")
-	manifestID := insertManifest(t, env, repoID, manifestDgst)
-	insertTag(t, env, repoID, "latest", manifestDgst)
+	manifestID := insertManifest(t, env, repoID, manifestDgst, "latest")
 	linkBlobToManifest(t, env, repoID, manifestID, liveBlobID)
 
 	res, err := env.db.ExecContext(ctx,
@@ -969,8 +1013,8 @@ func TestCollect_Idempotent(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("idempotent-manifest")
-	insertManifest(t, env, repoID, dgst)
-	insertTag(t, env, repoID, "old", dgst)
+	insertManifest(t, env, repoID, dgst, "old")
+
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
 	expireTag(t, env, repoID, "old", pastMs)
 
@@ -1046,7 +1090,12 @@ func TestCollect_NeverTaggedManifest(t *testing.T) {
 
 	repoID := ensureRepo(t, env, "library", "nginx")
 	dgst := mustDigest("never-tagged")
-	insertManifest(t, env, repoID, dgst)
+	manifestID := insertManifest(t, env, repoID, dgst, "")
+
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+
+	// we need to expire the manifest that was never tagged
+	expireTemporaryTag(t, env, manifestID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -1088,8 +1137,7 @@ func TestCollect_ReferrerManifestProtectedByHiddenTag(t *testing.T) {
 
 	// Push a base manifest (tagged).
 	baseDgst := mustDigest("base-image")
-	insertManifest(t, env, repoID, baseDgst)
-	insertTag(t, env, repoID, "latest", baseDgst)
+	insertManifest(t, env, repoID, baseDgst, "latest")
 
 	// Push a referrer manifest (no user tag) with subject pointing to base.
 	// PutManifest should create a hidden tag automatically.

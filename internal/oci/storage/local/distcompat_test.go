@@ -339,7 +339,7 @@ func TestDistDriver_MetadataLink_PutContent_NoOp(t *testing.T) {
 	}
 }
 
-func TestDistDriver_ManifestBlobFallbackFromMetadata(t *testing.T) {
+func TestDistDriver_ManifestBlobIsOnlyReadFromSQLiteWithNoFallback(t *testing.T) {
 	dd, _, store := setupDistTest(t)
 	ctx := t.Context()
 
@@ -360,34 +360,15 @@ func TestDistDriver_ManifestBlobFallbackFromMetadata(t *testing.T) {
 
 	blobPath := "/docker/registry/v2/blobs/sha256/" + manifestDgst.Encoded()[:2] + "/" + manifestDgst.Encoded() + "/data"
 
-	got, err := dd.GetContent(ctx, blobPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(got, manifestContent) {
-		t.Errorf("GetContent = %s, want %s", got, manifestContent)
-	}
+	// data is not served from blob path, only from SQLite
+	_, err = dd.GetContent(ctx, blobPath)
+	requirePathNotFound(t, err)
 
-	rc, err := dd.Reader(ctx, blobPath, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = rc.Close() }()
-	read, err := io.ReadAll(rc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(read, manifestContent) {
-		t.Errorf("Reader = %s, want %s", read, manifestContent)
-	}
+	_, err = dd.Reader(ctx, blobPath, 0)
+	requirePathNotFound(t, err)
 
-	info, err := dd.Stat(ctx, blobPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Size() != int64(len(manifestContent)) {
-		t.Errorf("Stat size = %d, want %d", info.Size(), len(manifestContent))
-	}
+	_, err = dd.Stat(ctx, blobPath)
+	requirePathNotFound(t, err)
 }
 
 func TestDistDriver_ListTags(t *testing.T) {
@@ -534,6 +515,9 @@ func (s *errStubMetaStore) DeleteUploadedBlob(context.Context, int64, digest.Dig
 	return 0, errNotImplemented
 }
 func (s *errStubMetaStore) CleanExpiredUploadedBlobs(context.Context) error { return errNotImplemented }
+func (s *errStubMetaStore) GetManifestForServing(context.Context, int64, digest.Digest) (content []byte, mediaType string, err error) {
+	return nil, "", errNotImplemented
+}
 
 func TestDistDriver_GetRepositoryID_PropagatesNonNotExistError(t *testing.T) {
 	dbErr := errors.New("database connection timeout")
@@ -677,13 +661,8 @@ func TestDistDriver_ManifestRevisionLink_BlobOnlyFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := dd.GetContent(ctx, revisionLinkPath("lib/test", dgst))
-	if err != nil {
-		t.Fatalf("expected blob-only fallback to resolve, got: %v", err)
-	}
-	if string(got) != dgst.String() {
-		t.Fatalf("got %q, want %q", got, dgst.String())
-	}
+	_, err := dd.GetContent(ctx, revisionLinkPath("lib/test", dgst))
+	requirePathNotFound(t, err)
 }
 
 func TestDistDriver_ManifestRevisionLink_BothAbsent(t *testing.T) {
