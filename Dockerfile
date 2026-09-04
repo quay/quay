@@ -62,7 +62,10 @@ WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
 # pyroscope-io depends on py-spy which has no s390x support
-RUN sed -i '/^pyroscope-io/d' requirements.txt
+# (requirements.txt is hash-pinned, so its entries can span multiple lines;
+# delete through the first line of the pyroscope-io block that isn't
+# continued with a backslash)
+RUN sed -i '/^pyroscope-io==/,/[^\\]$/d' requirements.txt
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -81,14 +84,13 @@ USER 1001
 # In Future if wget is to be removed , then uncomment below lines for grpc installation on IBM Power i.e. ppc64le
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
-    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
+    GRPC_LATEST=$(grep "^grpcio==" requirements.txt |cut -d "=" -f 3 | tr -d ' \\'); \
 	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
 	python3 -m pip install --no-cache-dir /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
 	fi
 
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3 -m pip install --no-cache-dir --progress-bar off --requirement requirements.txt \
+	; python3 -m pip install --no-cache-dir --progress-bar off --require-hashes --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
