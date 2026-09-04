@@ -359,7 +359,7 @@ func TestCollect_ManifestChildProtected(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// expire tag to explicity test that the tag is protected
+	// expire tag to explicitly test that the tag is protected
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
 	expireTemporaryTag(t, env, childID, pastMs)
 
@@ -405,7 +405,7 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 	}
 	insertTag(t, env, repoID, "sig", referrerDgst)
 
-	// expire tag to explicity test that the tag is protected
+	// expire tag to explicitly test that the tag is protected
 	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
 	expireTemporaryTag(t, env, baseManifestID, pastMs)
 
