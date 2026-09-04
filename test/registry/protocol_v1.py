@@ -302,6 +302,32 @@ class V1Protocol(RegistryProtocol):
 
         return PushResult(manifests=None, headers=headers)
 
+    def push_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        manifest,
+        blobs,
+        reference=None,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        raise NotImplementedError("Registry API v1 does not support OCI artifact push")
+
+    def pull_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        digest,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        raise NotImplementedError("Registry API v1 does not support OCI artifact pull")
+
     def delete(
         self,
         session,
