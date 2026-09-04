@@ -19,6 +19,7 @@ class ApiErrorType(Enum):
     downstream_issue = "downstream_issue"
     tag_immutable = "tag_immutable"
     token_rotation_failed = "token_rotation_failed"
+    unauthorized = "unauthorized"
 
 
 ERROR_DESCRIPTION = {
@@ -34,6 +35,7 @@ ERROR_DESCRIPTION = {
     ApiErrorType.downstream_issue.value: "An error occurred in a downstream service.",
     ApiErrorType.tag_immutable.value: "The tag is immutable and cannot be modified or deleted.",
     ApiErrorType.token_rotation_failed.value: "Token rotation failed.",
+    ApiErrorType.unauthorized.value: "The request was not authorized.",
 }
 
 
