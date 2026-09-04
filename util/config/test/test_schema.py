@@ -33,28 +33,267 @@ def test_oauth_application_maximum_token_count_is_optional_positive_integer():
             validate(value, schema)
 
 
-def test_bootstrap_token_owner_required_when_programmatic_bootstrap_enabled():
-    schema = {
+def _bootstrap_config_schema():
+    property_names = [
+        "FEATURE_PROGRAMMATIC_BOOTSTRAP",
+        "FEATURE_KUBERNETES_SA_BOOTSTRAP",
+        "KUBERNETES_SA_BOOTSTRAP_CONFIG",
+        "BOOTSTRAP_TOKEN_OWNER",
+    ]
+    return {
         "type": "object",
         "allOf": CONFIG_SCHEMA["allOf"],
-        "properties": {
-            "FEATURE_PROGRAMMATIC_BOOTSTRAP": CONFIG_SCHEMA["properties"][
-                "FEATURE_PROGRAMMATIC_BOOTSTRAP"
-            ],
-            "BOOTSTRAP_TOKEN_OWNER": CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_OWNER"],
-        },
+        "properties": {name: CONFIG_SCHEMA["properties"][name] for name in property_names},
     }
 
-    validate({"FEATURE_PROGRAMMATIC_BOOTSTRAP": False, "BOOTSTRAP_TOKEN_OWNER": None}, schema)
-    validate({"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": "admin"}, schema)
+
+def _valid_kubernetes_sa_bootstrap_config():
+    return {
+        "REQUIRED_AUDIENCE": "quay-bootstrap",
+        "ISSUERS": [{"ISSUER": "https://kubernetes.default.svc"}],
+        "AUTHORIZED_SUBJECTS": [
+            {
+                "ISSUER": "https://kubernetes.default.svc",
+                "SUBJECT": "system:serviceaccount:quay-operator:controller-manager",
+                "SCOPES": "org:admin repo:create repo:read repo:write",
+            }
+        ],
+        "JWKS_CACHE_TTL_SECONDS": 3600,
+        "BOOTSTRAP_TOKEN_MAX_TTL": 86400,
+    }
+
+
+def test_bootstrap_token_owner_required_when_bootstrap_enabled():
+    schema = _bootstrap_config_schema()
+
+    validate(
+        {
+            "FEATURE_PROGRAMMATIC_BOOTSTRAP": False,
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": False,
+            "BOOTSTRAP_TOKEN_OWNER": None,
+        },
+        schema,
+    )
+    validate(
+        {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": "admin"},
+        schema,
+    )
+    validate(
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": _valid_kubernetes_sa_bootstrap_config(),
+            "BOOTSTRAP_TOKEN_OWNER": "admin",
+        },
+        schema,
+    )
 
     for config in [
         {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True},
         {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": None},
         {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": ""},
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": _valid_kubernetes_sa_bootstrap_config(),
+        },
     ]:
         with pytest.raises(ValidationError):
             validate(config, schema)
+
+
+def test_kubernetes_sa_bootstrap_config_required_only_when_enabled():
+    schema = _bootstrap_config_schema()
+
+    validate({"FEATURE_KUBERNETES_SA_BOOTSTRAP": False}, schema)
+    validate(
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "BOOTSTRAP_TOKEN_OWNER": "admin",
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": _valid_kubernetes_sa_bootstrap_config(),
+        },
+        schema,
+    )
+
+    for config in [
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "BOOTSTRAP_TOKEN_OWNER": "admin",
+        },
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "BOOTSTRAP_TOKEN_OWNER": "admin",
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": None,
+        },
+    ]:
+        with pytest.raises(ValidationError):
+            validate(config, schema)
+
+
+def test_kubernetes_sa_bootstrap_config_accepts_supported_issuer_forms():
+    schema = CONFIG_SCHEMA["properties"]["KUBERNETES_SA_BOOTSTRAP_CONFIG"]
+    config = _valid_kubernetes_sa_bootstrap_config()
+    config["ISSUERS"].append(
+        {
+            "ISSUER": "https://cluster.example.com",
+            "DISCOVERY_ENDPOINT": "https://api.cluster.example.com:6443",
+            "CA_CERT_PATH": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+            "BEARER_TOKEN_PATH": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+        }
+    )
+
+    validate(config, schema)
+
+
+@pytest.mark.parametrize(
+    "subject",
+    [
+        "system:serviceaccount:default:builder",
+        "system:serviceaccount:quay-operator:controller-manager",
+        # Single-character namespace/name segments and the 63-character
+        # DNS-1123 label boundary are both valid.
+        "system:serviceaccount:a:b",
+        "system:serviceaccount:" + ("a" * 63) + ":" + ("b" * 63),
+    ],
+)
+def test_kubernetes_sa_bootstrap_config_accepts_valid_subject_names(subject):
+    schema = CONFIG_SCHEMA["properties"]["KUBERNETES_SA_BOOTSTRAP_CONFIG"]
+    config = _valid_kubernetes_sa_bootstrap_config()
+    config["AUTHORIZED_SUBJECTS"] = [
+        {
+            "ISSUER": "https://kubernetes.default.svc",
+            "SUBJECT": subject,
+            "SCOPES": "repo:read",
+        }
+    ]
+
+    validate(config, schema)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {},
+        {"ISSUERS": [], "AUTHORIZED_SUBJECTS": []},
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [{"ISSUER": "http://insecure.example.com"}],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [{"ISSUER": "https://cluster.example.com?unexpected=query"}],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [{"ISSUER": "https://cluster.example.com:notaport"}],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [
+                {
+                    "ISSUER": "https://cluster.example.com",
+                    "DISCOVERY_ENDPOINT": "https://api.cluster.example.com:notaport",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [
+                {
+                    "ISSUER": "https://cluster.example.com",
+                    "BEARER_TOKEN_PATH": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "ISSUERS": [
+                {
+                    "ISSUER": "https://cluster.example.com",
+                    "DISCOVERY_ENDPONT": "https://api.cluster.example.com:6443",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "default:builder",
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:default:builder",
+                    "SCOPES": "repo:unknown",
+                }
+            ],
+        },
+        {**_valid_kubernetes_sa_bootstrap_config(), "JWKS_CACHE_TTL_SECONDS": 0},
+        {**_valid_kubernetes_sa_bootstrap_config(), "BOOTSTRAP_TOKEN_MAX_TTL": 0},
+        {**_valid_kubernetes_sa_bootstrap_config(), "UNKNOWN_SETTING": True},
+        # SUBJECT must be a valid Kubernetes namespace:ServiceAccount pair,
+        # not just any non-colon, non-whitespace text.
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:default:Build_Robot",
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:-default:builder",
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:default:builder-",
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:" + ("a" * 64) + ":builder",
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+        {
+            **_valid_kubernetes_sa_bootstrap_config(),
+            "AUTHORIZED_SUBJECTS": [
+                {
+                    "ISSUER": "https://kubernetes.default.svc",
+                    "SUBJECT": "system:serviceaccount:default:" + ("a" * 64),
+                    "SCOPES": "repo:read",
+                }
+            ],
+        },
+    ],
+)
+def test_kubernetes_sa_bootstrap_config_rejects_invalid_values(config):
+    schema = CONFIG_SCHEMA["properties"]["KUBERNETES_SA_BOOTSTRAP_CONFIG"]
+
+    with pytest.raises(ValidationError):
+        validate(config, schema)
 
 
 @pytest.mark.parametrize(

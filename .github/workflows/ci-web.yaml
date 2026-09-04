@@ -144,6 +144,21 @@ jobs:
             | grep -cE '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers|web/src)/' \
             || true)
 
+          # Subtract config schema/contract-only files that define or validate
+          # configuration shape (or declare type stubs) without being consumed
+          # by any runtime code path yet (e.g. a config-schema-only PR that
+          # precedes the PR wiring it up). These have nothing user-observable
+          # for Playwright to exercise. util/config/provider/baseprovider.py is
+          # included narrowly for its import_yaml() config-loading step (fills
+          # in defaults on the in-memory config dict before validation); it has
+          # no request/response surface, so future behavior changes to that
+          # file should be reconsidered for this exemption on a case-by-case
+          # basis rather than assumed exempt.
+          CONFIG_CONTRACT_ONLY_FILES=$(echo "$CHANGED_FILES" | grep -cE \
+            '^util/config/schema\.py$|^features/__init__\.pyi$|^util/config/provider/baseprovider\.py$' \
+            || true)
+          SOURCE_CHANGES=$((SOURCE_CHANGES - CONFIG_CONTRACT_ONLY_FILES))
+
           # Subtract files that are themselves tests within source directories
           TEST_FILES_IN_SOURCE=$(echo "$CHANGED_FILES" | grep -cE \
             '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/(.*/)?test/|^web/src/(.*/)?[^/]+\.test\.[^/]+$' \
