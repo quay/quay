@@ -187,9 +187,14 @@ func expireTag(t *testing.T, env *testEnv, repoID int64, name string, endMs int6
 func expireTemporaryTag(t *testing.T, env *testEnv, manifestID, pastMs int64) {
 	t.Helper()
 	query := `UPDATE tag SET lifetime_end_ms = ? WHERE manifest_id = ? AND hidden = 1 AND name LIKE '$temp-%'`
-	_, err := env.db.ExecContext(t.Context(), query, pastMs, manifestID)
+	res, err := env.db.ExecContext(t.Context(), query, pastMs, manifestID)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		t.Fatalf("no active temporary tags found to expire")
 	}
 }
 
@@ -354,6 +359,10 @@ func TestCollect_ManifestChildProtected(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// expire tag to explicity test that the tag is protected
+	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
+	expireTemporaryTag(t, env, childID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -371,7 +380,7 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 
 	// Create the base manifest (UNTAGGED — would normally be orphaned).
 	baseDgst := mustDigest("base-manifest")
-	insertManifest(t, env, repoID, baseDgst, "")
+	baseManifestID := insertManifest(t, env, repoID, baseDgst, "")
 
 	// Create a referrer manifest (tagged) with subject pointing to base.
 	// This protects the BASE from GC because another manifest's subject
@@ -395,6 +404,10 @@ func TestCollect_ManifestProtectedAsReferrerTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	insertTag(t, env, repoID, "sig", referrerDgst)
+
+	// expire tag to explicity test that the tag is protected
+	pastMs := (time.Now().Add(-30 * 24 * time.Hour)).UnixMilli()
+	expireTemporaryTag(t, env, baseManifestID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -447,7 +460,7 @@ func TestCollect_CascadeParentToChildren(t *testing.T) {
 	}
 
 	if stats.TagsExpired != 3 {
-		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+		t.Fatalf("expected 3 expired tag, got %d", stats.TagsExpired)
 	}
 
 	// Parent + 2 children should all be deleted.
@@ -501,7 +514,7 @@ func TestCollect_MultipleRepos(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stats.TagsExpired != 1 {
-		t.Fatalf("expected 1 expired tag (from repo A), got %d", stats.TagsExpired)
+		t.Fatalf("expected 3 expired tag (from repo A), got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 1 {
 		t.Fatalf("expected 1 deleted manifest (from repo A), got %d", stats.ManifestsDeleted)
@@ -755,6 +768,10 @@ func TestCollect_CrossRepoManifestChildProtection(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// expire child explicitly
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTemporaryTag(t, env, childID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -772,7 +789,7 @@ func TestCollect_CrossRepoSubjectReferrerProtection(t *testing.T) {
 	repoB := ensureRepo(t, env, "org", "referrer-repo")
 
 	baseDgst := mustDigest("cross-repo-base")
-	insertManifest(t, env, repoA, baseDgst, "")
+	baseManifestID := insertManifest(t, env, repoA, baseDgst, "")
 
 	referrerDgst := mustDigest("cross-repo-referrer")
 	_, err := env.q.UpsertManifest(ctx, daldb.UpsertManifestParams{
@@ -792,6 +809,10 @@ func TestCollect_CrossRepoSubjectReferrerProtection(t *testing.T) {
 		t.Fatal(err)
 	}
 	insertTag(t, env, repoB, "sig", referrerDgst)
+
+	// expire child explicitly
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTemporaryTag(t, env, baseManifestID, pastMs)
 
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
@@ -831,11 +852,14 @@ func TestCollect_ChildSharedByTwoParents(t *testing.T) {
 	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
 	expireTag(t, env, repoID, "v1", pastMs)
 
+	// expire child image explicitly
+	expireTemporaryTag(t, env, childID, pastMs)
+
 	stats, err := env.collector.Collect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.TagsExpired != 1 {
+	if stats.TagsExpired != 2 {
 		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 1 {
