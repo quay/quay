@@ -1432,3 +1432,121 @@ func ctx(t *testing.T) context.Context {
 	t.Helper()
 	return t.Context()
 }
+
+// TestCollect_TaggedManifestBlobSurvivesExpiredUploadedBlob is Python parity:
+// a blob linked to a live tagged manifest must not be vacuumed when its
+// uploadedblob 1-hour marker expires.
+func TestCollect_TaggedManifestBlobSurvivesExpiredUploadedBlob(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	manifestDgst := mustDigest("tagged-live")
+	manifestID := insertManifest(t, env, repoID, manifestDgst)
+	insertTag(t, env, repoID, "latest", manifestDgst)
+
+	content := []byte("layer-of-tagged-image")
+	blobDgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, blobDgst, content); err != nil {
+		t.Fatal(err)
+	}
+	blobID, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.PutUploadedBlob(ctx, repoID, blobDgst); err != nil {
+		t.Fatal(err)
+	}
+	linkBlobToManifest(t, env, repoID, manifestID, blobID)
+
+	if _, err := env.db.ExecContext(ctx, "UPDATE uploadedblob SET expires_at = datetime('now', '-1 second')"); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.BlobsDeleted != 0 {
+		t.Fatalf("expected 0 deleted blobs (tagged manifest still references them), got %d", stats.BlobsDeleted)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests, got %d", stats.ManifestsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDgst); err != nil {
+		t.Fatalf("blob storage must remain after uploadedblob expiry: %v", err)
+	}
+}
+
+// TestCollect_DigestOnlyManifestDeletedWithoutTempTag documents current Go
+// Phase 2: a digest-only PutManifest (no tag, no parent, no subject) is
+// collected immediately. Python writes a hidden $temp- tag for 1 hour instead.
+func TestCollect_DigestOnlyManifestDeletedWithoutTempTag(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	dgst := mustDigest("digest-only-child")
+	insertManifest(t, env, repoID, dgst)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 1 {
+		t.Fatalf("expected Phase 2 to delete the untagged digest-only manifest, got %d", stats.ManifestsDeleted)
+	}
+}
+
+// TestCollect_DigestOnlyTempTagProtectsBlobsAfterUploadedBlobExpiry is Python
+// parity: a digest-only manifest with a 1h $temp- tag keeps its blobs after
+// uploadedblob expires.
+func TestCollect_DigestOnlyTempTagProtectsBlobsAfterUploadedBlobExpiry(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	content := []byte("digest-only-layer")
+	blobDgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, blobDgst, content); err != nil {
+		t.Fatal(err)
+	}
+	blobID, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.PutUploadedBlob(ctx, repoID, blobDgst); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestDgst := mustDigest("digest-only-with-temp")
+	manifestID, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            manifestDgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		BlobDigests:       []oci.BlobRef{{Digest: blobDgst, Size: int64(len(content))}},
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	linkBlobToManifest(t, env, repoID, manifestID, blobID)
+
+	if _, err := env.db.ExecContext(ctx, "UPDATE uploadedblob SET expires_at = datetime('now', '-1 second')"); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests (temp tag protects digest-only PUT), got %d", stats.ManifestsDeleted)
+	}
+	if stats.BlobsDeleted != 0 {
+		t.Fatalf("expected 0 deleted blobs, got %d", stats.BlobsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDgst); err != nil {
+		t.Fatalf("blob storage must remain: %v", err)
+	}
+}

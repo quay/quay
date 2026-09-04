@@ -2,12 +2,15 @@ package metastore_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/opencontainers/go-digest"
 
+	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
@@ -199,6 +202,68 @@ func TestPutManifest_WithTag(t *testing.T) {
 	assertActiveTag(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
 
+func TestPutManifest_DigestOnlyCreatesExpiringTempTag(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("digest-only-child")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var name string
+	var hidden int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT name, hidden, lifetime_end_ms FROM tag WHERE manifest_id = ?`,
+		manifestID).Scan(&name, &hidden, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if hidden != 1 {
+		t.Errorf("hidden = %d, want 1", hidden)
+	}
+	if !strings.HasPrefix(name, "$temp-") {
+		t.Errorf("temp tag name %q, want $temp- prefix", name)
+	}
+	if !endMs.Valid {
+		t.Fatal("digest-only temp tag must expire (lifetime_end_ms set)")
+	}
+	wantMin := time.Now().Add(50 * time.Minute).UnixMilli()
+	wantMax := time.Now().Add(70 * time.Minute).UnixMilli()
+	if endMs.Int64 < wantMin || endMs.Int64 > wantMax {
+		t.Errorf("lifetime_end_ms = %d, want ~1 hour from now", endMs.Int64)
+	}
+
+	// Repeat PUT must not duplicate the temp tag (existing one still covers the window).
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("temp tags after repeat PUT: got %d, want 1", count)
+	}
+}
+
 func TestPutManifest_TagReplace(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -269,6 +334,278 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPutManifest_IndexMaterializesChildLayers(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configDgst := digest.FromString("child-config")
+	layerDgst := digest.FromString("child-layer")
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: configDgst, Size: 12}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 24}); err != nil {
+		t.Fatal(err)
+	}
+
+	childContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":"` + configDgst.String() + `"},"layers":[{"digest":"` + layerDgst.String() + `"}]}`)
+	childDgst := digest.FromBytes(childContent)
+	indexDgst := digest.FromString("index-only")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       indexDgst,
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[...]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		ChildManifests: []oci.ManifestRecord{{
+			Digest:    childDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   childContent,
+			BlobDigests: []oci.BlobRef{
+				{Digest: configDgst, Size: 12},
+				{Digest: layerDgst, Size: 24},
+			},
+		}},
+		Tag: "latest",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var childBytes string
+	if err := db.QueryRowContext(ctx, `SELECT manifest_bytes FROM manifest WHERE digest = ?`, childDgst.String()).Scan(&childBytes); err != nil {
+		t.Fatal(err)
+	}
+	if childBytes != string(childContent) {
+		t.Errorf("child manifest_bytes = %q, want real JSON (not {})", childBytes)
+	}
+
+	var blobLinks int
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*) FROM manifestblob mb
+		JOIN manifest m ON m.id = mb.manifest_id
+		WHERE m.digest = ?`, childDgst.String()).Scan(&blobLinks); err != nil {
+		t.Fatal(err)
+	}
+	if blobLinks != 2 {
+		t.Errorf("child manifestblob rows = %d, want 2 (config + layer)", blobLinks)
+	}
+
+	var childLinks int
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*) FROM manifestchild mc
+		JOIN manifest p ON p.id = mc.manifest_id
+		JOIN manifest c ON c.id = mc.child_manifest_id
+		WHERE p.digest = ? AND c.digest = ?`, indexDgst.String(), childDgst.String()).Scan(&childLinks); err != nil {
+		t.Fatal(err)
+	}
+	if childLinks != 1 {
+		t.Errorf("manifestchild rows = %d, want 1", childLinks)
+	}
+
+	var childID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM manifest WHERE digest = ?`, childDgst.String()).Scan(&childID); err != nil {
+		t.Fatal(err)
+	}
+	var name string
+	var hidden int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx, `SELECT name, hidden, lifetime_end_ms FROM tag WHERE manifest_id = ?`, childID).Scan(&name, &hidden, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if hidden != 1 {
+		t.Errorf("child hidden = %d, want 1", hidden)
+	}
+	if !strings.HasPrefix(name, "$temp-") {
+		t.Errorf("child temp tag name %q, want $temp- prefix", name)
+	}
+	if !endMs.Valid {
+		t.Fatal("index-created child must get an expiring $temp- tag")
+	}
+
+	// Repeat index PUT must not duplicate the child's temp tag.
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       indexDgst,
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[...]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		ChildManifests: []oci.ManifestRecord{{
+			Digest:    childDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   childContent,
+			BlobDigests: []oci.BlobRef{
+				{Digest: configDgst, Size: 12},
+				{Digest: layerDgst, Size: 24},
+			},
+		}},
+		Tag: "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var tagCount int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM tag WHERE manifest_id = ?`, childID).Scan(&tagCount); err != nil {
+		t.Fatal(err)
+	}
+	if tagCount != 1 {
+		t.Errorf("child tags after repeat index PUT: got %d, want 1", tagCount)
+	}
+}
+
+func TestPutManifest_IndexDoesNotClobberNonEmptyChildBytes(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	realContent := []byte(`{"schemaVersion":2,"config":{"digest":"sha256:abc"}}`)
+	childDgst := digest.FromString("already-written-child")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            childDgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           realContent,
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("parent-index"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[...]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		ChildManifests: []oci.ManifestRecord{{
+			Digest:    childDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   realContent,
+		}},
+		Tag: "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var childBytes string
+	if err := db.QueryRowContext(ctx, `SELECT manifest_bytes FROM manifest WHERE digest = ?`, childDgst.String()).Scan(&childBytes); err != nil {
+		t.Fatal(err)
+	}
+	if childBytes != string(realContent) {
+		t.Errorf("child manifest_bytes = %q, want %q (must not clobber to {})", childBytes, realContent)
+	}
+	var tagCount int
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*) FROM tag t
+		JOIN manifest m ON m.id = t.manifest_id
+		WHERE m.digest = ?`, childDgst.String()).Scan(&tagCount); err != nil {
+		t.Fatal(err)
+	}
+	if tagCount != 1 {
+		t.Errorf("child tags after index PUT: got %d, want 1 (must not duplicate $temp-)", tagCount)
+	}
+}
+
+func TestPutManifest_PlaceholderUpsertDoesNotClobberNonEmptyBytes(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	realContent := []byte(`{"schemaVersion":2,"real":true}`)
+	childDgst := digest.FromString("race-child")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    childDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   realContent,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var mtID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM mediatype WHERE name = ?`, "application/vnd.oci.image.manifest.v1+json").Scan(&mtID); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate the concurrent race: index PUT's placeholder upsert runs after
+	// the child digest PUT has already committed real JSON.
+	if _, err := daldb.New(db).UpsertManifest(ctx, daldb.UpsertManifestParams{
+		RepositoryID:  repoID,
+		Digest:        childDgst.String(),
+		MediaTypeID:   mtID,
+		ManifestBytes: "{}",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var childBytes string
+	if err := db.QueryRowContext(ctx, `SELECT manifest_bytes FROM manifest WHERE digest = ?`, childDgst.String()).Scan(&childBytes); err != nil {
+		t.Fatal(err)
+	}
+	if childBytes != string(realContent) {
+		t.Errorf("after placeholder upsert, manifest_bytes = %q, want %q", childBytes, realContent)
+	}
+}
+
+func TestPutManifest_IndexReusesExistingBlobIDs(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	layerDgst := digest.FromString("shared-layer")
+	blobID, err := store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 40})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	childContent := []byte(`{"schemaVersion":2,"layers":[{"digest":"` + layerDgst.String() + `"}]}`)
+	childDgst := digest.FromBytes(childContent)
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("index-reuse-blob"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		ChildManifests: []oci.ManifestRecord{{
+			Digest:      childDgst,
+			MediaType:   "application/vnd.oci.image.manifest.v1+json",
+			Content:     childContent,
+			BlobDigests: []oci.BlobRef{{Digest: layerDgst, Size: 40}},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM imagestorage WHERE content_checksum = ?`, layerDgst.String()).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("imagestorage rows for layer = %d, want 1 (must reuse existing id)", count)
+	}
+	var linkedID int64
+	if err := db.QueryRowContext(ctx, `
+		SELECT mb.blob_id FROM manifestblob mb
+		JOIN imagestorage s ON s.id = mb.blob_id
+		WHERE s.content_checksum = ?`, layerDgst.String()).Scan(&linkedID); err != nil {
+		t.Fatal(err)
+	}
+	if linkedID != blobID {
+		t.Errorf("linked blob id = %d, want original %d", linkedID, blobID)
 	}
 }
 

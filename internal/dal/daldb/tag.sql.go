@@ -163,6 +163,55 @@ func (q *Queries) InsertHiddenTag(ctx context.Context, arg InsertHiddenTagParams
 	return id, err
 }
 
+const insertHiddenExpiringTag = `-- name: InsertHiddenExpiringTag :one
+INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id, hidden)
+VALUES (?, ?, ?, ?, ?, ?, 1)
+RETURNING id
+`
+
+type InsertHiddenExpiringTagParams struct {
+	Name            string        `json:"name"`
+	RepositoryID    int64         `json:"repository_id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+	TagKindID       int64         `json:"tag_kind_id"`
+}
+
+func (q *Queries) InsertHiddenExpiringTag(ctx context.Context, arg InsertHiddenExpiringTagParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertHiddenExpiringTag,
+		arg.Name,
+		arg.RepositoryID,
+		arg.ManifestID,
+		arg.LifetimeStartMs,
+		arg.LifetimeEndMs,
+		arg.TagKindID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const hasProtectingTagForManifest = `-- name: HasProtectingTagForManifest :one
+SELECT EXISTS(
+    SELECT 1 FROM tag
+    WHERE manifest_id = ?
+      AND (lifetime_end_ms IS NULL OR lifetime_end_ms >= ?)
+) AS has_tag
+`
+
+type HasProtectingTagForManifestParams struct {
+	ManifestID    sql.NullInt64 `json:"manifest_id"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+func (q *Queries) HasProtectingTagForManifest(ctx context.Context, arg HasProtectingTagForManifestParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasProtectingTagForManifest, arg.ManifestID, arg.LifetimeEndMs)
+	var has_tag int64
+	err := row.Scan(&has_tag)
+	return has_tag, err
+}
+
 const tagLifetimeEndExists = `-- name: TagLifetimeEndExists :one
 SELECT EXISTS(
     SELECT 1

@@ -170,28 +170,34 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		}
 	}
 
-	for _, childDgst := range m.ChildDigests {
-		if err := s.linkChild(ctx, q, repoID, manifestID, mtID, childDgst); err != nil {
-			return 0, err
-		}
+	if err := s.linkChildren(ctx, q, tx, repoID, manifestID, mtID, m.ChildManifests, m.ChildDigests); err != nil {
+		return 0, err
 	}
 
-	if m.Tag != "" {
-		if _, err := s.putTag(ctx, q, repoID, manifestID, m.Tag); err != nil {
-			return 0, err
-		}
-	}
-
-	if m.Subject != "" {
-		if err := s.setSubjectAndProtect(ctx, q, repoID, manifestID, &m); err != nil {
-			return 0, err
-		}
+	if err := s.finalizeManifestWrite(ctx, q, repoID, manifestID, &m); err != nil {
+		return 0, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return manifestID, nil
+}
+
+func (s *SQLiteStore) finalizeManifestWrite(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, m *oci.ManifestRecord) error {
+	if m.Tag != "" {
+		if _, err := s.putTag(ctx, q, repoID, manifestID, m.Tag); err != nil {
+			return err
+		}
+	} else if m.TempTagExpiration > 0 && m.Subject == "" {
+		if err := s.protectWithTempTag(ctx, q, repoID, manifestID, m.TempTagExpiration); err != nil {
+			return err
+		}
+	}
+	if m.Subject != "" {
+		return s.setSubjectAndProtect(ctx, q, repoID, manifestID, m)
+	}
+	return nil
 }
 
 // setSubjectAndProtect sets the subject column on a manifest and creates a
@@ -234,36 +240,164 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 	return nil
 }
 
-// linkChild resolves or creates a child manifest and links it to the parent
-// via manifestchild. Under concurrent multi-arch pushes, the child's metadata
-// write may not have committed yet even though distribution accepted the blob.
-// In that case, we create a placeholder manifest row so the FK link succeeds.
-func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, repoID, manifestID, mtID int64, childDgst digest.Digest) error {
-	child, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
-		RepositoryID: repoID,
-		Digest:       childDgst.String(),
+// protectWithTempTag creates a hidden $temp- tag with lifetime_end_ms set to
+// now+expiration, unless a tag already protects the manifest for that window.
+// This is Python create_temporary_tag_if_necessary(expiration_sec) for
+// digest-only manifest PUTs (write_manifest_by_digest).
+func (s *SQLiteStore) protectWithTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, expiration time.Duration) error {
+	now := time.Now()
+	endMs := now.Add(expiration).UnixMilli()
+	hasTag, err := q.HasProtectingTagForManifest(ctx, daldb.HasProtectingTagForManifestParams{
+		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeEndMs: sql.NullInt64{Int64: now.UnixMilli(), Valid: true},
 	})
-	if errors.Is(err, sql.ErrNoRows) {
-		child.ID, err = q.UpsertManifest(ctx, daldb.UpsertManifestParams{
-			RepositoryID:  repoID,
-			Digest:        childDgst.String(),
-			MediaTypeID:   mtID,
-			ManifestBytes: "{}",
-		})
-		if err != nil {
-			return fmt.Errorf("ensure child manifest %s: %w", childDgst, err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("lookup child manifest %s: %w", childDgst, err)
+	if err != nil {
+		return fmt.Errorf("check protecting tag for manifest %d: %w", manifestID, err)
 	}
+	if hasTag != 0 {
+		return nil
+	}
+
+	if _, err := q.InsertHiddenExpiringTag(ctx, daldb.InsertHiddenExpiringTagParams{
+		Name:            "$temp-" + uuid.NewString(),
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: now.UnixMilli(),
+		LifetimeEndMs:   sql.NullInt64{Int64: endMs, Valid: true},
+		TagKindID:       s.tagKindTag,
+	}); err != nil {
+		return fmt.Errorf("insert hidden temp tag: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) linkChildren(ctx context.Context, q *daldb.Queries, tx daldb.DBTX, repoID, parentID, parentMediaTypeID int64, children []oci.ManifestRecord, digests []digest.Digest) error {
+	seen := make(map[digest.Digest]struct{}, len(children)+len(digests))
+	for i := range children {
+		seen[children[i].Digest] = struct{}{}
+		if err := s.linkChild(ctx, q, tx, repoID, parentID, parentMediaTypeID, &children[i]); err != nil {
+			return err
+		}
+	}
+	for _, dgst := range digests {
+		if _, ok := seen[dgst]; ok {
+			continue
+		}
+		stub := oci.ManifestRecord{Digest: dgst}
+		if err := s.linkChild(ctx, q, tx, repoID, parentID, parentMediaTypeID, &stub); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// linkChild resolves or creates a child manifest and links it to the parent
+// via manifestchild. When child.Content is real JSON (loaded from CAS on
+// index PUT), the child row stores those bytes and LinkManifestBlob attaches
+// config/layers — matching Python _create_manifest → get_or_create_manifest
+// → connect_blobs. A "{}" stub is used only when CAS bytes are unavailable;
+// non-empty manifest_bytes are never overwritten with "{}".
+func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, tx daldb.DBTX, repoID, manifestID, parentMediaTypeID int64, child *oci.ManifestRecord) error {
+	childID, err := s.upsertChildManifest(ctx, q, repoID, parentMediaTypeID, child)
+	if err != nil {
+		return err
+	}
+
+	for _, ref := range child.BlobDigests {
+		blobID, err := s.ensureBlob(ctx, tx, ref)
+		if err != nil {
+			return err
+		}
+		if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
+			RepositoryID: repoID,
+			ManifestID:   childID,
+			BlobID:       blobID,
+		}); err != nil {
+			return fmt.Errorf("link child manifest blob %s: %w", ref.Digest, err)
+		}
+	}
+
+	if err := s.linkChildren(ctx, q, tx, repoID, childID, parentMediaTypeID, child.ChildManifests, child.ChildDigests); err != nil {
+		return err
+	}
+
 	if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
 		RepositoryID:    repoID,
 		ManifestID:      manifestID,
-		ChildManifestID: child.ID,
+		ChildManifestID: childID,
 	}); err != nil {
-		return fmt.Errorf("link child manifest %s: %w", childDgst, err)
+		return fmt.Errorf("link child manifest %s: %w", child.Digest, err)
+	}
+
+	// Python get_or_create_manifest(..., for_tagging=False) attaches a 1h
+	// $temp- tag to children created during index PUT. Skip "{}" stubs.
+	if hasRealManifestBytes(string(child.Content)) {
+		if err := s.protectWithTempTag(ctx, q, repoID, childID, oci.PushTempTagExpiration); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func (s *SQLiteStore) upsertChildManifest(ctx context.Context, q *daldb.Queries, repoID, parentMediaTypeID int64, child *oci.ManifestRecord) (int64, error) {
+	existing, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID,
+		Digest:       child.Digest.String(),
+	})
+	haveContent := hasRealManifestBytes(string(child.Content))
+	if errors.Is(err, sql.ErrNoRows) {
+		mtID := parentMediaTypeID
+		if child.MediaType != "" {
+			if id, merr := s.resolveMediaType(child.MediaType); merr == nil {
+				mtID = id
+			}
+		}
+		content := "{}"
+		if haveContent {
+			content = string(child.Content)
+		}
+		id, insErr := q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+			RepositoryID:  repoID,
+			Digest:        child.Digest.String(),
+			MediaTypeID:   mtID,
+			ManifestBytes: content,
+			Subject:       sql.NullString{String: child.Subject.String(), Valid: child.Subject != ""},
+			ArtifactType:  sql.NullString{String: child.ArtifactType, Valid: child.ArtifactType != ""},
+		})
+		if insErr != nil {
+			return 0, fmt.Errorf("ensure child manifest %s: %w", child.Digest, insErr)
+		}
+		return id, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lookup child manifest %s: %w", child.Digest, err)
+	}
+	if haveContent && !hasRealManifestBytes(existing.ManifestBytes) {
+		mtID := existing.MediaTypeID
+		if child.MediaType != "" {
+			if id, merr := s.resolveMediaType(child.MediaType); merr == nil {
+				mtID = id
+			}
+		}
+		id, updErr := q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+			RepositoryID:  repoID,
+			Digest:        child.Digest.String(),
+			MediaTypeID:   mtID,
+			ManifestBytes: string(child.Content),
+			Subject:       sql.NullString{String: child.Subject.String(), Valid: child.Subject != ""},
+			ArtifactType:  sql.NullString{String: child.ArtifactType, Valid: child.ArtifactType != ""},
+		})
+		if updErr != nil {
+			return 0, fmt.Errorf("backfill child manifest %s: %w", child.Digest, updErr)
+		}
+		return id, nil
+	}
+	return existing.ID, nil
+}
+
+func hasRealManifestBytes(b string) bool {
+	s := strings.TrimSpace(b)
+	return s != "" && s != "{}"
 }
 
 // ensureBlob inserts a blob into imagestorage if it doesn't already exist,
