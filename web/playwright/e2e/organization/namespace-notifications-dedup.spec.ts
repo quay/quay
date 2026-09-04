@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushUniqueImage} from '../../utils/container';
+import {pushImage} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 
 test.describe(
@@ -46,18 +46,19 @@ test.describe(
             'Dedup Webhook',
           );
 
-          // Push images to cross the 50% threshold
-          await api.repositoryWithName(org.name, 'deduprepo');
-          await pushUniqueImage(
+          // Push images to cross the 50% threshold (~1.2 MiB each)
+          await api.repositoryWithName(org.name, 'deduprepo1');
+          await api.repositoryWithName(org.name, 'deduprepo2');
+          await pushImage(
             org.name,
-            'deduprepo',
+            'deduprepo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushUniqueImage(
+          await pushImage(
             org.name,
-            'deduprepo',
+            'deduprepo2',
             'v2',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
@@ -68,9 +69,10 @@ test.describe(
           expect(firstWebhook).not.toBeNull();
 
           // Push another image (still above threshold, within cooldown)
-          await pushUniqueImage(
+          await api.repositoryWithName(org.name, 'deduprepo3');
+          await pushImage(
             org.name,
-            'deduprepo',
+            'deduprepo3',
             'v3',
             TEST_USERS.user.username,
             TEST_USERS.user.password,

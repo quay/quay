@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {nsNotificationRow} from '../../utils/namespace-notifications-ui';
 
 test.describe(
   'Namespace Notifications — Cleanup on Deletion',
@@ -42,10 +43,10 @@ test.describe(
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
         await authenticatedPage.getByTestId('Notifications').click();
         await expect(
-          authenticatedPage.getByText('Webhook Notification'),
+          nsNotificationRow(authenticatedPage, 'Webhook Notification'),
         ).toBeVisible();
         await expect(
-          authenticatedPage.getByText('Email Notification'),
+          nsNotificationRow(authenticatedPage, /^Email Notification$/),
         ).toBeVisible();
 
         // Delete the quota via API

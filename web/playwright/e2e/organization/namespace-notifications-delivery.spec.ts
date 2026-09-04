@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushUniqueImage} from '../../utils/container';
+import {pushImage} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 import {mailpit} from '../../utils/mailpit';
 
@@ -47,18 +47,19 @@ test.describe(
             'Warning Webhook',
           );
 
-          // Create repo and push images to exceed 80% of 3 MiB
+          // Create repos and push images to exceed 80% of 3 MiB (~1.2 MiB each)
           await api.repositoryWithName(org.name, 'repo1');
-          await pushUniqueImage(
+          await api.repositoryWithName(org.name, 'repo2');
+          await pushImage(
             org.name,
             'repo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushUniqueImage(
+          await pushImage(
             org.name,
-            'repo1',
+            'repo2',
             'v2',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
@@ -67,7 +68,8 @@ test.describe(
           // Wait for webhook
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
 
           // PROJQUAY-12230: verify numeric fields are serialized correctly
           // (Decimal from PostgreSQL SUM()/BigIntegerField must be cast to int before json.dumps)
@@ -122,7 +124,7 @@ test.describe(
 
           // Create repo and push first image (succeeds)
           await api.repositoryWithName(org.name, 'fillrepo');
-          await pushUniqueImage(
+          await pushImage(
             org.name,
             'fillrepo',
             'v1',
@@ -132,7 +134,7 @@ test.describe(
 
           // Second push should be rejected (over quota)
           try {
-            await pushUniqueImage(
+            await pushImage(
               org.name,
               'fillrepo',
               'v2',
@@ -146,7 +148,8 @@ test.describe(
           // Wait for webhook with quota_error event
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
         } finally {
           await receiver.stop();
         }
@@ -192,18 +195,19 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold
-        await api.repositoryWithName(org.name, 'emailrepo');
-        await pushUniqueImage(
+        // Push images to exceed warning threshold (~1.2 MiB each)
+        await api.repositoryWithName(org.name, 'emailrepo1');
+        await api.repositoryWithName(org.name, 'emailrepo2');
+        await pushImage(
           org.name,
-          'emailrepo',
+          'emailrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushUniqueImage(
+        await pushImage(
           org.name,
-          'emailrepo',
+          'emailrepo2',
           'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
@@ -262,18 +266,19 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold
-        await api.repositoryWithName(org.name, 'fbrepo');
-        await pushUniqueImage(
+        // Push images to exceed warning threshold (~1.2 MiB each)
+        await api.repositoryWithName(org.name, 'fbrepo1');
+        await api.repositoryWithName(org.name, 'fbrepo2');
+        await pushImage(
           org.name,
-          'fbrepo',
+          'fbrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushUniqueImage(
+        await pushImage(
           org.name,
-          'fbrepo',
+          'fbrepo2',
           'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
@@ -348,18 +353,10 @@ test.describe(
 
           const warnHook = await receiver.waitForWebhook(undefined, 30_000);
           expect(warnHook).not.toBeNull();
-          expect(warnHook?.body?.event_data).toHaveProperty(
-            'usage_bytes_formatted',
-          );
-          expect(warnHook?.body?.event_data).toHaveProperty(
-            'limit_bytes_formatted',
-          );
-          expect(warnHook?.body?.event_data.usage_bytes_formatted).toBe(
-            '819.20 MB',
-          );
-          expect(warnHook?.body?.event_data.limit_bytes_formatted).toBe(
-            '1.00 GB',
-          );
+          expect(warnHook?.body).toHaveProperty('usage_bytes_formatted');
+          expect(warnHook?.body).toHaveProperty('limit_bytes_formatted');
+          expect(warnHook?.body.usage_bytes_formatted).toBe('819.20 MB');
+          expect(warnHook?.body.limit_bytes_formatted).toBe('1.00 GB');
         } finally {
           await receiver.stop();
         }
@@ -382,18 +379,19 @@ test.describe(
 
         const org = await api.organization('nsdelivretro');
 
-        // Push images FIRST (~2.5 MiB total) — before any quota is set
-        await api.repositoryWithName(org.name, 'retrorepo');
-        await pushUniqueImage(
+        // Push images FIRST (~2.4 MiB total) — before any quota is set
+        await api.repositoryWithName(org.name, 'retrorepo1');
+        await api.repositoryWithName(org.name, 'retrorepo2');
+        await pushImage(
           org.name,
-          'retrorepo',
+          'retrorepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushUniqueImage(
+        await pushImage(
           org.name,
-          'retrorepo',
+          'retrorepo2',
           'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
@@ -425,7 +423,8 @@ test.describe(
           // Webhook should fire retroactively
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
         } finally {
           await receiver.stop();
         }

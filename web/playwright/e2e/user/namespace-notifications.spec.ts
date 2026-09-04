@@ -1,5 +1,9 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {
+  closeNotificationModal,
+  expectNsNotificationRow,
+} from '../../utils/namespace-notifications-ui';
 
 test.describe(
   'User Namespace Notifications',
@@ -40,15 +44,15 @@ test.describe(
 
       await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
-      await expect(
-        authenticatedPage.getByTestId('ns-notifications-table'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('User Webhook Notification'),
-      ).toBeVisible();
-      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
-      await expect(authenticatedPage.getByText('Webhook POST')).toBeVisible();
-      await expect(authenticatedPage.getByText('Enabled')).toBeVisible();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'User Webhook Notification',
+        {
+          event: 'Quota Warning',
+          method: 'Webhook POST',
+          status: 'Enabled',
+        },
+      );
 
       // Test the notification via kebab menu
       const kebabToggle = authenticatedPage
@@ -64,7 +68,7 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Test Notification Queued'),
       ).toBeVisible();
-      await authenticatedPage.getByRole('button', {name: 'Close'}).click();
+      await closeNotificationModal(authenticatedPage);
 
       // Delete the notification via kebab menu
       await kebabToggle.click();
@@ -105,13 +109,14 @@ test.describe(
 
       await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
-      await expect(
-        authenticatedPage.getByText('User Quota Error Email'),
-      ).toBeVisible();
-      await expect(authenticatedPage.getByText('Quota Error')).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Email Notification'),
-      ).toBeVisible();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'User Quota Error Email',
+        {
+          event: 'Quota Error',
+          method: 'Email Notification',
+        },
+      );
     });
 
     test('API-created notification appears in UI list', async ({
@@ -129,10 +134,11 @@ test.describe(
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(
-        authenticatedPage.getByText('API-Created User Notification'),
-      ).toBeVisible();
-      await expect(authenticatedPage.getByText('Quota Warning')).toBeVisible();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'API-Created User Notification',
+        {event: 'Quota Warning'},
+      );
     });
 
     test('can create a Slack notification', async ({authenticatedPage}) => {
@@ -161,12 +167,11 @@ test.describe(
 
       await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
 
-      await expect(
-        authenticatedPage.getByText('User Slack Notification'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Slack Notification'),
-      ).toBeVisible();
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'User Slack Notification',
+        {method: 'Slack Notification'},
+      );
     });
 
     test('multiple notifications coexist in user namespace list', async ({
