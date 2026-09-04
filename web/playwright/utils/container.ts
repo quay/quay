@@ -8,6 +8,7 @@
  */
 
 import {execFile, execFileSync, spawn} from 'child_process';
+import {randomBytes} from 'crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'fs';
 import {mkdtemp, mkdir, rm, writeFile} from 'fs/promises';
 import * as os from 'os';
@@ -327,6 +328,29 @@ export async function pushUniqueImage(
   username: string,
   password: string,
 ): Promise<void> {
+  await pushUniqueImageWithLayerBytes(
+    namespace,
+    repo,
+    tag,
+    username,
+    password,
+    64,
+  );
+}
+
+/**
+ * Push an image with a unique, incompressible layer of at least `layerBytes`.
+ * Quota checks during blob upload use stored bytes; random content avoids
+ * gzip collapsing the layer to a negligible size.
+ */
+export async function pushUniqueImageWithLayerBytes(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+  layerBytes: number,
+): Promise<void> {
   await requireTool('crane');
 
   const image = targetImage(namespace, repo, tag);
@@ -339,8 +363,16 @@ export async function pushUniqueImage(
   try {
     await mkdir(rootDir);
     await mkdir(authDir);
+    await writeFile(path.join(rootDir, 'quota-fill'), randomBytes(layerBytes));
     await writeFile(path.join(rootDir, 'unique'), `${uniqueId}\n`);
-    await execFileAsync('tar', ['-C', rootDir, '-cf', layerTar, 'unique']);
+    await execFileAsync('tar', [
+      '-C',
+      rootDir,
+      '-cf',
+      layerTar,
+      'quota-fill',
+      'unique',
+    ]);
 
     await craneLogin(REGISTRY_HOST, username, password, authDir);
 
@@ -473,6 +505,7 @@ export function orasAttach(
         authFile,
         `--artifact-type=${artifactType}`,
         `--annotation=${annotation}`,
+        '--disable-path-validation',
         filePath,
       ],
       {stdio: 'pipe', timeout: 60_000},

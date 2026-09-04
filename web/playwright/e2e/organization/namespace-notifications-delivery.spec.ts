@@ -1,6 +1,10 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImage, pushQuotaNotificationImage} from '../../utils/container';
+import {
+  pushImage,
+  pushQuotaNotificationImage,
+  pushUniqueImageWithLayerBytes,
+} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 import {mailpit} from '../../utils/mailpit';
 
@@ -122,7 +126,7 @@ test.describe(
             'Error Webhook',
           );
 
-          // busybox (~1.2 MiB): first push under 2 MiB quota, second rejected over limit
+          // First push (~1.2 MiB busybox) stays under the 2 MiB reject limit.
           await api.repositoryWithName(org.name, 'fillrepo');
           await pushImage(
             org.name,
@@ -132,14 +136,17 @@ test.describe(
             TEST_USERS.user.password,
           );
 
-          // Second push should be rejected (over quota)
+          // Second push must upload new blob bytes (not mount busybox layers) so
+          // verify_namespace_quota_during_upload fires quota_error before reject.
+          // ~1.1 MiB unique layer + ~1.2 MiB existing usage crosses 2 MiB during upload.
           try {
-            await pushImage(
+            await pushUniqueImageWithLayerBytes(
               org.name,
               'fillrepo',
               'v2',
               TEST_USERS.user.username,
               TEST_USERS.user.password,
+              1_100_000,
             );
           } catch {
             // Expected — push rejected due to quota
