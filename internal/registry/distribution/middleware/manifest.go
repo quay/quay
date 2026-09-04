@@ -161,9 +161,8 @@ func (ms *manifestService) Get(ctx context.Context, dgst digest.Digest, options 
 				Name:     ms.repo.Named().Name(),
 				Revision: dgst,
 			}
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	m, _, err := distribution.UnmarshalManifest(mediaType, content)

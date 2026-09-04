@@ -144,7 +144,7 @@ func (m *mockStore) ListReferrers(_ context.Context, _ int64, _ digest.Digest, _
 	return nil, errNotImplemented
 }
 
-func (m *mockStore) GetManifestForServing(_ context.Context, _ int64, _ digest.Digest) ([]byte, string, error) {
+func (m *mockStore) GetManifestForServing(_ context.Context, _ int64, _ digest.Digest) (content []byte, mediaType string, err error) {
 	return m.getManifestForServingContent, m.getManifestForServingMediaType, m.getManifestForServingError
 }
 
