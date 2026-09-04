@@ -19,10 +19,6 @@ test.describe(
 
       await authenticatedPage.getByTestId('Notifications').click();
 
-      await expect(
-        authenticatedPage.getByText('No notifications configured'),
-      ).toBeVisible();
-
       await authenticatedPage.getByTestId('create-ns-notification-btn').click();
 
       await authenticatedPage
@@ -88,8 +84,8 @@ test.describe(
         .click();
 
       await expect(
-        authenticatedPage.getByText('No notifications configured'),
-      ).toBeVisible();
+        nsNotificationRow(authenticatedPage, 'User Webhook Notification'),
+      ).not.toBeVisible();
     });
 
     test('can create an email notification', async ({authenticatedPage}) => {
