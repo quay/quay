@@ -6,11 +6,10 @@ export function nsNotificationsTable(page: Page): Locator {
 
 export function nsNotificationRow(page: Page, title: string | RegExp): Locator {
   const table = nsNotificationsTable(page);
-  const titleCell =
-    typeof title === 'string'
-      ? table.getByRole('gridcell', {name: title, exact: true})
-      : table.getByRole('gridcell', {name: title});
-  return table.getByRole('row').filter({has: titleCell});
+  // Inner locator is resolved relative to each candidate row (not the table).
+  return table.getByRole('row').filter({
+    has: page.locator('[data-label="title"]', {hasText: title}),
+  });
 }
 
 export async function expectNsNotificationRow(
@@ -22,17 +21,17 @@ export async function expectNsNotificationRow(
   await expect(row).toBeVisible();
   if (columns.event) {
     await expect(
-      row.getByRole('gridcell', {name: columns.event, exact: true}),
+      row.locator('[data-label="event"]', {hasText: columns.event}),
     ).toBeVisible();
   }
   if (columns.method) {
     await expect(
-      row.getByRole('gridcell', {name: columns.method, exact: true}),
+      row.locator('[data-label="method"]', {hasText: columns.method}),
     ).toBeVisible();
   }
   if (columns.status) {
     await expect(
-      row.getByRole('gridcell', {name: columns.status, exact: true}),
+      row.locator('[data-label="status"]', {hasText: columns.status}),
     ).toBeVisible();
   }
 }
