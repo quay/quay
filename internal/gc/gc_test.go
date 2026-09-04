@@ -915,7 +915,7 @@ func TestCollect_DeepCascade_ThreeLevels(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stats.TagsExpired != 3 {
-		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+		t.Fatalf("expected 3 expired tag, got %d", stats.TagsExpired)
 	}
 	if stats.ManifestsDeleted != 3 {
 		t.Fatalf("expected 3 deleted manifests (parent+child+grandchild), got %d", stats.ManifestsDeleted)
