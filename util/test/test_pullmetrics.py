@@ -9,9 +9,14 @@ This test suite covers:
 - Pull statistics retrieval from Redis
 - Error handling
 """
+
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
+import fakeredis
 import pytest
 import redis
 
@@ -49,7 +54,7 @@ class TestPullMetricsBuilder:
         """Test PullMetricsBuilder initialization."""
         redis_config = {"host": "localhost", "port": 6379}
         builder = PullMetricsBuilder(redis_config)
-        assert builder._redis_config == redis_config
+        assert builder.instance._redis_config == redis_config
         assert builder._max_workers is None
 
     def test_builder_initialization_with_workers(self):
@@ -66,6 +71,38 @@ class TestPullMetricsBuilder:
             builder = PullMetricsBuilder(redis_config)
             event = builder.get_event()
             assert isinstance(event, PullMetrics)
+
+    def test_builder_get_event_returns_shared_instance(self, mock_redis):
+        """
+        Verifies that the get_event returns the same instance of PullMetrics on successive calls.
+        """
+        with patch("util.pullmetrics.redis.StrictRedis") as mock_redis_class:
+            mock_redis_class.return_value = MagicMock()
+            redis_config = {"host": "localhost", "port": "6379", "_testing": True}
+            builder = PullMetricsBuilder(redis_config)
+
+            # create events
+            e1 = builder.get_event()
+            e2 = builder.get_event()
+
+            assert e1 is e2
+            assert e1 is builder.instance
+
+    def test_shared_client_reused_across_calls(self, mock_redis):
+        """
+        Verifies that successive calls to get_event reuse the same instantiated connection pool.
+        """
+        with patch("util.pullmetrics.redis.StrictRedis") as mock_redis_class:
+            mock_redis_class.return_value = MagicMock()
+            redis_config = {"host": "localhost", "port": "6379", "_testing": True}
+            builder = PullMetricsBuilder(redis_config)
+
+            # events
+            c1 = builder.get_event()._ensure_redis_connection()
+            c2 = builder.get_event()._ensure_redis_connection()
+
+            assert c1 is c2
+            assert mock_redis_class.call_count == 1
 
 
 class TestPullMetricsBuilderModule:
@@ -314,6 +351,75 @@ class TestPullMetrics:
 
         # Should have attempted to reconnect
         assert mock_redis.ping.call_count >= 2
+
+    def test_redis_concurrent_first_use_creates_single_client(self, mock_redis):
+        """
+        Verifies that on concurrent requests we only get one pool issued instead of potentially two
+        in a race condition.
+        """
+        construct_count = 0
+        lock = threading.Lock()
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+
+        # fake Redis constructor
+        def fake_ctor(*args, **kwargs):
+            nonlocal construct_count
+            with lock:
+                construct_count += 1
+            time.sleep(0.05)
+            return fakeredis.FakeStrictRedis()
+
+        # send 10 concurrent requests to the constructor
+        with patch("redis.StrictRedis", side_effect=fake_ctor):
+            pm = PullMetrics(redis_config)
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                clients = list(ex.map(lambda _: pm._ensure_redis_connection(), range(10)))
+
+        # make sure that the contructor is called only once
+        assert construct_count == 1
+
+        # make sure that all returned clients are identical
+        assert all(c is clients[0] for c in clients)
+
+    def test_redis_concurrent_reconnect_creates_single_client(self, mock_redis):
+        """
+        Verifies that after the original connection goes bad, concurrent requests to reconnect
+        must reconnect once and not create duplicate pools.
+        """
+        concurrent_count = 0
+        lock = threading.Lock()
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+
+        def make_client(healthy):
+            c = MagicMock()
+            c.ping.side_effect = None if healthy else redis.ConnectionError("Redis is down")
+            return c
+
+        # fake Redis constructor
+        def fake_ctor(*args, **kwargs):
+            nonlocal concurrent_count
+            with lock:
+                concurrent_count += 1
+            time.sleep(0.5)
+            return make_client(healthy=True)
+
+        # send 10 concurrent requests to the constructor
+        with patch("redis.StrictRedis", side_effect=fake_ctor):
+            pm = PullMetrics(redis_config)
+
+            # initial healthy client, then poison it so later requests create a new pool
+            pm._ensure_redis_connection()
+            assert concurrent_count == 1
+            pm._redis.ping.side_effect = redis.ConnectionError("connection dropped")
+
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                clients = list(ex.map(lambda _: pm._ensure_redis_connection(), range(10)))
+
+        # exactly one new client should be built, meaning that concurrent_count should be 2
+        assert concurrent_count == 2
+
+        # verify all clients are the same
+        assert all(c is clients[0] for c in clients)
 
     def test_track_tag_pull_sync(self, pull_metrics_testing, mock_redis):
         """Test synchronous tag pull tracking."""

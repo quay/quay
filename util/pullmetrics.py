@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -11,6 +12,10 @@ DEFAULT_PULL_METRICS_WORKER_COUNT = 5
 DEFAULT_REDIS_CONNECTION_TIMEOUT = 5
 DEFAULT_REDIS_RETRY_ATTEMPTS = 3
 DEFAULT_REDIS_RETRY_DELAY = 1.0
+
+# default lock wait timeout, the amount of seconds we'll wait before
+# a lock can be acquired
+DEFAULT_REDIS_LOCK_WAIT = 2
 
 
 class CannotReadPullMetricsException(Exception):
@@ -25,11 +30,16 @@ class PullMetricsBuilder(object):
     """
 
     def __init__(self, redis_config, max_workers=None):
+        self._instance = PullMetrics(redis_config, max_workers)
         self._redis_config = redis_config
         self._max_workers = max_workers
 
+    @property
+    def instance(self):
+        return self._instance
+
     def get_event(self):
-        return PullMetrics(self._redis_config, self._max_workers)
+        return self._instance
 
 
 class PullMetricsBuilderModule(object):
@@ -166,6 +176,7 @@ class PullMetrics(object):
         # Store only Redis connection parameters
         self._redis_config = redis_config
         self._redis = None
+        self._redis_lock = threading.Lock()
 
         # Initialize thread pool (skip in testing mode)
         worker_count = max_workers or DEFAULT_PULL_METRICS_WORKER_COUNT
@@ -185,53 +196,76 @@ class PullMetrics(object):
         Raises:
             redis.RedisError: If connection fails after retries
         """
+        client = self._redis
         # If we have a working connection, return it
-        if self._redis is not None:
+        if client is not None:
             try:
                 # Quick health check - ping the connection
-                self._redis.ping()
-                return self._redis
+                client.ping()
+                return client
             except (redis.ConnectionError, redis.TimeoutError, AttributeError):
-                # Connection is broken, reset and reconnect
+                # Connection is broken, reconnect
                 logger.debug("Redis connection lost, reconnecting...")
-                self._redis = None
 
-        # Try to establish connection with retries
-        last_exception = None
-        for attempt in range(1, self._retry_attempts + 1):
-            try:
-                self._redis = redis.StrictRedis(
-                    socket_connect_timeout=self._connection_timeout,
-                    socket_timeout=self._socket_timeout,
-                    **self._redis_config,
-                )
-                self._redis.ping()
-                if attempt > 1:
-                    logger.info(
-                        "Redis connection established after %d attempt(s) for pull metrics", attempt
-                    )
-                return self._redis
-            except (redis.ConnectionError, redis.TimeoutError) as e:
-                last_exception = e
-                self._redis = None
-                if attempt < self._retry_attempts:
-                    logger.warning(
-                        "Redis connection attempt %d/%d failed for pull metrics: %s. Retrying in %.1fs...",
-                        attempt,
-                        self._retry_attempts,
-                        str(e),
-                        self._retry_delay,
-                    )
-                    time.sleep(self._retry_delay)
-                else:
-                    logger.error(
-                        "Failed to connect to Redis after %d attempts for pull metrics: %s",
-                        self._retry_attempts,
-                        str(e),
-                    )
+        # If we don't have a working connection, we must establish the pool. To ensure that
+        # we don't leak connections, first check if there's already a raised lock (greenlet is
+        # trying to connect)
+        if not self._redis_lock.acquire(timeout=DEFAULT_REDIS_LOCK_WAIT):
+            raise redis.ConnectionError("Cannot acquire Redis lock, aborting")
 
-        # All retries failed
-        raise last_exception or redis.ConnectionError("Failed to connect to Redis for pull metrics")
+        # If there is no lock, try to establish the pool.
+        try:
+            # recheck if there is a connection and return it
+            if self._redis is not None:
+                try:
+                    self._redis.ping()
+                    return self._redis
+                except (redis.ConnectionError, redis.TimeoutError, AttributeError):
+                    logger.debug("Redis connection is not available, attempting to reconnect...")
+                    self._redis = None
+
+            # retry loop runs under a lock, other threads need to wait until execution finishes
+            # this ensures only one pool is created instead of multiple, leaking potential connections
+            last_exception = None
+            for attempt in range(1, self._retry_attempts + 1):
+                try:
+                    self._redis = redis.StrictRedis(
+                        socket_connect_timeout=self._connection_timeout,
+                        socket_timeout=self._socket_timeout,
+                        **self._redis_config,
+                    )
+                    self._redis.ping()
+                    if attempt > 1:
+                        logger.info(
+                            "Redis connection established after %d attempt(s) for pull metrics",
+                            attempt,
+                        )
+                    return self._redis
+                except (redis.ConnectionError, redis.TimeoutError) as e:
+                    last_exception = e
+                    self._redis = None
+                    if attempt < self._retry_attempts:
+                        logger.warning(
+                            "Redis connection attempt %d/%d failed for pull metrics: %s. Retrying in %.1fs...",
+                            attempt,
+                            self._retry_attempts,
+                            str(e),
+                            self._retry_delay,
+                        )
+                        time.sleep(self._retry_delay)
+                    else:
+                        logger.error(
+                            "Failed to connect to Redis after %d attempts for pull metrics: %s",
+                            self._retry_attempts,
+                            str(e),
+                        )
+
+            # All retries failed
+            raise last_exception or redis.ConnectionError(
+                "Failed to connect to Redis for pull metrics"
+            )
+        finally:
+            self._redis_lock.release()
 
     @staticmethod
     def _tag_pull_key(repository_id, tag_name, manifest_digest):
