@@ -203,10 +203,14 @@ jobs:
             FEATURE_SECURITY_SCANNER_V2: true
             FEATURE_SECURITY_NOTIFICATIONS: true
             DEFAULT_UI: react
+            FEATURE_SPARSE_INDEX: true
             AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES: 0
             SSRF_ALLOWED_HOSTS:
               - host.containers.internal
-
+            FEATURE_QUOTA_NOTIFICATIONS: true
+            FEATURE_PROGRAMMATIC_BOOTSTRAP: true
+            BOOTSTRAP_TOKEN_OWNER: admin
+            FEATURE_SUPERUSER_CONFIGDUMP: true
       - name: Start LDAP server (pre-initialize for later auth swap)
         run: |
           docker compose up -d ldap
