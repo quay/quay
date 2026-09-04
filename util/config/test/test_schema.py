@@ -3,6 +3,7 @@ from jsonschema import ValidationError, validate
 
 from auth.scopes import validate_scope_string
 from config import DefaultConfig
+from util.config.provider.baseprovider import import_yaml
 from util.config.schema import CONFIG_SCHEMA, INTERNAL_ONLY_PROPERTIES
 
 
@@ -10,6 +11,98 @@ def test_ensure_schema_defines_all_fields():
     for key in (key for key in vars(DefaultConfig) if key.isupper()):
         has_key = key in CONFIG_SCHEMA["properties"] or key in INTERNAL_ONLY_PROPERTIES
         assert has_key, "Property `%s` is missing from config schema" % key
+
+
+def test_allowed_hash_algorithms_defaults_to_sha256():
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    assert DefaultConfig.ALLOWED_HASH_ALGORITHMS == ["sha256"]
+    validate(DefaultConfig.ALLOWED_HASH_ALGORITHMS, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        ["sha256"],
+        ["sha512"],
+        ["sha256", "sha512"],
+    ],
+)
+def test_allowed_hash_algorithms_accepts_exact_supported_allowlists(value, tmp_path):
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "ALLOWED_HASH_ALGORITHMS:\n" + "".join(f"  - {algorithm}\n" for algorithm in value)
+    )
+    config = {"ALLOWED_HASH_ALGORITHMS": DefaultConfig.ALLOWED_HASH_ALGORITHMS.copy()}
+
+    import_yaml(config, config_path)
+
+    validate(config["ALLOWED_HASH_ALGORITHMS"], schema)
+    assert config["ALLOWED_HASH_ALGORITHMS"] == value
+
+
+def test_allowed_hash_algorithms_rejects_empty_list():
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    with pytest.raises(ValidationError):
+        validate([], schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        ["sha256", "sha256"],
+        ["sha512", "sha512"],
+    ],
+)
+def test_allowed_hash_algorithms_rejects_duplicates(value):
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+def test_allowed_hash_algorithms_rejects_unknown_algorithm():
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    with pytest.raises(ValidationError):
+        validate(["sha384"], schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        ["SHA256"],
+        ["sha-256"],
+        ["sha_512"],
+        ["sha512!"],
+    ],
+)
+def test_allowed_hash_algorithms_rejects_non_lowercase_or_malformed_identifiers(value):
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "sha256",
+        {"sha256": True},
+        256,
+        True,
+        [256],
+        [None],
+    ],
+)
+def test_allowed_hash_algorithms_rejects_invalid_types(value):
+    schema = CONFIG_SCHEMA["properties"]["ALLOWED_HASH_ALGORITHMS"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
 
 
 def test_bootstrap_token_expiration_must_be_positive():
