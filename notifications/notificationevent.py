@@ -2,6 +2,10 @@ import logging
 import re
 import time
 from datetime import datetime
+from functools import lru_cache
+
+import regex
+from regex import Pattern
 
 from notifications import build_namespace_event_data, build_repository_event_data
 from util.jinjautil import get_template_env
@@ -11,8 +15,47 @@ logger = logging.getLogger(__name__)
 
 TEMPLATE_ENV = get_template_env("events")
 
+# Upper bound on a configured vulnerability tag-filter pattern, mirroring the immutability
+# policy limit. A legitimate filter never needs to be larger, and bounding it reduces the
+# surface for catastrophic backtracking.
+MAX_TAG_REGEX_LENGTH = 256
+
+# Per-event evaluation budget, in seconds, for the vulnerability tag filter. This is a single
+# deadline for the whole tag loop, not a per-tag timeout: the `regex` module aborts any match
+# that would run past the remaining budget, protecting the notification worker from a crafted
+# ReDoS pattern (e.g. "^(a+)+$") that would otherwise pin CPU across many non-matching tags.
+TAG_REGEX_MATCH_TIMEOUT = 1.0
+
+# Mirrors the TAG_LIMIT the notification producers apply when calling
+# tag_names_for_manifest (workers/securityscanningnotificationworker.py and
+# data/secscan_model/secscan_v4_model*.py). When a manifest carries more referencing tags than
+# this, the producer truncates the list before it reaches the filter, so a matching tag beyond
+# the cap would be invisible here. Kept as a local copy to avoid importing the worker/secscan
+# modules (which would create an import cycle); it must stay in sync with those producers.
+PRODUCER_TAG_LIMIT = 100
+
+
+@lru_cache(maxsize=256)
+def _compile_tag_regex(pattern: str) -> Pattern[str]:
+    return regex.compile(pattern)
+
+
+def _tag_filter_unset(tag_regex) -> bool:
+    # None (absent key) or "" (the React form posts an empty string when the field is left
+    # blank) means no tag filter is configured. Every other value, including a falsey
+    # non-string like 0, False, [] or {}, is a real (and, unless a str, invalid) filter and
+    # must not be collapsed to "unset" -- doing so would disable the filter and notify on
+    # every tag.
+    return tag_regex is None or tag_regex == ""
+
 
 class InvalidNotificationEventException(Exception):
+    pass
+
+
+class InvalidNotificationEventConfigException(Exception):
+    """Raised when a notification's event config fails validation at creation time."""
+
     pass
 
 
@@ -56,6 +99,17 @@ class NotificationEvent(object):
         By default returns True.
         """
         return True
+
+    def validate_event_config(self, event_config):
+        """
+        Validates the event-specific config supplied when creating a notification.
+
+        Called at notification-creation time so that invalid config is rejected with an API
+        validation error rather than silently breaking the notification when it later fires.
+        Subclasses raise InvalidNotificationEventConfigException for invalid config. By default
+        there is nothing to validate.
+        """
+        pass
 
     @classmethod
     def event_name(cls):
@@ -170,6 +224,7 @@ def _build_summary(event_data):
 
 class VulnerabilityFoundEvent(NotificationEvent):
     CONFIG_LEVEL = "level"
+    CONFIG_TAG_REGEX = "tag-regex"
     PRIORITY_KEY = "priority"
     VULNERABILITY_KEY = "vulnerability"
     MULTIPLE_VULNERABILITY_KEY = "vulnerabilities"
@@ -207,8 +262,128 @@ class VulnerabilityFoundEvent(NotificationEvent):
             },
         )
 
+    def validate_event_config(self, event_config):
+        # Validate the optional tag filter up front so a bad pattern is rejected with an API
+        # error at creation time, instead of silently suppressing every notification when it
+        # later fails to compile or is refused for being too long at match time.
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if _tag_filter_unset(tag_regex):
+            return
+
+        # Require a string. Without this, a non-string value (e.g. 123, ["["], {"x": "y"}) would
+        # be coerced with str() and stored as a "regex" that can never behave as the caller
+        # intended.
+        if not isinstance(tag_regex, str):
+            raise InvalidNotificationEventConfigException(
+                "Tag filter regular expression must be a string"
+            )
+
+        pattern = tag_regex
+        if len(pattern) > MAX_TAG_REGEX_LENGTH:
+            raise InvalidNotificationEventConfigException(
+                "Tag filter regular expression exceeds the maximum length of %d characters"
+                % MAX_TAG_REGEX_LENGTH
+            )
+
+        try:
+            _compile_tag_regex(pattern)
+        except regex.error as ex:
+            raise InvalidNotificationEventConfigException(
+                "Invalid tag filter regular expression: %s" % ex
+            )
+
+    def _matches_tag_filter(self, event_data, tag_regex):
+        # A non-string pattern cannot be a valid regex (validate_event_config now rejects one at
+        # creation time, but a config persisted before that check, or reached via another path,
+        # could still carry one). Treat it as no match rather than coercing it with str().
+        if not isinstance(tag_regex, str):
+            logger.warning(
+                "Vulnerability event tag filter is not a string (%s); not firing event",
+                type(tag_regex).__name__,
+            )
+            return False
+
+        # Reject overly long patterns outright: they only add to matching cost and a
+        # legitimate tag filter never needs to be this large.
+        pattern = tag_regex
+        if len(pattern) > MAX_TAG_REGEX_LENGTH:
+            logger.warning(
+                "Vulnerability event tag filter pattern exceeds %d characters; not firing event",
+                MAX_TAG_REGEX_LENGTH,
+            )
+            return False
+
+        # Try parsing the regex string as a regular expression. If we fail, we fail to fire
+        # the event.
+        try:
+            matcher = _compile_tag_regex(pattern)
+        except regex.error:
+            logger.warning("Regular expression error for vulnerability event filter: %s", pattern)
+            return False
+
+        # Only fire the event if at least one referencing tag matches the pattern as a whole.
+        # We use fullmatch (not match, which anchors only at the start, so "latest" would match
+        # "latest-extra") to keep the filter consistent with immutability tag patterns and the
+        # UI placeholder "(v2\..*)|(latest)", which imply whole-tag matching. An empty tag list
+        # (or no tags at all) never matches. The whole tag loop runs under a single deadline so a
+        # crafted, catastrophically-backtracking pattern cannot exhaust worker CPU (ReDoS) even
+        # across many non-matching tags; on timeout we conservatively treat the tag as non-matching.
+        tags = event_data.get("tags", [])
+        deadline = time.monotonic() + TAG_REGEX_MATCH_TIMEOUT
+        for i, tag in enumerate(tags):
+            # Producers substitute the manifest digest (e.g. "sha256:...") for the tag list when
+            # a manifest has no referencing tags. A digest is not a tag reference, and the UI
+            # promises matching against tag(s), so it must never satisfy the filter. Per the
+            # Docker tag grammar ([A-Za-z0-9_][A-Za-z0-9_.-]{0,127}) a tag can never contain a
+            # colon, so any entry with one is a digest (or otherwise not a tag) and is skipped.
+            if not isinstance(tag, str) or ":" in tag:
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                logger.warning(
+                    "Regex match budget exhausted for vulnerability event filter pattern %s; "
+                    "%d of %d tags left unevaluated",
+                    pattern,
+                    len(tags) - i,
+                    len(tags),
+                )
+                break
+            try:
+                if matcher.fullmatch(tag, timeout=remaining):
+                    return True
+            except TimeoutError:
+                logger.warning(
+                    "Regex match timed out for vulnerability event filter pattern %s against tag %s",
+                    pattern,
+                    tag,
+                )
+
+        # Fail open on truncation. The producers cap the referencing tags at PRODUCER_TAG_LIMIT,
+        # so when the delivered list is at (or above) that cap a matching tag may have been
+        # dropped before it reached us. Silently suppressing a security notification is worse
+        # than a possible false positive, so in that case we fire anyway.
+        if len(tags) >= PRODUCER_TAG_LIMIT:
+            logger.warning(
+                "Vulnerability event tag filter %s matched none of %d tags, at or above the "
+                "producer tag limit of %d; firing anyway to avoid suppressing a security "
+                "notification whose matching tag may have been truncated",
+                pattern,
+                len(tags),
+                PRODUCER_TAG_LIMIT,
+            )
+            return True
+
+        return False
+
     def should_perform(self, event_data, notification_data):
         event_config = notification_data.event_config_dict
+
+        # Filter on the referencing tags, if a tag pattern is configured. This is independent
+        # of the severity level filter below; when both are set, both must pass.
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if not _tag_filter_unset(tag_regex) and not self._matches_tag_filter(event_data, tag_regex):
+            return False
+
         if VulnerabilityFoundEvent.CONFIG_LEVEL not in event_config:
             return True
 
