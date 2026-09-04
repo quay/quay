@@ -29,13 +29,12 @@ test.describe(
       const table = authenticatedPage.getByTestId('usage-logs-table');
       await expect(table).toBeVisible();
 
-      // Verify create log renders a proper description (not "No description available")
-      await expect(table.getByText(/Add notification of event/)).toBeVisible();
-      await expect(table.getByText(/quota_warning/)).toBeVisible();
-
-      // Verify delete log renders a proper description
+      // Verify create and delete logs each reference quota_warning in context
       await expect(
-        table.getByText(/Delete notification of event/),
+        table.getByText(/Add notification of event.*quota_warning/),
+      ).toBeVisible();
+      await expect(
+        table.getByText(/Delete notification of event.*quota_warning/),
       ).toBeVisible();
 
       // Verify no "No description available" fallback

@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {expectNsNotificationRow} from '../../utils/namespace-notifications-ui';
 
 test.describe(
   'Namespace Notifications — Cleanup on Deletion',
@@ -41,12 +42,11 @@ test.describe(
         // Verify notifications exist in UI
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
         await authenticatedPage.getByTestId('Notifications').click();
-        await expect(
-          authenticatedPage.getByText('Webhook Notification'),
-        ).toBeVisible();
-        await expect(
-          authenticatedPage.getByText('Email Notification'),
-        ).toBeVisible();
+        await expectNsNotificationRow(
+          authenticatedPage,
+          'Webhook Notification',
+        );
+        await expectNsNotificationRow(authenticatedPage, 'Email Notification');
 
         // Delete the quota via API
         await superuserApi.raw.deleteOrganizationQuota(org.name, quota.quotaId);

@@ -1,6 +1,10 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushUniqueImage} from '../../utils/container';
+import {
+  pushImage,
+  pushQuotaNotificationImage,
+  pushUniqueImageWithLayerBytes,
+} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 import {mailpit} from '../../utils/mailpit';
 
@@ -20,7 +24,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const org = await api.organization('nsdelivwarn');
 
@@ -47,18 +51,19 @@ test.describe(
             'Warning Webhook',
           );
 
-          // Create repo and push images to exceed 80% of 3 MiB
+          // Push pinned UBI image — one push exceeds threshold; second starts upload
           await api.repositoryWithName(org.name, 'repo1');
-          await pushUniqueImage(
+          await api.repositoryWithName(org.name, 'repo2');
+          await pushQuotaNotificationImage(
             org.name,
             'repo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushUniqueImage(
+          await pushQuotaNotificationImage(
             org.name,
-            'repo1',
+            'repo2',
             'v2',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
@@ -67,7 +72,8 @@ test.describe(
           // Wait for webhook
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
 
           // PROJQUAY-12230: verify numeric fields are serialized correctly
           // (Decimal from PostgreSQL SUM()/BigIntegerField must be cast to int before json.dumps)
@@ -120,9 +126,9 @@ test.describe(
             'Error Webhook',
           );
 
-          // Create repo and push first image (succeeds)
+          // First push (~1.2 MiB busybox) stays under the 2 MiB reject limit.
           await api.repositoryWithName(org.name, 'fillrepo');
-          await pushUniqueImage(
+          await pushImage(
             org.name,
             'fillrepo',
             'v1',
@@ -130,14 +136,17 @@ test.describe(
             TEST_USERS.user.password,
           );
 
-          // Second push should be rejected (over quota)
+          // Second push must upload new blob bytes (not mount busybox layers) so
+          // verify_namespace_quota_during_upload fires quota_error before reject.
+          // ~1.1 MiB unique layer + ~1.2 MiB existing usage crosses 2 MiB during upload.
           try {
-            await pushUniqueImage(
+            await pushUniqueImageWithLayerBytes(
               org.name,
               'fillrepo',
               'v2',
               TEST_USERS.user.username,
               TEST_USERS.user.password,
+              1_100_000,
             );
           } catch {
             // Expected — push rejected due to quota
@@ -146,7 +155,8 @@ test.describe(
           // Wait for webhook with quota_error event
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
         } finally {
           await receiver.stop();
         }
@@ -165,7 +175,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const contactEmail = 'quota-warn-test@example.com';
         const org = await api.organization('nsdelivemail', contactEmail);
@@ -192,18 +202,19 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold
-        await api.repositoryWithName(org.name, 'emailrepo');
-        await pushUniqueImage(
+        // Push pinned UBI to exceed warning threshold
+        await api.repositoryWithName(org.name, 'emailrepo1');
+        await api.repositoryWithName(org.name, 'emailrepo2');
+        await pushQuotaNotificationImage(
           org.name,
-          'emailrepo',
+          'emailrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushUniqueImage(
+        await pushQuotaNotificationImage(
           org.name,
-          'emailrepo',
+          'emailrepo2',
           'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
@@ -235,7 +246,7 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         // Create org WITHOUT explicit email (UUID placeholder used)
         const org = await api.organization('nsdelivfb');
@@ -262,18 +273,19 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold
-        await api.repositoryWithName(org.name, 'fbrepo');
-        await pushUniqueImage(
+        // Push images to exceed warning threshold (~1.4 MiB each)
+        await api.repositoryWithName(org.name, 'fbrepo1');
+        await api.repositoryWithName(org.name, 'fbrepo2');
+        await pushQuotaNotificationImage(
           org.name,
-          'fbrepo',
+          'fbrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushUniqueImage(
+        await pushQuotaNotificationImage(
           org.name,
-          'fbrepo',
+          'fbrepo2',
           'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
@@ -348,18 +360,10 @@ test.describe(
 
           const warnHook = await receiver.waitForWebhook(undefined, 30_000);
           expect(warnHook).not.toBeNull();
-          expect(warnHook?.body?.event_data).toHaveProperty(
-            'usage_bytes_formatted',
-          );
-          expect(warnHook?.body?.event_data).toHaveProperty(
-            'limit_bytes_formatted',
-          );
-          expect(warnHook?.body?.event_data.usage_bytes_formatted).toBe(
-            '819.20 MB',
-          );
-          expect(warnHook?.body?.event_data.limit_bytes_formatted).toBe(
-            '1.00 GB',
-          );
+          expect(warnHook?.body).toHaveProperty('usage_bytes_formatted');
+          expect(warnHook?.body).toHaveProperty('limit_bytes_formatted');
+          expect(warnHook?.body.usage_bytes_formatted).toBe('819.20 MB');
+          expect(warnHook?.body.limit_bytes_formatted).toBe('1.00 GB');
         } finally {
           await receiver.stop();
         }
@@ -378,23 +382,16 @@ test.describe(
         ],
       },
       async ({api, superuserApi}) => {
-        test.setTimeout(120_000);
+        test.setTimeout(300_000);
 
         const org = await api.organization('nsdelivretro');
 
-        // Push images FIRST (~2.5 MiB total) — before any quota is set
-        await api.repositoryWithName(org.name, 'retrorepo');
-        await pushUniqueImage(
+        // Push pinned UBI before quota is configured
+        await api.repositoryWithName(org.name, 'retrorepo1');
+        await pushQuotaNotificationImage(
           org.name,
-          'retrorepo',
+          'retrorepo1',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushUniqueImage(
-          org.name,
-          'retrorepo',
-          'v2',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
@@ -425,7 +422,8 @@ test.describe(
           // Webhook should fire retroactively
           const webhook = await receiver.waitForWebhook(undefined, 60_000);
           expect(webhook).not.toBeNull();
-          expect(webhook?.body).toHaveProperty('event_data');
+          expect(webhook?.body).toHaveProperty('namespace');
+          expect(webhook?.body).toHaveProperty('threshold_percent');
         } finally {
           await receiver.stop();
         }
