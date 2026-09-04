@@ -131,7 +131,7 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryN
 }
 
 // PutManifest upserts a manifest and its blob/child references within a transaction.
-func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
+func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic,gocyclo // interface compliance
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -149,7 +149,7 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 
 	// we need to verify that all blobs and children are stored before we commit to storing the image/manifest list
 	if len(m.BlobDigests) > 0 {
-		blobIDs, err = s.validateBlobs(ctx, q, m)
+		blobIDs, err = s.validateBlobs(ctx, q, &m)
 		if err != nil {
 			return 0, err
 		}
@@ -157,7 +157,7 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 	}
 
 	if len(m.ChildDigests) > 0 {
-		childIDs, err = s.validateChildManifests(ctx, repoID, q, m)
+		childIDs, err = s.validateChildManifests(ctx, repoID, q, &m)
 		if err != nil {
 			return 0, err
 		}
@@ -225,16 +225,15 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 // validateBlobs validates that all blobs are committed to the database before the image manifest is stored.
 // This ensures consistency: manifests are stored only after all content for a particular image is stored,
 // with no orphaned blobs created.
-func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m oci.ManifestRecord) ([]int64, error) {
+func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
 	var blobIDs []int64
 	for _, blob := range m.BlobDigests {
 		id, err := q.GetBlobByChecksum(ctx, sql.NullString{String: blob.Digest.String(), Valid: true})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, fmt.Errorf("blob unknown: %s", blob.Digest.String())
-			} else {
-				return nil, fmt.Errorf("error during blob lookup %s: %w", blob.Digest.String(), err)
 			}
+			return nil, fmt.Errorf("error during blob lookup %s: %w", blob.Digest.String(), err)
 		}
 		blobIDs = append(blobIDs, id)
 	}
@@ -244,7 +243,7 @@ func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m oci
 // validateChildManifests validates that all child manifests for a particular manifest list are stored in the database
 // before the image manifest is stored. This ensures consistency: we do not have indexes that have placeholder
 // manifests as children.
-func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, q *daldb.Queries, m oci.ManifestRecord) ([]int64, error) {
+func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
 	var childIDs []int64
 	for _, childDigest := range m.ChildDigests {
 		id, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
@@ -254,9 +253,8 @@ func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, fmt.Errorf("child manifest unknown: %s", childDigest.String())
-			} else {
-				return nil, fmt.Errorf("error during child lookup %s: %w", childDigest.String(), err)
 			}
+			return nil, fmt.Errorf("error during child lookup %s: %w", childDigest.String(), err)
 		}
 		childIDs = append(childIDs, id.ID)
 	}
