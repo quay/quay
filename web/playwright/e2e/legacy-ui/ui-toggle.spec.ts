@@ -1,28 +1,36 @@
 import {test, expect} from '@playwright/test';
 
 test.describe('UI Toggle', {tag: ['@legacy-ui', '@smoke']}, () => {
-  test('visiting /angular sets cookie and loads Angular UI', async ({page}) => {
-    await page.goto('/angular', {waitUntil: 'domcontentloaded'});
+  test(
+    'visiting /angular sets cookie and loads Angular UI',
+    {tag: '@service-safe'},
+    async ({page}) => {
+      await page.goto('/angular', {waitUntil: 'domcontentloaded'});
 
-    const cookies = await page.context().cookies();
-    const uiCookie = cookies.find((c) => c.name === 'defaultui');
-    expect(uiCookie?.value).toBe('angular');
+      const cookies = await page.context().cookies();
+      const uiCookie = cookies.find((c) => c.name === 'defaultui');
+      expect(uiCookie?.value).toBe('angular');
 
-    await expect(page.locator('html[ng-app="quay"]')).toBeAttached({
-      timeout: 15000,
-    });
-  });
+      await expect(page.locator('html[ng-app="quay"]')).toBeAttached({
+        timeout: 15000,
+      });
+    },
+  );
 
-  test('visiting /react sets cookie and loads React UI', async ({page}) => {
-    await page.goto('/react', {waitUntil: 'domcontentloaded'});
+  test(
+    'visiting /react sets cookie and loads React UI',
+    {tag: '@service-safe'},
+    async ({page}) => {
+      await page.goto('/react', {waitUntil: 'domcontentloaded'});
 
-    const cookies = await page.context().cookies();
-    const uiCookie = cookies.find((c) => c.name === 'defaultui');
-    expect(uiCookie?.value).toBe('react');
+      const cookies = await page.context().cookies();
+      const uiCookie = cookies.find((c) => c.name === 'defaultui');
+      expect(uiCookie?.value).toBe('react');
 
-    await expect(page.locator('#root')).toBeAttached({timeout: 15000});
-    await expect(page.locator('html[ng-app="quay"]')).not.toBeAttached();
-  });
+      await expect(page.locator('#root')).toBeAttached({timeout: 15000});
+      await expect(page.locator('html[ng-app="quay"]')).not.toBeAttached();
+    },
+  );
 
   test('toggling from React to Angular and back', async ({page}) => {
     // networkidle lets React finish its async auth-check redirect cycle
@@ -46,16 +54,20 @@ test.describe('UI Toggle', {tag: ['@legacy-ui', '@smoke']}, () => {
     await expect(page.locator('html[ng-app="quay"]')).not.toBeAttached();
   });
 
-  test('cookie persists across navigations', async ({page}) => {
-    await page.goto('/angular', {waitUntil: 'domcontentloaded'});
+  test(
+    'cookie persists across navigations',
+    {tag: '@service-safe'},
+    async ({page}) => {
+      await page.goto('/angular', {waitUntil: 'domcontentloaded'});
 
-    await page.goto('/', {waitUntil: 'domcontentloaded'});
-    await expect(page.locator('html[ng-app="quay"]')).toBeAttached({
-      timeout: 15000,
-    });
+      await page.goto('/', {waitUntil: 'domcontentloaded'});
+      await expect(page.locator('html[ng-app="quay"]')).toBeAttached({
+        timeout: 15000,
+      });
 
-    const cookies = await page.context().cookies();
-    const uiCookie = cookies.find((c) => c.name === 'defaultui');
-    expect(uiCookie?.value).toBe('angular');
-  });
+      const cookies = await page.context().cookies();
+      const uiCookie = cookies.find((c) => c.name === 'defaultui');
+      expect(uiCookie?.value).toBe('angular');
+    },
+  );
 });
