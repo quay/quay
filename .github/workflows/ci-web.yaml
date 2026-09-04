@@ -209,6 +209,11 @@ jobs:
               - host.containers.internal
             FEATURE_QUOTA_NOTIFICATIONS: true
             FEATURE_SUPERUSER_CONFIGDUMP: true
+            FOOTER_LINKS:
+              TERMS_OF_SERVICE_URL: https://quay.acme.org/terms
+              PRIVACY_POLICY_URL: https://quay.acme.org/privacy
+              SECURITY_URL: https://quay.acme.org/security
+              ABOUT_URL: https://quay.acme.org/about
       - name: Start LDAP server (pre-initialize for later auth swap)
         run: |
           docker compose up -d ldap
