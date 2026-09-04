@@ -714,7 +714,10 @@ def delete_tag(repository_id, tag_name):
     if features.IMMUTABLE_TAGS and tag.immutable:
         raise ImmutableTagException(tag_name, "delete", repository_id)
 
-    return _delete_tag(tag, get_epoch_timestamp_ms())
+    deleted = _delete_tag(tag, get_epoch_timestamp_ms())
+    if deleted is not None:
+        reset_referrer_manifest_expiration(deleted.repository, deleted.manifest)
+    return deleted
 
 
 def _delete_tag(tag, now_ms, expire_cosign=True):
@@ -793,6 +796,9 @@ def delete_tags_for_manifest(manifest):
                 now_ms,
                 subject_manifest=subject_tag.manifest,
             )
+
+    if tags:
+        reset_referrer_manifest_expiration(tags[0].repository, tags[0].manifest)
 
     return tags
 
@@ -1120,7 +1126,66 @@ def remove_tag_from_timemachine(
     if updated and include_submanifests:
         reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
+    if updated:
+        reset_referrer_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
+
     return updated
+
+
+def reset_referrer_manifest_expiration(repository_id, manifest, expiration=None):
+    """
+    Expires $temp-* hidden tags on referrer manifests whose subject
+    is the given manifest's digest, allowing GC to reclaim them.
+    Only acts when the subject manifest has no remaining live, visible tags.
+
+    Must use the same ("retarget_tag", repository_id) advisory lock as retarget_tag
+    so the NOT EXISTS check cannot race with a concurrent push that creates a new
+    alive alias on this manifest. Re-acquiring from a caller that already holds
+    the lock is safe (pg_advisory_xact_lock is re-entrant within a transaction).
+    """
+    now_ms = get_epoch_timestamp_ms()
+    expiry_ms = now_ms if expiration is None else expiration
+    repo_id = getattr(repository_id, "id", repository_id)
+
+    try:
+        manifest_digest = manifest.digest
+    except AttributeError:
+        manifest_digest = Manifest.select(Manifest.digest).where(Manifest.id == manifest).scalar()
+        if manifest_digest is None:
+            return
+
+    with db_transaction():
+        # Serialize with retarget_tag: same namespace+key closes the check-then-act race.
+        lock_id = compute_advisory_lock_id("retarget_tag", repo_id)
+        db_advisory_xact_lock(lock_id)
+
+        # Materialize referrer IDs to avoid IN (SELECT...) in UPDATE,
+        # which triggers the transitive-modification guard in GC tests.
+        referrer_ids = [
+            row.id
+            for row in Manifest.select(Manifest.id).where(
+                Manifest.repository == repo_id,
+                Manifest.subject == manifest_digest,
+            )
+        ]
+        if not referrer_ids:
+            return
+
+        live_tags_subquery = Tag.select(Tag.id).where(
+            Tag.repository == repo_id,
+            Tag.manifest == manifest,
+            Tag.hidden == False,
+            (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+        )
+
+        Tag.update(lifetime_end_ms=expiry_ms).where(
+            Tag.repository == repo_id,
+            Tag.manifest.in_(referrer_ids),
+            Tag.name.startswith("$temp-"),
+            Tag.hidden == True,
+            (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > expiry_ms),
+            ~fn.EXISTS(live_tags_subquery),
+        ).execute()
 
 
 def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
