@@ -46,7 +46,7 @@ test.describe(
           nsNotificationRow(authenticatedPage, 'Webhook Notification'),
         ).toBeVisible();
         await expect(
-          nsNotificationRow(authenticatedPage, /^Email Notification$/),
+          nsNotificationRow(authenticatedPage, 'Email Notification'),
         ).toBeVisible();
 
         // Delete the quota via API

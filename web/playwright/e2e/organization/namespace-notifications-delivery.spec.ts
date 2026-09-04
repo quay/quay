@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImage} from '../../utils/container';
+import {pushImageWithLayerSize} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 import {mailpit} from '../../utils/mailpit';
 
@@ -47,17 +47,17 @@ test.describe(
             'Warning Webhook',
           );
 
-          // Create repos and push images to exceed 80% of 3 MiB (~1.2 MiB each)
+          // Create repos and push images to exceed 80% of 3 MiB (~1.4 MiB each)
           await api.repositoryWithName(org.name, 'repo1');
           await api.repositoryWithName(org.name, 'repo2');
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'repo1',
             'v1',
             TEST_USERS.user.username,
             TEST_USERS.user.password,
           );
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'repo2',
             'v2',
@@ -124,7 +124,7 @@ test.describe(
 
           // Create repo and push first image (succeeds)
           await api.repositoryWithName(org.name, 'fillrepo');
-          await pushImage(
+          await pushImageWithLayerSize(
             org.name,
             'fillrepo',
             'v1',
@@ -134,7 +134,7 @@ test.describe(
 
           // Second push should be rejected (over quota)
           try {
-            await pushImage(
+            await pushImageWithLayerSize(
               org.name,
               'fillrepo',
               'v2',
@@ -195,17 +195,17 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold (~1.2 MiB each)
+        // Push images to exceed warning threshold (~1.4 MiB each)
         await api.repositoryWithName(org.name, 'emailrepo1');
         await api.repositoryWithName(org.name, 'emailrepo2');
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'emailrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'emailrepo2',
           'v2',
@@ -266,17 +266,17 @@ test.describe(
         // Clear inbox before push
         await mailpit.clearInbox();
 
-        // Push images to exceed warning threshold (~1.2 MiB each)
+        // Push images to exceed warning threshold (~1.4 MiB each)
         await api.repositoryWithName(org.name, 'fbrepo1');
         await api.repositoryWithName(org.name, 'fbrepo2');
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'fbrepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'fbrepo2',
           'v2',
@@ -379,17 +379,17 @@ test.describe(
 
         const org = await api.organization('nsdelivretro');
 
-        // Push images FIRST (~2.4 MiB total) — before any quota is set
+        // Push images FIRST (~2.8 MiB total) — before any quota is set
         await api.repositoryWithName(org.name, 'retrorepo1');
         await api.repositoryWithName(org.name, 'retrorepo2');
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'retrorepo1',
           'v1',
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        await pushImage(
+        await pushImageWithLayerSize(
           org.name,
           'retrorepo2',
           'v2',
