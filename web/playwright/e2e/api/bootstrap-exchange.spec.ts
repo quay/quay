@@ -42,7 +42,12 @@ async function expectInvalidToken(response: {
 test.describe(
   'Kubernetes ServiceAccount workload identity exchange API',
   {
-    tag: ['@api', '@feature:KUBERNETES_SA_BOOTSTRAP', '@PROJQUAY-12484'],
+    tag: [
+      '@api',
+      '@feature:KUBERNETES_SA_BOOTSTRAP',
+      '@PROJQUAY-12484',
+      '@PROJQUAY-12487',
+    ],
   },
   () => {
     test('rejects a malformed subject token', async ({playwright}) => {
@@ -123,17 +128,22 @@ test.describe(
       playwright,
     }) => {
       const subjectToken = process.env.WORKLOAD_IDENTITY_SUBJECT_TOKEN;
-      test.skip(!subjectToken, 'WORKLOAD_IDENTITY_SUBJECT_TOKEN is not set');
+      const configuredScope = process.env.WORKLOAD_IDENTITY_SCOPE;
+      test.skip(
+        !subjectToken || !configuredScope,
+        'WORKLOAD_IDENTITY_SUBJECT_TOKEN and WORKLOAD_IDENTITY_SCOPE are required',
+      );
 
+      const requestedScope = `${configuredScope} ${configuredScope}`;
+      const expectedScope = [...new Set(requestedScope.split(/\s+/))]
+        .sort()
+        .join(' ');
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
       });
       try {
         const response = await request.post(`${API_URL}${EXCHANGE_PATH}`, {
-          form: exchangeForm(
-            subjectToken!,
-            process.env.WORKLOAD_IDENTITY_SCOPE,
-          ),
+          form: exchangeForm(subjectToken!, requestedScope),
         });
         expect(response.status()).toBe(200);
         const body = (await response.json()) as {
@@ -145,13 +155,43 @@ test.describe(
         expect(body.access_token).toEqual(expect.any(String));
         expect(body.token_type).toBe('Bearer');
         expect(body.expires_in).toEqual(expect.any(Number));
-        expect(body.scope).toEqual(expect.any(String));
+        expect(body.scope).toBe(expectedScope);
 
         const managementResponse = await request.get(
           `${API_URL}${process.env.WORKLOAD_IDENTITY_MANAGEMENT_PATH ?? '/api/v1/user/'}`,
           {headers: {Authorization: `Bearer ${body.access_token}`}},
         );
         expect(managementResponse.status()).toBe(200);
+      } finally {
+        await request.dispose();
+      }
+    });
+
+    test('rejects a request containing an unauthorized scope', async ({
+      playwright,
+    }) => {
+      const subjectToken = process.env.WORKLOAD_IDENTITY_SUBJECT_TOKEN;
+      const configuredScope = process.env.WORKLOAD_IDENTITY_SCOPE;
+      test.skip(
+        !subjectToken || !configuredScope,
+        'WORKLOAD_IDENTITY_SUBJECT_TOKEN and WORKLOAD_IDENTITY_SCOPE are required',
+      );
+
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const response = await request.post(`${API_URL}${EXCHANGE_PATH}`, {
+          form: exchangeForm(subjectToken!, `${configuredScope} unknown:scope`),
+        });
+        expect(response.status()).toBe(403);
+        const body = (await response.json()) as {
+          access_token?: string;
+          error_type?: string;
+          error?: string;
+        };
+        expect(body.access_token).toBeUndefined();
+        expect(body.error_type ?? body.error).toBe('unauthorized');
       } finally {
         await request.dispose();
       }
