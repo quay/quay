@@ -7,8 +7,8 @@ from app import app, storage
 from data.database import UseThenDisconnect
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
-from workers.blobuploadcleanupworker.models_pre_oci import pre_oci_model as model
 from workers.gunicorn_worker import GunicornWorker
+from workers.storagecleanupworker.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,9 @@ MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
 MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
 
 
-class BlobUploadCleanupWorker(Worker):
+class StorageCleanupWorker(Worker):
     def __init__(self):
-        super(BlobUploadCleanupWorker, self).__init__()
+        super(StorageCleanupWorker, self).__init__()
         self.add_operation(self._try_cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
         if app.config.get("FEATURE_ENABLE_STALE_MPU_CLEANUP", False):
             self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
@@ -145,7 +145,7 @@ def create_gunicorn_worker():
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, app, BlobUploadCleanupWorker(), True)
+    worker = GunicornWorker(__name__, app, StorageCleanupWorker(), True)
     return worker
 
 
@@ -157,5 +157,5 @@ if __name__ == "__main__":
 
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     GlobalLock.configure(app.config)
-    worker = BlobUploadCleanupWorker()
+    worker = StorageCleanupWorker()
     worker.start()

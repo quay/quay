@@ -3,11 +3,13 @@ import io
 import logging
 import os
 import shutil
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from uuid import uuid4
 
 import psutil
 
-from storage.basestorage import BaseStorageV2
+from storage.basestorage import _EXPORTED_LOG_FILENAME_RE, BaseStorageV2
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,31 @@ class LocalStorage(BaseStorageV2):
         path = self._init_path(path)
         with open(path, mode="rb") as f:
             return f.read()
+
+    def list_directory(self, path):
+        """
+        Lists the content of the directory
+        """
+        path = self._init_path(path, create=False)
+        if not os.path.exists(path):
+            return []
+
+        files = []
+        for f in os.listdir(path):
+            full_path = os.path.join(path, f)
+            if not os.path.isfile(full_path):
+                continue
+            try:
+                mtime = os.path.getmtime(full_path)
+                files.append(
+                    {
+                        "filename": full_path,
+                        "mtime": mtime,
+                    }
+                )
+            except OSError as e:
+                logger.debug("Could not stat file %s: %s", full_path, e)
+        return files
 
     def put_content(self, path, content):
         path = self._init_path(path, create=True)
@@ -137,3 +164,24 @@ class LocalStorage(BaseStorageV2):
     def copy_to(self, destination, path):
         with self.stream_read_file(path) as fp:
             destination.stream_write(path, fp)
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        """
+        Lists and deletes all exported log files which are older than the
+        defined threshold (defaults to 1 hour).
+        """
+        cutoff = datetime.now(timezone.utc) - deletion_date_threshold
+        obj_list = self.list_directory(log_path)
+
+        for obj in obj_list:
+            f = obj["filename"].split("/")[-1]
+            if datetime.fromtimestamp(
+                obj["mtime"], tz=timezone.utc
+            ) <= cutoff and _EXPORTED_LOG_FILENAME_RE.fullmatch(f):
+                try:
+                    os.remove(obj["filename"])
+                    logger.debug(
+                        "Expired exported log deleted from %s: %s", log_path, obj["filename"]
+                    )
+                except OSError as e:
+                    logger.exception("Could not delete file %s: %s", obj["filename"], e)

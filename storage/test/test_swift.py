@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import io
+import logging
 from collections import defaultdict
 
 import pytest
@@ -12,6 +13,15 @@ from storage import StorageContext
 from storage.swift import _DEFAULT_RETRY_COUNT, _EMPTY_SEGMENTS_KEY, SwiftStorage
 from util.registry import filelike
 from util.registry.generatorfile import GeneratorFile
+
+_TEST_LOG_PATH = "exportedactionlogs/"
+import datetime
+import hashlib
+import os
+import uuid
+from datetime import timedelta
+
+from freezegun import freeze_time
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),
@@ -77,6 +87,8 @@ class FakeSwift(object):
                     {
                         "name": path,
                         "bytes": len(data["content"]),
+                        "content-type": data["content_type"],
+                        "last-modified": data["upload_time"],
                     }
                 )
         return {}, objs
@@ -84,6 +96,8 @@ class FakeSwift(object):
     def put_object(
         self, container, path, content, chunk_size=None, content_type=None, headers=None
     ):
+        upload_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+
         digest = None
         if not isinstance(content, bytes):
             if isinstance(content, ReadableToIterable):
@@ -101,6 +115,7 @@ class FakeSwift(object):
             "content": content,
             "chunk_size": chunk_size,
             "content_type": content_type,
+            "upload_time": upload_time,
             "headers": headers or {"is": True},
         }
 
@@ -186,6 +201,28 @@ def test_simple_put_get():
     swift.put_content("againsomeotherpath", io.BytesIO(b"hello world4"))
     assert swift.exists("againsomeotherpath")
     assert swift.get_content("againsomeotherpath") == b"hello world4"
+
+
+def test_put_content_then_list_all():
+    """
+    Verifies that we can list all content under a specific path.
+    """
+    swift = FakeSwiftStorage(**base_args)
+    assert not swift.exists("somepath")
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # upload 5 random files
+    for i in range(5):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            upload_path = f"somepath/file-{i}.bin"
+            swift.put_content(upload_path, payload)
+            assert swift.exists(upload_path)
+
+    # fetch all content
+    obj = swift._list_content("somepath")
+    assert obj
+    assert len(obj) == 5
 
 
 def test_stream_read_write():
@@ -392,3 +429,255 @@ def test_get_direct_download_url(temp_url_key, expects_url):
     swift = FakeSwiftStorage(temp_url_key=temp_url_key, **base_args)
     swift.put_content("somepath", b"hello world!")
     assert (swift.get_direct_download_url("somepath") is not None) == expects_url
+
+
+def test_cleanup_of_orphaned_export_log_files_successful():
+    """
+    Verifies that the worker can clean up orphaned exported log files.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = ""
+
+    payload = b'{"logs": []}'
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key = f"{_TEST_LOG_PATH}{logfile}"
+
+    # put blob into the container
+    with freeze_time(now):
+        storage_engine.put_content(upload_key, payload)
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all container content on that specific path to ensure that the file was removed
+    remaining_keys = list(storage_engine._list_content(_TEST_LOG_PATH))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 0
+
+
+def test_export_log_cleanup_does_not_touch_user_files():
+    """
+    Verifies that other files in the same path are not picked up by the
+    cleanup worker.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = ""
+
+    payload1 = b'{"logs": []}'
+    payload2 = b"Hello world!!!"
+
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key_logfile = f"{_TEST_LOG_PATH}{logfile}"
+    userfile = "hello.txt"
+    upload_key_userfile = f"{_TEST_LOG_PATH}{userfile}"
+
+    # put both blobs in the container
+    with freeze_time(now):
+        storage_engine.put_content(upload_key_logfile, payload1)
+        storage_engine.put_content(upload_key_userfile, payload2)
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all content under the specified prefix
+    remaining_keys = list(storage_engine._list_content(_TEST_LOG_PATH))
+    logging.debug(remaining_keys)
+
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"] == upload_key_userfile
+
+
+def test_export_log_cleanup_doesnt_touch_other_paths():
+    """
+    Verifies that all other paths other than the log path are untouched by the
+    cleanup worker.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = ""
+
+    payload1 = b'{"logs": []}'
+    payload2 = b"Hello world!!!"
+
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key_logfile = f"{_TEST_LOG_PATH}{logfile}"
+    userfile = "hello.txt"
+    upload_key_userfile = f"different/path/altogether/{userfile}"
+
+    # put both blobs in the container
+    with freeze_time(now):
+        storage_engine.put_content(upload_key_logfile, payload1)
+        storage_engine.put_content(upload_key_userfile, payload2)
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all content in the container
+    remaining_keys = list(storage_engine._list_content("/"))
+    logging.debug(remaining_keys)
+
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"] == upload_key_userfile
+
+
+def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta():
+    """
+    Verifies that we only delete files that are older than 1 hour and not any other files that are in the same path
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = ""
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now + timedelta(hours=i)):
+            storage_engine.put_content(path=k, content=payload)
+
+    # list all content on that specific path and confirm that there are 5 blobs present
+    remaining_keys = list(storage_engine._list_content(path=_TEST_LOG_PATH))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 5
+
+    # add 6th file only 30 minutes *after* the last file was uploaded
+    final_key = f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    payload = os.urandom(1024)
+    with freeze_time(now + timedelta(hours=5.5)):
+        storage_engine.put_content(path=final_key, content=payload)
+
+    # at 6th hour do cleanup
+    with freeze_time(
+        now + timedelta(hours=6)
+    ):  # Changed from 5 to 6 so it occurs after the 5.5h upload
+        storage_engine.clean_exported_action_logs(timedelta(hours=1), _TEST_LOG_PATH)
+
+    # only one file should remain
+    remaining_keys = list(storage_engine._list_content(path=_TEST_LOG_PATH))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"] == final_key
+
+
+def test_export_log_cleanup_correctly_identifies_storage_path():
+    """
+    Verifies that the root path (defined through storage_path in the driver) is
+    properly taken into account during wiping.
+    """
+
+    storage_engine = FakeSwiftStorage(**base_args)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = "datastorage/registry"
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            storage_engine.put_content(path=k, content=payload)
+
+    # add a specific file with a SHA digest to mimick real storage
+    payload = os.urandom(1024)
+    filename = hashlib.sha256(payload).hexdigest()
+    final_key = f"sha256/{filename[:2]}/{filename}"
+
+    # upload the final key
+    with freeze_time(now):
+        storage_engine.put_content(path=final_key, content=payload)
+
+    # verify all blobs are uploaded properly and are visible
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 6
+
+    # attempt to clean up expired logs
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), _TEST_LOG_PATH)
+
+    # only one file should remain
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"].endswith(final_key)
+
+
+def test_export_log_cleanup_does_not_return_error_on_empty_directory():
+    """
+    Verifies that cleanup does not error when nothing is cleaned. Simple regression test.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = "datastorage/registry"
+
+    # add a specific file with a SHA digest to mimick real storage
+    payload = os.urandom(1024)
+    filename = hashlib.sha256(payload).hexdigest()
+    keyname = f"sha256/{filename[:2]}/{filename}"
+
+    # upload the key
+    with freeze_time(now):
+        storage_engine.put_content(path=keyname, content=payload)
+
+    # assert that we only have one key under datastorage/registry path
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+
+    # call cleanup on real directory
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), _TEST_LOG_PATH)
+
+    # assert that we still have only one file under storage path
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+
+
+def test_cleanup_of_expired_logs_gracefully_handles_errors():
+    """
+    Asserts that the ClientException is caught by the code and not raised.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+    err = IOError("Simulated deletion error")
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = "datastorage/registry"
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            storage_engine.put_content(path=k, content=payload)
+
+    # verify we have content under the path
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 5
+
+    orig_delete = FakeSwift.delete_object
+
+    def mock_delete(self, container, path):
+        if path.endswith(keys[2]):
+            raise ClientException("Simulated deletion error")
+        return orig_delete(self, container, path)
+
+    with patch.object(FakeSwift, "delete_object", new=mock_delete):
+        # attempt to delete all logs
+        with freeze_time(now + timedelta(hours=2)):
+            storage_engine.clean_exported_action_logs(timedelta(hours=0), _TEST_LOG_PATH)
+
+    # list all files in the directory, there should be one
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"].endswith(keys[2])
