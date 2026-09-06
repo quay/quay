@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import logging
 import os.path
@@ -14,6 +16,7 @@ from data.logs_model import logs_model
 from data.logs_model.interface import LogsIterationTimeout
 from endpoints.api import format_date
 from util.log import logfile_path
+from util.security.crypto import encrypt_string
 from util.security.ssrf import validate_external_registry_url
 from util.useremails import send_logs_exported_email
 from workers.gunicorn_worker import GunicornWorker
@@ -187,7 +190,22 @@ class ExportActionLogsWorker(QueueWorker):
             expires_in=EXPORTED_LOGS_EXPIRATION_SECONDS,
         )
         if export_url is None:
-            export_url = "%s/exportedlogs/%s" % (get_app_url(), exported_filename)
+            # if we're running against local storage, sign the export_url with a presigned key
+            # valid for 1 hour
+            config_secret_key = app.config.get("SECRET_KEY", None)
+            if config_secret_key is None:
+                logger.error("Cannot read secret key from config.yaml file, aborting export")
+                self._report_results(job_details, ExportResult.FAILED_EXPORT)
+                return None, None
+
+            fernet_key = base64.urlsafe_b64encode(
+                hashlib.sha256(config_secret_key.encode()).digest()
+            )
+
+            # encrypt the key
+            token = encrypt_string(exported_filename, fernet_key)
+
+            export_url = "%s/exportedlogs/%s?token=%s" % (get_app_url(), exported_filename, token)
 
         self._report_results(job_details, ExportResult.SUCCESSFUL_EXPORT, export_url)
 
