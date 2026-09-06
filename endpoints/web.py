@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -84,6 +86,7 @@ from util.invoice import renderInvoiceToPdf
 from util.metrics.prometheus import ui_page_views
 from util.registry.gzipinputstream import GzipInputStream, UnrecognizedStreamError
 from util.request import crossorigin, get_request_ip
+from util.security.crypto import decrypt_string
 from util.useremails import send_email_changed
 
 PGP_KEY_MIMETYPE = "application/pgp-keys"
@@ -424,10 +427,25 @@ def exportedlogs(file_id):
     if not has_local_storage:
         abort(404)
 
+    # verify we have a valid token
+    token = request.args.get("token", "")
+    config_secret_key = app.config.get("SECRET_KEY", None)
+    if config_secret_key is None:
+        abort(403)
+
+    fernet_key = base64.urlsafe_b64encode(hashlib.sha256(config_secret_key.encode()).digest())
+
+    expiration = app.config.get("EXPORTED_LOGS_EXPIRATION_SECONDS", 60 * 60)
+    decrypted = decrypt_string(token, fernet_key, ttl=expiration)
+    if decrypted != file_id:
+        logger.exception("Failed to verify provided token for export log download")
+        abort(403)
+
     JSON_MIMETYPE = "application/json"
     exported_logs_storage_path = app.config.get(
         "EXPORT_ACTION_LOGS_STORAGE_PATH", "exportedactionlogs"
     )
+
     export_storage_path = os.path.join(exported_logs_storage_path, file_id)
     if not storage.exists(storage.preferred_locations, export_storage_path):
         abort(404)

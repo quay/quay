@@ -13,9 +13,9 @@ class BlobUpload(
 
 
 @add_metaclass(ABCMeta)
-class BlobUploadCleanupWorkerDataInterface(object):
+class StorageCleanupWorkerDataInterface(object):
     """
-    Interface that represents all data store interactions required by the blob upload cleanup
+    Interface that represents all data store interactions required by the storage cleanup
     worker.
     """
 
