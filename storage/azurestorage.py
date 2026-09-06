@@ -11,7 +11,7 @@ import logging
 import os
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from azure.core.exceptions import AzureError, ResourceNotFoundError
 from azure.storage.blob import (
@@ -24,7 +24,7 @@ from azure.storage.blob import (
     generate_blob_sas,
 )
 
-from storage.basestorage import BaseStorage
+from storage.basestorage import _EXPORTED_LOG_FILENAME_RE, BaseStorage
 from util.registry.filelike import READ_UNTIL_END, LimitingStream
 
 logger = logging.getLogger(__name__)
@@ -415,3 +415,27 @@ class AzureStorage(BaseStorage):
         ]
 
         self._blob_service_client.set_service_properties(cors=cors)
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        """
+        Lists and deletes all exported log files which are older than the
+        defined threshold (defaults to 1 hour).
+        """
+        path = self._blob_name_from_path(log_path)
+        cutoff = datetime.now(timezone.utc) - deletion_date_threshold
+
+        for blob in self._container.list_blobs(name_starts_with=path):
+            filename = blob.name.split("/")[-1]
+            if blob.last_modified <= cutoff and _EXPORTED_LOG_FILENAME_RE.fullmatch(filename):
+                try:
+                    self._blob(blob.name).delete_blob()
+                    logger.debug("Expired exported log deleted from %s: %s", log_path, filename)
+                except ResourceNotFoundError:
+                    logger.debug("File not found in %s folder with key %s", log_path, filename)
+                except AzureError as e:
+                    logger.exception(
+                        "Got exception while deleting blob %s in folder %s: %s",
+                        filename,
+                        log_path,
+                        e,
+                    )

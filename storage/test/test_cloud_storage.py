@@ -1,11 +1,15 @@
 import datetime
+import hashlib
+import logging
 import os
 import time
+import uuid
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
 
 import boto3
+import botocore
 import botocore.exceptions
 import pytest
 from botocore.client import BaseClient
@@ -27,6 +31,7 @@ _TEST_PASSWORD = "somepassword"
 _TEST_REGION = "us-bacon-1"
 _TEST_PATH = "some/cool/path"
 _TEST_UPLOADS_PATH = "uploads/ee160658-9444-4950-8ec6-30faab40529c"
+_TEST_LOG_PATH = "exportedactionlogs/"
 _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
@@ -683,3 +688,278 @@ def test_cleanup_handles_already_aborted_mpu(storage_engine, mock_mpu_dates):
         with freeze_time(now + timedelta(hours=1)):
             deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
             assert deleted == 1
+
+
+def test_cleanup_of_orphaned_export_log_files_successful(storage_engine):
+    """
+    Verifies that the worker can clean up orphaned exported log files.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    storage_engine._root_path = ""
+
+    payload = '{"logs": []}'
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key = f"{_TEST_LOG_PATH}{logfile}"
+
+    # put object into the bucket
+    resp = client.put_object(Bucket=_TEST_BUCKET, Key=upload_key, Body=payload)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all bucket content on that specific path to ensure that the file was removed
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=_TEST_LOG_PATH)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert upload_key not in remaining_keys
+
+
+def test_export_log_cleanup_does_not_touch_user_files(storage_engine):
+    """
+    Verifies that other files in the same path are not picked up by the
+    cleanup worker.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    storage_engine._root_path = ""
+
+    payload1 = '{"logs": []}'
+    payload2 = "Hello world!!!"
+
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key_logfile = f"{_TEST_LOG_PATH}{logfile}"
+    userfile = "hello.txt"
+    upload_key_userfile = f"{_TEST_LOG_PATH}{userfile}"
+
+    # put both files in the bucket
+    resp1 = client.put_object(Bucket=_TEST_BUCKET, Key=upload_key_logfile, Body=payload1)
+    assert resp1["ResponseMetadata"]["HTTPStatusCode"] == 200
+    resp2 = client.put_object(Bucket=_TEST_BUCKET, Key=upload_key_userfile, Body=payload2)
+    assert resp2["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all content under the specified prefix
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=_TEST_LOG_PATH)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert upload_key_logfile not in remaining_keys
+    assert upload_key_userfile in remaining_keys
+
+
+def test_export_log_cleanup_doesnt_touch_other_paths(storage_engine):
+    """
+    Verifies that all other paths other than the log path are untouched by the
+    cleanup worker.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    storage_engine._root_path = ""
+
+    payload1 = '{"logs": []}'
+    payload2 = "Hello world!!!"
+
+    logfile = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    upload_key_logfile = f"{_TEST_LOG_PATH}{logfile}"
+    userfile = "hello.txt"
+    upload_key_userfile = f"different/path/altogether/{userfile}"
+
+    # put both files in the bucket
+    resp1 = client.put_object(Bucket=_TEST_BUCKET, Key=upload_key_logfile, Body=payload1)
+    assert resp1["ResponseMetadata"]["HTTPStatusCode"] == 200
+    resp2 = client.put_object(Bucket=_TEST_BUCKET, Key=upload_key_userfile, Body=payload2)
+    assert resp2["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # attempt to clean
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
+
+    # list all content in the bucket
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert upload_key_logfile not in remaining_keys
+    assert upload_key_userfile in remaining_keys
+
+
+def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta(storage_engine):
+    """
+    Verifies that we only delete files that are older than 1 hour and not any other files that are in the same path
+    """
+
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    storage_engine._root_path = ""
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now + timedelta(hours=i)):
+            resp = client.put_object(Bucket=_TEST_BUCKET, Key=k, Body=payload)
+            assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # list all content on that specific path and confirm that there are 5
+    # files present
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=_TEST_LOG_PATH)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 5
+
+    # add 6th file only 30 minutes *after* the last file was uploaded
+    final_key = f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    payload = os.urandom(1024)
+    with freeze_time(now + timedelta(hours=5.5)):
+        resp = client.put_object(Bucket=_TEST_BUCKET, Key=final_key, Body=payload)
+        assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # at 6th hour do cleanup
+    with freeze_time(now + timedelta(hours=6)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=1), _TEST_LOG_PATH)
+
+    # only one file should remain
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=_TEST_LOG_PATH)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert final_key in remaining_keys
+
+
+def test_export_log_cleanup_correctly_identifies_root_path(storage_engine):
+    """
+    Verifies that the root path (defined through storage_path in the driver) is
+    properly taken into account during wiping.
+    """
+
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._root_path = "datastorage/registry"
+
+    # create a list of files
+    keys = [
+        f"datastorage/registry/{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+        for i in range(5)
+    ]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            resp = client.put_object(Bucket=_TEST_BUCKET, Key=k, Body=payload)
+            assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # add a specific file with a SHA digest to mimick real storage
+    payload = os.urandom(1024)
+    filename = hashlib.sha256(payload).hexdigest()
+    final_key = "datastorage/registry/sha256/%s/%s" % (filename[:2], filename)
+
+    # upload the key
+    with freeze_time(now):
+        resp = client.put_object(Bucket=_TEST_BUCKET, Key=final_key, Body=payload)
+        assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # verify all files are uploaded properly and are visible
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 6
+
+    # attempt to clean up expired logs
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), _TEST_LOG_PATH)
+
+    # only one file should remain
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert final_key in remaining_keys
+
+
+def test_export_log_cleanup_does_not_return_error_on_empty_directory(storage_engine):
+    """
+    Verifies that cleanup does not error when nothing is cleaned. Simple regression test.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._root_path = "datastorage/registry"
+
+    # add a specific file with a SHA digest to mimick real storage
+    payload = os.urandom(1024)
+    filename = hashlib.sha256(payload).hexdigest()
+    keyname = "datastorage/registry/sha256/%s/%s" % (filename[:2], filename)
+
+    # upload the key
+    with freeze_time(now):
+        resp = client.put_object(Bucket=_TEST_BUCKET, Key=keyname, Body=payload)
+        assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # assert that we only have one key under datastorage/registry path
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+
+    # call cleanup on real directory
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), _TEST_LOG_PATH)
+
+    # assert that we still have only one file under storage path
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+
+
+def test_cleanup_of_expired_logs_gracefully_handles_errors(storage_engine, mock_mpu_dates):
+    """
+    Asserts that the NoSuchUpload exception is caught by the code and not raised.
+    """
+    err = botocore.exceptions.ClientError(
+        {"Error": {"Code": "404", "Message": "Not Found"}},
+        "HeadObject",
+    )
+
+    # reference to the original API call
+    orig_make_api_call = botocore.client.BaseClient._make_api_call
+
+    # create a list of files
+    keys = [
+        f"datastorage/registry/{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+        for i in range(5)
+    ]
+
+    def mock_make_api_call(self, operation_name, kwargs):
+        """
+        Helper function to simulate the 404.
+        """
+        if operation_name == "HeadObject" and kwargs.get("Key", "") == keys[2]:
+            raise err
+
+        return orig_make_api_call(self, operation_name, kwargs)
+
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._root_path = "datastorage/registry"
+
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            resp = client.put_object(Bucket=_TEST_BUCKET, Key=k, Body=payload)
+            assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # conduct deletion
+    with patch.object(botocore.client.BaseClient, "_make_api_call", new=mock_make_api_call):
+        with freeze_time(now + timedelta(hours=2)):
+            storage_engine.clean_exported_action_logs(timedelta(hours=2), _TEST_LOG_PATH)
+
+    # verify that all keys *except* 2 are removed
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert keys[2] in remaining_keys
