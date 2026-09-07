@@ -136,7 +136,7 @@
     "@patternfly/react-core": "^6.0.0",
     "@patternfly/react-icons": "^6.0.0",
     "@patternfly/react-table": "^6.0.0",
-    "node-forge": "1.4.0",
+    "node-forge": "1.4.1",
     "minimatch": "3.1.5",
     "immutable": "^5.1.5",
     "svgo": "4.0.1",
