@@ -51,6 +51,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:api": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @api",
+    "test:stage-validation": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @stage-validation --workers=1",
     "test:e2e": "playwright test",
     "test:e2e:no-api": "playwright test --grep-invert @api",
     "test:e2e:ui": "playwright test --ui",
