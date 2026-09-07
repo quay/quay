@@ -98,8 +98,16 @@ async function globalSetup(config: FullConfig) {
     // Fetch Quay config with retry to check auth type and features.
     // In bearer-token mode, include the token so we can read /config
     // on registries that require authentication for that endpoint.
+    // Refuse to send bearer tokens over plain HTTP (except localhost).
     let mailingEnabled = false;
     let authType: string | undefined;
+    const isLocalhost =
+      API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+    if (bearerToken && !isLocalhost && !API_URL.startsWith('https://')) {
+      throw new Error(
+        `[Global Setup] Refusing to send QUAY_API_TOKEN over non-HTTPS URL: ${API_URL}`,
+      );
+    }
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const headers: Record<string, string> = {};

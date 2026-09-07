@@ -18,6 +18,14 @@ export class BearerApiClient {
   private token: string;
 
   constructor(request: APIRequestContext, baseUrl: string, token: string) {
+    const isLocalhost =
+      baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+    if (!isLocalhost && !baseUrl.startsWith('https://')) {
+      throw new Error(
+        `BearerApiClient refuses to send tokens over non-HTTPS URL: ${baseUrl}. ` +
+          'Use HTTPS or localhost for local development.',
+      );
+    }
     this.request = request;
     this.baseUrl = baseUrl;
     this.token = token;
@@ -37,6 +45,7 @@ export class BearerApiClient {
     return this.request.get(`${this.baseUrl}${path}`, {
       headers: this.authHeaders(),
       timeout: 30_000,
+      maxRedirects: 0,
     });
   }
 
@@ -51,6 +60,7 @@ export class BearerApiClient {
       headers: this.authHeaders(),
       data,
       timeout: 30_000,
+      maxRedirects: 0,
     });
   }
 
@@ -65,6 +75,7 @@ export class BearerApiClient {
       headers: this.authHeaders(),
       data,
       timeout: 30_000,
+      maxRedirects: 0,
     });
   }
 
@@ -75,6 +86,7 @@ export class BearerApiClient {
     return this.request.delete(`${this.baseUrl}${path}`, {
       headers: this.authHeaders(),
       timeout: 30_000,
+      maxRedirects: 0,
     });
   }
 
@@ -89,6 +101,7 @@ export class BearerApiClient {
       headers: this.authHeaders(),
       data,
       timeout: 30_000,
+      maxRedirects: 0,
     });
   }
 }
