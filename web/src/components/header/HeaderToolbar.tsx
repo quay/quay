@@ -48,6 +48,7 @@ import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useNavigate} from 'react-router-dom';
+import HeaderSearchBar from 'src/components/header/HeaderSearchBar';
 
 export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -395,12 +396,19 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
 
   const isAuthenticated = !!user?.username;
   const {unreadCount} = useAppNotifications(isAuthenticated);
+  const searchingAllowed =
+    quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated;
 
   return (
     <>
       <ErrorModal error={err} setError={setErr} />
       <Toolbar id="toolbar" isFullHeight isStatic>
         <ToolbarContent>
+          {searchingAllowed && (
+            <ToolbarItem data-testid="header-search-item">
+              <HeaderSearchBar />
+            </ToolbarItem>
+          )}
           <ToolbarGroup
             variant="action-group-plain"
             align={{default: 'alignEnd'}}
