@@ -115,7 +115,7 @@
     "glob": {
       "minimatch": "^9.0.4"
     },
-    "node-forge": "^1.4.0",
+    "node-forge": "1.4.1",
     "axios": "^1.19.0",
     "immutable": "^5.1.5",
     "svgo": "4.0.1",
