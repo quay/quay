@@ -1511,8 +1511,7 @@ func TestCollect_DigestOnlyTempTagProtectsBlobsAfterUploadedBlobExpiry(t *testin
 	if err := env.blobs.PutContent(ctx, blobDgst, content); err != nil {
 		t.Fatal(err)
 	}
-	blobID, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: int64(len(content))})
-	if err != nil {
+	if _, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: int64(len(content))}); err != nil {
 		t.Fatal(err)
 	}
 	if err := env.store.PutUploadedBlob(ctx, repoID, blobDgst); err != nil {
@@ -1520,17 +1519,15 @@ func TestCollect_DigestOnlyTempTagProtectsBlobsAfterUploadedBlobExpiry(t *testin
 	}
 
 	manifestDgst := mustDigest("digest-only-with-temp")
-	manifestID, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
+	if _, err := env.store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:            manifestDgst,
 		MediaType:         "application/vnd.oci.image.manifest.v1+json",
 		Content:           []byte(`{"schemaVersion":2}`),
 		BlobDigests:       []oci.BlobRef{{Digest: blobDgst, Size: int64(len(content))}},
 		TempTagExpiration: oci.PushTempTagExpiration,
-	})
-	if err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
-	linkBlobToManifest(t, env, repoID, manifestID, blobID)
 
 	if _, err := env.db.ExecContext(ctx, "UPDATE uploadedblob SET expires_at = datetime('now', '-1 second')"); err != nil {
 		t.Fatal(err)

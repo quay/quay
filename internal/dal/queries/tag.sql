@@ -50,15 +50,21 @@ VALUES (?, ?, ?, ?, ?, ?, 1)
 RETURNING id;
 
 -- name: HasProtectingTagForManifest :one
--- True if the manifest already has a tag that has not ended yet (non-expiring
--- OR lifetime_end_ms >= now_ms). Used to skip duplicate $temp- tags on repeat
--- digest PUTs. Compare against now, not now+expiration: a tag created 1ms ago
--- with a 1h end is still protecting, but would fail >= now+1h.
+-- True if the manifest already has a tag that never expires or expires at or
+-- after the requested epoch-ms. Used to skip a new $temp- when an existing
+-- tag already covers the requested window (named tag, referrer, or a
+-- still-valid temp tag).
 SELECT EXISTS(
     SELECT 1 FROM tag
     WHERE manifest_id = ?
       AND (lifetime_end_ms IS NULL OR lifetime_end_ms >= ?)
 ) AS has_tag;
+
+-- name: ExtendTempTag :execrows
+-- Pushes the expiry of a manifest's existing temp tag(s) forward so a
+-- re-push renews protection without inserting another row.
+UPDATE tag SET lifetime_end_ms = ?
+WHERE manifest_id = ? AND hidden = 1 AND lifetime_end_ms IS NOT NULL AND lifetime_end_ms < ?;
 
 -- name: HasNonExpiringTagForManifest :one
 -- Returns true if the manifest already has at least one non-expiring tag

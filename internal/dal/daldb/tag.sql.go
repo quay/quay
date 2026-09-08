@@ -34,6 +34,27 @@ func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams
 	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
 }
 
+const extendTempTag = `-- name: ExtendTempTag :execrows
+UPDATE tag SET lifetime_end_ms = ?
+WHERE manifest_id = ? AND hidden = 1 AND lifetime_end_ms IS NOT NULL AND lifetime_end_ms < ?
+`
+
+type ExtendTempTagParams struct {
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeEndMs_2 sql.NullInt64 `json:"lifetime_end_ms_2"`
+}
+
+// Pushes the expiry of a manifest's existing temp tag(s) forward so a
+// re-push renews protection without inserting another row.
+func (q *Queries) ExtendTempTag(ctx context.Context, arg ExtendTempTagParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, extendTempTag, arg.LifetimeEndMs, arg.ManifestID, arg.LifetimeEndMs_2)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getActiveTagDigest = `-- name: GetActiveTagDigest :one
 SELECT m.digest
 FROM tag t
@@ -148,10 +169,10 @@ type HasProtectingTagForManifestParams struct {
 	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
 }
 
-// True if the manifest already has a tag that has not ended yet (non-expiring
-// OR lifetime_end_ms >= now_ms). Used to skip duplicate $temp- tags on repeat
-// digest PUTs. Compare against now, not now+expiration: a tag created 1ms ago
-// with a 1h end is still protecting, but would fail >= now+1h.
+// True if the manifest already has a tag that never expires or expires at or
+// after the requested epoch-ms. Used to skip a new $temp- when an existing
+// tag already covers the requested window (named tag, referrer, or a
+// still-valid temp tag).
 func (q *Queries) HasProtectingTagForManifest(ctx context.Context, arg HasProtectingTagForManifestParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, hasProtectingTagForManifest, arg.ManifestID, arg.LifetimeEndMs)
 	var has_tag int64

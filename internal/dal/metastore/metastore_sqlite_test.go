@@ -263,6 +263,55 @@ func TestPutManifest_DigestOnlyCreatesExpiringTempTag(t *testing.T) {
 	}
 }
 
+func TestPutManifest_DigestOnlyRePushExtendsTempTag(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("digest-only-extend")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	soon := time.Now().Add(30 * time.Second).UnixMilli()
+	if _, err := db.ExecContext(ctx, `UPDATE tag SET lifetime_end_ms = ? WHERE manifest_id = ?`, soon, manifestID); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx, `SELECT count(*), lifetime_end_ms FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("temp tags after near-expiry re-push: got %d, want 1", count)
+	}
+	wantMin := time.Now().Add(50 * time.Minute).UnixMilli()
+	if !endMs.Valid || endMs.Int64 < wantMin {
+		t.Errorf("lifetime_end_ms = %v, want ~1 hour from now (extended, not skipped)", endMs)
+	}
+}
+
 func TestPutManifest_TagReplace(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()

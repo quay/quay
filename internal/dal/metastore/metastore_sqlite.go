@@ -239,15 +239,19 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 }
 
 // protectWithTempTag creates a hidden $temp- tag with lifetime_end_ms set to
-// now+expiration, unless a tag already protects the manifest for that window.
-// This is Python create_temporary_tag_if_necessary(expiration_sec) for
-// digest-only manifest PUTs (write_manifest_by_digest).
+// now+expiration, unless a tag already protects the manifest through that
+// deadline. A re-push extends an existing temp tag instead of inserting
+// another row. This is Python create_temporary_tag_if_necessary(expiration_sec)
+// for digest-only manifest PUTs (write_manifest_by_digest).
 func (s *SQLiteStore) protectWithTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, expiration time.Duration) error {
 	now := time.Now()
 	endMs := now.Add(expiration).UnixMilli()
+	mid := sql.NullInt64{Int64: manifestID, Valid: true}
+	end := sql.NullInt64{Int64: endMs, Valid: true}
+
 	hasTag, err := q.HasProtectingTagForManifest(ctx, daldb.HasProtectingTagForManifestParams{
-		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
-		LifetimeEndMs: sql.NullInt64{Int64: now.UnixMilli(), Valid: true},
+		ManifestID:    mid,
+		LifetimeEndMs: end,
 	})
 	if err != nil {
 		return fmt.Errorf("check protecting tag for manifest %d: %w", manifestID, err)
@@ -256,12 +260,24 @@ func (s *SQLiteStore) protectWithTempTag(ctx context.Context, q *daldb.Queries, 
 		return nil
 	}
 
+	extended, err := q.ExtendTempTag(ctx, daldb.ExtendTempTagParams{
+		LifetimeEndMs:   end,
+		ManifestID:      mid,
+		LifetimeEndMs_2: end,
+	})
+	if err != nil {
+		return fmt.Errorf("extend temp tag for manifest %d: %w", manifestID, err)
+	}
+	if extended > 0 {
+		return nil
+	}
+
 	if _, err := q.InsertHiddenExpiringTag(ctx, daldb.InsertHiddenExpiringTagParams{
 		Name:            "$temp-" + uuid.NewString(),
 		RepositoryID:    repoID,
-		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		ManifestID:      mid,
 		LifetimeStartMs: now.UnixMilli(),
-		LifetimeEndMs:   sql.NullInt64{Int64: endMs, Valid: true},
+		LifetimeEndMs:   end,
 		TagKindID:       s.tagKindTag,
 	}); err != nil {
 		return fmt.Errorf("insert hidden temp tag: %w", err)
