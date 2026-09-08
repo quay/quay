@@ -84,6 +84,25 @@
   max-width: 600px;
 }
 
+.search-suggestions-menu {
+  background-color: var(--pf-t--global--background--color--floating--default);
+  box-shadow: var(--pf-t--global--box-shadow--md);
+  border-radius: var(--pf-t--global--border--radius--small);
+  max-height: 25rem;
+  overflow-y: auto;
+}
+
+.search-suggestions-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--pf-t--global--spacer--xs) 0;
+}
+
+.search-suggestion {
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  cursor: pointer;
+}
+
 .search-suggestion-kind {
   display: inline-block;
   min-width: 3em;

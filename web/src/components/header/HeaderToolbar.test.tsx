@@ -1,3 +1,4 @@
+import {MemoryRouter} from 'react-router-dom';
 import {render, screen} from 'src/test-utils';
 import {HeaderToolbar} from './HeaderToolbar';
 
@@ -44,13 +45,25 @@ vi.mock('src/contexts/ThemeContext', () => ({
   ThemePreference: {LIGHT: 'light', DARK: 'dark'},
 }));
 
+vi.mock('src/hooks/UseSearch', () => ({
+  useSearchSuggestions: () => ({suggestions: [], isLoading: false}),
+}));
+
+function renderToolbar(route = '/organization') {
+  return render(
+    <MemoryRouter initialEntries={[route]}>
+      <HeaderToolbar toggleDrawer={vi.fn()} />
+    </MemoryRouter>,
+  );
+}
+
 describe('HeaderToolbar', () => {
   it('shows sign in button for anonymous users', () => {
     mockUseCurrentUser.mockReturnValue({
       user: {username: '', anonymous: true},
     });
 
-    render(<HeaderToolbar toggleDrawer={vi.fn()} />);
+    renderToolbar();
     expect(screen.getByText('Sign In')).toBeInTheDocument();
     expect(screen.queryByTestId('notification-bell')).not.toBeInTheDocument();
   });
@@ -60,8 +73,26 @@ describe('HeaderToolbar', () => {
       user: {username: 'testuser', anonymous: false},
     });
 
-    render(<HeaderToolbar toggleDrawer={vi.fn()} />);
+    renderToolbar();
     expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
     expect(screen.queryByText('Sign In')).not.toBeInTheDocument();
+  });
+
+  it('renders the header search bar on ordinary pages', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {username: 'testuser', anonymous: false},
+    });
+
+    renderToolbar('/organization');
+    expect(screen.getByTestId('header-search-item')).toBeInTheDocument();
+  });
+
+  it('hides the header search bar on the search page', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {username: 'testuser', anonymous: false},
+    });
+
+    renderToolbar('/search');
+    expect(screen.queryByTestId('header-search-item')).not.toBeInTheDocument();
   });
 });

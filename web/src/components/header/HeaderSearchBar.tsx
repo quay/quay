@@ -3,10 +3,6 @@ import {useNavigate} from 'react-router-dom';
 import {
   Flex,
   FlexItem,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuList,
   Popper,
   SearchInput,
   Spinner,
@@ -37,10 +33,16 @@ export default function HeaderSearchBar() {
 
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Set when the user explicitly dismisses the dropdown so a background
+  // refetch of suggestions doesn't reopen it behind their back.
+  const isDismissedRef = useRef(false);
 
   const {suggestions, isLoading} = useSearchSuggestions(inputValue);
 
   useEffect(() => {
+    if (isDismissedRef.current) {
+      return;
+    }
     setIsDropdownOpen(
       inputValue.trim().length >= MIN_QUERY_LENGTH && suggestions.length > 0,
     );
@@ -64,8 +66,18 @@ export default function HeaderSearchBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const goToSuggestion = (suggestion: ISearchSuggestion) => {
+  const closeDropdown = () => {
+    isDismissedRef.current = true;
     setIsDropdownOpen(false);
+  };
+
+  const handleChange = (value: string) => {
+    isDismissedRef.current = false;
+    setInputValue(value);
+  };
+
+  const goToSuggestion = (suggestion: ISearchSuggestion) => {
+    closeDropdown();
     setInputValue('');
     navigate(suggestion.href);
   };
@@ -73,7 +85,7 @@ export default function HeaderSearchBar() {
   const goToSearchPage = () => {
     const trimmed = inputValue.trim();
     if (trimmed) {
-      setIsDropdownOpen(false);
+      closeDropdown();
       setInputValue('');
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     }
@@ -88,7 +100,7 @@ export default function HeaderSearchBar() {
       }
     }
     if (event.key === 'Escape') {
-      setIsDropdownOpen(false);
+      closeDropdown();
     }
     if (event.key === 'ArrowDown' && isDropdownOpen && suggestions.length > 0) {
       event.preventDefault();
@@ -105,69 +117,80 @@ export default function HeaderSearchBar() {
       <SearchInput
         value={inputValue}
         placeholder="Search repositories and organizations..."
-        onChange={(_event, value) => setInputValue(value)}
+        onChange={(_event, value) => handleChange(value)}
         onClear={() => {
           setInputValue('');
-          setIsDropdownOpen(false);
+          closeDropdown();
         }}
-        onKeyDown={handleKeyDown}
         aria-label="Search repositories and organizations"
-        data-testid="header-search-input"
-        role="combobox"
-        aria-expanded={isDropdownOpen}
-        aria-controls="header-search-suggestions"
-        aria-activedescendant={
-          activeIndex >= 0
-            ? `header-search-suggestion-${activeIndex}`
-            : undefined
-        }
-        aria-autocomplete="list"
+        // The combobox contract has to live on the focusable <input>, not on
+        // the wrapper PatternFly renders around it. `inputProps` is the only
+        // prop SearchInput forwards all the way down to the input element.
+        inputProps={{
+          'data-testid': 'header-search-input',
+          role: 'combobox',
+          'aria-expanded': isDropdownOpen,
+          'aria-controls': 'header-search-suggestions',
+          'aria-activedescendant':
+            activeIndex >= 0
+              ? `header-search-suggestion-${activeIndex}`
+              : undefined,
+          'aria-autocomplete': 'list',
+          onKeyDown: handleKeyDown,
+        }}
       />
     </div>
   );
 
+  // Plain listbox markup rather than PatternFly's Menu: MenuItem renders the
+  // `id` onto an inner role="menuitem" button, which both breaks the
+  // aria-activedescendant reference and nests a menuitem inside a listbox.
   const suggestionsDropdown = (
     <div ref={dropdownRef} className="header-search-dropdown">
-      <Menu onSelect={() => setIsDropdownOpen(false)}>
-        <MenuContent>
-          <MenuList id="header-search-suggestions" role="listbox">
-            {suggestions.map((s, i) => (
-              <MenuItem
-                key={`${s.kind}-${s.name}-${i}`}
-                id={`header-search-suggestion-${i}`}
-                onClick={() => goToSuggestion(s)}
-                className={
-                  i === activeIndex ? 'header-search-suggestion-active' : ''
-                }
-                role="option"
-                aria-selected={i === activeIndex}
-              >
-                <Flex
-                  alignItems={{default: 'alignItemsCenter'}}
-                  spaceItems={{default: 'spaceItemsSm'}}
-                  flexWrap={{default: 'nowrap'}}
-                >
-                  <FlexItem>
-                    <span className="header-search-suggestion-kind">
-                      {s.title || s.kind}
-                    </span>
-                  </FlexItem>
-                  <FlexItem>
-                    <Avatar
-                      avatar={
-                        s.avatar ??
-                        (s.namespace?.avatar || generateAvatarFromName(s.name))
-                      }
-                      size="sm"
-                    />
-                  </FlexItem>
-                  <FlexItem>{getSuggestionLabel(s)}</FlexItem>
-                </Flex>
-              </MenuItem>
-            ))}
-          </MenuList>
-        </MenuContent>
-      </Menu>
+      <ul
+        id="header-search-suggestions"
+        role="listbox"
+        aria-label="Search suggestions"
+        className="header-search-suggestion-list"
+      >
+        {suggestions.map((s, i) => (
+          <li
+            key={`${s.kind}-${s.href}`}
+            id={`header-search-suggestion-${i}`}
+            role="option"
+            aria-selected={i === activeIndex}
+            className={`header-search-suggestion${
+              i === activeIndex ? ' header-search-suggestion-active' : ''
+            }`}
+            // Keep focus on the input so aria-activedescendant stays valid.
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => setActiveIndex(i)}
+            onClick={() => goToSuggestion(s)}
+          >
+            <Flex
+              alignItems={{default: 'alignItemsCenter'}}
+              spaceItems={{default: 'spaceItemsSm'}}
+              flexWrap={{default: 'nowrap'}}
+            >
+              <FlexItem>
+                <span className="header-search-suggestion-kind">
+                  {s.title || s.kind}
+                </span>
+              </FlexItem>
+              <FlexItem>
+                <Avatar
+                  avatar={
+                    s.avatar ??
+                    (s.namespace?.avatar || generateAvatarFromName(s.name))
+                  }
+                  size="sm"
+                />
+              </FlexItem>
+              <FlexItem>{getSuggestionLabel(s)}</FlexItem>
+            </Flex>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 
@@ -178,7 +201,10 @@ export default function HeaderSearchBar() {
         popper={suggestionsDropdown}
         isVisible={isDropdownOpen}
         enableFlip={false}
-        appendTo={() => searchBoxRef.current ?? document.body}
+        minWidth="trigger"
+        // Rendered into the body rather than the masthead so the dropdown is
+        // not clipped by the header's stacking/overflow context.
+        appendTo={() => document.body}
       />
       {isLoading && inputValue.trim().length >= MIN_QUERY_LENGTH && (
         <Spinner size="sm" className="header-search-spinner" />

@@ -87,8 +87,39 @@ test.describe('Search Page', {tag: ['@ui', '@PROJQUAY-12269']}, () => {
     await searchInput.pressSequentially(repo.name.slice(0, 10), {delay: 50});
 
     await expect(
-      authenticatedPage.getByRole('menuitem').filter({hasText: repo.name}),
+      authenticatedPage.getByRole('option').filter({hasText: repo.name}),
     ).toBeVisible({timeout: 5000});
+  });
+
+  test('search input exposes the combobox contract to assistive tech', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('search-aria');
+    const repo = await api.repository(org.name, 'aria-test', 'public');
+
+    await authenticatedPage.goto('/search');
+
+    // getByRole('combobox') only matches if the role is on the input itself.
+    const searchInput = authenticatedPage.getByRole('combobox', {
+      name: 'Search repositories',
+    });
+    await expect(searchInput).toHaveAttribute('aria-expanded', 'false');
+
+    await searchInput.pressSequentially(repo.name.slice(0, 8), {delay: 50});
+    await expect(searchInput).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 5000,
+    });
+
+    await searchInput.press('ArrowDown');
+    const activeId = await searchInput.getAttribute('aria-activedescendant');
+    expect(activeId).toBe('search-suggestion-0');
+
+    // The referenced element must be the option itself, not a wrapper.
+    await expect(authenticatedPage.locator(`#${activeId}`)).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   test('shows empty state when no results match', async ({

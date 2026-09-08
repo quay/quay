@@ -14,8 +14,21 @@
   min-width: 20rem;
   background-color: var(--pf-t--global--background--color--floating--default);
   box-shadow: var(--pf-t--global--box-shadow--md);
+  border-radius: var(--pf-t--global--border--radius--small);
   max-height: 25rem;
   overflow-y: auto;
+}
+
+.header-search-suggestion-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--pf-t--global--spacer--xs) 0;
+}
+
+.header-search-suggestion {
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .header-search-suggestion-active {

@@ -201,7 +201,7 @@ describe('Search', () => {
     fireEvent.change(input, {target: {value: 'suggest'}});
 
     await waitFor(() => {
-      expect(screen.getByRole('menuitem')).toBeVisible();
+      expect(screen.getByRole('option')).toBeVisible();
     });
     expect(screen.getByText('org1/suggest-repo')).toBeVisible();
   });
@@ -302,17 +302,56 @@ describe('Search', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('has combobox ARIA attributes on search input', () => {
+  it('has combobox ARIA attributes on the focusable input itself', () => {
     renderSearch();
 
-    const input = screen.getByPlaceholderText('Search repositories...');
+    // Every combobox attribute must be on the <input> that receives focus.
+    // On a wrapper element aria-activedescendant is inert to screen readers.
+    const input = screen.getByTestId('search-input');
+    expect(input.tagName).toBe('INPUT');
     expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
     expect(input).toHaveAttribute(
       'aria-controls',
       'search-suggestions-listbox',
     );
+    expect(input).toHaveAttribute('aria-autocomplete', 'list');
+  });
 
-    const wrapper = screen.getByTestId('search-input');
-    expect(wrapper).toHaveAttribute('aria-expanded', 'false');
+  it('points aria-activedescendant at the highlighted suggestion', async () => {
+    mockUseSearchSuggestions.mockReturnValue({
+      suggestions: [
+        {
+          kind: 'repository',
+          title: 'repo',
+          name: 'repo-a',
+          namespace: {name: 'org1', avatar: null},
+          href: '/repository/org1/repo-a',
+          score: 4,
+        },
+      ],
+      isLoading: false,
+    });
+
+    renderSearch();
+
+    const input = screen.getByTestId('search-input');
+    fireEvent.change(input, {target: {value: 'repoxyz'}});
+
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+    });
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+
+    fireEvent.keyDown(input, {key: 'ArrowDown'});
+
+    expect(input).toHaveAttribute(
+      'aria-activedescendant',
+      'search-suggestion-0',
+    );
+    expect(document.getElementById('search-suggestion-0')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 });

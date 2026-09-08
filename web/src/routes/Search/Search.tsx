@@ -6,10 +6,6 @@ import {
   EmptyStateBody,
   Flex,
   FlexItem,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuList,
   PageSection,
   Popper,
   Spinner,
@@ -178,19 +174,24 @@ export default function Search() {
           icon={<SearchIcon />}
           value={inputValue}
           placeholder="Search repositories..."
+          aria-label="Search repositories"
           onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
           ref={inputRef}
-          data-testid="search-input"
           role="combobox"
-          aria-expanded={isDropdownOpen}
+          // `isExpanded` is how TextInputGroupMain renders aria-expanded onto
+          // the <input>; passing aria-expanded directly lands on the wrapper.
+          isExpanded={isDropdownOpen}
           aria-controls="search-suggestions-listbox"
           aria-activedescendant={
             activeSuggestionIndex >= 0
               ? `search-suggestion-${activeSuggestionIndex}`
               : undefined
           }
-          aria-autocomplete="list"
+          inputProps={{
+            'data-testid': 'search-input',
+            'aria-autocomplete': 'list',
+            onKeyDown: handleKeyDown,
+          }}
         />
         <TextInputGroupUtilities>
           {inputValue && (
@@ -210,52 +211,59 @@ export default function Search() {
     </div>
   );
 
+  // Plain listbox markup rather than PatternFly's Menu: MenuItem renders the
+  // `id` onto an inner role="menuitem" button, which both breaks the
+  // aria-activedescendant reference and nests a menuitem inside a listbox.
   const suggestionsDropdown = (
-    <div ref={dropdownRef}>
-      <Menu onSelect={() => setIsDropdownOpen(false)}>
-        <MenuContent>
-          <MenuList id="search-suggestions-listbox" role="listbox">
-            {suggestions.map((s, i) => (
-              <MenuItem
-                key={`${s.kind}-${s.name}-${i}`}
-                id={`search-suggestion-${i}`}
-                onClick={() => handleSuggestionSelect(s)}
-                className={
-                  i === activeSuggestionIndex ? 'search-suggestion-active' : ''
-                }
-                role="option"
-                aria-selected={i === activeSuggestionIndex}
-              >
-                <Flex
-                  alignItems={{default: 'alignItemsCenter'}}
-                  spaceItems={{default: 'spaceItemsSm'}}
-                >
-                  <FlexItem>
-                    <span className="search-suggestion-kind">
-                      {s.title || s.kind}
-                    </span>
-                  </FlexItem>
-                  <FlexItem>
-                    <Avatar
-                      avatar={
-                        s.avatar ??
-                        (s.namespace?.avatar || generateAvatarFromName(s.name))
-                      }
-                      size="sm"
-                    />
-                  </FlexItem>
-                  <FlexItem>{getSuggestionLabel(s)}</FlexItem>
-                </Flex>
-                {s.description && s.kind === 'repository' && (
-                  <div className="search-suggestion-description">
-                    {s.description.split('\n')[0]}
-                  </div>
-                )}
-              </MenuItem>
-            ))}
-          </MenuList>
-        </MenuContent>
-      </Menu>
+    <div ref={dropdownRef} className="search-suggestions-menu">
+      <ul
+        id="search-suggestions-listbox"
+        role="listbox"
+        aria-label="Search suggestions"
+        className="search-suggestions-list"
+      >
+        {suggestions.map((s, i) => (
+          <li
+            key={`${s.kind}-${s.href}`}
+            id={`search-suggestion-${i}`}
+            role="option"
+            aria-selected={i === activeSuggestionIndex}
+            className={`search-suggestion${
+              i === activeSuggestionIndex ? ' search-suggestion-active' : ''
+            }`}
+            // Keep focus on the input so aria-activedescendant stays valid.
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => setActiveSuggestionIndex(i)}
+            onClick={() => handleSuggestionSelect(s)}
+          >
+            <Flex
+              alignItems={{default: 'alignItemsCenter'}}
+              spaceItems={{default: 'spaceItemsSm'}}
+            >
+              <FlexItem>
+                <span className="search-suggestion-kind">
+                  {s.title || s.kind}
+                </span>
+              </FlexItem>
+              <FlexItem>
+                <Avatar
+                  avatar={
+                    s.avatar ??
+                    (s.namespace?.avatar || generateAvatarFromName(s.name))
+                  }
+                  size="sm"
+                />
+              </FlexItem>
+              <FlexItem>{getSuggestionLabel(s)}</FlexItem>
+            </Flex>
+            {s.description && s.kind === 'repository' && (
+              <div className="search-suggestion-description">
+                {s.description.split('\n')[0]}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 

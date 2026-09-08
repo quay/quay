@@ -28,6 +28,9 @@ export function useSearchSuggestions(query: string) {
   };
 }
 
+// An empty query is intentional: /search with no term lists repositories by
+// popularity, matching the legacy UI. The backend serves that from an indexed
+// ordering on RepositorySearchScore.score, so it is not a table scan.
 export function useSearch(query: string, page: number) {
   const {data, isLoading, error} = useQuery<ISearchResponse>({
     queryKey: ['search', query, page],

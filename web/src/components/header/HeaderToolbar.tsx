@@ -47,7 +47,7 @@ import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import HeaderSearchBar from 'src/components/header/HeaderSearchBar';
 
 export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
@@ -59,6 +59,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const {themePreference, setThemePreference} = useTheme();
   const quayConfig = useQuayConfig();
   const navigate = useNavigate();
+  const location = useLocation();
   const showUIToggle =
     quayConfig?.features?.UI_V2 &&
     !(
@@ -396,8 +397,10 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
 
   const isAuthenticated = !!user?.username;
   const {unreadCount} = useAppNotifications(isAuthenticated);
+  // The search page has its own search box, so don't render a second one.
   const searchingAllowed =
-    quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated;
+    (quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated) &&
+    location.pathname !== '/search';
 
   return (
     <>

@@ -45,6 +45,7 @@ describe('useSearch', () => {
     expect(result.current.pageSize).toBe(10);
   });
 
+  // An empty query lists repositories by popularity, matching the legacy UI.
   it('fetches with empty query', async () => {
     mockFetchSearchResults.mockResolvedValue({
       results: [],

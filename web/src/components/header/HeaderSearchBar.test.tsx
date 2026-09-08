@@ -173,6 +173,81 @@ describe('HeaderSearchBar', () => {
     });
   });
 
+  it('has combobox ARIA attributes on the focusable input itself', () => {
+    renderSearchBar();
+
+    // Every combobox attribute must be on the <input> that receives focus.
+    // On a wrapper element aria-activedescendant is inert to screen readers.
+    const input = screen.getByTestId('header-search-input');
+    expect(input.tagName).toBe('INPUT');
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(input).toHaveAttribute('aria-controls', 'header-search-suggestions');
+    expect(input).toHaveAttribute('aria-autocomplete', 'list');
+  });
+
+  it('points aria-activedescendant at the highlighted suggestion', async () => {
+    mockUseSearchSuggestions.mockReturnValue({
+      suggestions: [repoSuggestion, orgSuggestion],
+      isLoading: false,
+    });
+
+    renderSearchBar();
+    const input = getInput();
+    fireEvent.change(input, {target: {value: 'myorg'}});
+
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+    });
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+
+    fireEvent.keyDown(input, {key: 'ArrowDown'});
+
+    expect(input).toHaveAttribute(
+      'aria-activedescendant',
+      'header-search-suggestion-0',
+    );
+    expect(
+      document.getElementById('header-search-suggestion-0'),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keeps the dropdown closed after Escape when suggestions refetch', async () => {
+    mockUseSearchSuggestions.mockReturnValue({
+      suggestions: [repoSuggestion],
+      isLoading: false,
+    });
+
+    const {rerender} = renderSearchBar();
+    const input = getInput();
+    fireEvent.change(input, {target: {value: 'myorg'}});
+
+    await waitFor(() => {
+      expect(screen.getByText('myorg/my-repo')).toBeVisible();
+    });
+
+    fireEvent.keyDown(input, {key: 'Escape'});
+    await waitFor(() => {
+      expect(screen.queryByText('myorg/my-repo')).not.toBeInTheDocument();
+    });
+
+    // A background refetch returns a new array with identical contents. The
+    // dropdown must stay closed rather than reappearing under the user.
+    mockUseSearchSuggestions.mockReturnValue({
+      suggestions: [{...repoSuggestion}],
+      isLoading: false,
+    });
+    rerender(
+      createElement(
+        QueryClientProvider,
+        {client: new QueryClient({defaultOptions: {queries: {retry: false}}})},
+        createElement(MemoryRouter, null, createElement(HeaderSearchBar)),
+      ),
+    );
+
+    expect(screen.queryByText('myorg/my-repo')).not.toBeInTheDocument();
+  });
+
   it('does not open the dropdown for queries under 3 characters', () => {
     mockUseSearchSuggestions.mockReturnValue({
       suggestions: [repoSuggestion],
