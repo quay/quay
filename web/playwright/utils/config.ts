@@ -11,7 +11,7 @@ export const BASE_URL =
   process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
 
 // Bearer token for stage/production validation (set by Prow from QE secret).
-// When set, tests use bearer auth instead of CSRF session auth.
+// Bearer mode activates only when BOTH this and QUAY_BEARER_AUTH=1 are set.
 export const QUAY_API_TOKEN = process.env.QUAY_API_TOKEN || '';
 
 // Registry credentials for skopeo push/pull in stage validation.

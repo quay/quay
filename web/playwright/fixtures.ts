@@ -940,9 +940,10 @@ export function skipUnlessAuthType(
   config: QuayConfig | null,
   ...allowedTypes: QuayAuthType[]
 ): [boolean, string] {
-  // Bearer-token mode: tests tagged @auth:Bearer run when QUAY_API_TOKEN is
-  // set, regardless of the server's AUTHENTICATION_TYPE. Tests tagged with
-  // other auth types (e.g. @auth:Database) are skipped in bearer mode.
+  // Bearer-token mode: tests tagged @auth:Bearer run when both QUAY_API_TOKEN
+  // and QUAY_BEARER_AUTH=1 are set, regardless of the server's
+  // AUTHENTICATION_TYPE. Tests tagged with other auth types (e.g.
+  // @auth:Database) are skipped in bearer mode.
   if (isBearerAuthMode()) {
     if (allowedTypes.includes('Bearer')) return [false, ''];
     return [
@@ -1072,7 +1073,9 @@ type TestFixtures = {
   webhook: WebhookReceiver;
 
   // Bearer-token API client for stage/production validation.
-  // Available when QUAY_API_TOKEN env is set; throws otherwise.
+  // Requires QUAY_API_TOKEN; only usable when QUAY_BEARER_AUTH=1 is also
+  // set (otherwise @auth:Bearer tests are auto-skipped before this fixture
+  // is instantiated).
   bearerClient: BearerApiClient;
 };
 

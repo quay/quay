@@ -17,10 +17,11 @@
  *
  * Required env:
  *   QUAY_API_TOKEN           - Registry-wide OAuth2 bearer token
+ *   QUAY_BEARER_AUTH=1       - Explicit opt-in for bearer mode (set by test:stage-validation)
  *   REACT_QUAY_APP_API_URL   - Target URL (e.g. https://stage.quay.io)
  *   PLAYWRIGHT_BASE_URL      - Same as above
  *   QUAY_USER                - Registry username (for skopeo push/pull)
- *   QUAY_PASSWORD             - Registry password (for skopeo push/pull)
+ *   QUAY_PASSWORD            - Registry password (for skopeo push/pull)
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
