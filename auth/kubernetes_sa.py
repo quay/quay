@@ -3,6 +3,10 @@
 import hashlib
 import logging
 import re
+import threading
+import time
+import uuid
+import weakref
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,6 +27,7 @@ OIDC_WELL_KNOWN = ".well-known/openid-configuration"
 # Only RS256 is trusted for Kubernetes ServiceAccount JWTs. This is intentionally
 # separate from the generic OIDC login allow-list, which may support other algorithms.
 KUBERNETES_SA_ALLOWED_ALGORITHMS = ["RS256"]
+JWKS_REFRESH_COOLDOWN_SECONDS = 60
 
 _SUBJECT_PATTERN = re.compile(r"^system:serviceaccount:([^:\s]+):([^:\s]+)$")
 
@@ -45,6 +50,11 @@ class KubernetesSATokenValidator:
     JWT to Kubernetes TokenReview/SAR. Mapping a verified identity to Quay
     authorization is out of scope.
     """
+
+    _refresh_lock = threading.Lock()
+    _last_refresh_attempt: weakref.WeakKeyDictionary[Any, dict[str, float]] = (
+        weakref.WeakKeyDictionary()
+    )
 
     def __init__(self, config: dict[str, Any], http_client, cache):
         self._config = config
@@ -150,13 +160,43 @@ class KubernetesSATokenValidator:
         jwks_cache_key = self._jwks_cache_key(issuer_config, metadata["jwks_uri"])
         keys_by_kid = self._load_keys(issuer_config, metadata, jwks_cache_key)
         if kid not in keys_by_kid:
-            # A previously unseen key ID can indicate signing-key rotation. Discard the
-            # shared JWKS entry and fetch the issuer's current keys once before rejecting.
-            self._cache.invalidate(jwks_cache_key)
-            keys_by_kid = self._load_keys(issuer_config, metadata, jwks_cache_key)
+            keys_by_kid = self._refresh_keys(issuer_config, metadata, jwks_cache_key, keys_by_kid)
         if kid not in keys_by_kid:
             raise KubernetesSATokenValidationError("Token signing key was not found")
         return keys_by_kid[kid]
+
+    def _refresh_keys(
+        self,
+        issuer_config: dict[str, Any],
+        metadata: dict[str, Any],
+        jwks_cache_key: CacheKey,
+        current_keys: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Refresh JWKS at most once per cooldown when an unknown key ID is seen."""
+        now = time.monotonic()
+        with self._refresh_lock:
+            cache_attempts = self._last_refresh_attempt.setdefault(self._cache, {})
+            previous_attempt = cache_attempts.get(jwks_cache_key.key)
+            if (
+                previous_attempt is not None
+                and now - previous_attempt < JWKS_REFRESH_COOLDOWN_SECONDS
+            ):
+                return current_keys
+            cache_attempts[jwks_cache_key.key] = now
+
+        # Coordinate the cooldown across Quay workers when a shared model cache is
+        # configured. The process-local guard above still bounds refreshes when the
+        # deployment intentionally uses the no-op cache.
+        attempt_id = uuid.uuid4().hex
+        refresh_marker = CacheKey(
+            f"{jwks_cache_key.key}__refresh", f"{JWKS_REFRESH_COOLDOWN_SECONDS}s"
+        )
+        selected_attempt = self._cache.retrieve(refresh_marker, lambda: attempt_id)
+        if selected_attempt != attempt_id:
+            return current_keys
+
+        self._cache.invalidate(jwks_cache_key)
+        return self._load_keys(issuer_config, metadata, jwks_cache_key)
 
     def _load_keys(
         self,
@@ -245,6 +285,9 @@ class KubernetesSATokenValidator:
         return CacheKey(f"kubernetes_sa_oidc_{kind}__{digest}", f"{ttl}s")
 
     def _get_json(self, url: str, issuer_config: dict[str, Any]) -> dict[str, Any]:
+        if urlsplit(url).scheme.lower() != "https":
+            raise KubernetesSATokenValidationError("OIDC endpoint must use https")
+
         headers = {}
         token_path = issuer_config.get("BEARER_TOKEN_PATH")
         if token_path:

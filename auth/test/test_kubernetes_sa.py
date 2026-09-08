@@ -287,6 +287,21 @@ def test_uses_discovery_endpoint_ca_and_mounted_bearer_token(tmp_path):
     assert second_call.kwargs["allow_redirects"] is False
 
 
+def test_get_json_rejects_http_before_reading_bearer_token(tmp_path):
+    private_key = _rsa_key()
+    missing_bearer_path = tmp_path / "missing-token"
+    validator, client = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError, match="must use https"):
+        validator._get_json(
+            "http://kubernetes.default.svc/openid/v1/jwks",
+            {"BEARER_TOKEN_PATH": str(missing_bearer_path)},
+        )
+
+    assert not missing_bearer_path.exists()
+    client.get.assert_not_called()
+
+
 def test_rejects_jwks_uri_outside_discovery_origin():
     private_key = _rsa_key()
     validator, _ = _validator(
@@ -421,6 +436,18 @@ def test_unknown_kid_refreshes_cached_jwks():
     result = validator.validate(_token(second_key, kid="second-key"))
 
     assert result.subject == SUBJECT
+    assert client.get.call_count == 3
+
+
+def test_repeated_unknown_kids_refresh_jwks_only_once_per_cooldown():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    for kid in ("unknown-one", "unknown-two"):
+        with pytest.raises(KubernetesSATokenValidationError):
+            validator.validate(_token(_rsa_key(), kid=kid))
+
+    # Discovery and JWKS are fetched once, followed by one bounded rotation refresh.
     assert client.get.call_count == 3
 
 
