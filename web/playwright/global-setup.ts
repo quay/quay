@@ -139,12 +139,14 @@ async function globalSetup(config: FullConfig) {
 
     // -----------------------------------------------------------------------
     // Bearer-token mode (stage/production validation).
-    // Skip all user creation — the pre-provisioned QE token IS the identity.
-    // Tests use bearerClient fixture instead of session-based clients.
+    // Only activates when BOTH QUAY_API_TOKEN and QUAY_BEARER_AUTH=1 are set.
+    // This prevents accidental activation when a developer has QUAY_API_TOKEN
+    // in their shell but runs the normal test:e2e suite.
+    // The test:stage-validation script sets both automatically.
     // -----------------------------------------------------------------------
-    if (bearerToken) {
+    if (bearerToken && process.env.QUAY_BEARER_AUTH === '1') {
       console.log(
-        '[Global Setup] QUAY_API_TOKEN is set — bearer-token mode. ' +
+        '[Global Setup] Bearer-token mode (QUAY_BEARER_AUTH=1). ' +
           'Skipping user creation; tests will use bearerClient fixture.',
       );
       console.log('[Global Setup] Complete');

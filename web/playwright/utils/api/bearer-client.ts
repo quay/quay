@@ -107,9 +107,14 @@ export class BearerApiClient {
 }
 
 /**
- * Whether bearer token auth mode is active.
- * When true, tests should use bearerClient instead of session-based clients.
+ * Whether bearer token auth mode is explicitly active.
+ *
+ * Requires BOTH QUAY_API_TOKEN and QUAY_BEARER_AUTH=1. The second flag
+ * prevents accidental activation when a developer has QUAY_API_TOKEN in
+ * their shell but runs the normal test:e2e suite — without the explicit
+ * opt-in, global-setup creates users normally and @auth:Database tests
+ * are not skipped. The test:stage-validation script sets both.
  */
 export function isBearerAuthMode(): boolean {
-  return !!process.env.QUAY_API_TOKEN;
+  return !!process.env.QUAY_API_TOKEN && process.env.QUAY_BEARER_AUTH === '1';
 }
