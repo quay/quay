@@ -1,4 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from threading import Barrier
 from unittest.mock import Mock
 
 import jwt
@@ -19,6 +21,22 @@ NAMESPACE = "quay-operator"
 SA_NAME = "controller-manager"
 SA_UID = "72bcb00a-38f0-4b1a-9b8e-1f6c3a2d9e11"
 SUBJECT = f"system:serviceaccount:{NAMESPACE}:{SA_NAME}"
+
+
+class _WorkerCache:
+    """Give each simulated worker local state over one shared cache backend."""
+
+    def __init__(self, shared):
+        self.shared = shared
+
+    def retrieve(self, *args, **kwargs):
+        return self.shared.retrieve(*args, **kwargs)
+
+    def invalidate(self, *args, **kwargs):
+        return self.shared.invalidate(*args, **kwargs)
+
+    def add(self, *args, **kwargs):
+        return self.shared.add(*args, **kwargs)
 
 
 class _RecordingCache(InMemoryDataModelCache):
@@ -437,6 +455,62 @@ def test_unknown_kid_refreshes_cached_jwks():
 
     assert result.subject == SUBJECT
     assert client.get.call_count == 3
+
+
+def test_simultaneous_refresh_attempts_atomically_invalidate_jwks_once():
+    private_key = _rsa_key()
+    refreshed_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(refreshed_key, kid="refreshed-key")]),
+    )
+    shared_cache = InMemoryDataModelCache({})
+    shared_cache.invalidate = Mock(wraps=shared_cache.invalidate)
+    original_add = shared_cache.add
+    add_barrier = Barrier(2)
+
+    def synchronized_add(*args, **kwargs):
+        add_barrier.wait()
+        return original_add(*args, **kwargs)
+
+    shared_cache.add = synchronized_add
+    first, client = _validator(private_key, jwks_fn=jwks_fn, cache=_WorkerCache(shared_cache))
+    second, second_client = _validator(
+        private_key, jwks_fn=jwks_fn, cache=_WorkerCache(shared_cache)
+    )
+    issuer_config = first._issuer_config(ISSUER)
+    metadata = {"jwks_uri": f"{ISSUER}/openid/v1/jwks"}
+    jwks_cache_key = first._jwks_cache_key(issuer_config, metadata["jwks_uri"])
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        results = list(
+            workers.map(
+                lambda validator: validator._refresh_keys(
+                    issuer_config, metadata, jwks_cache_key, {}
+                ),
+                (first, second),
+            )
+        )
+
+    assert sum(bool(result) for result in results) == 1
+    assert client.get.call_count + second_client.get.call_count == 1
+    shared_cache.invalidate.assert_called_once_with(jwks_cache_key)
+    assert shared_cache.retrieve(jwks_cache_key, lambda: {"keys": []}) == {
+        "keys": [_jwk(refreshed_key, kid="refreshed-key")]
+    }
+
+
+def test_refreshes_when_marker_cache_is_unavailable():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+    validator._cache.add = Mock(return_value=None)
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = {"jwks_uri": f"{ISSUER}/openid/v1/jwks"}
+    jwks_cache_key = validator._jwks_cache_key(issuer_config, metadata["jwks_uri"])
+
+    result = validator._refresh_keys(issuer_config, metadata, jwks_cache_key, {})
+
+    assert KID in result
+    assert client.get.call_count == 1
 
 
 def test_repeated_unknown_kids_refresh_jwks_only_once_per_cooldown():

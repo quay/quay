@@ -5,7 +5,6 @@ import logging
 import re
 import threading
 import time
-import uuid
 import weakref
 from dataclasses import dataclass
 from pathlib import Path
@@ -187,12 +186,11 @@ class KubernetesSATokenValidator:
         # Coordinate the cooldown across Quay workers when a shared model cache is
         # configured. The process-local guard above still bounds refreshes when the
         # deployment intentionally uses the no-op cache.
-        attempt_id = uuid.uuid4().hex
         refresh_marker = CacheKey(
             f"{jwks_cache_key.key}__refresh", f"{JWKS_REFRESH_COOLDOWN_SECONDS}s"
         )
-        selected_attempt = self._cache.retrieve(refresh_marker, lambda: attempt_id)
-        if selected_attempt != attempt_id:
+        marker_added = self._cache.add(refresh_marker, True)
+        if marker_added is False:
             return current_keys
 
         self._cache.invalidate(jwks_cache_key)
