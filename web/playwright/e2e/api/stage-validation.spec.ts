@@ -24,7 +24,47 @@
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
+import {BearerApiClient} from '../../utils/api/bearer-client';
 import {QUAY_USER, QUAY_PASSWORD} from '../../utils/config';
+
+/**
+ * Best-effort cleanup helper. Deletes repo then org via bearer token.
+ * Logs failures but does not throw — cleanup must not mask test results.
+ */
+async function cleanupOrg(
+  playwright: typeof import('@playwright/test')['request'],
+  orgName: string,
+  repoName?: string,
+): Promise<void> {
+  const token = process.env.QUAY_API_TOKEN;
+  const apiUrl = process.env.REACT_QUAY_APP_API_URL || '';
+  if (!token || !apiUrl) return;
+  const isLocal = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1');
+  const request = await playwright.newContext({
+    ignoreHTTPSErrors: isLocal,
+  });
+  try {
+    const client = new BearerApiClient(request, apiUrl, token);
+    if (repoName) {
+      const repoResp = await client.delete(
+        `/api/v1/repository/${orgName}/${repoName}`,
+      );
+      if (!repoResp.ok()) {
+        console.warn(
+          `[cleanup] DELETE repo ${orgName}/${repoName}: ${repoResp.status()}`,
+        );
+      }
+    }
+    const orgResp = await client.delete(`/api/v1/organization/${orgName}`);
+    if (!orgResp.ok()) {
+      console.warn(`[cleanup] DELETE org ${orgName}: ${orgResp.status()}`);
+    }
+  } catch (err) {
+    console.warn(`[cleanup] error cleaning ${orgName}:`, err);
+  } finally {
+    await request.dispose();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Health & Discovery — no auth required on most Quay deployments
@@ -186,6 +226,12 @@ test.describe(
       const resp = await bearerClient.delete(`/api/v1/organization/${orgName}`);
       expect(resp.status()).toBe(204);
     });
+
+    // Safety-net: clean up even if a mid-chain test fails or the run aborts.
+    // The delete tests above assert correctness; this just prevents leaks.
+    test.afterAll(async ({playwright}) => {
+      await cleanupOrg(playwright.request, orgName, repoName);
+    });
   },
 );
 
@@ -207,14 +253,14 @@ test.describe(
         'QUAY_USER/QUAY_PASSWORD not set',
       );
       const apiUrl = process.env.REACT_QUAY_APP_API_URL || '';
-
+      const token = process.env.QUAY_API_TOKEN;
+      if (!token) throw new Error('QUAY_API_TOKEN is required');
+      const isLocal =
+        apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1');
       const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+        ignoreHTTPSErrors: isLocal,
       });
       try {
-        const {BearerApiClient} = await import('../../utils/api/bearer-client');
-        const token = process.env.QUAY_API_TOKEN;
-        if (!token) throw new Error('QUAY_API_TOKEN is required');
         const client = new BearerApiClient(request, apiUrl, token);
         await client.post('/api/v1/organization/', {
           name: imgOrgName,
@@ -232,7 +278,6 @@ test.describe(
       }
     });
 
-    // Push a small image (busybox) — mirrors the Cypress skopeo push pattern
     test('push image via skopeo', async () => {
       const {pushImage} = await import('../../utils/container');
       await pushImage(
@@ -245,25 +290,7 @@ test.describe(
     });
 
     test.afterAll(async ({playwright}) => {
-      const token = process.env.QUAY_API_TOKEN;
-      if (!token) return;
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const {BearerApiClient} = await import('../../utils/api/bearer-client');
-        const client = new BearerApiClient(
-          request,
-          process.env.REACT_QUAY_APP_API_URL || '',
-          token,
-        );
-        await client.delete(`/api/v1/repository/${imgOrgName}/${imgRepoName}`);
-        await client.delete(`/api/v1/organization/${imgOrgName}`);
-      } catch {
-        // Best-effort cleanup
-      } finally {
-        await request.dispose();
-      }
+      await cleanupOrg(playwright.request, imgOrgName, imgRepoName);
     });
   },
 );

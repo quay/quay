@@ -1319,8 +1319,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
           'Set it to a registry-wide OAuth2 token for stage validation.',
       );
     }
+    // Only skip TLS verification for localhost; stage/prod have valid certs.
+    const isLocal =
+      API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
     const request = await playwright.request.newContext({
-      ignoreHTTPSErrors: true,
+      ignoreHTTPSErrors: isLocal,
     });
     try {
       const client = new BearerApiClient(request, API_URL, QUAY_API_TOKEN);
