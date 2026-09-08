@@ -32,7 +32,7 @@ import {QUAY_USER, QUAY_PASSWORD} from '../../utils/config';
  * Logs failures but does not throw — cleanup must not mask test results.
  */
 async function cleanupOrg(
-  playwright: typeof import('@playwright/test')['request'],
+  playwright: (typeof import('@playwright/test'))['request'],
   orgName: string,
   repoName?: string,
 ): Promise<void> {
