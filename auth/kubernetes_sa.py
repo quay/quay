@@ -1,5 +1,6 @@
 """Validation of Kubernetes ServiceAccount JWTs for workload identity bootstrap."""
 
+import hashlib
 import logging
 import re
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ import jwt
 from authlib.jose import JsonWebKey
 from jwt import InvalidTokenError
 
+from data.cache.cache_key import CacheKey
 from oauth.oidc import JWT_CLOCK_SKEW_SECONDS
 from util.security.jwtutil import decode
 
@@ -44,9 +46,10 @@ class KubernetesSATokenValidator:
     authorization is out of scope.
     """
 
-    def __init__(self, config: dict[str, Any], http_client):
+    def __init__(self, config: dict[str, Any], http_client, cache):
         self._config = config
         self._http_client = http_client
+        self._cache = cache
 
     def validate(self, token: str) -> ValidatedKubernetesSA:
         try:
@@ -143,14 +146,28 @@ class KubernetesSATokenValidator:
         raise KubernetesSATokenValidationError("Token issuer is not trusted")
 
     def _get_key(self, issuer_config: dict[str, Any], kid: str):
-        keys_by_kid = self._fetch_jwks(issuer_config)
+        metadata = self._metadata(issuer_config)
+        jwks_cache_key = self._jwks_cache_key(issuer_config, metadata["jwks_uri"])
+        keys_by_kid = self._load_keys(issuer_config, metadata, jwks_cache_key)
+        if kid not in keys_by_kid:
+            # A previously unseen key ID can indicate signing-key rotation. Discard the
+            # shared JWKS entry and fetch the issuer's current keys once before rejecting.
+            self._cache.invalidate(jwks_cache_key)
+            keys_by_kid = self._load_keys(issuer_config, metadata, jwks_cache_key)
         if kid not in keys_by_kid:
             raise KubernetesSATokenValidationError("Token signing key was not found")
         return keys_by_kid[kid]
 
-    def _fetch_jwks(self, issuer_config: dict[str, Any]) -> dict[str, Any]:
-        metadata = self._metadata(issuer_config)
-        jwks = self._get_json(metadata["jwks_uri"], issuer_config)
+    def _load_keys(
+        self,
+        issuer_config: dict[str, Any],
+        metadata: dict[str, Any],
+        jwks_cache_key: CacheKey,
+    ) -> dict[str, Any]:
+        jwks = self._cache.retrieve(
+            jwks_cache_key,
+            lambda: self._fetch_jwks(metadata, issuer_config),
+        )
 
         keys_by_kid = {}
         for key_spec in jwks.get("keys", []):
@@ -171,7 +188,19 @@ class KubernetesSATokenValidator:
                 )
         return keys_by_kid
 
+    def _fetch_jwks(
+        self, metadata: dict[str, Any], issuer_config: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._get_json(metadata["jwks_uri"], issuer_config)
+
     def _metadata(self, issuer_config: dict[str, Any]) -> dict[str, Any]:
+        cache_key = self._discovery_cache_key(issuer_config)
+        return self._cache.retrieve(
+            cache_key,
+            lambda: self._fetch_metadata(issuer_config),
+        )
+
+    def _fetch_metadata(self, issuer_config: dict[str, Any]) -> dict[str, Any]:
         issuer = issuer_config["ISSUER"]
         endpoint = issuer_config.get("DISCOVERY_ENDPOINT", issuer).rstrip("/") + "/"
         discovery_url = urljoin(endpoint, OIDC_WELL_KNOWN)
@@ -198,6 +227,20 @@ class KubernetesSATokenValidator:
             )
 
         return metadata
+
+    def _discovery_cache_key(self, issuer_config: dict[str, Any]) -> CacheKey:
+        issuer = issuer_config["ISSUER"]
+        endpoint = issuer_config.get("DISCOVERY_ENDPOINT", issuer)
+        return self._cache_key("discovery", f"{issuer}\0{endpoint}")
+
+    def _jwks_cache_key(self, issuer_config: dict[str, Any], jwks_uri: str) -> CacheKey:
+        issuer = issuer_config["ISSUER"]
+        return self._cache_key("jwks", f"{issuer}\0{jwks_uri}")
+
+    def _cache_key(self, kind: str, identity: str) -> CacheKey:
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        ttl = self._config.get("JWKS_CACHE_TTL_SECONDS", 3600)
+        return CacheKey(f"kubernetes_sa_oidc_{kind}__{digest}", f"{ttl}s")
 
     def _get_json(self, url: str, issuer_config: dict[str, Any]) -> dict[str, Any]:
         headers = {}

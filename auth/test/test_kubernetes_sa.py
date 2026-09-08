@@ -10,6 +10,7 @@ from auth.kubernetes_sa import (
     KubernetesSATokenValidationError,
     KubernetesSATokenValidator,
 )
+from data.cache.impl import InMemoryDataModelCache, NoopDataModelCache
 
 ISSUER = "https://kubernetes.default.svc"
 AUDIENCE = "quay-bootstrap"
@@ -18,6 +19,16 @@ NAMESPACE = "quay-operator"
 SA_NAME = "controller-manager"
 SA_UID = "72bcb00a-38f0-4b1a-9b8e-1f6c3a2d9e11"
 SUBJECT = f"system:serviceaccount:{NAMESPACE}:{SA_NAME}"
+
+
+class _RecordingCache(InMemoryDataModelCache):
+    def __init__(self):
+        super().__init__({})
+        self.retrieved_keys = []
+
+    def retrieve(self, cache_key, loader, should_cache=lambda value: value is not None):
+        self.retrieved_keys.append(cache_key)
+        return super().retrieve(cache_key, loader, should_cache)
 
 
 def _rsa_key():
@@ -82,7 +93,7 @@ def _dispatching_client(discovery_fn, jwks_fn):
     return client
 
 
-def _validator(private_key, discovery_fn=None, jwks_fn=None, **config_overrides):
+def _validator(private_key, discovery_fn=None, jwks_fn=None, cache=None, **config_overrides):
     if discovery_fn is None:
         discovery_fn = _sequence(_discovery_response())
     if jwks_fn is None:
@@ -91,9 +102,11 @@ def _validator(private_key, discovery_fn=None, jwks_fn=None, **config_overrides)
     config = {
         "ISSUERS": [{"ISSUER": ISSUER}],
         "REQUIRED_AUDIENCE": AUDIENCE,
+        "JWKS_CACHE_TTL_SECONDS": 3600,
         **config_overrides,
     }
-    return KubernetesSATokenValidator(config, client), client
+    cache = cache or InMemoryDataModelCache({})
+    return KubernetesSATokenValidator(config, client, cache), client
 
 
 def _token(private_key, kid=KID, no_kid=False, **claim_overrides):
@@ -114,7 +127,7 @@ def _token(private_key, kid=KID, no_kid=False, **claim_overrides):
     return jwt.encode(claims, private_key, algorithm="RS256", headers=headers)
 
 
-def test_validates_service_account_token_and_refetches_oidc_data():
+def test_validates_service_account_token_with_cached_oidc_data():
     private_key = _rsa_key()
     validator, client = _validator(private_key)
 
@@ -125,6 +138,43 @@ def test_validates_service_account_token_and_refetches_oidc_data():
     assert first.subject == SUBJECT
     assert first.claims["sub"] == SUBJECT
     assert second.subject == SUBJECT
+    assert client.get.call_count == 2
+
+
+def test_oidc_cache_is_shared_between_validator_instances():
+    private_key = _rsa_key()
+    shared_cache = InMemoryDataModelCache({})
+    first_validator, first_client = _validator(private_key, cache=shared_cache)
+    second_validator, second_client = _validator(private_key, cache=shared_cache)
+
+    first_validator.validate(_token(private_key))
+    second_validator.validate(_token(private_key))
+
+    assert first_client.get.call_count == 2
+    assert second_client.get.call_count == 0
+
+
+def test_uses_separate_discovery_and_jwks_cache_entries_with_configured_ttl():
+    private_key = _rsa_key()
+    cache = _RecordingCache()
+    validator, _ = _validator(private_key, cache=cache, JWKS_CACHE_TTL_SECONDS=123)
+
+    validator.validate(_token(private_key))
+
+    cache_keys = {key.key: key.expiration for key in cache.retrieved_keys}
+    assert len(cache_keys) == 2
+    assert all(expiration == "123s" for expiration in cache_keys.values())
+    assert any(key.startswith("kubernetes_sa_oidc_discovery__") for key in cache_keys)
+    assert any(key.startswith("kubernetes_sa_oidc_jwks__") for key in cache_keys)
+
+
+def test_noop_cache_refetches_discovery_and_jwks():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key, cache=NoopDataModelCache({}))
+
+    validator.validate(_token(private_key))
+    validator.validate(_token(private_key))
+
     assert client.get.call_count == 4
 
 
@@ -358,7 +408,7 @@ def test_untrusted_issuer_is_rejected_without_network_call():
     assert client.get.call_count == 0
 
 
-def test_each_validation_fetches_current_discovery_and_jwks():
+def test_unknown_kid_refreshes_cached_jwks():
     private_key = _rsa_key()
     second_key = _rsa_key()
     jwks_fn = _sequence(
@@ -371,7 +421,7 @@ def test_each_validation_fetches_current_discovery_and_jwks():
     result = validator.validate(_token(second_key, kid="second-key"))
 
     assert result.subject == SUBJECT
-    assert client.get.call_count == 4
+    assert client.get.call_count == 3
 
 
 def test_refresh_failure_rejects_instead_of_using_previous_keys():
@@ -383,11 +433,15 @@ def test_refresh_failure_rejects_instead_of_using_previous_keys():
     validator, _ = _validator(private_key, jwks_fn=jwks_fn)
 
     validator.validate(_token(private_key))
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = validator._metadata(issuer_config)
+    validator._cache.invalidate(validator._jwks_cache_key(issuer_config, metadata["jwks_uri"]))
+
     with pytest.raises(KubernetesSATokenValidationError):
         validator.validate(_token(private_key))
 
 
-def test_rotated_key_no_longer_published_fails_closed():
+def test_rotated_key_no_longer_published_fails_closed_after_cache_expiry():
     private_key = _rsa_key()
     new_key = _rsa_key()
     jwks_fn = _sequence(
@@ -397,6 +451,10 @@ def test_rotated_key_no_longer_published_fails_closed():
     validator, _ = _validator(private_key, jwks_fn=jwks_fn)
 
     validator.validate(_token(private_key))
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = validator._metadata(issuer_config)
+    validator._cache.invalidate(validator._jwks_cache_key(issuer_config, metadata["jwks_uri"]))
+
     with pytest.raises(KubernetesSATokenValidationError):
         validator.validate(_token(private_key))
 
@@ -409,7 +467,8 @@ def test_unknown_kid_fails_closed_when_current_jwks_does_not_contain_it():
     with pytest.raises(KubernetesSATokenValidationError):
         validator.validate(_token(unknown_key, kid="never-seen"))
 
-    assert client.get.call_count == 2
+    # Discovery is fetched once and the unknown key causes one immediate JWKS refresh.
+    assert client.get.call_count == 3
 
 
 def test_signature_failure_fetches_current_oidc_data_once():
