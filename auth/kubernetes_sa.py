@@ -204,6 +204,8 @@ class KubernetesSATokenValidator:
         issuer = issuer_config["ISSUER"]
         endpoint = issuer_config.get("DISCOVERY_ENDPOINT", issuer).rstrip("/") + "/"
         discovery_url = urljoin(endpoint, OIDC_WELL_KNOWN)
+        if urlsplit(discovery_url).scheme != "https":
+            raise KubernetesSATokenValidationError("OIDC discovery endpoint must use https")
         metadata = self._get_json(discovery_url, issuer_config)
 
         discovered_issuer = metadata.get("issuer")
