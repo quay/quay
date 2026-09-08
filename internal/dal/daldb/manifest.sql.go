@@ -279,11 +279,7 @@ const upsertManifest = `-- name: UpsertManifest :one
 INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type, subject_backfilled, artifact_type_backfilled)
 VALUES (?, ?, ?, ?, ?, ?, 1, 1)
 ON CONFLICT (repository_id, digest) DO UPDATE
-  SET manifest_bytes = CASE
-        WHEN excluded.manifest_bytes IN ('', '{}') AND manifest.manifest_bytes NOT IN ('', '{}')
-        THEN manifest.manifest_bytes
-        ELSE excluded.manifest_bytes
-      END,
+  SET manifest_bytes = excluded.manifest_bytes,
       subject = excluded.subject,
       artifact_type = excluded.artifact_type,
       subject_backfilled = 1,
