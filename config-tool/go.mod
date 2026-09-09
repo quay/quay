@@ -1,6 +1,6 @@
 module github.com/quay/quay/config-tool
 
-go 1.25.0
+go 1.26.0
 
 require (
 	cuelang.org/go v0.6.0
@@ -61,7 +61,7 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
 )
 
