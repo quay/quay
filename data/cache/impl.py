@@ -312,11 +312,12 @@ class MemcachedModelCache(DataModelCache):
         if client is None:
             return None
         try:
+            expires = convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
             return bool(
                 client.add(
                     cache_key.key,
                     value,
-                    expire=int(convert_to_timedelta(cache_key.expiration).total_seconds()),
+                    expire=int(expires.total_seconds()) if expires else None,
                 )
             )
         except Exception:

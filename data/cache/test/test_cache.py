@@ -88,6 +88,19 @@ def test_memcache():
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
 
 
+@pytest.mark.parametrize(
+    "expiration, expected_expire",
+    [(None, None), ("60m", 3600)],
+)
+def test_memcache_add_expiration(expiration, expected_expire):
+    cache = MemcachedModelCache(TEST_CACHE_CONFIG, ("127.0.0.1", "-1"))
+    cache.client_pool = MagicMock()
+    cache.client_pool.add.return_value = True
+
+    assert cache.add(CacheKey("foo", expiration), {"a": 1234}) is True
+    cache.client_pool.add.assert_called_once_with("foo", {"a": 1234}, expire=expected_expire)
+
+
 def test_memcache_invalid_size_limit_config():
     invalid_cache_config = TEST_CACHE_CONFIG.copy()
     invalid_cache_config["value_size_limit"] = "invalid_size"
