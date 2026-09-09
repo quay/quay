@@ -8,6 +8,7 @@ argument-hint: PROW_URL
 allowed-tools:
   - Bash(bash scripts/playwright-debug-prow.sh *)
   - Bash(curl *)
+  - Bash(rm -rf /tmp/tmp.*)
   - Read
   - Grep
   - Edit
