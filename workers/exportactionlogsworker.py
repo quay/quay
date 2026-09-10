@@ -265,9 +265,7 @@ class ExportActionLogsWorker(QueueWorker):
         else:
             base_url = exported_data_url
 
-        logger.debug(
-            "Reporting result of `%s` for %s; %s", result_status, job_details, base_url
-        )
+        logger.debug("Reporting result of `%s` for %s; %s", result_status, job_details, base_url)
 
         if job_details.get("callback_url"):
             callback_url = job_details["callback_url"]
