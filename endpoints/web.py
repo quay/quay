@@ -435,7 +435,7 @@ def exportedlogs(file_id):
 
     fernet_key = base64.urlsafe_b64encode(hashlib.sha256(config_secret_key.encode()).digest())
 
-    expiration = app.config.get("EXPORTED_LOGS_EXPIRATION_SECONDS", 60 * 60)
+    expiration = app.config.get("EXPORT_ACTIONS_LOGS_SECONDS", 60 * 60)
     decrypted = decrypt_string(token, fernet_key, ttl=expiration)
     if decrypted != file_id:
         logger.exception("Failed to verify provided token for export log download")
