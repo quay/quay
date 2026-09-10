@@ -138,7 +138,7 @@
     "minimatch": "3.1.5",
     "svgo": "4.0.1",
     "immutable": "^5.1.5",
-    "fast-uri": "^3.1.4",
+    "fast-uri": "^3.1.7",
     "js-yaml": "^4.3.0",
     "brace-expansion": "^1.1.18",
     "browserslist": ">=4.28.7"
@@ -160,7 +160,8 @@
       "immutable": "^5.1.5",
       "js-yaml": "^4.3.0",
       "brace-expansion": "^1.1.18",
-      "browserslist": ">=4.28.7"
+      "browserslist": ">=4.28.7",
+      "fast-uri": "^3.1.7"
     }
   }
 }
