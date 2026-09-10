@@ -14,6 +14,7 @@ from auth.kubernetes_sa import (
 from data.database import OAuthAccessToken
 from data.model import db_transaction
 from data.model.oauth import (
+    create_bootstrap_oauth_api_token,
     delete_bootstrap_tokens,
     lock_bootstrap_token_operation,
     validate_bootstrap_token,
