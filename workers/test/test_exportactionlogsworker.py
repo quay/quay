@@ -19,6 +19,8 @@ from workers.exportactionlogsworker import (
     ExportResult,
 )
 
+import logging
+
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
@@ -157,7 +159,7 @@ def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
         storage_engine.preferred_locations, "exportedactionlogs"
     ):
         if url.find("http://localhost:5000/exportedlogs/") == 0:
-            storage_id = url[len("http://localhost:5000/exportedlogs/") :]
+            storage_id, _ = url[len("http://localhost:5000/exportedlogs/") :].split("?")
         else:
             assert (
                 url.find(
@@ -172,6 +174,7 @@ def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
         created = storage_engine.get_content(
             storage_engine.preferred_locations, "exportedactionlogs/" + storage_id
         )
+        logging.debug("PAYLOAD: %s", created)
         created_json = json.loads(created)
 
         if has_logs:
