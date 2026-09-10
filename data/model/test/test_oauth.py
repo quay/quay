@@ -58,7 +58,12 @@ def test_oauth_access_token_last_accessed_indexed_by_application():
 
 
 def test_oauth_api_token_log_kinds_seeded(initialized_db):
-    expected_log_kinds = {"create_oauth_api_token", "revoke_oauth_api_token"}
+    expected_log_kinds = {
+        "create_oauth_api_token",
+        "revoke_oauth_api_token",
+        "workload_identity_token_exchange",
+        "workload_identity_token_exchange_failed",
+    }
     found_log_kinds = {
         kind.name for kind in LogEntryKind.select().where(LogEntryKind.name << expected_log_kinds)
     }

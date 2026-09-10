@@ -253,12 +253,40 @@ def test_rejects_missing_iat_or_exp():
         validator.validate(token)
 
 
+def test_validation_failure_categories_separate_trust_from_identity():
+    private_key = _rsa_key()
+    validator, _ = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError) as trust_error:
+        validator.validate("not-a-jwt")
+    assert trust_error.value.category == "trust"
+
+    with pytest.raises(KubernetesSATokenValidationError) as identity_error:
+        validator.validate(_token(private_key, sub="ordinary-user"))
+    assert identity_error.value.category == "identity"
+
+    with pytest.raises(KubernetesSATokenValidationError) as bound_claim_error:
+        validator.validate(
+            _token(
+                private_key,
+                **{
+                    "kubernetes.io": {
+                        "namespace": NAMESPACE,
+                        "serviceaccount": {"name": "wrong-name", "uid": SA_UID},
+                    }
+                },
+            )
+        )
+    assert bound_claim_error.value.category == "identity"
+
+
 def test_rejects_malformed_token():
     private_key = _rsa_key()
     validator, _ = _validator(private_key)
 
-    with pytest.raises(KubernetesSATokenValidationError):
+    with pytest.raises(KubernetesSATokenValidationError) as exc_info:
         validator.validate("not-a-jwt")
+    assert exc_info.value.category == "trust"
 
 
 def test_rejects_token_missing_kid():
