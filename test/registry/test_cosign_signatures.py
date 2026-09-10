@@ -7,10 +7,12 @@ Run:
   make registry-test  # includes this file
 """
 
+import copy
 import json
 
 import pytest
 
+from image.oci import register_artifact_type
 from test.fixtures import *
 from test.registry.cosign_test_helpers import (
     COSIGN_ARTIFACT_TYPE,
@@ -18,24 +20,33 @@ from test.registry.cosign_test_helpers import (
     IN_TOTO_LAYER_TYPE,
     build_cosign_signature_manifest,
     build_helm_chart_manifest,
-    build_in_toto_artifact_manifest,
     build_oci_artifact_manifest,
-    delete_manifest,
     get_referrers,
     parse_and_validate_referrers_index,
     referrer_digests,
 )
 from test.registry.fixtures import *
 from test.registry.liveserverfixture import *
-from test.registry.protocol_fixtures import basic_images, jwk, minimal_oci_artifact
+from test.registry.protocol_fixtures import (
+    MINIMAL_OCI_ARTIFACT_CONFIG,
+    basic_images,
+    jwk,
+    minimal_oci_artifact,
+)
 from test.registry.protocol_v2 import V2Protocol
-from test.registry.protocols import Artifact, ProtocolOptions
+from test.registry.protocols import Artifact, Failures, ProtocolOptions
 
 pytestmark = pytest.mark.oci
 
 # OCI artifact pushes often reuse config/layer blobs already present in the repo.
 _ARTIFACT_PUSH_OPTIONS = ProtocolOptions()
 _ARTIFACT_PUSH_OPTIONS.skip_head_checks = True
+
+# Custom artifact media types that are NOT in the default ALLOWED_OCI_ARTIFACT_TYPES.
+# Used to verify that runtime registration of new types actually works.
+CUSTOM_TEST_CONFIG_TYPE = "application/vnd.test.custom.config.v1+json"
+CUSTOM_TEST_LAYER_TYPE = "application/vnd.test.custom.layer.v1+json"
+CUSTOM_TEST_ARTIFACT_TYPE = "application/vnd.test.custom.artifact.v1+json"
 
 
 @pytest.fixture(params=["oci"])
@@ -46,22 +57,6 @@ def pusher(request, data_model, jwk):
 @pytest.fixture(params=["oci"])
 def puller(request, data_model, jwk):
     return V2Protocol(jwk, schema="oci")
-
-
-@pytest.fixture(autouse=True)
-def bypass_referrers_model_cache(monkeypatch):
-    """
-    Integration tests validate referrers lookup, not model-cache serialization.
-
-    lookup_cached_referrers_for_manifest must store dicts (see lookup_cached_manifest_by_digest);
-    until that is implemented, bypass the cache layer here.
-    """
-    from data.registry_model.registry_oci_model import OCIModel
-
-    def lookup_referrers_uncached(self, model_cache, repository_ref, manifest, artifact_type=None):
-        return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
-
-    monkeypatch.setattr(OCIModel, "lookup_cached_referrers_for_manifest", lookup_referrers_uncached)
 
 
 def test_push_image_and_cosign_signature_with_subject_link(
@@ -310,18 +305,32 @@ def test_helm_chart_push_pull(pusher, liveserver_session, app_reloader):
     assert len(list(pulled.blob_digests)) == 2
 
 
-def test_in_toto_artifact_type_push_pull(pusher, liveserver_session, app_reloader):
+def test_custom_artifact_type_push_pull(pusher, liveserver_session, app_reloader):
     """
-    Pre-registered OCI artifact types (in-toto SBOM) can be pushed and pulled.
+    A dynamically registered custom artifact type can be pushed and pulled.
 
-    Validates ALLOWED_OCI_ARTIFACT_TYPES registration at application startup.
+    Registers a unique config/layer media-type pair that is NOT in the default
+    ALLOWED_OCI_ARTIFACT_TYPES, then pushes and pulls an artifact using those
+    types to prove the registration mechanism works end-to-end.
     """
-    artifact, blobs = build_in_toto_artifact_manifest()
+    register_artifact_type(CUSTOM_TEST_CONFIG_TYPE, [CUSTOM_TEST_LAYER_TYPE])
+
+    artifact = Artifact(
+        id="custom_test_artifact",
+        config=copy.deepcopy(MINIMAL_OCI_ARTIFACT_CONFIG),
+        config_media_type=CUSTOM_TEST_CONFIG_TYPE,
+        bytes=json.dumps({"test": "custom-artifact-payload"}).encode("utf-8"),
+        layer_media_type=CUSTOM_TEST_LAYER_TYPE,
+        artifact_type=CUSTOM_TEST_ARTIFACT_TYPE,
+        layer_annotations=None,
+    )
+    manifest, blobs = build_oci_artifact_manifest(artifact)
+
     pusher.push_artifact(
         liveserver_session,
         "devtable",
-        "cosign-in-toto-artifact",
-        artifact,
+        "cosign-custom-artifact",
+        manifest,
         blobs,
         credentials=("devtable", "password"),
         options=_ARTIFACT_PUSH_OPTIONS,
@@ -330,67 +339,86 @@ def test_in_toto_artifact_type_push_pull(pusher, liveserver_session, app_reloade
     pulled = pusher.pull_artifact(
         liveserver_session,
         "devtable",
-        "cosign-in-toto-artifact",
-        str(artifact.digest),
+        "cosign-custom-artifact",
+        str(manifest.digest),
         credentials=("devtable", "password"),
     ).manifest
-    assert pulled.artifact_type == IN_TOTO_ARTIFACT_TYPE
+    assert pulled.artifact_type == CUSTOM_TEST_ARTIFACT_TYPE
+    assert pulled.config_media_type == CUSTOM_TEST_CONFIG_TYPE
 
 
-def test_signature_deletion_removes_referrer(
+def test_base_image_deletion_preserves_signature(
     pusher, puller, basic_images, liveserver_session, app_reloader
 ):
     """
-    Deleting a tagged cosign signature via the registry API succeeds and the subject
-    image remains pullable.
+    Deleting the base image tag preserves the cosign signature manifest.
 
-    Referrers listings are keyed on the manifest subject column; they are unchanged
-    until the GC worker reclaims the untagged signature manifest.
+    After pushing a base image and attaching a cosign signature, delete the base
+    image tag. The signature manifest must survive the tag deletion (GC has not
+    run), confirming that signatures are not immediately lost when their subject
+    image tag is removed.
+
+    Note: the referrers API requires the subject manifest to be resolvable via
+    an alive tag, so referrer discovery is expected to fail after the subject
+    tag is deleted. This test validates signature *manifest* preservation, not
+    referrer-index availability.
     """
     push_result = pusher.push(
         liveserver_session,
         "devtable",
-        "cosign-signature-deletion",
+        "cosign-base-deletion",
         "latest",
         basic_images,
         credentials=("devtable", "password"),
     )
     subject = list(push_result.manifests.values())[0]
-    registry_ref = "localhost:5000/%s/%s" % ("devtable", "cosign-signature-deletion")
+    registry_ref = "localhost:5000/%s/%s" % ("devtable", "cosign-base-deletion")
 
-    signature_tag = "cosign-signature"
     signature, blobs = build_cosign_signature_manifest(subject, registry_ref)
     pusher.push_artifact(
         liveserver_session,
         "devtable",
-        "cosign-signature-deletion",
+        "cosign-base-deletion",
         signature,
         blobs,
-        reference=signature_tag,
         credentials=("devtable", "password"),
         options=_ARTIFACT_PUSH_OPTIONS,
     )
 
+    # Verify the signature is discoverable via referrers before deletion.
     response = get_referrers(
-        pusher, liveserver_session, "devtable", "cosign-signature-deletion", str(subject.digest)
+        pusher, liveserver_session, "devtable", "cosign-base-deletion", str(subject.digest)
     )
     assert str(signature.digest) in referrer_digests(parse_and_validate_referrers_index(response))
 
-    # Digest delete requires at least one tag on the manifest (see delete_manifest_by_digest).
-    delete_manifest(
-        pusher, liveserver_session, "devtable", "cosign-signature-deletion", str(signature.digest)
+    # Delete the base image tag (not the signature).
+    pusher.delete(
+        liveserver_session,
+        "devtable",
+        "cosign-base-deletion",
+        "latest",
+        credentials=("devtable", "password"),
     )
 
-    response = get_referrers(
-        pusher, liveserver_session, "devtable", "cosign-signature-deletion", str(subject.digest)
-    )
-    assert str(signature.digest) in referrer_digests(parse_and_validate_referrers_index(response))
-
+    # Confirm the base image tag is actually gone.
     puller.pull(
         liveserver_session,
         "devtable",
-        "cosign-signature-deletion",
+        "cosign-base-deletion",
         "latest",
         basic_images,
         credentials=("devtable", "password"),
+        expected_failure=Failures.UNKNOWN_TAG,
     )
+
+    # The signature artifact itself must still be pullable by digest because
+    # GC has not yet reclaimed the untagged manifest.
+    pulled_sig = pusher.pull_artifact(
+        liveserver_session,
+        "devtable",
+        "cosign-base-deletion",
+        str(signature.digest),
+        credentials=("devtable", "password"),
+    ).manifest
+    assert pulled_sig.subject is not None
+    assert pulled_sig.subject.digest == subject.digest
