@@ -179,8 +179,14 @@ if [ ! -s "$WORK_DIR/results.json" ]; then
   exit 1
 fi
 
-if ! jq -e . "$WORK_DIR/results.json" >/dev/null; then
-  echo "ERROR: downloaded results.json is invalid or partial JSON" >&2
+if ! jq -e . "$WORK_DIR/results.json" >/dev/null 2>&1; then
+  echo "ERROR: downloaded results.json is not valid JSON" >&2
+  exit 1
+fi
+if ! jq -e 'type == "object" and (has("stats") or has("suites") or has("results"))' \
+    "$WORK_DIR/results.json" >/dev/null; then
+  echo "ERROR: downloaded results.json is valid JSON but missing expected top-level keys" >&2
+  echo "  Expected an object with at least one of: stats, suites, results" >&2
   exit 1
 fi
 
