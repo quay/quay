@@ -6,7 +6,7 @@ description: >
   correlates with build logs and container logs, and offers fixes.
 argument-hint: PROW_URL
 allowed-tools:
-  - Bash(bash scripts/playwright-debug-prow.sh *)
+  - Bash(bash .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh *)
   - Bash(curl *)
   - Read
   - Grep
@@ -42,7 +42,7 @@ from that result (the script downloads to a fresh temp dir on every run, so a
 second invocation would leak an orphaned artifact directory):
 
 ```bash
-PW_JSON=$(bash scripts/playwright-debug-prow.sh "$ARGUMENTS")
+PW_JSON=$(bash .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh "$ARGUMENTS")
 ARTIFACTS_DIR=$(echo "$PW_JSON" | jq -r '.artifacts_dir')
 ```
 
