@@ -335,6 +335,7 @@ if list_gcs_keys "${JAEGER_ARTIFACT_BASE}/"; then
         fi
       else
         echo "  Could not download Jaeger artifact: ${jaeger_file}" >&2
+        rm -f "$trace_path"
       fi
     fi
   done

@@ -68,9 +68,9 @@ The collector normalizes either `.../<e2e-step>/artifacts` or
 `quay-gather-jaeger-traces` locations. It enumerates those derived prefixes:
 legacy `traces.json`, chunked `traces-*.json`, and supported Jaeger metadata
 files are downloaded only after JSON validation. Pod-qualified Quay app logs
-are selected from `gather-extra/artifacts/pods/`. Empty and redacted pod-log
-placeholders are reported separately and are not treated as usable container
-logs.
+are selected from `gather-extra/artifacts/pods/`. Empty pod logs are ignored;
+redacted pod-log filenames are reported separately and are not treated as
+usable container logs.
 
 All fields are derived from Playwright's JSON reporter output (`results.json`).
 
