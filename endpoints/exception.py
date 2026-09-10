@@ -11,6 +11,7 @@ class ApiErrorType(Enum):
     invalid_request = "invalid_request"
     invalid_response = "invalid_response"
     invalid_token = "invalid_token"
+    server_error = "server_error"
     expired_token = "expired_token"
     insufficient_scope = "insufficient_scope"
     fresh_login_required = "fresh_login_required"
@@ -27,6 +28,7 @@ ERROR_DESCRIPTION = {
     ApiErrorType.invalid_request.value: "The request was invalid. It may have contained invalid values or was improperly formatted.",
     ApiErrorType.invalid_response.value: "The response was invalid.",
     ApiErrorType.invalid_token.value: "The access token provided was invalid.",
+    ApiErrorType.server_error.value: "The server encountered an internal error.",
     ApiErrorType.expired_token.value: "The access token provided has expired.",
     ApiErrorType.insufficient_scope.value: "The access token did not have sufficient scope to access the requested resource.",
     ApiErrorType.fresh_login_required.value: "The action requires a fresh login to succeed.",
