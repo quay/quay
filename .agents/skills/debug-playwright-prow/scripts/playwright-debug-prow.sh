@@ -175,7 +175,16 @@ fi
 # GCS has a flat namespace: slash-delimited "folders" are simulated prefixes, so
 # a HEAD on "${GATHER_EXTRA_BASE}/" can 404 even when logs exist under it. Probe
 # the candidate log objects directly instead of gating on a directory request.
-GATHER_EXTRA_BASE="${ARTIFACT_BASE%/${STEP_NAME}/artifacts}/gather-extra/artifacts"
+#
+# Derive the workflow root by stripping the step-specific suffix in two steps so
+# both artifact-layout shapes are handled correctly:
+#   Normal layout: ARTIFACT_BASE ends with /${STEP_NAME}/artifacts
+#     → strip /artifacts → strip /${STEP_NAME} → workflow root
+#   Flat layout: ARTIFACT_BASE ends with /${STEP_NAME} (no trailing /artifacts)
+#     → strip /artifacts is a no-op → strip /${STEP_NAME} → workflow root
+WORKFLOW_BASE="${ARTIFACT_BASE%/artifacts}"
+WORKFLOW_BASE="${WORKFLOW_BASE%"/${STEP_NAME}"}"
+GATHER_EXTRA_BASE="${WORKFLOW_BASE}/gather-extra/artifacts"
 mkdir -p "$WORK_DIR/container-logs"
 # Probe for common quay pod log locations
 for log_name in "quay-quay.log" "quay.log" "pods/quay.log"; do
