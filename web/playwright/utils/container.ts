@@ -8,6 +8,7 @@
  */
 
 import {execFile, execFileSync, spawn} from 'child_process';
+import {randomBytes} from 'crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'fs';
 import {mkdtemp, mkdir, rm, writeFile} from 'fs/promises';
 import * as os from 'os';
@@ -21,6 +22,13 @@ const execFileAsync = promisify(execFile);
 const REGISTRY_HOST = new URL(API_URL).host;
 
 const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
+
+/**
+ * Pinned UBI9 image (~77 MiB stored) used to cross quota notification thresholds
+ * reliably in e2e tests. Digest-pinned for reproducible blob sizes in CI.
+ */
+export const QUOTA_NOTIFICATION_SOURCE_IMAGE =
+  'registry.access.redhat.com/ubi9/ubi@sha256:25a147defd01e19674714f55d17538c8dbe55d8c305fa157ecc3f9c8977b05b6';
 
 type ToolAvailability = {
   skopeo: boolean;
@@ -253,20 +261,59 @@ export async function pushImage(
   username: string,
   password: string,
 ): Promise<void> {
-  const image = targetImage(namespace, repo, tag);
+  await pushImageFrom(BUSYBOX_IMAGE, namespace, repo, tag, username, password);
+}
+
+/**
+ * Copy an image from an external registry into Quay via skopeo.
+ *
+ * @param sourceImage - Registry reference (with or without `docker://` prefix)
+ */
+export async function pushImageFrom(
+  sourceImage: string,
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const dest = targetImage(namespace, repo, tag);
+  const source = sourceImage.startsWith('docker://')
+    ? sourceImage
+    : `docker://${sourceImage}`;
 
   await withRegistryAuthFile(username, password, (authFile) =>
     retryOperation(() =>
       skopeoCopy([
         '--override-os=linux',
         '--override-arch=amd64',
-        `docker://${BUSYBOX_IMAGE}`,
-        `docker://${image}`,
+        source,
+        `docker://${dest}`,
         '--dest-tls-verify=false',
         '--dest-authfile',
         authFile,
       ]),
     ),
+  );
+}
+
+/**
+ * Push the pinned UBI9 image used by quota-notification e2e tests.
+ */
+export async function pushQuotaNotificationImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  await pushImageFrom(
+    QUOTA_NOTIFICATION_SOURCE_IMAGE,
+    namespace,
+    repo,
+    tag,
+    username,
+    password,
   );
 }
 
@@ -281,6 +328,29 @@ export async function pushUniqueImage(
   username: string,
   password: string,
 ): Promise<void> {
+  await pushUniqueImageWithLayerBytes(
+    namespace,
+    repo,
+    tag,
+    username,
+    password,
+    64,
+  );
+}
+
+/**
+ * Push an image with a unique, incompressible layer of at least `layerBytes`.
+ * Quota checks during blob upload use stored bytes; random content avoids
+ * gzip collapsing the layer to a negligible size.
+ */
+export async function pushUniqueImageWithLayerBytes(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+  layerBytes: number,
+): Promise<void> {
   await requireTool('crane');
 
   const image = targetImage(namespace, repo, tag);
@@ -293,8 +363,16 @@ export async function pushUniqueImage(
   try {
     await mkdir(rootDir);
     await mkdir(authDir);
+    await writeFile(path.join(rootDir, 'quota-fill'), randomBytes(layerBytes));
     await writeFile(path.join(rootDir, 'unique'), `${uniqueId}\n`);
-    await execFileAsync('tar', ['-C', rootDir, '-cf', layerTar, 'unique']);
+    await execFileAsync('tar', [
+      '-C',
+      rootDir,
+      '-cf',
+      layerTar,
+      'quota-fill',
+      'unique',
+    ]);
 
     await craneLogin(REGISTRY_HOST, username, password, authDir);
 
@@ -427,6 +505,7 @@ export function orasAttach(
         authFile,
         `--artifact-type=${artifactType}`,
         `--annotation=${annotation}`,
+        '--disable-path-validation',
         filePath,
       ],
       {stdio: 'pipe', timeout: 60_000},
