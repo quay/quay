@@ -143,10 +143,28 @@ if [ "$RESULTS_FOUND" != "true" ]; then
   exit 1
 fi
 
+# Normalize the E2E step and workflow bases so sibling artifacts resolve for
+# both nested (.../<step>/artifacts) and flat (.../<step>) layouts.
+case "$ARTIFACT_BASE" in
+  */"$STEP_NAME"/artifacts)
+    E2E_STEP_BASE="${ARTIFACT_BASE%/artifacts}"
+    WORKFLOW_BASE="${ARTIFACT_BASE%/"$STEP_NAME"/artifacts}"
+    ;;
+  */"$STEP_NAME")
+    E2E_STEP_BASE="$ARTIFACT_BASE"
+    WORKFLOW_BASE="${ARTIFACT_BASE%/"$STEP_NAME"}"
+    ;;
+  *)
+    echo "ERROR: unsupported E2E artifact path: ${ARTIFACT_BASE}" >&2
+    exit 1
+    ;;
+esac
+
 # --- Download Artifacts ---
 HAS_BUILD_LOG=false
 HAS_HTML_REPORT=false
 HAS_CONTAINER_LOGS=false
+HAS_JAEGER_TRACES=false
 
 # Download the Playwright JSON reporter output.
 curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "${ARTIFACT_BASE}/results.json" -o "$WORK_DIR/results.json" 2>/dev/null && {
@@ -156,8 +174,18 @@ curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "${ARTIFACT_BASE}/results.js
   exit 1
 }
 
-# Download build log (one level up from artifacts/)
-BUILD_LOG_URL="${ARTIFACT_BASE%/artifacts}/build-log.txt"
+if [ ! -s "$WORK_DIR/results.json" ]; then
+  echo "ERROR: downloaded results.json is empty" >&2
+  exit 1
+fi
+
+if ! jq -e . "$WORK_DIR/results.json" >/dev/null; then
+  echo "ERROR: downloaded results.json is invalid or partial JSON" >&2
+  exit 1
+fi
+
+# Download build log from the E2E step root.
+BUILD_LOG_URL="${E2E_STEP_BASE}/build-log.txt"
 curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "$BUILD_LOG_URL" -o "$WORK_DIR/build-log.txt" 2>/dev/null && {
   HAS_BUILD_LOG=true
   echo "  Downloaded: build-log.txt" >&2
@@ -175,7 +203,7 @@ fi
 # GCS has a flat namespace: slash-delimited "folders" are simulated prefixes, so
 # a HEAD on "${GATHER_EXTRA_BASE}/" can 404 even when logs exist under it. Probe
 # the candidate log objects directly instead of gating on a directory request.
-GATHER_EXTRA_BASE="${ARTIFACT_BASE%/${STEP_NAME}/artifacts}/gather-extra/artifacts"
+GATHER_EXTRA_BASE="${WORKFLOW_BASE}/gather-extra/artifacts"
 mkdir -p "$WORK_DIR/container-logs"
 # Probe for common quay pod log locations
 for log_name in "quay-quay.log" "quay.log" "pods/quay.log"; do
@@ -188,6 +216,24 @@ done
 if [ "$HAS_CONTAINER_LOGS" != "true" ]; then
   rmdir "$WORK_DIR/container-logs" 2>/dev/null || true
   echo "  Not available: container logs (no quay pod logs under gather-extra)" >&2
+fi
+
+# Jaeger artifacts are uploaded by a separate sibling workflow step. The
+# normalized workflow base works across release variants and artifact layouts.
+JAEGER_STEP_NAME="quay-gather-jaeger-traces"
+JAEGER_ARTIFACT_BASE="${WORKFLOW_BASE}/${JAEGER_STEP_NAME}/artifacts/jaeger-traces"
+mkdir -p "$WORK_DIR/jaeger-traces"
+for jaeger_file in traces.json trace-metrics.json api-coverage.json; do
+  if curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" \
+    "${JAEGER_ARTIFACT_BASE}/${jaeger_file}" \
+    -o "$WORK_DIR/jaeger-traces/${jaeger_file}" 2>/dev/null; then
+    HAS_JAEGER_TRACES=true
+    echo "  Downloaded: Jaeger artifact (${jaeger_file})" >&2
+  fi
+done
+if [ "$HAS_JAEGER_TRACES" != "true" ]; then
+  rmdir "$WORK_DIR/jaeger-traces" 2>/dev/null || true
+  echo "  Not available: Jaeger artifacts" >&2
 fi
 
 # --- Build Report URLs ---
@@ -215,7 +261,8 @@ jq \
   --arg html_report_url "$HTML_REPORT_GCSWEB" \
   --argjson has_build_log "$HAS_BUILD_LOG" \
   --argjson has_container_logs "$HAS_CONTAINER_LOGS" \
-  --argjson has_jaeger_traces false \
+  --argjson has_jaeger_traces "$HAS_JAEGER_TRACES" \
+  --arg jaeger_artifact_base_url "$JAEGER_ARTIFACT_BASE" \
   '
   def strip_ansi: if type == "string" then gsub("[[:cntrl:]]\\[[0-9;]*m"; "") else . end;
   [.. | objects | select(has("specs")) | .specs[]] as $specs
@@ -232,6 +279,7 @@ jq \
       has_build_log: $has_build_log,
       has_container_logs: $has_container_logs,
       has_jaeger_traces: $has_jaeger_traces,
+      jaeger_artifact_base_url: $jaeger_artifact_base_url,
       global_setup_failure: ($total == 0),
       stats: {
         total: $total,
