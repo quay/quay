@@ -65,7 +65,12 @@ rm -f "$PW_JSON_FILE"
 
 The collector normalizes either `.../<e2e-step>/artifacts` or
 `.../<e2e-step>` before deriving the sibling `gather-extra` and
-`quay-gather-jaeger-traces` locations.
+`quay-gather-jaeger-traces` locations. It enumerates those derived prefixes:
+legacy `traces.json`, chunked `traces-*.json`, and supported Jaeger metadata
+files are downloaded only after JSON validation. Pod-qualified Quay app logs
+are selected from `gather-extra/artifacts/pods/`. Empty and redacted pod-log
+placeholders are reported separately and are not treated as usable container
+logs.
 
 All fields are derived from Playwright's JSON reporter output (`results.json`).
 
@@ -81,6 +86,12 @@ Key fields:
 - `has_jaeger_traces` — whether `quay-gather-jaeger-traces` uploaded Jaeger
   artifacts for the discovered workflow; downloaded files are under
   `$ARTIFACTS_DIR/jaeger-traces/`
+- `container_log_files` — usable pod-qualified Quay app log filenames collected
+  under `$ARTIFACTS_DIR/container-logs/` (also concatenated to `quay.log`)
+- `redacted_container_log_files` — discovered pod logs replaced by the
+  sensitive-content placeholder and therefore unavailable for analysis
+- `jaeger_trace_files` — valid discovered `traces.json` or `traces-*.json`
+  filenames under `$ARTIFACTS_DIR/jaeger-traces/`
 - `global_setup_failure` — if true, no tests ran at all (check `setup_errors` field)
 - `prow_url` — link to the Prow job view
 - `gcsweb_url` — link to browse all artifacts on GCSWeb
@@ -140,15 +151,16 @@ grep -n "Traceback\|Internal Server Error\|FATAL" \
 ```
 
 Container logs in Prow are collected via the `gather-extra` step rather than
-a dedicated artifact. They may contain quay pod logs, operator logs, or
-must-gather output.
+a dedicated artifact. The collector reports the discovered usable and redacted
+pod-log filenames so an unavailable log can be distinguished from a missing
+prefix. They may contain Quay pod logs, operator logs, or must-gather output.
 
 ### 3d: Inspect Jaeger traces when present
 
-If `has_jaeger_traces` is true, inspect the downloaded files under
-`$ARTIFACTS_DIR/jaeger-traces/` and correlate only matching request/trace IDs.
-Otherwise, state that the Prow job did not persist Jaeger artifacts; do not
-invent trace findings.
+If `has_jaeger_traces` is true, inspect the valid discovered files named in
+`jaeger_trace_files` under `$ARTIFACTS_DIR/jaeger-traces/` and correlate only
+matching request/trace IDs. Otherwise, state that no valid Jaeger trace files
+were found; do not invent trace findings.
 
 ### 3e: Determine auth phase
 

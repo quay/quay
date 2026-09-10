@@ -23,6 +23,8 @@ INPUT="${1:?Usage: playwright-debug-prow.sh <PROW_URL>}"
 # oversized artifact cannot exhaust local disk or hang the run.
 CURL_TIMEOUT=(--connect-timeout 15 --max-time 300)
 CURL_MAXSIZE=(--max-filesize 104857600) # 100 MiB per artifact
+MAX_GCS_LIST_PAGES=20
+MAX_DISCOVERED_ARTIFACTS=100
 
 # --- URL Parsing ---
 # Normalize the URL and extract GCS bucket, job path, and build ID.
@@ -59,6 +61,62 @@ JOB_NAME=$(basename "$GCS_JOB_PATH")
 GCS_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 PROW_URL="https://prow.ci.openshift.org/view/gs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
+
+# List objects below a known GCS prefix. The prefix is derived from the input
+# Prow URL and discovered workflow layout; listed object names are data only.
+# Keep pagination and each response bounded before selecting expected files.
+GCS_LIST_KEYS=()
+list_gcs_keys() {
+  local full_prefix="$1"
+  local prefix="${full_prefix#https://storage.googleapis.com/${GCS_BUCKET}/}"
+  local marker=""
+  local page=0
+  local response=""
+  local next_marker=""
+  local key=""
+
+  GCS_LIST_KEYS=()
+  while [ "$page" -lt "$MAX_GCS_LIST_PAGES" ]; do
+    page=$((page + 1))
+    local curl_args=(
+      -sfL
+      "${CURL_TIMEOUT[@]}"
+      "${CURL_MAXSIZE[@]}"
+      --get
+      --data-urlencode "prefix=${prefix}"
+      --data-urlencode "max-keys=1000"
+    )
+    if [ -n "$marker" ]; then
+      curl_args+=(--data-urlencode "marker=${marker}")
+    fi
+
+    response=$(curl "${curl_args[@]}" "https://storage.googleapis.com/${GCS_BUCKET}") || return 1
+    while IFS= read -r key; do
+      [ -n "$key" ] && GCS_LIST_KEYS+=("https://storage.googleapis.com/${GCS_BUCKET}/${key}")
+    done < <(printf '%s' "$response" | grep -oP '(?<=<Key>)[^<]+' || true)
+
+    next_marker=$(printf '%s' "$response" | grep -oP '(?<=<NextMarker>)[^<]+' || true)
+    if [ -z "$next_marker" ]; then
+      return 0
+    fi
+    if [ "$next_marker" = "$marker" ]; then
+      echo "WARNING: GCS listing marker did not advance for ${prefix}" >&2
+      return 1
+    fi
+    marker="$next_marker"
+  done
+
+  echo "WARNING: GCS listing reached ${MAX_GCS_LIST_PAGES} pages for ${prefix}" >&2
+  return 1
+}
+
+json_array() {
+  if [ "$#" -eq 0 ]; then
+    printf '[]'
+  else
+    printf '%s\n' "$@" | jq -R . | jq -s .
+  fi
+}
 
 echo "Job: $JOB_NAME" >&2
 echo "Build ID: $BUILD_ID" >&2
@@ -165,6 +223,9 @@ HAS_BUILD_LOG=false
 HAS_HTML_REPORT=false
 HAS_CONTAINER_LOGS=false
 HAS_JAEGER_TRACES=false
+CONTAINER_LOG_FILES=()
+REDACTED_CONTAINER_LOG_FILES=()
+JAEGER_TRACE_FILES=()
 
 # Download the Playwright JSON reporter output.
 curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "${ARTIFACT_BASE}/results.json" -o "$WORK_DIR/results.json" 2>/dev/null && {
@@ -198,24 +259,49 @@ if curl -sfL "${CURL_TIMEOUT[@]}" --head "$HTML_REPORT_URL" >/dev/null 2>&1; the
   echo "  Available: HTML report (index.html)" >&2
 fi
 
-# Check for container logs in gather-extra artifacts
-# Pattern: artifacts/{workflow}/gather-extra/artifacts/...
-# GCS has a flat namespace: slash-delimited "folders" are simulated prefixes, so
-# a HEAD on "${GATHER_EXTRA_BASE}/" can 404 even when logs exist under it. Probe
-# the candidate log objects directly instead of gating on a directory request.
+# Check for pod-qualified Quay container logs in gather-extra artifacts.
+# GCS has a flat namespace: list the known pods prefix rather than probing a
+# few legacy object names. Keep a concatenated quay.log for compatibility.
 GATHER_EXTRA_BASE="${WORKFLOW_BASE}/gather-extra/artifacts"
 mkdir -p "$WORK_DIR/container-logs"
-# Probe for common quay pod log locations
-for log_name in "quay-quay.log" "quay.log" "pods/quay.log"; do
-  if curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "${GATHER_EXTRA_BASE}/${log_name}" -o "$WORK_DIR/container-logs/quay.log" 2>/dev/null; then
-    HAS_CONTAINER_LOGS=true
-    echo "  Downloaded: container logs (${log_name})" >&2
-    break
-  fi
-done
+if list_gcs_keys "${GATHER_EXTRA_BASE}/pods/"; then
+  downloaded_logs=0
+  for key in "${GCS_LIST_KEYS[@]}"; do
+    log_name="${key#"${GATHER_EXTRA_BASE}/pods/"}"
+    if [[ "$log_name" =~ ^[A-Za-z0-9._-]+_quay-app\.log$ ]]; then
+      echo "  Discovered Quay pod log: ${log_name}" >&2
+      if [ "$downloaded_logs" -ge "$MAX_DISCOVERED_ARTIFACTS" ]; then
+        echo "  WARNING: skipping additional Quay pod logs after ${MAX_DISCOVERED_ARTIFACTS}" >&2
+        continue
+      fi
+      downloaded_logs=$((downloaded_logs + 1))
+      log_path="$WORK_DIR/container-logs/${log_name}"
+      if ! curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" \
+        "${GATHER_EXTRA_BASE}/pods/${log_name}" -o "$log_path" 2>/dev/null; then
+        echo "  Could not download Quay pod log: ${log_name}" >&2
+        rm -f "$log_path"
+      elif [ ! -s "$log_path" ]; then
+        echo "  Ignoring empty Quay pod log: ${log_name}" >&2
+        rm -f "$log_path"
+      elif grep -Fqx 'This file contained potentially sensitive information and has been removed.' "$log_path"; then
+        REDACTED_CONTAINER_LOG_FILES+=("$log_name")
+        echo "  Redacted Quay pod log: ${log_name}" >&2
+        rm -f "$log_path"
+      else
+        CONTAINER_LOG_FILES+=("$log_name")
+        cat "$log_path" >>"$WORK_DIR/container-logs/quay.log"
+        printf '\n' >>"$WORK_DIR/container-logs/quay.log"
+        HAS_CONTAINER_LOGS=true
+        echo "  Downloaded Quay pod log: ${log_name}" >&2
+      fi
+    fi
+  done
+else
+  echo "  Could not list Quay pod logs under gather-extra" >&2
+fi
 if [ "$HAS_CONTAINER_LOGS" != "true" ]; then
   rmdir "$WORK_DIR/container-logs" 2>/dev/null || true
-  echo "  Not available: container logs (no quay pod logs under gather-extra)" >&2
+  echo "  Not available: usable Quay pod logs under gather-extra" >&2
 fi
 
 # Jaeger artifacts are uploaded by a separate sibling workflow step. The
@@ -223,18 +309,46 @@ fi
 JAEGER_STEP_NAME="quay-gather-jaeger-traces"
 JAEGER_ARTIFACT_BASE="${WORKFLOW_BASE}/${JAEGER_STEP_NAME}/artifacts/jaeger-traces"
 mkdir -p "$WORK_DIR/jaeger-traces"
-for jaeger_file in traces.json trace-metrics.json api-coverage.json; do
-  if curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" \
-    "${JAEGER_ARTIFACT_BASE}/${jaeger_file}" \
-    -o "$WORK_DIR/jaeger-traces/${jaeger_file}" 2>/dev/null; then
-    HAS_JAEGER_TRACES=true
-    echo "  Downloaded: Jaeger artifact (${jaeger_file})" >&2
-  fi
-done
+if list_gcs_keys "${JAEGER_ARTIFACT_BASE}/"; then
+  downloaded_jaeger_files=0
+  for key in "${GCS_LIST_KEYS[@]}"; do
+    jaeger_file="${key#"${JAEGER_ARTIFACT_BASE}/"}"
+    if [[ "$jaeger_file" == "traces.json" || "$jaeger_file" == "trace-metrics.json" || "$jaeger_file" == "api-coverage.json" || "$jaeger_file" =~ ^traces-[A-Za-z0-9._-]+\.json$ ]]; then
+      echo "  Discovered Jaeger artifact: ${jaeger_file}" >&2
+      if [ "$downloaded_jaeger_files" -ge "$MAX_DISCOVERED_ARTIFACTS" ]; then
+        echo "  WARNING: skipping additional Jaeger artifacts after ${MAX_DISCOVERED_ARTIFACTS}" >&2
+        continue
+      fi
+      downloaded_jaeger_files=$((downloaded_jaeger_files + 1))
+      trace_path="$WORK_DIR/jaeger-traces/${jaeger_file}"
+      if curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" \
+        "${JAEGER_ARTIFACT_BASE}/${jaeger_file}" -o "$trace_path" 2>/dev/null; then
+        if jq -e . "$trace_path" >/dev/null; then
+          HAS_JAEGER_TRACES=true
+          if [[ "$jaeger_file" == "traces.json" || "$jaeger_file" =~ ^traces-[A-Za-z0-9._-]+\.json$ ]]; then
+            JAEGER_TRACE_FILES+=("$jaeger_file")
+          fi
+          echo "  Downloaded Jaeger artifact: ${jaeger_file}" >&2
+        else
+          echo "  Ignoring invalid Jaeger artifact JSON: ${jaeger_file}" >&2
+          rm -f "$trace_path"
+        fi
+      else
+        echo "  Could not download Jaeger artifact: ${jaeger_file}" >&2
+      fi
+    fi
+  done
+else
+  echo "  Could not list Jaeger artifacts" >&2
+fi
 if [ "$HAS_JAEGER_TRACES" != "true" ]; then
   rmdir "$WORK_DIR/jaeger-traces" 2>/dev/null || true
-  echo "  Not available: Jaeger artifacts" >&2
+  echo "  Not available: valid Jaeger trace artifacts" >&2
 fi
+
+CONTAINER_LOG_FILES_JSON=$(json_array "${CONTAINER_LOG_FILES[@]}")
+REDACTED_CONTAINER_LOG_FILES_JSON=$(json_array "${REDACTED_CONTAINER_LOG_FILES[@]}")
+JAEGER_TRACE_FILES_JSON=$(json_array "${JAEGER_TRACE_FILES[@]}")
 
 # --- Build Report URLs ---
 HTML_REPORT_GCSWEB=""
@@ -262,6 +376,9 @@ jq \
   --argjson has_build_log "$HAS_BUILD_LOG" \
   --argjson has_container_logs "$HAS_CONTAINER_LOGS" \
   --argjson has_jaeger_traces "$HAS_JAEGER_TRACES" \
+  --argjson container_log_files "$CONTAINER_LOG_FILES_JSON" \
+  --argjson redacted_container_log_files "$REDACTED_CONTAINER_LOG_FILES_JSON" \
+  --argjson jaeger_trace_files "$JAEGER_TRACE_FILES_JSON" \
   --arg jaeger_artifact_base_url "$JAEGER_ARTIFACT_BASE" \
   '
   def strip_ansi: if type == "string" then gsub("[[:cntrl:]]\\[[0-9;]*m"; "") else . end;
@@ -279,6 +396,9 @@ jq \
       has_build_log: $has_build_log,
       has_container_logs: $has_container_logs,
       has_jaeger_traces: $has_jaeger_traces,
+      container_log_files: $container_log_files,
+      redacted_container_log_files: $redacted_container_log_files,
+      jaeger_trace_files: $jaeger_trace_files,
       jaeger_artifact_base_url: $jaeger_artifact_base_url,
       global_setup_failure: ($total == 0),
       stats: {
