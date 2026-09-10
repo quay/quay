@@ -52,6 +52,7 @@ def test_put_content_successful(tmpdir):
     assert os.path.exists(full_path)
     logging.debug(os.stat(full_path))
 
+
 def test_cleanup_of_orphaned_export_log_files_successful(tmpdir):
     """
     Verifies that the worker can clean up orphaned exported log files.
@@ -84,6 +85,7 @@ def test_cleanup_of_orphaned_export_log_files_successful(tmpdir):
     # assert that path was deleted
     assert os.path.exists(full_path) is False
 
+
 def test_export_log_cleanup_does_not_touch_user_files(tmpdir):
     """
     Verifies that other files in the same path are not picked up by the
@@ -107,7 +109,7 @@ def test_export_log_cleanup_does_not_touch_user_files(tmpdir):
 
     # verify that the files are there
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST: %s", files)
     assert len(files) == 2
 
@@ -117,10 +119,11 @@ def test_export_log_cleanup_does_not_touch_user_files(tmpdir):
 
     # traverse the directory once again, verify that only one file is present
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST: %s", files)
     assert len(files) == 1
     assert files[0].endswith("hello.txt")
+
 
 def test_export_log_cleanup_doesnt_touch_other_paths(tmpdir):
     """
@@ -145,20 +148,21 @@ def test_export_log_cleanup_doesnt_touch_other_paths(tmpdir):
 
     # verify that the files are there
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST: %s", files)
     assert len(files) == 2
 
     # clean up files
     with freeze_time(now + timedelta(hours=2)):
-        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)       
+        storage_engine.clean_exported_action_logs(timedelta(seconds=0), _TEST_LOG_PATH)
 
     # traverse the directory once again, verify that only one file is present
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST: %s", files)
     assert len(files) == 1
-    assert files[0].endswith("hello.txt")   
+    assert files[0].endswith("hello.txt")
+
 
 def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta(tmpdir):
     """
@@ -184,7 +188,7 @@ def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta(t
     # verify that the files are there
     dir_path = Path(store_path)
     logging.debug("FILE LIST:")
-    for f in dir_path.rglob('*'):
+    for f in dir_path.rglob("*"):
         if f.is_file():
             stats = f.stat()
             logging.debug("%s", stats)
@@ -201,21 +205,22 @@ def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta(t
 
     # verify that there are 6 files in the directory
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     assert len(files) == 6
 
     # at 6th hour do cleanup
     with freeze_time(
         now + timedelta(hours=6)
     ):  # Changed from 5 to 6 so it occurs after the 5.5h upload
-        storage_engine.clean_exported_action_logs(timedelta(hours=1), _TEST_LOG_PATH)   
+        storage_engine.clean_exported_action_logs(timedelta(hours=1), _TEST_LOG_PATH)
 
     # list files to make sure that only one remains
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST: %s", files)
     assert len(files) == 1
     assert files[0].endswith(final_key)
+
 
 def test_export_log_cleanup_does_not_return_error_on_empty_directory(tmpdir):
     """
@@ -243,6 +248,7 @@ def test_export_log_cleanup_does_not_return_error_on_empty_directory(tmpdir):
     # assert that the previous file still exists
     assert os.path.exists(full_path)
 
+
 def test_cleanup_of_expired_logs_gracefully_handles_errors(tmpdir):
     """
     Asserts that the OSError exception does not terminate cleanup of files.
@@ -251,7 +257,7 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(tmpdir):
     store_path = os.path.join(tmpdir, "datastorage_registry")
     storage_engine = FakeLocalStorage(store_path)
 
-        # create a list of files
+    # create a list of files
     keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
     for i, k in enumerate(keys):
         payload = os.urandom(1024)
@@ -260,13 +266,13 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(tmpdir):
     # verify that there are 5 files in the directory
     dir_path = Path(store_path)
     logging.debug("FILE LIST:")
-    for f in dir_path.rglob('*'):
+    for f in dir_path.rglob("*"):
         if f.is_file():
             stats = f.stat()
             logging.debug("%s", stats)
 
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     assert len(files) == 5
 
     # mock original remove
@@ -284,8 +290,7 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(tmpdir):
 
     # check files in the directory, ensure only one remains
     dir_path = Path(store_path)
-    files = [str(f) for f in dir_path.rglob('*') if f.is_file()]
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
     logging.debug("FILE LIST AFTER DELETION: %s", files)
     assert len(files) == 1
     assert files[0].endswith(keys[2])
-
