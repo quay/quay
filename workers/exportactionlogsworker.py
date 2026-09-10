@@ -259,8 +259,14 @@ class ExportActionLogsWorker(QueueWorker):
         return upload_metadata, uploaded_byte_count
 
     def _report_results(self, job_details, result_status, exported_data_url=None):
+        # strip the token from the URL when logging
+        if exported_data_url is not None:
+            base_url = exported_data_url.split("?")[0]
+        else:
+            base_url = exported_data_url
+
         logger.debug(
-            "Reporting result of `%s` for %s; %s", result_status, job_details, exported_data_url
+            "Reporting result of `%s` for %s; %s", result_status, job_details, base_url
         )
 
         if job_details.get("callback_url"):

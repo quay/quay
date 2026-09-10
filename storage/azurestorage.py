@@ -421,7 +421,8 @@ class AzureStorage(BaseStorage):
         Lists and deletes all exported log files which are older than the
         defined threshold (defaults to 1 hour).
         """
-        path = self._blob_name_from_path(log_path)
+        path = self._blob_name_from_path(log_path).rstrip("/") + "/"
+
         cutoff = datetime.now(timezone.utc) - deletion_date_threshold
 
         for blob in self._container.list_blobs(name_starts_with=path):
