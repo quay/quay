@@ -44,6 +44,7 @@ MAX_TOKEN_DISPLAY_NAME_LENGTH = 255
 BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
 BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
 BOOTSTRAP_TOKEN_DATA_KIND = "bootstrap"
+WORKLOAD_IDENTITY_TOKEN_DATA_KIND = "workload_identity"
 BOOTSTRAP_TOKEN_LOCK_ID = compute_advisory_lock_id("bootstrap_token", 0)
 
 
@@ -455,6 +456,63 @@ def _bootstrap_token_data_json(token: OAuthAccessToken) -> dict[str, Any]:
         return {}
 
 
+def create_workload_identity_oauth_token(
+    application: OAuthApplication,
+    user_obj: User,
+    scope: str,
+    issuer: str,
+    subject: str,
+    expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
+) -> tuple[OAuthAccessToken, str]:
+    """Create a standard OAuth token with workload identity metadata."""
+    data = json.dumps(
+        {
+            "kind": WORKLOAD_IDENTITY_TOKEN_DATA_KIND,
+            "owner": user_obj.username,
+            "application_name": application.name,
+            "issuer": issuer,
+            "subject": subject,
+        }
+    )
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "Bearer",
+        expiration_seconds,
+        data=data,
+    )
+
+
+def workload_identity_token_data(token: OAuthAccessToken) -> dict[str, Any]:
+    """Return validated metadata for a workload identity OAuth token."""
+    data = _bootstrap_token_data_json(token)
+    return data if data.get("kind") == WORKLOAD_IDENTITY_TOKEN_DATA_KIND else {}
+
+
+def is_workload_identity_oauth_token(
+    token: OAuthAccessToken,
+    user_obj: User | None = None,
+    application: OAuthApplication | None = None,
+) -> bool:
+    data = workload_identity_token_data(token)
+    if not data:
+        return False
+    return (user_obj is None or data.get("owner") == user_obj.username) and (
+        application is None or data.get("application_name") == application.name
+    )
+
+
+def is_automatic_bootstrap_oauth_token(
+    token: OAuthAccessToken,
+    user_obj: User | None = None,
+    application: OAuthApplication | None = None,
+) -> bool:
+    return is_bootstrap_oauth_token(
+        token, user_obj, application
+    ) or is_workload_identity_oauth_token(token, user_obj, application)
+
+
 def is_bootstrap_oauth_token(
     token: OAuthAccessToken,
     user_obj: User | None = None,
@@ -639,6 +697,53 @@ def get_bootstrap_application_candidates(
         duplicate_applications.append(application)
 
     return canonical_application, duplicate_applications
+
+
+def get_automatic_bootstrap_application_candidates(
+    owner: User,
+) -> tuple[OAuthApplication | None, list[OAuthApplication]]:
+    applications = lookup_applications_by_name(owner, get_bootstrap_app_name())
+    by_id = {application.id: application for application in applications}
+    managed_ids = set()
+    if by_id:
+        tokens = OAuthAccessToken.select().where(
+            OAuthAccessToken.application << list(by_id),
+            OAuthAccessToken.authorized_user == owner,
+        )
+        for token in tokens:
+            application = by_id[token.application_id]
+            if is_automatic_bootstrap_oauth_token(token, owner, application):
+                managed_ids.add(application.id)
+    managed = [application for application in applications if application.id in managed_ids]
+    return (managed[0] if managed else None, managed[1:])
+
+
+def get_canonical_automatic_bootstrap_application(owner: User) -> OAuthApplication | None:
+    return get_automatic_bootstrap_application_candidates(owner)[0]
+
+
+def get_singleton_automatic_bootstrap_application_candidates(
+    owner: User,
+) -> tuple[OAuthApplication | None, list[OAuthApplication]]:
+    canonical = None
+    stale = []
+    for application in lookup_bootstrap_named_applications():
+        tokens = get_application_tokens(application)
+        if not any(
+            is_automatic_bootstrap_oauth_token(token, application=application) for token in tokens
+        ):
+            continue
+        owner_tokens = [
+            token
+            for token in tokens
+            if token.authorized_user_id == owner.id
+            and is_automatic_bootstrap_oauth_token(token, user_obj=owner, application=application)
+        ]
+        if canonical is None and application.organization_id == owner.id and owner_tokens:
+            canonical = application
+        else:
+            stale.append(application)
+    return canonical, stale
 
 
 def get_singleton_bootstrap_application_candidates(
