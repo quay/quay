@@ -122,7 +122,7 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.8.1",
     "webpack-merge": "^5.10.0",
-    "fast-uri": "^3.1.4"
+    "fast-uri": "^3.1.7"
   },
   "overrides": {
     "axios": "^1.19.0",
@@ -138,7 +138,7 @@
     "minimatch": "3.1.5",
     "svgo": "4.0.1",
     "immutable": "^5.1.5",
-    "fast-uri": "^3.1.4",
+    "fast-uri": "^3.1.7",
     "brace-expansion": "^1.1.18",
     "browserslist": ">=4.28.7"
   },
@@ -157,7 +157,7 @@
       "minimatch": "3.1.5",
       "svgo": "4.0.1",
       "immutable": "^5.1.5",
-      "fast-uri": "^3.1.4",
+      "fast-uri": "^3.1.7",
       "brace-expansion": "^1.1.18",
       "browserslist": ">=4.28.7"
     }
