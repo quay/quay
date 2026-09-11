@@ -141,6 +141,69 @@ func TestRegistryTokenScopeEnforcement(t *testing.T) {
 	assert.Equal(t, manifestBytes, pulled.Body)
 }
 
+func TestRegistryTaggedImageSurvivesUploadExpiry(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-tagged-gc"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("tagged image layer")
+	image := pushImage(t, h, repository, "latest", configBytes, layerBytes)
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.TagsExpired)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted)
+
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, image.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+	gotConfig, err := h.Registry().GetBlob(ctx, repository, image.config)
+	require.NoError(t, err)
+	assert.Equal(t, configBytes, gotConfig)
+	manifest, err := h.Registry().GetManifest(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, image.manifest, manifest.Body)
+}
+
+func TestRegistryDigestPushSurvivesCollectWithinUploadWindow(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-digest-gc"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("digest-only child layer")
+	// Empty tag → PUT /manifests/<digest>, matching skopeo multi-arch children.
+	image := pushImage(t, h, repository, "", configBytes, layerBytes)
+
+	got, err := h.Registry().GetManifest(ctx, repository, image.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, image.manifest, got.Body)
+
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted, "Python writes a 1h $temp- tag on digest PUT; Phase 2 must not collect it")
+	assert.Zero(t, stats.BlobsDeleted)
+
+	got, err = h.Registry().GetManifest(ctx, repository, image.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, image.manifest, got.Body)
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, image.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err = h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted, "digest-pushed blobs must survive uploadedblob expiry while the temp tag lives")
+	gotLayer, err = h.Registry().GetBlob(ctx, repository, image.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+}
+
 func TestRegistryDeleteGarbageCollectAndRepush(t *testing.T) {
 	h := e2etest.New(t)
 	ctx := t.Context()
@@ -235,22 +298,26 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	require.NoError(t, h.Registry().DeleteManifest(ctx, repository, indexResponse.Digest))
 	stats, err := h.CollectGarbage(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, 2, stats.ManifestsDeleted)
+	// Python write_manifest_by_digest attaches a 1h $temp- tag, so deleting
+	// the index does not immediately collect digest-pushed children.
+	assert.Zero(t, stats.ManifestsDeleted)
 	assert.Zero(t, stats.BlobsDeleted)
+	for _, child := range []pushedImage{amd64, arm64} {
+		manifest, err := h.Registry().GetManifest(ctx, repository, child.digest.String())
+		require.NoError(t, err)
+		assert.Equal(t, child.manifest, manifest.Body)
+	}
 
 	require.NoError(t, h.ExpireUploadProtection(ctx))
 	stats, err = h.CollectGarbage(ctx)
 	require.NoError(t, err)
 	assert.Zero(t, stats.ManifestsDeleted)
-	assert.Equal(t, 4, stats.BlobsDeleted)
-	assert.Equal(t, int64(len(amd64Config)+len(amd64Layer)+len(arm64Config)+len(arm64Layer)), stats.BytesReclaimed)
+	assert.Zero(t, stats.BlobsDeleted)
 	assertRegistryMissing(t, h, repository, "latest")
-	// GC removes both child metadata rows, but Distribution digest revision
-	// links remain readable until manifest-link collection is implemented.
-	// Blob 404s below prove the collected child images are no longer usable.
 	for _, child := range []pushedImage{amd64, arm64} {
-		assertBlobMissing(t, h, repository, child.config)
-		assertBlobMissing(t, h, repository, child.layer)
+		gotLayer, err := h.Registry().GetBlob(ctx, repository, child.layer)
+		require.NoError(t, err)
+		assert.NotEmpty(t, gotLayer)
 	}
 }
 

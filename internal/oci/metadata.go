@@ -2,9 +2,15 @@ package oci
 
 import (
 	"context"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 )
+
+// PushTempTagExpiration is Python's PUSH_TEMP_TAG_EXPIRATION_SEC (3600).
+// Digest-only manifest PUTs (skopeo multi-arch children) get a hidden $temp-
+// tag for this long so Phase 2 GC cannot collect them before the index PUT.
+const PushTempTagExpiration = time.Hour
 
 // MetadataStore persists container registry metadata. Implementations must be
 // safe for concurrent use from multiple goroutines.
@@ -45,6 +51,9 @@ type ManifestRecord struct {
 	Tag          string
 	Subject      digest.Digest
 	ArtifactType string
+	// TempTagExpiration, when >0 and Tag is empty, creates a hidden $temp-
+	// tag that expires after this duration (Python create_manifest_with_temp_tag).
+	TempTagExpiration time.Duration
 }
 
 // ReferrerRecord holds the metadata for a single referrer manifest.

@@ -131,7 +131,7 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryN
 }
 
 // PutManifest upserts a manifest and its blob/child references within a transaction.
-func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
+func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic,gocyclo // interface compliance; error-check branches in a multi-step tx are unavoidable
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -178,6 +178,10 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 
 	if m.Tag != "" {
 		if _, err := s.putTag(ctx, q, repoID, manifestID, m.Tag); err != nil {
+			return 0, err
+		}
+	} else if m.TempTagExpiration > 0 && m.Subject == "" {
+		if err := s.protectWithTempTag(ctx, q, repoID, manifestID, m.TempTagExpiration); err != nil {
 			return 0, err
 		}
 	}
@@ -230,6 +234,53 @@ func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries
 		TagKindID:       s.tagKindTag,
 	}); err != nil {
 		return fmt.Errorf("insert hidden protection tag: %w", err)
+	}
+	return nil
+}
+
+// protectWithTempTag creates a hidden $temp- tag with lifetime_end_ms set to
+// now+expiration, unless a tag already protects the manifest through that
+// deadline. A re-push extends an existing temp tag instead of inserting
+// another row. This is Python create_temporary_tag_if_necessary(expiration_sec)
+// for digest-only manifest PUTs (write_manifest_by_digest).
+func (s *SQLiteStore) protectWithTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, expiration time.Duration) error {
+	now := time.Now()
+	endMs := now.Add(expiration).UnixMilli()
+	mid := sql.NullInt64{Int64: manifestID, Valid: true}
+	end := sql.NullInt64{Int64: endMs, Valid: true}
+
+	hasTag, err := q.HasProtectingTagForManifest(ctx, daldb.HasProtectingTagForManifestParams{
+		ManifestID:    mid,
+		LifetimeEndMs: end,
+	})
+	if err != nil {
+		return fmt.Errorf("check protecting tag for manifest %d: %w", manifestID, err)
+	}
+	if hasTag != 0 {
+		return nil
+	}
+
+	extended, err := q.ExtendTempTag(ctx, daldb.ExtendTempTagParams{
+		LifetimeEndMs:   end,
+		ManifestID:      mid,
+		LifetimeEndMs_2: end,
+	})
+	if err != nil {
+		return fmt.Errorf("extend temp tag for manifest %d: %w", manifestID, err)
+	}
+	if extended > 0 {
+		return nil
+	}
+
+	if _, err := q.InsertHiddenExpiringTag(ctx, daldb.InsertHiddenExpiringTagParams{
+		Name:            "$temp-" + uuid.NewString(),
+		RepositoryID:    repoID,
+		ManifestID:      mid,
+		LifetimeStartMs: now.UnixMilli(),
+		LifetimeEndMs:   end,
+		TagKindID:       s.tagKindTag,
+	}); err != nil {
+		return fmt.Errorf("insert hidden temp tag: %w", err)
 	}
 	return nil
 }
