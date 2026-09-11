@@ -47,29 +47,18 @@ def test_expand_matrix_cells() -> None:
         for cell in cells
     } == {
         ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "daily"),
-        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "weekly"),
-        ("3.18", "redhat-3.18", "azure", "4.22", "e2e-install", "daily"),
-        ("3.17", "redhat-3.17", "gcp", "4.22", "e2e-install", "daily"),
-        ("3.17", "redhat-3.17", "azure", "4.22", "e2e-install", "daily"),
-        ("3.16", "redhat-3.16", "gcp", "4.22", "e2e-install", "daily"),
-        ("3.16", "redhat-3.16", "azure", "4.22", "e2e-install", "daily"),
     }
-    by_key = {(cell.quay_version, cell.cloud): cell for cell in cells}
-    assert by_key[("3.18", "aws")].filename == PHASE0_NAME
-    assert by_key[("3.18", "aws")].arch == "amd64"
-    assert by_key[("3.18", "aws")].as_name is None
-    assert by_key[("3.18", "aws")].test_as == "s3-daily"
-    assert by_key[("3.18", "gcp")].test_as == "gcs-weekly"
-    assert by_key[("3.18", "azure")].test_as == "blob-daily"
-    assert by_key[("3.18", "aws")].env["PLAYWRIGHT_GREP_INVERT"] == (
+    cell = cells[0]
+    assert cell.filename == PHASE0_NAME
+    assert cell.arch == "amd64"
+    assert cell.as_name is None
+    assert cell.test_as == "s3-daily"
+    assert cell.env["PLAYWRIGHT_GREP_INVERT"] == (
         "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
         "saves and loads architecture filter with mirror configuration|"
         "loads existing architecture filter from saved mirror configuration"
     )
-    assert by_key[("3.17", "gcp")].env == {}
-    assert by_key[("3.16", "azure")].env == {}
-    assert by_key[("3.17", "gcp")].filename == "quay-quay-redhat-3.17__gcp-ocp422-e2e-install.yaml"
-    assert by_key[("3.16", "gcp")].filename == "quay-quay-redhat-3.16__gcp-ocp422-e2e-install.yaml"
+    assert "QUAY_EXTRA_CONFIG" not in cell.env
 
 
 def test_adding_ocp_version_expands_cells() -> None:
@@ -173,15 +162,12 @@ def test_list_shows_phase0_row(capsys: object) -> None:
     assert main(["--list"]) == 0
     out = capsys.readouterr().out  # type: ignore[attr-defined]
     assert "3.18" in out
-    assert "3.17" in out
-    assert "3.16" in out
+    assert "3.17" not in out
+    assert "3.16" not in out
     assert "4.22" in out
     assert "e2e-install" in out
     assert PHASE0_NAME in out
     assert "s3-daily" in out
-    assert "gcs-weekly" in out
-    assert "gcs-daily" in out
-    assert "blob-daily" in out
 
 
 def test_check_clean_after_generate(tmp_path: Path) -> None:

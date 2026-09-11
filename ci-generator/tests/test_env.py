@@ -3,7 +3,6 @@
 from generate import apply_cell_settings, expand_cells, generate_all
 from model import Cell
 
-TEMPLATE_GREP_INVERT = "@auth:OIDC|@auth:LDAP"
 QUAY_318_GREP_INVERT = (
     "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
     "saves and loads architecture filter with mirror configuration|"
@@ -117,43 +116,22 @@ def test_cell_settings_overwrite_as_and_env() -> None:
 
 
 def test_phase0_names_use_storage_and_tier() -> None:
-    by_key = {
-        (cell.quay_version, cell.cloud): config["tests"][0]["as"]
-        for cell, _filename, config in generate_all()
-    }
-    assert by_key[("3.18", "aws")] == "s3-daily"
-    assert by_key[("3.18", "gcp")] == "gcs-weekly"
-    assert by_key[("3.18", "azure")] == "blob-daily"
-    assert by_key[("3.17", "gcp")] == "gcs-daily"
-    assert by_key[("3.17", "azure")] == "blob-daily"
-    assert by_key[("3.16", "gcp")] == "gcs-daily"
-    assert by_key[("3.16", "azure")] == "blob-daily"
+    generated = list(generate_all())
+    assert len(generated) == 1
+    cell, _filename, config = generated[0]
+    assert (cell.quay_version, cell.cloud) == ("3.18", "aws")
+    assert config["tests"][0]["as"] == "s3-daily"
 
 
-def test_all_versions_share_template_extra_config() -> None:
-    extra_configs = {
-        (cell.quay_version, cell.cloud): config["tests"][0]["steps"]["env"]["QUAY_EXTRA_CONFIG"]
-        for cell, _filename, config in generate_all()
-    }
-    shared = extra_configs[("3.18", "aws")]
-    assert "FEATURE_PROGRAMMATIC_BOOTSTRAP: false" in shared
-    assert "FEATURE_IMMUTABLE_TAGS: true" in shared
-    assert "FEATURE_SPARSE_INDEX: true" in shared
-    assert "FEATURE_QUOTA_NOTIFICATIONS: true" in shared
-    assert "FEATURE_OTEL_TRACING: true" in shared
-    assert extra_configs[("3.18", "gcp")] == shared
-    assert extra_configs[("3.18", "azure")] == shared
-    assert extra_configs[("3.17", "gcp")] == shared
-    assert extra_configs[("3.17", "azure")] == shared
-    assert extra_configs[("3.16", "gcp")] == shared
-    assert extra_configs[("3.16", "azure")] == shared
-
-    by_key = {(cell.quay_version, cell.cloud): config for cell, _filename, config in generate_all()}
-    aws = by_key[("3.18", "aws")]["tests"][0]["steps"]["env"]
-    assert aws["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT
-    assert by_key[("3.17", "gcp")]["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
-        TEMPLATE_GREP_INVERT
-    )
-    assert by_key[("3.16", "azure")]["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
-        TEMPLATE_GREP_INVERT
-    )
+def test_generated_cells_use_template_extra_config() -> None:
+    generated = list(generate_all())
+    assert len(generated) == 1
+    _cell, _filename, config = generated[0]
+    env = config["tests"][0]["steps"]["env"]
+    extra = env["QUAY_EXTRA_CONFIG"]
+    assert env["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT
+    assert "FEATURE_PROGRAMMATIC_BOOTSTRAP: false" in extra
+    assert "FEATURE_IMMUTABLE_TAGS: true" in extra
+    assert "FEATURE_SPARSE_INDEX: true" in extra
+    assert "FEATURE_QUOTA_NOTIFICATIONS: true" in extra
+    assert "FEATURE_OTEL_TRACING: true" in extra

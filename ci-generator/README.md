@@ -43,11 +43,7 @@ quay:
     env:
       PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|..."
     jobs:
-      - {tier: daily, clouds: [aws, azure], ocp: ["4.22"], test: e2e-install}
-      - {tier: weekly, clouds: [gcp], ocp: ["4.22"], test: e2e-install}
-  - branch: redhat-3.17
-    jobs:
-      - {tier: daily, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
+      - {tier: daily, clouds: [aws], ocp: ["4.22"], test: e2e-install}
 ```
 
 | Field | Meaning |
@@ -109,7 +105,7 @@ Add an OCP version on an existing job:
         ocp: ["4.22", "4.23"]
 ```
 
-Shared env for every job on a branch (for example a longer `PLAYWRIGHT_GREP_INVERT`).
+Shared env for every job on a branch (for example a longer `PLAYWRIGHT_GREP_INVERT`). Do not copy `QUAY_EXTRA_CONFIG` here; it comes from the test template.
 
 ```yaml
   - branch: redhat-3.18
