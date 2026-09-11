@@ -1,4 +1,5 @@
 import fnmatch
+import hashlib
 import json
 import logging
 import os
@@ -27,7 +28,7 @@ from data.database import (
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
 from data.model import repository as repository_model
-from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
+from data.model.oci.tag import delete_tag, list_alive_tags, lookup_alive_tags_shallow, retarget_tag
 from data.model.org_mirror import (
     check_org_mirror_repo_sync_status,
     claim_org_mirror_config,
@@ -426,6 +427,9 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 architecture_filter,
             )
 
+        # Build local tag->digest map for incremental sync
+        local_digests = _build_local_digest_map(mirror.repository.id)
+
         for tag_index, tag in enumerate(tags):
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
@@ -434,6 +438,27 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 mirror.repository.name,
                 tag,
             )
+
+            # Skip tags whose remote digest matches the local digest
+            if not use_arch_filter and tag in local_digests:
+                remote_digest = _remote_manifest_digest(
+                    skopeo,
+                    src_image,
+                    skopeo_timeout,
+                    username,
+                    password,
+                    mirror.external_registry_config.get("verify_tls", True),
+                    mirror.external_registry_config.get("proxy", {}),
+                    verbose_logs,
+                )
+                if remote_digest and remote_digest == local_digests[tag]:
+                    logger.info("Skipping unchanged tag '%s' (digest %s)", tag, remote_digest)
+                    remaining_tags = len(tags) - (tag_index + 1)
+                    repo_mirror_pending_tags.labels(
+                        namespace=namespace,
+                        repository=repository_name,
+                    ).set(remaining_tags)
+                    continue
 
             if use_arch_filter:
                 # Use architecture-filtered copy
@@ -764,6 +789,54 @@ def delete_obsolete_tags(mirror, tags):
         delete_tag(mirror.repository, tag.name)
 
     return obsolete_tags
+
+
+def _build_local_digest_map(repository_id):
+    """
+    Build a {tag_name: manifest_digest} map for all alive tags in the repository.
+    Returns an empty dict on any failure so callers fall through to unconditional copy.
+    """
+    try:
+        tags = list_alive_tags(repository_id)
+        return {t.name: t.manifest.digest for t in tags if not t.hidden}
+    except Exception:
+        logger.exception("Failed to build local digest map, skipping incremental sync")
+        return {}
+
+
+def _remote_manifest_digest(
+    skopeo, image, timeout, username, password, verify_tls, proxy, verbose_logs
+):
+    """
+    Fetch the remote manifest digest by hashing the raw manifest bytes.
+
+    Uses inspect_raw (skopeo inspect --raw) which returns the manifest list
+    for multi-arch images or the manifest for single-arch images.  Computing
+    sha256 over the raw bytes produces the same digest that Quay stores on
+    the Tag, unlike plain ``skopeo inspect`` which resolves through the
+    manifest list to a platform-specific config digest.
+
+    Returns the "sha256:<hex>" digest string on success, None on failure.
+    """
+    try:
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.inspect_raw(
+                image,
+                timeout,
+                username=username,
+                password=password,
+                verify_tls=verify_tls,
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+            )
+        if result.success and result.stdout:
+            manifest_bytes = result.stdout
+            if isinstance(manifest_bytes, str):
+                manifest_bytes = manifest_bytes.encode("utf-8")
+            return "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
+    except Exception:
+        logger.debug("Failed to inspect remote digest for %s", image, exc_info=True)
+    return None
 
 
 def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, password, verify_tls):
@@ -1712,11 +1785,34 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         )
         skopeo_timeout = config.skopeo_timeout
 
+        # Build local tag->digest map for incremental sync
+        local_digests = _build_local_digest_map(claimed_repo.repository.id)
+
         for tag in tags:
             src_image = f"docker://{external_reference}:{tag}"
             dest_image = (
                 f"docker://{dest_server}/{org.username}/{claimed_repo.repository_name}:{tag}"
             )
+
+            # Skip tags whose remote digest matches the local digest
+            if tag in local_digests:
+                remote_digest = _remote_manifest_digest(
+                    skopeo,
+                    src_image,
+                    skopeo_timeout,
+                    username,
+                    password,
+                    config.external_registry_config.get("verify_tls", True),
+                    config.external_registry_config.get("proxy", {}),
+                    verbose_logs,
+                )
+                if remote_digest and remote_digest == local_digests[tag]:
+                    logger.info(
+                        "Org mirror: skipping unchanged tag '%s' (digest %s)",
+                        tag,
+                        remote_digest,
+                    )
+                    continue
 
             with database.CloseForLongOperation(app.config):
                 result = skopeo.copy(
