@@ -472,11 +472,7 @@ def _wrap_for_retry(driver):
     return type("Retrying" + driver.__name__, (RetryOperationalError, driver), {})
 
 
-class ObservableDatabase(object):
-    """Wrapper around Peewee's non-pooled database class for observability."""
-
-
-class ObservablePooledDatabase(ObservableDatabase):
+class ObservablePooledDatabase(object):
     """Wrapper around Peewee's PooledDatabase class for observability."""
 
     def _connect(self, _retry_count=0, _checkout_start=None):
@@ -625,8 +621,6 @@ def _db_from_url(
 
     if issubclass(driver, PooledDatabase):
         driver = type("Observable" + driver.__name__, (ObservablePooledDatabase, driver), {})
-    else:
-        driver = type("Observable" + driver.__name__, (ObservableDatabase, driver), {})
 
     driver_autocommit = False
     if db_kwargs.get("_driver_autocommit"):
