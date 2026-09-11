@@ -53,3 +53,13 @@ SELECT m.digest
 FROM tag t
 JOIN manifest m ON t.manifest_id = m.id
 WHERE t.repository_id = ? AND t.name = ? AND t.lifetime_end_ms IS NULL;
+
+-- name: GetActiveTag :one
+-- Returns the live (lifetime_end_ms IS NULL) tag row for a name. Callers use
+-- it to skip the expire-and-insert cycle when the tag already points at the
+-- manifest being written, so a repeated PUT does not leave an expired row.
+SELECT id, manifest_id, lifetime_start_ms
+FROM tag
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+ORDER BY lifetime_start_ms DESC
+LIMIT 1;

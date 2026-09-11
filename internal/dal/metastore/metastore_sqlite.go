@@ -421,10 +421,31 @@ func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord)
 	return id, nil
 }
 
-// putTag expires any active tag with the same name, then inserts a new one.
-// This avoids the NULL != NULL issue on the
-// (repository_id, name, lifetime_end_ms) unique index.
+// putTag points tag at manifestID. When the active tag already targets that
+// manifest the call is a no-op and the existing row id is returned: the
+// distribution manifest handler stores a tagged manifest through PutManifest
+// and then calls the tag service for the same tag, and without this check the
+// second write expired the row the first one had just created, leaving one
+// expired tag row per push (PROJQUAY-13201).
+//
+// Otherwise it expires the active tag and inserts a new row. Expiring first
+// avoids the NULL != NULL issue on the (repository_id, name, lifetime_end_ms)
+// unique index, and the probe-and-advance loop in expireActiveTag keeps
+// concurrent retargets from colliding on lifetime_end_ms.
 func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string) (int64, error) {
+	active, err := q.GetActiveTag(ctx, daldb.GetActiveTagParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	switch {
+	case err == nil:
+		if active.ManifestID.Valid && active.ManifestID.Int64 == manifestID {
+			return active.ID, nil
+		}
+	case !errors.Is(err, sql.ErrNoRows):
+		return 0, fmt.Errorf("get active tag %q: %w", tag, err)
+	}
+
 	transitionMs, err := expireActiveTag(ctx, q, repoID, tag, time.Now().UnixMilli())
 	if err != nil {
 		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
