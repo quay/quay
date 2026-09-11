@@ -353,6 +353,67 @@ func TestPutTag(t *testing.T) {
 	}
 }
 
+// TestPutManifest_TaggedPushThenPutTagSameManifest_NoExpiredRow covers the
+// distribution handler sequence for one tagged push: PutManifest with the tag,
+// then the tag service's PutTag for the same tag and digest. The second write
+// must not expire and re-create the row (PROJQUAY-13201).
+func TestPutManifest_TaggedPushThenPutTagSameManifest_NoExpiredRow(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("manifest-v1")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"v":1}`),
+		Tag:       "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	firstID := activeTagID(t, store.(*metastore.SQLiteStore), repoID, "latest")
+
+	secondID, err := store.PutTag(ctx, repoID, oci.TagRecord{Name: "latest", Digest: dgst})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondID != firstID {
+		t.Errorf("PutTag for the current manifest returned id %d, want the existing row %d", secondID, firstID)
+	}
+	assertTagRowCounts(t, store.(*metastore.SQLiteStore), repoID, "latest", 1, 0)
+
+	// A repeated PutManifest with the same tag and digest (a client re-push)
+	// must also leave the history untouched.
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"v":1}`),
+		Tag:       "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assertTagRowCounts(t, store.(*metastore.SQLiteStore), repoID, "latest", 1, 0)
+
+	// Retargeting the tag to a different manifest still records history.
+	dgst2 := digest.FromString("manifest-v2")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    dgst2,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"v":2}`),
+		Tag:       "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assertTagRowCounts(t, store.(*metastore.SQLiteStore), repoID, "latest", 1, 1)
+	if got := activeTagID(t, store.(*metastore.SQLiteStore), repoID, "latest"); got == firstID {
+		t.Errorf("retarget kept tag row %d active, want a new row", got)
+	}
+}
+
 func TestDeleteTag(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -805,5 +866,36 @@ func assertProtectionTagCount(t *testing.T, s *metastore.SQLiteStore, manifestID
 	}
 	if count != 1 {
 		t.Errorf("non-expiring tags for manifest %d: got %d, want 1", manifestID, count)
+	}
+}
+
+// activeTagID returns the id of the single live tag row with the given name.
+func activeTagID(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) int64 {
+	t.Helper()
+	var id int64
+	err := s.DB().QueryRowContext(context.Background(),
+		`SELECT id FROM tag WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL`,
+		repoID, tag).Scan(&id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// assertTagRowCounts checks how many live and expired rows a tag name has.
+func assertTagRowCounts(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string, wantLive, wantExpired int) {
+	t.Helper()
+	var live, expired int
+	err := s.DB().QueryRowContext(context.Background(),
+		`SELECT
+		    COALESCE(SUM(CASE WHEN lifetime_end_ms IS NULL THEN 1 ELSE 0 END), 0),
+		    COALESCE(SUM(CASE WHEN lifetime_end_ms IS NOT NULL THEN 1 ELSE 0 END), 0)
+		 FROM tag WHERE repository_id = ? AND name = ?`,
+		repoID, tag).Scan(&live, &expired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live != wantLive || expired != wantExpired {
+		t.Errorf("tag %q rows: got live=%d expired=%d, want live=%d expired=%d", tag, live, expired, wantLive, wantExpired)
 	}
 }
