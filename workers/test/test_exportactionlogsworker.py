@@ -9,6 +9,7 @@ import pytest
 from httmock import HTTMock, urlmatch
 from moto import mock_s3
 
+from app import app as realapp
 from app import storage as test_storage
 from data import database, model
 from data.logs_model import logs_model
@@ -78,7 +79,7 @@ def test_export_logs_failure(mock_ssrf, initialized_db):
                     "repository_name": "simple",
                     "start_time": format_date(now + timedelta(days=-10)),
                     "end_time": format_date(now + timedelta(days=10)),
-                    "callback_url": "http://testcallback/",
+                    "callback_url": "https://testcallback/",
                     "callback_email": None,
                 },
                 test_storage,
@@ -131,21 +132,22 @@ def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
     def format_date(datetime):
         return datetime.strftime("%m/%d/%Y")
 
-    with HTTMock(handle_request):
-        worker._process_queue_item(
-            {
-                "export_id": "someid",
-                "repository_id": repo.id,
-                "namespace_id": repo.namespace_user.id,
-                "namespace_name": "devtable",
-                "repository_name": "simple",
-                "start_time": format_date(now + timedelta(days=-10)),
-                "end_time": format_date(now + timedelta(days=10)),
-                "callback_url": "http://testcallback/",
-                "callback_email": None,
-            },
-            storage_engine,
-        )
+    with patch.dict(realapp.config, {"PREFERRED_URL_SCHEME": "https"}):
+        with HTTMock(handle_request):
+            worker._process_queue_item(
+                {
+                    "export_id": "someid",
+                    "repository_id": repo.id,
+                    "namespace_id": repo.namespace_user.id,
+                    "namespace_name": "devtable",
+                    "repository_name": "simple",
+                    "start_time": format_date(now + timedelta(days=-10)),
+                    "end_time": format_date(now + timedelta(days=10)),
+                    "callback_url": "https://testcallback/",
+                    "callback_email": None,
+                },
+                storage_engine,
+            )
 
     assert called[0]
     assert called[0]["export_id"] == "someid"
@@ -157,8 +159,8 @@ def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
     if url != storage_engine.get_direct_download_url(
         storage_engine.preferred_locations, "exportedactionlogs"
     ):
-        if url.find("http://localhost:5000/exportedlogs/") == 0:
-            storage_id, _ = url[len("http://localhost:5000/exportedlogs/") :].split("?")
+        if url.find("https://localhost:5000/exportedlogs/") == 0:
+            storage_id, _ = url[len("https://localhost:5000/exportedlogs/") :].split("?")
         else:
             assert (
                 url.find(
