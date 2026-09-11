@@ -122,7 +122,12 @@ class LocalStorage(BaseStorageV2):
     def stream_upload_chunk(self, uuid, offset, length, in_fp, _, content_type=None):
         try:
             with open(self._init_path(self._rel_upload_path(uuid)), "r+b") as upload_storage:
-                upload_storage.seek(offset)
+                # Seek to end rather than to offset: cloud backends store each chunk in a
+                # separate object (offset is always 0 within each chunk), so all callers
+                # that do sequential appending pass offset=0. For blob uploads (blobuploader.py)
+                # offset is validated to equal the current file size before this call, making
+                # seek-to-end equivalent to seek(offset).
+                upload_storage.seek(0, 2)
                 return self.stream_write_to_fp(in_fp, upload_storage, length), {}, None
         except IOError as ex:
             return 0, {}, ex
