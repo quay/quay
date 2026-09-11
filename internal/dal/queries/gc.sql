@@ -79,3 +79,114 @@ SELECT COUNT(*) FROM uploadedblob WHERE blob_id = ? AND expires_at > datetime('n
 
 -- name: CountBlobsByChecksum :one
 SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?;
+
+-- Repository purge (PROJQUAY-13202). The repository API marks a repository as
+-- deleted (state = 3, renamed to a UUID, deletedrepository marker plus a
+-- queueitem) exactly like Quay's mark_repository_for_deletion. Quay drains
+-- that queue with repositorygcworker; the mirror registry purges marked
+-- repositories inside its GC cycle instead. Deletes run child tables first so
+-- SQLite foreign keys (PRAGMA foreign_keys=1) are satisfied.
+
+-- name: FindMarkedRepositories :many
+SELECT r.id, d.id AS marker_id, d.queue_id
+FROM repository r
+LEFT JOIN deletedrepository d ON d.repository_id = r.id
+WHERE r.state = 3
+ORDER BY r.id;
+
+-- name: CountManifestsByRepository :one
+SELECT COUNT(*) FROM manifest WHERE repository_id = ?;
+
+-- name: CountTagsByRepository :one
+SELECT COUNT(*) FROM tag WHERE repository_id = ?;
+
+-- name: DeleteTagNotificationsByRepository :exec
+DELETE FROM tagnotificationsuccess
+WHERE tag_id IN (SELECT id FROM tag WHERE repository_id = ?);
+
+-- name: DeleteTagsByRepository :exec
+DELETE FROM tag WHERE repository_id = ?;
+
+-- name: DeleteManifestLabelsByRepository :exec
+DELETE FROM manifestlabel WHERE repository_id = ?;
+
+-- name: DeleteManifestChildrenByRepository :exec
+DELETE FROM manifestchild WHERE repository_id = ?;
+
+-- name: DeleteManifestBlobsByRepository :exec
+DELETE FROM manifestblob WHERE repository_id = ?;
+
+-- name: DeleteManifestSecurityStatusByRepository :exec
+DELETE FROM manifestsecuritystatus WHERE repository_id = ?;
+
+-- name: DeleteManifestPullStatisticsByRepository :exec
+DELETE FROM manifestpullstatistics WHERE repository_id = ?;
+
+-- name: DeleteTagPullStatisticsByRepository :exec
+DELETE FROM tagpullstatistics WHERE repository_id = ?;
+
+-- name: DeleteManifestsByRepository :exec
+DELETE FROM manifest WHERE repository_id = ?;
+
+-- name: DeleteUploadedBlobsByRepository :exec
+DELETE FROM uploadedblob WHERE repository_id = ?;
+
+-- name: DeleteBlobUploadsByRepository :exec
+DELETE FROM blobupload WHERE repository_id = ?;
+
+-- name: DeleteRepositoryBuildsByRepository :exec
+DELETE FROM repositorybuild WHERE repository_id = ?;
+
+-- name: DeleteRepositoryBuildTriggersByRepository :exec
+DELETE FROM repositorybuildtrigger WHERE repository_id = ?;
+
+-- name: DeleteAccessTokensByRepository :exec
+DELETE FROM accesstoken WHERE repository_id = ?;
+
+-- name: DeleteRepoMirrorConfigByRepository :exec
+DELETE FROM repomirrorconfig WHERE repository_id = ?;
+
+-- name: DeleteRepoMirrorRulesByRepository :exec
+DELETE FROM repomirrorrule WHERE repository_id = ?;
+
+-- name: DeleteOrgMirrorRepositoriesByRepository :exec
+DELETE FROM orgmirrorrepository WHERE repository_id = ?;
+
+-- name: DeleteApprTagsByRepository :exec
+DELETE FROM apprtag WHERE repository_id = ?;
+
+-- name: DeleteRepositoryPermissionsByRepository :exec
+DELETE FROM repositorypermission WHERE repository_id = ?;
+
+-- name: DeleteRepositoryNotificationsByRepository :exec
+DELETE FROM repositorynotification WHERE repository_id = ?;
+
+-- name: DeleteRepositoryActionCountsByRepository :exec
+DELETE FROM repositoryactioncount WHERE repository_id = ?;
+
+-- name: DeleteRepositoryAuthorizedEmailsByRepository :exec
+DELETE FROM repositoryauthorizedemail WHERE repository_id = ?;
+
+-- name: DeleteRepositoryAutoPrunePoliciesByRepository :exec
+DELETE FROM repositoryautoprunepolicy WHERE repository_id = ?;
+
+-- name: DeleteRepositoryImmutabilityPoliciesByRepository :exec
+DELETE FROM repositoryimmutabilitypolicy WHERE repository_id = ?;
+
+-- name: DeleteRepositorySearchScoresByRepository :exec
+DELETE FROM repositorysearchscore WHERE repository_id = ?;
+
+-- name: DeleteQuotaRepositorySizesByRepository :exec
+DELETE FROM quotarepositorysize WHERE repository_id = ?;
+
+-- name: DeleteStarsByRepositoryForPurge :exec
+DELETE FROM star WHERE repository_id = ?;
+
+-- name: DeleteDeletedRepositoryMarkers :exec
+DELETE FROM deletedrepository WHERE repository_id = ?;
+
+-- name: DeleteQueueItem :exec
+DELETE FROM queueitem WHERE id = ?;
+
+-- name: DeleteRepository :exec
+DELETE FROM repository WHERE id = ? AND state = 3;

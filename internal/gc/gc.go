@@ -19,8 +19,12 @@ type Collector interface {
 
 // Stats summarizes a single GC cycle.
 type Stats struct {
-	TagsExpired      int
-	ManifestsDeleted int
+	// RepositoriesPurged counts API-deleted repositories whose rows were
+	// removed this cycle; their tags and manifests are included in
+	// TagsExpired and ManifestsDeleted.
+	RepositoriesPurged int
+	TagsExpired        int
+	ManifestsDeleted   int
 	// BlobsDeleted counts imagestorage metadata rows actually deleted.
 	BlobsDeleted        int
 	StaleUploadsRemoved int

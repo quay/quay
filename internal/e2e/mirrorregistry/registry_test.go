@@ -519,3 +519,77 @@ func assertBlobMissing(t *testing.T, h *e2etest.Harness, repository string, dgst
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP 404")
 }
+
+// TestRegistryDeleteRepositoryPurgesAndReclaimsStorage covers
+// PROJQUAY-13202: DELETE /api/v1/repository/<name> only marks a repository
+// deleted; the GC cycle must then purge its rows and reclaim blobs that no
+// other repository references, while a shared blob survives.
+func TestRegistryDeleteRepositoryPurgesAndReclaimsStorage(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const doomed = "admin/doomed"
+	const survivor = "admin/survivor"
+
+	sharedLayer := []byte("layer-shared-between-repositories")
+	image := pushImage(t, h, doomed, "latest", []byte(`{"arch":"amd64"}`), sharedLayer)
+	privateLayer := []byte("layer-only-in-doomed")
+	private := pushImage(t, h, doomed, "extra", []byte(`{"arch":"arm64"}`), privateLayer)
+	pushImage(t, h, survivor, "latest", []byte(`{"arch":"s390x"}`), sharedLayer)
+
+	doomedID, err := h.RepositoryID(ctx, doomed)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Registry().DeleteRepository(ctx, doomed))
+
+	// The repository is hidden immediately but nothing is purged until GC.
+	_, err = h.Registry().GetManifest(ctx, doomed, "latest")
+	require.Error(t, err)
+	repositories, tags, manifests, blobLinks, err := h.RepositoryRows(ctx, doomedID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, repositories)
+	// Two live tags; tag history may hold more rows than that.
+	assert.GreaterOrEqual(t, tags, 2)
+	assert.Equal(t, 2, manifests)
+	assert.Equal(t, 4, blobLinks)
+	markers, queueItems, err := h.DeletionMarkers(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, markers)
+	assert.Equal(t, 1, queueItems)
+
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, stats.RepositoriesPurged)
+	assert.Equal(t, tags, stats.TagsExpired, "every tag row of the repository is removed")
+	assert.Equal(t, 2, stats.ManifestsDeleted)
+	// Blobs only the deleted repository used are reclaimed in the same cycle
+	// (its upload markers go with it); the shared layer stays.
+	assert.Equal(t, 3, stats.BlobsDeleted, "two configs and the private layer")
+	assert.Equal(t, int64(len(`{"arch":"amd64"}`)+len(`{"arch":"arm64"}`)+len(privateLayer)), stats.BytesReclaimed)
+
+	repositories, tags, manifests, blobLinks, err = h.RepositoryRows(ctx, doomedID)
+	require.NoError(t, err)
+	assert.Zero(t, repositories)
+	assert.Zero(t, tags)
+	assert.Zero(t, manifests)
+	assert.Zero(t, blobLinks)
+	markers, queueItems, err = h.DeletionMarkers(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, markers)
+	assert.Zero(t, queueItems)
+
+	// The survivor still serves the shared layer; the private layer is gone.
+	_, err = h.Registry().GetBlob(ctx, survivor, image.layer)
+	require.NoError(t, err)
+	_, err = h.Registry().GetBlob(ctx, survivor, private.layer)
+	require.Error(t, err)
+
+	// A second cycle is a no-op, and the name can be reused for a fresh push.
+	stats, err = h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.RepositoriesPurged)
+	assert.Zero(t, stats.BlobsDeleted)
+	fresh := pushImage(t, h, doomed, "latest", []byte(`{"arch":"ppc64le"}`), []byte("layer-after-recreate"))
+	manifest, err := h.Registry().GetManifest(ctx, doomed, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, fresh.manifest, manifest.Body)
+}

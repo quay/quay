@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -1431,4 +1433,219 @@ func getManifestID(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest)
 func ctx(t *testing.T) context.Context {
 	t.Helper()
 	return t.Context()
+}
+
+// markRepositoryDeleted soft-deletes a repository the way the repository API
+// does: rename to a UUID, state = 3, deletedrepository marker, queue item.
+func markRepositoryDeleted(t *testing.T, env *testEnv, repoID int64, originalName string) (markerID, queueID int64) {
+	t.Helper()
+	ctx := t.Context()
+	res, err := env.q.MarkRepositoryDeleted(ctx, daldb.MarkRepositoryDeletedParams{
+		DeletedName:  "deleted-" + originalName,
+		RepositoryID: repoID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("mark repository %d deleted: %d rows affected", repoID, n)
+	}
+	markerID, err = env.q.InsertDeletedRepository(ctx, daldb.InsertDeletedRepositoryParams{
+		RepositoryID: repoID,
+		OriginalName: originalName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queueID, err = env.q.InsertRepositoryGCQueueItem(ctx, daldb.InsertRepositoryGCQueueItemParams{
+		QueueName:        fmt.Sprintf("repositorygc/library/%d/", repoID),
+		Body:             fmt.Sprintf(`{"marker_id":%d,"original_name":%q}`, markerID, originalName),
+		Available:        true,
+		RetriesRemaining: 5,
+		StateID:          fmt.Sprintf("state-%d", repoID),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.q.UpdateDeletedRepositoryQueueID(ctx, daldb.UpdateDeletedRepositoryQueueIDParams{
+		QueueID: sql.NullString{String: strconv.FormatInt(queueID, 10), Valid: true},
+		ID:      markerID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return markerID, queueID
+}
+
+func countRows(t *testing.T, env *testEnv, query string, args ...any) int {
+	t.Helper()
+	var n int
+	if err := env.db.QueryRowContext(t.Context(), query, args...).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// putBlob stores content in blob storage and metadata, returning the blob id.
+func putBlob(t *testing.T, env *testEnv, content []byte) (int64, digest.Digest) {
+	t.Helper()
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(t.Context(), dgst, content); err != nil {
+		t.Fatal(err)
+	}
+	id, err := env.store.PutBlob(t.Context(), oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id, dgst
+}
+
+// TestCollect_PurgesMarkedRepository covers PROJQUAY-13202: a repository the
+// API soft-deleted must have its tags, manifests, links, marker and queue
+// item removed by the next GC cycle, and its blobs reclaimed once their
+// upload protection lapses.
+func TestCollect_PurgesMarkedRepository(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "doomed")
+	dgst := mustDigest("doomed-manifest")
+	manifestID := insertManifest(t, env, repoID, dgst)
+	insertTag(t, env, repoID, "v1", dgst)
+	insertTag(t, env, repoID, "v2", dgst)
+	blobID, blobDigest := putBlob(t, env, []byte("doomed-layer"))
+	linkBlobToManifest(t, env, repoID, manifestID, blobID)
+	// A real push also records a one-hour upload marker for the repository.
+	if err := env.q.InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{RepositoryID: repoID, BlobID: blobID}); err != nil {
+		t.Fatal(err)
+	}
+	markerID, queueID := markRepositoryDeleted(t, env, repoID, "doomed")
+
+	// Before the fix a cycle left every row behind. The purge removes the
+	// repository's upload marker too, so the now-unreferenced blob is
+	// reclaimed by the orphaned-blob phase of the same cycle.
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.RepositoriesPurged != 1 {
+		t.Fatalf("expected 1 purged repository, got %d", stats.RepositoriesPurged)
+	}
+	if stats.TagsExpired != 2 {
+		t.Fatalf("expected 2 tags removed with the repository, got %d", stats.TagsExpired)
+	}
+	if stats.ManifestsDeleted != 1 {
+		t.Fatalf("expected 1 manifest removed with the repository, got %d", stats.ManifestsDeleted)
+	}
+	if stats.BlobsDeleted != 1 {
+		t.Fatalf("expected the orphaned blob to be reclaimed, got %d deleted", stats.BlobsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDigest); err == nil {
+		t.Fatal("expected blob storage file to be deleted")
+	}
+
+	for _, check := range []struct {
+		what  string
+		query string
+		args  []any
+	}{
+		{"repository", `SELECT count(*) FROM repository WHERE id = ?`, []any{repoID}},
+		{"tag", `SELECT count(*) FROM tag WHERE repository_id = ?`, []any{repoID}},
+		{"manifest", `SELECT count(*) FROM manifest WHERE repository_id = ?`, []any{repoID}},
+		{"manifestblob", `SELECT count(*) FROM manifestblob WHERE repository_id = ?`, []any{repoID}},
+		{"uploadedblob", `SELECT count(*) FROM uploadedblob WHERE repository_id = ?`, []any{repoID}},
+		{"deletedrepository", `SELECT count(*) FROM deletedrepository WHERE id = ?`, []any{markerID}},
+		{"queueitem", `SELECT count(*) FROM queueitem WHERE id = ?`, []any{queueID}},
+	} {
+		if n := countRows(t, env, check.query, check.args...); n != 0 {
+			t.Errorf("%s rows left after purge: %d", check.what, n)
+		}
+	}
+
+	// A second cycle finds nothing to do.
+	stats, err = env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats != (gc.Stats{}) {
+		t.Fatalf("second cycle should be a no-op, got %+v", stats)
+	}
+}
+
+// TestCollect_PurgeKeepsBlobsSharedWithLiveRepository verifies that purging
+// a deleted repository never reclaims a blob still referenced elsewhere and
+// never touches the surviving repository's rows.
+func TestCollect_PurgeKeepsBlobsSharedWithLiveRepository(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	blobID, blobDigest := putBlob(t, env, []byte("shared-layer"))
+
+	liveRepo := ensureRepo(t, env, "library", "keep")
+	liveDigest := mustDigest("keep-manifest")
+	liveManifest := insertManifest(t, env, liveRepo, liveDigest)
+	insertTag(t, env, liveRepo, "latest", liveDigest)
+	linkBlobToManifest(t, env, liveRepo, liveManifest, blobID)
+
+	doomedRepo := ensureRepo(t, env, "library", "doomed")
+	doomedDigest := mustDigest("doomed-manifest")
+	doomedManifest := insertManifest(t, env, doomedRepo, doomedDigest)
+	insertTag(t, env, doomedRepo, "latest", doomedDigest)
+	linkBlobToManifest(t, env, doomedRepo, doomedManifest, blobID)
+	markRepositoryDeleted(t, env, doomedRepo, "doomed")
+
+	if _, err := env.db.ExecContext(ctx, `UPDATE uploadedblob SET expires_at = datetime('now', '-1 second')`); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.RepositoriesPurged != 1 {
+		t.Fatalf("expected 1 purged repository, got %d", stats.RepositoriesPurged)
+	}
+	if stats.BlobsDeleted != 0 {
+		t.Fatalf("shared blob must survive while the live repository references it, got %d deleted", stats.BlobsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDigest); err != nil {
+		t.Fatalf("shared blob storage file missing: %v", err)
+	}
+	if n := countRows(t, env, `SELECT count(*) FROM repository WHERE id = ?`, doomedRepo); n != 0 {
+		t.Errorf("deleted repository row still present")
+	}
+	if n := countRows(t, env, `SELECT count(*) FROM tag WHERE repository_id = ? AND lifetime_end_ms IS NULL`, liveRepo); n != 1 {
+		t.Errorf("live repository lost its tag: %d live tags", n)
+	}
+	if n := countRows(t, env, `SELECT count(*) FROM manifestblob WHERE repository_id = ?`, liveRepo); n != 1 {
+		t.Errorf("live repository lost its blob link: %d rows", n)
+	}
+}
+
+// TestCollect_ActiveRepositoryIsNeverPurged guards the state = 3 condition:
+// a repository that merely has a stale deletedrepository marker but is still
+// active must not be touched.
+func TestCollect_ActiveRepositoryIsNeverPurged(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "active")
+	dgst := mustDigest("active-manifest")
+	insertManifest(t, env, repoID, dgst)
+	insertTag(t, env, repoID, "latest", dgst)
+	if _, err := env.q.InsertDeletedRepository(ctx, daldb.InsertDeletedRepositoryParams{
+		RepositoryID: repoID,
+		OriginalName: "active",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.RepositoriesPurged != 0 {
+		t.Fatalf("active repository was purged: %+v", stats)
+	}
+	if n := countRows(t, env, `SELECT count(*) FROM tag WHERE repository_id = ?`, repoID); n != 1 {
+		t.Errorf("active repository lost tags: %d rows", n)
+	}
 }
