@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/distribution/distribution/v3"
@@ -52,6 +53,13 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		}
 	}
 
+	// Digest-only PUTs (no WithTag) match Python write_manifest_by_digest:
+	// a hidden $temp- tag keeps the manifest alive for 1 hour so multi-arch
+	// children are not collected before the index PUT links them.
+	if record.Tag == "" {
+		record.TempTagExpiration = oci.PushTempTagExpiration
+	}
+
 	record.Subject, record.ArtifactType = parseSubjectAndArtifactType(payload)
 	if record.Subject != "" {
 		SetSubject(ctx, record.Subject)
@@ -72,6 +80,14 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 	}
 
 	if _, err := ms.repo.store.PutManifest(ctx, repoID, record); err != nil {
+		// An index whose child is not in the catalog is a client error.
+		// distribution's PUT handler answers 400 MANIFEST_BLOB_UNKNOWN for
+		// the child digest only when ErrManifestBlobUnknown is wrapped in
+		// ErrManifestVerification; a bare one falls through to 500.
+		var childErr oci.ChildManifestUnknownError
+		if errors.As(err, &childErr) {
+			return "", distribution.ErrManifestVerification{distribution.ErrManifestBlobUnknown{Digest: childErr.Digest}}
+		}
 		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}
 

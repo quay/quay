@@ -171,6 +171,39 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 	return nil
 }
 
+// WipeManifestCatalog deletes catalog rows so an index PUT can be attempted
+// after GC collected the child from SQLite while Distribution still has the
+// child payload on disk.
+func (h *Harness) WipeManifestCatalog(ctx context.Context) error {
+	if h == nil || h.gcDB == nil {
+		return fmt.Errorf("wipe manifest catalog with uninitialized E2E harness")
+	}
+	_, err := h.gcDB.ExecContext(ctx, `
+		DELETE FROM tag;
+		DELETE FROM manifestblob;
+		DELETE FROM manifestchild;
+		DELETE FROM manifestlabel;
+		DELETE FROM manifestsecuritystatus;
+		DELETE FROM manifest`)
+	if err != nil {
+		return fmt.Errorf("wipe E2E manifest catalog: %w", err)
+	}
+	return nil
+}
+
+// ManifestCount returns the number of rows in the manifest table so tests can
+// assert that a rejected write left no catalog rows behind.
+func (h *Harness) ManifestCount(ctx context.Context) (int, error) {
+	if h == nil || h.gcDB == nil {
+		return 0, fmt.Errorf("manifest count with uninitialized E2E harness")
+	}
+	var n int
+	if err := h.gcDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM manifest`).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // BaseURL returns the HTTP URL of the in-process registry.
 func (h *Harness) BaseURL() string {
 	if h == nil || h.server == nil {
@@ -226,7 +259,7 @@ func (h *Harness) checkHealth(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	resp, err := h.client.Do(req)
+	resp, err := h.client.Do(req) //nolint:gosec // G704: URL is the test harness base URL, not user-controlled input
 	if err != nil {
 		return err
 	}

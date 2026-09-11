@@ -2,7 +2,10 @@ package metastore_test
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -199,6 +202,117 @@ func TestPutManifest_WithTag(t *testing.T) {
 	assertActiveTag(t, store.(*metastore.SQLiteStore), repoID, "latest")
 }
 
+func TestPutManifest_DigestOnlyCreatesExpiringTempTag(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("digest-only-child")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var name string
+	var hidden int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT name, hidden, lifetime_end_ms FROM tag WHERE manifest_id = ?`,
+		manifestID).Scan(&name, &hidden, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if hidden != 1 {
+		t.Errorf("hidden = %d, want 1", hidden)
+	}
+	if !strings.HasPrefix(name, "$temp-") {
+		t.Errorf("temp tag name %q, want $temp- prefix", name)
+	}
+	if !endMs.Valid {
+		t.Fatal("digest-only temp tag must expire (lifetime_end_ms set)")
+	}
+	wantMin := time.Now().Add(50 * time.Minute).UnixMilli()
+	wantMax := time.Now().Add(70 * time.Minute).UnixMilli()
+	if endMs.Int64 < wantMin || endMs.Int64 > wantMax {
+		t.Errorf("lifetime_end_ms = %d, want ~1 hour from now", endMs.Int64)
+	}
+
+	// Repeat PUT must not duplicate the temp tag (existing one still covers the window).
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("temp tags after repeat PUT: got %d, want 1", count)
+	}
+}
+
+func TestPutManifest_DigestOnlyRePushExtendsTempTag(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("digest-only-extend")
+	manifestID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	soon := time.Now().Add(30 * time.Second).UnixMilli()
+	if _, err := db.ExecContext(ctx, `UPDATE tag SET lifetime_end_ms = ? WHERE manifest_id = ?`, soon, manifestID); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            dgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           []byte(`{"schemaVersion":2}`),
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	var endMs sql.NullInt64
+	if err := db.QueryRowContext(ctx, `SELECT count(*), lifetime_end_ms FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("temp tags after near-expiry re-push: got %d, want 1", count)
+	}
+	wantMin := time.Now().Add(50 * time.Minute).UnixMilli()
+	if !endMs.Valid || endMs.Int64 < wantMin {
+		t.Errorf("lifetime_end_ms = %v, want ~1 hour from now (extended, not skipped)", endMs)
+	}
+}
+
 func TestPutManifest_TagReplace(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -269,6 +383,97 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPutManifest_IndexWithMissingChildRejected(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	missing := digest.FromString("missing-child")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("index-missing-child"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[...]}`),
+		ChildDigests: []digest.Digest{missing},
+		Tag:          "latest",
+	})
+	if err == nil {
+		t.Fatal("expected index PUT with missing child to fail")
+	}
+	if !errors.Is(err, oci.ErrNotExist) {
+		t.Fatalf("err = %v, want %v", err, oci.ErrNotExist)
+	}
+	var childErr oci.ChildManifestUnknownError
+	if !errors.As(err, &childErr) {
+		t.Fatalf("err = %T (%v), want oci.ChildManifestUnknownError", err, err)
+	}
+	if childErr.Digest != missing {
+		t.Errorf("reported child digest = %s, want %s", childErr.Digest, missing)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM manifest`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("manifest rows after rejected index PUT = %d, want 0", count)
+	}
+}
+
+func TestPutManifest_IndexDoesNotClobberNonEmptyChildBytes(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	realContent := []byte(`{"schemaVersion":2,"config":{"digest":"sha256:abc"}}`)
+	childDgst := digest.FromString("already-written-child")
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:            childDgst,
+		MediaType:         "application/vnd.oci.image.manifest.v1+json",
+		Content:           realContent,
+		TempTagExpiration: oci.PushTempTagExpiration,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("parent-index"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"manifests":[...]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		Tag:          "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	db := store.(*metastore.SQLiteStore).DB()
+	var childBytes string
+	if err := db.QueryRowContext(ctx, `SELECT manifest_bytes FROM manifest WHERE digest = ?`, childDgst.String()).Scan(&childBytes); err != nil {
+		t.Fatal(err)
+	}
+	if childBytes != string(realContent) {
+		t.Errorf("child manifest_bytes = %q, want %q (must not clobber to {})", childBytes, realContent)
+	}
+	var tagCount int
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*) FROM tag t
+		JOIN manifest m ON m.id = t.manifest_id
+		WHERE m.digest = ?`, childDgst.String()).Scan(&tagCount); err != nil {
+		t.Fatal(err)
+	}
+	if tagCount != 1 {
+		t.Errorf("child tags after index PUT: got %d, want 1 (must not duplicate $temp-)", tagCount)
 	}
 }
 
