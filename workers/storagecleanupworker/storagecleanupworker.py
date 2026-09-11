@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from app import app, storage
 from data.database import UseThenDisconnect
+from storage import TYPE_LOCAL_STORAGE
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
@@ -26,6 +27,19 @@ MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
 # check if there are any stale MPUs every 6 hours
 MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
 
+# Sets export log deletion threshold to 1 hour
+EXPORTED_LOGS_DELETION_DATE_THRESHOLD = timedelta(seconds=60 * 60)
+
+EXPORT_LOGS_STORAGE_PATH = app.config.get("EXPORT_ACTION_LOGS_STORAGE_PATH", "exportedactionlogs")
+
+
+def _has_local_storage():
+    """
+    Helper function to determine if we have local storage present.
+    """
+    storage_config = app.config.get("DISTRIBUTED_STORAGE_CONFIG", {})
+    return any(params[0] == TYPE_LOCAL_STORAGE for params in storage_config.values())
+
 
 class StorageCleanupWorker(Worker):
     def __init__(self):
@@ -35,6 +49,18 @@ class StorageCleanupWorker(Worker):
             self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
         else:
             logger.debug("Cleanup of stale multipart uploads not enabled, skipping...")
+
+        if app.config.get("FEATURE_LOG_EXPORT", False):
+            EXPORTED_LOG_CLEANUP_FREQUENCY = (
+                # run every minute if we have local storage present
+                60
+                if _has_local_storage()
+                # for other types of storage engines
+                else BLOBUPLOAD_CLEANUP_FREQUENCY
+            )
+            self.add_operation(self._try_cleanup_exported_logs, EXPORTED_LOG_CLEANUP_FREQUENCY)
+        else:
+            logger.debug("Logs export disabled, skipping scheduling of cleanup...")
 
     def _try_cleanup_uploads(self):
         """
@@ -98,6 +124,36 @@ class StorageCleanupWorker(Worker):
         except LockNotAcquiredException:
             logger.debug(
                 "Could not acquire global lock for stale multipart upload cleanup, skipping..."
+            )
+
+    def _try_cleanup_exported_logs(self):
+        """
+        Performs cleanup of exported logs on the designated path.
+        """
+        if not storage.preferred_locations:
+            logger.debug(
+                "No preferred storage locations defined, aborting cleanup of exported logs"
+            )
+            return
+
+        logger.debug("Performing cleanup of stale exported logs")
+
+        try:
+            with GlobalLock("EXPORT_LOG_CLEANUP", lock_ttl=LOCK_TTL):
+                try:
+                    storage.clean_exported_action_logs(
+                        storage.preferred_locations,
+                        EXPORTED_LOGS_DELETION_DATE_THRESHOLD,
+                        EXPORT_LOGS_STORAGE_PATH,
+                    )
+                except NotImplementedError:
+                    logger.debug(
+                        "Deletion of stale exported logs is not applicable to storage location %s",
+                        storage.preferred_locations[0],
+                    )
+        except LockNotAcquiredException:
+            logger.debug(
+                "Could not acquire global lock for stale exported log cleanup, skipping..."
             )
 
     def _cleanup_uploads(self):
