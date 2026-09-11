@@ -802,6 +802,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to support log exporting.
     FEATURE_LOG_EXPORT = True
 
+    # Require that log export callback URL scheme be HTTPS.
+    # Defaults to 'true'
+    LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS = True
+
     # Maximum number of action logs pages that can be returned via the API.
     ACTION_LOG_MAX_PAGE = None
 
