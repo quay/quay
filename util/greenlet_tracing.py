@@ -2,7 +2,7 @@ from time import time
 
 from gevent.hub import get_hub
 from greenlet import settrace
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 greenlet_switch = Counter("greenlet_switch_total", "number of greenlet context switches")
 greenlet_throw = Counter("greenlet_throw_total", "number of greenlet throws")
@@ -10,8 +10,13 @@ greenlet_duration = Histogram(
     "greenlet_duration_seconds",
     "seconds in which a particular greenlet is executing",
 )
+greenlets_active = Gauge(
+    "quay_greenlets_active",
+    "number of greenlets currently active (excludes the hub)",
+)
 
 _latest_switch = None
+_tracked_greenlets = set()
 
 
 def enable_tracing():
@@ -23,11 +28,23 @@ def greenlet_callback(event, args):
     This is a callback that is executed greenlet on all events.
     """
     if event in ("switch", "throw"):
-        # It's only safe to unpack args under these two events.
-        (origin, _target) = args
+        origin, target = args
 
-        if origin is get_hub():
-            # This greenlet is the one that manages the loop itself, thus noop.
+        hub = get_hub()
+
+        if target is not hub and target not in _tracked_greenlets:
+            _tracked_greenlets.add(target)
+            greenlets_active.inc()
+
+        if origin is not hub and origin.dead:
+            _tracked_greenlets.discard(origin)
+            greenlets_active.dec()
+
+        if origin is hub:
+            if event == "switch":
+                switch_callback(args)
+            elif event == "throw":
+                throw_callback(args)
             return
 
         if event == "switch":
@@ -46,7 +63,6 @@ def switch_callback(_args):
     greenlet_switch.inc()
 
     if _latest_switch is None:
-        # This is the first switch.
         _latest_switch = time()
         return
 
