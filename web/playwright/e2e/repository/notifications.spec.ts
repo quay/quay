@@ -890,4 +890,46 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       }
     },
   );
+
+  test(
+    'build_start notification delivered via webhook',
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-12196']},
+    async ({api}) => {
+      test.setTimeout(300_000);
+      const org = await api.organization('buildstartwh');
+      const repo = await api.repository(org.name, 'buildstartrepo');
+
+      const receiver = new WebhookReceiver();
+      await receiver.start();
+
+      try {
+        await api.notification(
+          org.name,
+          repo.name,
+          'build_start',
+          'webhook',
+          {url: receiver.getUrl()},
+          'Build Start Webhook',
+        );
+
+        const build = await api.build(
+          org.name,
+          repo.name,
+          'FROM scratch\nLABEL build="build-start-test"\n',
+        );
+
+        const webhook = await receiver.waitForWebhook(
+          (req) =>
+            req.body.build_id === build.buildId &&
+            req.body.repository === `${org.name}/${repo.name}`,
+          240000,
+        );
+        expect(webhook, 'build_start webhook not received').not.toBeNull();
+        expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
+        expect(webhook!.body.build_id).toBe(build.buildId);
+      } finally {
+        await receiver.stop();
+      }
+    },
+  );
 });
