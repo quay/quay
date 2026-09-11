@@ -40,6 +40,10 @@ tests:
   cron: '@daily'
   steps:
     cluster_profile: aws-quay-qe
+    credentials:
+    - mount_path: /var/run/secrets/registry.redhat.io
+      name: registry.redhat.io
+      namespace: test-credentials
     env:
       BASE_DOMAIN: quayqe.devcluster.openshift.com
       COMPUTE_NODE_TYPE: m5.4xlarge
