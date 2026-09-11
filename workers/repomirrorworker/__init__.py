@@ -1811,7 +1811,11 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         skopeo_timeout = config.skopeo_timeout
 
         # Build local tag->digest map for incremental sync
-        local_digests = _build_local_digest_map(claimed_repo.repository.id)
+        local_digests = (
+            _build_local_digest_map(claimed_repo.repository.id)
+            if claimed_repo.repository is not None
+            else {}
+        )
 
         for tag in tags:
             src_image = f"docker://{external_reference}:{tag}"
