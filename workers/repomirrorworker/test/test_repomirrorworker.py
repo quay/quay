@@ -458,6 +458,8 @@ def test_rollback(
     _create_tag(repo, "updated")
     _create_tag(repo, "deleted")
 
+    different_manifest = b'{"schemaVersion": 2, "config": {"digest": "sha256:different"}}'
+
     skopeo_calls = [
         {
             "args": [
@@ -485,6 +487,16 @@ def test_rollback(
                 "docker://localhost:5000/mirror/repo:created",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository:updated",
+            ],
+            "results": SkopeoResults(True, [], different_manifest, ""),
         },
         {
             "args": [
