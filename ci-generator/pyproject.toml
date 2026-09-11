@@ -3,7 +3,7 @@ name = "ci-generator"
 version = "0.1.0"
 description = "Generate ci-operator configs from a compact Quay CI matrix"
 readme = "README.md"
-requires-python = ">3.10.0"
+requires-python = ">=3.11"
 dependencies = [
     "jinja2",
     "pyyaml",
@@ -17,21 +17,6 @@ test = [
 [tool.uv]
 package = false
 
-[tool.black]
-line-length = 120
-
-[tool.isort]
-profile = "black"
-line_length = 120
-
-[tool.ruff]
-line-length = 120
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-]

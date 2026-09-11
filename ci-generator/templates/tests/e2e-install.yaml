@@ -3,6 +3,7 @@ tests:
     env:
       ENABLE_BUILD_SUPPORT: "true"
       PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
+      QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777
       QUAY_EXTRA_CONFIG: |
         FEATURE_PROGRAMMATIC_BOOTSTRAP: false
         FEATURE_USER_METADATA: true
@@ -26,10 +27,16 @@ tests:
           - admin
         GLOBAL_READONLY_SUPER_USERS:
           - readonly
+        FEATURE_OTEL_TRACING: true
+        OTEL_CONFIG:
+          service_name: quay
+          sample_rate: 1.0
+          endpoint: http://jaeger.quay-enterprise.svc.cluster.local:4318/v1/traces
     test:
     - ref: quay-enable-catalogsource
     - ref: quay-provisioning-tls
     - ref: quay-provisioning-builder
     - ref: quay-deploy-mailpit
+    - ref: quay-deploy-jaeger
     - ref: "{{ deploy_ref }}"
     - ref: quay-test-e2e

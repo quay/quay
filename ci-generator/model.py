@@ -1,14 +1,16 @@
-"""Dataclasses for Quay CI matrix cells and override patches.
+"""Dataclasses for Quay CI matrix cells.
 
 A `matrix.yaml` expands as: each `quay[]` release (identified by `branch`,
 e.g. `redhat-3.18`) × each `jobs[]` entry × `clouds` × `ocp` → one `Cell`.
 The Quay version is derived from the branch suffix.
+
+`image_source` is carried for forward compatibility; templates do not use it
+yet.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Any
 
 YamlMap = dict[str, Any]
@@ -37,6 +39,8 @@ class Cell:
     tier: str
     arch: str = "amd64"
     image_source: str = "build"
+    env: dict[str, Any] = field(default_factory=dict)
+    as_name: str | None = None
 
     @property
     def quay_version_dashed(self) -> str:
@@ -70,7 +74,9 @@ class Cell:
 
     @property
     def index_image_repo(self) -> str:
-        return f"quay.io/redhat-user-workloads/quay-eng-tenant/stable-{self.quay_version_dashed}-v{self.ocp_version_dashed}"
+        dashed = self.quay_version_dashed
+        ocp = self.ocp_version_dashed
+        return "quay.io/redhat-user-workloads/quay-eng-tenant/" f"stable-{dashed}-v{ocp}"
 
     @property
     def variant(self) -> str:
@@ -78,11 +84,18 @@ class Cell:
 
     @property
     def test_as(self) -> str:
-        return f"{self.cloud}-{self.storage}-{self.quay_version_dashed}-{self.tier}-{self.ocp_version_dashed}"
+        return (
+            f"{self.cloud}-{self.storage}-{self.quay_version_dashed}-"
+            f"{self.tier}-{self.ocp_version_dashed}"
+        )
 
     @property
     def filename(self) -> str:
         return f"{self.org}-{self.repo}-{self.branch}__{self.variant}.yaml"
+
+    @property
+    def owned_prefix(self) -> str:
+        return f"{self.org}-{self.repo}-{self.branch}__"
 
     def context(self) -> dict[str, str]:
         return {
@@ -106,14 +119,3 @@ class Cell:
             "test_as": self.test_as,
             "deploy_ref": self.deploy_ref,
         }
-
-
-@dataclass(frozen=True)
-class Override:
-    path: Path
-    match: YamlMap
-    patch: YamlMap
-
-    @property
-    def specificity(self) -> int:
-        return len(self.match)

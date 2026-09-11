@@ -5,6 +5,7 @@ tests:
       BASE_DOMAIN: quayqe.devcluster.openshift.com
       COMPUTE_NODE_TYPE: m5.4xlarge
     post:
+    - ref: quay-gather-jaeger-traces
     - ref: quay-deprovision
     - chain: ipi-aws-post
     workflow: ipi-aws
