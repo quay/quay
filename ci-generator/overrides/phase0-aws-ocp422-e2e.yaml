@@ -1,0 +1,10 @@
+match:
+  quay: "3.18"
+  ocp: "4.22"
+  cloud: aws
+  test: e2e-install
+tests:
+- as: aws-s3-3-18-nightly-4-22
+  steps:
+    env:
+      QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777

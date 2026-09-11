@@ -1,0 +1,10 @@
+tests:
+- steps:
+    cluster_profile: openshift-org-gcp
+    env:
+      COMPUTE_NODE_TYPE: n1-standard-16
+      QUAY_STORAGE_PROVIDER: gcp
+    post:
+    - ref: quay-deprovision
+    - chain: ipi-gcp-post
+    workflow: ipi-gcp

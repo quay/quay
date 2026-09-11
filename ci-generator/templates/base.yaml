@@ -1,0 +1,36 @@
+build_root:
+  image_stream_tag:
+    name: release
+    namespace: openshift
+    tag: rhel-9-release-golang-1.25-openshift-{{ ocp_version }}
+images:
+  items:
+  - dockerfile_path: web/Containerfile.playwright
+    to: quay-playwright-runner
+releases:
+  latest:
+    candidate:
+      architecture: "{{ arch }}"
+      product: ocp
+      stream: nightly
+      version: "{{ ocp_version }}"
+resources:
+  '*':
+    limits:
+      memory: 4Gi
+    requests:
+      cpu: 100m
+      memory: 200Mi
+tests:
+- as: "{{ test_as }}"
+  steps:
+    env:
+      PLAYWRIGHT_GIT_REPO: https://github.com/quay/quay.git
+      QUAY_INDEX_IMAGE_REPO: "{{ index_image_repo }}"
+      QUAY_OPERATOR_CHANNEL: "{{ operator_channel }}"
+      QUAY_OPERATOR_SOURCE: fbc-operator-catalog
+zz_generated_metadata:
+  branch: "{{ branch }}"
+  org: "{{ org }}"
+  repo: "{{ repo }}"
+  variant: "{{ variant }}"
