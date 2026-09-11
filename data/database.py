@@ -55,6 +55,8 @@ from data.text import match_like, match_mysql, regex_search, regex_sqlite
 from util.metrics.prometheus import (
     db_close_calls,
     db_connect_calls,
+    db_pool_checkout_duration,
+    db_pool_exhaustion,
     db_pooled_connections_available,
     db_pooled_connections_in_use,
 )
@@ -489,16 +491,20 @@ class ObservableDatabase(object):
 class ObservablePooledDatabase(ObservableDatabase):
     """Wrapper around Peewee's PooledDatabase class for observability."""
 
-    def _connect(self, _retry_count=0):
+    def _connect(self, _retry_count=0, _checkout_start=None):
         """
         Override internal connection method to validate connection availability from the connection pool.
         This acts like SQLAlchemy's pool_pre_ping with exponential backoff for high concurrency.
         """
+        if _checkout_start is None:
+            _checkout_start = time.monotonic()
+
         # Limit retries to prevent long delays in high-concurrency scenarios
         # With 50+ concurrent requests, we want individual requests to fail faster
         # rather than each one retrying 20+ times
         max_retries = 7
         if _retry_count >= max_retries:
+            db_pool_checkout_duration.observe(time.monotonic() - _checkout_start)
             raise OperationalError(
                 f"Unable to obtain healthy connection after {max_retries} attempts"
             )
@@ -506,6 +512,7 @@ class ObservablePooledDatabase(ObservableDatabase):
         try:
             conn = super(ObservablePooledDatabase, self)._connect()
         except MaxConnectionsExceeded:
+            db_pool_exhaustion.inc()
             # Pool exhausted - wait with exponential backoff before retrying
             # Base delay: 10ms, max delay: 200ms to prevent long waits
             delay = min(0.01 * (2**_retry_count), 0.2)
@@ -518,11 +525,12 @@ class ObservablePooledDatabase(ObservableDatabase):
                 jitter,
             )
             time.sleep(jitter)
-            return self._connect(_retry_count=_retry_count + 1)
+            return self._connect(_retry_count=_retry_count + 1, _checkout_start=_checkout_start)
 
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT 1")
+            db_pool_checkout_duration.observe(time.monotonic() - _checkout_start)
             return conn  # Connection is healthy
         except Exception as e:
             # Catch ALL exceptions during liveness check - includes ProtocolViolation,
@@ -551,7 +559,7 @@ class ObservablePooledDatabase(ObservableDatabase):
                 time.sleep(delay)
 
             # Recursively retry - pool will provide another connection (or create new one)
-            return self._connect(_retry_count=_retry_count + 1)
+            return self._connect(_retry_count=_retry_count + 1, _checkout_start=_checkout_start)
 
     def connect(self, reuse_if_open=False):
         ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
