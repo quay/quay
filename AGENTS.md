@@ -121,6 +121,22 @@ merging the stale PR by mistake.
 
 After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current development release (check the active versions in Jira) on the Jira ticket before opening the PR, or the bot will block merging.
 
+### Requesting Review After CI Passes
+
+After all required CI checks pass on an agent-generated PR, request review so the PR does
+not go unnoticed. Do **not** request review immediately on PR open — wait for CI to finish
+to avoid routing a failing PR to reviewers.
+
+1. Post `/fs-review` as a PR comment to trigger the fullsend automated review agent.
+2. Assign human reviewers from the `quay/downstream` team (verified against `CODEOWNERS`):
+
+   ```bash
+   gh pr edit --repo quay/quay --add-reviewer quay/downstream
+   ```
+
+These two steps together ensure the PR receives both automated and human review signals
+within 24 hours of CI passing, rather than relying on reviewers to discover it organically.
+
 ### Code Review (CodeRabbit)
 
 Resolve every inline CodeRabbit comment — either fix the code or reply explaining why it's not actionable. The bot re-reviews on each push.

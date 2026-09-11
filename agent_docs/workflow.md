@@ -117,6 +117,22 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
+## Requesting Review After CI Passes
+
+Once all required CI checks pass, request review so agent-generated PRs do not sit
+unnoticed. Do **not** request review immediately on PR open — gate it on CI completion
+to avoid routing a failing PR to reviewers.
+
+1. Post `/fs-review` as a PR comment to trigger the fullsend automated review agent.
+2. Assign human reviewers from the `quay/downstream` team (primary team in `CODEOWNERS`):
+
+   ```bash
+   gh pr edit --repo quay/quay --add-reviewer quay/downstream
+   ```
+
+This keeps time-to-first-human-review bounded. Without these steps, agent PRs have no
+routing mechanism to surface themselves once CI passes and can remain open indefinitely.
+
 ## Session Setup
 
 All hooks are consolidated in `.claude/settings.json` — no manual setup required.
