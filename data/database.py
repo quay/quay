@@ -53,8 +53,6 @@ from data.readreplica import (
 )
 from data.text import match_like, match_mysql, regex_search, regex_sqlite
 from util.metrics.prometheus import (
-    db_close_calls,
-    db_connect_calls,
     db_pool_checkout_duration,
     db_pool_exhaustion,
     db_pooled_connections_available,
@@ -476,16 +474,6 @@ def _wrap_for_retry(driver):
 
 class ObservableDatabase(object):
     """Wrapper around Peewee's non-pooled database class for observability."""
-
-    def connect(self, reuse_if_open=False):
-        ret = super(ObservableDatabase, self).connect(reuse_if_open)
-        db_connect_calls.inc()
-        return ret
-
-    def close(self):
-        ret = super(ObservableDatabase, self).close()
-        db_close_calls.inc()
-        return ret
 
 
 class ObservablePooledDatabase(ObservableDatabase):
