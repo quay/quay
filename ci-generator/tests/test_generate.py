@@ -248,6 +248,27 @@ def test_dump_round_trip() -> None:
         assert yaml.safe_load(dumped) == config
 
 
+def test_dump_quotes_yaml_special_strings() -> None:
+    dumped = dump_config(
+        {
+            "cron": "@daily",
+            "flag": "true",
+            "count": "4.22",
+            "plain": "s3-daily",
+        }
+    )
+    assert "cron: '@daily'" in dumped
+    assert 'flag: "true"' in dumped
+    assert 'count: "4.22"' in dumped
+    assert "plain: s3-daily" in dumped
+    assert yaml.safe_load(dumped) == {
+        "cron": "@daily",
+        "flag": "true",
+        "count": "4.22",
+        "plain": "s3-daily",
+    }
+
+
 def test_default_output_dir(tmp_path: Path) -> None:
     standalone = tmp_path / "ci-generator"
     standalone.mkdir()
