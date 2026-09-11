@@ -79,6 +79,15 @@ db_close_calls = Counter(
     "quay_db_close_calls",
     "number of close() calls made to db",
 )
+db_pool_checkout_duration = Histogram(
+    "quay_db_pool_checkout_duration_seconds",
+    "time spent acquiring a connection from the pool",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, float("inf")),
+)
+db_pool_exhaustion = Counter(
+    "quay_db_pool_exhaustion_total",
+    "number of times the connection pool was exhausted and required retry",
+)
 
 ui_page_views = Counter(
     "quay_ui_page_views_total",
