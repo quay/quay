@@ -42,12 +42,13 @@ jobs:
             go:
               - '{**/*.go,go.mod,go.sum,.golangci.yml,.github/workflows/ci-go.yaml,internal/dal/**,sqlc.yaml,tools/schema_fingerprint.py,data/database.py,data/fields.py,data/migrations/versions/**,Makefile,requirements.txt}'
               - '!config-tool/**'
+              - '!ci-generator/**'
             config-tool:
               - '{config-tool/**,.github/workflows/ci-config-tool.yaml}'
             generator:
               - '{ci-generator/**,.github/workflows/ci-generator.yaml}'
             python:
-              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**,.github/workflows/sentinel.yaml}'
+              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**}'
               - '!config-tool/**'
               - '!ci-generator/**'
               - '!web/**'
@@ -75,6 +76,7 @@ jobs:
               - '!.github/workflows/ci-go.yaml'
               - '!.github/workflows/ci-python.yaml'
               - '!.github/workflows/ci-lint.yaml'
+              - '!.github/workflows/sentinel.yaml'
 
   lint-ci:
     name: Lint
