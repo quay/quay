@@ -52,6 +52,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:api": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @api",
+    "test:stage-validation": "[ -n \"$QUAY_API_TOKEN\" ] && [ -n \"$REACT_QUAY_APP_API_URL\" ] && [ -n \"$PLAYWRIGHT_BASE_URL\" ] || { echo 'QUAY_API_TOKEN, REACT_QUAY_APP_API_URL, and PLAYWRIGHT_BASE_URL are required' >&2; exit 1; }; QUAY_BEARER_AUTH=1 PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @stage-validation --workers=1",
     "test:e2e": "playwright test",
     "test:e2e:check-required-tags": "node playwright/ensure-required-tags.cjs",
     "test:e2e:fix-required-tags": "node playwright/ensure-required-tags.cjs --write",

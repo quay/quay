@@ -82,6 +82,7 @@ export const TEST_USERS_LDAP = {
 
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
+  const bearerToken = process.env.QUAY_API_TOKEN;
 
   console.log(
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
@@ -94,12 +95,26 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
-    // Fetch Quay config with retry to check auth type and features
+    // Fetch Quay config with retry to check auth type and features.
+    // In bearer-token mode, include the token so we can read /config
+    // on registries that require authentication for that endpoint.
+    // Refuse to send bearer tokens over plain HTTP (except localhost).
     let mailingEnabled = false;
     let authType: string | undefined;
+    const isLocalhost =
+      API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+    if (bearerToken && !isLocalhost && !API_URL.startsWith('https://')) {
+      throw new Error(
+        `[Global Setup] Refusing to send QUAY_API_TOKEN over non-HTTPS URL: ${API_URL}`,
+      );
+    }
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const configResponse = await fetch(`${API_URL}/config`);
+        const headers: Record<string, string> = {};
+        if (bearerToken) {
+          headers['Authorization'] = `Bearer ${bearerToken}`;
+        }
+        const configResponse = await fetch(`${API_URL}/config`, {headers});
         if (configResponse.ok) {
           const quayConfig = await configResponse.json();
           mailingEnabled = quayConfig?.features?.MAILING === true;
@@ -120,6 +135,22 @@ async function globalSetup(config: FullConfig) {
       throw new Error(
         '[Global Setup] Failed to fetch Quay config after 3 attempts',
       );
+    }
+
+    // -----------------------------------------------------------------------
+    // Bearer-token mode (stage/production validation).
+    // Only activates when BOTH QUAY_API_TOKEN and QUAY_BEARER_AUTH=1 are set.
+    // This prevents accidental activation when a developer has QUAY_API_TOKEN
+    // in their shell but runs the normal test:e2e suite.
+    // The test:stage-validation script sets both automatically.
+    // -----------------------------------------------------------------------
+    if (bearerToken && process.env.QUAY_BEARER_AUTH === '1') {
+      console.log(
+        '[Global Setup] Bearer-token mode (QUAY_BEARER_AUTH=1). ' +
+          'Skipping user creation; tests will use bearerClient fixture.',
+      );
+      console.log('[Global Setup] Complete');
+      return;
     }
 
     // For OIDC auth, skip user creation — users are created on first login
