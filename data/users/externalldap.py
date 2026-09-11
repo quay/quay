@@ -51,19 +51,54 @@ _TRANSIENT_ERROR_MESSAGES = frozenset(
 class _LDAPTraceRedactor:
     """
     Wraps the LDAP output for password redaction when USERS_DEBUG is set.
+
+    python-ldap emits ``simple_bind`` traces via ``pprint.pformat``.  The
+    DN and password may be single- or double-quoted depending on their
+    content (e.g. a DN containing ``'`` is double-quoted by pprint).
+
+    To guard against split writes (where the header and argument tuple
+    arrive in separate ``write()`` calls), this class buffers any data
+    that contains a ``simple_bind`` header until the full bind tuple
+    (ending with ``None, None), {``) is received.
     """
 
+    _PY_STR = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+
     _BIND_PW_RE = re.compile(
-        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*\n\s*')((?:\\.|[^'\\])*)(')",
+        r"(SimpleLDAPObject\.simple_bind\s*\n"
+        r"\(\(" + _PY_STR + r",\s*)"
+        r"(" + _PY_STR + r")"
+        r"(\s*,\s*None\s*,\s*None\))",
+    )
+
+    _BIND_HEADER_RE = re.compile(
+        r"SimpleLDAPObject\.simple_bind",
+    )
+
+    _BIND_TUPLE_COMPLETE_RE = re.compile(
+        r"None\s*,\s*None\)\s*,\s*\{",
     )
 
     def __init__(self, stream=None):
         self._stream = stream or sys.stdout
+        self._buf = ""
+
+    @classmethod
+    def _redact(cls, data):
+        return cls._BIND_PW_RE.sub(r"\1'******'\3", data)
 
     def write(self, data):
-        self._stream.write(self._BIND_PW_RE.sub(r"\1******\3", data))
+        data = self._buf + data
+        self._buf = ""
+        if self._BIND_HEADER_RE.search(data) and not self._BIND_TUPLE_COMPLETE_RE.search(data):
+            self._buf = data
+            return
+        self._stream.write(self._redact(data))
 
     def flush(self):
+        if self._buf:
+            self._stream.write(self._redact(self._buf))
+            self._buf = ""
         self._stream.flush()
 
 
@@ -556,7 +591,7 @@ class LDAPUsers(FederatedUsers):
                 return cached
 
         logger.debug("Looking up LDAP %s with key=%s", log_name, cache_key)
-        (found_user, err_msg) = lookup_fn()
+        found_user, err_msg = lookup_fn()
         result = found_user is not None
 
         if found_user is None:
@@ -699,7 +734,7 @@ class LDAPUsers(FederatedUsers):
                 pairs = []
                 err_msg = None
                 for user_search_dn in self._user_dns:
-                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                    pairs, err_msg = self._ldap_user_search_with_rdn(
                         conn,
                         username_or_email,
                         user_search_dn,
@@ -840,7 +875,7 @@ class LDAPUsers(FederatedUsers):
         Looks up a username or email in LDAP.
         """
         logger.debug("Looking up LDAP username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if err_msg is not None:
             return (None, err_msg)
 
@@ -856,7 +891,7 @@ class LDAPUsers(FederatedUsers):
             return (None, self.federated_service, "Empty query")
 
         logger.debug("Got query %s with limit %s", query, limit)
-        (results, err_msg) = self._ldap_user_search(query, limit=limit, suffix="*")
+        results, err_msg = self._ldap_user_search(query, limit=limit, suffix="*")
         if err_msg is not None:
             return (None, self.federated_service, err_msg)
 
@@ -892,7 +927,7 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if found_user is None:
             return (None, err_msg)
 
@@ -916,7 +951,7 @@ class LDAPUsers(FederatedUsers):
         if not group_lookup_args.get("group_dn"):
             return (False, "Missing group_dn")
 
-        (it, err) = self.iterate_group_members(
+        it, err = self.iterate_group_members(
             group_lookup_args, page_size=1, disable_pagination=disable_pagination
         )
         if err is not None:
