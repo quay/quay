@@ -70,6 +70,21 @@ class TestValidateExternalRegistryUrl:
         with pytest.raises(ValueError, match="scheme"):
             validate_external_registry_url(url)
 
+    # ---- Invalid scheme if allow_only_secure is raised ----
+    @pytest.mark.parametrize(
+        "url, expected_failure",
+        [
+            ("https://registry.redhat.io", False),
+            ("http://quay.io", True),
+        ],
+    )
+    def test_allow_only_secure_schemas(self, url, expected_failure):
+        if expected_failure:
+            with pytest.raises(ValueError, match="only HTTPS"):
+                validate_external_registry_url(url=url, allow_only_secure=True)
+        else:
+            validate_external_registry_url(url=url, allow_only_secure=True)
+
     # ---- URLs with embedded credentials ----
 
     def test_url_with_userinfo_rejected(self):

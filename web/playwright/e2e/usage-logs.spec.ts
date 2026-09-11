@@ -170,6 +170,79 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         expect(body).toHaveProperty('repository');
       },
     );
+
+    test(
+      'exported log URL requires a valid token when using local storage',
+      {tag: '@webhook'},
+      async ({authenticatedPage, unauthenticatedPage, api, webhook}) => {
+        test.setTimeout(180_000);
+        const repo = await api.repository();
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+
+        await authenticatedPage.getByTestId('usage-logs-export-button').click();
+        await authenticatedPage
+          .getByTestId('usage-logs-export-email-input')
+          .fill(webhook.getUrl('/export-token-test'));
+        await authenticatedPage
+          .getByTestId('usage-logs-export-confirm-button')
+          .click();
+
+        await expect(
+          authenticatedPage.getByText('Logs exported with id').first(),
+        ).toBeVisible();
+
+        const received = await webhook.waitForWebhook(
+          (req) => req.url === '/export-token-test',
+          120_000,
+        );
+        expect(received).not.toBeNull();
+        expect(received!.body).toHaveProperty('status', 'success');
+
+        const exportedDataUrl: string = received!.body.exported_data_url;
+
+        // Token protection is only applicable for local storage
+        if (!exportedDataUrl.includes('/exportedlogs/')) {
+          return;
+        }
+
+        // Valid token: use unauthenticated context to prove the token alone grants
+        // access — no session cookie needed (emailed/webhook links must work publicly)
+        const validResp =
+          await unauthenticatedPage.request.get(exportedDataUrl);
+        expect(validResp.status()).toBe(200);
+        expect(validResp.headers()['cache-control']).toBe('no-store');
+        const payload = await validResp.json();
+        expect(payload).toHaveProperty('logs');
+        expect(Array.isArray(payload.logs)).toBe(true);
+
+        // No token: 403 and response body must not contain the log payload
+        const urlWithoutToken = exportedDataUrl.split('?')[0];
+        const noTokenResp =
+          await unauthenticatedPage.request.get(urlWithoutToken);
+        try {
+          expect(noTokenResp.status()).toBe(403);
+          const noTokenBody = await noTokenResp.text();
+          expect(noTokenBody).not.toContain('"logs"');
+        } finally {
+          await noTokenResp.dispose();
+        }
+
+        // Tampered token: 403 and response body must not contain the log payload
+        const tamperedUrl = exportedDataUrl.replace(
+          /token=[^&]*/,
+          'token=invalidtoken',
+        );
+        const tamperedResp = await unauthenticatedPage.request.get(tamperedUrl);
+        try {
+          expect(tamperedResp.status()).toBe(403);
+          const tamperedBody = await tamperedResp.text();
+          expect(tamperedBody).not.toContain('"logs"');
+        } finally {
+          await tamperedResp.dispose();
+        }
+      },
+    );
   });
 
   test('filters logs by text input', async ({authenticatedPage, api}) => {
