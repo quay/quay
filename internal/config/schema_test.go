@@ -279,6 +279,7 @@ var goOnlyFields = map[string]bool{
 	"INSTANCE_SERVICE_KEY_LOCATION":     true,
 	"INSTANCE_SERVICE_KEY_SERVICE":      true,
 	"REGISTRY_JWT_AUTH_MAX_FRESH_S":     true,
+	"PASSWORD_AUTH_CACHE_TTL_S":         true, // mirror-registry token issuance cache
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

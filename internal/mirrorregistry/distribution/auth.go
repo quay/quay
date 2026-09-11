@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	distauth "github.com/distribution/distribution/v3/registry/auth"
 	"github.com/quay/quay/internal/auth"
@@ -90,6 +91,7 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 	robotsWhitelist, _ := options[authOptionRobotsWhitelist].([]string)
 	featureUserLastAccessed, _ := options[authOptionLastAccess].(bool)
 	lastAccessedUpdateThresholdSeconds, _ := options[authOptionLastAccessS].(int)
+	passwordCacheTTL, _ := options[authOptionPasswordCacheTTL].(time.Duration)
 	superUsers, _ := options[authOptionSuperUsers].([]string)
 	superUsersFullAccess, _ := options[authOptionSuperUsersFullAccess].(bool)
 
@@ -99,6 +101,7 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 		RobotsWhitelist:                robotsWhitelist,
 		FeatureUserLastAccessed:        featureUserLastAccessed,
 		LastAccessedUpdateThresholdSec: lastAccessedUpdateThresholdSeconds,
+		PasswordCacheTTL:               passwordCacheTTL,
 	})
 
 	return &accessController{
