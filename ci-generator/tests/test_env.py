@@ -3,6 +3,13 @@
 from generate import apply_cell_settings, expand_cells, generate_all
 from model import Cell
 
+TEMPLATE_GREP_INVERT = "@auth:OIDC|@auth:LDAP"
+QUAY_318_GREP_INVERT = (
+    "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
+    "saves and loads architecture filter with mirror configuration|"
+    "loads existing architecture filter from saved mirror configuration"
+)
+
 
 def _cell(**kwargs: object) -> Cell:
     values: dict[str, object] = {
@@ -123,13 +130,18 @@ def test_phase0_names_use_storage_and_tier() -> None:
     assert by_key[("3.16", "azure")] == "blob-daily"
 
 
-def test_older_branches_replace_extra_config_without_otel() -> None:
+def test_branch_env_selects_grep_invert_and_extra_config() -> None:
     by_key = {(cell.quay_version, cell.cloud): config for cell, _filename, config in generate_all()}
     aws = by_key[("3.18", "aws")]["tests"][0]["steps"]["env"]
+    assert aws["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT
     assert "FEATURE_OTEL_TRACING: true" in aws["QUAY_EXTRA_CONFIG"]
+
     gcp_317 = by_key[("3.17", "gcp")]["tests"][0]["steps"]["env"]
+    assert gcp_317["PLAYWRIGHT_GREP_INVERT"] == TEMPLATE_GREP_INVERT
     assert "FEATURE_OTEL_TRACING" not in gcp_317["QUAY_EXTRA_CONFIG"]
-    assert gcp_317["PLAYWRIGHT_GREP_INVERT"] == "@auth:OIDC|@auth:LDAP"
+    assert "FEATURE_IMMUTABLE_TAGS: true" in gcp_317["QUAY_EXTRA_CONFIG"]
+
     azure_316 = by_key[("3.16", "azure")]["tests"][0]["steps"]["env"]
+    assert azure_316["PLAYWRIGHT_GREP_INVERT"] == TEMPLATE_GREP_INVERT
     assert "FEATURE_OTEL_TRACING" not in azure_316["QUAY_EXTRA_CONFIG"]
     assert "FEATURE_IMMUTABLE_TAGS" not in azure_316["QUAY_EXTRA_CONFIG"]

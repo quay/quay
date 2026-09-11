@@ -61,6 +61,15 @@ def test_expand_matrix_cells() -> None:
     assert by_key[("3.18", "aws")].test_as == "s3-daily"
     assert by_key[("3.18", "gcp")].test_as == "gcs-weekly"
     assert by_key[("3.18", "azure")].test_as == "blob-daily"
+    assert by_key[("3.18", "aws")].env["PLAYWRIGHT_GREP_INVERT"] == (
+        "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
+        "saves and loads architecture filter with mirror configuration|"
+        "loads existing architecture filter from saved mirror configuration"
+    )
+    assert "PLAYWRIGHT_GREP_INVERT" not in by_key[("3.17", "gcp")].env
+    assert "PLAYWRIGHT_GREP_INVERT" not in by_key[("3.16", "azure")].env
+    assert "QUAY_EXTRA_CONFIG" in by_key[("3.17", "gcp")].env
+    assert "QUAY_EXTRA_CONFIG" in by_key[("3.16", "azure")].env
     assert by_key[("3.17", "gcp")].filename == "quay-quay-redhat-3.17__gcp-ocp422-e2e-install.yaml"
     assert by_key[("3.16", "gcp")].filename == "quay-quay-redhat-3.16__gcp-ocp422-e2e-install.yaml"
 
@@ -99,6 +108,14 @@ def test_jinja_renders_ocp_version() -> None:
     assert rendered["releases"]["latest"]["candidate"]["version"] == "4.22"
     assert rendered["zz_generated_metadata"]["variant"] == "aws-ocp422-e2e-install"
     assert rendered["prowgen"]["enable_secrets_store_csi_driver"] is True
+
+
+def test_e2e_install_template_inverts_only_auth() -> None:
+    env = jinja_env(GENERATOR_DIR / "templates")
+    rendered = render_template(env, "tests/e2e-install.yaml", _phase0_cell().context())
+    assert rendered["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
+        "@auth:OIDC|@auth:LDAP"
+    )
 
 
 def test_tier_uses_interval_keywords() -> None:

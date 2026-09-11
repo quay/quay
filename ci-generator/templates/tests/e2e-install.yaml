@@ -2,7 +2,7 @@ tests:
 - steps:
     env:
       ENABLE_BUILD_SUPPORT: "true"
-      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
+      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP'
       QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777
       QUAY_EXTRA_CONFIG: |
         FEATURE_PROGRAMMATIC_BOOTSTRAP: false
