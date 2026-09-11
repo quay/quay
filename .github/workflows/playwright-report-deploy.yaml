@@ -27,7 +27,7 @@ jobs:
     # Treat that as a normal skip rather than a failure.
     - name: Download Playwright report artifact
       id: download-report
-      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
+      uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7 # v24
       with:
         name: playwright-report
         workflow: ci-web.yaml
@@ -37,7 +37,7 @@ jobs:
 
     - name: Download PR number
       id: download-pr-info
-      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
+      uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7 # v24
       with:
         name: pr-info
         workflow: ci-web.yaml
