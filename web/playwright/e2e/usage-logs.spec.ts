@@ -233,8 +233,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           /token=[^&]*/,
           'token=invalidtoken',
         );
-        const tamperedResp =
-          await unauthenticatedPage.request.get(tamperedUrl);
+        const tamperedResp = await unauthenticatedPage.request.get(tamperedUrl);
         try {
           expect(tamperedResp.status()).toBe(403);
           const tamperedBody = await tamperedResp.text();
