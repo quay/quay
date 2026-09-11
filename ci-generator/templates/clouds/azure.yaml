@@ -1,0 +1,11 @@
+tests:
+- steps:
+    cluster_profile: openshift-org-azure
+    env:
+      COMPUTE_NODE_TYPE: Standard_D8as_v5
+      QUAY_STORAGE_PROVIDER: azure
+    post:
+    - ref: quay-gather-jaeger-traces
+    - ref: quay-deprovision
+    - chain: ipi-azure-post
+    workflow: ipi-azure
