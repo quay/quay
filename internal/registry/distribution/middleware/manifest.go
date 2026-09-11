@@ -80,8 +80,13 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 	}
 
 	if _, err := ms.repo.store.PutManifest(ctx, repoID, record); err != nil {
-		if errors.Is(err, oci.ErrNotExist) {
-			return "", distribution.ErrManifestBlobUnknown{Digest: dgst}
+		// An index whose child is not in the catalog is a client error.
+		// distribution's PUT handler answers 400 MANIFEST_BLOB_UNKNOWN for
+		// the child digest only when ErrManifestBlobUnknown is wrapped in
+		// ErrManifestVerification; a bare one falls through to 500.
+		var childErr oci.ChildManifestUnknownError
+		if errors.As(err, &childErr) {
+			return "", distribution.ErrManifestVerification{distribution.ErrManifestBlobUnknown{Digest: childErr.Digest}}
 		}
 		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}

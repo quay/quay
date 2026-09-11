@@ -212,7 +212,6 @@ type mockBlobStore struct {
 	createHook func(options []distribution.BlobCreateOption)
 	resumeWr   distribution.BlobWriter
 	resumeErr  error
-	blobs      map[digest.Digest][]byte
 }
 
 func (bs *mockBlobStore) Put(_ context.Context, _ string, p []byte) (v1.Descriptor, error) {
@@ -220,18 +219,6 @@ func (bs *mockBlobStore) Put(_ context.Context, _ string, p []byte) (v1.Descript
 		bs.putHook(p)
 	}
 	return bs.putDesc, bs.putErr
-}
-
-func (bs *mockBlobStore) Get(_ context.Context, dgst digest.Digest) ([]byte, error) {
-	if bs == nil {
-		return nil, distribution.ErrBlobUnknown
-	}
-	if bs.blobs != nil {
-		if content, ok := bs.blobs[dgst]; ok {
-			return content, nil
-		}
-	}
-	return nil, distribution.ErrBlobUnknown
 }
 
 func (bs *mockBlobStore) Create(_ context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
@@ -562,6 +549,46 @@ func TestManifestPut_StorageFailure_PassesThrough(t *testing.T) {
 	})
 	if !errors.Is(err, storageErr) {
 		t.Errorf("err = %v, want %v", err, storageErr)
+	}
+}
+
+func TestManifestPut_MissingChild_ReturnsVerificationError(t *testing.T) {
+	child := digest.FromString("missing-child")
+	store := &mockStore{ensureRepoID: 1, putManifestErr: oci.ChildManifestUnknownError{Digest: child}}
+	dgst := digest.FromString("index-with-missing-child")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := &mockManifest{
+		mediaType:  v1.MediaTypeImageIndex,
+		payload:    []byte(`{"schemaVersion":2}`),
+		references: []v1.Descriptor{{Digest: child, MediaType: v1.MediaTypeImageManifest}},
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	// distribution's handler maps ErrManifestVerification{ErrManifestBlobUnknown}
+	// to 400 MANIFEST_BLOB_UNKNOWN; anything else becomes a 500.
+	var verification distribution.ErrManifestVerification
+	if !errors.As(err, &verification) {
+		t.Fatalf("err = %T (%v), want distribution.ErrManifestVerification", err, err)
+	}
+	if len(verification) != 1 {
+		t.Fatalf("verification errors = %d, want 1", len(verification))
+	}
+	var blobUnknown distribution.ErrManifestBlobUnknown
+	if !errors.As(verification[0], &blobUnknown) {
+		t.Fatalf("verification[0] = %T, want distribution.ErrManifestBlobUnknown", verification[0])
+	}
+	if blobUnknown.Digest != child {
+		t.Errorf("reported digest = %s, want missing child %s", blobUnknown.Digest, child)
 	}
 }
 

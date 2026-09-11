@@ -297,7 +297,7 @@ func (s *SQLiteStore) linkChild(ctx context.Context, q *daldb.Queries, repoID, m
 		Digest:       childDgst.String(),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("child manifest %s: %w", childDgst, oci.ErrNotExist)
+		return oci.ChildManifestUnknownError{Digest: childDgst}
 	}
 	if err != nil {
 		return fmt.Errorf("lookup child manifest %s: %w", childDgst, err)

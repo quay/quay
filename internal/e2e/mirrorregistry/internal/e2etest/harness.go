@@ -171,23 +171,6 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 	return nil
 }
 
-// ExpireTempTags advances hidden $temp- tags past the namespace tag-grace
-// window so a collector cycle can reclaim digest-only manifests that are no
-// longer referenced by a user tag.
-func (h *Harness) ExpireTempTags(ctx context.Context) error {
-	if h == nil || h.gcDB == nil {
-		return fmt.Errorf("expire temp tags with uninitialized E2E harness")
-	}
-	_, err := h.gcDB.ExecContext(ctx, `
-		UPDATE tag
-		SET lifetime_end_ms = (strftime('%s', 'now') * 1000) - (16 * 24 * 60 * 60 * 1000)
-		WHERE hidden = 1 AND name LIKE '$temp-%' AND lifetime_end_ms IS NOT NULL`)
-	if err != nil {
-		return fmt.Errorf("expire E2E temp tags: %w", err)
-	}
-	return nil
-}
-
 // WipeManifestCatalog deletes catalog rows so an index PUT can be attempted
 // after GC collected the child from SQLite while Distribution still has the
 // child payload on disk.
@@ -208,6 +191,8 @@ func (h *Harness) WipeManifestCatalog(ctx context.Context) error {
 	return nil
 }
 
+// ManifestCount returns the number of rows in the manifest table so tests can
+// assert that a rejected write left no catalog rows behind.
 func (h *Harness) ManifestCount(ctx context.Context) (int, error) {
 	if h == nil || h.gcDB == nil {
 		return 0, fmt.Errorf("manifest count with uninitialized E2E harness")

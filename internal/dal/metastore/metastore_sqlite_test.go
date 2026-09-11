@@ -409,6 +409,13 @@ func TestPutManifest_IndexWithMissingChildRejected(t *testing.T) {
 	if !errors.Is(err, oci.ErrNotExist) {
 		t.Fatalf("err = %v, want %v", err, oci.ErrNotExist)
 	}
+	var childErr oci.ChildManifestUnknownError
+	if !errors.As(err, &childErr) {
+		t.Fatalf("err = %T (%v), want oci.ChildManifestUnknownError", err, err)
+	}
+	if childErr.Digest != missing {
+		t.Errorf("reported child digest = %s, want %s", childErr.Digest, missing)
+	}
 
 	db := store.(*metastore.SQLiteStore).DB()
 	var count int
