@@ -14,7 +14,7 @@ jobs:
   unit:
     name: Unit Test
     if: ${{ !inputs.types-only }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -50,7 +50,7 @@ jobs:
   sqlite:
     name: SQLite Integration Test
     if: ${{ !inputs.types-only }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -89,7 +89,7 @@ jobs:
 
   types:
     name: Types Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -158,7 +158,7 @@ jobs:
   postgres:
     name: PostgreSQL Integration Test
     if: ${{ !inputs.types-only }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -194,7 +194,7 @@ jobs:
   oci:
     name: OCI Distribution Spec
     if: ${{ !inputs.types-only }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16.4
