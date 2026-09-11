@@ -16,6 +16,7 @@ import features
 from app import app
 from data import database
 from data.database import (
+    Manifest,
     OrgMirrorConfig,
     OrgMirrorRepository,
     OrgMirrorRepoStatus,
@@ -24,13 +25,14 @@ from data.database import (
     RepoMirrorStatus,
     Repository,
     RepositoryState,
+    Tag,
 )
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
 from data.model import repository as repository_model
 from data.model.oci.tag import (
     delete_tag,
-    list_alive_tags,
+    filter_to_alive_tags,
     lookup_alive_tags_shallow,
     retarget_tag,
 )
@@ -463,6 +465,16 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                         namespace=namespace,
                         repository=repository_name,
                     ).set(remaining_tags)
+
+                    if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
+                        logger.info(
+                            "Sync cancelled on repo %s/%s.",
+                            mirror.repository.namespace_user.username,
+                            mirror.repository.name,
+                        )
+                        overall_status = RepoMirrorStatus.CANCEL
+                        break
+
                     continue
 
             if use_arch_filter:
@@ -798,12 +810,20 @@ def delete_obsolete_tags(mirror, tags):
 
 def _build_local_digest_map(repository_id):
     """
-    Build a {tag_name: manifest_digest} map for all alive tags in the repository.
+    Build a {tag_name: manifest_digest} map for all alive, non-hidden tags.
+
+    Only selects Tag.name and Manifest.digest to avoid loading full manifest
+    bytes into memory, which matters for repos with many tags.
     Returns an empty dict on any failure so callers fall through to unconditional copy.
     """
     try:
-        tags = list_alive_tags(repository_id)
-        return {t.name: t.manifest.digest for t in tags if not t.hidden}
+        query = (
+            Tag.select(Tag.name, Manifest.digest)
+            .join(Manifest)
+            .where(Tag.repository == repository_id, Tag.hidden == False)
+        )
+        query = filter_to_alive_tags(query)
+        return {t.name: t.manifest.digest for t in query.iterator()}
     except Exception:
         logger.exception("Failed to build local digest map, skipping incremental sync")
         return {}
@@ -1817,6 +1837,19 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
                         tag,
                         remote_digest,
                     )
+
+                    if (
+                        check_org_mirror_repo_sync_status(claimed_repo)
+                        == OrgMirrorRepoStatus.CANCEL
+                    ):
+                        logger.info(
+                            "Org mirror sync cancelled on repo %s/%s.",
+                            org.username,
+                            claimed_repo.repository_name,
+                        )
+                        overall_status = OrgMirrorRepoStatus.CANCEL
+                        break
+
                     continue
 
             with database.CloseForLongOperation(app.config):
