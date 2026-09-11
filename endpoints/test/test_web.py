@@ -43,6 +43,7 @@ def test_exported_logs_are_served(app):
 
         assert resp.status_code == 200
         assert resp.data == payload
+        assert resp.headers.get("Cache-control", None) == "no-store"
     finally:
         realapp.config["DISTRIBUTED_STORAGE_CONFIG"] = original
 
