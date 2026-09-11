@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
@@ -36,9 +37,12 @@ type Config struct {
 	RobotsWhitelist                    []string
 	FeatureUserLastAccessed            bool
 	LastAccessedUpdateThresholdSeconds int
-	SuperUsers                         []string
-	SuperUsersFullAccess               bool
-	JWTService                         registryTokenService
+	// PasswordAuthCacheTTL is how long a verified user password is
+	// remembered by the token endpoint; zero disables the cache.
+	PasswordAuthCacheTTL time.Duration
+	SuperUsers           []string
+	SuperUsersFullAccess bool
+	JWTService           registryTokenService
 	// MetricsRegisterer is the Prometheus registerer for middleware metrics.
 	// When nil, no metrics are recorded. Callers that want per-instance
 	// metrics must provide an explicit registerer (e.g. prometheus.NewRegistry()).
@@ -152,6 +156,7 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 			authOptionRobotsWhitelist:      cfg.RobotsWhitelist,
 			authOptionLastAccess:           cfg.FeatureUserLastAccessed,
 			authOptionLastAccessS:          cfg.LastAccessedUpdateThresholdSeconds,
+			authOptionPasswordCacheTTL:     cfg.PasswordAuthCacheTTL,
 			authOptionSuperUsers:           cfg.SuperUsers,
 			authOptionSuperUsersFullAccess: cfg.SuperUsersFullAccess,
 		}

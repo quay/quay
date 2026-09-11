@@ -93,6 +93,20 @@ func TestValidateInvalidAuthenticationType(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "AUTHENTICATION_TYPE"), "expected error for invalid AUTHENTICATION_TYPE")
 }
 
+func TestValidatePasswordAuthCacheTTL(t *testing.T) {
+	cfg, err := Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: -1\n"))
+	require.NoError(t, err)
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"), "expected error for negative PASSWORD_AUTH_CACHE_TTL_S")
+
+	for _, value := range []string{"0", "300"} {
+		cfg, err := Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: " + value + "\n"))
+		require.NoError(t, err)
+		errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+		assert.False(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"), "value %s should be accepted", value)
+	}
+}
+
 func TestValidateInvalidTagExpiration(t *testing.T) {
 	yaml := strings.Replace(minimalValidYAML, "DEFAULT_TAG_EXPIRATION: 2w", "DEFAULT_TAG_EXPIRATION: forever", 1)
 	cfg, err := Parse([]byte(yaml))

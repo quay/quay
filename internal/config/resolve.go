@@ -120,8 +120,9 @@ func NewDefault(hostname, storagePath string) *Config {
 			PreferredURLScheme: "https",
 		},
 		Auth: Auth{
-			AuthenticationType: "Database",
-			SuperUsers:         []string{"admin"},
+			AuthenticationType:    "Database",
+			SuperUsers:            []string{"admin"},
+			PasswordAuthCacheTTLS: DefaultPasswordAuthCacheTTLS,
 		},
 		Features: Features{
 			FeatureAnonymousAccess:      DefaultFeatureAnonymousAccess,

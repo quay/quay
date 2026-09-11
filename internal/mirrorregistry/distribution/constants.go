@@ -23,6 +23,7 @@ const (
 	authOptionRobotsWhitelist      = "robotsWhitelist"
 	authOptionLastAccess           = "featureUserLastAccessed"
 	authOptionLastAccessS          = "lastAccessedUpdateThresholdSeconds"
+	authOptionPasswordCacheTTL     = "passwordCacheTTL"
 	authOptionSuperUsers           = "superUsers"
 	authOptionSuperUsersFullAccess = "superUsersFullAccess"
 )
