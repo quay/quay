@@ -13,6 +13,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quay/quay/internal/oci"
@@ -44,6 +45,13 @@ type mockStore struct {
 
 	deleteTagErr  error
 	deleteTagName string
+
+	getManifestDigestResult digest.Digest
+	getManifestDigestErr    error
+
+	getManifestForServingContent   []byte
+	getManifestForServingMediaType string
+	getManifestForServingError     error
 }
 
 func (m *mockStore) EnsureRepository(_ context.Context, _ oci.RepositoryName) (int64, error) {
@@ -88,7 +96,7 @@ func (m *mockStore) GetTagDigest(_ context.Context, _ int64, _ string) (digest.D
 }
 
 func (m *mockStore) GetManifestDigest(_ context.Context, _ int64, _ digest.Digest) (digest.Digest, error) {
-	return "", errNotImplemented
+	return m.getManifestDigestResult, m.getManifestDigestErr
 }
 
 func (m *mockStore) GetManifestContent(_ context.Context, _ digest.Digest) ([]byte, error) {
@@ -134,6 +142,10 @@ func (m *mockStore) CleanExpiredUploadedBlobs(_ context.Context) error {
 
 func (m *mockStore) ListReferrers(_ context.Context, _ int64, _ digest.Digest, _ string) ([]oci.ReferrerRecord, error) {
 	return nil, errNotImplemented
+}
+
+func (m *mockStore) GetManifestForServing(_ context.Context, _ int64, _ digest.Digest) (content []byte, mediaType string, err error) {
+	return m.getManifestForServingContent, m.getManifestForServingMediaType, m.getManifestForServingError
 }
 
 var errNotImplemented = errors.New("mock: not implemented")
@@ -361,22 +373,36 @@ func TestFactory_UsesPerInstanceOptions(t *testing.T) {
 	require.Same(t, metricsA, wrappedA.metrics)
 	require.Same(t, metricsB, wrappedB.metrics)
 
-	manifest := &mockManifest{
+	manifestA := &mockManifest{
 		mediaType: "application/vnd.oci.image.manifest.v1+json",
 		payload:   []byte(`{"schemaVersion":2}`),
 	}
+
+	manifestB := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`),
+	}
+
+	_, payloadA, err := manifestA.Payload()
+	assert.NoError(t, err)
+	dgstA := digest.FromBytes(payloadA)
+
+	_, payloadB, err := manifestB.Payload()
+	assert.NoError(t, err)
+	dgstB := digest.FromBytes(payloadB)
+
 	serviceA, err := wrappedA.Manifests(t.Context())
 	require.NoError(t, err)
-	_, err = serviceA.Put(t.Context(), manifest)
+	_, err = serviceA.Put(t.Context(), manifestA)
 	require.NoError(t, err)
 	serviceB, err := wrappedB.Manifests(t.Context())
 	require.NoError(t, err)
-	_, err = serviceB.Put(t.Context(), manifest)
+	_, err = serviceB.Put(t.Context(), manifestB)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), storeA.lastRepoID)
 	require.Equal(t, int64(2), storeB.lastRepoID)
-	require.Equal(t, digest.FromString("manifest-a"), storeA.putManifestRec.Digest)
-	require.Equal(t, digest.FromString("manifest-b"), storeB.putManifestRec.Digest)
+	require.Equal(t, dgstA, storeA.putManifestRec.Digest)
+	require.Equal(t, dgstB, storeB.putManifestRec.Digest)
 }
 
 // TestParameters_BackwardCompatThreeArgs verifies that the original
@@ -427,12 +453,10 @@ func TestFactory_RejectsMissingOptions(t *testing.T) {
 
 func TestManifestPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
-	dgst := digest.FromString("test-manifest")
 
-	innerMS := &mockManifestService{putDigest: dgst}
 	innerRepo := &fakeDistRepo{
 		name: namedRef(t),
-		ms:   innerMS,
+		ms:   &mockManifestService{},
 	}
 
 	repo := newTestRepository(innerRepo, store)
@@ -448,6 +472,11 @@ func TestManifestPut_RecordsMetadata(t *testing.T) {
 			{Digest: digest.FromString("layer1"), Size: 100},
 		},
 	}
+
+	_, payload, err := manifest.Payload()
+	assert.NoError(t, err)
+
+	dgst := digest.FromBytes(payload)
 
 	got, err := ms.Put(context.Background(), manifest)
 	if err != nil {
@@ -469,11 +498,10 @@ func TestManifestPut_RecordsMetadata(t *testing.T) {
 
 func TestManifestPut_WithTag(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
-	dgst := digest.FromString("tagged-manifest")
 
 	innerRepo := &fakeDistRepo{
 		name: namedRef(t),
-		ms:   &mockManifestService{putDigest: dgst},
+		ms:   &mockManifestService{},
 	}
 	repo := newTestRepository(innerRepo, store)
 	ms, err := repo.Manifests(context.Background())
@@ -529,26 +557,6 @@ func TestManifestPut_IndexClassifiesChildDigests(t *testing.T) {
 	}
 	if len(store.putManifestRec.BlobDigests) != 0 {
 		t.Errorf("blob digests = %d, want 0 (should be classified as children)", len(store.putManifestRec.BlobDigests))
-	}
-}
-
-func TestManifestPut_StorageFailure_PassesThrough(t *testing.T) {
-	store := &mockStore{ensureRepoID: 1}
-	storageErr := errors.New("disk full")
-
-	innerRepo := &fakeDistRepo{
-		name: namedRef(t),
-		ms:   &mockManifestService{putErr: storageErr},
-	}
-	repo := newTestRepository(innerRepo, store)
-	ms, _ := repo.Manifests(context.Background())
-
-	_, err := ms.Put(context.Background(), &mockManifest{
-		mediaType: "application/vnd.oci.image.manifest.v1+json",
-		payload:   []byte(`{}`),
-	})
-	if !errors.Is(err, storageErr) {
-		t.Errorf("err = %v, want %v", err, storageErr)
 	}
 }
 
@@ -1089,4 +1097,100 @@ func namedRef(t *testing.T) reference.Named {
 		t.Fatal(err)
 	}
 	return ref
+}
+
+func TestManifestExists_Found(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+
+	store := &mockStore{
+		ensureRepoID:            1,
+		getManifestDigestResult: dgst,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	exists, err := ms.Exists(context.Background(), dgst)
+	require.NoError(t, err)
+	require.True(t, exists)
+}
+
+func TestManifestExists_NotFound(t *testing.T) {
+	dgst := digest.FromString("missing")
+
+	store := &mockStore{
+		ensureRepoID:         1,
+		getManifestDigestErr: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	exists, err := ms.Exists(context.Background(), dgst)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func TestManifestGet_Found(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+	payload := []byte(`
+{"schemaVersion":2,"config":{"mediaType":"application/vnd.docker.container.image.v1+json","digest":"sha256:44136fa355b311bfa1d4b8f6e3e3b0e93a7a2b27eb2b5e0e3e0e8f3c1a7b1234","size":2},"layers":[],
+"mediaType":"application/vnd.docker.distribution.manifest.v2+json"}`)
+
+	store := &mockStore{
+		ensureRepoID:                   1,
+		getManifestForServingContent:   payload,
+		getManifestForServingMediaType: "application/vnd.docker.distribution.manifest.v2+json",
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	returnedManifest, err := ms.Get(context.Background(), dgst)
+	require.NoError(t, err)
+
+	mediatype, content, err := returnedManifest.Payload()
+	assert.NoError(t, err)
+
+	assert.Equal(t, mediatype, store.getManifestForServingMediaType)
+	assert.Equal(t, content, payload)
+}
+
+func TestManifestGet_NotFound(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+	store := &mockStore{
+		ensureRepoID:               1,
+		getManifestForServingError: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	_, err = ms.Get(context.Background(), dgst)
+
+	assert.ErrorContains(t, err, "unknown manifest")
 }

@@ -120,13 +120,8 @@ func newRepository(inner distribution.Repository, store oci.MetadataStore, locke
 func (r *repository) Named() reference.Named { return r.Repository.Named() }
 
 func (r *repository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
-	inner, err := r.Repository.Manifests(ctx, options...)
-	if err != nil {
-		return nil, err
-	}
 	return &manifestService{
-		ManifestService: inner,
-		repo:            r,
+		repo: r,
 	}, nil
 }
 
