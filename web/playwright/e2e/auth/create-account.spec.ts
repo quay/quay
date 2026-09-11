@@ -39,7 +39,7 @@ const test = base.extend<CreateAccountFixtures>({
   },
 });
 
-test.describe('Create Account Page', {tag: ['@auth']}, () => {
+test.describe('Create Account Page', {tag: ['@auth', '@auth:Database']}, () => {
   test('form validation prevents invalid submissions', async ({
     createAccountPage,
   }) => {
