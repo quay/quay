@@ -66,10 +66,8 @@ def test_expand_matrix_cells() -> None:
         "saves and loads architecture filter with mirror configuration|"
         "loads existing architecture filter from saved mirror configuration"
     )
-    assert "PLAYWRIGHT_GREP_INVERT" not in by_key[("3.17", "gcp")].env
-    assert "PLAYWRIGHT_GREP_INVERT" not in by_key[("3.16", "azure")].env
-    assert "QUAY_EXTRA_CONFIG" in by_key[("3.17", "gcp")].env
-    assert "QUAY_EXTRA_CONFIG" in by_key[("3.16", "azure")].env
+    assert by_key[("3.17", "gcp")].env == {}
+    assert by_key[("3.16", "azure")].env == {}
     assert by_key[("3.17", "gcp")].filename == "quay-quay-redhat-3.17__gcp-ocp422-e2e-install.yaml"
     assert by_key[("3.16", "gcp")].filename == "quay-quay-redhat-3.16__gcp-ocp422-e2e-install.yaml"
 

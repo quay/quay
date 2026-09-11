@@ -40,14 +40,12 @@ global_defaults:
 
 quay:
   - branch: redhat-3.18
+    env:
+      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|..."
     jobs:
       - {tier: daily, clouds: [aws, azure], ocp: ["4.22"], test: e2e-install}
       - {tier: weekly, clouds: [gcp], ocp: ["4.22"], test: e2e-install}
   - branch: redhat-3.17
-    env:
-      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP"
-      QUAY_EXTRA_CONFIG: |
-        # shared by every 3.17 job; replaces the template value whole
     jobs:
       - {tier: daily, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
 ```
@@ -79,7 +77,7 @@ Each cell is assembled by deep-merge, later layers win:
 4. Tier mapping in `generate.py` (`presubmit` / `daily` / `nightly` / `weekly`)
 5. Branch `env`, then job `env` / `as`
 
-Mappings recurse. Lists of mappings merge by index. Scalar lists replace. Env values replace whole keys, so an older `QUAY_EXTRA_CONFIG` cannot inherit a newer flag by accident. Generated configs must contain exactly one test.
+Mappings recurse. Lists of mappings merge by index. Scalar lists replace. Env values replace whole keys. `QUAY_EXTRA_CONFIG` lives once in `templates/tests/e2e-install.yaml` and is shared by every version; unknown feature flags are treated as no-ops on older Quay releases. Generated configs must contain exactly one test.
 
 ### How often a job runs (tiers)
 
@@ -111,12 +109,12 @@ Add an OCP version on an existing job:
         ocp: ["4.22", "4.23"]
 ```
 
-Shared env for every job on a branch:
+Shared env for every job on a branch (for example a longer `PLAYWRIGHT_GREP_INVERT`).
 
 ```yaml
-  - branch: redhat-3.16
+  - branch: redhat-3.18
     env:
-      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP"
+      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook"
     jobs:
       - {tier: daily, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
 ```

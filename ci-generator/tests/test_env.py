@@ -130,18 +130,30 @@ def test_phase0_names_use_storage_and_tier() -> None:
     assert by_key[("3.16", "azure")] == "blob-daily"
 
 
-def test_branch_env_selects_grep_invert_and_extra_config() -> None:
+def test_all_versions_share_template_extra_config() -> None:
+    extra_configs = {
+        (cell.quay_version, cell.cloud): config["tests"][0]["steps"]["env"]["QUAY_EXTRA_CONFIG"]
+        for cell, _filename, config in generate_all()
+    }
+    shared = extra_configs[("3.18", "aws")]
+    assert "FEATURE_PROGRAMMATIC_BOOTSTRAP: false" in shared
+    assert "FEATURE_IMMUTABLE_TAGS: true" in shared
+    assert "FEATURE_SPARSE_INDEX: true" in shared
+    assert "FEATURE_QUOTA_NOTIFICATIONS: true" in shared
+    assert "FEATURE_OTEL_TRACING: true" in shared
+    assert extra_configs[("3.18", "gcp")] == shared
+    assert extra_configs[("3.18", "azure")] == shared
+    assert extra_configs[("3.17", "gcp")] == shared
+    assert extra_configs[("3.17", "azure")] == shared
+    assert extra_configs[("3.16", "gcp")] == shared
+    assert extra_configs[("3.16", "azure")] == shared
+
     by_key = {(cell.quay_version, cell.cloud): config for cell, _filename, config in generate_all()}
     aws = by_key[("3.18", "aws")]["tests"][0]["steps"]["env"]
     assert aws["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT
-    assert "FEATURE_OTEL_TRACING: true" in aws["QUAY_EXTRA_CONFIG"]
-
-    gcp_317 = by_key[("3.17", "gcp")]["tests"][0]["steps"]["env"]
-    assert gcp_317["PLAYWRIGHT_GREP_INVERT"] == TEMPLATE_GREP_INVERT
-    assert "FEATURE_OTEL_TRACING" not in gcp_317["QUAY_EXTRA_CONFIG"]
-    assert "FEATURE_IMMUTABLE_TAGS: true" in gcp_317["QUAY_EXTRA_CONFIG"]
-
-    azure_316 = by_key[("3.16", "azure")]["tests"][0]["steps"]["env"]
-    assert azure_316["PLAYWRIGHT_GREP_INVERT"] == TEMPLATE_GREP_INVERT
-    assert "FEATURE_OTEL_TRACING" not in azure_316["QUAY_EXTRA_CONFIG"]
-    assert "FEATURE_IMMUTABLE_TAGS" not in azure_316["QUAY_EXTRA_CONFIG"]
+    assert by_key[("3.17", "gcp")]["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
+        TEMPLATE_GREP_INVERT
+    )
+    assert by_key[("3.16", "azure")]["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
+        TEMPLATE_GREP_INVERT
+    )
