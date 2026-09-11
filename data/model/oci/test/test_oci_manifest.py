@@ -24,11 +24,12 @@ from data.model.oci.manifest import (
     CreateManifestException,
     connect_manifests,
     get_or_create_manifest,
+    lookup_cosign_signatures_for_digests,
     lookup_manifest,
     lookup_manifest_referrers,
 )
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.oci.tag import filter_to_alive_tags, get_tag
+from data.model.oci.tag import filter_to_alive_tags, get_tag, retarget_tag
 from data.model.repository import create_repository, get_repository
 from data.model.storage import get_layer_path
 from digest.digest_tools import sha256_digest
@@ -781,6 +782,299 @@ def test_get_or_create_manifest_with_subject(initialized_db):
 
     referrer = referrers[0]
     assert referrer.digest == oci_manifest2.digest
+
+
+def test_lookup_cosign_signatures_for_digests_referrer(initialized_db):
+    """Cosign v3-style signatures stored as OCI referrers with a subject field."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import COSIGN_SIGNATURE_ARTIFACT_TYPES
+
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    # _populate_blob is hardcoded to devtable/newrepo
+    repository = create_repository("devtable", "newrepo", None)
+
+    config1 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config1_json = json.dumps(config1)
+    _, config1_digest = _populate_blob(config1_json)
+    random_data1 = generate_random_data_for_layer()
+    _, random_digest1 = _populate_blob(random_data1)
+
+    image_builder = OCIManifestBuilder()
+    image_builder.set_config_digest(config1_digest, len(config1_json.encode("utf-8")))
+    image_builder.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    image_manifest = image_builder.build()
+    created_image = get_or_create_manifest(repository, image_manifest, storage)
+    assert created_image
+
+    config2 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config2_json = json.dumps(config2)
+    _, config2_digest = _populate_blob(config2_json)
+    random_data2 = generate_random_data_for_layer()
+    _, random_digest2 = _populate_blob(random_data2)
+
+    sig_builder = OCIManifestBuilder()
+    sig_builder.set_config_digest(config2_digest, len(config2_json.encode("utf-8")))
+    sig_builder.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    sig_builder.set_subject(
+        image_manifest.digest,
+        len(image_manifest.bytes.as_encoded_str()),
+        image_manifest.media_type,
+    )
+    sig_manifest = sig_builder.build()
+    created_sig = get_or_create_manifest(repository, sig_manifest, storage)
+    assert created_sig
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == created_sig.manifest.id
+    ).execute()
+
+    # Unrelated referrer (non-cosign artifact type) should be ignored
+    config3 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config3_json = json.dumps(config3)
+    _, config3_digest = _populate_blob(config3_json)
+    random_data3 = generate_random_data_for_layer()
+    _, random_digest3 = _populate_blob(random_data3)
+    other_builder = OCIManifestBuilder()
+    other_builder.set_config_digest(config3_digest, len(config3_json.encode("utf-8")))
+    other_builder.add_layer(random_digest3, len(random_data3.encode("utf-8")))
+    other_builder.set_subject(
+        image_manifest.digest,
+        len(image_manifest.bytes.as_encoded_str()),
+        image_manifest.media_type,
+    )
+    other_manifest = other_builder.build()
+    created_other = get_or_create_manifest(repository, other_manifest, storage)
+    assert created_other
+    ManifestTable.update(artifact_type="application/vnd.example.sbom+json").where(
+        ManifestTable.id == created_other.manifest.id
+    ).execute()
+
+    assert lookup_cosign_signatures_for_digests(repository.id, []) == {}
+
+    unsigned = "sha256:" + ("a" * 64)
+    assert lookup_cosign_signatures_for_digests(repository.id, [unsigned]) == {}
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest, unsigned])
+    assert image_manifest.digest in found
+    assert unsigned not in found
+    signature = found[image_manifest.digest]
+    assert signature.manifest_digest == created_sig.manifest.digest
+    assert signature.artifact_type == artifact_type
+    assert signature.tag_name is None
+
+
+def test_lookup_cosign_signatures_for_digests_sig_tag(initialized_db):
+    """Cosign v2-style signatures stored as sha256-<hex>.sig tags."""
+    repository = create_repository("devtable", "newrepo", None)
+    image_manifest, _ = create_manifest_for_testing(repository, differentiation_field="img")
+    sig_manifest, _ = create_manifest_for_testing(repository, differentiation_field="sig")
+
+    hex_digest = image_manifest.digest.split(":", 1)[1]
+    sig_tag_name = "sha256-%s.sig" % hex_digest
+    retarget_tag(sig_tag_name, sig_manifest.id, is_reversion=False)
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest])
+    assert image_manifest.digest in found
+    signature = found[image_manifest.digest]
+    assert signature.manifest_digest == sig_manifest.digest
+    assert signature.tag_name == sig_tag_name
+
+
+def test_lookup_cosign_signatures_for_digests_referrer_precedes_sig_tag(initialized_db):
+    """When both a referrer and a classic .sig exist, the referrer wins."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import COSIGN_SIGNATURE_ARTIFACT_TYPES
+
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    repository = create_repository("devtable", "newrepo", None)
+    image_manifest, image_interface = create_manifest_for_testing(
+        repository, differentiation_field="img"
+    )
+    classic_sig_manifest, _ = create_manifest_for_testing(repository, differentiation_field="sig")
+
+    hex_digest = image_manifest.digest.split(":", 1)[1]
+    sig_tag_name = "sha256-%s.sig" % hex_digest
+    retarget_tag(sig_tag_name, classic_sig_manifest.id, is_reversion=False)
+
+    config_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config_digest = _populate_blob(config_json)
+    random_data = generate_random_data_for_layer()
+    _, random_digest = _populate_blob(random_data)
+
+    referrer_builder = OCIManifestBuilder()
+    referrer_builder.set_config_digest(config_digest, len(config_json.encode("utf-8")))
+    referrer_builder.add_layer(random_digest, len(random_data.encode("utf-8")))
+    referrer_builder.set_subject(
+        image_interface.digest,
+        len(image_interface.bytes.as_encoded_str()),
+        image_interface.media_type,
+    )
+    referrer_manifest = referrer_builder.build()
+    created_referrer = get_or_create_manifest(repository, referrer_manifest, storage)
+    assert created_referrer
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == created_referrer.manifest.id
+    ).execute()
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest])
+    assert image_manifest.digest in found
+    signature = found[image_manifest.digest]
+    assert signature.manifest_digest == created_referrer.manifest.digest
+    assert signature.artifact_type == artifact_type
+    assert signature.tag_name is None
+
+
+def _create_oci_referrer(repository, subject_manifest, annotations=None):
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    config_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config_digest = _populate_blob(config_json)
+    random_data = generate_random_data_for_layer()
+    _, random_digest = _populate_blob(random_data)
+
+    builder = OCIManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_json.encode("utf-8")))
+    builder.add_layer(random_digest, len(random_data.encode("utf-8")))
+    builder.set_subject(
+        subject_manifest.digest,
+        len(subject_manifest.bytes.as_encoded_str()),
+        subject_manifest.media_type,
+    )
+    for key, value in (annotations or {}).items():
+        builder.add_annotation(key, value)
+    created = get_or_create_manifest(repository, builder.build(), storage)
+    assert created
+    return created
+
+
+def test_lookup_cosign_signatures_ignores_attestation_referrer(initialized_db):
+    """Cosign v3 attestations share the Sigstore bundle artifact type but are not signatures."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import COSIGN_SIGNATURE_ARTIFACT_TYPES
+
+    repository = create_repository("devtable", "newrepo", None)
+    image_manifest, image_interface = create_manifest_for_testing(
+        repository, differentiation_field="img"
+    )
+    created_att = _create_oci_referrer(
+        repository,
+        image_interface,
+        annotations={
+            "dev.sigstore.bundle.content": "dsse-envelope",
+            "dev.sigstore.bundle.predicateType": "https://slsa.dev/provenance/v1",
+        },
+    )
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == created_att.manifest.id
+    ).execute()
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest])
+    assert found == {}
+
+
+def test_lookup_cosign_signatures_accepts_message_signature_referrer(initialized_db):
+    """Cosign v3 sign referrers use message-signature content and no predicateType."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import COSIGN_SIGNATURE_ARTIFACT_TYPES
+
+    repository = create_repository("devtable", "newrepo", None)
+    image_manifest, image_interface = create_manifest_for_testing(
+        repository, differentiation_field="img"
+    )
+    created_sig = _create_oci_referrer(
+        repository,
+        image_interface,
+        annotations={"dev.sigstore.bundle.content": "message-signature"},
+    )
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == created_sig.manifest.id
+    ).execute()
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest])
+    assert image_manifest.digest in found
+    signature = found[image_manifest.digest]
+    assert signature.manifest_digest == created_sig.manifest.digest
+    assert signature.artifact_type == artifact_type
+    assert signature.tag_name is None
+
+
+def test_lookup_cosign_signatures_accepts_cosign_sign_dsse_referrer(initialized_db):
+    """Cosign 3.0.x sign writes DSSE with predicateType https://sigstore.dev/cosign/sign/v1."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import COSIGN_SIGNATURE_ARTIFACT_TYPES
+
+    repository = create_repository("devtable", "newrepo", None)
+    image_manifest, image_interface = create_manifest_for_testing(
+        repository, differentiation_field="img"
+    )
+    created_sig = _create_oci_referrer(
+        repository,
+        image_interface,
+        annotations={
+            "dev.sigstore.bundle.content": "dsse-envelope",
+            "dev.sigstore.bundle.predicateType": "https://sigstore.dev/cosign/sign/v1",
+        },
+    )
+
+    artifact_type = "application/vnd.dev.sigstore.bundle.v0.3+json"
+    assert artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES
+    ManifestTable.update(artifact_type=artifact_type).where(
+        ManifestTable.id == created_sig.manifest.id
+    ).execute()
+
+    found = lookup_cosign_signatures_for_digests(repository.id, [image_manifest.digest])
+    assert image_manifest.digest in found
+    signature = found[image_manifest.digest]
+    assert signature.manifest_digest == created_sig.manifest.digest
+    assert signature.tag_name is None
 
 
 def test_is_manifest_present_with_content(initialized_db):
