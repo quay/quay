@@ -215,8 +215,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
 
         // No token: 403
         const urlWithoutToken = exportedDataUrl.split('?')[0];
-        const noTokenResp =
-          await authenticatedPage.request.get(urlWithoutToken);
+        const noTokenResp = await authenticatedPage.request.get(urlWithoutToken);
         expect(noTokenResp.status()).toBe(403);
 
         // Tampered token: 403
