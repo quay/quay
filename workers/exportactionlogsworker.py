@@ -282,6 +282,7 @@ class ExportActionLogsWorker(QueueWorker):
                     callback_url,
                     resolve_dns=True,
                     allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+                    allow_only_secure=True,
                 )
             except ValueError:
                 logger.warning(
