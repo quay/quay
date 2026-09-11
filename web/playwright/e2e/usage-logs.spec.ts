@@ -170,6 +170,65 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         expect(body).toHaveProperty('repository');
       },
     );
+
+    test(
+      'exported log URL requires a valid token when using local storage',
+      {tag: '@webhook'},
+      async ({authenticatedPage, api, webhook}) => {
+        test.setTimeout(180_000);
+        const repo = await api.repository();
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+
+        await authenticatedPage.getByTestId('usage-logs-export-button').click();
+        await authenticatedPage
+          .getByTestId('usage-logs-export-email-input')
+          .fill(webhook.getUrl('/export-token-test'));
+        await authenticatedPage
+          .getByTestId('usage-logs-export-confirm-button')
+          .click();
+
+        await expect(
+          authenticatedPage.getByText('Logs exported with id').first(),
+        ).toBeVisible();
+
+        const received = await webhook.waitForWebhook(
+          (req) => req.url === '/export-token-test',
+          120_000,
+        );
+        expect(received).not.toBeNull();
+        expect(received!.body).toHaveProperty('status', 'success');
+
+        const exportedDataUrl: string = received!.body.exported_data_url;
+
+        // Token protection is only applicable for local storage
+        if (!exportedDataUrl.includes('/exportedlogs/')) {
+          return;
+        }
+
+        // Valid token: file is served with JSON content and no-store cache header
+        const validResp = await authenticatedPage.request.get(exportedDataUrl);
+        expect(validResp.status()).toBe(200);
+        expect(validResp.headers()['cache-control']).toBe('no-store');
+        const payload = await validResp.json();
+        expect(payload).toHaveProperty('logs');
+
+        // No token: 403
+        const urlWithoutToken = exportedDataUrl.split('?')[0];
+        const noTokenResp =
+          await authenticatedPage.request.get(urlWithoutToken);
+        expect(noTokenResp.status()).toBe(403);
+
+        // Tampered token: 403
+        const tamperedUrl = exportedDataUrl.replace(
+          /token=[^&]*/,
+          'token=invalidtoken',
+        );
+        const tamperedResp =
+          await authenticatedPage.request.get(tamperedUrl);
+        expect(tamperedResp.status()).toBe(403);
+      },
+    );
   });
 
   test('filters logs by text input', async ({authenticatedPage, api}) => {
