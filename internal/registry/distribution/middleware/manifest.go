@@ -86,6 +86,13 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
+	// PutManifest stored the tag together with the manifest. Distribution's
+	// handler calls the tag service for the same tag next; remember the write
+	// so that call does not expire and re-create the row (PROJQUAY-13201).
+	if record.Tag != "" {
+		markTagStored(ctx, record.Tag, dgst)
+	}
+
 	return dgst, nil
 }
 
