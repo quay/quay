@@ -174,7 +174,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     test(
       'exported log URL requires a valid token when using local storage',
       {tag: '@webhook'},
-      async ({authenticatedPage, api, webhook}) => {
+      async ({authenticatedPage, unauthenticatedPage, api, webhook}) => {
         test.setTimeout(180_000);
         const repo = await api.repository();
 
@@ -206,26 +206,42 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           return;
         }
 
-        // Valid token: file is served with JSON content and no-store cache header
-        const validResp = await authenticatedPage.request.get(exportedDataUrl);
+        // Valid token: use unauthenticated context to prove the token alone grants
+        // access — no session cookie needed (emailed/webhook links must work publicly)
+        const validResp =
+          await unauthenticatedPage.request.get(exportedDataUrl);
         expect(validResp.status()).toBe(200);
         expect(validResp.headers()['cache-control']).toBe('no-store');
         const payload = await validResp.json();
         expect(payload).toHaveProperty('logs');
+        expect(Array.isArray(payload.logs)).toBe(true);
 
-        // No token: 403
+        // No token: 403 and response body must not contain the log payload
         const urlWithoutToken = exportedDataUrl.split('?')[0];
-        const noTokenResp = await authenticatedPage.request.get(urlWithoutToken);
-        expect(noTokenResp.status()).toBe(403);
+        const noTokenResp =
+          await unauthenticatedPage.request.get(urlWithoutToken);
+        try {
+          expect(noTokenResp.status()).toBe(403);
+          const noTokenBody = await noTokenResp.text();
+          expect(noTokenBody).not.toContain('"logs"');
+        } finally {
+          await noTokenResp.dispose();
+        }
 
-        // Tampered token: 403
+        // Tampered token: 403 and response body must not contain the log payload
         const tamperedUrl = exportedDataUrl.replace(
           /token=[^&]*/,
           'token=invalidtoken',
         );
         const tamperedResp =
-          await authenticatedPage.request.get(tamperedUrl);
-        expect(tamperedResp.status()).toBe(403);
+          await unauthenticatedPage.request.get(tamperedUrl);
+        try {
+          expect(tamperedResp.status()).toBe(403);
+          const tamperedBody = await tamperedResp.text();
+          expect(tamperedBody).not.toContain('"logs"');
+        } finally {
+          await tamperedResp.dispose();
+        }
       },
     );
   });
