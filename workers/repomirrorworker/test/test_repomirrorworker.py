@@ -2444,9 +2444,7 @@ def test_build_local_digest_map_empty_repo(initialized_db):
 
 def test_build_local_digest_map_returns_empty_on_error(initialized_db):
     """_build_local_digest_map returns {} on exception so callers fall through to full copy."""
-    with mock.patch(
-        "workers.repomirrorworker.list_alive_tags", side_effect=Exception("db error")
-    ):
+    with mock.patch("workers.repomirrorworker.list_alive_tags", side_effect=Exception("db error")):
         digest_map = _build_local_digest_map(999999)
 
     assert digest_map == {}

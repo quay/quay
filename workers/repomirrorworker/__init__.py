@@ -28,7 +28,12 @@ from data.database import (
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
 from data.model import repository as repository_model
-from data.model.oci.tag import delete_tag, list_alive_tags, lookup_alive_tags_shallow, retarget_tag
+from data.model.oci.tag import (
+    delete_tag,
+    list_alive_tags,
+    lookup_alive_tags_shallow,
+    retarget_tag,
+)
 from data.model.org_mirror import (
     check_org_mirror_repo_sync_status,
     claim_org_mirror_config,
