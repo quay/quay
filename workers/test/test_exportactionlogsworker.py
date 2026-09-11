@@ -132,7 +132,10 @@ def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
     def format_date(datetime):
         return datetime.strftime("%m/%d/%Y")
 
-    with patch.dict(realapp.config, {"PREFERRED_URL_SCHEME": "https"}):
+    with patch.dict(
+        realapp.config,
+        {"PREFERRED_URL_SCHEME": "https", "LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS": True},
+    ):
         with HTTMock(handle_request):
             worker._process_queue_item(
                 {
