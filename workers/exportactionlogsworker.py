@@ -189,13 +189,8 @@ class ExportActionLogsWorker(QueueWorker):
             export_storage_path,
             expires_in=EXPORTED_LOGS_EXPIRATION_SECONDS,
         )
-        if export_url is None:
-            # verify we're not serving behind unencrypted hostname
-            if app.config.get("PREFERRED_URL_SCHEME", "http") != "https":
-                logger.error("Registry is using non-secure URL scheme, aborting export")
-                self._report_results(job_details, ExportResult.FAILED_EXPORT, export_url)
-                return
 
+        if export_url is None:
             # if we're running against local storage, sign the export_url with a presigned key
             # valid for 1 hour
             config_secret_key = app.config.get("SECRET_KEY", None)
@@ -212,6 +207,12 @@ class ExportActionLogsWorker(QueueWorker):
             token = encrypt_string(exported_filename, fernet_key)
 
             export_url = "%s/exportedlogs/%s?token=%s" % (get_app_url(), exported_filename, token)
+
+        # before we create any kind of callback, verify we're not serving behind unencrypted hostname
+        if app.config.get("PREFERRED_URL_SCHEME", "http") != "https":
+            logger.error("Registry is using non-secure URL scheme, aborting export")
+            self._report_results(job_details, ExportResult.FAILED_EXPORT)
+            return
 
         self._report_results(job_details, ExportResult.SUCCESSFUL_EXPORT, export_url)
 
