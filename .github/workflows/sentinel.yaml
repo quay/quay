@@ -87,8 +87,12 @@ jobs:
   python-ci:
     name: Python
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.python == 'true' }}
+    # Generator-only PRs still run Types Test so mypy covers ci-generator/
+    # without the full unit/integration/registry/OCI suite.
+    if: ${{ needs.detect-changes.outputs.python == 'true' || needs.detect-changes.outputs.generator == 'true' }}
     uses: ./.github/workflows/ci-python.yaml
+    with:
+      types-only: ${{ needs.detect-changes.outputs.python != 'true' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

@@ -327,7 +327,7 @@ def _looks_like_number(value: str) -> bool:
     return stripped.isdigit()
 
 
-def _represent_str(dumper: yaml.Dumper, data: str) -> yaml.Node:
+def _represent_str(dumper: GeneratorDumper, data: str) -> yaml.Node:
     if "\n" in data:
         return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
     needs_quotes = (
