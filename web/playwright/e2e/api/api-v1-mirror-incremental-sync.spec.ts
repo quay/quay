@@ -2,7 +2,7 @@ import {test, expect} from '../../fixtures';
 
 test.describe(
   'Mirror incremental sync (PROJQUAY-13193)',
-  {tag: ['@api', '@feature:REPO_MIRROR']},
+  {tag: ['@api', '@feature:REPO_MIRROR', '@mirror-incremental-sync']},
   () => {
     test('second sync preserves tag digest and completes without error', async ({
       api,
