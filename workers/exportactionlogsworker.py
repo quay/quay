@@ -208,12 +208,6 @@ class ExportActionLogsWorker(QueueWorker):
 
             export_url = "%s/exportedlogs/%s?token=%s" % (get_app_url(), exported_filename, token)
 
-        # before we create any kind of callback, verify we're not serving behind unencrypted hostname
-        if app.config.get("PREFERRED_URL_SCHEME", "http") != "https":
-            logger.error("Registry is using non-secure URL scheme, aborting export")
-            self._report_results(job_details, ExportResult.FAILED_EXPORT)
-            return
-
         self._report_results(job_details, ExportResult.SUCCESSFUL_EXPORT, export_url)
 
     def _stream_logs(
@@ -282,7 +276,7 @@ class ExportActionLogsWorker(QueueWorker):
                     callback_url,
                     resolve_dns=True,
                     allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
-                    allow_only_secure=True,
+                    allow_only_secure=app.config.get("LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS", True),
                 )
             except ValueError:
                 logger.warning(
