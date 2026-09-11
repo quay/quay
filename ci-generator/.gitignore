@@ -1,0 +1,14 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+.pytest_cache/
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Generated ci-operator configs (standalone repo default output)
+out/

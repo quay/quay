@@ -26,6 +26,7 @@ jobs:
       config-tool: ${{ steps.filter.outputs.config-tool }}
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
+      generator: ${{ steps.filter.outputs.generator }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,11 +42,15 @@ jobs:
             go:
               - '{**/*.go,go.mod,go.sum,.golangci.yml,.github/workflows/ci-go.yaml,internal/dal/**,sqlc.yaml,tools/schema_fingerprint.py,data/database.py,data/fields.py,data/migrations/versions/**,Makefile,requirements.txt}'
               - '!config-tool/**'
+              - '!ci-generator/**'
             config-tool:
               - '{config-tool/**,.github/workflows/ci-config-tool.yaml}'
+            generator:
+              - '{ci-generator/**,.github/workflows/ci-generator.yaml}'
             python:
-              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**,.github/workflows/sentinel.yaml}'
+              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**}'
               - '!config-tool/**'
+              - '!ci-generator/**'
               - '!web/**'
               - '!internal/**'
               - '!cmd/**'
@@ -65,10 +70,13 @@ jobs:
               - '!internal/**'
               - '!cmd/**'
               - '!config-tool/**'
+              - '!ci-generator/**'
               - '!.github/workflows/ci-config-tool.yaml'
+              - '!.github/workflows/ci-generator.yaml'
               - '!.github/workflows/ci-go.yaml'
               - '!.github/workflows/ci-python.yaml'
               - '!.github/workflows/ci-lint.yaml'
+              - '!.github/workflows/sentinel.yaml'
 
   lint-ci:
     name: Lint
@@ -96,6 +104,12 @@ jobs:
     if: ${{ needs.detect-changes.outputs.config-tool == 'true' }}
     uses: ./.github/workflows/ci-config-tool.yaml
 
+  generator-ci:
+    name: CI Generator
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.generator == 'true' }}
+    uses: ./.github/workflows/ci-generator.yaml
+
   web-ci:
     name: Web
     needs: detect-changes
@@ -108,7 +122,7 @@ jobs:
 
   all-green:
     name: all-green
-    needs: [detect-changes, lint-ci, python-ci, go-ci, config-tool-ci, web-ci]
+    needs: [detect-changes, lint-ci, python-ci, go-ci, config-tool-ci, generator-ci, web-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -122,6 +136,8 @@ jobs:
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
             }}${{
               needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''
+            }}${{
+              needs.generator-ci.result == 'skipped' && 'generator-ci,' || ''
             }}${{
               needs.python-ci.result == 'skipped' && 'python-ci,' || ''
             }}${{
