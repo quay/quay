@@ -10,6 +10,16 @@ type Store interface {
 	// CleanExpiredUploadedBlobs removes uploadedblob rows past their expiry.
 	CleanExpiredUploadedBlobs(ctx context.Context) error
 
+	// FindMarkedRepositories returns repositories the API marked for deletion
+	// (state = 3) together with their deletedrepository marker, if any.
+	FindMarkedRepositories(ctx context.Context) ([]MarkedRepository, error)
+
+	// PurgeRepository deletes every row owned by a marked repository — tags,
+	// manifests and their links, upload markers, permissions, the deletion
+	// marker and its queue item, and finally the repository row — in a single
+	// transaction. Blobs are left for the orphaned-blob phase.
+	PurgeRepository(ctx context.Context, repo MarkedRepository) (RepositoryPurge, error)
+
 	// FindExpiredTags returns tags whose soft-delete grace period has elapsed.
 	FindExpiredTags(ctx context.Context) ([]ExpiredTag, error)
 
@@ -33,6 +43,21 @@ type Store interface {
 	// dependent rows in a transaction. The result reports the actual metadata
 	// deletion and whether no remaining row shares its physical content.
 	DeleteBlobRecord(ctx context.Context, candidate OrphanedBlob) (BlobDeletion, error)
+}
+
+// MarkedRepository is a repository the API soft-deleted and GC must purge.
+type MarkedRepository struct {
+	ID       int64
+	MarkerID int64
+	// QueueID is the repository-GC queueitem id recorded on the marker; zero
+	// when the marker has no queue item.
+	QueueID int64
+}
+
+// RepositoryPurge counts what PurgeRepository removed.
+type RepositoryPurge struct {
+	TagsDeleted      int
+	ManifestsDeleted int
 }
 
 // ExpiredTag is a tag whose grace period has elapsed.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/quay/quay/internal/dal/daldb"
 )
@@ -23,6 +24,109 @@ func NewSQLiteStore(db *sql.DB) *SQLiteStore {
 // CleanExpiredUploadedBlobs removes uploadedblob rows past their expiry.
 func (s *SQLiteStore) CleanExpiredUploadedBlobs(ctx context.Context) error {
 	return daldb.New(s.db).CleanExpiredUploadedBlobs(ctx)
+}
+
+// FindMarkedRepositories returns repositories in the deleted state.
+func (s *SQLiteStore) FindMarkedRepositories(ctx context.Context) ([]MarkedRepository, error) {
+	rows, err := daldb.New(s.db).FindMarkedRepositories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	repos := make([]MarkedRepository, 0, len(rows))
+	for _, r := range rows {
+		repo := MarkedRepository{ID: r.ID}
+		if r.MarkerID.Valid {
+			repo.MarkerID = r.MarkerID.Int64
+		}
+		if r.QueueID.Valid {
+			if id, err := strconv.ParseInt(r.QueueID.String, 10, 64); err == nil {
+				repo.QueueID = id
+			}
+		}
+		repos = append(repos, repo)
+	}
+	return repos, nil
+}
+
+// PurgeRepository removes all rows owned by a marked repository. The order
+// follows Python's purge_repository: tag and manifest dependants first, then
+// the manifests, then every table with a repository foreign key, then the
+// deletion marker, its queue item, and the repository itself. The repository
+// row is only removed while still in state 3 so an active repository can
+// never be dropped by mistake.
+func (s *SQLiteStore) PurgeRepository(ctx context.Context, repo MarkedRepository) (RepositoryPurge, error) {
+	var purge RepositoryPurge
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return purge, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := daldb.New(tx)
+
+	tags, err := q.CountTagsByRepository(ctx, repo.ID)
+	if err != nil {
+		return purge, fmt.Errorf("count tags: %w", err)
+	}
+	manifests, err := q.CountManifestsByRepository(ctx, repo.ID)
+	if err != nil {
+		return purge, fmt.Errorf("count manifests: %w", err)
+	}
+
+	steps := []struct {
+		name string
+		fn   func(context.Context, int64) error
+	}{
+		{"tag notifications", q.DeleteTagNotificationsByRepository},
+		{"tags", q.DeleteTagsByRepository},
+		{"manifest labels", q.DeleteManifestLabelsByRepository},
+		{"manifest children", q.DeleteManifestChildrenByRepository},
+		{"manifest blobs", q.DeleteManifestBlobsByRepository},
+		{"manifest security status", q.DeleteManifestSecurityStatusByRepository},
+		{"manifest pull statistics", q.DeleteManifestPullStatisticsByRepository},
+		{"tag pull statistics", q.DeleteTagPullStatisticsByRepository},
+		{"manifests", q.DeleteManifestsByRepository},
+		{"uploaded blobs", q.DeleteUploadedBlobsByRepository},
+		{"blob uploads", q.DeleteBlobUploadsByRepository},
+		{"builds", q.DeleteRepositoryBuildsByRepository},
+		{"build triggers", q.DeleteRepositoryBuildTriggersByRepository},
+		{"access tokens", q.DeleteAccessTokensByRepository},
+		{"mirror config", q.DeleteRepoMirrorConfigByRepository},
+		{"mirror rules", q.DeleteRepoMirrorRulesByRepository},
+		{"org mirror repositories", func(ctx context.Context, id int64) error {
+			return q.DeleteOrgMirrorRepositoriesByRepository(ctx, sql.NullInt64{Int64: id, Valid: true})
+		}},
+		{"appr tags", q.DeleteApprTagsByRepository},
+		{"permissions", q.DeleteRepositoryPermissionsByRepository},
+		{"notifications", q.DeleteRepositoryNotificationsByRepository},
+		{"action counts", q.DeleteRepositoryActionCountsByRepository},
+		{"authorized emails", q.DeleteRepositoryAuthorizedEmailsByRepository},
+		{"auto-prune policies", q.DeleteRepositoryAutoPrunePoliciesByRepository},
+		{"immutability policies", q.DeleteRepositoryImmutabilityPoliciesByRepository},
+		{"search scores", q.DeleteRepositorySearchScoresByRepository},
+		{"quota sizes", q.DeleteQuotaRepositorySizesByRepository},
+		{"stars", q.DeleteStarsByRepositoryForPurge},
+		{"deletion markers", q.DeleteDeletedRepositoryMarkers},
+	}
+	for _, step := range steps {
+		if err := step.fn(ctx, repo.ID); err != nil {
+			return purge, fmt.Errorf("delete %s for repository %d: %w", step.name, repo.ID, err)
+		}
+	}
+	if repo.QueueID != 0 {
+		if err := q.DeleteQueueItem(ctx, repo.QueueID); err != nil {
+			return purge, fmt.Errorf("delete queue item %d for repository %d: %w", repo.QueueID, repo.ID, err)
+		}
+	}
+	if err := q.DeleteRepository(ctx, repo.ID); err != nil {
+		return purge, fmt.Errorf("delete repository %d: %w", repo.ID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return purge, err
+	}
+	purge.TagsDeleted = int(tags)
+	purge.ManifestsDeleted = int(manifests)
+	return purge, nil
 }
 
 // FindExpiredTags returns tags whose soft-delete grace period has elapsed.
