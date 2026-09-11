@@ -435,7 +435,7 @@ def exportedlogs(file_id):
 
     fernet_key = base64.urlsafe_b64encode(hashlib.sha256(config_secret_key.encode()).digest())
 
-    expiration = app.config.get("EXPORT_ACTIONS_LOGS_SECONDS", 60 * 60)
+    expiration = app.config.get("EXPORT_ACTION_LOGS_SECONDS", 60 * 60)
     decrypted = decrypt_string(token, fernet_key, ttl=expiration)
     if decrypted != file_id:
         logger.exception("Failed to verify provided token for export log download")
@@ -451,10 +451,12 @@ def exportedlogs(file_id):
         abort(404)
 
     try:
-        return send_file(
+        response = send_file(
             storage.stream_read_file(storage.preferred_locations, export_storage_path),
             mimetype=JSON_MIMETYPE,
         )
+        response.headers["Cache-control"] = "no-store"
+        return response
     except IOError:
         logger.exception("Could not read exported logs")
         abort(403)

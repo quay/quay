@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -18,8 +19,6 @@ from workers.exportactionlogsworker import (
     ExportActionLogsWorker,
     ExportResult,
 )
-
-import logging
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
