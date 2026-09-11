@@ -84,10 +84,7 @@ class Cell:
 
     @property
     def test_as(self) -> str:
-        return (
-            f"{self.cloud}-{self.storage}-{self.quay_version_dashed}-"
-            f"{self.tier}-{self.ocp_version_dashed}"
-        )
+        return f"{self.storage}-{self.tier}"
 
     @property
     def filename(self) -> str:

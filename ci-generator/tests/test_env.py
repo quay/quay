@@ -69,7 +69,7 @@ def test_job_as_applies_to_split_row_only() -> None:
                         "clouds": ["aws"],
                         "ocp": ["4.22"],
                         "test": "e2e-install",
-                        "as": "aws-s3-3-18-nightly-4-22",
+                        "as": "custom-aws-name",
                     },
                     {
                         "tier": "daily",
@@ -83,9 +83,9 @@ def test_job_as_applies_to_split_row_only() -> None:
     }
     cells = expand_cells(matrix)
     by_cloud = {cell.cloud: cell for cell in cells}
-    assert by_cloud["aws"].as_name == "aws-s3-3-18-nightly-4-22"
+    assert by_cloud["aws"].as_name == "custom-aws-name"
     assert by_cloud["azure"].as_name is None
-    assert by_cloud["azure"].test_as == "azure-blob-3-18-daily-4-22"
+    assert by_cloud["azure"].test_as == "blob-daily"
 
 
 def test_cell_settings_overwrite_as_and_env() -> None:
@@ -100,27 +100,27 @@ def test_cell_settings_overwrite_as_and_env() -> None:
     merged = apply_cell_settings(
         config,
         _cell(
-            as_name="aws-s3-3-18-nightly-4-22",
+            as_name="custom-aws-name",
             env={"PLAYWRIGHT_GREP_INVERT": "new"},
         ),
     )
-    assert merged["tests"][0]["as"] == "aws-s3-3-18-nightly-4-22"
+    assert merged["tests"][0]["as"] == "custom-aws-name"
     assert merged["tests"][0]["steps"]["env"]["KEEP"] == "yes"
     assert merged["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == "new"
 
 
-def test_phase0_names_are_version_specific() -> None:
+def test_phase0_names_use_storage_and_tier() -> None:
     by_key = {
         (cell.quay_version, cell.cloud): config["tests"][0]["as"]
         for cell, _filename, config in generate_all()
     }
-    assert by_key[("3.18", "aws")] == "aws-s3-3-18-nightly-4-22"
-    assert by_key[("3.18", "gcp")] == "gcp-gcs-3-18-nightly-4-22"
-    assert by_key[("3.18", "azure")] == "azure-blob-3-18-daily-4-22"
-    assert by_key[("3.17", "gcp")] == "gcp-gcs-3-17-daily-4-22"
-    assert by_key[("3.17", "azure")] == "azure-blob-3-17-daily-4-22"
-    assert by_key[("3.16", "gcp")] == "gcp-gcs-3-16-daily-4-22"
-    assert by_key[("3.16", "azure")] == "azure-blob-3-16-daily-4-22"
+    assert by_key[("3.18", "aws")] == "s3-daily"
+    assert by_key[("3.18", "gcp")] == "gcs-weekly"
+    assert by_key[("3.18", "azure")] == "blob-daily"
+    assert by_key[("3.17", "gcp")] == "gcs-daily"
+    assert by_key[("3.17", "azure")] == "blob-daily"
+    assert by_key[("3.16", "gcp")] == "gcs-daily"
+    assert by_key[("3.16", "azure")] == "blob-daily"
 
 
 def test_older_branches_replace_extra_config_without_otel() -> None:

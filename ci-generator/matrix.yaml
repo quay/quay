@@ -9,17 +9,11 @@ quay:
   - branch: redhat-3.18
     jobs:
       - tier: daily
-        clouds: [aws]
+        clouds: [aws, azure]
         ocp: ["4.22"]
         test: e2e-install
-        as: aws-s3-3-18-nightly-4-22
       - tier: weekly
         clouds: [gcp]
-        ocp: ["4.22"]
-        test: e2e-install
-        as: gcp-gcs-3-18-nightly-4-22
-      - tier: daily
-        clouds: [azure]
         ocp: ["4.22"]
         test: e2e-install
   - branch: redhat-3.17

@@ -41,17 +41,8 @@ global_defaults:
 quay:
   - branch: redhat-3.18
     jobs:
-      - tier: daily
-        clouds: [aws]
-        ocp: ["4.22"]
-        test: e2e-install
-        as: aws-s3-3-18-nightly-4-22
-      - tier: weekly
-        clouds: [gcp]
-        ocp: ["4.22"]
-        test: e2e-install
-        as: gcp-gcs-3-18-nightly-4-22
-      - {tier: daily, clouds: [azure], ocp: ["4.22"], test: e2e-install}
+      - {tier: daily, clouds: [aws, azure], ocp: ["4.22"], test: e2e-install}
+      - {tier: weekly, clouds: [gcp], ocp: ["4.22"], test: e2e-install}
   - branch: redhat-3.17
     env:
       PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP"
@@ -70,13 +61,13 @@ quay:
 | `quay[].env` | Env keys applied to every job on that branch. Values replace whole keys. |
 | `quay[].jobs[]` | One job spec, expanded across `clouds` × `ocp` |
 | `quay[].jobs[].env` | Optional per-job env; keys replace branch env of the same name |
-| `quay[].jobs[].as` | Optional ci-operator test name. Use this to keep a live/legacy name. Split the job into its own row when only some clouds need it. |
+| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{storage}-{tier}` (for example `s3-daily`). Split the job into its own row when only some clouds need a different name. |
 
 Each job is cartesian-expanded to one ci-operator file named:
 
 `{org}-{repo}-{branch}__{cloud}-ocp{ocp_nodot}-{test}.yaml`
 
-The derived test name is `{cloud}-{storage}-{quay}-{tier}-{ocp}` unless `as` is set.
+The filename already carries Quay version, cloud, OCP version, and test. The derived `tests[].as` is `{storage}-{tier}` unless `as` is set.
 
 ## Layer order
 
@@ -98,10 +89,8 @@ The only difference between tiers is **timing** and **how a cluster is obtained*
 | --- | --- | --- |
 | `presubmit` | On every PR, before merge | Test-level `cluster_claim` + `always_run: true`, `workflow: generic-claim`, no `cluster_profile` / `post`. Fast gate; keep the matrix small. |
 | `daily` | Once a day | `cluster_profile` + `cron: '@daily'`. Broader matrix (several clouds × OCP versions). |
-| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). Alias so a cell can stay daily-scheduled while a legacy `as:` still contains `nightly`. |
+| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). Use when the derived name should be `{storage}-nightly`. |
 | `weekly` | Once a week | `cluster_profile` + `cron: '@weekly'`. Long tail — older versions, upgrades. |
-
-Job-level `as:` is how live names such as `aws-s3-3-18-nightly-4-22` are preserved on a `daily` or `weekly` cell.
 
 ## Adding coverage
 
