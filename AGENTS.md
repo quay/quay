@@ -71,6 +71,11 @@ make types-test                      # Type checking (mypy)
 6. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
 7. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
 8. **Review scope:** Address blocking or explicitly requested review feedback. Non-blocking observations do not authorize unrelated changes. Check equivalent execution paths needed to preserve the fix's invariant, but report other similar occurrences instead of expanding scope without approval.
+9. **Reserved names:** The following names cannot be used for organizations or repositories because they conflict with route prefixes or API endpoints:
+   - Frontend route prefixes: `overview`, `organization`, `repository`, `signin`, `build`, `tag`, `user`, `about`, `security`, `service-keys`, `change-log`, `usage-logs`, `messages`, `build-logs`, `oauth-error`, `createaccount`
+   - Backend API path prefixes: `v1`, `v2`, `cnr`, `repository`, `customtrigger`, `bitbucket`, `github`, `push`
+
+   Attempts to use these names will result in routing conflicts and 404 errors. This is intentional behavior to prevent API ambiguity. Do not attempt to "fix" routing to support these names — such PRs will be rejected. See `agent_docs/architecture.md` for technical details.
 
 ## Contributing
 
