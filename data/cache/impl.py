@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime
@@ -57,6 +58,15 @@ class DataModelCache(object):
     def invalidate(self, cache_key):
         pass
 
+    @abstractmethod
+    def add(self, cache_key, value):
+        """Atomically add a value if the cache key does not already exist.
+
+        Returns True when added, False when already present, and None when the
+        backend could not perform the operation.
+        """
+        pass
+
 
 class DisconnectWrapper(DataModelCache):
     """
@@ -77,6 +87,10 @@ class DisconnectWrapper(DataModelCache):
         with CloseForLongOperation(self.app_config):
             return self.cache.invalidate(cache_key)
 
+    def add(self, cache_key, value):
+        with CloseForLongOperation(self.app_config):
+            return self.cache.add(cache_key, value)
+
 
 class NoopDataModelCache(DataModelCache):
     """
@@ -89,6 +103,9 @@ class NoopDataModelCache(DataModelCache):
     def invalidate(self, cache_key):
         return
 
+    def add(self, cache_key, value):
+        return True
+
 
 class InMemoryDataModelCache(DataModelCache):
     """
@@ -98,6 +115,7 @@ class InMemoryDataModelCache(DataModelCache):
     def __init__(self, cache_config):
         super(InMemoryDataModelCache, self).__init__(cache_config)
         self.cache = ExpiresDict()
+        self._cache_lock = threading.Lock()
 
     def empty_for_testing(self):
         self.cache = ExpiresDict()
@@ -142,6 +160,14 @@ class InMemoryDataModelCache(DataModelCache):
             del self.cache[cache_key.key]
         except KeyError:
             pass
+
+    def add(self, cache_key, value):
+        with self._cache_lock:
+            if self.cache.get(cache_key.key, default_value=[None]) != [None]:
+                return False
+            expires = convert_to_timedelta(cache_key.expiration) + datetime.now()
+            self.cache.set(cache_key.key, json.dumps(value), expires=expires)
+            return True
 
 
 _DEFAULT_MEMCACHE_TIMEOUT = 1  # second
@@ -281,6 +307,23 @@ class MemcachedModelCache(DataModelCache):
             except:
                 pass
 
+    def add(self, cache_key, value):
+        client = self.client_pool
+        if client is None:
+            return None
+        try:
+            expires = convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
+            return bool(
+                client.add(
+                    cache_key.key,
+                    value,
+                    expire=int(expires.total_seconds()) if expires else None,
+                )
+            )
+        except Exception:
+            logger.warning("Got exception when trying to add key %s", cache_key.key)
+            return None
+
 
 class RedisDataModelCache(DataModelCache):
     """
@@ -376,3 +419,25 @@ class RedisDataModelCache(DataModelCache):
                     cache_key.key,
                     re,
                 )
+
+    def add(self, cache_key, value):
+        if self.client is None:
+            return None
+        try:
+            expires = convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
+            return bool(
+                self.client.set(
+                    cache_key.key,
+                    json.dumps(value),
+                    ex=int(expires.total_seconds()) if expires else None,
+                    nx=True,
+                )
+            )
+        except RedisError as re:
+            logger.warning(
+                "Got RedisError exception when trying to add key %s: %s", cache_key.key, re
+            )
+            return None
+        except Exception as e:
+            logger.warning("Got exception when trying to add key %s: %s", cache_key.key, e)
+            return None
