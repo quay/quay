@@ -29,7 +29,10 @@ from data.fields import DecryptedValue
 from data.model import DataModelException
 from data.model.immutability import namespace_has_immutability_policies
 from util.names import parse_robot_username
-from util.security.ssrf import validate_external_registry_url
+from util.security.ssrf import (
+    validate_external_registry_url,
+    validate_mirror_proxy_config,
+)
 
 # Sentinel value to distinguish "not provided" from "explicitly set to None"
 _UNSET = object()
@@ -139,6 +142,15 @@ def create_org_mirror_config(
             external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
         )
     except ValueError as e:
+        raise DataModelException(str(e))
+
+    try:
+        validate_mirror_proxy_config(
+            (external_registry_config or {}).get("proxy", {}),
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+        )
+    except (AttributeError, ValueError) as e:
         raise DataModelException(str(e))
 
     if not internal_robot.robot:
@@ -279,6 +291,16 @@ def update_org_mirror_config(
                 external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
             )
         except ValueError as e:
+            raise DataModelException(str(e))
+
+    if external_registry_config is not None:
+        try:
+            validate_mirror_proxy_config(
+                external_registry_config.get("proxy", {}),
+                resolve_dns=False,
+                allowed_hosts=allowed_hosts,
+            )
+        except (AttributeError, ValueError) as e:
             raise DataModelException(str(e))
 
     # Validate robot belongs to organization if provided

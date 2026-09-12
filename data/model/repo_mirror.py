@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from datetime import datetime, timedelta
 
 from jsonschema import ValidationError
@@ -18,7 +19,10 @@ from data.database import (
 from data.fields import DecryptedValue
 from data.model import DataModelException
 from util.names import parse_robot_username
-from util.security.ssrf import validate_external_registry_reference
+from util.security.ssrf import (
+    validate_external_registry_reference,
+    validate_mirror_proxy_config,
+)
 
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3
@@ -241,6 +245,15 @@ def enable_mirroring_for_repository(
             allowed_hosts=allowed_hosts,
         )
     except ValueError as e:
+        raise DataModelException(str(e))
+
+    try:
+        validate_mirror_proxy_config(
+            (external_registry_config or {}).get("proxy", {}),
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+        )
+    except (AttributeError, ValueError) as e:
         raise DataModelException(str(e))
 
     assert internal_robot.robot
@@ -547,32 +560,61 @@ def change_retries_remaining(repository, retries_remaining):
     return update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
 
 
-def change_external_registry_config(repository, config_updates):
+def merge_external_registry_config(current_config, config_updates):
+    """Return a merged mirror config without changing either input mapping."""
+    if not isinstance(config_updates, dict):
+        raise ValueError("External registry configuration must be an object")
+
+    merged = deepcopy(current_config or {})
+    for key in ("verify_tls", "unsigned_images"):
+        if key in config_updates:
+            merged[key] = config_updates[key]
+
+    if "proxy" in config_updates:
+        proxy_updates = config_updates["proxy"]
+        if not isinstance(proxy_updates, dict):
+            raise ValueError("Mirror proxy configuration must be an object")
+        existing_proxy = merged.get("proxy")
+        if existing_proxy is None:
+            proxy_config = {}
+            merged["proxy"] = proxy_config
+        elif isinstance(existing_proxy, dict):
+            proxy_config = existing_proxy
+        else:
+            # Preserve malformed persisted data so validation reports a controlled error.
+            return merged
+        for key in ("http_proxy", "https_proxy", "no_proxy"):
+            if key in proxy_updates:
+                proxy_config[key] = proxy_updates[key]
+
+    return merged
+
+
+def change_external_registry_config(repository, config_updates, allowed_hosts=None):
     """
     Update the 'external_registry_config' with the passed in fields.
 
     Config has:
     verify_tls: True|False
     unsigned_images: True|False
-    proxy: JSON fields 'http_proxy', 'https_proxy', andn 'no_proxy'
+    proxy: JSON fields 'http_proxy', 'https_proxy', and 'no_proxy'
     """
     mirror = get_mirror(repository)
-    external_registry_config = mirror.external_registry_config
+    try:
+        external_registry_config = merge_external_registry_config(
+            mirror.external_registry_config,
+            config_updates,
+        )
+        validate_mirror_proxy_config(
+            external_registry_config.get("proxy", {}),
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+        )
+    except (AttributeError, ValueError) as e:
+        raise DataModelException(str(e))
 
-    if "verify_tls" in config_updates:
-        external_registry_config["verify_tls"] = config_updates["verify_tls"]
-
-    if "unsigned_images" in config_updates:
-        external_registry_config["unsigned_images"] = config_updates["unsigned_images"]
-
-    if "proxy" in config_updates:
-        proxy_updates = config_updates["proxy"]
-        for key in ("http_proxy", "https_proxy", "no_proxy"):
-            if key in config_updates["proxy"]:
-                if "proxy" not in external_registry_config:
-                    external_registry_config["proxy"] = {}
-                else:
-                    external_registry_config["proxy"][key] = proxy_updates[key]
+    if external_registry_config == (mirror.external_registry_config or {}):
+        return None
 
     return update_with_transaction(mirror, external_registry_config=external_registry_config)
 

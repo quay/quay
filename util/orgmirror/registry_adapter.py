@@ -4,13 +4,19 @@ Abstract base class for source registry adapters used in organization mirroring.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import ProxyError
 from requests.packages.urllib3.util.retry import Retry
 from requests.utils import should_bypass_proxies
 
+from util.security.proxy import (
+    MIRROR_PROXY_VALIDATION_ERROR,
+    MirrorProxyValidationError,
+    pinned_mirror_proxy_config,
+)
 from util.security.ssrf import validate_external_registry_url
 
 DEFAULT_TIMEOUT = 30
@@ -52,27 +58,43 @@ class RegistryAdapter(ABC):
         # DNS record changes between config creation (API layer) and actual HTTP use.
         validate_external_registry_url(url, resolve_dns=True, allowed_hosts=allowed_hosts)
 
+        self._config = config or {}
+        if not isinstance(self._config, dict):
+            raise ValueError("External registry configuration must be an object")
+        self._allowed_hosts = list(allowed_hosts or [])
+
         self.base_url = url.rstrip("/")
         self.namespace = namespace
         self.auth = (username, password) if username and password else None
-        self._config = config or {}
         self.verify_tls = self._config.get("verify_tls", True)
-        self.proxy = self._config.get("proxy", {})
+        configured_proxy = self._config.get("proxy")
+        self.proxy = configured_proxy if configured_proxy is not None else {}
         self.timeout = self._config.get("timeout", DEFAULT_TIMEOUT)
         self.max_retries = max_retries
         self.session = self._create_session()
 
-    def _build_proxies(self, url: str) -> Dict:
-        """Build proxies dict for requests, respecting no_proxy."""
+    def _get(self, url: str, **kwargs):
+        """Issue a GET through proxy addresses pinned during this request."""
+        if not isinstance(self.proxy, Mapping):
+            raise ProxyError(MIRROR_PROXY_VALIDATION_ERROR)
+
         no_proxy = self.proxy.get("no_proxy", "")
         if no_proxy and should_bypass_proxies(url, no_proxy=no_proxy):
-            return {}
-        proxies = {}
-        if self.proxy.get("http_proxy"):
-            proxies["http"] = self.proxy["http_proxy"]
-        if self.proxy.get("https_proxy"):
-            proxies["https"] = self.proxy["https_proxy"]
-        return proxies
+            return self.session.get(url, proxies={}, **kwargs)
+
+        try:
+            with pinned_mirror_proxy_config(
+                self.proxy,
+                allowed_hosts=self._allowed_hosts,
+            ) as effective_proxy:
+                proxies = {}
+                if effective_proxy.get("http_proxy"):
+                    proxies["http"] = effective_proxy["http_proxy"]
+                if effective_proxy.get("https_proxy"):
+                    proxies["https"] = effective_proxy["https_proxy"]
+                return self.session.get(url, proxies=proxies, **kwargs)
+        except MirrorProxyValidationError as e:
+            raise ProxyError(str(e)) from None
 
     def _create_session(self) -> requests.Session:
         """

@@ -36,11 +36,16 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 from util.orgmirror import get_registry_adapter
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+from util.security.ssrf import (
+    SSRFBlockedError,
+    validate_external_registry_url,
+    validate_mirror_proxy_config,
+)
 
 # Generic error message for SSRF rejections. Avoids leaking internal network topology
 # by not distinguishing between blocked hostnames, private IPs, and DNS results.
 SSRF_GENERIC_ERROR = "The provided registry URL is not allowed"
+PROXY_SSRF_GENERIC_ERROR = "The provided mirror proxy location is not allowed"
 
 
 def _get_ssrf_allowed_hosts():
@@ -60,6 +65,19 @@ def _validate_registry_url(url):
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
     except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
+def _validate_proxy_config(external_registry_config):
+    """Validate organization mirror proxy destinations before any state change."""
+    try:
+        validate_mirror_proxy_config(
+            (external_registry_config or {}).get("proxy", {}),
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+        )
+    except SSRFBlockedError:
+        raise InvalidRequest(PROXY_SSRF_GENERIC_ERROR)
+    except (AttributeError, ValueError) as e:
         raise InvalidRequest(str(e))
 
 
@@ -288,6 +306,10 @@ class OrgMirrorConfig(ApiResource):
 
         data = request.get_json()
 
+        # Validate all outbound destinations before any database mutation.
+        _validate_registry_url(data.get("external_registry_url"))
+        _validate_proxy_config(data.get("external_registry_config", {}))
+
         # Validate and look up robot account
         robot_username = data.get("robot_username")
         try:
@@ -333,9 +355,6 @@ class OrgMirrorConfig(ApiResource):
         skopeo_timeout = data.get("skopeo_timeout", 300)
         if skopeo_timeout < 30 or skopeo_timeout > 3600:
             raise InvalidRequest("skopeo_timeout must be between 30 and 3600 seconds")
-
-        # Validate external_registry_url to prevent SSRF (CWE-918)
-        _validate_registry_url(data.get("external_registry_url"))
 
         # Create the mirror config
         try:
@@ -395,6 +414,12 @@ class OrgMirrorConfig(ApiResource):
 
         data = request.get_json()
 
+        # Validate all outbound destinations before building or applying updates.
+        if "external_registry_url" in data:
+            _validate_registry_url(data["external_registry_url"])
+        if "external_registry_config" in data:
+            _validate_proxy_config(data["external_registry_config"])
+
         # Build update kwargs with validated values
         update_kwargs = {}
 
@@ -404,8 +429,6 @@ class OrgMirrorConfig(ApiResource):
 
         # Handle external_registry_url
         if "external_registry_url" in data:
-            # Validate URL to prevent SSRF (CWE-918)
-            _validate_registry_url(data["external_registry_url"])
             update_kwargs["external_registry_url"] = data["external_registry_url"]
 
         # Handle external_namespace

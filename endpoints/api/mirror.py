@@ -25,9 +25,14 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
+from util.security.ssrf import (
+    SSRFBlockedError,
+    validate_external_registry_reference,
+    validate_mirror_proxy_config,
+)
 
 SSRF_GENERIC_ERROR = "The provided registry location is not allowed"
+PROXY_SSRF_GENERIC_ERROR = "The provided mirror proxy location is not allowed"
 
 
 def _get_ssrf_allowed_hosts():
@@ -44,6 +49,19 @@ def _validate_external_reference(reference):
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
     except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
+def _validate_proxy_config(external_registry_config):
+    """Validate mirror proxy destinations before any configuration mutation."""
+    try:
+        validate_mirror_proxy_config(
+            (external_registry_config or {}).get("proxy", {}),
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+        )
+    except SSRFBlockedError:
+        raise InvalidRequest(PROXY_SSRF_GENERIC_ERROR)
+    except (AttributeError, ValueError) as e:
         raise InvalidRequest(str(e))
 
 
@@ -342,6 +360,7 @@ class RepoMirrorResource(RepositoryParamResource):
 
         # Validate the complete request before creating rules or changing permissions.
         _validate_external_reference(data["external_reference"])
+        _validate_proxy_config(data.get("external_registry_config", {}))
 
         arch_filter = data.get("architecture_filter")
         if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
@@ -420,6 +439,12 @@ class RepoMirrorResource(RepositoryParamResource):
         # Validate and normalize every requested change before applying any update.
         if "external_reference" in values:
             _validate_external_reference(values["external_reference"])
+        if "external_registry_config" in values:
+            effective_config = model.repo_mirror.merge_external_registry_config(
+                mirror.external_registry_config,
+                values["external_registry_config"],
+            )
+            _validate_proxy_config(effective_config)
 
         if "sync_start_date" in values:
             try:
@@ -588,59 +613,29 @@ class RepoMirrorResource(RepositoryParamResource):
                 )
 
         if "external_registry_config" in values:
-            external_registry_config = values.get("external_registry_config", {})
+            external_registry_config = values["external_registry_config"]
+            if model.repo_mirror.change_external_registry_config(
+                repo,
+                external_registry_config,
+                allowed_hosts=_get_ssrf_allowed_hosts(),
+            ):
+                for field in ("verify_tls", "unsigned_images"):
+                    if field in external_registry_config:
+                        track_and_log(
+                            "repo_mirror_config_changed",
+                            wrap_repository(repo),
+                            changed=field,
+                            to=external_registry_config[field],
+                        )
 
-            if "verify_tls" in external_registry_config:
-                updates = {"verify_tls": external_registry_config["verify_tls"]}
-                if model.repo_mirror.change_external_registry_config(repo, updates):
-                    track_and_log(
-                        "repo_mirror_config_changed",
-                        wrap_repository(repo),
-                        changed="verify_tls",
-                        to=external_registry_config["verify_tls"],
-                    )
-
-            if "unsigned_images" in external_registry_config:
-                updates = {"unsigned_images": external_registry_config["unsigned_images"]}
-                if model.repo_mirror.change_external_registry_config(repo, updates):
-                    track_and_log(
-                        "repo_mirror_config_changed",
-                        wrap_repository(repo),
-                        changed="unsigned_images",
-                        to=external_registry_config["unsigned_images"],
-                    )
-
-            if "proxy" in external_registry_config:
                 proxy_values = external_registry_config.get("proxy", {})
-
-                if "http_proxy" in proxy_values:
-                    updates = {"proxy": {"http_proxy": proxy_values["http_proxy"]}}
-                    if model.repo_mirror.change_external_registry_config(repo, updates):
+                for field in ("http_proxy", "https_proxy", "no_proxy"):
+                    if field in proxy_values:
                         track_and_log(
                             "repo_mirror_config_changed",
                             wrap_repository(repo),
-                            changed="http_proxy",
-                            to=proxy_values["http_proxy"],
-                        )
-
-                if "https_proxy" in proxy_values:
-                    updates = {"proxy": {"https_proxy": proxy_values["https_proxy"]}}
-                    if model.repo_mirror.change_external_registry_config(repo, updates):
-                        track_and_log(
-                            "repo_mirror_config_changed",
-                            wrap_repository(repo),
-                            changed="https_proxy",
-                            to=proxy_values["https_proxy"],
-                        )
-
-                if "no_proxy" in proxy_values:
-                    updates = {"proxy": {"no_proxy": proxy_values["no_proxy"]}}
-                    if model.repo_mirror.change_external_registry_config(repo, updates):
-                        track_and_log(
-                            "repo_mirror_config_changed",
-                            wrap_repository(repo),
-                            changed="no_proxy",
-                            to=proxy_values["no_proxy"],
+                            changed=field,
+                            to=proxy_values[field],
                         )
 
         if "root_rule" in values:

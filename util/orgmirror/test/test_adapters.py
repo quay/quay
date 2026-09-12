@@ -3,7 +3,7 @@
 Unit tests for organization mirroring registry adapters.
 """
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import responses
@@ -22,14 +22,22 @@ from util.orgmirror.quay_adapter import QuayAdapter
 
 @pytest.fixture(autouse=True)
 def _mock_ssrf_validation():
-    """Mock SSRF validation to avoid DNS resolution in unit tests.
+    """Keep adapter tests independent of external DNS.
 
-    SSRF validation calls socket.getaddrinfo() which fails in CI for fake
-    hostnames like harbor.example.com. SSRF validation is tested separately
-    in util/security/test/test_ssrf.py.
+    Source URL validation is covered separately. Proxy validation remains active
+    with deterministic public DNS answers so every request boundary is exercised.
     """
     with patch("util.orgmirror.registry_adapter.validate_external_registry_url"):
-        yield
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+            yield
+
+
+def _request_proxies(adapter, url):
+    response = Mock(status_code=200)
+    with patch.object(adapter.session, "get", return_value=response) as request:
+        adapter._get(url)
+    return request.call_args.kwargs["proxies"]
 
 
 @pytest.fixture()
@@ -299,8 +307,56 @@ class TestQuayAdapter:
         assert success is False
         assert "500" in message
 
+    def test_proxy_is_revalidated_before_every_request(self):
+        config = {"proxy": {"https_proxy": "https://proxy.example.com:8443"}}
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = [
+                [(2, 1, 6, "", ("93.184.216.34", 0))],
+                [(2, 1, 6, "", ("10.0.0.1", 0))],
+            ]
+            adapter = QuayAdapter(
+                url="https://quay.io",
+                namespace="testorg",
+                config=config,
+            )
+            response = Mock(status_code=200)
+
+            with patch.object(adapter.session, "get", return_value=response) as request:
+                assert adapter.test_connection() == (True, "Connection successful")
+                assert adapter.test_connection() == (
+                    False,
+                    "Connection error: Mirror proxy location is not allowed",
+                )
+
+        request.assert_called_once()
+        assert mock_dns.call_count == 2
+
+    def test_request_proxy_revalidation_honors_allowed_hosts(self):
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={"proxy": {"http_proxy": "http://10.0.0.1:8080"}},
+            allowed_hosts=["10.0.0.0/8"],
+        )
+
+        proxies = _request_proxies(adapter, "https://quay.io/api/v1/repository")
+
+        assert proxies["http"].startswith("http://127.0.0.1:")
+
+    def test_request_value_error_is_not_reported_as_proxy_validation(self):
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={"proxy": {"http_proxy": "http://proxy.example.com:8080"}},
+        )
+
+        with patch.object(adapter.session, "get", side_effect=ValueError("request failure")):
+            with pytest.raises(ValueError, match="request failure"):
+                adapter._get("https://quay.io/api/v1/repository")
+
     def test_proxy_configuration(self):
-        """Test that proxy settings are passed to requests."""
+        """Test that proxy settings are passed to requests through pinned relays."""
         adapter = QuayAdapter(
             url="https://quay.io",
             namespace="testorg",
@@ -312,9 +368,29 @@ class TestQuayAdapter:
             },
         )
 
-        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
-        assert proxies["http"] == "http://proxy:8080"
-        assert proxies["https"] == "https://proxy:8443"
+        proxies = _request_proxies(adapter, "https://quay.io/api/v1/repository")
+        assert proxies["http"].startswith("http://127.0.0.1:")
+        assert proxies["https"].startswith("http://127.0.0.1:")
+
+    def test_scheme_less_proxies_are_copied_and_normalized_for_requests(self):
+        proxy_config = {
+            "http_proxy": "proxy.example.com:8080",
+            "https_proxy": "alice:secret@secure-proxy.example.com:8443",
+        }
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={"proxy": proxy_config},
+        )
+
+        proxies = _request_proxies(adapter, "https://quay.io/api/v1/repository")
+
+        assert proxies["http"].startswith("http://127.0.0.1:")
+        assert proxies["https"].startswith("http://alice:secret@127.0.0.1:")
+        assert proxy_config == {
+            "http_proxy": "proxy.example.com:8080",
+            "https_proxy": "alice:secret@secure-proxy.example.com:8443",
+        }
 
     def test_no_proxy_bypasses_proxy(self):
         """Test that no_proxy returns empty proxies for matching hosts."""
@@ -331,17 +407,15 @@ class TestQuayAdapter:
         )
 
         # Host in no_proxy list -> empty proxies (direct connection)
-        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
-        assert proxies == {}
+        assert _request_proxies(adapter, "https://quay.io/api/v1/repository") == {}
 
         # Suffix match
-        proxies = adapter._build_proxies("https://registry.internal/v2")
-        assert proxies == {}
+        assert _request_proxies(adapter, "https://registry.internal/v2") == {}
 
-        # Host NOT in no_proxy list -> proxies returned
-        proxies = adapter._build_proxies("https://other-registry.com/v2")
-        assert proxies["http"] == "http://proxy:8080"
-        assert proxies["https"] == "https://proxy:8443"
+        # Host NOT in no_proxy list -> pinned proxies returned
+        proxies = _request_proxies(adapter, "https://other-registry.com/v2")
+        assert proxies["http"].startswith("http://127.0.0.1:")
+        assert proxies["https"].startswith("http://127.0.0.1:")
 
     def test_no_proxy_not_configured(self):
         """Test that without no_proxy, all hosts use the proxy."""
@@ -355,8 +429,8 @@ class TestQuayAdapter:
             },
         )
 
-        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
-        assert proxies["http"] == "http://proxy:8080"
+        proxies = _request_proxies(adapter, "https://quay.io/api/v1/repository")
+        assert proxies["http"].startswith("http://127.0.0.1:")
 
     def test_tls_verification_disabled(self):
         """Test that TLS verification can be disabled."""

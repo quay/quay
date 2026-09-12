@@ -587,9 +587,10 @@ class DefaultConfig(ImmutableConfig):
     # Organization-level repository mirror
     FEATURE_ORG_MIRROR = False
 
-    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for repository mirrors,
-    # organization mirrors, proxy cache registries, and export log callbacks. Use for
-    # enterprise deployments where endpoints run on private networks.
+    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for repository and
+    # organization mirror source registries and proxy endpoints, proxy cache registries,
+    # and export log callbacks. Scheme-less mirror proxy values remain supported and are
+    # interpreted as HTTP only while validating their destination.
     SSRF_ALLOWED_HOSTS: List[str] = []
 
     # The number of seconds between organization mirror worker iterations

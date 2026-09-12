@@ -9,7 +9,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 from shlex import quote
 from tempfile import NamedTemporaryFile, SpooledTemporaryFile
-from typing import Iterator, Optional
+from typing import Iterator, List, Optional
+
+from util.security.proxy import (
+    MIRROR_PROXY_VALIDATION_ERROR,
+    MirrorProxyValidationError,
+    pinned_mirror_proxy_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +108,8 @@ def _src_dest_authfiles(src_entries: list, dest_entries: list) -> Iterator[tuple
 
 
 class SkopeoMirror(object):
+    def __init__(self, allowed_hosts: Optional[List[str]] = None):
+        self._allowed_hosts = list(allowed_hosts or [])
 
     # No DB calls here: This will be called from a separate worker that has no connection except
     # to/from the mirror worker
@@ -269,6 +277,7 @@ class SkopeoMirror(object):
 
     def setup_env(self, proxy):
         env = os.environ.copy()
+        proxy = proxy or {}
 
         if proxy.get("http_proxy"):
             env["HTTP_PROXY"] = proxy.get("http_proxy")
@@ -283,31 +292,38 @@ class SkopeoMirror(object):
         # Using a tempfile makes sure that if --debug is set, the stdout and stderr output
         # doesn't get truncated by the system's pipe limit.
 
-        with SpooledTemporaryFile() as stdoutpipe, SpooledTemporaryFile() as stderrpipe:
-            logger.debug("Setting job timeout: %s s", timeout)
-            job = subprocess.Popen(
-                args,
-                shell=False,
-                stdout=stdoutpipe,
-                stderr=stderrpipe,
-                env=self.setup_env(proxy),
-            )
-
-            try:
-                job.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                job.kill()
-            finally:
-                stdoutpipe.seek(0)
-                stderrpipe.seek(0)
-                stdout = sanitize_skopeo_output(stdoutpipe.read().decode("utf-8"))
-                stderr = sanitize_skopeo_output(stderrpipe.read().decode("utf-8"))
-
-                if job.returncode != 0:
-                    logger.debug(
-                        "Skopeo command failed (exit code %s): %s",
-                        job.returncode,
-                        stderr.strip(),
+        try:
+            with SpooledTemporaryFile() as stdoutpipe, SpooledTemporaryFile() as stderrpipe:
+                logger.debug("Setting job timeout: %s s", timeout)
+                with pinned_mirror_proxy_config(
+                    proxy,
+                    allowed_hosts=self._allowed_hosts,
+                ) as effective_proxy:
+                    job = subprocess.Popen(
+                        args,
+                        shell=False,
+                        stdout=stdoutpipe,
+                        stderr=stderrpipe,
+                        env=self.setup_env(effective_proxy),
                     )
 
-                return SkopeoResults(job.returncode == 0, [], stdout, stderr)
+                    try:
+                        job.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        job.kill()
+                    finally:
+                        stdoutpipe.seek(0)
+                        stderrpipe.seek(0)
+                        stdout = sanitize_skopeo_output(stdoutpipe.read().decode("utf-8"))
+                        stderr = sanitize_skopeo_output(stderrpipe.read().decode("utf-8"))
+
+                        if job.returncode != 0:
+                            logger.debug(
+                                "Skopeo command failed (exit code %s): %s",
+                                job.returncode,
+                                stderr.strip(),
+                            )
+
+                        return SkopeoResults(job.returncode == 0, [], stdout, stderr)
+        except MirrorProxyValidationError:
+            return SkopeoResults(False, [], "", MIRROR_PROXY_VALIDATION_ERROR)
