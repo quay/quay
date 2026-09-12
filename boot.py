@@ -19,7 +19,8 @@ from data.model.oauth import (
     delete_applications,
     get_bootstrap_app_name,
     get_bootstrap_managed_applications,
-    get_singleton_bootstrap_application_candidates,
+    get_bootstrap_tokens,
+    get_singleton_automatic_bootstrap_application_candidates,
     lock_bootstrap_token_operation,
 )
 from data.model.release import set_region_release
@@ -162,9 +163,14 @@ def _provision_bootstrap_token():
             lock_bootstrap_token_operation()
 
             bootstrap_application, stale_applications = (
-                get_singleton_bootstrap_application_candidates(owner)
+                get_singleton_automatic_bootstrap_application_candidates(owner)
             )
-            if bootstrap_application is not None:
+            bootstrap_tokens = (
+                get_bootstrap_tokens(bootstrap_application, authorized_user=owner)
+                if bootstrap_application is not None
+                else []
+            )
+            if bootstrap_tokens:
                 if stale_applications:
                     delete_applications(stale_applications)
                     logger.info(
@@ -181,7 +187,10 @@ def _provision_bootstrap_token():
                 logger.info("Bootstrap token already provisioned, skipping")
                 return
 
-            bootstrap_application = create_bootstrap_application(get_bootstrap_app_name(), owner)
+            if bootstrap_application is None:
+                bootstrap_application = create_bootstrap_application(
+                    get_bootstrap_app_name(), owner
+                )
             _, access_token = create_bootstrap_oauth_api_token(
                 bootstrap_application,
                 owner,
