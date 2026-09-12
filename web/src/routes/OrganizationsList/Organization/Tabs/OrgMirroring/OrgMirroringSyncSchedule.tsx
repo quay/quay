@@ -26,7 +26,7 @@ interface OrgMirroringSyncScheduleProps {
   isSyncingNow: boolean;
   isCancellingSync: boolean;
   isOrgSyncing: boolean;
-  onSyncNow: () => Promise<void>;
+  onSyncNow?: () => Promise<void>;
 }
 
 export const OrgMirroringSyncSchedule: React.FC<
@@ -85,7 +85,9 @@ export const OrgMirroringSyncSchedule: React.FC<
                 size="sm"
                 type="button"
                 isLoading={isSyncingNow || (isOrgSyncing && !isCancellingSync)}
-                isDisabled={isSyncingNow || isCancellingSync || isOrgSyncing}
+                isDisabled={
+                  !onSyncNow || isSyncingNow || isCancellingSync || isOrgSyncing
+                }
                 data-testid="sync-now-button"
                 onClick={onSyncNow}
               >

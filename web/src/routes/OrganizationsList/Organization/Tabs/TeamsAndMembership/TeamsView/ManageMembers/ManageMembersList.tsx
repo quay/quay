@@ -54,6 +54,7 @@ import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useTeamSync, useRemoveTeamSync} from 'src/hooks/UseTeamSync';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import DirectoryTeamSyncModal from 'src/components/modals/DirectoryTeamSyncModal';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 import {usePaginatedSortableTable} from '../../../../../../../hooks/usePaginatedSortableTable';
@@ -100,6 +101,7 @@ interface IMemberInfo {
 }
 
 export default function ManageMembersList(props: ManageMembersListProps) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const {organizationName, teamName} = useParams();
   const config = useQuayConfig();
   const {organization} = useOrganization(organizationName);
@@ -398,7 +400,11 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           </Title>
         </FlexItem>
         <Conditional
-          if={config?.registry_state !== 'readonly' && organization.is_admin}
+          if={
+            config?.registry_state !== 'readonly' &&
+            organization.is_admin &&
+            !isReadOnlySuperUser
+          }
         >
           <Tooltip content={<div>Edit team description</div>}>
             <Button
@@ -475,7 +481,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
 
   const fetchSyncBtn = () => {
     const result = [];
-    if (displaySyncDirectory) {
+    if (displaySyncDirectory && !isReadOnlySuperUser) {
       result.push(
         <Button
           variant="link"
@@ -488,7 +494,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         </Button>,
       );
     }
-    if (pageInReadOnlyMode && teamCanSync) {
+    if (pageInReadOnlyMode && teamCanSync && !isReadOnlySuperUser) {
       result.push(
         <Button
           onClick={() => setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)}
@@ -612,6 +618,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               if={
                 config?.registry_state !== 'readonly' &&
                 organization.is_admin &&
+                !isReadOnlySuperUser &&
                 !pageInReadOnlyMode
               }
             >
@@ -659,7 +666,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           setSearch={setSearch}
           searchOptions={[manageMemberColumnNames.teamMember]}
           setDrawerContent={props.setDrawerContent}
-          isReadOnly={config?.registry_state === 'readonly'}
+          isReadOnly={
+            config?.registry_state === 'readonly' || isReadOnlySuperUser
+          }
           isAdmin={organization.is_admin}
           displaySyncDirectory={displaySyncDirectory}
           isDirectoryTeamSyncModalOpen={isDirectoryTeamSyncModalOpen}
@@ -723,6 +732,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                     if={
                       config?.registry_state !== 'readonly' &&
                       organization.is_admin &&
+                      !isReadOnlySuperUser &&
                       displayDeleteIcon(getAccountTypeForMember(teamMember))
                     }
                   >

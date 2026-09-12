@@ -32,10 +32,12 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function AddNewTeamMemberDrawer(
   props: AddNewTeamMemberDrawerProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
@@ -79,7 +81,7 @@ export default function AddNewTeamMemberDrawer(
           ))
         )}
       </SelectGroup>
-      {!robotsDisallowed && (
+      {!robotsDisallowed && !isReadOnlySuperUser && (
         <>
           <Divider component="li" key={7} />
           <SelectOption
@@ -215,6 +217,7 @@ export default function AddNewTeamMemberDrawer(
               <Button
                 data-testid="add-new-member-submit-btn"
                 isDisabled={
+                  isReadOnlySuperUser ||
                   selectedEntity === null ||
                   Object.keys(selectedEntity).length === 0
                 }

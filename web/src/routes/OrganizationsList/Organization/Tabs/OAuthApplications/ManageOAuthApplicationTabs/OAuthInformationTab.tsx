@@ -15,6 +15,7 @@ import {useResetOAuthApplicationClientSecret} from 'src/hooks/UseOAuthApplicatio
 import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface OAuthInformationTabProps {
   application: IOAuthApplication | null;
@@ -26,6 +27,7 @@ interface OAuthInformationTabProps {
 const OAuthInformationTab: React.FC<OAuthInformationTabProps> = (
   props,
 ): React.ReactElement => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const {addAlert} = useUI();
 
@@ -99,6 +101,7 @@ const OAuthInformationTab: React.FC<OAuthInformationTabProps> = (
           <Button
             variant="primary"
             onClick={toggleResetModal}
+            isDisabled={isReadOnlySuperUser}
             data-testid="reset-client-secret-button"
           >
             Reset Client Secret

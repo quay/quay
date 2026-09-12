@@ -17,10 +17,13 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {IDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {TrashIcon} from '@patternfly/react-icons';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function DefaultPermissionsToolbar(
   props: DefaultPermissionsToolbarProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
+
   return (
     <>
       <Toolbar>
@@ -47,31 +50,35 @@ export default function DefaultPermissionsToolbar(
               />
             </FlexItem>
           </Flex>
-          <Button
-            onClick={() =>
-              props.setDrawerContent(
-                OrganizationDrawerContentType.CreatePermissionSpecificUser,
-              )
-            }
-            data-testid="create-default-permissions-btn"
-          >
-            Create default permission
-          </Button>
-          <Conditional if={props.selectedItems?.length !== 0}>
-            <ToolbarItem>
-              <Button
-                style={{paddingBottom: '0px'}}
-                icon={
-                  <Icon size="lg">
-                    <TrashIcon />
-                  </Icon>
-                }
-                variant="plain"
-                onClick={props.handleBulkDeleteModalToggle}
-                data-testid="default-perm-bulk-delete-icon"
-              />
-            </ToolbarItem>
-          </Conditional>
+          {!isReadOnlySuperUser && (
+            <Button
+              onClick={() =>
+                props.setDrawerContent(
+                  OrganizationDrawerContentType.CreatePermissionSpecificUser,
+                )
+              }
+              data-testid="create-default-permissions-btn"
+            >
+              Create default permission
+            </Button>
+          )}
+          {!isReadOnlySuperUser && (
+            <Conditional if={props.selectedItems?.length !== 0}>
+              <ToolbarItem>
+                <Button
+                  style={{paddingBottom: '0px'}}
+                  icon={
+                    <Icon size="lg">
+                      <TrashIcon />
+                    </Icon>
+                  }
+                  variant="plain"
+                  onClick={props.handleBulkDeleteModalToggle}
+                  data-testid="default-perm-bulk-delete-icon"
+                />
+              </ToolbarItem>
+            </Conditional>
+          )}
           <ToolbarPagination
             itemsList={props.allItems}
             perPage={props.perPage}

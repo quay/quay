@@ -25,6 +25,7 @@ import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
 import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import Alerts from 'src/routes/Alerts';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 type ProxyCacheConfigProps = {
   organizationName: string;
@@ -34,6 +35,7 @@ type ProxyCacheConfigProps = {
 const tagExpirationInSecsForProxyCache = 86400;
 
 export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const defaultProxyCacheConfig = {
     upstream_registry: '',
     expiration_s: tagExpirationInSecsForProxyCache,
@@ -355,6 +357,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
               proxyCacheConfigValidation();
             }}
             isDisabled={
+              isReadOnlySuperUser ||
               isQuayConfigLoading ||
               !proxyCacheConfig?.upstream_registry ||
               !!fetchedProxyCacheConfig?.upstream_registry ||
@@ -370,7 +373,9 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           </Button>
 
           <Button
-            isDisabled={!fetchedProxyCacheConfig?.upstream_registry}
+            isDisabled={
+              isReadOnlySuperUser || !fetchedProxyCacheConfig?.upstream_registry
+            }
             id="delete-proxy-cache"
             data-testid="delete-proxy-cache-btn"
             variant="danger"
