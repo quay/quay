@@ -79,19 +79,15 @@ COPY requirements.txt .
 # See https://github.com/rust-lang/cargo/issues/10583 for details.
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
-# Added GRPC & Gevent support for IBMZ
-# wget has been added to reduce the build time
-# In Future if wget is to be removed , then uncomment below line for grpc installation on IBMZ i.e. s390x
+# Added below line for GRPC support for IBMZ i.e. s390x
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
 USER 1001
 
+# Added GRPC support for IBM Power
+# In Future if wget is to be removed , then uncomment below lines for grpc installation on IBM Power i.e. ppc64le
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
-    GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz -O /tmp/gvent.tar.gz; \
-	cd /tmp; tar xvf gvent.tar.gz; cd -; \
-	python3 -m pip install --no-cache-dir /tmp/wheelhouse/gevent-${GE_LATEST}-cp39-cp3.12-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
     GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
 	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
 	python3 -m pip install --no-cache-dir /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
