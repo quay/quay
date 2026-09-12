@@ -264,6 +264,22 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	// Akamai provider
+	if value, ok := storageArgs["akamai_domain"]; ok {
+		newDistributedStorageArgs.AkamaiDomain, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("cloudflare_domain must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["akamai_shared_secret"]; ok {
+		newDistributedStorageArgs.AkamaiSharedSecret, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("cloudflare_domain must be of type string")
+		}
+	}
+
+
 	// Multi CDN provider
 	if value, ok := storageArgs["storage_config"]; ok {
 		newDistributedStorageArgs.StorageConfig, ok = value.(map[string]interface{})
