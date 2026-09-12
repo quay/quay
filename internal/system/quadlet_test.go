@@ -117,6 +117,26 @@ func TestQuadletInstallDoesNotPersistBootstrapCredentials(t *testing.T) {
 	}
 }
 
+func TestQuadletInstallVolumeHasUFlag(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+
+	err := manager.Install("quay", &QuadletSpec{
+		Image:    "localhost/quay:test",
+		DataDir:  "/var/lib/quay",
+		Hostname: "localhost",
+		Port:     "8443",
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	content := readQuadletTestFile(t, env.QuadletPath("quay"))
+	if !strings.Contains(content, "Volume=/var/lib/quay:/data:Z,U") {
+		t.Fatalf("quadlet volume missing :U flag for UID remapping:\n%s", content)
+	}
+}
+
 func TestQuadletHostname(t *testing.T) {
 	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
 	manager := NewQuadletManager(OSFS{}, env)
