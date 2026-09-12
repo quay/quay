@@ -209,6 +209,17 @@ class ArchivedLogsTestCase(EndpointTestCase):
         with patch("endpoints.web.log_archive._storage.stream_read_file", return_value=mock_file):
             self.getResponse("web.logarchive", file_id=self.build_uuid, expected_code=200)
 
+    def test_logarchive_transcoded(self):
+        # Storage backends such as GCS decode Content-Encoding: gzip objects
+        # before serving them, so the stream may already be plain JSON.
+        self.login("public", "password")
+        data = b'{"logs": []}'
+        with patch(
+            "endpoints.web.log_archive._storage.stream_read_file", return_value=BytesIO(data)
+        ):
+            resp = self.getResponse("web.logarchive", file_id=self.build_uuid, expected_code=200)
+            self.assertEqual(data, resp)
+
 
 class WebhookEndpointTestCase(EndpointTestCase):
     def test_invalid_build_trigger_webhook(self):
