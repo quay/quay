@@ -64,6 +64,7 @@ func Validate(ctx context.Context, cfg *Config, opts ValidateOptions) []Validati
 	errs = append(errs, validateRedis(cfg, opts)...)
 	errs = append(errs, validateAuth(cfg, opts)...)
 	errs = append(errs, validateSecurity(cfg, opts)...)
+	errs = append(errs, validateDigest(cfg, opts)...)
 
 	// Phase 2: online probes (only if offline passed and mode is "online").
 	if opts.Mode == "online" && !HasErrors(errs) {
