@@ -28,9 +28,9 @@ def attach_bitbucket_build_trigger(trigger_uuid):
     if trigger.connected_user != current_user.db_user():
         abort(404)
 
-    verifier = request.args.get("oauth_verifier")
+    code = request.args.get("code")
     handler = BuildTriggerHandler.get_handler(trigger)
-    result = handler.exchange_verifier(verifier)
+    result = handler.exchange_verifier(code)
     if not result:
         trigger.delete_instance()
         return "Token has expired"

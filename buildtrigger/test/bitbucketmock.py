@@ -23,9 +23,10 @@ def get_bitbucket_trigger(dockerfile_path=""):
 
 
 def get_repo_path_contents(path, revision):
-    data = {
-        "files": [{"path": "Dockerfile"}],
-    }
+    data = [
+        {"path": "Dockerfile", "type": "commit_file"},
+        {"path": "README.md", "type": "commit_file"},
+    ]
 
     return (True, data, None)
 
@@ -49,11 +50,11 @@ def get_branches_and_tags():
 
 
 def get_branches():
-    return (True, {"master": {}, "otherbranch": {}}, None)
+    return (True, [{"name": "master"}, {"name": "otherbranch"}], None)
 
 
 def get_tags():
-    return (True, {"sometag": {}, "someothertag": {}}, None)
+    return (True, [{"name": "sometag"}, {"name": "someothertag"}], None)
 
 
 def get_branch(branch_name):
@@ -82,15 +83,17 @@ def get_tag(tag_name):
     return (True, data, None)
 
 
-def get_changeset_mock(commit_sha):
+def get_commit_mock(commit_sha):
     if commit_sha != "aaaaaaa":
         return (False, None, "Not found")
 
     data = {
-        "node": "aaaaaaa",
+        "hash": "aaaaaaa",
         "message": "some message",
-        "timestamp": "now",
-        "raw_author": "foo@bar.com",
+        "date": "now",
+        "author": {
+            "raw": "foo <foo@bar.com>",
+        },
     }
 
     return (True, data, None)
@@ -98,13 +101,13 @@ def get_changeset_mock(commit_sha):
 
 def get_changesets():
     changesets_mock = Mock()
-    changesets_mock.get = Mock(side_effect=get_changeset_mock)
+    changesets_mock.get = Mock(side_effect=get_commit_mock)
     return changesets_mock
 
 
 def get_deploykeys():
     deploykeys_mock = Mock()
-    deploykeys_mock.create = Mock(return_value=(True, {"pk": "someprivatekey"}, None))
+    deploykeys_mock.create = Mock(return_value=(True, {"id": "somekeyid"}, None))
     deploykeys_mock.delete = Mock(return_value=(True, {}, None))
     return deploykeys_mock
 
@@ -150,12 +153,13 @@ def get_namespace_mock(namespace):
 
 def get_repo(namespace, name):
     return {
-        "owner": namespace,
-        "logo": "avatarurl",
+        "workspace": {"slug": namespace},
+        "links": {"avatar": {"href": "avatarurl"}},
         "slug": name,
+        "full_name": "%s/%s" % (namespace, name),
         "description": "some %s repo" % (name),
-        "utc_last_updated": str(datetime.utcfromtimestamp(0)),
-        "read_only": namespace != "knownuser",
+        "updated_on": str(datetime.utcfromtimestamp(0)),
+        "permission": "admin" if namespace == "knownuser" else "read",
         "is_private": name == "somerepo",
     }
 
@@ -169,10 +173,30 @@ def get_visible_repos():
     return (True, repos, None)
 
 
-def get_authed_mock(token, secret):
+def get_profile_mock(email_address):
+    if email_address == "foo@bar.com":
+        return (
+            True,
+            {
+                "display_name": "Foo User",
+                "links": {"avatar": {"href": "avatarurl"}},
+            },
+            None,
+        )
+    return (False, None, None)
+
+
+def get_accounts_mock():
+    accounts_mock = Mock()
+    accounts_mock.get_profile = Mock(side_effect=get_profile_mock)
+    return accounts_mock
+
+
+def get_authed_mock(token):
     authed_mock = Mock()
     authed_mock.for_namespace = Mock(side_effect=get_namespace_mock)
     authed_mock.get_visible_repositories = Mock(side_effect=get_visible_repos)
+    authed_mock.accounts = Mock(side_effect=get_accounts_mock)
     return authed_mock
 
 

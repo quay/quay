@@ -3039,6 +3039,33 @@ export class ApiClient {
     return match[1];
   }
 
+  async createBitbucketTrigger(
+    namespace: string,
+    repo: string,
+  ): Promise<string> {
+    const response = await this.request.get(
+      `${API_URL}/bitbucket/setup/${namespace}/${repo}`,
+      {timeout: 10000, maxRedirects: 0},
+    );
+
+    const location = response.headers()['location'] || '';
+    const triggerMatch = location.match(/\/trigger\/([a-f0-9-]+)/);
+    if (triggerMatch) {
+      return triggerMatch[1];
+    }
+
+    const triggers = await this.listTriggers(namespace, repo);
+    const bbTrigger = triggers.triggers.find((t) => t.service === 'bitbucket');
+    if (bbTrigger && typeof bbTrigger.id === 'string') {
+      return bbTrigger.id;
+    }
+
+    const body = await response.text();
+    throw new Error(
+      `Could not create Bitbucket trigger: ${response.status()} location=${location} - ${body}`,
+    );
+  }
+
   async activateTrigger(
     namespace: string,
     repo: string,

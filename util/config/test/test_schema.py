@@ -228,3 +228,30 @@ class TestGunicornTimeoutSchema:
 
     def test_default_web_timeout(self):
         assert DefaultConfig.GUNICORN_WEB_TIMEOUT == 30
+
+
+def test_bitbucket_trigger_config_requires_client_id_and_secret():
+    schema = CONFIG_SCHEMA["properties"]["BITBUCKET_TRIGGER_CONFIG"]
+
+    assert "CLIENT_ID" in schema["required"]
+    assert "CLIENT_SECRET" in schema["required"]
+    assert "CLIENT_ID" in schema["properties"]
+    assert "CLIENT_SECRET" in schema["properties"]
+
+    validate({"CLIENT_ID": "myid", "CLIENT_SECRET": "mysecret"}, schema)
+    validate(None, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_ID": "myid"}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_SECRET": "mysecret"}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_ID": "", "CLIENT_SECRET": "mysecret"}, schema)
+
+    with pytest.raises(ValidationError):
+        validate({"CLIENT_ID": "myid", "CLIENT_SECRET": ""}, schema)
