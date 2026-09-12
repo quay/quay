@@ -117,6 +117,10 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
+**Note:** For infrastructure configuration changes (nginx, proxy, database connection pooling, caching), see
+[Performance and Infrastructure Testing](testing.md#performance-and-infrastructure-testing) for additional pre-merge
+validation requirements.
+
 ## Session Setup
 
 All hooks are consolidated in `.claude/settings.json` — no manual setup required.
