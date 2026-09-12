@@ -217,8 +217,31 @@ class ArchivedLogsTestCase(EndpointTestCase):
         with patch(
             "endpoints.web.log_archive._storage.stream_read_file", return_value=BytesIO(data)
         ):
-            resp = self.getResponse("web.logarchive", file_id=self.build_uuid, expected_code=200)
+            with self.assertLogs("endpoints.web", level="WARNING") as logs:
+                resp = self.getResponse(
+                    "web.logarchive", file_id=self.build_uuid, expected_code=200
+                )
             self.assertEqual(data, resp)
+        self.assertEqual(len(logs.records), 1)
+        self.assertIn(self.build_uuid, logs.records[0].getMessage())
+        self.assertIn("already decoded", logs.records[0].getMessage())
+
+    def test_logarchive_unrecognized(self):
+        # Neither gzip nor JSON: controlled JSON 500 before any body bytes go
+        # out, with the build uuid and the leading bytes logged.
+        self.login("public", "password")
+        data = b"<html>not an archive</html>"
+        with patch(
+            "endpoints.web.log_archive._storage.stream_read_file", return_value=BytesIO(data)
+        ):
+            with self.assertLogs("endpoints.web", level="ERROR") as logs:
+                resp = self.getResponse(
+                    "web.logarchive", file_id=self.build_uuid, expected_code=500
+                )
+            self.assertEqual(py_json.loads(resp), {"error": "Archived logs are unreadable"})
+        self.assertEqual(len(logs.records), 1)
+        self.assertIn(self.build_uuid, logs.records[0].getMessage())
+        self.assertIn(data[:32].hex(), logs.records[0].getMessage())
 
 
 class WebhookEndpointTestCase(EndpointTestCase):
