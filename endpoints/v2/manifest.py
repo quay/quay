@@ -28,6 +28,7 @@ from endpoints.decorators import (
     anon_protect,
     check_pushes_disabled,
     check_readonly,
+    check_schema1_push_enabled,
     disallow_for_account_recovery_mode,
     inject_registry_model,
     parse_repository_name,
@@ -299,6 +300,7 @@ def _doesnt_accept_schema_v1():
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @_reject_manifest2_schema2
+@check_schema1_push_enabled(error_class=ManifestInvalid)
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
@@ -325,6 +327,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @_reject_manifest2_schema2
+@check_schema1_push_enabled(error_class=ManifestInvalid)
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
