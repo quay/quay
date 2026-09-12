@@ -7,6 +7,9 @@ BLOCK_SIZE = 16384
 WINDOW_BUFFER_SIZE = 16 + zlib.MAX_WBITS
 """zlib window buffer size, set to gzip's format"""
 
+GZIP_MAGIC = b"\x1f\x8b"
+"""Leading bytes of every gzip member (RFC 1952)"""
+
 
 class GzipInputStream(object):
     """
@@ -14,6 +17,11 @@ class GzipInputStream(object):
 
     Python 2.x gzip.GZipFile relies on .seek() and .tell(), so it
     doesn't support this (@see: http://bo4.me/YKWSsL).
+
+    If the underlying stream does not start with the gzip magic bytes it is
+    passed through unchanged: some storage backends (e.g. Google Cloud Storage)
+    decompress objects stored with Content-Encoding: gzip on the way out, so the
+    reader may already receive the decoded payload.
 
     Adapted from: https://gist.github.com/beaufour/4205533
     """
@@ -28,6 +36,7 @@ class GzipInputStream(object):
         self._zip = zlib.decompressobj(WINDOW_BUFFER_SIZE)
         self._offset = 0  # position in unzipped stream
         self._data = b""
+        self._passthrough = None  # decided from the first block read
 
     def __fill(self, num_bytes):
         """
@@ -42,11 +51,18 @@ class GzipInputStream(object):
         while not num_bytes or len(self._data) < num_bytes:
             data = self._file.read(BLOCK_SIZE)
             if not data:
-                self._data = self._data + self._zip.flush()
+                if not self._passthrough:
+                    self._data = self._data + self._zip.flush()
                 self._zip = None  # no more data
                 break
 
-            self._data = self._data + self._zip.decompress(data)
+            if self._passthrough is None:
+                self._passthrough = not data.startswith(GZIP_MAGIC)
+
+            if self._passthrough:
+                self._data = self._data + data
+            else:
+                self._data = self._data + self._zip.decompress(data)
 
     def __iter__(self):
         return self
