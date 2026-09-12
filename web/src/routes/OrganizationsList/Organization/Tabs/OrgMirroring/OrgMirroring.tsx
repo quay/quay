@@ -30,6 +30,7 @@ import {
 import {DesktopIcon} from '@patternfly/react-icons';
 import {useUI, AlertVariant} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
@@ -86,7 +87,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
       addAlert({
         variant: AlertVariant.Failure,
         title: 'Error saving organization mirror configuration',
-        message: (err as Error).message,
+        message: getErrorMessageFromUnknown(err),
       });
     }
   };
@@ -174,7 +175,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
       addAlert({
         variant: AlertVariant.Failure,
         title: 'Error deleting organization mirror configuration',
-        message: (err as Error).message,
+        message: getErrorMessageFromUnknown(err),
       });
     } finally {
       setIsDeleteModalOpen(false);
@@ -211,7 +212,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               addAlert({
                 variant: AlertVariant.Failure,
                 title: 'Error scheduling sync',
-                message: (err as Error).message,
+                message: getErrorMessageFromUnknown(err),
               });
             }
           }}
@@ -229,7 +230,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               addAlert({
                 variant: AlertVariant.Failure,
                 title: 'Error toggling organization mirror',
-                message: (err as Error).message,
+                message: getErrorMessageFromUnknown(err),
               });
             }
           }}
@@ -264,7 +265,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               addAlert({
                 variant: AlertVariant.Failure,
                 title: 'Error cancelling sync',
-                message: (err as Error).message,
+                message: getErrorMessageFromUnknown(err),
               });
             }
           }}
@@ -288,7 +289,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               addAlert({
                 variant: AlertVariant.Failure,
                 title: 'Error verifying connection',
-                message: (err as Error).message,
+                message: getErrorMessageFromUnknown(err),
               });
             }
           }}
