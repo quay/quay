@@ -68,11 +68,10 @@ func NewDatabaseFieldGroup(fullConfig map[string]interface{}) (*DatabaseFieldGro
 }
 
 // function to ensure supported TLS versions are used in Postgres connection URI
+// Note: TLSv1 and TLSv1.1 are deprecated and no longer supported
 func IsValidTLS(version string) bool {
 	switch version {
 	case
-		"TLSv1",
-		"TLSv1.1",
 		"TLSv1.2",
 		"TLSv1.3":
 		return true
@@ -141,7 +140,7 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 			return newDbConnectionArgsStruct, errors.New("ssl_min_protoclversion must be of type string")
 		}
 		if !IsValidTLS(value.(string)) {
-			return newDbConnectionArgsStruct, errors.New("ssl_min_protoclversion invalid value (supported TLSv1,TLSv1.1-TLSv1.3)")
+			return newDbConnectionArgsStruct, errors.New("ssl_min_protocolversion invalid value (supported: TLSv1.2, TLSv1.3)")
 		}
 	}
 	if value, ok := fullConfig["ssl_max_protocolversion"]; ok {
@@ -150,7 +149,7 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 			return newDbConnectionArgsStruct, errors.New("ssl_max_protoclversion must be of type string")
 		}
 		if !IsValidTLS(value.(string)) {
-			return newDbConnectionArgsStruct, errors.New("ssl_max_protoclversion invalid value (supported TLSv1,TLSv1.1-TLSv1.3)")
+			return newDbConnectionArgsStruct, errors.New("ssl_max_protocolversion invalid value (supported: TLSv1.2, TLSv1.3)")
 		}
 	}
 	if value, ok := fullConfig["sslcrl"]; ok {
