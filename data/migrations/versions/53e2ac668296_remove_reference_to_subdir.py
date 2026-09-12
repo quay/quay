@@ -13,6 +13,7 @@ import logging
 import sqlalchemy as sa
 from alembic.script.revision import RevisionError
 from alembic.util import CommandError
+from sqlalchemy import text
 from sqlalchemy.dialects import mysql
 
 revision = "53e2ac668296"
@@ -23,12 +24,13 @@ log = logging.getLogger(__name__)
 
 def run_migration(migrate_function, op):
     conn = op.get_bind()
-    triggers = conn.execute("SELECT id, config FROM repositorybuildtrigger")
+    triggers = conn.execute(text("SELECT id, config FROM repositorybuildtrigger"))
     for trigger in triggers:
         config = json.dumps(migrate_function(json.loads(trigger[1])))
         try:
             conn.execute(
-                "UPDATE repositorybuildtrigger SET config=%s WHERE id=%s", config, trigger[0]
+                text("UPDATE repositorybuildtrigger SET config=:config WHERE id=:trigger_id"),
+                {"config": config, "trigger_id": trigger[0]},
             )
         except (RevisionError, CommandError) as e:
             log.warning("Failed to update build trigger %s with exception: ", trigger[0], e)
