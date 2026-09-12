@@ -893,6 +893,11 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
             "x-example": 30,
         },
+        "SECURITY_SCANNER_V2_INDEX_THREAD_COUNT": {
+            "type": "number",
+            "description": "The number of worker threads used to concurrently index manifests per batch in the V2 security scanner. Defaults to 3.",
+            "x-example": 3,
+        },
         "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
             "type": "integer",
             "minimum": 0,
