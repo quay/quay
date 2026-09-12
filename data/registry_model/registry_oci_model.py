@@ -1214,6 +1214,14 @@ class OCIModel(RegistryDataInterface):
                 repository_ref, blob_digest, include_placements=True
             )
 
+    def get_streaming_proxy_blob(self, namespace_name, repo_name, blob_digest):
+        """
+        Returns a (generator, content_length) tuple for tee-streaming, or None.
+
+        For OCI model, this is a no-operation function.
+        """
+        return None
+
     def create_blob_upload(self, repository_ref, new_upload_id, location_name, storage_metadata):
         """
         Creates a new blob upload and returns a reference.

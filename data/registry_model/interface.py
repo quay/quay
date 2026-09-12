@@ -430,6 +430,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
+    def get_streaming_proxy_blob(self, namespace_name, repo_name, blob_digest):
+        """
+        Returns a (generator, content_length) tuple for tee-streaming, or None.
+        """
+
+    @abstractmethod
     def convert_manifest(
         self,
         manifest,
