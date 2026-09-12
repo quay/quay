@@ -652,7 +652,9 @@ test.describe(
           expect(uploadResponse.status()).toBe(202);
 
           const rejectionResponse = await request.put(
-            `${rejectedUploadUrl}?digest=${encodeURIComponent(oversizedDigest)}`,
+            `${rejectedUploadUrl}?digest=${encodeURIComponent(
+              oversizedDigest,
+            )}`,
             {headers},
           );
           expect(rejectionResponse.status()).toBe(403);
@@ -697,7 +699,7 @@ test.describe(
 
 test.describe(
   'V2 Invalid Bearer Token',
-  {tag: ['@api', '@v2', '@auth:Database']},
+  {tag: ['@api', '@v2', '@auth:Database', '@QUAYIO-2183']},
   () => {
     test('malformed bearer token returns 401', async ({playwright}) => {
       const request = await playwright.request.newContext({
