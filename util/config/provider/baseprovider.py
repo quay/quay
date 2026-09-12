@@ -5,7 +5,7 @@ import yaml
 from jsonschema import ValidationError, validate
 from six import add_metaclass
 
-from util.config.schema import CONFIG_SCHEMA
+from util.config.schema import CONFIG_SCHEMA, apply_kubernetes_sa_bootstrap_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,8 @@ def import_yaml(config_obj, config_file):
         for key in c.keys():
             if key.isupper():
                 config_obj[key] = c[key]
+
+    apply_kubernetes_sa_bootstrap_defaults(config_obj)
 
     # if config_obj.get("SETUP_COMPLETE", True):
     #     try:
