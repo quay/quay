@@ -34,6 +34,10 @@ _SUBJECT_PATTERN = re.compile(r"^system:serviceaccount:([^:\s]+):([^:\s]+)$")
 class KubernetesSATokenValidationError(Exception):
     """Raised when a Kubernetes ServiceAccount credential cannot be trusted."""
 
+    def __init__(self, message: str, category: str = "trust"):
+        super().__init__(message)
+        self.category = category
+
 
 @dataclass(frozen=True)
 class ValidatedKubernetesSA:
@@ -116,35 +120,41 @@ class KubernetesSATokenValidator:
 
     def _parse_subject(self, subject: Any) -> tuple[str, str]:
         if not isinstance(subject, str):
-            raise KubernetesSATokenValidationError("Token is not a Kubernetes ServiceAccount token")
+            raise KubernetesSATokenValidationError(
+                "Token is not a Kubernetes ServiceAccount token", category="identity"
+            )
         match = _SUBJECT_PATTERN.match(subject)
         if not match:
-            raise KubernetesSATokenValidationError("Token is not a Kubernetes ServiceAccount token")
+            raise KubernetesSATokenValidationError(
+                "Token is not a Kubernetes ServiceAccount token", category="identity"
+            )
         return match.group(1), match.group(2)
 
     def _verify_bound_claims(self, claims: dict[str, Any], namespace: str, name: str) -> None:
         bound = claims.get("kubernetes.io")
         if not isinstance(bound, dict):
             raise KubernetesSATokenValidationError(
-                "Token is missing Kubernetes bound ServiceAccount claims"
+                "Token is missing Kubernetes bound ServiceAccount claims", category="identity"
             )
         if bound.get("namespace") != namespace:
-            raise KubernetesSATokenValidationError("Token namespace claim does not match subject")
+            raise KubernetesSATokenValidationError(
+                "Token namespace claim does not match subject", category="identity"
+            )
 
         service_account = bound.get("serviceaccount")
         if not isinstance(service_account, dict):
             raise KubernetesSATokenValidationError(
-                "Token is missing Kubernetes bound ServiceAccount claims"
+                "Token is missing Kubernetes bound ServiceAccount claims", category="identity"
             )
         if service_account.get("name") != name:
             raise KubernetesSATokenValidationError(
-                "Token ServiceAccount name claim does not match subject"
+                "Token ServiceAccount name claim does not match subject", category="identity"
             )
 
         uid = service_account.get("uid")
         if not isinstance(uid, str) or not uid:
             raise KubernetesSATokenValidationError(
-                "Token is missing a Kubernetes ServiceAccount UID claim"
+                "Token is missing a Kubernetes ServiceAccount UID claim", category="identity"
             )
 
     def _issuer_config(self, token_issuer: str) -> dict[str, Any]:

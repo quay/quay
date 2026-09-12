@@ -2,13 +2,17 @@ import base64
 import json
 import os
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from httmock import HTTMock, urlmatch
 
 from app import app as real_app
-from auth.kubernetes_sa import KubernetesSATokenValidator, ValidatedKubernetesSA
+from auth.kubernetes_sa import (
+    KubernetesSATokenValidationError,
+    KubernetesSATokenValidator,
+    ValidatedKubernetesSA,
+)
 from data import model
 from endpoints.api.bootstrap import (
     _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER,
@@ -161,11 +165,48 @@ def test_exchange_uses_shared_validator_cache_and_mints_bounded_token(
     validate.assert_called_once_with("service-account-jwt")
 
 
+def test_exchange_audit_success_contains_safe_correlation_metadata(app, initialized_db, tmp_path):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "scope": "repo:write repo:read repo:read",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        patch("endpoints.api.bootstrap.log_action") as audit,
+        app.test_request_context(method="POST", data=form),
+    ):
+        payload, _, _ = _exchange_bootstrap_token()
+
+    kind, account_name = audit.call_args.args[:2]
+    metadata = audit.call_args.kwargs["metadata"]
+    token_record = model.oauth.validate_access_token(payload["access_token"])
+    application = token_record.application
+    assert kind == "workload_identity_token_exchange"
+    assert account_name == "devtable"
+    assert metadata == {
+        "outcome": "success",
+        "requested_scope": "repo:read repo:write",
+        "effective_scope": "repo:read repo:write",
+        "issuer": validated.issuer,
+        "subject": validated.subject,
+        "oauth_token_uuid": token_record.uuid,
+        "client_id": application.client_id,
+    }
+    assert "service-account-jwt" not in repr(metadata)
+    assert all(secret_key not in metadata for secret_key in ("subject_token", "jti", "kid"))
+
+
 def test_exchange_invalid_request_uses_matching_api_error_type(app, initialized_db, tmp_path):
     config, _ = _exchange_endpoint_config(tmp_path)
 
     with (
         patch.dict(real_app.config, config),
+        patch("endpoints.api.bootstrap.log_action") as audit,
         app.test_request_context(method="POST", data={}),
         pytest.raises(BootstrapExchangeError) as exc_info,
     ):
@@ -175,6 +216,16 @@ def test_exchange_invalid_request_uses_matching_api_error_type(app, initialized_
     assert exc_info.value.data["error"] == "invalid_request"
     assert exc_info.value.data["error_type"] == "invalid_request"
     assert exc_info.value.data["title"] == "invalid_request"
+    kind, account_name = audit.call_args.args[:2]
+    metadata = audit.call_args.kwargs["metadata"]
+    assert kind == "workload_identity_token_exchange_failed"
+    assert account_name == "devtable"
+    assert metadata == {
+        "outcome": "failure",
+        "requested_scope": "",
+        "failure_category": "request",
+        "failure_reason": "invalid_request",
+    }
 
 
 def test_exchange_access_denied_uses_unauthorized_api_error_type(app, initialized_db, tmp_path):
@@ -193,6 +244,7 @@ def test_exchange_access_denied_uses_unauthorized_api_error_type(app, initialize
     with (
         patch.dict(real_app.config, config),
         patch.object(KubernetesSATokenValidator, "validate", return_value=denied),
+        patch("endpoints.api.bootstrap.log_action") as audit,
         app.test_request_context(method="POST", data=form),
         pytest.raises(BootstrapExchangeError) as exc_info,
     ):
@@ -202,6 +254,15 @@ def test_exchange_access_denied_uses_unauthorized_api_error_type(app, initialize
     assert exc_info.value.data["error"] == "access_denied"
     assert exc_info.value.data["error_type"] == "unauthorized"
     assert exc_info.value.data["title"] == "unauthorized"
+    kind, account_name = audit.call_args.args[:2]
+    metadata = audit.call_args.kwargs["metadata"]
+    assert kind == "workload_identity_token_exchange_failed"
+    assert account_name == "devtable"
+    assert metadata["failure_category"] == "authorization"
+    assert metadata["failure_reason"] == "subject_not_authorized"
+    assert metadata["issuer"] == denied.issuer
+    assert metadata["subject"] == denied.subject
+    assert "service-account-jwt" not in repr(metadata)
 
 
 def test_exchange_server_error_uses_matching_api_error_type(app, initialized_db, tmp_path):
@@ -215,6 +276,7 @@ def test_exchange_server_error_uses_matching_api_error_type(app, initialized_db,
     with (
         patch.dict(real_app.config, config),
         patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        patch("endpoints.api.bootstrap.log_action") as audit,
         app.test_request_context(method="POST", data=form),
         pytest.raises(BootstrapExchangeError) as exc_info,
     ):
@@ -224,6 +286,137 @@ def test_exchange_server_error_uses_matching_api_error_type(app, initialized_db,
     assert exc_info.value.data["error"] == "server_error"
     assert exc_info.value.data["error_type"] == "server_error"
     assert exc_info.value.data["title"] == "server_error"
+    kind, account_name = audit.call_args.args[:2]
+    metadata = audit.call_args.kwargs["metadata"]
+    assert kind == "workload_identity_token_exchange_failed"
+    assert account_name is None
+    assert metadata["failure_category"] == "issuance"
+    assert metadata["failure_reason"] == "token_owner_missing"
+    assert metadata["issuer"] == validated.issuer
+    assert metadata["subject"] == validated.subject
+
+
+@pytest.mark.parametrize(
+    ("category", "failure_category", "failure_reason"),
+    [
+        ("trust", "trust", "token_validation_failed"),
+        ("identity", "identity", "service_account_identity_invalid"),
+    ],
+)
+def test_exchange_validation_failures_use_stable_audit_taxonomy(
+    app, initialized_db, tmp_path, category, failure_category, failure_reason
+):
+    config, _ = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(
+            KubernetesSATokenValidator,
+            "validate",
+            side_effect=KubernetesSATokenValidationError("presented jwt", category=category),
+        ),
+        patch("endpoints.api.bootstrap.log_action") as audit,
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(BootstrapExchangeError),
+    ):
+        _exchange_bootstrap_token()
+
+    metadata = audit.call_args.kwargs["metadata"]
+    assert metadata["failure_category"] == failure_category
+    assert metadata["failure_reason"] == failure_reason
+    assert "presented jwt" not in repr(metadata)
+    assert "service-account-jwt" not in repr(metadata)
+
+
+def test_exchange_scope_denial_has_distinct_audit_reason(app, initialized_db, tmp_path):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "scope": "repo:delete repo:read repo:read",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        patch("endpoints.api.bootstrap.log_action") as audit,
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(BootstrapExchangeError),
+    ):
+        _exchange_bootstrap_token()
+
+    metadata = audit.call_args.kwargs["metadata"]
+    assert metadata["failure_category"] == "authorization"
+    assert metadata["failure_reason"] == "scope_not_authorized"
+    assert metadata["requested_scope"] == "repo:delete repo:read"
+    assert metadata["issuer"] == validated.issuer
+    assert metadata["subject"] == validated.subject
+
+
+def test_exchange_application_creation_failure_is_audited_and_reraised(
+    app, initialized_db, tmp_path
+):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        patch.object(
+            model.oauth,
+            "get_canonical_bootstrap_application",
+            side_effect=RuntimeError("application-secret"),
+        ),
+        patch("endpoints.api.bootstrap.log_action") as audit,
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(RuntimeError, match="application-secret"),
+    ):
+        _exchange_bootstrap_token()
+
+    metadata = audit.call_args.kwargs["metadata"]
+    assert metadata["failure_category"] == "issuance"
+    assert metadata["failure_reason"] == "application_creation_failed"
+    assert "application-secret" not in repr(metadata)
+
+
+def test_exchange_token_creation_failure_is_audited_and_reraised(app, initialized_db, tmp_path):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    }
+    application = Mock(client_id="client-id")
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        patch.object(model.oauth, "get_canonical_bootstrap_application", return_value=application),
+        patch(
+            "endpoints.api.bootstrap.create_workload_identity_oauth_token",
+            side_effect=RuntimeError("token-secret"),
+        ),
+        patch("endpoints.api.bootstrap.log_action") as audit,
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(RuntimeError, match="token-secret"),
+    ):
+        _exchange_bootstrap_token()
+
+    metadata = audit.call_args.kwargs["metadata"]
+    assert metadata["failure_category"] == "issuance"
+    assert metadata["failure_reason"] == "token_creation_failed"
+    assert "token-secret" not in repr(metadata)
+    assert "service-account-jwt" not in repr(metadata)
 
 
 def test_exchange_normalizes_issuer_trailing_slashes():
@@ -256,6 +449,15 @@ def test_authorize_workload_scope_normalizes_issuer_and_scope():
             "repo:read",
         )
         == "repo:read"
+    )
+    assert (
+        authorize_workload_scope(
+            authorized_subjects,
+            "https://cluster.example.com/",
+            "system:serviceaccount:quay:operator",
+            "",
+        )
+        == "org:admin repo:read"
     )
 
 
