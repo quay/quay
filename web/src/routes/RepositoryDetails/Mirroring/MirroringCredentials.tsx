@@ -35,6 +35,7 @@ export const MirroringCredentials: React.FC<MirroringCredentialsProps> = ({
         fieldId="username"
         showNoneWhenEmpty={!!config}
         data-testid="username-input"
+        autoComplete="off"
       />
 
       <FormTextInput
@@ -44,8 +45,9 @@ export const MirroringCredentials: React.FC<MirroringCredentialsProps> = ({
         label="Password"
         fieldId="external_registry_password"
         type="password"
-        showNoneWhenEmpty={!!config}
+        placeholder={config ? 'Enter new password to update' : ''}
         data-testid="password-input"
+        autoComplete="new-password"
       />
     </>
   );
