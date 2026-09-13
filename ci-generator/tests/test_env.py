@@ -116,17 +116,18 @@ def test_cell_settings_overwrite_as_and_env() -> None:
 
 
 def test_phase0_names_use_storage_and_tier() -> None:
-    generated = list(generate_all())
+    generated, _retired = generate_all()
     assert len(generated) == 2
-    cell, _filename, config = next(g for g in generated if g[0].branch == "redhat-3.18")
+    group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
+    cell = group[0]
     assert (cell.quay_version, cell.cloud) == ("3.18", "aws")
     assert config["tests"][0]["as"] == "s3-daily"
 
 
 def test_generated_cells_use_template_extra_config() -> None:
-    generated = list(generate_all())
+    generated, _retired = generate_all()
     assert len(generated) == 2
-    _cell, _filename, config = next(g for g in generated if g[0].branch == "redhat-3.18")
+    _group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
     env = config["tests"][0]["steps"]["env"]
     extra = env["QUAY_EXTRA_CONFIG"]
     assert env["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT

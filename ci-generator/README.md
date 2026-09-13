@@ -20,13 +20,13 @@ From this directory (in-tree: `python3 _generator/generate.py`):
 python3 generate.py              # generate all configs
 python3 generate.py --dry-run    # preview without writing
 python3 generate.py --check      # verify configs are up to date
-python3 generate.py --list       # show matrix expansion table
+python3 generate.py --list       # show matrix expansion table (includes a KIND column: periodic/presubmit)
 python3 generate.py --output DIR # write or check a specific directory
 ```
 
 Standalone default output is `./out`. When this directory is named `_generator`, output is the parent directory (`ci-operator/config/quay/quay/` in openshift/release).
 
-`--check` is the CI verification step: exit `1` if any generated file is missing, unexpected, or its parsed YAML differs. Unexpected files are only those matching a generator-owned `{org}-{repo}-{branch}__` prefix from the current matrix; `master`'s `layout: base` file (`quay-quay-master.yaml`) is checked directly, but exact ownership of neighbouring hand-written `quay-quay-master__*.yaml` files (`__claim`, `__omr-*`) is not yet enforced by prefix matching. Content comparison is parsed YAML (comments and `determinize-ci-operator` quoting are ignored).
+`--check` is the CI verification step: exit `1` if any file listed in `managed_files.active` is missing or its parsed YAML differs from what the matrix generates, or if any file listed in `managed_files.retired` still exists in the output directory. Files not listed in either list are ignored entirely, including hand-written neighbours like `quay-quay-master__claim.yaml` and `quay-quay-master__omr-*.yaml`. Content comparison is parsed YAML (comments and `determinize-ci-operator` quoting are ignored).
 
 ## `matrix.yaml`
 
@@ -37,6 +37,12 @@ global_defaults:
   image_source: build  # reserved; templates do not use it yet
   arch: amd64
   repo: quay/quay
+
+managed_files:
+  active:
+    - quay-quay-master.yaml
+    - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+  retired: []
 
 quay:
   - branch: redhat-3.18
@@ -58,6 +64,8 @@ quay:
 | `global_defaults.repo` | GitHub `org/repo` used in `zz_generated_metadata` and filenames |
 | `global_defaults.arch` | Cluster architecture |
 | `global_defaults.image_source` | How images are obtained (`build` today). Not referenced by templates yet. |
+| `managed_files.active` | Required, non-empty list of every filename the matrix must generate. Generation fails loudly if this set doesn't exactly match what the matrix expands to. |
+| `managed_files.retired` | Filenames the generator used to own but no longer generates. `--check` fails if any of these still exist in the output directory; run `generate.py` (without `--check`) and delete them, then drop them from this list. Defaults to `[]`. |
 | `quay[]` | One Quay release, identified by git `branch` (`redhat-X.Y`, or `master`). The Quay version `X.Y` is derived from that suffix; `master` has no Quay version. |
 | `quay[].layout` | `variant` (default) writes `{org}-{repo}-{branch}__{variant}.yaml`; `base` writes `{org}-{repo}-{branch}.yaml` in place (used for `master`). |
 | `quay[].env` | Env keys applied to every job on that branch. Values replace whole keys. |
@@ -75,7 +83,7 @@ Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{bran
 Each cell is assembled by deep-merge, later layers win. `kind: presubmit` jobs render from `templates/presubmit/` instead of `templates/`; the three layer names underneath are the same:
 
 1. `templates/base.yaml` (or `templates/presubmit/base.yaml`)
-2. `templates/clouds/{cloud}.yaml` (or `templates/presubmit/clouds/{cloud}.yaml`)
+2. `templates/clouds/{cloud}.yaml`, or the optional override `templates/presubmit/clouds/{cloud}.yaml` when present; presubmit falls back to the shared file otherwise
 3. `templates/tests/{test}.yaml` (or `templates/presubmit/tests/{test}.yaml`)
 4. Kind settings in `generate.py`: periodic sets `cron` from the tier; presubmit copies `always_run` / `optional` / `run_if_changed` / `skip_if_only_changed` onto the test when set
 5. Branch `env`, then job `env` / `as`
@@ -94,6 +102,8 @@ The only difference between periodic tiers is **timing**. The ci-operator field 
 
 ## Adding coverage
 
+Every new filename the matrix generates (a new release, job, or OCP version that changes `variant`) must be added to `managed_files.active`, or generation fails with `active but not generated` / `generated but not active`.
+
 Add a Quay release by appending to `quay:`:
 
 ```yaml
@@ -110,6 +120,8 @@ Add an OCP version on an existing job:
 ```yaml
         ocp: ["4.22", "4.23"]
 ```
+
+Both add a new generated filename for `layout: variant` releases; add it to `managed_files.active` in the same change. `layout: base` rows (for example `master`) share one file per branch: an extra cloud on an existing job needs a distinct `as` instead of a new filename, but an extra OCP version does not work the same way — `ocp` is a file-level input for base rows, so it needs its own variant/file.
 
 Shared env for every job on a branch (for example a longer `PLAYWRIGHT_GREP_INVERT`). Do not copy `QUAY_EXTRA_CONFIG` here; it comes from the test template.
 

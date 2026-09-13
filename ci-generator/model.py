@@ -102,10 +102,6 @@ class Cell:
             return f"{self.org}-{self.repo}-{self.branch}.yaml"
         return f"{self.org}-{self.repo}-{self.branch}__{self.variant}.yaml"
 
-    @property
-    def owned_prefix(self) -> str:
-        return f"{self.org}-{self.repo}-{self.branch}__"
-
     def context(self) -> dict[str, Any]:
         ctx: dict[str, Any] = {
             "org": self.org,

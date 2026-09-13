@@ -7,8 +7,10 @@
 # test steps, cluster profiles, or to add new OpenShift/Quay versions.
 #
 # WHERE TO MAKE YOUR CHANGES:
-#   1. matrix.yaml — Quay releases, OCP versions, clouds, tiers, env, as
-#   2. templates/  — job structure (base, clouds/{cloud}, tests/{test})
+#   1. matrix.yaml — Quay releases, OCP versions, clouds, kind, tiers, env,
+#                     as, managed_files
+#   2. templates/  — job structure (base, clouds/{cloud}, tests/{test});
+#                     kind: presubmit renders templates/presubmit/ instead
 #   3. generate.py — merge and expansion logic only
 #
 # Merge order (later layers overwrite earlier):
@@ -386,9 +388,14 @@ def build_config(cell: Cell, templates_dir: Path) -> YamlMap:
     env = jinja_env(templates_dir)
     context = cell.context()
     template_root = "presubmit/" if cell.kind == "presubmit" else ""
+    cloud_template = f"{template_root}clouds/{cell.cloud}.yaml"
+    if template_root and not (templates_dir / cloud_template).exists():
+        # No presubmit-specific cloud layer: share the periodic one instead of
+        # forking a byte-identical copy that would need editing twice.
+        cloud_template = f"clouds/{cell.cloud}.yaml"
     layers = [
         render_template(env, f"{template_root}base.yaml", context),
-        render_template(env, f"{template_root}clouds/{cell.cloud}.yaml", context),
+        render_template(env, cloud_template, context),
         render_template(env, f"{template_root}tests/{cell.test}.yaml", context),
     ]
     config: YamlMap = {}
@@ -469,53 +476,88 @@ def _group_configs(filename: str, group: list[Cell], templates_dir: Path) -> Yam
     return merged
 
 
+def _managed_files(matrix: YamlMap) -> tuple[list[str], list[str]]:
+    managed = matrix.get("managed_files")
+    if not isinstance(managed, dict):
+        raise ValueError("managed_files must be a mapping")
+    active = managed.get("active")
+    if (
+        not isinstance(active, list)
+        or not active
+        or not all(isinstance(item, str) for item in active)
+    ):
+        raise ValueError("managed_files.active must be a non-empty list of strings")
+    if len(set(active)) != len(active):
+        raise ValueError("managed_files.active must not contain duplicates")
+    retired = managed.get("retired") if managed.get("retired") is not None else []
+    if not isinstance(retired, list) or not all(isinstance(item, str) for item in retired):
+        raise ValueError("managed_files.retired must be a list of strings")
+    overlap = set(active) & set(retired)
+    if overlap:
+        names = ", ".join(sorted(overlap))
+        raise ValueError(f"managed_files: {names} listed in both active and retired")
+    return active, retired
+
+
 def generate_all(
     generator_dir: Path = GENERATOR_DIR,
     matrix_path: Path | None = None,
     templates_dir: Path | None = None,
-) -> list[tuple[Cell, str, YamlMap]]:
+) -> tuple[list[tuple[list[Cell], str, YamlMap]], list[str]]:
     matrix_path = matrix_path or generator_dir / "matrix.yaml"
     templates_dir = templates_dir or generator_dir / "templates"
     matrix = load_yaml(matrix_path)
     if not isinstance(matrix, dict):
         raise ValueError("matrix.yaml must be a YAML mapping")
+    active, retired = _managed_files(matrix)
     groups: dict[str, list[Cell]] = {}
     for cell in expand_cells(matrix):
         groups.setdefault(cell.filename, []).append(cell)
-    results: list[tuple[Cell, str, YamlMap]] = []
+    missing = sorted(set(active) - set(groups))
+    extra = sorted(set(groups) - set(active))
+    if missing or extra:
+        parts = []
+        if missing:
+            parts.append(f"active but not generated: {', '.join(missing)}")
+        if extra:
+            parts.append(f"generated but not active: {', '.join(extra)}")
+        raise ValueError("; ".join(parts))
+    results: list[tuple[list[Cell], str, YamlMap]] = []
     for filename, group in groups.items():
         config = _group_configs(filename, group, templates_dir)
-        results.append((group[0], filename, config))
-    return results
+        results.append((group, filename, config))
+    return results, retired
 
 
-def _print_list(results: list[tuple[Cell, str, YamlMap]]) -> None:
-    headers = ("QUAY", "OCP", "CLOUD", "TEST", "TIER", "FILE", "AS")
+def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
+    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "TIER", "FILE", "AS")
     rows: list[tuple[str, ...]] = [headers]
-    for cell, filename, config in results:
-        test_as = config["tests"][0].get("as", cell.test_as)
-        rows.append(
-            (
-                cell.quay_version or "-",
-                cell.ocp_version,
-                cell.cloud,
-                cell.test,
-                cell.tier or "-",
-                filename,
-                str(test_as),
+    for group, filename, config in results:
+        for cell, test in zip(group, config["tests"], strict=True):
+            test_as = test.get("as", cell.test_as)
+            rows.append(
+                (
+                    cell.quay_version or "-",
+                    cell.kind,
+                    cell.ocp_version,
+                    cell.cloud,
+                    cell.test,
+                    cell.tier or "-",
+                    filename,
+                    str(test_as),
+                )
             )
-        )
     widths = [max(len(row[i]) for row in rows) for i in range(len(headers))]
     for row in rows:
         print("  ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
 
 
 def _write_configs(
-    results: list[tuple[Cell, str, YamlMap]], output_dir: Path, dry_run: bool
+    results: list[tuple[list[Cell], str, YamlMap]], output_dir: Path, dry_run: bool
 ) -> None:
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
-    for _cell, filename, config in results:
+    for _group, filename, config in results:
         text = dump_config(config)
         path = output_dir / filename
         if dry_run:
@@ -526,14 +568,11 @@ def _write_configs(
         print(f"wrote {path}")
 
 
-def _owned_prefixes(results: list[tuple[Cell, str, YamlMap]]) -> set[str]:
-    return {cell.owned_prefix for cell, _filename, _config in results}
-
-
-def _check_configs(results: list[tuple[Cell, str, YamlMap]], output_dir: Path) -> int:
+def _check_configs(
+    results: list[tuple[list[Cell], str, YamlMap]], retired: list[str], output_dir: Path
+) -> int:
     failures = 0
-    expected = {filename: config for _cell, filename, config in results}
-    owned = _owned_prefixes(results)
+    expected = {filename: config for _group, filename, config in results}
     for filename, config in expected.items():
         path = output_dir / filename
         if not path.exists():
@@ -544,13 +583,11 @@ def _check_configs(results: list[tuple[Cell, str, YamlMap]], output_dir: Path) -
         if existing != config:
             print(f"stale {path}", file=sys.stderr)
             failures += 1
-    if output_dir.is_dir():
-        for path in sorted(output_dir.glob("*.yaml")):
-            if not any(path.name.startswith(prefix) for prefix in owned):
-                continue
-            if path.name not in expected:
-                print(f"unexpected {path}", file=sys.stderr)
-                failures += 1
+    for filename in retired:
+        path = output_dir / filename
+        if path.exists():
+            print(f"retired {path}", file=sys.stderr)
+            failures += 1
     if failures:
         print(f"{failures} config(s) out of date", file=sys.stderr)
         return 1
@@ -575,12 +612,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     output_dir = args.output.resolve() if args.output else default_output_dir()
-    results = generate_all()
+    results, retired = generate_all()
     if args.list:
         _print_list(results)
         return 0
     if args.check:
-        return _check_configs(results, output_dir)
+        return _check_configs(results, retired, output_dir)
     _write_configs(results, output_dir, dry_run=args.dry_run)
     return 0
 

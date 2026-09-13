@@ -1,5 +1,6 @@
 """Generator expansion, rendering, golden Phase 0 config, and CLI modes."""
 
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,8 @@ import yaml
 from generate import (
     GENERATED_HEADER,
     GENERATOR_DIR,
+    _check_configs,
+    _print_list,
     apply_cell_settings,
     apply_kind_settings,
     default_output_dir,
@@ -176,7 +179,7 @@ def test_kind_settings_presubmit_leaves_unset_trigger_fields_absent() -> None:
 
 
 def test_golden_phase0_bytes() -> None:
-    results = generate_all()
+    results, _retired = generate_all()
     by_name = {filename: config for _cell, filename, config in results}
     assert PHASE0_NAME in by_name
     dumped = dump_config(by_name[PHASE0_NAME])
@@ -185,7 +188,7 @@ def test_golden_phase0_bytes() -> None:
 
 
 def test_golden_master_bytes() -> None:
-    results = generate_all()
+    results, _retired = generate_all()
     by_name = {filename: config for _cell, filename, config in results}
     assert MASTER_NAME in by_name
     config = by_name[MASTER_NAME]
@@ -206,7 +209,7 @@ def test_golden_master_bytes() -> None:
 
 
 def test_mixed_golden_groups_periodic_and_presubmit_into_one_file() -> None:
-    results = generate_all(
+    results, _retired = generate_all(
         matrix_path=MIXED_DIR / "matrix.yaml", templates_dir=MIXED_DIR / "templates"
     )
     assert len(results) == 1
@@ -224,6 +227,7 @@ def test_mixed_release_with_real_templates_rejects_incompatible_file_level(tmp_p
     matrix = {
         "version": 2,
         "global_defaults": {"image_source": "build", "arch": "amd64", "repo": "quay/quay"},
+        "managed_files": {"active": [PHASE0_NAME], "retired": []},
         "quay": [
             {
                 "branch": "redhat-3.18",
@@ -255,6 +259,20 @@ def test_list_shows_phase0_row(capsys: object) -> None:
     assert "e2e-install" in out
     assert PHASE0_NAME in out
     assert "s3-daily" in out
+    assert "KIND" in out
+    assert "periodic" in out
+    assert "presubmit" in out
+
+
+def test_list_shows_one_row_per_cell_in_grouped_file(capsys: object) -> None:
+    results, _retired = generate_all(
+        matrix_path=MIXED_DIR / "matrix.yaml", templates_dir=MIXED_DIR / "templates"
+    )
+    _print_list(results)
+    out = capsys.readouterr().out  # type: ignore[attr-defined]
+    rows = [line.split() for line in out.splitlines() if PHASE0_NAME in line]
+    assert len(rows) == 2
+    assert {row[-1] for row in rows} == {"s3-daily", "s3"}
 
 
 def test_check_clean_after_generate(tmp_path: Path) -> None:
@@ -282,30 +300,72 @@ def test_check_fails_when_missing(tmp_path: Path) -> None:
     assert main(["--check", "--output", str(tmp_path)]) == 1
 
 
-def test_check_fails_when_unexpected_owned_file(tmp_path: Path) -> None:
-    assert main(["--output", str(tmp_path)]) == 0
-    (tmp_path / "quay-quay-redhat-3.18__orphan.yaml").write_text("foo: bar\n")
-    assert main(["--check", "--output", str(tmp_path)]) == 1
+def test_check_fails_when_retired_present(tmp_path: Path) -> None:
+    retired_name = "quay-quay-redhat-3.18__retired.yaml"
+    matrix = _matrix_with_job(
+        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+    )
+    matrix["managed_files"] = {"active": [PHASE0_NAME], "retired": [retired_name]}
+    matrix_path = tmp_path / "matrix.yaml"
+    matrix_path.write_text(yaml.dump(matrix))
+    results, retired = generate_all(
+        matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates"
+    )
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    for _cell, filename, config in results:
+        (output_dir / filename).write_text(dump_config(config))
+    assert _check_configs(results, retired, output_dir) == 0
+    (output_dir / retired_name).write_text("foo: bar\n")
+    assert _check_configs(results, retired, output_dir) == 1
 
 
 def test_check_ignores_unrelated_branch_neighbors(tmp_path: Path) -> None:
-    # quay-quay-master.yaml is now the generated/managed master file (layout:
-    # base). Exact managed_files ownership (so hand-written neighbours like
-    # quay-quay-master__claim.yaml / __omr-*.yaml stay ignored despite sharing
-    # the master owned_prefix) is requirement 5, done in bead B.
     assert main(["--output", str(tmp_path)]) == 0
     (tmp_path / "quay-quay-redhat-3.17__aws-ocp422-e2e-install.yaml").write_text("foo: bar\n")
+    (tmp_path / "quay-quay-master__claim.yaml").write_text("foo: bar\n")
+    (tmp_path / "quay-quay-master__omr-v3.yaml").write_text("foo: bar\n")
     assert main(["--check", "--output", str(tmp_path)]) == 0
+
+
+def test_managed_files_active_must_match_generated(tmp_path: Path) -> None:
+    name_422 = "quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml"
+    name_423 = "quay-quay-redhat-3.18__aws-ocp423-e2e-install.yaml"
+    base_matrix = _matrix_with_job(
+        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22", "4.23"], "test": "e2e-install"}
+    )
+    matrix_path = tmp_path / "matrix.yaml"
+
+    matrix = copy.deepcopy(base_matrix)
+    matrix["managed_files"] = {"active": [name_422], "retired": []}
+    matrix_path.write_text(yaml.dump(matrix))
+    with pytest.raises(ValueError, match="generated but not active"):
+        generate_all(matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates")
+
+    matrix = copy.deepcopy(base_matrix)
+    matrix["managed_files"] = {"active": [name_422, name_423, "bogus.yaml"], "retired": []}
+    matrix_path.write_text(yaml.dump(matrix))
+    with pytest.raises(ValueError, match="active but not generated"):
+        generate_all(matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates")
+
+    matrix = copy.deepcopy(base_matrix)
+    matrix["managed_files"] = {"active": [name_422, name_423], "retired": [name_422]}
+    matrix_path.write_text(yaml.dump(matrix))
+    with pytest.raises(ValueError, match="both active and retired"):
+        generate_all(matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates")
 
 
 def test_generate_all_rejects_duplicate_as_in_one_file(tmp_path: Path) -> None:
     matrix_path = tmp_path / "matrix.yaml"
-    matrix_path.write_text("""
+    matrix_path.write_text(f"""
 version: 2
 global_defaults:
   image_source: build
   arch: amd64
   repo: quay/quay
+managed_files:
+  active: [{PHASE0_NAME}]
+  retired: []
 quay:
   - branch: redhat-3.18
     jobs:
@@ -332,7 +392,8 @@ def test_dry_run_does_not_write(tmp_path: Path, capsys: object) -> None:
 
 
 def test_dump_round_trip() -> None:
-    for _cell, _name, config in generate_all():
+    results, _retired = generate_all()
+    for _cell, _name, config in results:
         dumped = dump_config(config)
         assert dumped.startswith(GENERATED_HEADER)
         assert yaml.safe_load(dumped) == config

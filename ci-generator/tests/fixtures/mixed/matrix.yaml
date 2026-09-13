@@ -5,6 +5,11 @@ global_defaults:
   arch: amd64
   repo: quay/quay
 
+managed_files:
+  active:
+    - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+  retired: []
+
 quay:
   - branch: redhat-3.18
     jobs:
