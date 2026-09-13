@@ -53,7 +53,7 @@ quay:
   - branch: master
     layout: base
     env:
-      QUAY_OPERATOR_CHANNEL: stable-3.17
+      QUAY_OPERATOR_CHANNEL: stable-3.18
       QUAY_OPERATOR_SOURCE: redhat-operators
     jobs:
       - {kind: presubmit, clouds: [aws], ocp: ["4.22"], test: e2e-install, always_run: false, optional: true}
@@ -74,7 +74,7 @@ quay:
 | `quay[].jobs[].tier` | Required for `periodic` (`daily` / `nightly` / `weekly`); must be unset for `presubmit` |
 | `quay[].jobs[].always_run` / `.optional` / `.run_if_changed` / `.skip_if_only_changed` | Presubmit trigger fields, copied onto the test when set. `run_if_changed` and `skip_if_only_changed` are mutually exclusive; `always_run: true` cannot combine with either. Only valid when `kind: presubmit`. |
 | `quay[].jobs[].env` | Optional per-job env; keys replace branch env of the same name |
-| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{storage}-{tier}` for periodic (for example `s3-daily`) or `{storage}` for presubmit (for example `s3`). Split the job into its own row when only some clouds need a different name. |
+| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{cloud}-{storage}-{tier}` for periodic (for example `aws-s3-daily`) or `{cloud}-{storage}` for presubmit (for example `aws-s3`). Split the job into its own row when only some clouds need a different name. |
 
 Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{branch}__{cloud}-ocp{ocp_nodot}-{test}.yaml` (`layout: base` rows instead write `{org}-{repo}-{branch}.yaml`). Cells that share a filename (for example a periodic and a presubmit row for the same branch/cloud/OCP/test) merge into one file: their tests concatenate in matrix order, and everything but `tests` must be identical across the group or generation fails with `incompatible file-level inputs`.
 

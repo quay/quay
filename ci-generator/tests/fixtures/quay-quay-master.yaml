@@ -50,7 +50,7 @@ resources:
       memory: 200Mi
 tests:
 - always_run: false
-  as: s3
+  as: aws-s3
   optional: true
   steps:
     cluster_profile: aws-quay-qe
@@ -91,7 +91,7 @@ tests:
           service_name: quay
           sample_rate: 1.0
           endpoint: http://jaeger.quay-enterprise.svc.cluster.local:4318/v1/traces
-      QUAY_OPERATOR_CHANNEL: stable-3.17
+      QUAY_OPERATOR_CHANNEL: stable-3.18
       QUAY_OPERATOR_SOURCE: redhat-operators
     post:
     - ref: quay-gather-jaeger-traces

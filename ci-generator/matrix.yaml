@@ -23,7 +23,7 @@ quay:
   - branch: master
     layout: base
     env:
-      QUAY_OPERATOR_CHANNEL: stable-3.17
+      QUAY_OPERATOR_CHANNEL: stable-3.18
       QUAY_OPERATOR_SOURCE: redhat-operators
     jobs:
       - kind: presubmit

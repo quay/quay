@@ -91,7 +91,7 @@ def test_job_as_applies_to_split_row_only() -> None:
     by_cloud = {cell.cloud: cell for cell in cells}
     assert by_cloud["aws"].as_name == "custom-aws-name"
     assert by_cloud["azure"].as_name is None
-    assert by_cloud["azure"].test_as == "blob-daily"
+    assert by_cloud["azure"].test_as == "azure-blob-daily"
 
 
 def test_cell_settings_overwrite_as_and_env() -> None:
@@ -115,13 +115,13 @@ def test_cell_settings_overwrite_as_and_env() -> None:
     assert merged["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == "new"
 
 
-def test_phase0_names_use_storage_and_tier() -> None:
+def test_phase0_names_use_cloud_storage_and_tier() -> None:
     generated, _retired = generate_all()
     assert len(generated) == 2
     group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
     cell = group[0]
     assert (cell.quay_version, cell.cloud) == ("3.18", "aws")
-    assert config["tests"][0]["as"] == "s3-daily"
+    assert config["tests"][0]["as"] == "aws-s3-daily"
 
 
 def test_generated_cells_use_template_extra_config() -> None:
