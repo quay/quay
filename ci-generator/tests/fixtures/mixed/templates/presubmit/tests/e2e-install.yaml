@@ -1,0 +1,4 @@
+tests:
+- steps:
+    test:
+    - ref: quay-test-e2e-presubmit

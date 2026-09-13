@@ -32,18 +32,26 @@ class Cell:
     org: str
     repo: str
     branch: str
-    quay_version: str
+    quay_version: str | None
     ocp_version: str
     cloud: str
     test: str
-    tier: str
+    tier: str | None
     arch: str = "amd64"
     image_source: str = "build"
     env: dict[str, Any] = field(default_factory=dict)
     as_name: str | None = None
+    kind: str = "periodic"
+    layout: str = "variant"
+    always_run: bool | None = None
+    optional: bool | None = None
+    run_if_changed: str | None = None
+    skip_if_only_changed: str | None = None
 
     @property
     def quay_version_dashed(self) -> str:
+        if self.quay_version is None:
+            raise ValueError("quay_version_dashed requires quay_version to be set")
         return self.quay_version.replace(".", "-")
 
     @property
@@ -84,23 +92,25 @@ class Cell:
 
     @property
     def test_as(self) -> str:
+        if self.kind == "presubmit":
+            return self.storage
         return f"{self.storage}-{self.tier}"
 
     @property
     def filename(self) -> str:
+        if self.layout == "base":
+            return f"{self.org}-{self.repo}-{self.branch}.yaml"
         return f"{self.org}-{self.repo}-{self.branch}__{self.variant}.yaml"
 
     @property
     def owned_prefix(self) -> str:
         return f"{self.org}-{self.repo}-{self.branch}__"
 
-    def context(self) -> dict[str, str]:
-        return {
+    def context(self) -> dict[str, Any]:
+        ctx: dict[str, Any] = {
             "org": self.org,
             "repo": self.repo,
             "branch": self.branch,
-            "quay_version": self.quay_version,
-            "quay_version_dashed": self.quay_version_dashed,
             "ocp_version": self.ocp_version,
             "ocp_version_dashed": self.ocp_version_dashed,
             "ocp_version_nodot": self.ocp_version_nodot,
@@ -110,9 +120,15 @@ class Cell:
             "tier": self.tier,
             "arch": self.arch,
             "image_source": self.image_source,
-            "operator_channel": self.operator_channel,
-            "index_image_repo": self.index_image_repo,
             "variant": self.variant,
             "test_as": self.test_as,
             "deploy_ref": self.deploy_ref,
+            "kind": self.kind,
+            "layout": self.layout,
         }
+        if self.quay_version is not None:
+            ctx["quay_version"] = self.quay_version
+            ctx["quay_version_dashed"] = self.quay_version_dashed
+            ctx["operator_channel"] = self.operator_channel
+            ctx["index_image_repo"] = self.index_image_repo
+        return ctx

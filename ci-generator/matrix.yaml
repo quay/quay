@@ -14,3 +14,15 @@ quay:
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
+  - branch: master
+    layout: base
+    env:
+      QUAY_OPERATOR_CHANNEL: stable-3.17
+      QUAY_OPERATOR_SOURCE: redhat-operators
+    jobs:
+      - kind: presubmit
+        clouds: [aws]
+        ocp: ["4.22"]
+        test: e2e-install
+        always_run: false
+        optional: true
