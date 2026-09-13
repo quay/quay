@@ -14,7 +14,7 @@ images:
     to: quay-server
   - dockerfile_path: web/Containerfile.playwright
     to: quay-playwright-runner
-  skip_if_only_changed: ^(.agents/|.claude/|docs/|.*.md$)
+  skip_if_only_changed: ^(\.agents/|\.claude/|docs/|.*\.md$)
 {% if layout == "base" %}
 promotion:
   to:
