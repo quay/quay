@@ -210,11 +210,15 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         // access — no session cookie needed (emailed/webhook links must work publicly)
         const validResp =
           await unauthenticatedPage.request.get(exportedDataUrl);
-        expect(validResp.status()).toBe(200);
-        expect(validResp.headers()['cache-control']).toBe('no-store');
-        const payload = await validResp.json();
-        expect(payload).toHaveProperty('logs');
-        expect(Array.isArray(payload.logs)).toBe(true);
+        try {
+          expect(validResp.status()).toBe(200);
+          expect(validResp.headers()['cache-control']).toBe('no-store');
+          const payload = await validResp.json();
+          expect(payload).toHaveProperty('logs');
+          expect(Array.isArray(payload.logs)).toBe(true);
+        } finally {
+          await validResp.dispose();
+        }
 
         // No token: 403 and response body must not contain the log payload
         const urlWithoutToken = exportedDataUrl.split('?')[0];
