@@ -86,7 +86,7 @@ class TestValidateExternalRegistryUrl:
     def test_allow_only_secure_schemas(self, url, expected_failure):
         if expected_failure:
             with pytest.raises(ValueError, match="only HTTPS"):
-                validate_external_registry_url(url=url, allow_only_secure=True)
+                validate_external_registry_url(url=url, resolve_dns=False, allow_only_secure=True)
         else:
             validate_external_registry_url(url=url, allow_only_secure=True)
 
