@@ -7,14 +7,15 @@
 # test steps, cluster profiles, or to add new OpenShift/Quay versions.
 #
 # WHERE TO MAKE YOUR CHANGES:
-#   1. matrix.yaml — Quay releases, OCP versions, clouds, kind, tiers, env,
-#                     as, managed_files
+#   1. matrix.yaml — Quay releases, OCP versions, clouds, kind, tiers, source,
+#                     env, as, managed_files
 #   2. templates/  — job structure (base, clouds/{cloud}, tests/{test});
 #                     kind: presubmit renders templates/presubmit/ instead
 #   3. generate.py — merge and expansion logic only
 #
 # Merge order (later layers overwrite earlier):
 #   templates/base.yaml (or templates/presubmit/base.yaml for kind: presubmit)
+#   templates/sources/<source>.yaml (kind: periodic only)
 #   templates/clouds/<cloud>.yaml
 #   templates/tests/<test>.yaml
 #   templates/presubmit/tests/<test>.yaml (kind: presubmit only, when present)
@@ -43,6 +44,7 @@ from model import Cell, YamlMap
 
 GENERATOR_DIR = Path(__file__).resolve().parent
 TIERS = ("daily", "nightly", "weekly")
+SOURCES = ("nightly", "stable")
 TIER_INTERVALS = {
     "daily": "@daily",
     "nightly": "@daily",
@@ -52,6 +54,7 @@ RELEASE_KEYS = {"branch", "jobs", "env", "layout"}
 JOB_KEYS = {
     "kind",
     "tier",
+    "source",
     "test",
     "ocp",
     "clouds",
@@ -72,7 +75,7 @@ GENERATED_HEADER = """\
 # `make ci-operator-config` (determinize-ci-operator) in openshift/release.
 #
 # Edit these instead:
-#   - matrix.yaml   (releases, clouds, tiers, branch/job env, as)
+#   - matrix.yaml   (releases, clouds, tiers, source, branch/job env, as)
 #   - templates/    (base, cloud, and test layers)
 #   - generate.py   (merge and expansion logic only)
 # =============================================================================
@@ -284,6 +287,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             optional = _job_bool_field(job, "optional", where)
             run_if_changed = _job_str_field(job, "run_if_changed", where)
             skip_if_only_changed = _job_str_field(job, "skip_if_only_changed", where)
+            source_raw = job.get("source")
             if kind == "periodic":
                 tier = str(tier_raw) if tier_raw else ""
                 if not tier or tier not in TIERS:
@@ -301,10 +305,16 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                     raise ValueError(
                         f"{where} trigger fields ({fields}) are only valid for kind: presubmit"
                     )
+                source = str(source_raw) if source_raw else ""
+                if not source or source not in SOURCES:
+                    raise ValueError(f"{where} periodic job requires source in {SOURCES}")
             else:
                 if tier_raw is not None:
                     raise ValueError(f"{where} presubmit job must not set tier")
                 tier = None
+                if source_raw is not None:
+                    raise ValueError(f"{where} presubmit job must not set source")
+                source = None
                 if run_if_changed is not None and skip_if_only_changed is not None:
                     raise ValueError(
                         f"{where} run_if_changed and skip_if_only_changed are mutually exclusive"
@@ -330,6 +340,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                         cloud=cloud,
                         test=test,
                         tier=tier,
+                        source=source,
                         arch=arch,
                         image_source=image_source,
                         env=copy.deepcopy(merged_env),
@@ -394,11 +405,11 @@ def build_config(cell: Cell, templates_dir: Path) -> YamlMap:
         # No presubmit-specific cloud layer: share the periodic one instead of
         # forking a byte-identical copy that would need editing twice.
         cloud_template = f"clouds/{cell.cloud}.yaml"
-    layers = [
-        render_template(env, f"{template_root}base.yaml", context),
-        render_template(env, cloud_template, context),
-        render_template(env, f"tests/{cell.test}.yaml", context),
-    ]
+    layers = [render_template(env, f"{template_root}base.yaml", context)]
+    if cell.kind == "periodic":
+        layers.append(render_template(env, f"sources/{cell.source}.yaml", context))
+    layers.append(render_template(env, cloud_template, context))
+    layers.append(render_template(env, f"tests/{cell.test}.yaml", context))
     presubmit_test_template = f"{template_root}tests/{cell.test}.yaml"
     if template_root and (templates_dir / presubmit_test_template).exists():
         # Presubmit test layer is a delta on top of the shared periodic test
@@ -536,7 +547,7 @@ def generate_all(
 
 
 def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
-    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "TIER", "FILE", "AS")
+    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "TIER", "SOURCE", "FILE", "AS")
     rows: list[tuple[str, ...]] = [headers]
     for group, filename, config in results:
         for cell, test in zip(group, config["tests"], strict=True):
@@ -549,6 +560,7 @@ def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
                     cell.cloud,
                     cell.test,
                     cell.tier or "-",
+                    cell.source or "-",
                     filename,
                     str(test_as),
                 )

@@ -6,17 +6,19 @@
 # `make ci-operator-config` (determinize-ci-operator) in openshift/release.
 #
 # Edit these instead:
-#   - matrix.yaml   (releases, clouds, tiers, branch/job env, as)
+#   - matrix.yaml   (releases, clouds, tiers, source, branch/job env, as)
 #   - templates/    (base, cloud, and test layers)
 #   - generate.py   (merge and expansion logic only)
 # =============================================================================
 prowgen:
   enable_secrets_store_csi_driver: true
 tests:
-- as: aws-s3
+- as: aws-s3-nightly
   cron: '@daily'
   steps:
     cluster_profile: aws-quay-qe
+    env:
+      QUAY_OPERATOR_SOURCE: fbc-operator-catalog
     test:
     - ref: quay-test-e2e
     workflow: ipi-aws

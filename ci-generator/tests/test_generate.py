@@ -41,6 +41,7 @@ def _phase0_cell(**kwargs: Any) -> Cell:
         "cloud": "aws",
         "test": "e2e-install",
         "tier": "daily",
+        "source": "nightly",
     }
     values.update(kwargs)
     return Cell(**values)
@@ -68,7 +69,7 @@ def test_expand_matrix_cells() -> None:
     assert cell.filename == PHASE0_NAME
     assert cell.arch == "amd64"
     assert cell.as_name is None
-    assert cell.test_as == "aws-s3"
+    assert cell.test_as == "aws-s3-nightly"
     assert "PLAYWRIGHT_GREP_INVERT" not in cell.env
 
     master_cell = next(c for c in cells if c.branch == "master")
@@ -94,6 +95,7 @@ def test_adding_ocp_version_expands_cells() -> None:
                 "jobs": [
                     {
                         "tier": "weekly",
+                        "source": "nightly",
                         "clouds": ["aws"],
                         "ocp": ["4.22", "4.23"],
                         "test": "e2e-install",
@@ -249,7 +251,7 @@ def test_mixed_golden_groups_periodic_and_presubmit_into_one_file() -> None:
     _group, filename, config = results[0]
     assert filename == PHASE0_NAME
     tests = config["tests"]
-    assert [t["as"] for t in tests] == ["aws-s3", "aws-s3-alt"]
+    assert [t["as"] for t in tests] == ["aws-s3-nightly", "aws-s3-alt"]
     assert tests[0]["cron"] == "@daily"
     assert "cron" not in tests[1]
     dumped = dump_config(config)
@@ -265,7 +267,13 @@ def test_mixed_release_with_real_templates_rejects_incompatible_file_level(tmp_p
             {
                 "branch": "redhat-3.18",
                 "jobs": [
-                    {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"},
+                    {
+                        "tier": "daily",
+                        "source": "nightly",
+                        "clouds": ["aws"],
+                        "ocp": ["4.22"],
+                        "test": "e2e-install",
+                    },
                     {
                         "kind": "presubmit",
                         "clouds": ["aws"],
@@ -283,6 +291,52 @@ def test_mixed_release_with_real_templates_rejects_incompatible_file_level(tmp_p
         generate_all(matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates")
 
 
+def test_two_sources_group_into_one_file_with_distinct_env(tmp_path: Path) -> None:
+    filename = "quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml"
+    matrix = {
+        "version": 2,
+        "global_defaults": {"image_source": "build", "arch": "amd64", "repo": "quay/quay"},
+        "managed_files": {"active": [filename], "retired": []},
+        "quay": [
+            {
+                "branch": "redhat-3.18",
+                "jobs": [
+                    {
+                        "tier": "daily",
+                        "source": "nightly",
+                        "clouds": ["aws"],
+                        "ocp": ["4.22"],
+                        "test": "e2e-install",
+                    },
+                    {
+                        "tier": "daily",
+                        "source": "stable",
+                        "clouds": ["aws"],
+                        "ocp": ["4.22"],
+                        "test": "e2e-install",
+                    },
+                ],
+            }
+        ],
+    }
+    matrix_path = tmp_path / "matrix.yaml"
+    matrix_path.write_text(yaml.dump(matrix))
+    results, _retired = generate_all(
+        matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates"
+    )
+    assert len(results) == 1
+    _group, out_filename, config = results[0]
+    assert out_filename == filename
+    tests = config["tests"]
+    assert [t["as"] for t in tests] == ["aws-s3-nightly", "aws-s3-stable"]
+    nightly_env = tests[0]["steps"]["env"]
+    stable_env = tests[1]["steps"]["env"]
+    assert nightly_env["QUAY_OPERATOR_SOURCE"] == "fbc-operator-catalog"
+    assert "QUAY_INDEX_IMAGE_REPO" in nightly_env
+    assert stable_env["QUAY_OPERATOR_SOURCE"] == "redhat-operators"
+    assert "QUAY_INDEX_IMAGE_REPO" not in stable_env
+
+
 def test_list_shows_phase0_row(capsys: object) -> None:
     assert main(["--list"]) == 0
     out = capsys.readouterr().out  # type: ignore[attr-defined]
@@ -292,10 +346,13 @@ def test_list_shows_phase0_row(capsys: object) -> None:
     assert "4.22" in out
     assert "e2e-install" in out
     assert PHASE0_NAME in out
+    assert "aws-s3-nightly" in out
     assert "aws-s3" in out
     assert "KIND" in out
     assert "periodic" in out
     assert "presubmit" in out
+    assert "SOURCE" in out
+    assert "nightly" in out
 
 
 def test_list_shows_one_row_per_cell_in_grouped_file(capsys: object) -> None:
@@ -306,7 +363,7 @@ def test_list_shows_one_row_per_cell_in_grouped_file(capsys: object) -> None:
     out = capsys.readouterr().out  # type: ignore[attr-defined]
     rows = [line.split() for line in out.splitlines() if PHASE0_NAME in line]
     assert len(rows) == 2
-    assert {row[-1] for row in rows} == {"aws-s3", "aws-s3-alt"}
+    assert {row[-1] for row in rows} == {"aws-s3-nightly", "aws-s3-alt"}
 
 
 def test_check_clean_after_generate(tmp_path: Path) -> None:
@@ -337,7 +394,13 @@ def test_check_fails_when_missing(tmp_path: Path) -> None:
 def test_check_fails_when_retired_present(tmp_path: Path) -> None:
     retired_name = "quay-quay-redhat-3.18__retired.yaml"
     matrix = _matrix_with_job(
-        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        {
+            "tier": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        }
     )
     matrix["managed_files"] = {"active": [PHASE0_NAME], "retired": [retired_name]}
     matrix_path = tmp_path / "matrix.yaml"
@@ -366,7 +429,13 @@ def test_managed_files_active_must_match_generated(tmp_path: Path) -> None:
     name_422 = "quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml"
     name_423 = "quay-quay-redhat-3.18__aws-ocp423-e2e-install.yaml"
     base_matrix = _matrix_with_job(
-        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22", "4.23"], "test": "e2e-install"}
+        {
+            "tier": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22", "4.23"],
+            "test": "e2e-install",
+        }
     )
     matrix_path = tmp_path / "matrix.yaml"
 
@@ -404,10 +473,12 @@ quay:
   - branch: redhat-3.18
     jobs:
       - tier: daily
+        source: nightly
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
       - tier: daily
+        source: nightly
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
@@ -431,6 +502,7 @@ quay:
   - branch: redhat-3.18
     jobs:
       - tier: daily
+        source: nightly
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
@@ -438,6 +510,7 @@ quay:
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
+        as: aws-s3-nightly
 """)
     with pytest.raises(ValueError, match="duplicate as"):
         generate_all(matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates")
@@ -556,6 +629,40 @@ def test_presubmit_rejects_tier() -> None:
         }
     )
     with pytest.raises(ValueError, match="must not set tier"):
+        expand_cells(matrix)
+
+
+def test_periodic_requires_source_in_known_set() -> None:
+    matrix = _matrix_with_job(
+        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+    )
+    with pytest.raises(ValueError, match="requires source"):
+        expand_cells(matrix)
+
+    matrix = _matrix_with_job(
+        {
+            "tier": "daily",
+            "source": "ga",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        }
+    )
+    with pytest.raises(ValueError, match="requires source"):
+        expand_cells(matrix)
+
+
+def test_presubmit_rejects_source() -> None:
+    matrix = _matrix_with_job(
+        {
+            "kind": "presubmit",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        }
+    )
+    with pytest.raises(ValueError, match="must not set source"):
         expand_cells(matrix)
 
 

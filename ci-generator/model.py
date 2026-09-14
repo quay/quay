@@ -37,6 +37,7 @@ class Cell:
     cloud: str
     test: str
     tier: str | None
+    source: str | None
     arch: str = "amd64"
     image_source: str = "build"
     env: dict[str, Any] = field(default_factory=dict)
@@ -92,6 +93,8 @@ class Cell:
 
     @property
     def test_as(self) -> str:
+        if self.kind == "periodic":
+            return f"{self.cloud}-{self.storage}-{self.source}"
         return f"{self.cloud}-{self.storage}"
 
     @property
@@ -112,6 +115,7 @@ class Cell:
             "storage": self.storage,
             "test": self.test,
             "tier": self.tier,
+            "source": self.source,
             "arch": self.arch,
             "image_source": self.image_source,
             "variant": self.variant,
