@@ -46,8 +46,6 @@ managed_files:
 
 quay:
   - branch: redhat-3.18
-    env:
-      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|..."
     jobs:
       - {tier: daily, clouds: [aws], ocp: ["4.22"], test: e2e-install}
   - branch: master
@@ -80,15 +78,16 @@ Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{bran
 
 ## Layer order
 
-Each cell is assembled by deep-merge, later layers win. `kind: presubmit` jobs render from `templates/presubmit/` instead of `templates/`; the three layer names underneath are the same:
+Each cell is assembled by deep-merge, later layers win. `kind: presubmit` jobs render from `templates/presubmit/` for base and clouds; the test layer instead builds on top of the shared periodic one:
 
 1. `templates/base.yaml` (or `templates/presubmit/base.yaml`)
 2. `templates/clouds/{cloud}.yaml`, or the optional override `templates/presubmit/clouds/{cloud}.yaml` when present; presubmit falls back to the shared file otherwise
-3. `templates/tests/{test}.yaml` (or `templates/presubmit/tests/{test}.yaml`)
-4. Kind settings in `generate.py`: periodic sets `cron` from the tier; presubmit copies `always_run` / `optional` / `run_if_changed` / `skip_if_only_changed` onto the test when set
-5. Branch `env`, then job `env` / `as`
+3. `templates/tests/{test}.yaml`
+4. `templates/presubmit/tests/{test}.yaml`, when present, merged on top of layer 3 (presubmit only); if it does not exist, presubmit uses layer 3 unchanged
+5. Kind settings in `generate.py`: periodic sets `cron` from the tier; presubmit copies `always_run` / `optional` / `run_if_changed` / `skip_if_only_changed` onto the test when set
+6. Branch `env`, then job `env` / `as`
 
-Mappings recurse. Lists of mappings merge by index. Scalar lists replace. Env values replace whole keys. `QUAY_EXTRA_CONFIG` lives once per kind (`templates/tests/e2e-install.yaml` and `templates/presubmit/tests/e2e-install.yaml`) and is shared by every version of that kind; unknown feature flags are treated as no-ops on older Quay releases. Each cell's own rendered config must contain exactly one test; cells sharing a filename are grouped afterward (see above).
+Mappings recurse. Lists of mappings merge by index. Scalar lists replace. Env values replace whole keys. `QUAY_EXTRA_CONFIG` lives once, in `templates/tests/e2e-install.yaml`, and is shared by every branch and kind; unknown feature flags are treated as no-ops on older Quay releases. `templates/presubmit/tests/e2e-install.yaml` layers only the presubmit-specific delta (image-test dependencies/env and the extra `quay-deploy-custom-image` step) on top of it. Each cell's own rendered config must contain exactly one test; cells sharing a filename are grouped afterward (see above).
 
 ### How often a job runs (periodic tiers)
 
@@ -97,7 +96,7 @@ The only difference between periodic tiers is **timing**. The ci-operator field 
 | Tier | When | Result |
 | --- | --- | --- |
 | `daily` | Once a day | `cron: '@daily'`. Broader matrix (several clouds × OCP versions). |
-| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). Use when the derived name should be `{storage}-nightly`. |
+| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). Use when the derived name should be `{cloud}-{storage}-nightly`. |
 | `weekly` | Once a week | `cron: '@weekly'`. Long tail — older versions, upgrades. |
 
 ## Adding coverage
@@ -123,12 +122,12 @@ Add an OCP version on an existing job:
 
 Both add a new generated filename for `layout: variant` releases; add it to `managed_files.active` in the same change. `layout: base` rows (for example `master`) share one file per branch: an extra cloud on an existing job needs a distinct `as` instead of a new filename, but an extra OCP version does not work the same way — `ocp` is a file-level input for base rows, so it needs its own variant/file.
 
-Shared env for every job on a branch (for example a longer `PLAYWRIGHT_GREP_INVERT`). Do not copy `QUAY_EXTRA_CONFIG` here; it comes from the test template.
+Branch `env` overrides the test template's default for every job on that branch (for example a shorter `PLAYWRIGHT_GREP_INVERT` on an older release that lacks a feature the default filter excludes). Do not copy `QUAY_EXTRA_CONFIG` here; it comes from the test template.
 
 ```yaml
-  - branch: redhat-3.18
+  - branch: redhat-3.16
     env:
-      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook"
+      PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP"
     jobs:
       - {tier: daily, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
 ```

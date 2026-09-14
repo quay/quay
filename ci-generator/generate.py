@@ -17,6 +17,7 @@
 #   templates/base.yaml (or templates/presubmit/base.yaml for kind: presubmit)
 #   templates/clouds/<cloud>.yaml
 #   templates/tests/<test>.yaml
+#   templates/presubmit/tests/<test>.yaml (kind: presubmit only, when present)
 #   kind settings (periodic cron, or presubmit trigger fields)
 #   branch env, then job env / as
 #
@@ -396,8 +397,13 @@ def build_config(cell: Cell, templates_dir: Path) -> YamlMap:
     layers = [
         render_template(env, f"{template_root}base.yaml", context),
         render_template(env, cloud_template, context),
-        render_template(env, f"{template_root}tests/{cell.test}.yaml", context),
+        render_template(env, f"tests/{cell.test}.yaml", context),
     ]
+    presubmit_test_template = f"{template_root}tests/{cell.test}.yaml"
+    if template_root and (templates_dir / presubmit_test_template).exists():
+        # Presubmit test layer is a delta on top of the shared periodic test
+        # layer, not a byte-identical fork that would need editing twice.
+        layers.append(render_template(env, presubmit_test_template, context))
     config: YamlMap = {}
     for layer in layers:
         config = deep_merge(config, layer)

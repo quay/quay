@@ -13,6 +13,7 @@ from generate import (
     _print_list,
     apply_cell_settings,
     apply_kind_settings,
+    build_config,
     default_output_dir,
     dump_config,
     expand_cells,
@@ -68,11 +69,7 @@ def test_expand_matrix_cells() -> None:
     assert cell.arch == "amd64"
     assert cell.as_name is None
     assert cell.test_as == "aws-s3-daily"
-    assert cell.env["PLAYWRIGHT_GREP_INVERT"] == (
-        "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
-        "saves and loads architecture filter with mirror configuration|"
-        "loads existing architecture filter from saved mirror configuration"
-    )
+    assert "PLAYWRIGHT_GREP_INVERT" not in cell.env
 
     master_cell = next(c for c in cells if c.branch == "master")
     assert master_cell.filename == MASTER_NAME
@@ -119,12 +116,45 @@ def test_jinja_renders_ocp_version() -> None:
     assert rendered["prowgen"]["enable_secrets_store_csi_driver"] is True
 
 
-def test_e2e_install_template_inverts_only_auth() -> None:
+def test_e2e_install_template_inverts_full_default_filter() -> None:
     env = jinja_env(GENERATOR_DIR / "templates")
     rendered = render_template(env, "tests/e2e-install.yaml", _phase0_cell().context())
     assert rendered["tests"][0]["steps"]["env"]["PLAYWRIGHT_GREP_INVERT"] == (
-        "@auth:OIDC|@auth:LDAP"
+        "@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|"
+        "saves and loads architecture filter with mirror configuration|"
+        "loads existing architecture filter from saved mirror configuration"
     )
+
+
+def test_presubmit_test_layer_inherits_periodic_defaults() -> None:
+    presubmit_cell = _phase0_cell(
+        branch="master",
+        quay_version=None,
+        kind="presubmit",
+        tier=None,
+        always_run=False,
+        optional=True,
+    )
+    periodic_cell = _phase0_cell()
+    presubmit_config = build_config(presubmit_cell, GENERATOR_DIR / "templates")
+    periodic_config = build_config(periodic_cell, GENERATOR_DIR / "templates")
+
+    presubmit_env = presubmit_config["tests"][0]["steps"]["env"]
+    periodic_env = periodic_config["tests"][0]["steps"]["env"]
+    assert presubmit_env["PLAYWRIGHT_GREP_INVERT"] == periodic_env["PLAYWRIGHT_GREP_INVERT"]
+    assert presubmit_env["QUAY_EXTRA_CONFIG"] == periodic_env["QUAY_EXTRA_CONFIG"]
+
+    assert presubmit_env["PLAYWRIGHT_USE_IMAGE_TESTS"] == "true"
+    assert "PLAYWRIGHT_USE_IMAGE_TESTS" not in periodic_env
+    assert presubmit_config["tests"][0]["steps"]["dependencies"] == {
+        "QUAY_CI_IMAGE": "pipeline:quay-server"
+    }
+    assert "dependencies" not in periodic_config["tests"][0]["steps"]
+
+    presubmit_refs = [step["ref"] for step in presubmit_config["tests"][0]["steps"]["test"]]
+    periodic_refs = [step["ref"] for step in periodic_config["tests"][0]["steps"]["test"]]
+    expected_refs = periodic_refs[:-1] + ["quay-deploy-custom-image"] + periodic_refs[-1:]
+    assert presubmit_refs == expected_refs
 
 
 def test_kind_settings_periodic_uses_interval_keywords() -> None:
@@ -180,7 +210,7 @@ def test_kind_settings_presubmit_leaves_unset_trigger_fields_absent() -> None:
 
 def test_golden_phase0_bytes() -> None:
     results, _retired = generate_all()
-    by_name = {filename: config for _cell, filename, config in results}
+    by_name = {filename: config for _group, filename, config in results}
     assert PHASE0_NAME in by_name
     dumped = dump_config(by_name[PHASE0_NAME])
     assert dumped == FIXTURE.read_text()
@@ -189,7 +219,7 @@ def test_golden_phase0_bytes() -> None:
 
 def test_golden_master_bytes() -> None:
     results, _retired = generate_all()
-    by_name = {filename: config for _cell, filename, config in results}
+    by_name = {filename: config for _group, filename, config in results}
     assert MASTER_NAME in by_name
     config = by_name[MASTER_NAME]
     dumped = dump_config(config)
@@ -213,7 +243,7 @@ def test_mixed_golden_groups_periodic_and_presubmit_into_one_file() -> None:
         matrix_path=MIXED_DIR / "matrix.yaml", templates_dir=MIXED_DIR / "templates"
     )
     assert len(results) == 1
-    _cell, filename, config = results[0]
+    _group, filename, config = results[0]
     assert filename == PHASE0_NAME
     tests = config["tests"]
     assert [t["as"] for t in tests] == ["aws-s3-daily", "aws-s3"]
@@ -313,7 +343,7 @@ def test_check_fails_when_retired_present(tmp_path: Path) -> None:
     )
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    for _cell, filename, config in results:
+    for _group, filename, config in results:
         (output_dir / filename).write_text(dump_config(config))
     assert _check_configs(results, retired, output_dir) == 0
     (output_dir / retired_name).write_text("foo: bar\n")
@@ -393,7 +423,7 @@ def test_dry_run_does_not_write(tmp_path: Path, capsys: object) -> None:
 
 def test_dump_round_trip() -> None:
     results, _retired = generate_all()
-    for _cell, _name, config in results:
+    for _group, _name, config in results:
         dumped = dump_config(config)
         assert dumped.startswith(GENERATED_HEADER)
         assert yaml.safe_load(dumped) == config
