@@ -126,7 +126,7 @@
     "@patternfly/react-table": "^5.1.0",
     "node-forge": "^1.4.0",
     "minimatch": "3.1.5",
-    "immutable": "^5.1.5",
+    "immutable": "^5.1.8",
     "decode-uri-component": "^0.5.0",
     "svgo": "4.0.1",
     "brace-expansion": "^1.1.18",
