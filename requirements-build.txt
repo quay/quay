@@ -4,6 +4,7 @@
 #
 #    pybuild-deps compile --generate-hashes --output-file=requirements-build.txt requirements.txt
 #
+# trigger the hermetic build without altering any actual dependency
 calver==2025.10.20 \
     --hash=sha256:c98b376c2424642224d456b2f70c51402343e008c63d204634665e1a2a2835f5 \
     --hash=sha256:d7d75224eed9d9263f4fb30008487615196d208d14752bfd93fea7af2c84f508
