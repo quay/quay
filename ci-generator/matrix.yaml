@@ -1,0 +1,16 @@
+version: 2
+
+global_defaults:
+  image_source: build
+  arch: amd64
+  repo: quay/quay
+
+quay:
+  - branch: redhat-3.18
+    env:
+      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
+    jobs:
+      - tier: daily
+        clouds: [aws]
+        ocp: ["4.22"]
+        test: e2e-install

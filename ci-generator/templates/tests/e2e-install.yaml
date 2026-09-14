@@ -1,0 +1,42 @@
+tests:
+- steps:
+    env:
+      ENABLE_BUILD_SUPPORT: "true"
+      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP'
+      QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777
+      QUAY_EXTRA_CONFIG: |
+        FEATURE_PROGRAMMATIC_BOOTSTRAP: false
+        FEATURE_USER_METADATA: true
+        FEATURE_IMMUTABLE_TAGS: true
+        FEATURE_SPARSE_INDEX: true
+        FEATURE_QUOTA_NOTIFICATIONS: true
+        FEATURE_EDIT_QUOTA: true
+        FEATURE_CHANGE_TAG_EXPIRATION: true
+        FEATURE_IMAGE_PULL_STATS: false
+        LOG_ARCHIVE_LOCATION: default
+        ACTION_LOG_ARCHIVE_LOCATION: default
+        SESSION_TIMEOUT: 2h
+        FEATURE_MAILING: true
+        MAIL_SERVER: mailpit.quay-enterprise.svc.cluster.local
+        MAIL_PORT: 1025
+        MAIL_USE_TLS: false
+        MAIL_USE_AUTH: false
+        MAIL_DEFAULT_SENDER: quay@quayqe.local
+        DEFAULT_UI: react
+        SUPER_USERS:
+          - admin
+        GLOBAL_READONLY_SUPER_USERS:
+          - readonly
+        FEATURE_OTEL_TRACING: true
+        OTEL_CONFIG:
+          service_name: quay
+          sample_rate: 1.0
+          endpoint: http://jaeger.quay-enterprise.svc.cluster.local:4318/v1/traces
+    test:
+    - ref: quay-enable-catalogsource
+    - ref: quay-provisioning-tls
+    - ref: quay-provisioning-builder
+    - ref: quay-deploy-mailpit
+    - ref: quay-deploy-jaeger
+    - ref: "{{ deploy_ref }}"
+    - ref: quay-test-e2e

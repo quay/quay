@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections import namedtuple
@@ -64,6 +65,84 @@ def is_manifest_present(manifest) -> bool:
 
 
 CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "labels_to_apply"])
+
+# Cosign / Sigstore signature artifact types stored as OCI referrers (cosign v3+).
+COSIGN_SIGNATURE_ARTIFACT_TYPES = frozenset(
+    {
+        "application/vnd.dev.sigstore.bundle.v0.3+json",
+        "application/vnd.dev.sigstore.bundle.v0.2+json",
+        "application/vnd.dev.sigstore.bundle.v0.1+json",
+        "application/vnd.dev.sigstore.bundle+json",
+        "application/vnd.dev.cosign.simplesigning.v1+json",
+    }
+)
+COSIGN_SIMPLESIGNING_ARTIFACT_TYPE = "application/vnd.dev.cosign.simplesigning.v1+json"
+SIGSTORE_BUNDLE_PREDICATE_TYPE_ANNOTATION = "dev.sigstore.bundle.predicateType"
+SIGSTORE_BUNDLE_CONTENT_ANNOTATION = "dev.sigstore.bundle.content"
+SIGSTORE_BUNDLE_CONTENT_DSSE_ENVELOPE = "dsse-envelope"
+SIGSTORE_BUNDLE_CONTENT_MESSAGE_SIGNATURE = "message-signature"
+# Cosign v3.0.x ``cosign sign --new-bundle-format`` writes a DSSE-wrapped
+# in-toto statement with this predicate, not content=message-signature.
+COSIGN_SIGN_PREDICATE_TYPE = "https://sigstore.dev/cosign/sign/v1"
+
+CosignSignature = namedtuple(
+    "CosignSignature",
+    ["manifest_digest", "artifact_type", "tag_name"],
+)
+
+
+def _is_cosign_signature_artifact_type(artifact_type):
+    if not artifact_type:
+        return False
+    if artifact_type in COSIGN_SIGNATURE_ARTIFACT_TYPES:
+        return True
+    # Forward-compatible with newer sigstore bundle media types.
+    return artifact_type.startswith("application/vnd.dev.sigstore.bundle")
+
+
+def _manifest_annotations(manifest_bytes):
+    if not manifest_bytes:
+        return {}
+    try:
+        parsed = json.loads(manifest_bytes)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    annotations = parsed.get("annotations") or {}
+    if not isinstance(annotations, dict):
+        return {}
+    return annotations
+
+
+def _referrer_is_image_signature(artifact_type, manifest_bytes):
+    """
+    True when a Cosign/Sigstore referrer is an image signature, not an attestation.
+
+    Cosign v3 uses the same Sigstore bundle artifact type for ``cosign sign`` and
+    ``cosign attest``. Distinguish using bundle annotations:
+
+    - ``content=message-signature``: image signature (BUNDLE_SPEC)
+    - ``predicateType=https://sigstore.dev/cosign/sign/v1``: Cosign 3.0.x
+      ``cosign sign`` (DSSE-wrapped sign statement)
+    - other ``predicateType`` / ``content=dsse-envelope``: attestations
+    """
+    if artifact_type == COSIGN_SIMPLESIGNING_ARTIFACT_TYPE:
+        return True
+    if not _is_cosign_signature_artifact_type(artifact_type):
+        return False
+
+    annotations = _manifest_annotations(manifest_bytes)
+    predicate_type = annotations.get(SIGSTORE_BUNDLE_PREDICATE_TYPE_ANNOTATION)
+    content = annotations.get(SIGSTORE_BUNDLE_CONTENT_ANNOTATION)
+
+    if predicate_type == COSIGN_SIGN_PREDICATE_TYPE:
+        return True
+    if content == SIGSTORE_BUNDLE_CONTENT_MESSAGE_SIGNATURE:
+        return True
+    if predicate_type or content == SIGSTORE_BUNDLE_CONTENT_DSSE_ENVELOPE:
+        return False
+    return True
 
 
 class CreateManifestException(Exception):
@@ -172,6 +251,90 @@ def lookup_manifest_referrers(repository_id, manifest_digest, artifact_type=None
         query = query.where(Manifest.artifact_type == artifact_type)
 
     return query
+
+
+def lookup_cosign_signatures_for_digests(repository_id, digests):
+    """
+    Batch-lookup Cosign signatures for the given image manifest digests.
+
+    Returns a dict mapping each signed image digest to a CosignSignature.
+
+    Covers:
+      - Cosign v3+: OCI referrers where Manifest.subject matches the digest and
+        artifact_type is a known Sigstore/Cosign signature type (no visible .sig tag).
+      - Cosign v2 tag schema: alive tags named ``sha256-<hex>.sig``.
+
+    Digests with no matching signature are omitted from the result. When multiple
+    signature artifacts exist for one digest, the first found is returned (referrers
+    take precedence over classic .sig tags).
+    """
+    if not digests:
+        return {}
+
+    digests = list({digest for digest in digests if digest})
+    if not digests:
+        return {}
+
+    result = {}
+
+    # Cosign v3+ / OCI 1.1 referrers (subject-based, typically hidden $temp-* tags).
+    referrers = Manifest.select(
+        Manifest.digest,
+        Manifest.subject,
+        Manifest.artifact_type,
+        Manifest.manifest_bytes,
+    ).where(
+        Manifest.repository == repository_id,
+        Manifest.subject << digests,
+    )
+
+    for referrer in referrers:
+        if not _referrer_is_image_signature(referrer.artifact_type, referrer.manifest_bytes):
+            continue
+        if referrer.subject in result:
+            continue
+        result[referrer.subject] = CosignSignature(
+            manifest_digest=referrer.digest,
+            artifact_type=referrer.artifact_type,
+            tag_name=None,
+        )
+
+    # Cosign v2 classic tag schema: sha256-<hex>.sig
+    missing = [digest for digest in digests if digest not in result]
+    if not missing:
+        return result
+
+    sig_tag_name_to_digest = {}
+    for digest in missing:
+        if not digest.startswith("sha256:"):
+            continue
+        hex_digest = digest.split(":", 1)[1]
+        sig_tag_name_to_digest["sha256-%s.sig" % hex_digest] = digest
+
+    if not sig_tag_name_to_digest:
+        return result
+
+    query = (
+        Tag.select(Tag, Manifest)
+        .join(Manifest)
+        .where(
+            Tag.repository == repository_id,
+            Tag.name << list(sig_tag_name_to_digest.keys()),
+        )
+    )
+    query = filter_to_alive_tags(query)
+
+    for tag in query:
+        subject_digest = sig_tag_name_to_digest.get(tag.name)
+        if subject_digest is None or subject_digest in result:
+            continue
+        result[subject_digest] = CosignSignature(
+            manifest_digest=tag.manifest.digest,
+            artifact_type=tag.manifest.artifact_type,
+            tag_name=tag.name,
+        )
+
+    return result
 
 
 @overload

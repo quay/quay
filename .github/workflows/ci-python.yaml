@@ -1,6 +1,11 @@
 name: CI
 on:
   workflow_call:
+    inputs:
+      types-only:
+        description: Run Types Test only (skip unit, integration, registry, and OCI jobs)
+        type: boolean
+        default: false
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -8,6 +13,7 @@ on:
 jobs:
   unit:
     name: Unit Test
+    if: ${{ !inputs.types-only }}
     runs-on: ubuntu-22.04
     steps:
 
@@ -43,6 +49,7 @@ jobs:
 
   sqlite:
     name: SQLite Integration Test
+    if: ${{ !inputs.types-only }}
     runs-on: ubuntu-22.04
     steps:
 
@@ -118,6 +125,7 @@ jobs:
 
   registry:
     name: Registry Protocol Test
+    if: ${{ !inputs.types-only }}
     runs-on: quay-001-large-ubuntu-24-x64
     timeout-minutes: 45
     steps:
@@ -149,6 +157,7 @@ jobs:
 
   postgres:
     name: PostgreSQL Integration Test
+    if: ${{ !inputs.types-only }}
     runs-on: ubuntu-22.04
     steps:
 
@@ -184,6 +193,7 @@ jobs:
 
   oci:
     name: OCI Distribution Spec
+    if: ${{ !inputs.types-only }}
     runs-on: ubuntu-22.04
     services:
       postgres:

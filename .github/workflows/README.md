@@ -19,6 +19,7 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 | `ci-python.yaml` | Format, Pre-commit, Unit, SQLite, PostgreSQL, Types, E2E, Registry |
 | `ci-go.yaml` | Go Lint, Build, Test, Schema Drift, OCI Conformance, E2E Mirror |
 | `ci-web.yaml` | Build Plugin, Vitest, e2e-test-check, Playwright E2E |
+| `ci-generator.yaml` | ci-generator pytest and `generate.py --check` |
 
 ## Adding a new always-run job
 
