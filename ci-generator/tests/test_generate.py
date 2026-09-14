@@ -141,7 +141,10 @@ def test_presubmit_test_layer_inherits_periodic_defaults() -> None:
 
     presubmit_env = presubmit_config["tests"][0]["steps"]["env"]
     periodic_env = periodic_config["tests"][0]["steps"]["env"]
-    assert presubmit_env["PLAYWRIGHT_GREP_INVERT"] == periodic_env["PLAYWRIGHT_GREP_INVERT"]
+    assert presubmit_env["PLAYWRIGHT_GREP_INVERT"] == (
+        periodic_env["PLAYWRIGHT_GREP_INVERT"]
+        + "|image build context carries the baked classifier artifact path|Nginx 502 error page when backend is unreachable"
+    )
     assert presubmit_env["QUAY_EXTRA_CONFIG"] == periodic_env["QUAY_EXTRA_CONFIG"]
 
     assert presubmit_env["PLAYWRIGHT_USE_IMAGE_TESTS"] == "true"

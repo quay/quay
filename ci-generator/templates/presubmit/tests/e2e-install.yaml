@@ -1,8 +1,10 @@
+{% import "tests/_e2e-install.defaults.j2" as d %}
 tests:
 - steps:
     dependencies:
       QUAY_CI_IMAGE: pipeline:quay-server
     env:
+      PLAYWRIGHT_GREP_INVERT: '{{ d.playwright_grep_invert }}|image build context carries the baked classifier artifact path|Nginx 502 error page when backend is unreachable'
       PLAYWRIGHT_USE_IMAGE_TESTS: "true"
     test:
     - ref: quay-enable-catalogsource

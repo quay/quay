@@ -132,6 +132,8 @@ Branch `env` overrides the test template's default for every job on that branch 
       - {tier: daily, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
 ```
 
+The presubmit test template adds the two image-unsafe test titles to `PLAYWRIGHT_GREP_INVERT`; the shared regex lives in `templates/tests/_e2e-install.defaults.j2`.
+
 Then regenerate:
 
 ```bash
