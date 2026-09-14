@@ -83,7 +83,7 @@ class TestValidateExternalRegistryUrl:
             with pytest.raises(ValueError, match="only HTTPS"):
                 validate_external_registry_url(url=url, resolve_dns=False, allow_only_secure=True)
         else:
-            validate_external_registry_url(url=url, allow_only_secure=True)
+            validate_external_registry_url(url=url, resolve_dns=False, allow_only_secure=True)
 
     # ---- URLs with embedded credentials ----
 
