@@ -13,14 +13,19 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerRepositoryPermission
 from data.database import Manifest as ManifestTable
 from data.model import ImmutableTagException
-from data.model.oci.manifest import is_manifest_present
+from data.model.oci.manifest import (
+    is_manifest_present,
+    lookup_cosign_signatures_for_digests,
+)
 from data.model.oci.tag import RetargetTagException
 from data.model.pull_statistics import (
     get_manifest_pull_statistics,
     get_tag_pull_statistics,
 )
 from data.registry_model import registry_model
-from endpoints.api import RepositoryParamResource
+from endpoints.api import (
+    RepositoryParamResource,
+)
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
     disallow_for_non_normal_repositories,
@@ -194,8 +199,20 @@ class ListRepositoryTags(RepositoryParamResource):
             print("error", error)
             custom_abort(400, message=str(error))
 
+        tag_dicts = [_tag_dict(tag) for tag in history]
+        digests = [t["manifest_digest"] for t in tag_dicts if t.get("manifest_digest")]
+        if digests:
+            signatures = lookup_cosign_signatures_for_digests(repo_ref.id, digests)
+            for tag_dict in tag_dicts:
+                signature = signatures.get(tag_dict.get("manifest_digest"))
+                if signature is None:
+                    continue
+                tag_dict["cosign_signature_manifest_digest"] = signature.manifest_digest
+                if signature.tag_name:
+                    tag_dict["cosign_signature_tag"] = signature.tag_name
+
         return {
-            "tags": [_tag_dict(tag) for tag in history],
+            "tags": tag_dicts,
             "page": page,
             "has_additional": has_more,
         }
