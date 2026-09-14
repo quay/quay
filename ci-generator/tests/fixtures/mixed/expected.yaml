@@ -13,14 +13,14 @@
 prowgen:
   enable_secrets_store_csi_driver: true
 tests:
-- as: aws-s3-daily
+- as: aws-s3
   cron: '@daily'
   steps:
     cluster_profile: aws-quay-qe
     test:
     - ref: quay-test-e2e
     workflow: ipi-aws
-- as: aws-s3
+- as: aws-s3-alt
   steps:
     cluster_profile: aws-quay-qe
     test:

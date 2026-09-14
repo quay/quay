@@ -21,3 +21,4 @@ quay:
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
+        as: aws-s3-alt

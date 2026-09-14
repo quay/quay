@@ -72,9 +72,9 @@ quay:
 | `quay[].jobs[].tier` | Required for `periodic` (`daily` / `nightly` / `weekly`); must be unset for `presubmit` |
 | `quay[].jobs[].always_run` / `.optional` / `.run_if_changed` / `.skip_if_only_changed` | Presubmit trigger fields, copied onto the test when set. `run_if_changed` and `skip_if_only_changed` are mutually exclusive; `always_run: true` cannot combine with either. Only valid when `kind: presubmit`. |
 | `quay[].jobs[].env` | Optional per-job env; keys replace branch env of the same name |
-| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{cloud}-{storage}-{tier}` for periodic (for example `aws-s3-daily`) or `{cloud}-{storage}` for presubmit (for example `aws-s3`). Split the job into its own row when only some clouds need a different name. |
+| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{cloud}-{storage}` for both `periodic` and `presubmit` (for example `aws-s3`) -- tiers change only timing, never the name. Split the job into its own row when only some clouds need a different name. |
 
-Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{branch}__{cloud}-ocp{ocp_nodot}-{test}.yaml` (`layout: base` rows instead write `{org}-{repo}-{branch}.yaml`). Cells that share a filename (for example a periodic and a presubmit row for the same branch/cloud/OCP/test) merge into one file: their tests concatenate in matrix order, and everything but `tests` must be identical across the group or generation fails with `incompatible file-level inputs`.
+Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{branch}__{cloud}-ocp{ocp_nodot}-{test}.yaml` (`layout: base` rows instead write `{org}-{repo}-{branch}.yaml`). Cells that share a filename (for example a periodic and a presubmit row for the same branch/cloud/OCP/test) merge into one file: their tests concatenate in matrix order, and everything but `tests` must be identical across the group or generation fails with `incompatible file-level inputs`. A periodic and a presubmit on the same branch/cloud/storage/test in one file derive the same `as` and collide: the generator fails with `duplicate as` -- set an explicit `as` on one row; the name must not encode the kind.
 
 ## Layer order
 
@@ -96,7 +96,7 @@ The only difference between periodic tiers is **timing**. The ci-operator field 
 | Tier | When | Result |
 | --- | --- | --- |
 | `daily` | Once a day | `cron: '@daily'`. Broader matrix (several clouds × OCP versions). |
-| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). Use when the derived name should be `{cloud}-{storage}-nightly`. |
+| `nightly` | Once a day | Same cron as `daily` (`'@daily'`). |
 | `weekly` | Once a week | `cron: '@weekly'`. Long tail — older versions, upgrades. |
 
 ## Adding coverage

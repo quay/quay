@@ -36,7 +36,7 @@ resources:
       cpu: 100m
       memory: 200Mi
 tests:
-- as: aws-s3-daily
+- as: aws-s3
   cron: '@daily'
   steps:
     cluster_profile: aws-quay-qe

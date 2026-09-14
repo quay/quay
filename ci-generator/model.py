@@ -92,9 +92,7 @@ class Cell:
 
     @property
     def test_as(self) -> str:
-        if self.kind == "presubmit":
-            return f"{self.cloud}-{self.storage}"
-        return f"{self.cloud}-{self.storage}-{self.tier}"
+        return f"{self.cloud}-{self.storage}"
 
     @property
     def filename(self) -> str:
