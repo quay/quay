@@ -34,12 +34,13 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
-def _validate_external_reference(reference):
+def _validate_external_reference(reference, proxy_config=None):
     """Validate a repository mirror source and normalize SSRF errors."""
     try:
         validate_external_registry_reference(
             reference,
             allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=proxy_config,
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
@@ -341,7 +342,11 @@ class RepoMirrorResource(RepositoryParamResource):
         data = request.get_json()
 
         # Validate the complete request before creating rules or changing permissions.
-        _validate_external_reference(data["external_reference"])
+        registry_config = data.get("external_registry_config") or {}
+        _validate_external_reference(
+            data["external_reference"],
+            proxy_config=registry_config.get("proxy"),
+        )
 
         arch_filter = data.get("architecture_filter")
         if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
@@ -419,7 +424,13 @@ class RepoMirrorResource(RepositoryParamResource):
 
         # Validate and normalize every requested change before applying any update.
         if "external_reference" in values:
-            _validate_external_reference(values["external_reference"])
+            registry_config = values.get("external_registry_config")
+            if registry_config is None:
+                registry_config = mirror.external_registry_config or {}
+            _validate_external_reference(
+                values["external_reference"],
+                proxy_config=registry_config.get("proxy"),
+            )
 
         if "sync_start_date" in values:
             try:

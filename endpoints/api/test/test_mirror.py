@@ -425,9 +425,9 @@ class TestRepoMirrorSSRFProtection:
         validated = False
         create_rule = model.repo_mirror.create_rule
 
-        def validate_before_mutation(reference):
+        def validate_before_mutation(reference, proxy_config=None):
             nonlocal validated
-            _validate_external_reference(reference)
+            _validate_external_reference(reference, proxy_config=proxy_config)
             validated = True
 
         def create_rule_after_validation(*args, **kwargs):
@@ -447,7 +447,7 @@ class TestRepoMirrorSSRFProtection:
                     body = self._create_body("quay.io/team/repo", robot.username)
                     conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
 
-        validate.assert_called_once_with("quay.io/team/repo")
+        validate.assert_called_once_with("quay.io/team/repo", proxy_config=None)
         mutation.assert_called_once()
 
     def test_update_validates_external_reference_before_mutation(self, app):
@@ -455,9 +455,9 @@ class TestRepoMirrorSSRFProtection:
         validated = False
         change_remote = model.repo_mirror.change_remote
 
-        def validate_before_mutation(reference):
+        def validate_before_mutation(reference, proxy_config=None):
             nonlocal validated
-            _validate_external_reference(reference)
+            _validate_external_reference(reference, proxy_config=proxy_config)
             validated = True
 
         def change_remote_after_validation(*args, **kwargs):
@@ -477,7 +477,9 @@ class TestRepoMirrorSSRFProtection:
                     body = {"external_reference": "quay.io/team/repo"}
                     conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
 
-        validate.assert_called_once_with("quay.io/team/repo")
+        validate.assert_called_once()
+        assert validate.call_args[0][0] == "quay.io/team/repo"
+        assert validate.call_args[1].get("proxy_config") is not None
         mutation.assert_called_once()
 
     def test_update_with_private_ip_rejected_without_partial_updates(self, app):
@@ -522,6 +524,43 @@ class TestRepoMirrorSSRFProtection:
 
         updated = model.repo_mirror.get_mirror(mirror.repository)
         assert updated.external_reference == "10.0.0.1/team/repo"
+
+    def test_user_supplied_proxy_cannot_bypass_ssrf_for_non_allowlisted_host(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrfuserproxybot", model.user.get_namespace_user("devtable")
+        )
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = self._create_body("registry.example.com/team/repo", robot.username)
+                body["external_registry_config"] = {
+                    "proxy": {"https_proxy": "http://corp-proxy:8080"},
+                }
+                resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided registry location is not allowed"
+        assert (
+            model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
+            is None
+        )
+        mock_dns.assert_called()
+
+    def test_update_reference_with_stored_proxy_rejects_non_allowlisted_host(self, app):
+        mirror = _setup_mirror()
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {"external_reference": "registry.example.com/team/repo"}
+                resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided registry location is not allowed"
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == "quay.io/redhat/quay"
+        mock_dns.assert_called()
 
 
 def test_cancel_repo_mirroring(app):

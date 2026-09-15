@@ -1693,6 +1693,54 @@ class TestOrgMirrorSSRFProtection:
 
         _cleanup_org_mirror_config("buynlarge")
 
+    def test_create_org_mirror_user_proxy_does_not_bypass_ssrf(self, app):
+        """User-supplied proxy cannot skip DNS for a non-allowlisted private host."""
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": _EMPTY_ORG}
+                body = self._base_create_body("https://registry.example.com")
+                body["external_registry_config"] = {
+                    "proxy": {"https_proxy": "http://corp-proxy:8080"},
+                }
+                resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+        assert (
+            model.org_mirror.get_org_mirror_config(model.organization.get_organization(_EMPTY_ORG))
+            is None
+        )
+        mock_dns.assert_called()
+
+    def test_verify_uses_stored_proxy_config(self, app):
+        """Verify revalidation passes the stored proxy mapping into SSRF checks."""
+        _cleanup_org_mirror_config("buynlarge")
+        stored_proxy = {"https_proxy": "http://corp-proxy:8080"}
+        _create_config_directly(
+            external_registry_url="https://registry.example.com",
+            external_registry_config={"proxy": stored_proxy},
+        )
+
+        with patch("endpoints.api.org_mirror.validate_external_registry_url") as mock_validate:
+            with patch("endpoints.api.org_mirror.get_registry_adapter") as mock_adapter:
+                mock_adapter.return_value.test_connection.return_value = (True, "ok")
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": "buynlarge"}
+                    result = conduct_api_call(
+                        cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200
+                    ).json
+
+        assert result["success"] is True
+        mock_validate.assert_called_once()
+        _, kwargs = mock_validate.call_args
+        assert kwargs.get("proxy_config") == stored_proxy
+        assert kwargs.get("resolve_dns") is True
+
+        _cleanup_org_mirror_config("buynlarge")
+
 
 class TestGetOrgMirrorConfigStatusCounts:
     """Tests for GET /v1/organization/<orgname>/mirror endpoint - repo sync status counts."""
