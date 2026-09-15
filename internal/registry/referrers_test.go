@@ -57,9 +57,6 @@ func (m *mockStore) GetManifestDigest(context.Context, int64, digest.Digest) (di
 	return "", nil
 }
 
-func (m *mockStore) GetManifestContent(context.Context, digest.Digest) ([]byte, error) {
-	return nil, nil
-}
 func (m *mockStore) BlobExists(context.Context, digest.Digest) (bool, error) { return false, nil }
 func (m *mockStore) BlobLinkedToRepo(context.Context, int64, digest.Digest) (bool, error) {
 	return false, nil

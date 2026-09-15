@@ -3,6 +3,7 @@ package metastore_test
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -467,9 +468,9 @@ func TestDeleteManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Deleting again should be a no-op.
-	if err := store.DeleteManifest(ctx, repoID, dgst); err != nil {
-		t.Fatal(err)
+	// Deleting again should properly return an oci.ErrNotExist now
+	if err := store.DeleteManifest(ctx, repoID, dgst); !errors.Is(err, oci.ErrNotExist) {
+		t.Fatalf("expected ErrNotExist on second delete, got %v", err)
 	}
 }
 
