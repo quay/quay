@@ -2,7 +2,7 @@ import functools
 import logging
 
 import redis_lock
-from redis import Redis, RedisError, TimeoutError
+from redis import Redis, RedisError
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +73,6 @@ class GlobalLock(object):
 
             logger.debug("Acquired lock %s", self._lock_name)
             return True
-        except TimeoutError:
-            logger.debug("Lock %s is currently held by another worker, will retry", self._lock_name)
-            return False
         except RedisError as re:
             logger.warning("Could not connect to Redis for lock %s: %s", self._lock_name, re)
             return False
