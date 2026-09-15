@@ -487,9 +487,7 @@ func (s *errStubMetaStore) GetTagDigest(context.Context, int64, string) (digest.
 func (s *errStubMetaStore) GetManifestDigest(context.Context, int64, digest.Digest) (digest.Digest, error) {
 	return "", errNotImplemented
 }
-func (s *errStubMetaStore) GetManifestContent(context.Context, digest.Digest) ([]byte, error) {
-	return nil, errNotImplemented
-}
+
 func (s *errStubMetaStore) BlobExists(context.Context, digest.Digest) (bool, error) {
 	return false, errNotImplemented
 }
