@@ -308,6 +308,11 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                 source = str(source_raw) if source_raw else ""
                 if not source or source not in SOURCES:
                     raise ValueError(f"{where} periodic job requires source in {SOURCES}")
+                if source == "nightly" and quay_version is None:
+                    raise ValueError(
+                        f"{where} source: nightly requires a quay_version-bearing branch; "
+                        f"branch {branch!r} has none"
+                    )
             else:
                 if tier_raw is not None:
                     raise ValueError(f"{where} presubmit job must not set tier")

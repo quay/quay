@@ -652,6 +652,38 @@ def test_periodic_requires_source_in_known_set() -> None:
         expand_cells(matrix)
 
 
+def test_periodic_nightly_source_requires_quay_version() -> None:
+    matrix = _matrix_with_job(
+        {
+            "tier": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        },
+        release_overrides={"branch": "master"},
+    )
+    with pytest.raises(ValueError, match="source: nightly requires a quay_version"):
+        expand_cells(matrix)
+
+
+def test_periodic_stable_source_expands_on_master() -> None:
+    matrix = _matrix_with_job(
+        {
+            "tier": "daily",
+            "source": "stable",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        },
+        release_overrides={"branch": "master"},
+    )
+    cells = expand_cells(matrix)
+    assert len(cells) == 1
+    assert cells[0].quay_version is None
+    assert cells[0].source == "stable"
+
+
 def test_presubmit_rejects_source() -> None:
     matrix = _matrix_with_job(
         {
