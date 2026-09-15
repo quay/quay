@@ -34,6 +34,35 @@ func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams
 	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
 }
 
+const getActiveTag = `-- name: GetActiveTag :one
+SELECT id, manifest_id, lifetime_start_ms
+FROM tag
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+ORDER BY lifetime_start_ms DESC
+LIMIT 1
+`
+
+type GetActiveTagParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Name         string `json:"name"`
+}
+
+type GetActiveTagRow struct {
+	ID              int64         `json:"id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+}
+
+// Returns the live (lifetime_end_ms IS NULL) tag row for a name. Callers use
+// it to skip the expire-and-insert cycle when the tag already points at the
+// manifest being written, so a repeated PUT does not leave an expired row.
+func (q *Queries) GetActiveTag(ctx context.Context, arg GetActiveTagParams) (GetActiveTagRow, error) {
+	row := q.db.QueryRowContext(ctx, getActiveTag, arg.RepositoryID, arg.Name)
+	var i GetActiveTagRow
+	err := row.Scan(&i.ID, &i.ManifestID, &i.LifetimeStartMs)
+	return i, err
+}
+
 const getActiveTagDigest = `-- name: GetActiveTagDigest :one
 SELECT m.digest
 FROM tag t
