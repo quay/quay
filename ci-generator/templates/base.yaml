@@ -26,6 +26,10 @@ resources:
 tests:
 - as: "{{ test_as }}"
   steps:
+    credentials:
+    - mount_path: /var/run/secrets/registry.redhat.io
+      name: registry.redhat.io
+      namespace: test-credentials
     env:
       PLAYWRIGHT_GIT_REPO: https://github.com/quay/quay.git
       QUAY_INDEX_IMAGE_REPO: "{{ index_image_repo }}"

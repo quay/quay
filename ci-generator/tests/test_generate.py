@@ -97,6 +97,30 @@ def test_jinja_renders_ocp_version() -> None:
     assert rendered["prowgen"]["enable_secrets_store_csi_driver"] is True
 
 
+def test_base_template_includes_registry_redhat_io_credentials() -> None:
+    """All jobs must mount registry.redhat.io pull credentials.
+
+    The quay-deploy-aws-s3 step inspects the deployed Quay app image on
+    registry.redhat.io to derive the playwright git ref. Without pull credentials
+    the oc-image-info call returns 'manifest unknown' and the ref detection
+    falls back to the branch tip, introducing version skew between the deployed
+    image and the test suite.
+    """
+    env = jinja_env(GENERATOR_DIR / "templates")
+    rendered = render_template(env, "base.yaml", _phase0_cell().context())
+    credentials = rendered["tests"][0]["steps"]["credentials"]
+    assert isinstance(credentials, list), "steps.credentials must be a list"
+    registry_cred = next(
+        (c for c in credentials if c.get("name") == "registry.redhat.io"),
+        None,
+    )
+    assert (
+        registry_cred is not None
+    ), "steps.credentials must include an entry for registry.redhat.io"
+    assert registry_cred["namespace"] == "test-credentials"
+    assert registry_cred["mount_path"] == "/var/run/secrets/registry.redhat.io"
+
+
 def test_e2e_install_template_inverts_only_auth() -> None:
     env = jinja_env(GENERATOR_DIR / "templates")
     rendered = render_template(env, "tests/e2e-install.yaml", _phase0_cell().context())
