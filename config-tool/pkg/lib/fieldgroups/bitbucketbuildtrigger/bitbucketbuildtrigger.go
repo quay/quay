@@ -15,8 +15,8 @@ type BitbucketBuildTriggerFieldGroup struct {
 
 // BitbucketTriggerConfigStruct represents the BitbucketTriggerConfigStruct config fields
 type BitbucketTriggerConfigStruct struct {
-	ConsumerKey    string `default:"" validate:"" json:"CONSUMER_KEY,omitempty" yaml:"CONSUMER_KEY,omitempty"`
-	ConsumerSecret string `default:"" validate:"" json:"CONSUMER_SECRET,omitempty" yaml:"CONSUMER_SECRET,omitempty"`
+	ClientID    string `default:"" validate:"" json:"CLIENT_ID,omitempty" yaml:"CLIENT_ID,omitempty"`
+	ClientSecret string `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
 }
 
 // NewBitbucketBuildTriggerFieldGroup creates a new BitbucketBuildTriggerFieldGroup
@@ -53,16 +53,16 @@ func NewBitbucketTriggerConfigStruct(fullConfig map[string]interface{}) (*Bitbuc
 	newBitbucketTriggerConfigStruct := &BitbucketTriggerConfigStruct{}
 	defaults.Set(newBitbucketTriggerConfigStruct)
 
-	if value, ok := fullConfig["CONSUMER_KEY"]; ok {
-		newBitbucketTriggerConfigStruct.ConsumerKey, ok = value.(string)
+	if value, ok := fullConfig["CLIENT_ID"]; ok {
+		newBitbucketTriggerConfigStruct.ClientID, ok = value.(string)
 		if !ok {
-			return newBitbucketTriggerConfigStruct, errors.New("CONSUMER_KEY must be of type string")
+			return newBitbucketTriggerConfigStruct, errors.New("CLIENT_ID must be of type string")
 		}
 	}
-	if value, ok := fullConfig["CONSUMER_SECRET"]; ok {
-		newBitbucketTriggerConfigStruct.ConsumerSecret, ok = value.(string)
+	if value, ok := fullConfig["CLIENT_SECRET"]; ok {
+		newBitbucketTriggerConfigStruct.ClientSecret, ok = value.(string)
 		if !ok {
-			return newBitbucketTriggerConfigStruct, errors.New("CONSUMER_SECRET must be of type string")
+			return newBitbucketTriggerConfigStruct, errors.New("CLIENT_SECRET must be of type string")
 		}
 	}
 
