@@ -42,8 +42,8 @@ export default defineConfig({
     // Action timeout
     actionTimeout: 30 * 1000,
 
-    // Collect trace only on failure
-    trace: 'on-first-retry',
+    // Collect trace on any failed attempt
+    trace: 'retain-on-failure',
 
     // Screenshot only on failure
     screenshot: 'only-on-failure',
