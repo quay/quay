@@ -5,7 +5,7 @@ from redis import RedisError, TimeoutError
 from util.locking import GlobalLock
 
 
-def test_acquire_logs_timeout_as_connection_warning(caplog):
+def test_acquire_logs_timeout_as_lock_warning(caplog):
     lock = GlobalLock.__new__(GlobalLock)
     lock._lock_name = "test-lock"
     lock._lock_ttl = 600
@@ -21,12 +21,10 @@ def test_acquire_logs_timeout_as_connection_warning(caplog):
     finally:
         GlobalLock.lock_factory = original_lock_factory
 
-    assert (
-        "Could not connect to Redis for lock test-lock: Timeout reading from socket" in caplog.text
-    )
+    assert "Could not acquire Redis lock test-lock: Timeout reading from socket" in caplog.text
 
 
-def test_acquire_logs_other_redis_errors_as_connection_warning(caplog):
+def test_acquire_logs_other_redis_errors_as_lock_warning(caplog):
     lock = GlobalLock.__new__(GlobalLock)
     lock._lock_name = "test-lock"
     lock._lock_ttl = 600
@@ -42,4 +40,4 @@ def test_acquire_logs_other_redis_errors_as_connection_warning(caplog):
     finally:
         GlobalLock.lock_factory = original_lock_factory
 
-    assert "Could not connect to Redis for lock test-lock: connection failed" in caplog.text
+    assert "Could not acquire Redis lock test-lock: connection failed" in caplog.text
