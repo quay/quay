@@ -70,6 +70,7 @@ def test_expand_matrix_cells() -> None:
     } == {
         ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "daily", "periodic"),
         ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "daily", "periodic"),
+        ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "weekly", "periodic"),
         (None, "master", "aws", "4.22", "e2e-install", None, "presubmit"),
     }
     cell = next(c for c in cells if c.branch == "redhat-3.18")
