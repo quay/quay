@@ -118,7 +118,8 @@ func ensureRepo(t *testing.T, env *testEnv, ns, name string) int64 {
 	return id
 }
 
-// insertManifest creates a manifest and returns its ID. It also optionally takes a tag name.
+// insertManifest creates a manifest and returns its ID. If specified, inserts the provided tag
+// and links it to the manifest. Otherwise, creates a temporary tag with default expiration.
 func insertManifest(t *testing.T, env *testEnv, repoID int64, dgst digest.Digest, tag string) int64 {
 	t.Helper()
 	var id int64

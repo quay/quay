@@ -11,6 +11,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
@@ -442,16 +443,32 @@ func TestPutManifest_Create_Temporary_Tag(t *testing.T) {
 	assert.NoError(t, err)
 
 	// verify that we have a temporary tag present
-	db := sqliteStore.DB()
-	query := `SELECT COUNT(*) FROM tag WHERE repository_id = ? AND hidden = 1 AND name LIKE '$temp-%'`
-	var count int
+	q := daldb.New(sqliteStore.DB())
+	tags, err := q.GetAllTagsForRepositoryIncludingHidden(ctx, repoID)
+	assert.NoError(t, err)
 
-	if err = db.QueryRowContext(ctx, query, repoID).Scan(&count); err != nil {
-		t.Fatal(err)
-	}
+	firstExpiry := tags[0].LifetimeEndMs.Int64
 
-	// assert we have one temp tag
-	assert.Equal(t, count, 1)
+	// sleep again and then push again, verify we still have one tag
+	// and verify that expiry time increased
+	time.Sleep(3 * time.Second)
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    manifestDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   content,
+		BlobDigests: []oci.BlobRef{
+			{Digest: blobDgst, Size: 100},
+		},
+	})
+	assert.NoError(t, err)
+
+	newTags, err := q.GetAllTagsForRepositoryIncludingHidden(ctx, repoID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(newTags))
+
+	secondExpiry := newTags[0].LifetimeEndMs.Int64
+	assert.Greater(t, secondExpiry, firstExpiry)
 }
 
 func TestDeleteManifest(t *testing.T) {

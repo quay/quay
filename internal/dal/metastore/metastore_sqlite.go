@@ -320,31 +320,37 @@ func (s *SQLiteStore) linkChildManifests(ctx context.Context, q *daldb.Queries, 
 
 // insertTempTag inserts a temporary tag for each manifest if that manifest is pushed by digest.
 func (s *SQLiteStore) insertTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64) error {
-	hasTemp, err := q.HasUnexpiredTemporaryTag(ctx, daldb.HasUnexpiredTemporaryTagParams{
-		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
-		LifetimeEndMs: sql.NullInt64{Int64: time.Now().UnixMilli(), Valid: true},
+	startMs := time.Now().UnixMilli()
+	// Python Quay sets this to 1 hour, but for LLM models and multiarch images this time might be too short
+	// so increase expiration to 6 hours to ensure big images are properly pushed without errors.
+	expireMs := time.Now().Add(6 * time.Hour).UnixMilli()
+
+	rows, err := q.ExtendTemporaryTag(ctx, daldb.ExtendTemporaryTagParams{
+		LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeEndMs_2: sql.NullInt64{Int64: startMs, Valid: true},
 	})
 
 	if err != nil {
 		return fmt.Errorf("check temporary tag: %w", err)
 	}
 
-	if !hasTemp {
-		startMs := time.Now().UnixMilli()
-		// expiry time on temp tags should be 1 hour at least
-		expireMs := time.Now().Add(1 * time.Hour).UnixMilli()
+	// if update operation returns any changed rows, exit, temp tag was properly updated
+	if rows != 0 {
+		return nil
+	}
 
-		if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
-			Name:            "$temp-" + uuid.NewString(),
-			RepositoryID:    repoID,
-			ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
-			LifetimeStartMs: startMs,
-			LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
-			TagKindID:       s.tagKindTag,
-			Hidden:          true,
-		}); err != nil {
-			return fmt.Errorf("insert temporary protection tag: %w", err)
-		}
+	// otherwise, insert a new temporary tag
+	if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
+		Name:            "$temp-" + uuid.NewString(),
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: startMs,
+		LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
+		TagKindID:       s.tagKindTag,
+		Hidden:          true,
+	}); err != nil {
+		return fmt.Errorf("insert temporary protection tag: %w", err)
 	}
 	return nil
 }
