@@ -60,7 +60,7 @@ test.describe(
   {tag: ['@api', '@auth:OIDC', '@PROJQUAY-11205']},
   () => {
     test('access_token from Keycloak ROPC grant authenticates Quay API', async ({
-      playwright,
+      request,
       quayConfig,
     }) => {
       const oidc = getOidcConfig(quayConfig);
@@ -68,131 +68,107 @@ test.describe(
       if (!oidc) return;
 
       // Obtain an access_token via Resource Owner Password Credentials grant
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+      const tokenResponse = await request.post(oidc.tokenEndpoint, {
+        form: {
+          grant_type: 'password',
+          client_id: oidc.clientId,
+          username: 'testuser_oidc',
+          password: 'password',
+          scope: 'openid profile email',
+        },
+        timeout: 10_000,
       });
-      try {
-        const tokenResponse = await request.post(oidc.tokenEndpoint, {
-          form: {
-            grant_type: 'password',
-            client_id: oidc.clientId,
-            username: 'testuser_oidc',
-            password: 'password',
-            scope: 'openid profile email',
-          },
-          timeout: 10_000,
-        });
 
-        expect(
-          tokenResponse.ok(),
-          `Keycloak token request failed: ${tokenResponse.status()}`,
-        ).toBe(true);
+      expect(
+        tokenResponse.ok(),
+        `Keycloak token request failed: ${tokenResponse.status()}`,
+      ).toBe(true);
 
-        const tokenBody = await tokenResponse.json();
-        const accessToken: string = tokenBody.access_token;
-        expect(accessToken).toBeTruthy();
+      const tokenBody = await tokenResponse.json();
+      const accessToken: string = tokenBody.access_token;
+      expect(accessToken).toBeTruthy();
 
-        // Log the token typ for diagnostic purposes
-        const header = decodeJwtHeader(accessToken);
-        const typ = header.typ || '(none)';
-        // eslint-disable-next-line no-console
-        console.log(`Access token typ: "${typ}"`);
+      // Log the token typ for diagnostic purposes
+      const header = decodeJwtHeader(accessToken);
+      const typ = header.typ || '(none)';
+      // eslint-disable-next-line no-console
+      console.log(`Access token typ: "${typ}"`);
 
-        // Use the access_token as a Bearer token for a Quay API call
-        const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          timeout: 10_000,
-        });
+      // Use the access_token as a Bearer token for a Quay API call
+      const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        timeout: 10_000,
+      });
 
-        // The fix in PROJQUAY-11205 ensures is_jwt() accepts both "jwt" and "at+jwt",
-        // routing the token to SSO JWT validation instead of internal OAuth lookup.
-        expect(apiResponse.status()).toBe(200);
+      // The fix in PROJQUAY-11205 ensures is_jwt() accepts both "jwt" and "at+jwt",
+      // routing the token to SSO JWT validation instead of internal OAuth lookup.
+      expect(apiResponse.status()).toBe(200);
 
-        const userBody = await apiResponse.json();
-        expect(userBody.username).toBeTruthy();
-      } finally {
-        await request.dispose();
-      }
+      const userBody = await apiResponse.json();
+      expect(userBody.username).toBeTruthy();
     });
 
     test('id_token from Keycloak ROPC grant authenticates Quay API', async ({
-      playwright,
+      request,
       quayConfig,
     }) => {
       const oidc = getOidcConfig(quayConfig);
       test.skip(!oidc, 'No OIDC login config with OIDC_SERVER found');
       if (!oidc) return;
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+      const tokenResponse = await request.post(oidc.tokenEndpoint, {
+        form: {
+          grant_type: 'password',
+          client_id: oidc.clientId,
+          username: 'testuser_oidc',
+          password: 'password',
+          scope: 'openid profile email',
+        },
+        timeout: 10_000,
       });
-      try {
-        const tokenResponse = await request.post(oidc.tokenEndpoint, {
-          form: {
-            grant_type: 'password',
-            client_id: oidc.clientId,
-            username: 'testuser_oidc',
-            password: 'password',
-            scope: 'openid profile email',
-          },
-          timeout: 10_000,
-        });
 
-        expect(
-          tokenResponse.ok(),
-          `Keycloak token request failed: ${tokenResponse.status()}`,
-        ).toBe(true);
+      expect(
+        tokenResponse.ok(),
+        `Keycloak token request failed: ${tokenResponse.status()}`,
+      ).toBe(true);
 
-        const tokenBody = await tokenResponse.json();
-        const idToken: string = tokenBody.id_token;
-        expect(idToken).toBeTruthy();
+      const tokenBody = await tokenResponse.json();
+      const idToken: string = tokenBody.id_token;
+      expect(idToken).toBeTruthy();
 
-        const header = decodeJwtHeader(idToken);
-        expect(header.typ?.toLowerCase()).toBe('jwt');
+      const header = decodeJwtHeader(idToken);
+      expect(header.typ?.toLowerCase()).toBe('jwt');
 
-        // id_token (typ: JWT) should also work as a Bearer token
-        const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-          timeout: 10_000,
-        });
+      // id_token (typ: JWT) should also work as a Bearer token
+      const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        timeout: 10_000,
+      });
 
-        expect(apiResponse.status()).toBe(200);
+      expect(apiResponse.status()).toBe(200);
 
-        const userBody = await apiResponse.json();
-        expect(userBody.username).toBeTruthy();
-      } finally {
-        await request.dispose();
-      }
+      const userBody = await apiResponse.json();
+      expect(userBody.username).toBeTruthy();
     });
 
-    test('invalid Bearer token is rejected', async ({
-      playwright,
-      quayConfig,
-    }) => {
+    test('invalid Bearer token is rejected', async ({request, quayConfig}) => {
       const oidc = getOidcConfig(quayConfig);
       test.skip(!oidc, 'No OIDC login config with OIDC_SERVER found');
       if (!oidc) return;
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+      const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
+        headers: {
+          Authorization: 'Bearer invalid-token-value',
+        },
+        timeout: 10_000,
       });
-      try {
-        const apiResponse = await request.get(`${API_URL}/api/v1/user/`, {
-          headers: {
-            Authorization: 'Bearer invalid-token-value',
-          },
-          timeout: 10_000,
-        });
 
-        // Should be rejected — not a valid JWT or OAuth token
-        expect([401, 403]).toContain(apiResponse.status());
-      } finally {
-        await request.dispose();
-      }
+      // Should be rejected — not a valid JWT or OAuth token
+      expect([401, 403]).toContain(apiResponse.status());
     });
   },
 );

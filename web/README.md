@@ -58,6 +58,27 @@ To run tests locally:
 - Start the application with `pnpm start`
 - Run the tests with `pnpm run test:e2e`
 
+#### Failure artifacts
+
+On a failed test attempt, in addition to the Playwright trace/screenshot/video,
+the test report gets one more attachment: `server-spans.json` (backend spans
+for the test from Jaeger). Every test also carries a `trace-id` annotation
+(visible in the HTML report and the JSON report's test annotations) — look it
+up directly in Jaeger's trace search.
+
+Span collection degrades gracefully instead of failing the test: if
+`JAEGER_QUERY_URL` is unset or unreachable, the trace is empty, or the reply
+is malformed, the reason is recorded as a line in `not-collected.txt` instead
+of the span attachment. This never fails a test and adds at most ~12s, only
+on failure.
+
+Env vars (all optional):
+- `JAEGER_QUERY_URL` — must be set for Jaeger span collection; unset skips it
+  gracefully
+
+No redaction is applied: CI stacks are throwaway and torn down before the
+report is published.
+
 ## Building for Production
 
 ```bash
