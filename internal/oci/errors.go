@@ -13,21 +13,21 @@ var (
 	ErrUnauthorized = errors.New("unauthorized") //nolint:revive // sentinel
 )
 
-// ErrBlobUnknown is returned when a blob with a specific digest is not known to the registry
-type ErrBlobUnknown struct {
+// BlobUnknownError is returned when a blob with a specific digest is not known to the registry.
+type BlobUnknownError struct {
 	Digest digest.Digest
 }
 
-// ErrChildManifestUnknown is returned when a child manifest of a manifest list or OCI index is
-// unknown to the registry
-type ErrChildManifestUnknown struct {
+// ChildManifestUnknownError is returned when a child manifest of a manifest list or OCI index is
+// unknown to the registry.
+type ChildManifestUnknownError struct {
 	Digest digest.Digest
 }
 
-func (e ErrBlobUnknown) Error() string {
+func (e BlobUnknownError) Error() string {
 	return fmt.Sprintf("blob unknown to registry: %s", e.Digest.String())
 }
 
-func (e ErrChildManifestUnknown) Error() string {
+func (e ChildManifestUnknownError) Error() string {
 	return fmt.Sprintf("child manifest unknown to registry: %s", e.Digest.String())
 }

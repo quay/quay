@@ -69,8 +69,8 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 	}
 
 	if _, err := ms.repo.store.PutManifest(ctx, repoID, record); err != nil {
-		var blobErr oci.ErrBlobUnknown
-		var childErr oci.ErrChildManifestUnknown
+		var blobErr oci.BlobUnknownError
+		var childErr oci.ChildManifestUnknownError
 
 		switch {
 		case errors.As(err, &blobErr):

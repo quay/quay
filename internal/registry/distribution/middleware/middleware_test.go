@@ -107,7 +107,6 @@ func (m *mockStore) GetManifestDigest(_ context.Context, _ int64, _ digest.Diges
 	return m.getManifestDigestResult, m.getManifestDigestErr
 }
 
-
 func (m *mockStore) BlobExists(_ context.Context, _ digest.Digest) (bool, error) {
 	return false, errNotImplemented
 }
@@ -1089,13 +1088,13 @@ func TestManifestPut_NoSubject(t *testing.T) {
 }
 
 func TestManifestPut_Missing_Blob(t *testing.T) {
-	missing_blob_digest := digest.FromString("missing-blob")
+	missingBlobDigest := digest.FromString("missing-blob")
 
 	store := &mockStore{
 		ensureRepoID:  1,
 		putManifestID: 1,
-		putManifestErr: oci.ErrBlobUnknown{
-			Digest: missing_blob_digest,
+		putManifestErr: oci.BlobUnknownError{
+			Digest: missingBlobDigest,
 		},
 	}
 	dgst := digest.FromString("missing blob in manifest put")
@@ -1130,19 +1129,19 @@ func TestManifestPut_Missing_Blob(t *testing.T) {
 		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
 	}
 
-	if blobErr.Digest != missing_blob_digest {
-		t.Fatalf("wrong digest, expected: %s, got: %s", missing_blob_digest, blobErr.Digest)
+	if blobErr.Digest != missingBlobDigest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missingBlobDigest, blobErr.Digest)
 	}
 }
 
 func TestManifestPut_Missing_Child_Manifest(t *testing.T) {
-	missing_child_digest := digest.FromString("missing-child")
+	missingChildDigest := digest.FromString("missing-child")
 
 	store := &mockStore{
 		ensureRepoID:  1,
 		putManifestID: 1,
-		putManifestErr: oci.ErrChildManifestUnknown{
-			Digest: missing_child_digest,
+		putManifestErr: oci.ChildManifestUnknownError{
+			Digest: missingChildDigest,
 		},
 	}
 	dgst := digest.FromString("missing child manifest in manifest put")
@@ -1177,8 +1176,8 @@ func TestManifestPut_Missing_Child_Manifest(t *testing.T) {
 		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
 	}
 
-	if childErr.Digest != missing_child_digest {
-		t.Fatalf("wrong digest, expected: %s, got: %s", missing_child_digest, childErr.Digest)
+	if childErr.Digest != missingChildDigest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missingChildDigest, childErr.Digest)
 	}
 }
 
@@ -1337,6 +1336,7 @@ func TestManifestGet_Repository_Lookup_Failed(t *testing.T) {
 
 	repo := newTestRepository(innerRepo, store)
 	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
 	_, err = ms.Get(context.Background(), dgst)
 
 	var repositoryUnknownError distribution.ErrManifestUnknownRevision
