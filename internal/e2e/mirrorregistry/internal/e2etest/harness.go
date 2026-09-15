@@ -226,7 +226,7 @@ func (h *Harness) checkHealth(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	resp, err := h.client.Do(req)
+	resp, err := h.client.Do(req) //nolint:gosec // G704: URL is the test harness base URL, not user-controlled input
 	if err != nil {
 		return err
 	}
