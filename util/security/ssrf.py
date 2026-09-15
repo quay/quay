@@ -5,12 +5,16 @@ SSRF prevention utilities for validating user-supplied URLs.
 
 import ipaddress
 import logging
+import os
 import re
+from enum import Enum
 from socket import AF_UNSPEC, SOCK_STREAM
 from socket import gaierror as _gaierror
 from socket import getaddrinfo as _getaddrinfo
-from typing import List, Optional
-from urllib.parse import urlparse
+from typing import List, Mapping, Optional
+from urllib.parse import urlparse, urlsplit
+
+from requests.utils import should_bypass_proxies
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +74,70 @@ _REGISTRY_HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
 )
+
+
+class ProxyRoute(str, Enum):
+    DIRECT = "direct"
+    PROXY = "proxy"
+    UNKNOWN = "unknown"
+
+
+def _proxy_route_for_url(
+    url: str,
+    proxy_config: Optional[Mapping[str, Optional[str]]],
+) -> ProxyRoute:
+    if not proxy_config:
+        return ProxyRoute.DIRECT
+
+    try:
+        parsed = urlsplit(url)
+        scheme = parsed.scheme.lower()
+        if scheme not in ("http", "https") or not parsed.hostname:
+            return ProxyRoute.UNKNOWN
+    except (TypeError, ValueError):
+        return ProxyRoute.UNKNOWN
+
+    no_proxy = proxy_config.get("no_proxy")
+    if no_proxy:
+        if not isinstance(no_proxy, str):
+            return ProxyRoute.UNKNOWN
+        try:
+            if should_bypass_proxies(url, no_proxy=no_proxy):
+                return ProxyRoute.DIRECT
+        except (TypeError, ValueError):
+            return ProxyRoute.UNKNOWN
+
+    proxy_url = proxy_config.get(f"{scheme}_proxy")
+    if proxy_url is None or proxy_url == "":
+        return ProxyRoute.DIRECT
+    if not isinstance(proxy_url, str) or not proxy_url.strip():
+        return ProxyRoute.UNKNOWN
+
+    return ProxyRoute.PROXY
+
+
+# Public alias for unit tests and integration assertions.
+proxy_route_for_url = _proxy_route_for_url
+
+
+def get_environment_proxy_config() -> Optional[Mapping[str, Optional[str]]]:
+    """
+    Return HTTP(S) proxy settings from the process environment.
+
+    Used for proxy-cache SSRF validation where outbound registry traffic is
+    routed through Quay's configured HTTP_PROXY/HTTPS_PROXY rather than a
+    per-mirror proxy block in external_registry_config.
+    """
+    http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+    https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    no_proxy = os.environ.get("NO_PROXY") or os.environ.get("no_proxy")
+    if not http_proxy and not https_proxy:
+        return None
+    return {
+        "http_proxy": http_proxy,
+        "https_proxy": https_proxy,
+        "no_proxy": no_proxy,
+    }
 
 
 def _is_ip_blocked(ip_str: str) -> bool:
@@ -141,6 +209,7 @@ def validate_external_registry_reference(
     reference: str,
     resolve_dns: bool = True,
     allowed_hosts: Optional[List[str]] = None,
+    proxy_config: Optional[Mapping[str, Optional[str]]] = None,
 ) -> None:
     """
     Validate a scheme-less container registry reference used by repository mirroring.
@@ -153,6 +222,7 @@ def validate_external_registry_reference(
         reference: Scheme-less external repository reference
         resolve_dns: Whether to resolve and validate the registry hostname
         allowed_hosts: Optional hostnames/CIDRs that bypass the blocklist
+        proxy_config: Mirror/proxy-cache proxy settings (http_proxy, https_proxy, no_proxy)
 
     Raises:
         SSRFBlockedError: If the registry destination is blocked
@@ -214,6 +284,7 @@ def validate_external_registry_reference(
         f"https://{registry}",
         resolve_dns=resolve_dns,
         allowed_hosts=allowed_hosts,
+        proxy_config=proxy_config,
     )
 
 
@@ -221,6 +292,7 @@ def validate_external_registry_url(
     url: str,
     resolve_dns: bool = True,
     allowed_hosts: Optional[List[str]] = None,
+    proxy_config: Optional[Mapping[str, Optional[str]]] = None,
 ) -> None:
     """
     Validate an external registry URL to prevent Server-Side Request Forgery (SSRF).
@@ -243,6 +315,8 @@ def validate_external_registry_url(
             constructor should always use True (the default).
         allowed_hosts: Optional list of hostnames or CIDR ranges that bypass the
             blocklist. Populated from the SSRF_ALLOWED_HOSTS config option.
+        proxy_config: Optional mirror proxy settings used to determine whether
+            outbound requests route through a configured proxy.
 
     Raises:
         SSRFBlockedError: If the URL is blocked by SSRF protection (blocked
@@ -305,6 +379,18 @@ def validate_external_registry_url(
     except ValueError:
         # Not an IP literal, continue with hostname validation
         pass
+
+    # Use explicit proxy_config supplied by the caller.
+    # Do not call os.environ directly here.
+    route = _proxy_route_for_url(url, proxy_config)
+    if route is ProxyRoute.PROXY:
+        if name_allowlisted:
+            resolve_dns = False
+        elif blocked_by_name:
+            has_cidr_allowlist = any("/" in entry for entry in _allowed_hosts)
+            if not has_cidr_allowlist:
+                logger.warning("SSRF blocked: hostname '%s' is not allowed", hostname)
+                raise SSRFBlockedError(f"Hostname '{hostname}' is not allowed")
 
     if not resolve_dns:
         return

@@ -136,7 +136,10 @@ def create_org_mirror_config(
     # DNS resolution is skipped here; the API layer performs the full check.
     try:
         validate_external_registry_url(
-            external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
+            external_registry_url,
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+            proxy_config=(external_registry_config or {}).get("proxy"),
         )
     except ValueError as e:
         raise DataModelException(str(e))
@@ -274,9 +277,17 @@ def update_org_mirror_config(
     # Validate URL to prevent SSRF (CWE-918) - defense-in-depth
     # DNS resolution is skipped here; the API layer performs the full check.
     if external_registry_url is not None:
+        effective_config = (
+            external_registry_config
+            if external_registry_config is not None
+            else (config.external_registry_config or {})
+        )
         try:
             validate_external_registry_url(
-                external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
+                external_registry_url,
+                resolve_dns=False,
+                allowed_hosts=allowed_hosts,
+                proxy_config=effective_config.get("proxy"),
             )
         except ValueError as e:
             raise DataModelException(str(e))

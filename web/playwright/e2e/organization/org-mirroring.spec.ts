@@ -1921,3 +1921,147 @@ test.describe(
     });
   },
 );
+
+/**
+ * Proxy-route org mirror verification (real deployment with mirror proxy fields + SSRF allowlist).
+ * Set PLAYWRIGHT_PROXY_SSRF_E2E=1 and PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL (allowlisted hostname).
+ */
+const orgMirrorProxySsrfE2E = process.env.PLAYWRIGHT_PROXY_SSRF_E2E === '1';
+
+test.describe(
+  'Organization mirror proxy-route SSRF deployment',
+  {tag: ['@organization', '@feature:ORG_MIRROR', '@PROJQUAY-12833']},
+  () => {
+    test.skip(
+      !orgMirrorProxySsrfE2E,
+      'requires proxy+allowlist Quay deployment (PLAYWRIGHT_PROXY_SSRF_E2E=1)',
+    );
+
+    test('verify connection succeeds with allowlisted proxy-only upstream', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const registryUrl = process.env.PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL;
+      const httpProxy = process.env.PLAYWRIGHT_ORG_MIRROR_HTTP_PROXY;
+      const httpsProxy = process.env.PLAYWRIGHT_ORG_MIRROR_HTTPS_PROXY;
+      test.skip(
+        !registryUrl || !httpProxy || !httpsProxy,
+        'PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL and proxy env vars required',
+      );
+
+      const org = await api.organization('orgmirrorproxy');
+      const robot = await api.robot(org.name, 'proxybot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryUrl,
+        namespace: process.env.PLAYWRIGHT_ORG_MIRROR_NAMESPACE ?? 'testns',
+      });
+
+      await authenticatedPage.getByTestId('http-proxy-input').fill(httpProxy);
+      await authenticatedPage.getByTestId('https-proxy-input').fill(httpsProxy);
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText('Connection verified successfully').first(),
+      ).toBeVisible({timeout: 15000});
+
+      await authenticatedPage.getByTestId('submit-button').click();
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.external_registry_url).toBe(registryUrl);
+      expect(config?.external_registry_config?.proxy?.http_proxy).toBe(
+        httpProxy,
+      );
+      expect(config?.external_registry_config?.proxy?.https_proxy).toBe(
+        httpsProxy,
+      );
+    });
+
+    test('verify connection fails when target is in no_proxy', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const registryUrl = process.env.PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL;
+      const httpProxy = process.env.PLAYWRIGHT_ORG_MIRROR_HTTP_PROXY;
+      const httpsProxy = process.env.PLAYWRIGHT_ORG_MIRROR_HTTPS_PROXY;
+      test.skip(
+        !registryUrl || !httpProxy || !httpsProxy,
+        'PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL and proxy env vars required',
+      );
+
+      const org = await api.organization('orgmirrornoproxy');
+      const robot = await api.robot(org.name, 'noproxybot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryUrl,
+      });
+
+      await authenticatedPage.getByTestId('http-proxy-input').fill(httpProxy);
+      await authenticatedPage.getByTestId('https-proxy-input').fill(httpsProxy);
+
+      const host = new URL(registryUrl).hostname;
+      await authenticatedPage.getByTestId('no-proxy-input').fill(host);
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText(/failed|not allowed|could not/i).first(),
+      ).toBeVisible({timeout: 15000});
+    });
+
+    test('verify connection fails for non-allowlisted unresolved upstream', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const registryUrl =
+        process.env.PLAYWRIGHT_ORG_MIRROR_NON_ALLOWLISTED_URL ??
+        'https://non-allowlisted-isolated.example.com';
+      const httpProxy =
+        process.env.PLAYWRIGHT_ORG_MIRROR_HTTP_PROXY ??
+        'http://proxy.example.com:8080';
+      const httpsProxy =
+        process.env.PLAYWRIGHT_ORG_MIRROR_HTTPS_PROXY ??
+        'http://proxy.example.com:8080';
+
+      const org = await api.organization('orgmirrorfail');
+      const robot = await api.robot(org.name, 'failbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryUrl,
+      });
+
+      await authenticatedPage.getByTestId('http-proxy-input').fill(httpProxy);
+      await authenticatedPage.getByTestId('https-proxy-input').fill(httpsProxy);
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText(/failed|not allowed|could not/i).first(),
+      ).toBeVisible({timeout: 15000});
+
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).toBeNull();
+    });
+  },
+);

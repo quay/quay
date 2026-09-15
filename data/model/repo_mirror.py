@@ -239,6 +239,7 @@ def enable_mirroring_for_repository(
             external_reference,
             resolve_dns=False,
             allowed_hosts=allowed_hosts,
+            proxy_config=(external_registry_config or {}).get("proxy"),
         )
     except ValueError as e:
         raise DataModelException(str(e))
@@ -464,16 +465,21 @@ def change_remote(repository, remote_repository, allowed_hosts=None):
     """
     Update the external repository for Repository Mirroring.
     """
+    mirror = get_mirror(repository)
+    proxy_config = None
+    if mirror and mirror.external_registry_config:
+        proxy_config = mirror.external_registry_config.get("proxy")
+
     try:
         validate_external_registry_reference(
             remote_repository,
             resolve_dns=False,
             allowed_hosts=allowed_hosts,
+            proxy_config=proxy_config,
         )
     except ValueError as e:
         raise DataModelException(str(e))
 
-    mirror = get_mirror(repository)
     updates = {"external_reference": remote_repository}
     return bool(update_with_transaction(mirror, **updates))
 

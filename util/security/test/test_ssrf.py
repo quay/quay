@@ -3,12 +3,17 @@
 Unit tests for SSRF prevention in util/security/ssrf.py.
 """
 
+import os
+from socket import gaierror
 from unittest.mock import patch
 
 import pytest
 
 from util.security.ssrf import (
+    ProxyRoute,
     SSRFBlockedError,
+    get_environment_proxy_config,
+    proxy_route_for_url,
     validate_external_registry_reference,
     validate_external_registry_url,
 )
@@ -471,3 +476,222 @@ class TestSSRFAllowlist:
                     "https://registry.internal",
                     allowed_hosts=["192.168.0.0/16"],
                 )
+
+
+class TestEnvironmentProxyConfig:
+    def test_get_environment_proxy_config_reads_standard_vars(self):
+        with patch.dict(
+            os.environ,
+            {
+                "HTTPS_PROXY": "http://proxy.corp:8080",
+                "HTTP_PROXY": "http://proxy.corp:8080",
+                "NO_PROXY": "localhost",
+            },
+            clear=True,
+        ):
+            config = get_environment_proxy_config()
+            assert config == {
+                "http_proxy": "http://proxy.corp:8080",
+                "https_proxy": "http://proxy.corp:8080",
+                "no_proxy": "localhost",
+            }
+
+    def test_get_environment_proxy_config_returns_none_when_unset(self):
+        with patch.dict(os.environ, {}, clear=True):
+            assert get_environment_proxy_config() is None
+
+
+class TestProxyRouteForUrl:
+    """Tests for proxy_route_for_url() routing contract."""
+
+    def test_no_proxy_config_is_direct(self):
+        assert proxy_route_for_url("https://registry.example.com", None) is ProxyRoute.DIRECT
+        assert proxy_route_for_url("https://registry.example.com", {}) is ProxyRoute.DIRECT
+
+    def test_https_proxy_routes_https_url(self):
+        config = {"https_proxy": "http://corp-proxy:8080"}
+        assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.PROXY
+
+    def test_http_proxy_routes_http_url(self):
+        config = {"http_proxy": "http://corp-proxy:8080"}
+        assert proxy_route_for_url("http://registry.example.com", config) is ProxyRoute.PROXY
+
+    def test_scheme_mismatch_uses_direct_not_proxy(self):
+        assert (
+            proxy_route_for_url(
+                "https://registry.example.com",
+                {"http_proxy": "http://corp-proxy:8080"},
+            )
+            is ProxyRoute.DIRECT
+        )
+        assert (
+            proxy_route_for_url(
+                "http://registry.example.com",
+                {"https_proxy": "http://corp-proxy:8080"},
+            )
+            is ProxyRoute.DIRECT
+        )
+
+    def test_no_proxy_exact_hostname_is_direct(self):
+        config = {
+            "https_proxy": "http://corp-proxy:8080",
+            "no_proxy": "registry.example.com",
+        }
+        assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.DIRECT
+
+    def test_no_proxy_hostname_with_port_is_direct(self):
+        config = {
+            "https_proxy": "http://corp-proxy:8080",
+            "no_proxy": "registry.example.com:443",
+        }
+        assert proxy_route_for_url("https://registry.example.com:443", config) is ProxyRoute.DIRECT
+
+    def test_no_proxy_comma_separated_entries(self):
+        config = {
+            "https_proxy": "http://corp-proxy:8080",
+            "no_proxy": "localhost,registry.example.com",
+        }
+        assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.DIRECT
+        assert proxy_route_for_url("https://other.example.com", config) is ProxyRoute.PROXY
+
+    def test_no_proxy_suffix_match_is_direct(self):
+        config = {
+            "https_proxy": "http://corp-proxy:8080",
+            "no_proxy": ".internal",
+        }
+        assert proxy_route_for_url("https://registry.internal", config) is ProxyRoute.DIRECT
+
+    def test_malformed_proxy_config_is_unknown(self):
+        config = {"https_proxy": "   "}
+        assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.UNKNOWN
+
+    def test_missing_hostname_is_unknown(self):
+        config = {"https_proxy": "http://corp-proxy:8080"}
+        assert proxy_route_for_url("https://", config) is ProxyRoute.UNKNOWN
+
+    def test_unsupported_scheme_is_unknown(self):
+        config = {"https_proxy": "http://corp-proxy:8080"}
+        assert proxy_route_for_url("ftp://registry.example.com", config) is ProxyRoute.UNKNOWN
+
+    def test_ambient_env_does_not_change_route_when_proxy_config_empty(self):
+        with patch.dict(
+            os.environ,
+            {"HTTPS_PROXY": "http://corp-proxy:8080", "HTTP_PROXY": "http://corp-proxy:8080"},
+            clear=True,
+        ):
+            assert proxy_route_for_url("https://registry.example.com", None) is ProxyRoute.DIRECT
+
+
+class TestProxyAwareSSRFValidation:
+    """SSRF validation when outbound traffic is routed through an HTTP(S) proxy."""
+
+    _PROXY = {"https_proxy": "http://corp-proxy:8080"}
+
+    def test_allowlisted_hostname_proxy_skips_dns_on_gaierror(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = gaierror("Name or service not known")
+            validate_external_registry_url(
+                "https://registry.example.com",
+                proxy_config=self._PROXY,
+                allowed_hosts=["registry.example.com"],
+            )
+            mock_dns.assert_not_called()
+
+    def test_allowlisted_hostname_direct_route_queries_dns(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = gaierror("Name or service not known")
+            with pytest.raises(ValueError, match="Cannot resolve hostname"):
+                validate_external_registry_url(
+                    "https://registry.example.com",
+                    allowed_hosts=["registry.example.com"],
+                )
+            mock_dns.assert_called_once()
+
+    def test_non_allowlisted_hostname_proxy_still_requires_dns(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = gaierror("Name or service not known")
+            with pytest.raises(ValueError, match="Cannot resolve hostname"):
+                validate_external_registry_url(
+                    "https://registry.example.com",
+                    proxy_config=self._PROXY,
+                )
+            mock_dns.assert_called_once()
+
+    def test_no_proxy_match_runs_dns_and_rejects_private_resolution(self):
+        config = {
+            "https_proxy": "http://corp-proxy:8080",
+            "no_proxy": "registry.example.com",
+        }
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with pytest.raises(SSRFBlockedError, match="private or reserved"):
+                validate_external_registry_url(
+                    "https://registry.example.com",
+                    proxy_config=config,
+                )
+            mock_dns.assert_called_once()
+
+    def test_cidr_only_allowlist_proxy_does_not_skip_dns_on_failure(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = gaierror("Name or service not known")
+            with pytest.raises(ValueError, match="Cannot resolve hostname"):
+                validate_external_registry_url(
+                    "https://registry.internal",
+                    proxy_config=self._PROXY,
+                    allowed_hosts=["10.0.0.0/8"],
+                )
+            mock_dns.assert_called_once()
+
+    def test_proxy_route_still_blocks_metadata_hostname(self):
+        with pytest.raises(SSRFBlockedError, match="not allowed"):
+            validate_external_registry_url(
+                "https://metadata.google.internal",
+                proxy_config=self._PROXY,
+            )
+
+    def test_proxy_route_uses_dns_for_cidr_allowlisted_internal_hostname(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.1.5", 0))]
+            validate_external_registry_url(
+                "https://registry.internal",
+                proxy_config=self._PROXY,
+                allowed_hosts=["10.0.0.0/8"],
+            )
+            mock_dns.assert_called_once()
+
+    def test_proxy_does_not_bypass_scheme_check(self):
+        with pytest.raises(ValueError, match="scheme"):
+            validate_external_registry_url(
+                "ftp://registry.example.com",
+                proxy_config=self._PROXY,
+                allowed_hosts=["registry.example.com"],
+            )
+
+    def test_proxy_does_not_bypass_credential_check(self):
+        with pytest.raises(ValueError, match="credentials"):
+            validate_external_registry_url(
+                "https://user:pass@registry.example.com",
+                proxy_config=self._PROXY,
+                allowed_hosts=["registry.example.com"],
+            )
+
+    def test_mixed_public_private_dns_answers_still_blocked_with_proxy(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [
+                (2, 1, 6, "", ("93.184.216.34", 0)),
+                (2, 1, 6, "", ("10.0.0.1", 0)),
+            ]
+            with pytest.raises(SSRFBlockedError, match="private or reserved"):
+                validate_external_registry_url(
+                    "https://registry.example.com",
+                    proxy_config=self._PROXY,
+                )
+
+    def test_validate_upstream_reference_allowlisted_proxy_skips_dns(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.side_effect = AssertionError("DNS should not be queried")
+            validate_external_registry_reference(
+                "registry.example.com/team/repository",
+                proxy_config=self._PROXY,
+                allowed_hosts=["registry.example.com"],
+            )
