@@ -230,6 +230,8 @@ def enable_mirroring_for_repository(
     Create a RepoMirrorConfig and set the Repository to the MIRROR state.
     """
     try:
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
         validate_external_registry_reference(
             external_reference,
             resolve_dns=False,
@@ -458,7 +460,11 @@ def change_remote(repository, remote_repository, allowed_hosts=None):
     """
     Update the external repository for Repository Mirroring.
     """
+    mirror = get_mirror(repository)
+
     try:
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
         validate_external_registry_reference(
             remote_repository,
             resolve_dns=False,
@@ -467,7 +473,6 @@ def change_remote(repository, remote_repository, allowed_hosts=None):
     except ValueError as e:
         raise DataModelException(str(e))
 
-    mirror = get_mirror(repository)
     updates = {"external_reference": remote_repository}
     return bool(update_with_transaction(mirror, **updates))
 
