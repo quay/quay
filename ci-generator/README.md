@@ -167,3 +167,5 @@ python3 generate.py
 ```bash
 uv run pytest
 ```
+
+Golden output and other fixed expectations use `tests/fixtures/matrix-phase0.yaml`, not the checked-in `matrix.yaml`. You can add releases, clouds, and OCP versions to `matrix.yaml` without updating those tests; `test_production_matrix_expands_without_error` only checks that the production matrix expands with unique filenames.

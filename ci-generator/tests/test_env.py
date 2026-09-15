@@ -1,5 +1,6 @@
 """Branch and job env application."""
 
+from conftest import PHASE0_MATRIX
 from generate import (
     GENERATOR_DIR,
     apply_cell_settings,
@@ -127,7 +128,7 @@ def test_cell_settings_overwrite_as_and_env() -> None:
 
 def test_periodic_names_use_cloud_storage_source() -> None:
     generated, _retired = generate_all()
-    assert len(generated) == 2
+    assert len(generated) == 3
     group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
     cell = group[0]
     assert (cell.quay_version, cell.cloud) == ("3.18", "aws")
@@ -155,9 +156,9 @@ def test_source_stable_env() -> None:
 
 
 def test_generated_cells_use_template_extra_config() -> None:
-    generated, _retired = generate_all()
-    assert len(generated) == 2
-    _group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
+    generated, _retired = generate_all(matrix_path=PHASE0_MATRIX)
+    assert len(generated) == 1
+    _group, _filename, config = generated[0]
     env = config["tests"][0]["steps"]["env"]
     extra = env["QUAY_EXTRA_CONFIG"]
     assert env["PLAYWRIGHT_GREP_INVERT"] == QUAY_318_GREP_INVERT

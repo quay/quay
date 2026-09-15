@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 import yaml
+from conftest import PHASE0_MATRIX
 from generate import (
     GENERATED_HEADER,
     GENERATOR_DIR,
@@ -29,6 +30,11 @@ FIXTURE = Path(__file__).parent / "fixtures" / PHASE0_NAME
 MASTER_NAME = "quay-quay-master.yaml"
 MASTER_FIXTURE = Path(__file__).parent / "fixtures" / MASTER_NAME
 MIXED_DIR = Path(__file__).parent / "fixtures" / "mixed"
+
+
+def _phase0_results() -> list[tuple[list[Cell], str, dict[str, Any]]]:
+    results, _retired = generate_all(matrix_path=PHASE0_MATRIX)
+    return results
 
 
 def _phase0_cell(**kwargs: Any) -> Cell:
@@ -63,6 +69,7 @@ def test_expand_matrix_cells() -> None:
         for cell in cells
     } == {
         ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "daily", "periodic"),
+        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "daily", "periodic"),
         (None, "master", "aws", "4.22", "e2e-install", None, "presubmit"),
     }
     cell = next(c for c in cells if c.branch == "redhat-3.18")
@@ -213,8 +220,16 @@ def test_kind_settings_presubmit_leaves_unset_trigger_fields_absent() -> None:
         assert field_name not in test
 
 
+def test_production_matrix_expands_without_error() -> None:
+    matrix = yaml.safe_load((GENERATOR_DIR / "matrix.yaml").read_text())
+    cells = expand_cells(matrix)
+    assert cells
+    filenames = {cell.filename for cell in cells}
+    assert len(filenames) == len(cells)
+
+
 def test_golden_phase0_bytes() -> None:
-    results, _retired = generate_all()
+    results = _phase0_results()
     by_name = {filename: config for _group, filename, config in results}
     assert PHASE0_NAME in by_name
     dumped = dump_config(by_name[PHASE0_NAME])
@@ -338,11 +353,11 @@ def test_two_sources_group_into_one_file_with_distinct_env(tmp_path: Path) -> No
 
 
 def test_list_shows_phase0_row(capsys: object) -> None:
-    assert main(["--list"]) == 0
+    from generate import _print_list
+
+    _print_list(_phase0_results())
     out = capsys.readouterr().out  # type: ignore[attr-defined]
     assert "3.18" in out
-    assert "3.17" not in out
-    assert "3.16" not in out
     assert "4.22" in out
     assert "e2e-install" in out
     assert PHASE0_NAME in out
@@ -350,7 +365,6 @@ def test_list_shows_phase0_row(capsys: object) -> None:
     assert "aws-s3" in out
     assert "KIND" in out
     assert "periodic" in out
-    assert "presubmit" in out
     assert "SOURCE" in out
     assert "nightly" in out
 
@@ -526,8 +540,7 @@ def test_dry_run_does_not_write(tmp_path: Path, capsys: object) -> None:
 
 
 def test_dump_round_trip() -> None:
-    results, _retired = generate_all()
-    for _group, _name, config in results:
+    for _group, _name, config in _phase0_results():
         dumped = dump_config(config)
         assert dumped.startswith(GENERATED_HEADER)
         assert yaml.safe_load(dumped) == config
