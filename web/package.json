@@ -127,6 +127,7 @@
     "svgo": "4.0.1",
     "brace-expansion": "^1.1.18",
     "js-yaml": "4.3.2",
+    "qs": "6.16.0",
     "browserslist": ">=4.28.7"
   }
 }
