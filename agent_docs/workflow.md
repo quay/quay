@@ -143,6 +143,43 @@ All hooks are consolidated in `.claude/settings.json` — no manual setup requir
 - Fallback: use `gh api repos/{owner}/{repo}/pulls/{number} -X PATCH -f title="..." -f body="..."`
 - Always verify `gh auth status` at session start
 
+## Code Review
+
+### CodeRabbit
+
+CodeRabbit runs automatically on every PR targeting `master`. See the [CodeRabbit Pre-merge Checks](#coderabbit-pre-merge-checks) table in the Bot Ecosystem section above.
+
+### Review Agent (`/fs-review`)
+
+The fullsend review agent provides an on-demand structured review distinct from CodeRabbit. It focuses on
+holistic correctness, cross-repo contract compliance, and intent coherence — coverage that automated
+per-rule checks can miss.
+
+**When to invoke:** Community PRs (external-fork author) with >200 changed lines, or PRs introducing a
+new subsystem, are the primary use case. Use it when you want a second structured pass before approving or
+when a PR touches complex logic that benefits from cross-repo reasoning.
+
+**How to invoke:** Post `/fs-review` as a comment on the PR. The poster must be a triage+ collaborator
+(GitHub `OWNER`, `MEMBER`, or `COLLABORATOR` on the `quay` org).
+
+**What it produces:**
+
+- A verdict (approve or request changes) with a rationale
+- Inline comments on specific findings (correctness bugs, contract violations, intent mismatch)
+- Possible change-request blocking that requires a fix-agent cycle before the PR can merge
+
+**Coverage vs. CodeRabbit:** CodeRabbit runs seven focused pre-merge checks (title format, docstring
+coverage, migration safety, N+1 queries, read-path performance, etc.). The review agent performs a
+holistic pass and can reason about intent, cross-repo contracts, and architectural consistency — things
+rule-based checks cannot surface.
+
+**Enablement status:** The `dispatch.yml` configuration includes `/fs-review` as a trigger outside the
+quay/quay auto-review carve-out. Whether `config.yaml enabled: false` overrides the slash-command path
+at a higher level is unconfirmed. Before relying on this command for the first time, post `/fs-review`
+on any open PR and verify that a review agent run appears in `quay/.fullsend` workflow history. If the
+command does not trigger a run, the review agent may be disabled org-wide and would need to be
+re-enabled as a prerequisite.
+
 ## Backport Process
 
 After a PR merges to master, if the JIRA ticket has a Target Version:
