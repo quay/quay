@@ -1,0 +1,235 @@
+# Sync ci-generator output to openshift/release after changes land on quay/quay.
+#
+# On quay/quay: runs on push to master when ci-generator inputs change.
+#
+#
+# Repository configuration (quay/quay org settings):
+#   Variable RELEASE_SYNC_FORK — GitHub fork of openshift/release to push branches to
+#                             (e.g. nasonawa/release). Required.
+#
+# Secrets:
+#   QUAY_USER  — GitHub username for commit author (bot or maintainer)
+#   QUAY_TOKEN — GitHub PAT with read on openshift/release and write on RELEASE_SYNC_FORK
+name: Sync openshift CI configs
+
+on:
+  workflow_dispatch:
+    inputs:
+      quay_pr_number:
+        description: Quay PR number (optional; auto-detected from the triggering commit when omitted)
+        required: false
+        type: string
+  push:
+    branches:
+      - master
+    paths:
+      - ci-generator/matrix.yaml
+
+concurrency:
+  group: sync-ci-configs-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  RELEASE_UPSTREAM: openshift/release
+  RELEASE_BASE_BRANCH: main
+  RELEASE_CONFIG_DIR: ci-operator/config/quay/quay
+  RELEASE_JOBS_DIR: ci-operator/jobs/quay/quay
+  RELEASE_MAKE_WHAT: quay/quay
+  CONTAINER_ENGINE: docker
+  PR_BRANCH_PREFIX: sync-quay-ci-config
+
+jobs:
+  sync-to-openshift-release:
+    name: Generate and open openshift/release PR
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Validate release sync configuration
+        id: config
+        run: |
+          set -euo pipefail
+          fork="${{ vars.RELEASE_SYNC_FORK }}"
+          if [[ -z "$fork" ]]; then
+            echo "Repository variable RELEASE_SYNC_FORK is not set (fork of openshift/release, e.g. nasonawa/release)." >&2
+            exit 1
+          fi
+          if [[ -z "${{ secrets.QUAY_TOKEN }}" ]]; then
+            echo "Secret QUAY_TOKEN is not set." >&2
+            exit 1
+          fi
+          if [[ -z "${{ secrets.QUAY_USER }}" ]]; then
+            echo "Secret QUAY_USER is not set." >&2
+            exit 1
+          fi
+          echo "fork=${fork}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout quay
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.sha }}
+          persist-credentials: false
+
+      - name: Resolve Quay pull request for release PR title
+        id: quay_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr_number="${{ github.event.inputs.quay_pr_number }}"
+          issue_key="NO-ISSUE"
+
+          if [[ -z "$pr_number" ]]; then
+            pr_number="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0].number // empty' 2>/dev/null || true)"
+          fi
+          if [[ -z "$pr_number" ]]; then
+            pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --search "${GITHUB_SHA}" --state merged --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+          fi
+          if [[ -z "$pr_number" ]]; then
+            pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${GITHUB_REF_NAME}" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+          fi
+          if [[ -z "$pr_number" ]]; then
+            echo "Could not determine Quay PR number; set workflow_dispatch input quay_pr_number or push a commit linked to a PR." >&2
+            exit 1
+          fi
+
+          pr_title="$(gh pr view "$pr_number" --repo "${GITHUB_REPOSITORY}" --json title --jq .title)"
+          if [[ "$pr_title" =~ ^(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): ]]; then
+            issue_key="${BASH_REMATCH[1]}"
+          fi
+
+          release_pr_title="${issue_key}: chore(ci): sync quay/quay config (quay#${pr_number})"
+          pr_branch="${PR_BRANCH_PREFIX}-quay-${pr_number}"
+
+          echo "number=${pr_number}" >> "$GITHUB_OUTPUT"
+          echo "issue_key=${issue_key}" >> "$GITHUB_OUTPUT"
+          echo "release_pr_title=${release_pr_title}" >> "$GITHUB_OUTPUT"
+          echo "pr_branch=${pr_branch}" >> "$GITHUB_OUTPUT"
+          echo "Using release PR title: ${release_pr_title}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: ci-generator/uv.lock
+
+      - name: Generate ci-operator configs
+        id: generate
+        working-directory: ci-generator
+        run: |
+          uv sync --frozen --extra test
+          out="${RUNNER_TEMP}/generated-configs"
+          mkdir -p "$out"
+          uv run python generate.py --output "$out"
+          echo "out=$out" >> "$GITHUB_OUTPUT"
+          ls -la "$out"
+
+      - name: Checkout openshift/release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.RELEASE_UPSTREAM }}
+          ref: ${{ env.RELEASE_BASE_BRANCH }}
+          token: ${{ secrets.QUAY_TOKEN }}
+          path: release
+
+      - name: Sync managed configs into release tree
+        env:
+          GENERATED_DIR: ${{ steps.generate.outputs.out }}
+        run: |
+          set -euo pipefail
+          dest="release/${RELEASE_CONFIG_DIR}"
+          mkdir -p "$dest"
+
+          shopt -s nullglob
+          for src in "${GENERATED_DIR}"/*.yaml; do
+            cp "$src" "$dest/$(basename "$src")"
+          done
+
+          for existing in "$dest"/quay-quay-redhat-*__*.yaml; do
+            name="$(basename "$existing")"
+            if [[ ! -f "${GENERATED_DIR}/$name" ]]; then
+              rm "$existing"
+            fi
+          done
+
+      - name: Regenerate Prow jobs and determinize ci-operator config
+        working-directory: release
+        run: |
+          set -euo pipefail
+          docker version
+          make jobs WHAT="${RELEASE_MAKE_WHAT}"
+          make ci-operator-config
+
+      - name: Drop unrelated release tree changes
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              "${RELEASE_CONFIG_DIR}"/*|"${RELEASE_JOBS_DIR}"/*) continue ;;
+              *) git -C release restore --staged --worktree "$path" 2>/dev/null || git -C release clean -fd -- "$path" ;;
+            esac
+          done < <(git -C release diff --name-only -z)
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              "${RELEASE_CONFIG_DIR}"/*|"${RELEASE_JOBS_DIR}"/*) continue ;;
+              *) git -C release clean -fd -- "$path" ;;
+            esac
+          done < <(git -C release ls-files --others --exclude-standard -z)
+
+      - name: Detect release repo changes
+        id: detect
+        run: |
+          if [[ -z "$(git -C release status --porcelain -- "${RELEASE_CONFIG_DIR}" "${RELEASE_JOBS_DIR}")" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No quay ci-operator config or job changes; skipping PR."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request on openshift/release
+        id: release_pr
+        if: steps.detect.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.QUAY_TOKEN }}
+          committer: ${{ secrets.QUAY_USER }} <${{ secrets.QUAY_USER }}@users.noreply.github.com>
+          author: ${{ secrets.QUAY_USER }} <${{ secrets.QUAY_USER }}@users.noreply.github.com>
+          path: release
+          push-to-fork: ${{ steps.config.outputs.fork }}
+          commit-message: |
+            ${{ steps.quay_pr.outputs.issue_key }}: chore(ci): sync quay/quay config (quay#${{ steps.quay_pr.outputs.number }})
+
+            Source: ${{ github.repository }}@${{ github.sha }}
+            Regenerated with: make jobs WHAT=quay/quay && make ci-operator-config
+          branch: ${{ steps.quay_pr.outputs.pr_branch }}
+          delete-branch: true
+          base: ${{ env.RELEASE_BASE_BRANCH }}
+          title: ${{ steps.quay_pr.outputs.release_pr_title }}
+          body: |
+            Sync ci-operator config and Prow jobs for `quay/quay` from ci-generator changes.
+
+            - Quay PR: ${{ github.server_url }}/${{ github.repository }}/pull/${{ steps.quay_pr.outputs.number }}
+            - Quay commit: `${{ github.sha }}`
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - Push branch: `${{ steps.config.outputs.fork }}:${{ steps.quay_pr.outputs.pr_branch }}` → `${{ env.RELEASE_UPSTREAM }}:${{ env.RELEASE_BASE_BRANCH }}`
+
+      - name: Comment on Quay PR with openshift/release PR link
+        if: steps.detect.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUAY_PR_NUMBER: ${{ steps.quay_pr.outputs.number }}
+          RELEASE_PR_URL: ${{ steps.release_pr.outputs.pull-request-url }}
+        run: |
+          set -euo pipefail
+          cat > "${RUNNER_TEMP}/release-sync-comment.md" <<EOF
+          A pull request has been opened on **openshift/release** to sync ci-operator config and Prow jobs from the \`ci-generator/matrix.yaml\` changes in this PR.
+
+          **Please review and merge:** ${RELEASE_PR_URL}
+
+          Automated by [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          EOF
+          gh pr comment "$QUAY_PR_NUMBER" --repo "${GITHUB_REPOSITORY}" --body-file "${RUNNER_TEMP}/release-sync-comment.md"
