@@ -171,6 +171,79 @@ def disallow_for_synced_team(except_robots=False):
 disallow_nonrobots_for_synced_team = disallow_for_synced_team(except_robots=True)
 disallow_all_for_synced_team = disallow_for_synced_team(except_robots=False)
 
+# Directory sync identifier fields accepted on team create/update and /syncing.
+_TEAM_SYNC_CONFIG_FIELDS = ("group_dn", "group_name", "group_id")
+
+
+def _syncing_setup_allowed(orgname):
+    """
+    Returns whether syncing setup is allowed for the current user over the matching org.
+    """
+    if not features.NONSUPERUSER_TEAM_SYNCING_SETUP and not SuperUserPermission().can():
+        return False
+
+    return AdministerOrganizationPermission(orgname).can()
+
+
+def _extract_team_sync_config(details):
+    """
+    Extract optional directory sync config from a team create/update request body.
+
+    Returns None when no sync fields are present. Raises InvalidRequest if more than one
+    sync identifier is provided.
+    """
+    present = {field: details[field] for field in _TEAM_SYNC_CONFIG_FIELDS if field in details}
+    if not present:
+        return None
+    if len(present) > 1:
+        raise InvalidRequest(
+            "Specify only one of group_dn, group_name, or group_id when enabling team sync"
+        )
+    return present
+
+
+def _validate_team_sync_request(orgname, config, teamname=None):
+    """
+    Validate that team sync can be enabled for the given org/config.
+
+    Call this before any team create/update mutations so a failed group lookup does not
+    leave partial team changes persisted. When teamname is provided, also rejects if that
+    team is already synced.
+    """
+    if not features.TEAM_SYNCING or not authentication.federated_service:
+        raise InvalidRequest("Team syncing is not supported on this registry")
+
+    if not _syncing_setup_allowed(orgname):
+        raise Unauthorized()
+
+    if teamname and model.team.get_team_sync_information(orgname, teamname):
+        raise InvalidRequest(
+            "Team is already synced; disable syncing before attaching a different group"
+        )
+
+    status, err = authentication.check_group_lookup_args(config)
+    if not status:
+        raise InvalidRequest("Could not sync to group: %s" % err)
+
+
+def _enable_team_sync(orgname, team, config, already_validated=False):
+    """
+    Enable directory sync for a team using the given config.
+
+    Raises Unauthorized if the caller cannot configure syncing, InvalidRequest if the
+    team is already synced or the group lookup fails. When already_validated is True,
+    preflight checks are skipped (caller must have run _validate_team_sync_request).
+    """
+    if not already_validated:
+        _validate_team_sync_request(orgname, config, teamname=team.name)
+
+    model.team.set_team_syncing(team, authentication.federated_service, config)
+    log_action("enable_team_sync", orgname, {"team": team.name})
+
+    if app.config["AUTHENTICATION_TYPE"] == "OIDC":
+        # delete existing team members, team membership will be synced with OIDC group
+        model.team.delete_all_team_members(team)
+
 
 @resource("/v1/organization/<orgname>/team/<teamname>")
 @path_param("orgname", "The name of the organization")
@@ -201,6 +274,27 @@ class OrganizationTeam(ApiResource):
                     "type": "string",
                     "description": "Markdown description for the team",
                 },
+                "group_dn": {
+                    "type": "string",
+                    "description": (
+                        "LDAP group DN (relative to the configured base DN) to sync this team with. "
+                        "Mutually exclusive with group_name and group_id."
+                    ),
+                },
+                "group_name": {
+                    "type": "string",
+                    "description": (
+                        "OIDC group name or external object ID to sync this team with. "
+                        "Mutually exclusive with group_dn and group_id."
+                    ),
+                },
+                "group_id": {
+                    "type": "string",
+                    "description": (
+                        "Keystone group ID to sync this team with. "
+                        "Mutually exclusive with group_dn and group_name."
+                    ),
+                },
             },
         },
     }
@@ -211,17 +305,33 @@ class OrganizationTeam(ApiResource):
     def put(self, orgname, teamname):
         """
         Update the org-wide permission for the specified team.
+
+        Optionally attach a directory sync identifier (group_dn, group_name, or group_id)
+        at create or update time so the team is linked to an external group without a
+        separate call to the team syncing endpoint.
         """
         edit_permission = AdministerOrganizationPermission(orgname)
         if edit_permission.can() or allow_if_superuser_with_full_access():
             team = None
 
             details = request.get_json()
+            sync_config = _extract_team_sync_config(details)
+
             is_existing = False
             try:
                 team = model.team.get_organization_team(orgname, teamname)
                 is_existing = True
             except model.InvalidTeamException:
+                team = None
+
+            # Validate sync config before any team write so a failed group lookup does
+            # not leave a newly created team or partial description/role updates behind.
+            if sync_config is not None:
+                _validate_team_sync_request(
+                    orgname, sync_config, teamname=teamname if is_existing else None
+                )
+
+            if not is_existing:
                 # Create the new team.
                 description = details["description"] if "description" in details else ""
                 role = details["role"] if "role" in details else "member"
@@ -229,8 +339,7 @@ class OrganizationTeam(ApiResource):
                 org = model.organization.get_organization(orgname)
                 team = model.team.create_team(teamname, org, role, description)
                 log_action("org_create_team", orgname, {"team": teamname})
-
-            if is_existing:
+            else:
                 if "description" in details and team.description != details["description"]:
                     team.description = details["description"]
                     team.save()
@@ -252,6 +361,9 @@ class OrganizationTeam(ApiResource):
                             {"team": teamname, "role": details["role"]},
                         )
 
+            if sync_config is not None:
+                _enable_team_sync(orgname, team, sync_config, already_validated=True)
+
             return team_view(orgname, team, is_new_team=not is_existing), 200
 
         raise Unauthorized()
@@ -269,16 +381,6 @@ class OrganizationTeam(ApiResource):
             return "", 204
 
         raise Unauthorized()
-
-
-def _syncing_setup_allowed(orgname):
-    """
-    Returns whether syncing setup is allowed for the current user over the matching org.
-    """
-    if not features.NONSUPERUSER_TEAM_SYNCING_SETUP and not SuperUserPermission().can():
-        return False
-
-    return AdministerOrganizationPermission(orgname).can()
 
 
 @resource("/v1/organization/<orgname>/team/<teamname>/syncing")
@@ -303,20 +405,7 @@ class OrganizationTeamSyncing(ApiResource):
                 raise NotFound()
 
             config = request.get_json()
-
-            # Ensure that the specified config points to a valid group.
-            status, err = authentication.check_group_lookup_args(config)
-            if not status:
-                raise InvalidRequest("Could not sync to group: %s" % err)
-
-            # Set the team's syncing config.
-            model.team.set_team_syncing(team, authentication.federated_service, config)
-            log_action("enable_team_sync", orgname, {"team": teamname})
-
-            if app.config["AUTHENTICATION_TYPE"] == "OIDC":
-                # delete existing team members, team membership will be synced with OIDC group
-                model.team.delete_all_team_members(team)
-
+            _enable_team_sync(orgname, team, config)
             return team_view(orgname, team)
 
         raise Unauthorized()
