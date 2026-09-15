@@ -233,6 +233,9 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	}
 
 	require.NoError(t, h.Registry().DeleteManifest(ctx, repository, indexResponse.Digest))
+
+	require.NoError(t, h.ExpireTemporaryTags(ctx))
+
 	stats, err := h.CollectGarbage(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, stats.ManifestsDeleted)

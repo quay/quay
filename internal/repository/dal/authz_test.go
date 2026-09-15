@@ -279,11 +279,11 @@ func TestAuthorizerQueriesRequireEnabledNamespaceForOwnerAccess(t *testing.T) {
 	queries := daldb.New(db)
 	for _, tc := range []struct {
 		name string
-		fn   func() (int64, error)
+		fn   func() (bool, error)
 	}{
 		{
 			name: "pull",
-			fn: func() (int64, error) {
+			fn: func() (bool, error) {
 				return queries.UserCanPullRepository(t.Context(), daldb.UserCanPullRepositoryParams{
 					RepositoryID: 12,
 					Username:     "disabled-org",
@@ -293,7 +293,7 @@ func TestAuthorizerQueriesRequireEnabledNamespaceForOwnerAccess(t *testing.T) {
 		},
 		{
 			name: "push",
-			fn: func() (int64, error) {
+			fn: func() (bool, error) {
 				return queries.UserCanPushRepository(t.Context(), daldb.UserCanPushRepositoryParams{
 					RepositoryID: 12,
 					Username:     "disabled-org",
@@ -307,8 +307,8 @@ func TestAuthorizerQueriesRequireEnabledNamespaceForOwnerAccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s query: %v", tc.name, err)
 			}
-			if allowed != 0 {
-				t.Fatalf("%s allowed = %d, want 0", tc.name, allowed)
+			if allowed {
+				t.Fatalf("%s allowed = true, want false", tc.name)
 			}
 		})
 	}

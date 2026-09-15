@@ -120,13 +120,8 @@ func newRepository(inner distribution.Repository, store oci.MetadataStore, locke
 func (r *repository) Named() reference.Named { return r.Repository.Named() }
 
 func (r *repository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
-	inner, err := r.Repository.Manifests(ctx, options...)
-	if err != nil {
-		return nil, err
-	}
 	return &manifestService{
-		ManifestService: inner,
-		repo:            r,
+		repo: r,
 	}, nil
 }
 
@@ -168,6 +163,17 @@ func (r *repository) ensureRepo(ctx context.Context) (int64, error) {
 		}
 	})
 	return r.repoID, r.repoErr
+}
+
+// lookupRepo checks if the repository exists and returns its state. If the repository does not exist, returns a
+// repository unknown error.
+func (r *repository) lookupRepo(ctx context.Context) (int64, error) {
+	name := r.repoName()
+	id, err := r.store.GetRepositoryID(ctx, name)
+	if err != nil {
+		return 0, fmt.Errorf("middleware: lookup repository %s: %w", r.Named().Name(), err)
+	}
+	return id, nil
 }
 
 // MetadataWriteError is logged when a storage operation succeeds but the
