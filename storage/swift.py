@@ -12,6 +12,7 @@ import os.path
 import string
 import sys
 from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 from hashlib import sha1
 from io import BytesIO, IOBase
 from random import SystemRandom
@@ -22,7 +23,7 @@ from uuid import uuid4
 from cachetools.func import lru_cache
 from swiftclient.client import ClientException, Connection, ReadableToIterable
 
-from storage.basestorage import BaseStorage
+from storage.basestorage import _EXPORTED_LOG_FILENAME_RE, BaseStorage
 from util.registry import filelike
 from util.registry.generatorfile import GeneratorFile
 
@@ -120,6 +121,20 @@ class SwiftStorage(BaseStorage):
             return obj
         except ClientException as ex:
             logger.exception("Could not get object at path %s: %s", path, ex)
+            raise IOError("Path %s not found" % path)
+
+    def _list_content(self, path):
+        """
+        Lists all files under a specified path.
+        """
+        path = self._normalize_path(path)
+        try:
+            _, obj = self._get_connection().get_container(
+                self._swift_container, path, full_listing=True
+            )
+            return obj
+        except ClientException as ex:
+            logger.exception("Could not list objects at path %s: %s", path, ex)
             raise IOError("Path %s not found" % path)
 
     def _put_object(
@@ -547,3 +562,36 @@ class SwiftStorage(BaseStorage):
         )
         with self.stream_read_file(path) as fp:
             destination.stream_write(path, fp)
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        """
+        Lists and deletes all exported log files which are older than the
+        defined threshold (defaults to 1 hour).
+        """
+        cutoff = datetime.now(timezone.utc) - deletion_date_threshold
+        obj_list = []
+
+        try:
+            obj_list = self._list_content(log_path)
+        except IOError:
+            logger.debug(
+                "Could not fetch content under provided path %s, skipping cleanup", log_path
+            )
+            return
+
+        for obj in obj_list:
+            filename = obj["name"].split("/")[-1]
+            last_modified = datetime.strptime(obj["last-modified"], "%Y-%m-%dT%H:%M:%S.%f").replace(
+                tzinfo=timezone.utc
+            )
+            if last_modified <= cutoff and _EXPORTED_LOG_FILENAME_RE.fullmatch(filename):
+                try:
+                    self._get_connection().delete_object(self._swift_container, obj["name"])
+                    logger.debug("Expired exported log deleted from %s: %s", log_path, filename)
+                except ClientException as e:
+                    logger.exception(
+                        "Got exception while deleting blob %s in folder %s: %s",
+                        filename,
+                        log_path,
+                        e,
+                    )

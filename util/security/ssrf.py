@@ -221,6 +221,7 @@ def validate_external_registry_url(
     url: str,
     resolve_dns: bool = True,
     allowed_hosts: Optional[List[str]] = None,
+    allow_only_secure: Optional[bool] = False,
 ) -> None:
     """
     Validate an external registry URL to prevent Server-Side Request Forgery (SSRF).
@@ -243,6 +244,8 @@ def validate_external_registry_url(
             constructor should always use True (the default).
         allowed_hosts: Optional list of hostnames or CIDR ranges that bypass the
             blocklist. Populated from the SSRF_ALLOWED_HOSTS config option.
+        allow_only_secure: Optional parameter which tells the validator to allow only secure
+        HTTPS connections and reject HTTP connections.
 
     Raises:
         SSRFBlockedError: If the URL is blocked by SSRF protection (blocked
@@ -267,6 +270,11 @@ def validate_external_registry_url(
     # Check scheme
     if parsed.scheme not in ALLOWED_SCHEMES:
         raise ValueError(f"Invalid URL scheme '{parsed.scheme}': only HTTP and HTTPS are allowed")
+
+    # Check if we allow only secure traffic
+    if allow_only_secure:
+        if parsed.scheme != "https":
+            raise ValueError(f"Invalid URL scheme: '{parsed.scheme}: only HTTPS is allowed")
 
     # Check for userinfo in URL (e.g., http://user:pass@host/)
     if parsed.username or parsed.password:
