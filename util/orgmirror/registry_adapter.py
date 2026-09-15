@@ -47,15 +47,21 @@ class RegistryAdapter(ABC):
             max_retries: Maximum number of retries for transient failures
             allowed_hosts: Hostnames/CIDRs that bypass SSRF blocklist (optional)
         """
+        mirror_config = config or {}
         # Validate URL to prevent SSRF (CWE-918) - defense-in-depth
         # DNS is re-validated here to prevent TOCTOU/DNS rebinding attacks where the
         # DNS record changes between config creation (API layer) and actual HTTP use.
-        validate_external_registry_url(url, resolve_dns=True, allowed_hosts=allowed_hosts)
+        validate_external_registry_url(
+            url,
+            resolve_dns=True,
+            allowed_hosts=allowed_hosts,
+            proxy_config=mirror_config.get("proxy"),
+        )
 
         self.base_url = url.rstrip("/")
         self.namespace = namespace
         self.auth = (username, password) if username and password else None
-        self._config = config or {}
+        self._config = mirror_config
         self.verify_tls = self._config.get("verify_tls", True)
         self.proxy = self._config.get("proxy", {})
         self.timeout = self._config.get("timeout", DEFAULT_TIMEOUT)

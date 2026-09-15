@@ -48,7 +48,7 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
-def _validate_registry_url(url):
+def _validate_registry_url(url, proxy_config=None):
     """
     Validate an external registry URL for SSRF and raise InvalidRequest on failure.
 
@@ -56,7 +56,11 @@ def _validate_registry_url(url):
     to avoid leaking internal network topology.
     """
     try:
-        validate_external_registry_url(url, allowed_hosts=_get_ssrf_allowed_hosts())
+        validate_external_registry_url(
+            url,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=proxy_config,
+        )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
     except ValueError as e:
@@ -335,7 +339,11 @@ class OrgMirrorConfig(ApiResource):
             raise InvalidRequest("skopeo_timeout must be between 30 and 3600 seconds")
 
         # Validate external_registry_url to prevent SSRF (CWE-918)
-        _validate_registry_url(data.get("external_registry_url"))
+        registry_config = data.get("external_registry_config") or {}
+        _validate_registry_url(
+            data.get("external_registry_url"),
+            proxy_config=registry_config.get("proxy"),
+        )
 
         # Create the mirror config
         try:
@@ -405,7 +413,13 @@ class OrgMirrorConfig(ApiResource):
         # Handle external_registry_url
         if "external_registry_url" in data:
             # Validate URL to prevent SSRF (CWE-918)
-            _validate_registry_url(data["external_registry_url"])
+            registry_config = data.get("external_registry_config")
+            if registry_config is None:
+                registry_config = existing.external_registry_config or {}
+            _validate_registry_url(
+                data["external_registry_url"],
+                proxy_config=registry_config.get("proxy"),
+            )
             update_kwargs["external_registry_url"] = data["external_registry_url"]
 
         # Handle external_namespace
@@ -687,6 +701,7 @@ class OrgMirrorVerify(ApiResource):
                 mirror.external_registry_url,
                 resolve_dns=True,
                 allowed_hosts=allowed_hosts,
+                proxy_config=(mirror.external_registry_config or {}).get("proxy"),
             )
         except ValueError:
             return {"success": False, "message": "The provided URL is not allowed"}
