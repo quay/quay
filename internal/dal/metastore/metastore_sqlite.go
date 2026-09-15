@@ -231,7 +231,7 @@ func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m *oc
 		id, err := q.GetBlobByChecksum(ctx, sql.NullString{String: blob.Digest.String(), Valid: true})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, fmt.Errorf("blob unknown: %s", blob.Digest.String())
+				return nil, oci.ErrBlobUnknown{Digest: blob.Digest}
 			}
 			return nil, fmt.Errorf("error during blob lookup %s: %w", blob.Digest.String(), err)
 		}
@@ -252,7 +252,7 @@ func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, 
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, fmt.Errorf("child manifest unknown: %s", childDigest.String())
+				return nil, oci.ErrChildManifestUnknown{Digest: childDigest}
 			}
 			return nil, fmt.Errorf("error during child lookup %s: %w", childDigest.String(), err)
 		}
@@ -374,7 +374,7 @@ func (s *SQLiteStore) DeleteManifest(ctx context.Context, repoID int64, dgst dig
 		Digest:       dgst.String(),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		return oci.ErrNotExist
 	}
 	if err != nil {
 		return fmt.Errorf("lookup manifest %s: %w", dgst, err)
