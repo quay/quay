@@ -42,6 +42,9 @@
               <div ng-if="syncInfo.service == 'keystone'">
                 <code>{{ syncInfo.config.group_id }}</code>
               </div>
+              <div ng-if="syncInfo.service == 'oidc'">
+                <code>{{ syncInfo.config.group_name }}</code>
+              </div>
             </td>
           </tr>
           <tr>
@@ -182,6 +185,10 @@
       <div ng-switch-when="keystone">
         Enter the Keystone group ID:
         <input type="text" class="form-control" placeholder="Group ID" ng-model="enableSyncingInfo.config.group_id" required>
+      </div>
+      <div ng-switch-when="oidc">
+        Enter the group name (Object ID for Microsoft EntraID):
+        <input type="text" class="form-control" placeholder="Group Name" ng-model="enableSyncingInfo.config.group_name" required>
       </div>
      </div>
    </form>
