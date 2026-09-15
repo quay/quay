@@ -225,6 +225,12 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 // validateBlobs validates that all blobs are committed to the database before the image manifest is stored.
 // This ensures consistency: manifests are stored only after all content for a particular image is stored,
 // with no orphaned blobs created.
+//
+// Foreign layer support has been deprecated by Microsoft in 2022. and removed in 2023. All Windows images now follow
+// standard OCI practice, therefore support going forward is not eeded.
+// See the following link for details:
+//
+// https://techcommunity.microsoft.com/blog/containers/announcing-removal-of-foreign-layers-from-windows-container-images/3846833
 func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
 	var blobIDs []int64
 	for _, blob := range m.BlobDigests {
