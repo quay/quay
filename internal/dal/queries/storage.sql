@@ -44,3 +44,13 @@ WHERE s.content_checksum = ? AND (
   EXISTS (SELECT 1 FROM manifestblob mb WHERE mb.blob_id = s.id AND mb.repository_id = ?)
   OR EXISTS (SELECT 1 FROM uploadedblob ub WHERE ub.blob_id = s.id AND ub.repository_id = ? AND ub.expires_at > datetime('now'))
 );
+
+-- name: GetBlobByChecksumAndRepository :one
+-- Matches Python's lookup_repo_storages_by_content_checksum: checks both ManifestBlob
+-- and UploadedBlob tables and returns all blob ids for the consumer
+SELECT id FROM imagestorage i
+WHERE i.content_checksum = ? AND (
+  EXISTS (SELECT 1 FROM manifestblob mb WHERE mb.blob_id = i.id AND mb.repository_id = ?)
+  OR EXISTS (SELECT 1 FROM uploadedblob ub WHERE ub.blob_id = i.id AND ub.repository_id = ? AND
+  ub.expires_at > datetime('now'))
+);

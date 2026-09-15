@@ -31,6 +31,15 @@ type SQLiteStore struct {
 
 	mediaTypesMu sync.RWMutex
 	mediaTypes   map[string]int64
+
+	// mutex to ensure insert blob atomicity
+	blobMu sync.Mutex
+
+	// mutex to ensure manifest insert atomicity
+	manifestMu sync.Mutex
+
+	// mutex to ensure insert repository atomicity
+	repoMu sync.Mutex
 }
 
 // compile-time check
@@ -101,6 +110,11 @@ func (s *SQLiteStore) resolveMediaType(mt string) (int64, error) {
 
 // EnsureRepository creates or retrieves the repository and its namespace user.
 func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryName) (int64, error) {
+	// lock mutex for the duration of the call so we don't get multiple repositories with the same name
+	// trying to be created under same user
+	s.repoMu.Lock()
+	defer s.repoMu.Unlock()
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -132,6 +146,11 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryN
 
 // PutManifest upserts a manifest and its blob/child references within a transaction.
 func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic,gocyclo // interface compliance
+	// lock mutex for the duration of the call, so we don't get same manifests inserted to the manifest table
+	// at the same time
+	s.manifestMu.Lock()
+	defer s.manifestMu.Unlock()
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -149,7 +168,7 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 
 	// we need to verify that all blobs and children are stored before we commit to storing the image/manifest list
 	if len(m.BlobDigests) > 0 {
-		blobIDs, err = s.validateBlobs(ctx, q, &m)
+		blobIDs, err = s.validateBlobs(ctx, repoID, q, &m)
 		if err != nil {
 			return 0, err
 		}
@@ -231,10 +250,14 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 // See the following link for details:
 //
 // https://techcommunity.microsoft.com/blog/containers/announcing-removal-of-foreign-layers-from-windows-container-images/3846833
-func (s *SQLiteStore) validateBlobs(ctx context.Context, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
+func (s *SQLiteStore) validateBlobs(ctx context.Context, repoID int64, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
 	var blobIDs []int64
 	for _, blob := range m.BlobDigests {
-		id, err := q.GetBlobByChecksum(ctx, sql.NullString{String: blob.Digest.String(), Valid: true})
+		id, err := q.GetBlobByChecksumAndRepository(ctx, daldb.GetBlobByChecksumAndRepositoryParams{
+			ContentChecksum: sql.NullString{String: blob.Digest.String(), Valid: true},
+			RepositoryID:    repoID,
+			RepositoryID_2:  repoID,
+		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, oci.BlobUnknownError{Digest: blob.Digest}
@@ -424,6 +447,10 @@ func (s *SQLiteStore) DeleteManifest(ctx context.Context, repoID int64, dgst dig
 // content_checksum which won't work). The db parameter must be the same
 // handle (pool or tx) used by the caller to avoid deadlocks.
 func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.BlobRef) (int64, error) {
+	// lock mutex for the duration of the insert
+	s.blobMu.Lock()
+	defer s.blobMu.Unlock()
+
 	q := daldb.New(db)
 	checksum := sql.NullString{String: ref.Digest.String(), Valid: true}
 
@@ -443,6 +470,7 @@ func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.Blo
 	if err != nil {
 		return 0, fmt.Errorf("insert blob %s: %w", ref.Digest, err)
 	}
+
 	return id, nil
 }
 
