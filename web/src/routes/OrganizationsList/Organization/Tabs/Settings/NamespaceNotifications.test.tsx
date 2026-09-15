@@ -5,6 +5,14 @@ import {
   NamespaceNotificationMethodType,
 } from 'src/resources/NamespaceNotificationResource';
 
+const mockUseSuperuserPermissions = vi.hoisted(() =>
+  vi.fn(() => ({isReadOnlySuperUser: false})),
+);
+
+vi.mock('src/hooks/UseSuperuserPermissions', () => ({
+  useSuperuserPermissions: mockUseSuperuserPermissions,
+}));
+
 const mockUseQuayConfig = vi.hoisted(() =>
   vi.fn(() => ({
     features: {QUOTA_NOTIFICATIONS: true},
@@ -54,6 +62,7 @@ vi.mock('./NamespaceNotificationsKebab', () => ({
 describe('NamespaceNotifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: false});
     mockUseQuayConfig.mockReturnValue({
       features: {QUOTA_NOTIFICATIONS: true},
       config: {REGISTRY_TITLE_SHORT: 'Quay'},
@@ -212,6 +221,74 @@ describe('NamespaceNotifications', () => {
     expect(
       screen.getByText('Disabled (3 failed attempts)'),
     ).toBeInTheDocument();
+  });
+
+  it('hides create button for readonly superuser in empty state', () => {
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseNamespaceNotifications.mockReturnValue({
+      notifications: [],
+      loading: false,
+      error: false,
+      filter: {event: [], status: []},
+      setFilter: vi.fn(),
+      resetFilter: vi.fn(),
+    });
+    render(<NamespaceNotifications organizationName="myorg" />);
+    expect(
+      screen.queryByTestId('create-ns-notification-btn'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides create button for readonly superuser in table view', () => {
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    const notifications = [
+      {
+        uuid: 'n1',
+        title: 'test',
+        event: NamespaceNotificationEventType.quotaWarning,
+        method: NamespaceNotificationMethodType.email,
+        config: {},
+        event_config: {},
+        number_of_failures: 0,
+      },
+    ];
+    mockUseNamespaceNotifications.mockReturnValue({
+      notifications,
+      loading: false,
+      error: false,
+      filter: {event: [], status: []},
+      setFilter: vi.fn(),
+      resetFilter: vi.fn(),
+    });
+    render(<NamespaceNotifications organizationName="myorg" />);
+    expect(
+      screen.queryByTestId('create-ns-notification-btn'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides notification kebab for readonly superuser', () => {
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    const notifications = [
+      {
+        uuid: 'n1',
+        title: 'test',
+        event: NamespaceNotificationEventType.quotaWarning,
+        method: NamespaceNotificationMethodType.email,
+        config: {},
+        event_config: {},
+        number_of_failures: 0,
+      },
+    ];
+    mockUseNamespaceNotifications.mockReturnValue({
+      notifications,
+      loading: false,
+      error: false,
+      filter: {event: [], status: []},
+      setFilter: vi.fn(),
+      resetFilter: vi.fn(),
+    });
+    render(<NamespaceNotifications organizationName="myorg" />);
+    expect(screen.queryByTestId('kebab-stub')).not.toBeInTheDocument();
   });
 
   it('renders create notification button in table view', () => {

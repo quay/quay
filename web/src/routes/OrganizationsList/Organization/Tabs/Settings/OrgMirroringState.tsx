@@ -11,6 +11,7 @@ import {useSearchParams} from 'react-router-dom';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
 import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface OrgMirroringStateProps {
   organizationName: string;
@@ -19,6 +20,7 @@ interface OrgMirroringStateProps {
 export const OrgMirroringState = ({
   organizationName,
 }: OrgMirroringStateProps) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [selectedState, setSelectedState] = useState<'NORMAL' | 'MIRROR'>(
     'NORMAL',
   );
@@ -147,6 +149,7 @@ export const OrgMirroringState = ({
           variant="primary"
           size="sm"
           isDisabled={
+            isReadOnlySuperUser ||
             selectedState === 'NORMAL' ||
             isPoliciesLoading ||
             isProxyCacheLoading ||

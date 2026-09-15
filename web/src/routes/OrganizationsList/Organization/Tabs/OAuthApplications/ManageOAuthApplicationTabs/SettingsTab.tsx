@@ -6,6 +6,7 @@ import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {OAuthApplicationFormData} from '../types';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface SettingsTabProps {
   application: IOAuthApplication | null;
@@ -14,6 +15,7 @@ interface SettingsTabProps {
 }
 
 const SettingsTab: React.FC<SettingsTabProps> = (props): React.ReactElement => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const {addAlert} = useUI();
 
   const {
@@ -140,7 +142,7 @@ const SettingsTab: React.FC<SettingsTabProps> = (props): React.ReactElement => {
           <Button
             variant="primary"
             onClick={handleSubmit(onSubmit)}
-            isDisabled={isSubmitting || !isDirty}
+            isDisabled={isSubmitting || !isDirty || isReadOnlySuperUser}
             isLoading={isSubmitting}
             data-testid="update-application-button"
           >
