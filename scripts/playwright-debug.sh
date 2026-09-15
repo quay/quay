@@ -169,7 +169,8 @@ FAILED=$(jq '
       error_message: ((.results[-1].error.message // "no error message") | .[0:500]),
       error_stack: ((.results[-1].error.stack // null) | .[0:2000]),
       last_step: (.results[-1].steps[-1]?.title // null),
-      attachments: [.results[-1].attachments[]? | select(.name == "screenshot" or .name == "video" or (.name | test("trace"))) | {name, path}],
+      attachments: [.results[-1].attachments[]? | select(.name == "screenshot" or .name == "video" or (.name | test("trace")) or .name == "server-spans.json" or .name == "quay-logs.txt" or .name == "quay-config.json" or .name == "not-collected.txt") | {name, path}],
+      trace_id: ((.annotations // []) | map(select(.type == "trace-id")) | .[0].description // null),
       results: [.results[] | {status, retry, startTime, duration}]
     }]
   }]' "$RESULTS_FILE")
