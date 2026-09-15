@@ -29,10 +29,12 @@ import {
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
-import {API_URL, BASE_URL} from './utils/config';
+import {API_URL, BASE_URL, QUAY_API_TOKEN} from './utils/config';
 import {
   ApiClient,
   AutoPrunePolicy,
+  BearerApiClient,
+  isBearerAuthMode,
   PrototypeRole,
   RawApiClient,
   RepositoryVisibility,
@@ -979,7 +981,8 @@ export type QuayAuthType =
   | 'LDAP'
   | 'OIDC'
   | 'AppToken'
-  | 'Keystone';
+  | 'Keystone'
+  | 'Bearer';
 
 /**
  * Helper to skip tests when the auth type is not one of the allowed types.
@@ -1002,6 +1005,17 @@ export function skipUnlessAuthType(
   config: QuayConfig | null,
   ...allowedTypes: QuayAuthType[]
 ): [boolean, string] {
+  // Bearer-token mode: tests tagged @auth:Bearer run when both QUAY_API_TOKEN
+  // and QUAY_BEARER_AUTH=1 are set, regardless of the server's
+  // AUTHENTICATION_TYPE. Tests tagged with other auth types (e.g.
+  // @auth:Database) are skipped in bearer mode.
+  if (isBearerAuthMode()) {
+    if (allowedTypes.includes('Bearer')) return [false, ''];
+    return [
+      true,
+      `Bearer-token mode active; test requires: ${allowedTypes.join(', ')}`,
+    ];
+  }
   const authType = config?.config?.AUTHENTICATION_TYPE as string | undefined;
   if (!authType) return [true, 'Auth type not available in config'];
   if (allowedTypes.includes(authType as QuayAuthType)) return [false, ''];
@@ -1122,6 +1136,12 @@ type TestFixtures = {
 
   // WebhookReceiver that auto-starts and auto-stops per test
   webhook: WebhookReceiver;
+
+  // Bearer-token API client for stage/production validation.
+  // Requires QUAY_API_TOKEN; only usable when QUAY_BEARER_AUTH=1 is also
+  // set (otherwise @auth:Bearer tests are auto-skipped before this fixture
+  // is instantiated).
+  bearerClient: BearerApiClient;
 };
 
 /**
@@ -1350,6 +1370,31 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     });
     try {
       const client = new RawApiClient(request, API_URL);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  // =========================================================================
+  // Bearer-token client (stage/production validation)
+  // =========================================================================
+
+  bearerClient: async ({playwright}, use) => {
+    if (!QUAY_API_TOKEN) {
+      throw new Error(
+        'bearerClient requires QUAY_API_TOKEN env var. ' +
+          'Set it to a registry-wide OAuth2 token for stage validation.',
+      );
+    }
+    // Only skip TLS verification for localhost; stage/prod have valid certs.
+    const isLocal =
+      API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: isLocal,
+    });
+    try {
+      const client = new BearerApiClient(request, API_URL, QUAY_API_TOKEN);
       await use(client);
     } finally {
       await request.dispose();

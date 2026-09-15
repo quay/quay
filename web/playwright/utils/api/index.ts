@@ -4,6 +4,7 @@
 
 export {ApiClient} from './client';
 export {RawApiClient} from './raw-client';
+export {BearerApiClient, isBearerAuthMode} from './bearer-client';
 export {
   initializeSuperuser,
   getAccessToken,
