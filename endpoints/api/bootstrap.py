@@ -15,19 +15,20 @@ from auth.workload_identity import (
     WorkloadIdentityAuthorizationError,
     authorize_workload_identity_scope,
 )
+from data import model
 from data.database import OAuthAccessToken
 from data.model import db_transaction
 from data.model.oauth import (
+    create_bootstrap_application,
     create_bootstrap_oauth_api_token,
+    create_workload_identity_oauth_token,
     delete_bootstrap_tokens,
+    get_canonical_automatic_bootstrap_application,
     lock_bootstrap_token_operation,
     validate_bootstrap_token,
 )
 from endpoints.api import ApiResource, nickname, resource, show_if
 from endpoints.decorators import anon_allowed
-
-# Compatibility alias for callers of the former endpoint-local helper.
-authorize_workload_scope = authorize_workload_identity_scope
 from endpoints.exception import (
     ApiErrorType,
     ApiException,
@@ -87,12 +88,35 @@ def _normalize_exchange_issuer(issuer):
     return (issuer or "").rstrip("/")
 
 
-def _exchange_expiration_seconds():
-    """Return the configured token lifetime bounded by the exchange maximum."""
+def _exchange_expiration_seconds(validated=None):
+    """Return the configured lifetime bounded by the verified JWT lifetime."""
+    if validated is None:
+        return min(
+            _exchange_config().get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
+            app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
+        )
+    try:
+        remaining = int(float(validated.claims["exp"]) - datetime.now(UTC).timestamp())
+    except (KeyError, TypeError, ValueError, OverflowError):
+        _exchange_error(
+            "invalid_token", "Kubernetes ServiceAccount token has invalid expiration", 401
+        )
+    if remaining <= 0:
+        _exchange_error("invalid_token", "Kubernetes ServiceAccount token has expired", 401)
     return min(
         _exchange_config().get("BOOTSTRAP_TOKEN_MAX_TTL", 86400),
         app.config.get("BOOTSTRAP_TOKEN_EXPIRATION", 3600),
+        remaining,
     )
+
+
+class WorkloadScopeAuthorizationError(WorkloadIdentityAuthorizationError):
+    """Backward-compatible alias for the endpoint authorization error."""
+
+
+def authorize_workload_scope(authorized_subjects, issuer, subject, requested_scope):
+    """Return the effective scope authorized for an exact issuer and subject."""
+    return authorize_workload_identity_scope(authorized_subjects, issuer, subject, requested_scope)
 
 
 def _raise_invalid_bootstrap_token() -> None:
@@ -118,6 +142,48 @@ def _is_local_bootstrap_renewal_request(req: Request) -> bool:
     )
 
 
+def _mint_authorized_exchange(validated, effective_scope):
+    owner = model.user.get_user(app.config.get("BOOTSTRAP_TOKEN_OWNER"))
+    if owner is None:
+        _exchange_error("server_error", "bootstrap token owner does not exist", 500)
+    expiration_seconds = _exchange_expiration_seconds(validated)
+    with db_transaction():
+        lock_bootstrap_token_operation()
+        application = get_canonical_automatic_bootstrap_application(owner)
+        if application is None:
+            application = create_bootstrap_application(model.oauth.get_bootstrap_app_name(), owner)
+        _, token = create_workload_identity_oauth_token(
+            application,
+            owner,
+            effective_scope,
+            validated.issuer,
+            validated.subject,
+            expiration_seconds=expiration_seconds,
+        )
+    return _exchange_response(
+        {
+            "access_token": token,
+            "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "token_type": "Bearer",
+            "expires_in": expiration_seconds,
+            "scope": effective_scope,
+        }
+    )
+
+
+def _authorize_validated_exchange(validated, requested_scope):
+    try:
+        effective_scope = authorize_workload_identity_scope(
+            _exchange_config().get("AUTHORIZED_SUBJECTS", []),
+            validated.issuer,
+            validated.subject,
+            requested_scope,
+        )
+    except WorkloadIdentityAuthorizationError as exc:
+        _exchange_error("access_denied", str(exc), 403)
+    return _mint_authorized_exchange(validated, effective_scope)
+
+
 def _exchange_bootstrap_token():
     """Validate an exchange request and mint its bounded bootstrap token."""
     values = request.form
@@ -135,22 +201,7 @@ def _exchange_bootstrap_token():
         ).validate(raw)
     except KubernetesSATokenValidationError:
         _exchange_error("invalid_token", "Kubernetes ServiceAccount token failed validation", 401)
-    issuer = validated.issuer
-    subject = validated.subject
-    try:
-        effective_scope = authorize_workload_identity_scope(
-            _exchange_config().get("AUTHORIZED_SUBJECTS", []),
-            issuer,
-            subject,
-            values.get("scope", ""),
-        )
-    except WorkloadIdentityAuthorizationError as exc:
-        _exchange_error("access_denied", str(exc), 403)
-    _exchange_error(
-        "server_error",
-        "workload identity token issuance is not available",
-        503,
-    )
+    return _authorize_validated_exchange(validated, values.get("scope", ""))
 
 
 @resource("/v1/bootstrap/exchange")
