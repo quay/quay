@@ -27,7 +27,7 @@ from data.model.oauth import (
     lock_bootstrap_token_operation,
     validate_bootstrap_token,
 )
-from endpoints.api import ApiResource, nickname, resource, show_if
+from endpoints.api import ApiResource, log_action, nickname, resource, show_if
 from endpoints.decorators import anon_allowed
 from endpoints.exception import (
     ApiErrorType,
@@ -142,6 +142,35 @@ def _is_local_bootstrap_renewal_request(req: Request) -> bool:
     )
 
 
+def _log_workload_identity_exchange(
+    *,
+    owner,
+    outcome,
+    requested_scope,
+    effective_scope=None,
+    issuer=None,
+    subject=None,
+    token_record=None,
+    failure_category=None,
+    failure_reason=None,
+):
+    metadata = {"outcome": outcome, "requested_scope": requested_scope}
+    if issuer is not None and subject is not None:
+        metadata.update({"issuer": issuer, "subject": subject})
+    if effective_scope is not None:
+        metadata["effective_scope"] = effective_scope
+    if token_record is not None:
+        metadata["oauth_token_uuid"] = token_record.uuid
+    if outcome == "failure":
+        metadata.update({"failure_category": failure_category, "failure_reason": failure_reason})
+    kind = (
+        "workload_identity_token_exchange"
+        if outcome == "success"
+        else "workload_identity_token_exchange_failed"
+    )
+    log_action(kind, owner.username if owner is not None else None, metadata=metadata)
+
+
 def _mint_authorized_exchange(validated, effective_scope):
     owner = model.user.get_user(app.config.get("BOOTSTRAP_TOKEN_OWNER"))
     if owner is None:
@@ -152,7 +181,7 @@ def _mint_authorized_exchange(validated, effective_scope):
         application = get_canonical_automatic_bootstrap_application(owner)
         if application is None:
             application = create_bootstrap_application(model.oauth.get_bootstrap_app_name(), owner)
-        _, token = create_workload_identity_oauth_token(
+        token_record, token = create_workload_identity_oauth_token(
             application,
             owner,
             effective_scope,
@@ -160,6 +189,15 @@ def _mint_authorized_exchange(validated, effective_scope):
             validated.subject,
             expiration_seconds=expiration_seconds,
         )
+    _log_workload_identity_exchange(
+        owner=owner,
+        outcome="success",
+        requested_scope=effective_scope,
+        effective_scope=effective_scope,
+        issuer=validated.issuer,
+        subject=validated.subject,
+        token_record=token_record,
+    )
     return _exchange_response(
         {
             "access_token": token,
