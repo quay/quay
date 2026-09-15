@@ -69,7 +69,8 @@ def test_list_starred_repos(app):
         response = conduct_api_call(cl, RepositoryList, "GET", params).json
         repos = {r["namespace"] + "/" + r["name"] for r in response["repositories"]}
         assert "devtable/simple" in repos
-        assert "public/publicrepo" not in repos
+        # super users can see all content, including private repos
+        assert "public/publicrepo" in repos
 
         # testing starred pagination with static rules
         # since this is a list and not a database result we need to start with 0
