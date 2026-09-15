@@ -1527,9 +1527,12 @@ def test_connection_failure_does_not_increment_retry_count(initialized_db, set_s
 
     secscan.perform_indexing(batch_size=100)
 
+    failed_count = 0
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
         assert mss.metadata_json.get("retry_count") is None
+        failed_count += 1
+    assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
 def test_non200_response_increments_retry_count(initialized_db, set_secscan_config):
