@@ -92,9 +92,18 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retErr error) {
 	defer ms.repo.metrics.recordOp("manifest_delete", time.Now(), &retErr)
 
-	repoID, err := ms.repo.ensureRepo(ctx)
+	repoID, err := ms.repo.lookupRepo(ctx)
 	if err != nil {
-		return err
+		if errors.Is(err, oci.ErrNotExist) {
+			// this error is incorrect, it should be ErrReposotiryUnknown, but Distribution wires it to a 500
+			// instead of 404, so a pragmatic choice of returning ErrManifestUnknownRevision was made.
+			// to do: add proper error handling for consistency
+			return distribution.ErrManifestUnknownRevision{
+				Name:     ms.repo.Named().Name(),
+				Revision: dgst,
+			}
+		}
+		return logMetadataError("manifest_delete", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
 	if err := ms.repo.store.DeleteManifest(ctx, repoID, dgst); err != nil {
@@ -145,8 +154,11 @@ func isIndexMediaType(mt string) bool {
 
 // Exists checks if the manifest with the provided digest is stored in the database.
 func (ms *manifestService) Exists(ctx context.Context, dgst digest.Digest) (_ bool, retErr error) {
-	repoID, err := ms.repo.ensureRepo(ctx)
+	repoID, err := ms.repo.lookupRepo(ctx)
 	if err != nil {
+		if errors.Is(err, oci.ErrNotExist) {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -168,8 +180,15 @@ func (ms *manifestService) Exists(ctx context.Context, dgst digest.Digest) (_ bo
 func (ms *manifestService) Get(ctx context.Context, dgst digest.Digest, options ...distribution.ManifestServiceOption) (_ distribution.Manifest, retErr error) {
 	defer ms.repo.metrics.recordOp("manifest_get", time.Now(), &retErr)
 
-	repoID, err := ms.repo.ensureRepo(ctx)
+	repoID, err := ms.repo.lookupRepo(ctx)
 	if err != nil {
+		if errors.Is(err, oci.ErrNotExist) {
+			// same comment as in the Delete method
+			return nil, distribution.ErrManifestUnknownRevision{
+				Name:     ms.repo.Named().Name(),
+				Revision: dgst,
+			}
+		}
 		return nil, err
 	}
 

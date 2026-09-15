@@ -49,6 +49,8 @@ type mockStore struct {
 	getManifestDigestResult digest.Digest
 	getManifestDigestErr    error
 
+	getRepositoryIDErr error
+
 	getManifestForServingContent   []byte
 	getManifestForServingMediaType string
 	getManifestForServingError     error
@@ -88,6 +90,12 @@ func (m *mockStore) DeleteTag(_ context.Context, repoID int64, tag string) error
 }
 
 func (m *mockStore) GetRepositoryID(_ context.Context, _ oci.RepositoryName) (int64, error) {
+	if m.getRepositoryIDErr != nil {
+		return 0, m.getRepositoryIDErr
+	}
+	if m.ensureRepoID != 0 {
+		return m.ensureRepoID, nil
+	}
 	return 0, errNotImplemented
 }
 
@@ -1317,4 +1325,26 @@ func TestManifestGet_NotFound(t *testing.T) {
 	_, err = ms.Get(context.Background(), dgst)
 
 	assert.ErrorContains(t, err, "unknown manifest")
+}
+
+func TestManifestGet_Repository_Lookup_Failed(t *testing.T) {
+	dgst := digest.FromString("unknown repository")
+	store := &mockStore{
+		getRepositoryIDErr: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	_, err = ms.Get(context.Background(), dgst)
+
+	var repositoryUnknownError distribution.ErrManifestUnknownRevision
+
+	if !errors.As(err, &repositoryUnknownError) {
+		t.Fatalf("expected manifest not found error, got %T", err)
+	}
 }
