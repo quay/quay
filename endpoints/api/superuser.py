@@ -99,7 +99,7 @@ class SuperUserAggregateLogs(ApiResource):
         Returns the aggregated logs for the current system.
         """
         if allow_if_any_superuser():
-            (start_time, end_time) = _validate_logs_arguments(
+            start_time, end_time = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )
             try:
@@ -142,7 +142,7 @@ class SuperUserLogs(ApiResource):
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
-            (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+            start_time, end_time = _validate_logs_arguments(start_time, end_time)
             try:
                 log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
             except SearchNotConfiguredError as e:
@@ -1025,7 +1025,7 @@ class SuperUserServiceKeyManagement(ApiResource):
             )
 
             # Generate a key with a private key that we *never save*.
-            (private_key, key_id) = pre_oci_model.generate_service_key(
+            private_key, key_id = pre_oci_model.generate_service_key(
                 body["service"], expiration_date, metadata=metadata, name=key_name
             )
             # Auto-approve the service key.

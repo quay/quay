@@ -21,7 +21,11 @@ from flask_login import current_user
 
 import features
 from _init import ROOT_DIR, __version__
-from app import app, authentication, avatar
+from app import (
+    app,
+    authentication,
+    avatar,
+)
 from app import billing as stripe
 from app import (
     build_logs,
@@ -301,7 +305,7 @@ def privacy():
 @no_cache
 def instance_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_instance()
+    data, status_code = checker.check_instance()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -313,7 +317,7 @@ def instance_health():
 @no_cache
 def endtoend_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_endtoend()
+    data, status_code = checker.check_endtoend()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -324,7 +328,7 @@ def endtoend_health():
 @no_cache
 def warning_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_warning()
+    data, status_code = checker.check_warning()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response

@@ -207,7 +207,7 @@ def _conduct_oauth_login(
                 service_name=service_name, error_message="Configuration error in this provider"
             )
 
-        (user_obj, err) = auth_system.link_user(lookup_value)
+        user_obj, err = auth_system.link_user(lookup_value)
         if err is not None:
             logger.debug("%s %s not found: %s", bound_field_name, lookup_value, err)
             msg = "%s %s not found in backing auth system" % (bound_field_name, lookup_value)
