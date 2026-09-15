@@ -26,7 +26,7 @@ images:
     to: quay-server
   - dockerfile_path: web/Containerfile.playwright
     to: quay-playwright-runner
-  skip_if_only_changed: ^(\.agents/|\.claude/|docs/|.*\.md$)
+  skip_if_only_changed: ^(\.agents/|\.claude/|ci-generator/|docs/|.*\.md$)
 promotion:
   to:
   - namespace: quay
