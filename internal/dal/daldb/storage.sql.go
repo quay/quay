@@ -128,6 +128,30 @@ func (q *Queries) GetBlobByChecksum(ctx context.Context, contentChecksum sql.Nul
 	return id, err
 }
 
+const getBlobByChecksumAndRepository = `-- name: GetBlobByChecksumAndRepository :one
+SELECT id FROM imagestorage i
+WHERE i.content_checksum = ? AND (
+  EXISTS (SELECT 1 FROM manifestblob mb WHERE mb.blob_id = i.id AND mb.repository_id = ?)
+  OR EXISTS (SELECT 1 FROM uploadedblob ub WHERE ub.blob_id = i.id AND ub.repository_id = ? AND
+  ub.expires_at > datetime('now'))
+)
+`
+
+type GetBlobByChecksumAndRepositoryParams struct {
+	ContentChecksum sql.NullString `json:"content_checksum"`
+	RepositoryID    int64          `json:"repository_id"`
+	RepositoryID_2  int64          `json:"repository_id_2"`
+}
+
+// Matches Python's lookup_repo_storages_by_content_checksum: checks both ManifestBlob
+// and UploadedBlob tables and returns all blob ids for the consumer
+func (q *Queries) GetBlobByChecksumAndRepository(ctx context.Context, arg GetBlobByChecksumAndRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getBlobByChecksumAndRepository, arg.ContentChecksum, arg.RepositoryID, arg.RepositoryID_2)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertBlob = `-- name: InsertBlob :one
 INSERT INTO imagestorage (uuid, content_checksum, image_size, uploading, cas_path)
 VALUES (?, ?, ?, 0, 1)

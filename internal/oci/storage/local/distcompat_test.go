@@ -195,7 +195,7 @@ func TestDistDriver_MetadataLink_GetContent(t *testing.T) {
 	repoID, _ := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
 	manifestDgst := digest.FromString("my-manifest")
 	layerDgst := digest.FromString("my-layer")
-	store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 100})
+	store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{Digest: layerDgst, Size: 100})
 	store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:      manifestDgst,
 		MediaType:   "application/vnd.oci.image.manifest.v1+json",

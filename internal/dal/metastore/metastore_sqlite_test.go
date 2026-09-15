@@ -142,11 +142,19 @@ func TestPutManifest_Simple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blobDgst := digest.FromString("layer-data")
+	blobData := make([]byte, 16)
+	_, err = rand.Read(blobData)
+	assert.NoError(t, err)
+
+	blobDgst := digest.FromBytes(blobData)
 	manifestDgst := digest.FromString("manifest-content")
 	content := []byte(`{"schemaVersion":2}`)
 
-	_, err = store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: 100})
+	_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+		Digest: blobDgst,
+		Size:   16,
+	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,9 +164,10 @@ func TestPutManifest_Simple(t *testing.T) {
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   content,
 		BlobDigests: []oci.BlobRef{
-			{Digest: blobDgst, Size: 100},
+			{Digest: blobDgst, Size: 16},
 		},
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +218,8 @@ func TestPutManifest_MissingBlob(t *testing.T) {
 			Digest: blobDgst,
 			Size:   int64(len(buffer)),
 		})
-		_, err = store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: 16})
+		_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+			Digest: blobDgst, Size: 16})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -416,7 +426,7 @@ func TestPutManifest_Create_Temporary_Tag(t *testing.T) {
 	manifestDgst := digest.FromString("manifest-content")
 	content := []byte(`{"schemaVersion":2}`)
 
-	_, err = store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: 100})
+	_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{Digest: blobDgst, Size: 100})
 	if err != nil {
 		t.Fatal(err)
 	}
