@@ -165,6 +165,41 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('displays human-readable status for completed builds', async ({
+      superuserPage,
+      superuserApi,
+      api,
+    }) => {
+      test.setTimeout(180_000);
+
+      const org = await api.organization('sustatus');
+      const repo = await api.repository(org.name, 'status-check');
+
+      const build = await api.build(
+        org.name,
+        repo.name,
+        'FROM scratch\nLABEL test="status-display"\n',
+      );
+
+      await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
+
+      await superuserApi.raw.signIn('admin', 'password');
+
+      await superuserPage.goto('/build-logs');
+      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
+      await superuserPage.getByTestId('load-build-button').click();
+
+      await expect(superuserPage.getByText('Build Information')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await expect(
+        superuserPage.getByText('Dockerfile build completed and pushed'),
+      ).toBeVisible();
+
+      await expect(superuserPage.getByText('{}')).not.toBeVisible();
+    });
+
     test('readonly superuser can view archived build logs without repo membership', async ({
       readonlyPage,
       readonlyContext,
