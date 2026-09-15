@@ -62,6 +62,7 @@ jobs:
               - '!.agents/**'
               - '!.claude/**'
               - '!agent_docs/**'
+              - '!.tekton/**'
               - '!scripts/**'
               - '!deploy/**'
               - '!.chglog/**'
