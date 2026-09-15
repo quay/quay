@@ -301,6 +301,7 @@ export const logKinds = {
   org_change_quota_limit: 'Change Organization Quota Limit',
   org_delete_quota_limit: 'Delete Organization Quota Limit',
   oauth_token_assigned: 'OAuth token assigned',
+  oauth_token_revoked: 'OAuth token revoked',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
   add_repo_webhook: 'Add webhook',
