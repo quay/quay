@@ -1108,6 +1108,11 @@ type TestFixtures = {
   // RawApiClient authenticated as normal user (no browser required)
   userClient: RawApiClient;
 
+  // RawApiClient authenticated as the readonly superuser (no browser
+  // required). Skips the test when the readonly superuser is not
+  // configured or lacks superuser privileges.
+  readonlyClient: RawApiClient;
+
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
@@ -1395,6 +1400,55 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
+  readonlyClient: async (
+    {playwright, cachedQuayConfig, traceparent},
+    use,
+    testInfo,
+  ) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users = getTestUsers(cachedQuayConfig);
+
+      try {
+        await client.signIn(users.readonly.username, users.readonly.password);
+      } catch (err: unknown) {
+        // Skip when the readonly user is genuinely not configured (auth
+        // rejection), but let infrastructure errors (5xx, network) fail loudly.
+        const status =
+          err != null &&
+          typeof err === 'object' &&
+          'status' in err &&
+          typeof (err as {status: unknown}).status === 'number'
+            ? (err as {status: number}).status
+            : undefined;
+        if (status === 401 || status === 403) {
+          testInfo.skip(true, 'Readonly superuser is not configured');
+        }
+        throw err;
+      }
+
+      // Verify readonly user actually has superuser privileges
+      // (GET /api/v1/superuser/users/ requires superuser access)
+      const suCheck = await client.get('/api/v1/superuser/users/');
+      if (suCheck.status() === 401 || suCheck.status() === 403) {
+        testInfo.skip(true, 'Readonly user does not have superuser privileges');
+      }
+      if (suCheck.status() !== 200) {
+        throw new Error(
+          `Unexpected status ${suCheck.status()} verifying readonly superuser privileges`,
+        );
+      }
+
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
   anonClient: async ({playwright, traceparent}, use) => {
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
@@ -1403,6 +1457,22 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     try {
       const client = new RawApiClient(request, API_URL);
       await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  // Built-in request context overridden so raw API calls carry the per-test
+  // traceparent (needed for server-span collection on failure); specs must
+  // use this fixture instead of playwright.request.newContext.
+  request: async ({playwright, baseURL, traceparent}, use) => {
+    const request = await playwright.request.newContext({
+      baseURL,
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      await use(request);
     } finally {
       await request.dispose();
     }
