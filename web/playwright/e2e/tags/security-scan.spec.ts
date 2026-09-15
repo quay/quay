@@ -153,6 +153,36 @@ test.describe(
       await expect(vulnRows.first()).toBeVisible();
     });
 
+    test('raw=true returns unprocessed Clair vulnerability report', async ({
+      userContext,
+    }) => {
+      const api = new ApiClient(userContext.request);
+      const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      const digest = tags.tags[0].manifest_digest;
+
+      const normal = await api.getManifestSecurity(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        true,
+        false,
+      );
+      expect(normal).toHaveProperty('status');
+      expect(normal).toHaveProperty('data');
+
+      const raw = await api.getManifestSecurity(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        true,
+        true,
+      );
+      expect(raw).toHaveProperty('manifest_hash');
+      expect(raw).toHaveProperty('packages');
+      expect(raw).toHaveProperty('vulnerabilities');
+      expect(raw).not.toHaveProperty('status');
+    });
+
     test('packages tab supports filtering', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
