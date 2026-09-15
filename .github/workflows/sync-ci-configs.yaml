@@ -8,8 +8,8 @@
 #                             (e.g. nasonawa/release). Required.
 #
 # Secrets:
-#   QUAY_USER  — GitHub username for commit author (bot or maintainer)
-#   QUAY_TOKEN — GitHub PAT with read on openshift/release and write on RELEASE_SYNC_FORK
+#   RELEASE_SYNC_USER  — GitHub username for commit author (bot or maintainer)
+#   RELEASE_SYNC_TOKEN — GitHub PAT with read on openshift/release and write on RELEASE_SYNC_FORK
 name: Sync openshift CI configs
 
 on:
@@ -52,8 +52,8 @@ jobs:
         id: config
         env:
           RELEASE_SYNC_FORK: ${{ vars.RELEASE_SYNC_FORK }}
-          QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
-          QUAY_USER: ${{ secrets.QUAY_USER }}
+          RELEASE_SYNC_TOKEN: ${{ secrets.RELEASE_SYNC_TOKEN }}
+          RELEASE_SYNC_USER: ${{ secrets.RELEASE_SYNC_USER }}
         run: |
           set -euo pipefail
           fork="${RELEASE_SYNC_FORK}"
@@ -61,12 +61,12 @@ jobs:
             echo "Repository variable RELEASE_SYNC_FORK is not set (fork of openshift/release, e.g. nasonawa/release)." >&2
             exit 1
           fi
-          if [[ -z "$QUAY_TOKEN" ]]; then
-            echo "Secret QUAY_TOKEN is not set." >&2
+          if [[ -z "$RELEASE_SYNC_TOKEN" ]]; then
+            echo "Secret RELEASE_SYNC_TOKEN is not set." >&2
             exit 1
           fi
-          if [[ -z "$QUAY_USER" ]]; then
-            echo "Secret QUAY_USER is not set." >&2
+          if [[ -z "$RELEASE_SYNC_USER" ]]; then
+            echo "Secret RELEASE_SYNC_USER is not set." >&2
             exit 1
           fi
           echo "fork=${fork}" >> "$GITHUB_OUTPUT"
@@ -138,7 +138,7 @@ jobs:
         with:
           repository: ${{ env.RELEASE_UPSTREAM }}
           ref: ${{ env.RELEASE_BASE_BRANCH }}
-          token: ${{ secrets.QUAY_TOKEN }}
+          token: ${{ secrets.RELEASE_SYNC_TOKEN }}
           path: release
           persist-credentials: false
 
@@ -206,9 +206,9 @@ jobs:
         if: steps.detect.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.QUAY_TOKEN }}
-          committer: ${{ secrets.QUAY_USER }} <${{ secrets.QUAY_USER }}@users.noreply.github.com>
-          author: ${{ secrets.QUAY_USER }} <${{ secrets.QUAY_USER }}@users.noreply.github.com>
+          token: ${{ secrets.RELEASE_SYNC_TOKEN }}
+          committer: ${{ secrets.RELEASE_SYNC_USER }} <${{ secrets.RELEASE_SYNC_USER }}@users.noreply.github.com>
+          author: ${{ secrets.RELEASE_SYNC_USER }} <${{ secrets.RELEASE_SYNC_USER }}@users.noreply.github.com>
           path: release
           push-to-fork: ${{ steps.config.outputs.fork }}
           commit-message: |
