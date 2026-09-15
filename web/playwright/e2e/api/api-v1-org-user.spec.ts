@@ -37,7 +37,7 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
     }
   });
 
-  test('new user can sign in', async ({adminClient, playwright}) => {
+  test('new user can sign in', async ({adminClient, request}) => {
     const username = uniqueName('user');
     const email = `${username}@example.com`;
     try {
@@ -52,32 +52,25 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
       expect(password).toBeTruthy();
 
       // Sign in as the new user using a separate request context
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
+      const newUserClient = new RawApiClient(request, API_URL);
+
       try {
-        const newUserClient = new RawApiClient(request, API_URL);
-
-        try {
-          await newUserClient.signIn(username, password);
-        } catch (e: unknown) {
-          // If email verification is required, the user was still created
-          // successfully — skip the sign-in portion of this test
-          const msg = e instanceof Error ? e.message : String(e);
-          if (msg.includes('needsEmailVerification')) {
-            return;
-          }
-          throw e;
+        await newUserClient.signIn(username, password);
+      } catch (e: unknown) {
+        // If email verification is required, the user was still created
+        // successfully — skip the sign-in portion of this test
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('needsEmailVerification')) {
+          return;
         }
-
-        // Verify the session belongs to the new user
-        const whoami = await newUserClient.get('/api/v1/user/');
-        expect(whoami.status()).toBe(200);
-        const whoamiBody = await whoami.json();
-        expect(whoamiBody.username).toBe(username);
-      } finally {
-        await request.dispose();
+        throw e;
       }
+
+      // Verify the session belongs to the new user
+      const whoami = await newUserClient.get('/api/v1/user/');
+      expect(whoami.status()).toBe(200);
+      const whoamiBody = await whoami.json();
+      expect(whoamiBody.username).toBe(username);
     } finally {
       await adminClient.delete(`/api/v1/superuser/users/${username}`);
     }

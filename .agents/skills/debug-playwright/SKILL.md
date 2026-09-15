@@ -35,7 +35,10 @@ ARTIFACTS_DIR=$(echo "$PW_JSON" | jq -r '.artifacts_dir')
 
 Key fields:
 - `artifacts_dir` — temp directory with downloaded artifacts
-- `failed` — tests that failed on all attempts (real failures), includes `error_message`, `error_stack`, `last_step`, and `attachments`
+- `failed` — tests that failed on all attempts (real failures), includes `error_message`,
+  `error_stack`, `last_step`, `trace_id` (W3C trace id, null if absent), and `attachments`
+  (screenshot, video, trace, plus per-test `server-spans.json`, `quay-logs.txt`,
+  `quay-config.json`; `not-collected.txt` explains any that couldn't be gathered)
 - `flaky` — tests that failed then passed on retry
 - `interrupted` — tests where a worker crashed
 - `stats` — overall run statistics
@@ -60,6 +63,14 @@ If there are no real failures, report "all failures were flaky" with the list an
 ## Step 3: Diagnose Each Real Failure
 
 For each entry in `failed`, perform root cause analysis:
+
+### Check per-test artifacts first
+
+Before falling back to the run-wide logs/traces below, check the failing test's
+own `attachments` for `server-spans.json`, `quay-logs.txt`, and `quay-config.json`
+(paths given in the JSON). These are already scoped to the test's `trace_id` and
+time window, so they're faster to read than the run-wide equivalents in 3b/3c. If
+one is missing, read `not-collected.txt` at the same path for why.
 
 ### 3a: Read the test source
 
