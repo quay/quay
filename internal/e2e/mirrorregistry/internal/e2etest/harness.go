@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -169,6 +170,61 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 		return fmt.Errorf("expire E2E uploaded blobs: %w", err)
 	}
 	return nil
+}
+
+// RepositoryRows reports how many repository, tag, manifest and manifestblob
+// rows still exist for a repository id, so tests can verify a purge.
+func (h *Harness) RepositoryRows(ctx context.Context, repositoryID int64) (repositories, tags, manifests, blobLinks int, err error) {
+	if h == nil || h.gcDB == nil {
+		return 0, 0, 0, 0, fmt.Errorf("count repository rows with uninitialized E2E harness")
+	}
+	err = h.gcDB.QueryRowContext(ctx, `
+		SELECT
+		    (SELECT count(*) FROM repository WHERE id = ?1),
+		    (SELECT count(*) FROM tag WHERE repository_id = ?1),
+		    (SELECT count(*) FROM manifest WHERE repository_id = ?1),
+		    (SELECT count(*) FROM manifestblob WHERE repository_id = ?1)`,
+		repositoryID).Scan(&repositories, &tags, &manifests, &blobLinks)
+	if err != nil {
+		return 0, 0, 0, 0, fmt.Errorf("count E2E repository rows: %w", err)
+	}
+	return repositories, tags, manifests, blobLinks, nil
+}
+
+// RepositoryID looks up the id of "namespace/name".
+func (h *Harness) RepositoryID(ctx context.Context, repository string) (int64, error) {
+	if h == nil || h.gcDB == nil {
+		return 0, fmt.Errorf("look up repository with uninitialized E2E harness")
+	}
+	namespace, name, ok := strings.Cut(repository, "/")
+	if !ok {
+		return 0, fmt.Errorf("repository %q must be namespace/name", repository)
+	}
+	var id int64
+	err := h.gcDB.QueryRowContext(ctx, `
+		SELECT r.id FROM repository r
+		JOIN "user" u ON u.id = r.namespace_user_id
+		WHERE u.username = ? AND r.name = ?`, namespace, name).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("look up E2E repository %q: %w", repository, err)
+	}
+	return id, nil
+}
+
+// DeletionMarkers counts deletedrepository markers and repository-GC queue
+// items, which the purge must remove along with the repository.
+func (h *Harness) DeletionMarkers(ctx context.Context) (markers, queueItems int, err error) {
+	if h == nil || h.gcDB == nil {
+		return 0, 0, fmt.Errorf("count deletion markers with uninitialized E2E harness")
+	}
+	err = h.gcDB.QueryRowContext(ctx, `
+		SELECT
+		    (SELECT count(*) FROM deletedrepository),
+		    (SELECT count(*) FROM queueitem WHERE queue_name LIKE 'repositorygc/%')`).Scan(&markers, &queueItems)
+	if err != nil {
+		return 0, 0, fmt.Errorf("count E2E deletion markers: %w", err)
+	}
+	return markers, queueItems, nil
 }
 
 // BaseURL returns the HTTP URL of the in-process registry.
