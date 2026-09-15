@@ -1,6 +1,6 @@
 module github.com/quay/quay
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/distribution/distribution/v3 v3.1.1

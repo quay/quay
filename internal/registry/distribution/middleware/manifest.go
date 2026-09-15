@@ -69,6 +69,20 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 	}
 
 	if _, err := ms.repo.store.PutManifest(ctx, repoID, record); err != nil {
+		var blobErr oci.ErrBlobUnknown
+		var childErr oci.ErrChildManifestUnknown
+
+		switch {
+		case errors.As(err, &blobErr):
+			return "", distribution.ErrManifestVerification{
+				distribution.ErrManifestBlobUnknown{Digest: blobErr.Digest},
+			}
+		case errors.As(err, &childErr):
+			return "", distribution.ErrManifestVerification{
+				distribution.ErrManifestBlobUnknown{Digest: childErr.Digest},
+			}
+		}
+
 		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
@@ -84,6 +98,12 @@ func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retE
 	}
 
 	if err := ms.repo.store.DeleteManifest(ctx, repoID, dgst); err != nil {
+		if errors.Is(err, oci.ErrNotExist) {
+			return distribution.ErrManifestUnknownRevision{
+				Name:     ms.repo.Named().Name(),
+				Revision: dgst,
+			}
+		}
 		return logMetadataError("manifest_delete", ms.repo.Named().Name(), dgst.String(), err)
 	}
 

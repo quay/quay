@@ -606,6 +606,36 @@ func TestManifestDelete_RecordsMetadata(t *testing.T) {
 	}
 }
 
+func TestManifestDelete_Proper_Error_Returned_When_Delete_Called_On_Nonexistent_Manifest(t *testing.T) {
+	store := &mockStore{
+		ensureRepoID:      1,
+		putManifestID:     1,
+		deleteManifestErr: oci.ErrNotExist,
+	}
+
+	dgst := digest.FromString("missing-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	err = ms.Delete(context.Background(), dgst)
+	assert.Error(t, err)
+	var manifestDeleteError distribution.ErrManifestUnknownRevision
+
+	if !errors.As(err, &manifestDeleteError) {
+		t.Fatalf("expected manifest not found error, got %T", err)
+	}
+
+	if manifestDeleteError.Revision != dgst {
+		t.Fatalf("expected digest %s, got %s", dgst, manifestDeleteError.Revision)
+	}
+}
+
 func TestBlobPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putBlobID: 5}
 	content := []byte("data")
@@ -1050,6 +1080,100 @@ func TestManifestPut_NoSubject(t *testing.T) {
 	}
 	if store.putManifestRec.ArtifactType != "" {
 		t.Errorf("artifactType = %q, want empty", store.putManifestRec.ArtifactType)
+	}
+}
+
+func TestManifestPut_Missing_Blob(t *testing.T) {
+	missing_blob_digest := digest.FromString("missing-blob")
+
+	store := &mockStore{
+		ensureRepoID:  1,
+		putManifestID: 1,
+		putManifestErr: oci.ErrBlobUnknown{
+			Digest: missing_blob_digest,
+		},
+	}
+	dgst := digest.FromString("missing blob in manifest put")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms: &mockManifestService{
+			putDigest: dgst,
+		},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	payload := []byte(`{"schemaVersion": 2}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	// verify that the proper error is returned
+	var verr distribution.ErrManifestVerification
+	_, err = ms.Put(t.Context(), manifest)
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ErrManifestVerification, got %T: %v", err, err)
+	}
+
+	var blobErr distribution.ErrManifestBlobUnknown
+	if !errors.As(verr[0], &blobErr) {
+		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
+	}
+
+	if blobErr.Digest != missing_blob_digest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missing_blob_digest, blobErr.Digest)
+	}
+}
+
+func TestManifestPut_Missing_Child_Manifest(t *testing.T) {
+	missing_child_digest := digest.FromString("missing-child")
+
+	store := &mockStore{
+		ensureRepoID:  1,
+		putManifestID: 1,
+		putManifestErr: oci.ErrChildManifestUnknown{
+			Digest: missing_child_digest,
+		},
+	}
+	dgst := digest.FromString("missing child manifest in manifest put")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms: &mockManifestService{
+			putDigest: dgst,
+		},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	payload := []byte(`{"schemaVersion": 2}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.index.v1+json",
+		payload:   payload,
+	}
+
+	// verify that the proper error is returned
+	var verr distribution.ErrManifestVerification
+	_, err = ms.Put(t.Context(), manifest)
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ErrManifestVerification, got %T: %v", err, err)
+	}
+
+	var childErr distribution.ErrManifestBlobUnknown
+	if !errors.As(verr[0], &childErr) {
+		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
+	}
+
+	if childErr.Digest != missing_child_digest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missing_child_digest, childErr.Digest)
 	}
 }
 
