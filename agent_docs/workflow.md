@@ -143,6 +143,48 @@ All hooks are consolidated in `.claude/settings.json` — no manual setup requir
 - Fallback: use `gh api repos/{owner}/{repo}/pulls/{number} -X PATCH -f title="..." -f body="..."`
 - Always verify `gh auth status` at session start
 
+## Modifying sentinel.yaml Routing
+
+`.github/workflows/sentinel.yaml` maps changed file paths to CI workflow
+triggers. Every filter change is a potential coverage gap: an exclusion that
+diverts a path away from an existing filter also silently removes whatever CI
+jobs that filter triggered.
+
+**Checklist — required when adding or changing a filter:**
+
+1. **Map new filters to CI workflows.**
+   For each new `change filter` added to the `detect-changes` job, explicitly
+   list which CI workflows will run when that filter matches. Confirm the list
+   covers type checking, unit tests, and any security scans that must apply to
+   the new path.
+
+2. **Verify excluded paths still receive equivalent coverage.**
+   For each exclusion rule added to an existing filter (a line starting with
+   `!`), identify every CI job the original filter would have triggered for
+   files in the excluded path. Then confirm those jobs are still triggered
+   through a separate route. The minimum required coverage for any Python or
+   Go path is:
+   - **Type checking** (mypy / go vet / golangci-lint)
+   - **Unit tests**
+   - **Security / lint scans** (where applicable)
+
+3. **Add a coverage route before merging if one is missing.**
+   If step 2 reveals that the excluded path has no equivalent route for any
+   required check, add the route in the same PR before merging. Do not defer
+   coverage gaps to follow-up issues.
+
+4. **Document coverage routing in the PR description.**
+   Include a brief table or list in the PR body enumerating:
+   - Each filter added or modified
+   - Each CI workflow the filter routes to (or routes away from)
+   - For exclusions: the alternative route that preserves coverage
+
+**Background:** PR #7110 added `ci-generator/` and excluded it from the
+`python` filter without routing generator-only changes through `ci-python.yaml`
+(mypy). The type annotation gap was only discovered post-merge. PR #7131
+closed the gap by adding a `types-only` input to `ci-python.yaml` and routing
+generator-only changes through it via a combined condition in `sentinel.yaml`.
+
 ## Backport Process
 
 After a PR merges to master, if the JIRA ticket has a Target Version:
