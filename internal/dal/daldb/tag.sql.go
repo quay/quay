@@ -34,6 +34,31 @@ func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams
 	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
 }
 
+const extendTemporaryTag = `-- name: ExtendTemporaryTag :execrows
+UPDATE tag SET lifetime_end_ms = ?
+WHERE manifest_id = ?
+AND hidden = 1
+AND name LIKE '$temp-%'
+AND lifetime_end_ms > ?
+`
+
+type ExtendTemporaryTagParams struct {
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeEndMs_2 sql.NullInt64 `json:"lifetime_end_ms_2"`
+}
+
+// Updates the current temporary tag's expiry time to new expiry time.
+// Matches by both the manifest_id and name (in the form '$temp-%') so it doesn't
+// accidentally pick up any real tags in the process.
+func (q *Queries) ExtendTemporaryTag(ctx context.Context, arg ExtendTemporaryTagParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, extendTemporaryTag, arg.LifetimeEndMs, arg.ManifestID, arg.LifetimeEndMs_2)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getActiveTagDigest = `-- name: GetActiveTagDigest :one
 SELECT m.digest
 FROM tag t
@@ -71,6 +96,55 @@ func (q *Queries) GetActiveTagLifetimeStart(ctx context.Context, arg GetActiveTa
 	var lifetime_start_ms int64
 	err := row.Scan(&lifetime_start_ms)
 	return lifetime_start_ms, err
+}
+
+const getAllTagsForRepositoryIncludingHidden = `-- name: GetAllTagsForRepositoryIncludingHidden :many
+SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
+FROM tag
+WHERE repository_id = ?
+`
+
+type GetAllTagsForRepositoryIncludingHiddenRow struct {
+	ID              int64         `json:"id"`
+	Name            string        `json:"name"`
+	RepositoryID    int64         `json:"repository_id"`
+	ManifestID      sql.NullInt64 `json:"manifest_id"`
+	LifetimeStartMs int64         `json:"lifetime_start_ms"`
+	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
+	TagKindID       int64         `json:"tag_kind_id"`
+}
+
+// Reads all tags from a repository, including hidden tags. Needed to properly
+// test temporary tag creation
+func (q *Queries) GetAllTagsForRepositoryIncludingHidden(ctx context.Context, repositoryID int64) ([]GetAllTagsForRepositoryIncludingHiddenRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllTagsForRepositoryIncludingHidden, repositoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllTagsForRepositoryIncludingHiddenRow
+	for rows.Next() {
+		var i GetAllTagsForRepositoryIncludingHiddenRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.RepositoryID,
+			&i.ManifestID,
+			&i.LifetimeStartMs,
+			&i.LifetimeEndMs,
+			&i.TagKindID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTagsByRepository = `-- name: GetTagsByRepository :many
@@ -130,32 +204,6 @@ SELECT EXISTS(
 // (lifetime_end_ms IS NULL). Used to skip creating duplicate protection tags.
 func (q *Queries) HasNonExpiringTagForManifest(ctx context.Context, manifestID sql.NullInt64) (bool, error) {
 	row := q.db.QueryRowContext(ctx, hasNonExpiringTagForManifest, manifestID)
-	var has_tag bool
-	err := row.Scan(&has_tag)
-	return has_tag, err
-}
-
-const hasUnexpiredTemporaryTag = `-- name: HasUnexpiredTemporaryTag :one
-SELECT EXISTS (
-    SELECT 1 FROM tag
-    WHERE manifest_id = ?
-    AND hidden = 1
-    AND name LIKE '$temp-%'
-    AND lifetime_end_ms > ?
-) AS has_tag
-`
-
-type HasUnexpiredTemporaryTagParams struct {
-	ManifestID    sql.NullInt64 `json:"manifest_id"`
-	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
-}
-
-// Checks if we already have a temporary tag for a particular manifest.
-// In addition to matching against a specific manifest, we also match by name where
-// the name must be in the form '$temp-some_uuid'. This ensures that we don't match
-// any tags that are properly alive.
-func (q *Queries) HasUnexpiredTemporaryTag(ctx context.Context, arg HasUnexpiredTemporaryTagParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, hasUnexpiredTemporaryTag, arg.ManifestID, arg.LifetimeEndMs)
 	var has_tag bool
 	err := row.Scan(&has_tag)
 	return has_tag, err
