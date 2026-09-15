@@ -190,15 +190,15 @@ def test_get_mirror(app):
         (
             "https_proxy",
             "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
+            400,
+        ),
         ("http_proxy", "http://proxy.corp.example.com", 201),
         ("http_proxy", None, 201),
         (
             "http_proxy",
             "proxy.example.com; rm -rf /",
-            201,
-        ),  # Safe; values only set in env, not eval'ed
+            400,
+        ),
         ("no_proxy", "quay.io", 201),
         ("no_proxy", None, 201),
         ("no_proxy", "quay.io; rm -rf /", 201),  # Safe because proxy values are not eval'ed
@@ -392,6 +392,38 @@ class TestRepoMirrorSSRFProtection:
         permissions = model.permission.get_user_repository_permissions(robot, "devtable", "simple")
         assert next(iter(permissions), None) is None
 
+    def test_create_with_unsafe_proxy_rejected_before_mutation(self, app):
+        robot, _ = model.user.create_robot(
+            "ssrfproxybot", model.user.get_namespace_user("devtable")
+        )
+        body = self._create_body("quay.io/team/repo", robot.username)
+        body["external_registry_config"] = {"proxy": {"http_proxy": "http://169.254.169.254:8080"}}
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided mirror proxy location is not allowed"
+        repo = model.repository.get_repository("devtable", "simple")
+        assert model.repo_mirror.get_mirror(repo) is None
+        assert list(RepoMirrorRule.select().where(RepoMirrorRule.repository == repo)) == []
+        permissions = model.permission.get_user_repository_permissions(robot, "devtable", "simple")
+        assert next(iter(permissions), None) is None
+
+    def test_create_with_scheme_less_proxy_succeeds(self, app):
+        robot, _ = model.user.create_robot(
+            "schemelessproxybot", model.user.get_namespace_user("devtable")
+        )
+        body = self._create_body("quay.io/team/repo", robot.username)
+        body["external_registry_config"] = {"proxy": {"https_proxy": "proxy.example.com:8443"}}
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
+
+        mirror = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
+        assert mirror.external_registry_config["proxy"]["https_proxy"] == ("proxy.example.com:8443")
+
     def test_create_with_hostname_resolving_private_rejected(self, app):
         robot, _ = model.user.create_robot("ssrfdnsbot", model.user.get_namespace_user("devtable"))
 
@@ -510,6 +542,68 @@ class TestRepoMirrorSSRFProtection:
         updated = model.repo_mirror.get_mirror(mirror.repository)
         assert updated.external_reference == "quay.io/redhat/quay"
         assert updated.sync_start_date == mirror.sync_start_date
+
+    def test_update_with_unsafe_proxy_rejected_without_partial_updates(self, app):
+        mirror = _setup_mirror()
+        original_config = mirror.external_registry_config
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            body = {
+                "sync_interval": mirror.sync_interval + 100,
+                "external_registry_config": {"proxy": {"https_proxy": "https://127.0.0.1:8443"}},
+            }
+            resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided mirror proxy location is not allowed"
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.sync_interval == mirror.sync_interval
+        assert updated.external_registry_config == original_config
+
+    def test_update_with_allowlisted_private_proxy_succeeds(self, app):
+        mirror = _setup_mirror()
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["10.0.0.0/8"]}):
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {
+                    "external_registry_config": {"proxy": {"http_proxy": "http://10.0.0.1:8080"}}
+                }
+                conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_registry_config["proxy"]["http_proxy"] == ("http://10.0.0.1:8080")
+
+    def test_update_clears_multiple_legacy_unsafe_proxies_atomically(self, app):
+        mirror = _setup_mirror()
+        mirror.external_registry_config = {
+            "verify_tls": True,
+            "proxy": {
+                "http_proxy": "http://127.0.0.1:8080",
+                "https_proxy": "https://169.254.169.254:8443",
+                "no_proxy": "quay.io",
+            },
+        }
+        mirror.save()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            body = {
+                "sync_interval": mirror.sync_interval + 100,
+                "external_registry_config": {"proxy": {"http_proxy": None, "https_proxy": None}},
+            }
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.sync_interval == mirror.sync_interval + 100
+        assert updated.external_registry_config == {
+            "verify_tls": True,
+            "proxy": {
+                "http_proxy": None,
+                "https_proxy": None,
+                "no_proxy": "quay.io",
+            },
+        }
 
     def test_update_with_allowlisted_private_registry_succeeds(self, app):
         mirror = _setup_mirror()
