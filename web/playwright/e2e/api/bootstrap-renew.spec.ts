@@ -28,60 +28,41 @@ test.describe(
   },
   () => {
     test('redirects trailing slash to canonical renewal endpoint', async ({
-      playwright,
+      request,
     }) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
+      const response = await request.post(
+        `${API_URL}${BOOTSTRAP_RENEW_PATH}/`,
+        {
+          maxRedirects: 0,
+          timeout: 10_000,
+        },
+      );
 
-      try {
-        const response = await request.post(
-          `${API_URL}${BOOTSTRAP_RENEW_PATH}/`,
-          {
-            maxRedirects: 0,
-            timeout: 10_000,
-          },
-        );
-
-        expect(response.status()).toBe(307);
-        expect(response.headers().location).toBe(BOOTSTRAP_RENEW_PATH);
-      } finally {
-        await request.dispose();
-      }
+      expect(response.status()).toBe(307);
+      expect(response.headers().location).toBe(BOOTSTRAP_RENEW_PATH);
     });
 
     test('rejects invalid bearer token without accepting CSRF fallback', async ({
-      playwright,
+      request,
       quayConfig,
     }) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+      const response = await request.post(`${API_URL}${BOOTSTRAP_RENEW_PATH}`, {
+        headers: {
+          Authorization: 'Bearer definitely-invalid-bootstrap-token',
+        },
+        timeout: 10_000,
       });
 
-      try {
-        const response = await request.post(
-          `${API_URL}${BOOTSTRAP_RENEW_PATH}`,
-          {
-            headers: {
-              Authorization: 'Bearer definitely-invalid-bootstrap-token',
-            },
-            timeout: 10_000,
-          },
-        );
-
-        if (!isProgrammaticBootstrapEnabled(quayConfig.features)) {
-          // The API resource is not registered, but Quay's GET-only web
-          // catch-all route still matches the path and rejects POST.
-          expect(response.status()).toBe(405);
-          return;
-        }
-
-        expect(response.status()).toBe(401);
-        const body = await response.json();
-        expect(body.error_type).toBe('invalid_token');
-      } finally {
-        await request.dispose();
+      if (!isProgrammaticBootstrapEnabled(quayConfig.features)) {
+        // The API resource is not registered, but Quay's GET-only web
+        // catch-all route still matches the path and rejects POST.
+        expect(response.status()).toBe(405);
+        return;
       }
+
+      expect(response.status()).toBe(401);
+      const body = await response.json();
+      expect(body.error_type).toBe('invalid_token');
     });
   },
 );

@@ -32,6 +32,7 @@ import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL, BASE_URL} from './utils/config';
 import {
   ApiClient,
+  ApiRequestError,
   AutoPrunePolicy,
   PrototypeRole,
   RawApiClient,
@@ -41,6 +42,12 @@ import {
 } from './utils/api';
 import {isContainerRuntimeAvailable} from './utils/container';
 import {WebhookReceiver} from './utils/webhook';
+import {
+  attachFailureArtifacts,
+  newTraceContext,
+  shouldCollect,
+  TraceContext,
+} from './utils/failure-artifacts';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -1102,6 +1109,11 @@ type TestFixtures = {
   // RawApiClient authenticated as normal user (no browser required)
   userClient: RawApiClient;
 
+  // RawApiClient authenticated as the readonly superuser (no browser
+  // required). Skips the test when the readonly superuser is not
+  // configured or lacks superuser privileges.
+  readonlyClient: RawApiClient;
+
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
@@ -1122,6 +1134,14 @@ type TestFixtures = {
 
   // WebhookReceiver that auto-starts and auto-stops per test
   webhook: WebhookReceiver;
+
+  // Per-test W3C trace id/span id, propagated as a `traceparent` header on
+  // browser contexts and API request contexts
+  traceparent: TraceContext;
+
+  // Auto-fixture: attaches Jaeger spans to the test report on failure
+  // (runs automatically)
+  _autoFailureArtifacts: void;
 };
 
 /**
@@ -1230,45 +1250,78 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // Test-scoped fixtures (created fresh for each test)
   // =========================================================================
 
+  // Per-test trace id/span id, minted once and reused by every page/request
+  // fixture below so all backend spans for a test share one trace id. The
+  // trace id is recorded as a test annotation so it lands in the HTML/JSON
+  // report and can be looked up in Jaeger.
+  // eslint-disable-next-line no-empty-pattern
+  traceparent: async ({}, use, testInfo) => {
+    const trace = newTraceContext();
+    testInfo.annotations.push({
+      type: 'trace-id',
+      description: trace.traceId,
+    });
+    await use(trace);
+  },
+
   csrfToken: async ({userContext}, use) => {
     const api = new ApiClient(userContext.request);
     const token = await api.getToken();
     await use(token);
   },
 
-  authenticatedPage: async ({userContext}, use) => {
+  authenticatedPage: async ({userContext, traceparent}, use) => {
     const page = await userContext.newPage();
+    // page-level headers are test-scoped and override the (worker-scoped,
+    // shared) context headers, so this cannot leak into other tests.
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  superuserPage: async ({superuserContext}, use) => {
+  superuserPage: async ({superuserContext, traceparent}, use) => {
     const page = await superuserContext.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  readonlyPage: async ({readonlyContext}, use) => {
+  readonlyPage: async ({readonlyContext, traceparent}, use) => {
     const page = await readonlyContext.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  unauthenticatedPage: async ({browser}, use) => {
+  unauthenticatedPage: async ({browser, traceparent}, use) => {
     // Create a fresh browser context without any authentication
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
     await context.close();
   },
 
-  authenticatedRequest: async ({userContext}, use) => {
+  authenticatedRequest: async ({userContext, traceparent}, use) => {
+    // userContext is worker-scoped and reused across tests in this worker,
+    // but Playwright runs one test at a time per worker, so setting the
+    // header here per test does not race with another test's requests.
+    // Cleared after use so a raw-context consumer in a later test gets no
+    // traceparent instead of this test's.
+    await userContext.setExtraHTTPHeaders({
+      traceparent: traceparent.traceparent,
+    });
     await use(userContext.request);
+    await userContext.setExtraHTTPHeaders({});
   },
 
-  superuserRequest: async ({superuserContext}, use) => {
+  superuserRequest: async ({superuserContext, traceparent}, use) => {
+    await superuserContext.setExtraHTTPHeaders({
+      traceparent: traceparent.traceparent,
+    });
     await use(superuserContext.request);
+    await superuserContext.setExtraHTTPHeaders({});
   },
 
   quayConfig: async ({cachedQuayConfig}, use) => {
@@ -1293,13 +1346,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await testApi.cleanup();
   },
 
-  freshUser: async ({superuserApi, playwright}, use) => {
+  freshUser: async ({superuserApi, playwright, traceparent}, use) => {
     const created = await superuserApi.user('iso');
     await superuserApi.raw.updateUserAsSuperuser(created.username, {
       email: created.email,
     });
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     const client = new ApiClient(request);
     await client.signIn(created.username, created.password);
@@ -1316,9 +1370,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // API-only fixtures (no browser required)
   // =========================================================================
 
-  adminClient: async ({playwright, cachedQuayConfig}, use) => {
+  adminClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
@@ -1330,9 +1385,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
-  userClient: async ({playwright, cachedQuayConfig}, use) => {
+  userClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
@@ -1344,13 +1400,75 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
-  anonClient: async ({playwright}, use) => {
+  readonlyClient: async (
+    {playwright, cachedQuayConfig, traceparent},
+    use,
+    testInfo,
+  ) => {
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users = getTestUsers(cachedQuayConfig);
+
+      try {
+        await client.signIn(users.readonly.username, users.readonly.password);
+      } catch (err: unknown) {
+        // Skip when the readonly user is genuinely not configured (auth
+        // rejection), but let infrastructure errors (5xx, network) fail loudly.
+        if (
+          err instanceof ApiRequestError &&
+          (err.status === 401 || err.status === 403)
+        ) {
+          testInfo.skip(true, 'Readonly superuser is not configured');
+        }
+        throw err;
+      }
+
+      // Verify readonly user actually has superuser privileges
+      // (GET /api/v1/superuser/users/ requires superuser access)
+      const suCheck = await client.get('/api/v1/superuser/users/');
+      if (suCheck.status() === 401 || suCheck.status() === 403) {
+        testInfo.skip(true, 'Readonly user does not have superuser privileges');
+      }
+      if (suCheck.status() !== 200) {
+        throw new Error(
+          `Unexpected status ${suCheck.status()} verifying readonly superuser privileges`,
+        );
+      }
+
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  anonClient: async ({playwright, traceparent}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
       await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  // Built-in request context overridden so raw API calls carry the per-test
+  // traceparent (needed for server-span collection on failure); specs must
+  // use this fixture instead of playwright.request.newContext.
+  request: async ({playwright, baseURL, traceparent}, use) => {
+    const request = await playwright.request.newContext({
+      baseURL,
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      await use(request);
     } finally {
       await request.dispose();
     }
@@ -1476,6 +1594,27 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(receiver);
     await receiver.stop();
   },
+
+  // =========================================================================
+  // Auto-fixture: attach failure diagnostics
+  // =========================================================================
+
+  /**
+   * On test failure, best-effort attach Jaeger spans for this test's trace
+   * id. Never throws -- a failed attachment must not mask the original
+   * test failure or fail an otherwise-passing test.
+   */
+  _autoFailureArtifacts: [
+    async ({traceparent}, use, testInfo) => {
+      await use();
+      if (shouldCollect(testInfo.status, testInfo.expectedStatus)) {
+        // attachFailureArtifacts never throws -- it handles its own
+        // best-effort diagnostics internally.
+        await attachFailureArtifacts(testInfo, traceparent);
+      }
+    },
+    {auto: true},
+  ],
 });
 
 // Re-export expect for convenience
