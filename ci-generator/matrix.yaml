@@ -9,12 +9,14 @@ managed_files:
   active:
     - quay-quay-master.yaml
     - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+    - quay-quay-redhat-3.18__gcp-ocp422-e2e-install.yaml
   retired: []
 
 quay:
   - branch: redhat-3.18
     jobs:
       - tier: daily
+        source: nightly
         clouds: [aws,gcp]
         ocp: ["4.22"]
         test: e2e-install
