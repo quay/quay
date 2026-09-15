@@ -7,7 +7,6 @@ global_defaults:
 
 managed_files:
   active:
-    - quay-quay-master.yaml
     - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
   retired: []
 
@@ -19,15 +18,8 @@ quay:
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
-  - branch: master
-    layout: base
-    env:
-      QUAY_OPERATOR_CHANNEL: stable-3.18
-      QUAY_OPERATOR_SOURCE: redhat-operators
-    jobs:
       - kind: presubmit
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
-        always_run: false
-        optional: true
+        as: aws-s3-alt

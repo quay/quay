@@ -10,6 +10,11 @@
 #   - templates/    (base, cloud, and test layers)
 #   - generate.py   (merge and expansion logic only)
 # =============================================================================
+base_images:
+  cli:
+    name: "4.22"
+    namespace: ocp
+    tag: cli
 build_root:
   image_stream_tag:
     name: release
@@ -17,8 +22,16 @@ build_root:
     tag: rhel-9-release-golang-1.25-openshift-4.22
 images:
   items:
+  - dockerfile_path: Dockerfile
+    to: quay-server
   - dockerfile_path: web/Containerfile.playwright
     to: quay-playwright-runner
+  skip_if_only_changed: ^(\.agents/|\.claude/|docs/|.*\.md$)
+promotion:
+  to:
+  - namespace: quay
+    tag: latest
+    tag_by_commit: true
 prowgen:
   enable_secrets_store_csi_driver: true
 releases:
@@ -36,17 +49,21 @@ resources:
       cpu: 100m
       memory: 200Mi
 tests:
-- as: aws-s3-nightly
-  cron: '@daily'
+- always_run: false
+  as: aws-s3
+  optional: true
   steps:
     cluster_profile: aws-quay-qe
+    dependencies:
+      QUAY_CI_IMAGE: pipeline:quay-server
     env:
       BASE_DOMAIN: quayqe.devcluster.openshift.com
       COMPUTE_NODE_TYPE: m5.4xlarge
       ENABLE_BUILD_SUPPORT: "true"
-      PLAYWRIGHT_GIT_REPO: https://github.com/quay/quay.git
       PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter
-        with mirror configuration|loads existing architecture filter from saved mirror configuration'
+        with mirror configuration|loads existing architecture filter from saved mirror configuration|image build context carries
+        the baked classifier artifact path|Nginx 502 error page when backend is unreachable'
+      PLAYWRIGHT_USE_IMAGE_TESTS: "true"
       QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777
       QUAY_EXTRA_CONFIG: |
         FEATURE_PROGRAMMATIC_BOOTSTRAP: false
@@ -76,9 +93,8 @@ tests:
           service_name: quay
           sample_rate: 1.0
           endpoint: http://jaeger.quay-enterprise.svc.cluster.local:4318/v1/traces
-      QUAY_INDEX_IMAGE_REPO: quay.io/redhat-user-workloads/quay-eng-tenant/stable-3-18-v4-22
       QUAY_OPERATOR_CHANNEL: stable-3.18
-      QUAY_OPERATOR_SOURCE: fbc-operator-catalog
+      QUAY_OPERATOR_SOURCE: redhat-operators
     post:
     - ref: quay-gather-jaeger-traces
     - ref: quay-deprovision
@@ -90,10 +106,11 @@ tests:
     - ref: quay-deploy-mailpit
     - ref: quay-deploy-jaeger
     - ref: quay-deploy-aws-s3
+    - ref: quay-deploy-custom-image
     - ref: quay-test-e2e
     workflow: ipi-aws
+  timeout: 4h0m0s
 zz_generated_metadata:
-  branch: redhat-3.18
+  branch: master
   org: quay
   repo: quay
-  variant: aws-ocp422-e2e-install

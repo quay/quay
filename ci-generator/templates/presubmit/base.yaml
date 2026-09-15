@@ -1,3 +1,8 @@
+base_images:
+  cli:
+    name: "{{ ocp_version }}"
+    namespace: ocp
+    tag: cli
 build_root:
   image_stream_tag:
     name: release
@@ -5,8 +10,18 @@ build_root:
     tag: rhel-9-release-golang-1.25-openshift-{{ ocp_version }}
 images:
   items:
+  - dockerfile_path: Dockerfile
+    to: quay-server
   - dockerfile_path: web/Containerfile.playwright
     to: quay-playwright-runner
+  skip_if_only_changed: ^(\.agents/|\.claude/|docs/|.*\.md$)
+{% if layout == "base" %}
+promotion:
+  to:
+  - namespace: quay
+    tag: latest
+    tag_by_commit: true
+{% endif %}
 prowgen:
   enable_secrets_store_csi_driver: true
 releases:
@@ -25,12 +40,11 @@ resources:
       memory: 200Mi
 tests:
 - as: "{{ test_as }}"
-  steps:
-    env:
-      PLAYWRIGHT_GIT_REPO: https://github.com/quay/quay.git
-      QUAY_OPERATOR_CHANNEL: "{{ operator_channel }}"
+  timeout: 4h0m0s
 zz_generated_metadata:
   branch: "{{ branch }}"
   org: "{{ org }}"
   repo: "{{ repo }}"
+{% if layout != "base" %}
   variant: "{{ variant }}"
+{% endif %}
