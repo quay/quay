@@ -86,6 +86,7 @@ tests:
       QUAY_OPERATOR_SOURCE: redhat-operators
     post:
     - ref: quay-gather-jaeger-traces
+    - ref: quay-gather
     - ref: quay-deprovision
     - chain: ipi-aws-post
     test:
@@ -136,6 +137,7 @@ tests:
       QUAY_STORAGE_PROVIDER: gcp
     post:
     - ref: quay-gather-jaeger-traces
+    - ref: quay-gather
     - ref: quay-deprovision
     - chain: ipi-gcp-post
     test:

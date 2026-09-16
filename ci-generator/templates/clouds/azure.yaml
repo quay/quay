@@ -6,6 +6,7 @@ tests:
       QUAY_STORAGE_PROVIDER: azure
     post:
     - ref: quay-gather-jaeger-traces
+    - ref: quay-gather
     - ref: quay-deprovision
     - chain: ipi-azure-post
     workflow: ipi-azure
