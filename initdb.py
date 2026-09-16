@@ -464,6 +464,7 @@ def initialize_database():
 
     LogEntryKind.create(name="create_robot")
     LogEntryKind.create(name="delete_robot")
+    LogEntryKind.create(name="update_robot_api_scopes")
 
     LogEntryKind.create(name="create_robot_federation")
     LogEntryKind.create(name="delete_robot_federation")

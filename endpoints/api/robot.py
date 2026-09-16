@@ -16,11 +16,13 @@ from auth.permissions import (
 )
 from data.database import FederatedLogin, LoginService
 from data.model import InvalidRobotException
+from data.model.oauth import normalize_scope
 from data.model.user import (
     attach_federated_login,
     create_federated_user,
     create_robot_federation_config,
     delete_robot_federation_config,
+    get_or_create_robot_metadata,
     get_robot_federation_config,
     lookup_robot,
 )
@@ -63,6 +65,32 @@ CREATE_ROBOT_SCHEMA = {
         },
     },
 }
+
+ROBOT_API_SCOPES_SCHEMA = {
+    "type": "object",
+    "required": ["scope"],
+    "properties": {"scope": {"type": "string", "maxLength": 1024}},
+}
+
+ROBOT_API_SCOPES = {
+    scopes.READ_REPO,
+    scopes.WRITE_REPO,
+    scopes.ADMIN_REPO,
+    scopes.CREATE_REPO,
+}
+
+
+def _validate_robot_api_scope(requested_scope):
+    normalized_scope = normalize_scope(requested_scope)
+    if not normalized_scope:
+        return normalized_scope
+
+    requested_scopes = scopes.scopes_from_scope_string(normalized_scope)
+    if not requested_scopes or not requested_scopes.issubset(ROBOT_API_SCOPES):
+        return None
+
+    return normalized_scope
+
 
 CREATE_ROBOT_FEDERATION_SCHEMA = {
     "type": "array",
@@ -339,6 +367,42 @@ class OrgRobot(ApiResource):
         raise Unauthorized()
 
 
+@resource("/v1/user/robots/<robot_shortname>/api-scopes")
+@path_param("robot_shortname", "The short name for the robot, without the user prefix")
+class UserRobotAPIScopes(ApiResource):
+    schemas = {"RobotAPIScopes": ROBOT_API_SCOPES_SCHEMA}
+
+    @require_user_admin(disallow_for_restricted_users=True)
+    def get(self, robot_shortname):
+        parent = get_authenticated_user()
+        robot = lookup_robot(format_robot_username(parent.username, robot_shortname))
+        return {
+            "scope": get_or_create_robot_metadata(robot).unstructured_json.get("api_scopes", "")
+        }
+
+    @require_user_admin(disallow_for_restricted_users=True)
+    @validate_json_request("RobotAPIScopes")
+    def put(self, robot_shortname):
+        parent = get_authenticated_user()
+        robot = lookup_robot(format_robot_username(parent.username, robot_shortname))
+        requested_scope = request.get_json()["scope"]
+        normalized_scope = _validate_robot_api_scope(requested_scope)
+        if normalized_scope is None:
+            return {"message": "Invalid scope: %s" % requested_scope}, 400
+        metadata = get_or_create_robot_metadata(robot)
+        if normalized_scope:
+            metadata.unstructured_json["api_scopes"] = normalized_scope
+        else:
+            metadata.unstructured_json.pop("api_scopes", None)
+        metadata.save()
+        log_action(
+            "update_robot_api_scopes",
+            parent.username,
+            {"robot": robot_shortname, "scope": normalized_scope},
+        )
+        return {"scope": normalized_scope}
+
+
 @resource("/v1/user/robots/<robot_shortname>/permissions")
 @path_param(
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
@@ -359,6 +423,49 @@ class UserRobotPermissions(ApiResource):
         permissions = model.list_robot_permissions(robot.name)
 
         return {"permissions": [permission.to_dict() for permission in permissions]}
+
+
+@resource("/v1/organization/<orgname>/robots/<robot_shortname>/api-scopes")
+@path_param("orgname", "The name of the organization")
+@path_param("robot_shortname", "The short name for the robot, without the organization prefix")
+class OrgRobotAPIScopes(ApiResource):
+    schemas = {"RobotAPIScopes": ROBOT_API_SCOPES_SCHEMA}
+
+    @require_scope(scopes.ORG_ADMIN)
+    def get(self, orgname, robot_shortname):
+        if not (
+            AdministerOrganizationPermission(orgname).can() or allow_if_superuser_with_full_access()
+        ):
+            raise Unauthorized()
+        robot = lookup_robot(format_robot_username(orgname, robot_shortname))
+        return {
+            "scope": get_or_create_robot_metadata(robot).unstructured_json.get("api_scopes", "")
+        }
+
+    @require_scope(scopes.ORG_ADMIN)
+    @validate_json_request("RobotAPIScopes")
+    def put(self, orgname, robot_shortname):
+        if not (
+            AdministerOrganizationPermission(orgname).can() or allow_if_superuser_with_full_access()
+        ):
+            raise Unauthorized()
+        robot = lookup_robot(format_robot_username(orgname, robot_shortname))
+        requested_scope = request.get_json()["scope"]
+        normalized_scope = _validate_robot_api_scope(requested_scope)
+        if normalized_scope is None:
+            return {"message": "Invalid scope: %s" % requested_scope}, 400
+        metadata = get_or_create_robot_metadata(robot)
+        if normalized_scope:
+            metadata.unstructured_json["api_scopes"] = normalized_scope
+        else:
+            metadata.unstructured_json.pop("api_scopes", None)
+        metadata.save()
+        log_action(
+            "update_robot_api_scopes",
+            orgname,
+            {"robot": robot_shortname, "scope": normalized_scope},
+        )
+        return {"scope": normalized_scope}
 
 
 @resource("/v1/organization/<orgname>/robots/<robot_shortname>/permissions")

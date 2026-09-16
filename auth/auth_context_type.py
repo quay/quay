@@ -9,7 +9,6 @@ from app import app
 from auth.auth_context import set_authenticated_context
 from auth.context_entity import CONTEXT_ENTITY_HANDLERS, ContextEntityKind
 from auth.permissions import QuayDeferredPermissionUser
-from auth.scopes import scopes_from_scope_string
 from data import model
 
 logger = logging.getLogger(__name__)
@@ -135,6 +134,7 @@ class ValidatedAuthContext(AuthContext):
         token=None,
         oauthtoken=None,
         robot=None,
+        robot_scopes=None,
         appspecifictoken=None,
         signed_data=None,
         sso_token=None,
@@ -143,6 +143,7 @@ class ValidatedAuthContext(AuthContext):
         # ContextEntityKind.
         self.user = user
         self.robot = robot
+        self.robot_scopes = robot_scopes
         self.token = token
         self.oauthtoken = oauthtoken
         self.appspecifictoken = appspecifictoken
@@ -220,6 +221,8 @@ class ValidatedAuthContext(AuthContext):
             return QuayDeferredPermissionUser.for_user(self.oauthtoken.authorized_user, scope_set)
 
         if self.authed_user:
+            # Robot API scopes gate Management API endpoints through require_scope().
+            # Keep the normal identity unrestricted so registry permissions remain unchanged.
             return QuayDeferredPermissionUser.for_user(self.authed_user)
 
         if self.token:
@@ -279,7 +282,13 @@ class ValidatedAuthContext(AuthContext):
     @property
     def unique_key(self):
         signed_dict = self.to_signed_dict()
-        return "%s-%s" % (signed_dict["entity_kind"], signed_dict.get("entity_reference", "(anon)"))
+        unique_key = "%s-%s" % (
+            signed_dict["entity_kind"],
+            signed_dict.get("entity_reference", "(anon)"),
+        )
+        if "robot_scopes" in signed_dict:
+            unique_key += "-%s" % signed_dict["robot_scopes"]
+        return unique_key
 
     def to_signed_dict(self):
         """
@@ -343,6 +352,9 @@ class ValidatedAuthContext(AuthContext):
                 }
             )
 
+        if self.robot and self.robot_scopes is not None:
+            dict_data["robot_scopes"] = self.robot_scopes
+
         # End of legacy information.
         return dict_data
 
@@ -369,7 +381,13 @@ class SignedAuthContext(AuthContext):
             return self._get_validated().unique_key
 
         signed_dict = self.signed_data
-        return "%s-%s" % (signed_dict["entity_kind"], signed_dict.get("entity_reference", "(anon)"))
+        unique_key = "%s-%s" % (
+            signed_dict["entity_kind"],
+            signed_dict.get("entity_reference", "(anon)"),
+        )
+        if "robot_scopes" in signed_dict:
+            unique_key += "-%s" % signed_dict["robot_scopes"]
+        return unique_key
 
     @classmethod
     def build_from_signed_dict(cls, dict_data, v1_dict_format=False):
@@ -407,7 +425,10 @@ class SignedAuthContext(AuthContext):
                 )
                 return ValidatedAuthContext()
 
-            return ValidatedAuthContext(**{self.kind.value: entity_reference})
+            return ValidatedAuthContext(
+                **{self.kind.value: entity_reference},
+                robot_scopes=self.signed_data.get("robot_scopes"),
+            )
 
         # Legacy handling.
         # TODO: Remove this all once the new code is fully deployed.
@@ -425,7 +446,12 @@ class SignedAuthContext(AuthContext):
                 return None
 
             return (
-                ValidatedAuthContext(robot=user) if user.robot else ValidatedAuthContext(user=user)
+                ValidatedAuthContext(
+                    robot=user,
+                    robot_scopes=self.signed_data.get("robot_scopes"),
+                )
+                if user.robot
+                else ValidatedAuthContext(user=user)
             )
 
         if kind == ContextEntityKind.token:

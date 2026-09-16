@@ -3,7 +3,11 @@ from unittest.mock import MagicMock, patch
 from flask import session
 
 from app import app
-from endpoints.csrf import _has_bootstrap_auth, generate_csrf_token
+from endpoints.csrf import (
+    _has_bootstrap_auth,
+    _has_robot_basic_auth,
+    generate_csrf_token,
+)
 
 BOOTSTRAP_PATH = "/api/v1/bootstrap/renew"
 
@@ -36,6 +40,33 @@ def test_has_bootstrap_auth_bypasses_csrf_when_no_session():
             mock_features.PROGRAMMATIC_BOOTSTRAP = True
             mock_get_user.return_value = None
             assert _has_bootstrap_auth() is True
+
+
+def test_has_robot_basic_auth_requires_authenticated_robot():
+    with app.test_request_context(
+        "/api/v1/repository",
+        headers={"Authorization": "Basic valid-robot-credentials"},
+    ):
+        with patch("endpoints.csrf.get_authenticated_context", return_value=None):
+            assert _has_robot_basic_auth() is False
+
+        with patch(
+            "endpoints.csrf.get_authenticated_context",
+            return_value=MagicMock(robot=MagicMock()),
+        ):
+            assert _has_robot_basic_auth() is True
+
+
+def test_has_robot_basic_auth_does_not_bypass_bootstrap():
+    with app.test_request_context(
+        BOOTSTRAP_PATH,
+        headers={"Authorization": "Basic valid-robot-credentials"},
+    ):
+        with patch(
+            "endpoints.csrf.get_authenticated_context",
+            return_value=MagicMock(robot=MagicMock()),
+        ):
+            assert _has_robot_basic_auth() is False
 
 
 def test_has_bootstrap_auth_enforces_csrf_when_session_active():

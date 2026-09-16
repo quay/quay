@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from enum import Enum
 
 from flask import request
@@ -16,6 +17,7 @@ from auth.oauth import validate_oauth_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import User
+from data.model.user import get_robot_metadata
 from util.names import parse_robot_username
 
 logger = logging.getLogger(__name__)
@@ -123,7 +125,20 @@ def validate_credentials(auth_username, auth_password_or_token):
             robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
             assert robot
             logger.debug("Successfully validated credentials for robot %s", auth_username)
-            return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
+            metadata = get_robot_metadata(robot)
+            metadata_json = (
+                metadata.unstructured_json
+                if metadata and isinstance(metadata.unstructured_json, Mapping)
+                else {}
+            )
+            return (
+                ValidateResult(
+                    AuthKind.credentials,
+                    robot=robot,
+                    robot_scopes=metadata_json.get("api_scopes", ""),
+                ),
+                CredentialKind.robot,
+            )
         except model.DeactivatedRobotOwnerException as dre:
             robot_owner, robot_name = parse_robot_username(auth_username)
 
@@ -217,7 +232,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             )
 
     # Otherwise, treat as a standard user.
-    (authenticated, err) = authentication.verify_and_link_user(
+    authenticated, err = authentication.verify_and_link_user(
         auth_username, auth_password_or_token, basic_auth=True
     )
     if authenticated:

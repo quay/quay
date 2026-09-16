@@ -22,7 +22,7 @@ from auth.auth_context import (
     get_sso_token,
     get_validated_oauth_token,
 )
-from auth.decorators import process_oauth
+from auth.decorators import process_basic_auth_no_pass, process_oauth
 from auth.permissions import (
     AdministerRepositoryPermission,
     GlobalReadOnlySuperUserPermission,
@@ -74,12 +74,44 @@ class ApiExceptionHandlingApi(Api):
             return False
 
 
+def _validated_robot_context():
+    auth_context = get_authenticated_context()
+    if not auth_context:
+        return None
+
+    validated_context = auth_context
+    if not getattr(auth_context, "robot", None):
+        get_validated = getattr(auth_context, "_get_validated", None)
+        if get_validated:
+            validated_context = get_validated()
+
+    if validated_context and getattr(validated_context, "robot", None):
+        return validated_context
+
+    return None
+
+
+def require_robot_api_access(func):
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        robot_context = _validated_robot_context()
+        if robot_context and not robot_context.robot_scopes:
+            raise Unauthorized()
+
+        return func(*args, **kwargs)
+
+    return wrapped
+
+
 api = ApiExceptionHandlingApi()
 api.init_app(api_bp)
 api.decorators = [
     csrf_protect(),
     crossorigin(),
     process_oauth,
+    require_robot_api_access,
+    # Authentication must run before csrf_protect so valid robot Basic auth can be exempted.
+    process_basic_auth_no_pass,
     require_xhr_from_browser,
 ]
 
@@ -215,7 +247,7 @@ def page_support(page_token_kwarg="page_token", parsed_args_kwarg="parsed_args")
             page_token = decrypt_page_token(kwargs[parsed_args_kwarg]["next_page"])
             kwargs[page_token_kwarg] = page_token
 
-            (result, next_page_token) = func(self, *args, **kwargs)
+            result, next_page_token = func(self, *args, **kwargs)
             if next_page_token is not None:
                 result["next_page"] = encrypt_page_token(next_page_token)
 
@@ -248,7 +280,7 @@ def parse_args(kwarg_name="parsed_args"):
 def parse_repository_name(func):
     @wraps(func)
     def wrapper(repository, *args, **kwargs):
-        (namespace, repository) = parse_namespace_repository(
+        namespace, repository = parse_namespace_repository(
             repository, app.config["LIBRARY_NAMESPACE"]
         )
         return func(namespace, repository, *args, **kwargs)
@@ -684,6 +716,14 @@ def require_scope(scope_object):
         @add_method_metadata("oauth2_scope", scope_object)
         @wraps(func)
         def wrapped(*args, **kwargs):
+            robot_context = _validated_robot_context()
+            if robot_context and not robot_context.robot_scopes:
+                raise Unauthorized()
+            if robot_context and not scopes.is_subset_string(
+                robot_context.robot_scopes, scope_object.scope
+            ):
+                raise Unauthorized()
+
             return func(*args, **kwargs)
 
         return wrapped
@@ -825,7 +865,7 @@ def deprecated():
     def wrapper(func):
         @wraps(func)
         def wrapped(self, *args, **kwargs):
-            (data, code, headers) = unpack(func(self, *args, **kwargs))
+            data, code, headers = unpack(func(self, *args, **kwargs))
             headers["Deprecation"] = "true"
 
             return (data, code, headers)
