@@ -46,7 +46,7 @@ def _phase0_cell(**kwargs: Any) -> Cell:
         "ocp_version": "4.22",
         "cloud": "aws",
         "test": "e2e-install",
-        "tier": "daily",
+        "cron": "@daily",
         "source": "nightly",
     }
     values.update(kwargs)
@@ -63,14 +63,14 @@ def test_expand_matrix_cells() -> None:
             cell.cloud,
             cell.ocp_version,
             cell.test,
-            cell.tier,
+            cell.cron,
             cell.kind,
         )
         for cell in cells
     } == {
-        ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "daily", "periodic"),
-        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "daily", "periodic"),
-        ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "weekly", "periodic"),
+        ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "@daily", "periodic"),
+        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "@daily", "periodic"),
+        ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "@weekly", "periodic"),
         (None, "master", "aws", "4.22", "e2e-install", None, "presubmit"),
     }
     cell = next(c for c in cells if c.branch == "redhat-3.18")
@@ -102,7 +102,7 @@ def test_adding_ocp_version_expands_cells() -> None:
                 "branch": "redhat-3.18",
                 "jobs": [
                     {
-                        "tier": "weekly",
+                        "cron": "weekly",
                         "source": "nightly",
                         "clouds": ["aws"],
                         "ocp": ["4.22", "4.23"],
@@ -141,7 +141,7 @@ def test_presubmit_test_layer_inherits_periodic_defaults() -> None:
         branch="master",
         quay_version=None,
         kind="presubmit",
-        tier=None,
+        cron=None,
         always_run=False,
         optional=True,
     )
@@ -170,24 +170,62 @@ def test_presubmit_test_layer_inherits_periodic_defaults() -> None:
     assert presubmit_refs == expected_refs
 
 
-def test_kind_settings_periodic_uses_interval_keywords() -> None:
+def test_kind_settings_periodic_passes_through_resolved_cron() -> None:
     weekly = apply_kind_settings(
         {"tests": [{"steps": {"cluster_profile": "aws-quay-qe"}}]},
-        _phase0_cell(tier="weekly", as_name=None),
+        _phase0_cell(cron="@weekly", as_name=None),
     )
     assert weekly["tests"][0]["cron"] == "@weekly"
 
     daily = apply_kind_settings(
         {"tests": [{"steps": {"cluster_profile": "aws-quay-qe"}}]},
-        _phase0_cell(tier="daily"),
+        _phase0_cell(cron="@daily"),
     )
     assert daily["tests"][0]["cron"] == "@daily"
 
-    nightly = apply_kind_settings(
+    custom = apply_kind_settings(
         {"tests": [{"steps": {"cluster_profile": "aws-quay-qe"}}]},
-        _phase0_cell(tier="nightly", as_name=None),
+        _phase0_cell(cron="17 3 * * 1"),
     )
-    assert nightly["tests"][0]["cron"] == "@daily"
+    assert custom["tests"][0]["cron"] == "17 3 * * 1"
+
+
+def test_cron_alias_resolves_to_interval() -> None:
+    for alias, interval in (("daily", "@daily"), ("nightly", "@daily"), ("weekly", "@weekly")):
+        matrix = _matrix_with_job(
+            {
+                "cron": alias,
+                "source": "nightly",
+                "clouds": ["aws"],
+                "ocp": ["4.22"],
+                "test": "e2e-install",
+            }
+        )
+        cells = expand_cells(matrix)
+        assert cells[0].cron == interval
+
+
+def test_custom_cron_lands_verbatim_in_generated_test(tmp_path: Path) -> None:
+    filename = "quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml"
+    matrix = _matrix_with_job(
+        {
+            "cron": "17 3 * * 1",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        }
+    )
+    matrix["managed_files"] = {"active": [filename], "retired": []}
+    matrix_path = tmp_path / "matrix.yaml"
+    matrix_path.write_text(yaml.dump(matrix))
+    results, _retired = generate_all(
+        matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates"
+    )
+    assert len(results) == 1
+    _group, out_filename, config = results[0]
+    assert out_filename == filename
+    assert config["tests"][0]["cron"] == "17 3 * * 1"
 
 
 def test_kind_settings_presubmit_copies_trigger_fields_when_set() -> None:
@@ -196,7 +234,7 @@ def test_kind_settings_presubmit_copies_trigger_fields_when_set() -> None:
         _phase0_cell(
             test="api-test",
             kind="presubmit",
-            tier=None,
+            cron=None,
             as_name=None,
             always_run=False,
             optional=True,
@@ -214,7 +252,7 @@ def test_kind_settings_presubmit_copies_trigger_fields_when_set() -> None:
 def test_kind_settings_presubmit_leaves_unset_trigger_fields_absent() -> None:
     presubmit = apply_kind_settings(
         {"tests": [{"steps": {}}]},
-        _phase0_cell(test="api-test", kind="presubmit", tier=None, as_name=None),
+        _phase0_cell(test="api-test", kind="presubmit", cron=None, as_name=None),
     )
     test = presubmit["tests"][0]
     for field_name in ("always_run", "optional", "run_if_changed", "skip_if_only_changed"):
@@ -284,7 +322,7 @@ def test_mixed_release_with_real_templates_rejects_incompatible_file_level(tmp_p
                 "branch": "redhat-3.18",
                 "jobs": [
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "nightly",
                         "clouds": ["aws"],
                         "ocp": ["4.22"],
@@ -318,14 +356,14 @@ def test_two_sources_group_into_one_file_with_distinct_env(tmp_path: Path) -> No
                 "branch": "redhat-3.18",
                 "jobs": [
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "nightly",
                         "clouds": ["aws"],
                         "ocp": ["4.22"],
                         "test": "e2e-install",
                     },
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "stable",
                         "clouds": ["aws"],
                         "ocp": ["4.22"],
@@ -410,7 +448,7 @@ def test_check_fails_when_retired_present(tmp_path: Path) -> None:
     retired_name = "quay-quay-redhat-3.18__retired.yaml"
     matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "source": "nightly",
             "clouds": ["aws"],
             "ocp": ["4.22"],
@@ -445,7 +483,7 @@ def test_managed_files_active_must_match_generated(tmp_path: Path) -> None:
     name_423 = "quay-quay-redhat-3.18__aws-ocp423-e2e-install.yaml"
     base_matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "source": "nightly",
             "clouds": ["aws"],
             "ocp": ["4.22", "4.23"],
@@ -487,12 +525,12 @@ managed_files:
 quay:
   - branch: redhat-3.18
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
@@ -516,7 +554,7 @@ managed_files:
 quay:
   - branch: redhat-3.18
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
@@ -602,7 +640,7 @@ def test_kind_must_be_periodic_or_presubmit() -> None:
     matrix = _matrix_with_job(
         {
             "kind": "bogus",
-            "tier": "daily",
+            "cron": "daily",
             "clouds": ["aws"],
             "ocp": ["4.22"],
             "test": "e2e-install",
@@ -612,50 +650,89 @@ def test_kind_must_be_periodic_or_presubmit() -> None:
         expand_cells(matrix)
 
 
-def test_tier_presubmit_is_retired_in_favor_of_kind() -> None:
+def test_tier_key_is_retired_in_favor_of_cron() -> None:
     matrix = _matrix_with_job(
-        {"tier": "presubmit", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
     )
-    with pytest.raises(ValueError, match="kind: presubmit"):
+    with pytest.raises(ValueError, match="use cron"):
         expand_cells(matrix)
 
 
-def test_periodic_requires_tier_in_known_set() -> None:
+def test_periodic_requires_cron() -> None:
     matrix = _matrix_with_job({"clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"})
-    with pytest.raises(ValueError, match="requires tier"):
-        expand_cells(matrix)
-
-    matrix = _matrix_with_job(
-        {"tier": "hourly", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
-    )
-    with pytest.raises(ValueError, match="requires tier"):
+    with pytest.raises(ValueError, match="requires cron"):
         expand_cells(matrix)
 
 
-def test_presubmit_rejects_tier() -> None:
+def test_periodic_rejects_malformed_cron() -> None:
+    for bad_cron in ("hourly", "* * * *", "bogus", "@daily", "@weekly"):
+        matrix = _matrix_with_job(
+            {"cron": bad_cron, "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        )
+        with pytest.raises(ValueError, match="not a known alias or a valid 5-field cron"):
+            expand_cells(matrix)
+
+
+def test_periodic_rejects_out_of_range_cron() -> None:
+    for bad_cron in (
+        "61 24 32 13 7",
+        "*/0 * * * *",
+        "5-3 * * * *",
+        "0 0 0 * *",
+        "0 0 * 0 *",
+        "0 0 * * 8",
+    ):
+        matrix = _matrix_with_job(
+            {"cron": bad_cron, "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        )
+        with pytest.raises(ValueError, match="not a known alias or a valid 5-field cron"):
+            expand_cells(matrix)
+
+
+def test_periodic_accepts_in_range_cron() -> None:
+    for good_cron in (
+        "59 23 31 12 7",
+        "0 0 1 1 0",
+        "*/15 * * * *",
+        "1,2,3-5/2 * * * *",
+        "17 3 * * 1",
+    ):
+        matrix = _matrix_with_job(
+            {
+                "cron": good_cron,
+                "clouds": ["aws"],
+                "ocp": ["4.22"],
+                "test": "e2e-install",
+                "source": "nightly",
+            }
+        )
+        expand_cells(matrix)
+
+
+def test_presubmit_rejects_cron() -> None:
     matrix = _matrix_with_job(
         {
             "kind": "presubmit",
-            "tier": "daily",
+            "cron": "daily",
             "clouds": ["aws"],
             "ocp": ["4.22"],
             "test": "e2e-install",
         }
     )
-    with pytest.raises(ValueError, match="must not set tier"):
+    with pytest.raises(ValueError, match="must not set cron"):
         expand_cells(matrix)
 
 
 def test_periodic_requires_source_in_known_set() -> None:
     matrix = _matrix_with_job(
-        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        {"cron": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
     )
     with pytest.raises(ValueError, match="requires source"):
         expand_cells(matrix)
 
     matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "source": "ga",
             "clouds": ["aws"],
             "ocp": ["4.22"],
@@ -669,7 +746,7 @@ def test_periodic_requires_source_in_known_set() -> None:
 def test_periodic_nightly_source_requires_quay_version() -> None:
     matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "source": "nightly",
             "clouds": ["aws"],
             "ocp": ["4.22"],
@@ -684,7 +761,7 @@ def test_periodic_nightly_source_requires_quay_version() -> None:
 def test_periodic_stable_source_expands_on_master() -> None:
     matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "source": "stable",
             "clouds": ["aws"],
             "ocp": ["4.22"],
@@ -715,7 +792,7 @@ def test_presubmit_rejects_source() -> None:
 def test_periodic_rejects_trigger_fields() -> None:
     matrix = _matrix_with_job(
         {
-            "tier": "daily",
+            "cron": "daily",
             "clouds": ["aws"],
             "ocp": ["4.22"],
             "test": "e2e-install",
@@ -758,7 +835,7 @@ def test_presubmit_rejects_always_run_true_with_filter() -> None:
 
 def test_layout_must_be_variant_or_base() -> None:
     matrix = _matrix_with_job(
-        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"},
+        {"cron": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"},
         release_overrides={"layout": "bogus"},
     )
     with pytest.raises(ValueError, match="layout must be"):
@@ -767,7 +844,7 @@ def test_layout_must_be_variant_or_base() -> None:
 
 def test_malformed_branch_still_raises() -> None:
     matrix = _matrix_with_job(
-        {"tier": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"},
+        {"cron": "daily", "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"},
         release_overrides={"branch": "redhat-x"},
     )
     with pytest.raises(ValueError, match="must look like"):

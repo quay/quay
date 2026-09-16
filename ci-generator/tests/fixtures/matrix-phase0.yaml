@@ -16,7 +16,7 @@ quay:
     env:
       PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]

@@ -26,7 +26,7 @@ def _cell(**kwargs: object) -> Cell:
         "ocp_version": "4.22",
         "cloud": "aws",
         "test": "e2e-install",
-        "tier": "daily",
+        "cron": "@daily",
         "source": "nightly",
     }
     values.update(kwargs)
@@ -50,7 +50,7 @@ def test_job_env_replaces_branch_env_keys() -> None:
                 },
                 "jobs": [
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "nightly",
                         "clouds": ["gcp"],
                         "ocp": ["4.22"],
@@ -80,7 +80,7 @@ def test_job_as_applies_to_split_row_only() -> None:
                 "branch": "redhat-3.18",
                 "jobs": [
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "nightly",
                         "clouds": ["aws"],
                         "ocp": ["4.22"],
@@ -88,7 +88,7 @@ def test_job_as_applies_to_split_row_only() -> None:
                         "as": "custom-aws-name",
                     },
                     {
-                        "tier": "daily",
+                        "cron": "daily",
                         "source": "nightly",
                         "clouds": ["azure"],
                         "ocp": ["4.22"],

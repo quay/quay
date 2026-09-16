@@ -36,7 +36,7 @@ class Cell:
     ocp_version: str
     cloud: str
     test: str
-    tier: str | None
+    cron: str | None
     source: str | None
     arch: str = "amd64"
     image_source: str = "build"
@@ -114,7 +114,7 @@ class Cell:
             "cloud": self.cloud,
             "storage": self.storage,
             "test": self.test,
-            "tier": self.tier,
+            "cron": self.cron,
             "source": self.source,
             "arch": self.arch,
             "image_source": self.image_source,

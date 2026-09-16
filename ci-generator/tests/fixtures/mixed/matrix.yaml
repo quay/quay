@@ -13,7 +13,7 @@ managed_files:
 quay:
   - branch: redhat-3.18
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
