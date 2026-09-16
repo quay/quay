@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {API_URL} from '../../utils/config';
 import {pushImage, pullImage} from '../../utils/container';
@@ -7,6 +7,59 @@ test.describe(
   'Robot Accounts',
   {tag: ['@organization', '@robot-accounts']},
   () => {
+    test(
+      'personal robot creates an API token',
+      {tag: '@PROJQUAY-11090'},
+      async ({authenticatedPage, userClient}) => {
+        const robotShortname = uniqueName('api-token').replace(/-/g, '_');
+
+        try {
+          const createResponse = await userClient.put(
+            `/api/v1/user/robots/${robotShortname}`,
+            {description: 'Personal robot API token test'},
+          );
+          expect(createResponse.status()).toBe(201);
+          const robot = await createResponse.json();
+
+          await authenticatedPage.goto(
+            `/organization/${robot.name.split('+')[0]}?tab=Robotaccounts`,
+          );
+          await expect(
+            authenticatedPage.getByTestId('robot-accounts-table'),
+          ).toBeVisible();
+
+          await authenticatedPage.getByText(robot.name).click();
+          await authenticatedPage
+            .getByRole('tab', {name: 'API Tokens'})
+            .click();
+          await authenticatedPage
+            .getByRole('button', {name: 'Create API token'})
+            .click();
+          await authenticatedPage
+            .locator('#robot-api-token-name')
+            .fill('CI token');
+          await authenticatedPage
+            .getByLabel('View all visible repositories')
+            .check();
+
+          const tokenResponse = authenticatedPage.waitForResponse(
+            (response) =>
+              response.request().method() === 'POST' &&
+              response
+                .url()
+                .includes(`/api/v1/user/robots/${robotShortname}/tokens`),
+          );
+          await authenticatedPage.getByRole('button', {name: 'Create'}).click();
+          expect((await tokenResponse).status()).toBe(200);
+          await expect(
+            authenticatedPage.getByText('Robot API token created'),
+          ).toBeVisible();
+        } finally {
+          await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
+        }
+      },
+    );
+
     test('CRUD lifecycle: create, search, toolbar, and delete robot account', async ({
       authenticatedPage,
       api,

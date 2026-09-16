@@ -2,6 +2,7 @@ import {test, expect, mailpit} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {pushImage} from '../utils/container';
 import {TEST_USERS} from '../global-setup';
+import {API_URL} from '../utils/config';
 
 async function assertChartLegend(
   page: Page,
@@ -418,6 +419,90 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           'Delete Organization Quota Limit',
           'Delete Organization Quota',
         ]);
+      },
+    );
+
+    test(
+      'audits robot API token and federation lifecycle events',
+      {tag: '@PROJQUAY-11090'},
+      async ({authenticatedRequest, api}) => {
+        const org = await api.organization('auditrobot');
+        const robot = await api.robot(org.name, 'auditbot');
+        const csrfToken = await api.raw.getToken();
+        const tokensUrl = `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`;
+
+        const createTokenResponse = await authenticatedRequest.post(tokensUrl, {
+          headers: {'X-CSRF-Token': csrfToken},
+          data: {
+            name: 'Audit test token',
+            scope: 'repo:read',
+            expiration: 3600,
+          },
+        });
+        expect(createTokenResponse.status()).toBe(200);
+        const createdToken = (await createTokenResponse.json()) as {
+          uuid: string;
+        };
+
+        await api.raw.createRobotFederation(org.name, robot.shortname, [
+          {
+            issuer: 'https://token.actions.githubusercontent.com',
+            subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+          },
+        ]);
+
+        const revokeTokenResponse = await authenticatedRequest.delete(
+          `${tokensUrl}/${createdToken.uuid}`,
+          {headers: {'X-CSRF-Token': csrfToken}},
+        );
+        expect(revokeTokenResponse.status()).toBe(204);
+        await api.raw.deleteRobotFederation(org.name, robot.shortname);
+
+        const end = new Date();
+        const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const formatLogDate = (date: Date) =>
+          `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(
+            date.getUTCDate(),
+          ).padStart(2, '0')}/${date.getUTCFullYear()}`;
+        const logsResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/organization/${org.name}/logs?starttime=${formatLogDate(
+            start,
+          )}&endtime=${formatLogDate(end)}`,
+        );
+        expect(logsResponse.status()).toBe(200);
+        const logs = (await logsResponse.json()) as {
+          logs: Array<{kind: string; metadata: Record<string, unknown>}>;
+        };
+        expect(logs.logs).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'create_robot_api_token',
+              metadata: expect.objectContaining({
+                robot: `${org.name}+${robot.shortname}`,
+                scope: 'repo:read',
+                token_display_name: 'Audit test token',
+              }),
+            }),
+            expect.objectContaining({
+              kind: 'revoke_robot_api_token',
+              metadata: expect.objectContaining({
+                robot: `${org.name}+${robot.shortname}`,
+              }),
+            }),
+            expect.objectContaining({
+              kind: 'create_robot_federation',
+              metadata: expect.objectContaining({
+                robot: robot.shortname,
+              }),
+            }),
+            expect.objectContaining({
+              kind: 'delete_robot_federation',
+              metadata: expect.objectContaining({
+                robot: robot.shortname,
+              }),
+            }),
+          ]),
+        );
       },
     );
 

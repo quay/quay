@@ -1,8 +1,20 @@
 import {render, screen} from '@testing-library/react';
 import RobotTokensModal from './RobotTokensModal';
 
+vi.mock('src/components/modals/RobotAPITokensTab', () => ({
+  default: () => <div>API tokens</div>,
+}));
+
 vi.mock('src/hooks/UseQuayConfig', () => ({
   useQuayConfig: () => ({config: {SERVER_HOSTNAME: 'quay.example.com'}}),
+}));
+
+vi.mock('src/hooks/UseOrganizations', () => ({
+  useOrganizations: () => ({
+    usernames: ['example'],
+    isSuperUser: false,
+    isLoadingSuperUserUsers: false,
+  }),
 }));
 
 vi.mock('src/hooks/useRobotAccounts', () => ({
