@@ -176,6 +176,44 @@ class TestFindAndClaimBatch:
         )
         assert len(claimed) == 0
 
+    def test_skips_scan_retries_exhausted_with_server_error_indexer_hash(
+        self, initialized_db, scanner
+    ):
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+        indexer_hash = "abc"
+        now = datetime.utcnow()
+
+        ManifestSecurityStatus.delete().execute()
+        for manifest in Manifest.select():
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash=indexer_hash,
+                indexer_version=IndexerVersion.V4,
+                last_indexed=now,
+                error_json={},
+                metadata_json={},
+            )
+
+        target = Manifest.select().first()
+        ManifestSecurityStatus.update(
+            index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+            indexer_hash="server_error",
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+            metadata_json={"retry_count": 5, "last_failed_hash": indexer_hash},
+        ).where(ManifestSecurityStatus.manifest == target).execute()
+
+        claimed = scanner._find_and_claim_batch(
+            50, reindex_threshold, stale_threshold, indexer_hash
+        )
+        assert len(claimed) == 0
+
+        status = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert status.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
+        assert status.indexer_hash == indexer_hash
+
     def test_claims_failed_under_retry_limit(self, initialized_db, scanner):
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
         stale_threshold = datetime.utcnow() - timedelta(hours=6)
@@ -551,6 +589,61 @@ class TestPerformIndexingCycle:
         scanner.perform_indexing(batch_size=100)
 
         scanner._secscan_api.index.assert_not_called()
+
+    def test_non200_exhausted_manifest_is_not_requeued_for_same_indexer_hash(
+        self, initialized_db, scanner, monkeypatch
+    ):
+        indexer_hash = "qe-fixed-indexer-hash"
+        max_retries = 5
+        monkeypatch.setitem(application.config, "SECURITY_SCANNER_MAX_SCAN_RETRIES", max_retries)
+
+        target = Manifest.select().first()
+        now = datetime.utcnow()
+        stale = now - timedelta(
+            seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 1
+        )
+
+        ManifestSecurityStatus.delete().execute()
+        for manifest in Manifest.select():
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash=indexer_hash,
+                indexer_version=IndexerVersion.V4,
+                last_indexed=now,
+                error_json={},
+                metadata_json={},
+            )
+
+        ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == target).execute()
+        ManifestSecurityStatus.create(
+            manifest=target,
+            repository=target.repository,
+            index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+            indexer_hash="server_error",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=stale,
+            error_json={},
+            metadata_json={
+                "retry_count": max_retries,
+                "last_failed_hash": indexer_hash,
+            },
+        )
+
+        scanner._secscan_api.state.return_value = {"state": indexer_hash}
+        mock_response = mock.Mock()
+        mock_response.status_code = 500
+        scanner._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+        scanner.perform_indexing(batch_size=100)
+
+        scanner._secscan_api.index.assert_not_called()
+        status = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert status.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
+        assert status.indexer_hash == indexer_hash
+        assert status.metadata_json["retry_count"] == max_retries
+        assert status.metadata_json["last_failed_hash"] == indexer_hash
 
     def test_handles_api_request_failure_during_index(self, initialized_db, scanner):
         from util.secscan.v4.api import APIRequestFailure

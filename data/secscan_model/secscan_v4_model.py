@@ -511,7 +511,9 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ManifestSecurityStatus.metadata_json,
             ).where(
                 ManifestSecurityStatus.manifest_id.in_(candidate_ids),
-                ManifestSecurityStatus.index_status == IndexStatus.FAILED,
+                ManifestSecurityStatus.index_status.in_(
+                    [IndexStatus.FAILED, IndexStatus.SCAN_RETRIES_EXHAUSTED]
+                ),
             )
             exhausted_manifest_ids = []
             for row in retry_exhausted_query:
@@ -526,6 +528,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             if exhausted_manifest_ids:
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+                    indexer_hash=current_indexer_hash,
                     last_indexed=datetime.utcnow(),
                 ).where(
                     ManifestSecurityStatus.manifest_id.in_(exhausted_manifest_ids),
@@ -654,7 +657,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     continue
 
             try:
-                (report, state) = self._secscan_api.index(manifest, layers)
+                report, state = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.warning("Failed to perform indexing, invalid content sent")

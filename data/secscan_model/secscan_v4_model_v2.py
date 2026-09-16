@@ -210,7 +210,10 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 retry_count = metadata.get("retry_count", 0)
                 if metadata.get("last_failed_hash") != indexer_hash:
                     retry_count = 0
-                if r.index_status == IndexStatus.FAILED and retry_count >= max_retries:
+                if (
+                    r.index_status in (IndexStatus.FAILED, IndexStatus.SCAN_RETRIES_EXHAUSTED)
+                    and retry_count >= max_retries
+                ):
                     exhausted_ids.append(r.id)
                 else:
                     eligible.append(r)
@@ -218,6 +221,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             if exhausted_ids:
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+                    indexer_hash=indexer_hash,
                     last_indexed=now,
                 ).where(ManifestSecurityStatus.id.in_(exhausted_ids)).execute()
 

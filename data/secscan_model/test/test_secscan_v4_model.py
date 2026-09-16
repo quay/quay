@@ -1556,6 +1556,118 @@ def test_non200_response_increments_retry_count(initialized_db, set_secscan_conf
     assert failed_count > 0, "Expected at least one FAILED manifest"
 
 
+def test_non200_exhausted_manifest_is_not_requeued_for_same_indexer_hash(
+    initialized_db, set_secscan_config, monkeypatch
+):
+    indexer_hash = "qe-fixed-indexer-hash"
+    max_retries = 5
+    monkeypatch.setitem(application.config, "SECURITY_SCANNER_MAX_SCAN_RETRIES", max_retries)
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    target = Manifest.select().first()
+    now = datetime.utcnow()
+    stale = now - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 1)
+
+    ManifestSecurityStatus.delete().execute()
+    for manifest in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash=indexer_hash,
+            indexer_version=IndexerVersion.V4,
+            last_indexed=now,
+            error_json={},
+            metadata_json={},
+        )
+
+    ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == target).execute()
+    ManifestSecurityStatus.create(
+        manifest=target,
+        repository=target.repository,
+        index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+        indexer_hash="server_error",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=stale,
+        error_json={},
+        metadata_json={
+            "retry_count": max_retries,
+            "last_failed_hash": indexer_hash,
+        },
+    )
+
+    secscan._secscan_api.state.return_value = {"state": indexer_hash}
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    secscan._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+    secscan.perform_indexing(batch_size=100)
+
+    secscan._secscan_api.index.assert_not_called()
+    status = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+    assert status.index_status == IndexStatus.SCAN_RETRIES_EXHAUSTED
+    assert status.indexer_hash == indexer_hash
+    assert status.metadata_json["retry_count"] == max_retries
+    assert status.metadata_json["last_failed_hash"] == indexer_hash
+
+
+def test_exhausted_manifest_retries_after_indexer_hash_changes(
+    initialized_db, set_secscan_config, monkeypatch
+):
+    old_indexer_hash = "old-indexer-hash"
+    new_indexer_hash = "new-indexer-hash"
+    max_retries = 5
+    monkeypatch.setitem(application.config, "SECURITY_SCANNER_MAX_SCAN_RETRIES", max_retries)
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    target = Manifest.select().first()
+    now = datetime.utcnow()
+    stale = now - timedelta(seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 1)
+
+    ManifestSecurityStatus.delete().execute()
+    for manifest in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash=new_indexer_hash,
+            indexer_version=IndexerVersion.V4,
+            last_indexed=now,
+            error_json={},
+            metadata_json={},
+        )
+
+    ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == target).execute()
+    ManifestSecurityStatus.create(
+        manifest=target,
+        repository=target.repository,
+        index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+        indexer_hash=old_indexer_hash,
+        indexer_version=IndexerVersion.V4,
+        last_indexed=stale,
+        error_json={},
+        metadata_json={
+            "retry_count": max_retries,
+            "last_failed_hash": old_indexer_hash,
+        },
+    )
+
+    secscan._secscan_api.state.return_value = {"state": new_indexer_hash}
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    secscan._secscan_api.index.side_effect = Non200ResponseException(mock_response)
+
+    secscan.perform_indexing(batch_size=100)
+
+    assert secscan._secscan_api.index.call_count == 1
+    status = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+    assert status.index_status == IndexStatus.FAILED
+    assert status.metadata_json["retry_count"] == 1
+    assert status.metadata_json["last_failed_hash"] == new_indexer_hash
+
+
 def test_index_error_increments_retry_count(initialized_db, set_secscan_config):
     """
     Test that Index_Error response increments retry_count in metadata_json.
