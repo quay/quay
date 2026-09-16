@@ -47,7 +47,7 @@ managed_files:
 quay:
   - branch: redhat-3.18
     jobs:
-      - {tier: daily, source: nightly, clouds: [aws], ocp: ["4.22"], test: e2e-install}
+      - {cron: daily, source: nightly, clouds: [aws], ocp: ["4.22"], test: e2e-install}
   - branch: master
     layout: base
     env:
@@ -69,11 +69,11 @@ quay:
 | `quay[].env` | Env keys applied to every job on that branch. Values replace whole keys. |
 | `quay[].jobs[]` | One job spec, expanded across `clouds` × `ocp` |
 | `quay[].jobs[].kind` | `periodic` (default, renders `templates/`) or `presubmit` (renders `templates/presubmit/`) |
-| `quay[].jobs[].tier` | Required for `periodic` (`daily` / `nightly` / `weekly`); must be unset for `presubmit` |
+| `quay[].jobs[].cron` | Required for `periodic`; must be unset for `presubmit`. Either an alias (`daily` / `nightly` / `weekly`) or a raw 5-field cron expression, passed through verbatim |
 | `quay[].jobs[].source` | Required for periodic: `nightly` (`fbc-operator-catalog` + `QUAY_INDEX_IMAGE_REPO`) or `stable` (`redhat-operators`, no index image); must be unset for presubmit |
 | `quay[].jobs[].always_run` / `.optional` / `.run_if_changed` / `.skip_if_only_changed` | Presubmit trigger fields, copied onto the test when set. `run_if_changed` and `skip_if_only_changed` are mutually exclusive; `always_run: true` cannot combine with either. Only valid when `kind: presubmit`. |
 | `quay[].jobs[].env` | Optional per-job env; keys replace branch env of the same name |
-| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{cloud}-{storage}-{source}` for `periodic` (for example `aws-s3-nightly`) and `{cloud}-{storage}` for `presubmit` (for example `aws-s3`) -- tiers change only timing, never the name. Split the job into its own row when only some clouds need a different name. |
+| `quay[].jobs[].as` | Optional ci-operator test name. Defaults to `{cloud}-{storage}-{source}` for `periodic` (for example `aws-s3-nightly`) and `{cloud}-{storage}` for `presubmit` (for example `aws-s3`) -- cron changes only timing, never the name. Split the job into its own row when only some clouds need a different name. |
 
 Each job is cartesian-expanded to one ci-operator file named `{org}-{repo}-{branch}__{cloud}-ocp{ocp_nodot}-{test}.yaml` (`layout: base` rows instead write `{org}-{repo}-{branch}.yaml`). Cells that share a filename (for example a periodic and a presubmit row for the same branch/cloud/OCP/test) merge into one file: their tests concatenate in matrix order, and everything but `tests` must be identical across the group or generation fails with `incompatible file-level inputs`. Two rows in one file that derive or set the same `as` collide: the generator fails with `duplicate as`. Periodic derives `{cloud}-{storage}-{source}` and presubmit derives `{cloud}-{storage}`, so a periodic/presubmit pair does not collide on its own. Two rows of the same kind can still collide; set an explicit `as` on one row to resolve it, and the name must not encode the kind.
 
@@ -86,20 +86,24 @@ Each cell is assembled by deep-merge, later layers win. `kind: presubmit` jobs r
 3. `templates/clouds/{cloud}.yaml`, or the optional override `templates/presubmit/clouds/{cloud}.yaml` when present; presubmit falls back to the shared file otherwise
 4. `templates/tests/{test}.yaml`
 5. `templates/presubmit/tests/{test}.yaml`, when present, merged on top of layer 4 (presubmit only); if it does not exist, presubmit uses layer 4 unchanged
-6. Kind settings in `generate.py`: periodic sets `cron` from the tier; presubmit copies `always_run` / `optional` / `run_if_changed` / `skip_if_only_changed` onto the test when set
+6. Kind settings in `generate.py`: periodic sets `cron` from the resolved `cron` field (alias or raw expression); presubmit copies `always_run` / `optional` / `run_if_changed` / `skip_if_only_changed` onto the test when set
 7. Branch `env`, then job `env` / `as`
 
 Mappings recurse. Lists of mappings merge by index. Scalar lists replace. Env values replace whole keys. `QUAY_EXTRA_CONFIG` lives once, in `templates/tests/e2e-install.yaml`, and is shared by every branch and kind; unknown feature flags are treated as no-ops on older Quay releases. `templates/presubmit/tests/e2e-install.yaml` layers only the presubmit-specific delta (image-test dependencies/env and the extra `quay-deploy-custom-image` step) on top of it. Each cell's own rendered config must contain exactly one test; cells sharing a filename are grouped afterward (see above).
 
-### How often a job runs (periodic tiers)
+### How often a job runs (periodic cron)
 
-The only difference between periodic tiers is **timing**. The ci-operator field is `cron`; the value is a Prow interval keyword, not a raw crontab. Presubmit jobs (`kind: presubmit`) don't set `tier` or `cron` at all — they run per matching trigger fields instead (see the matrix table above).
+The `cron` field controls **timing** only. Its value is either a short alias or a raw 5-field cron expression, and the resolved value is passed through verbatim to the ci-operator `cron` field. Presubmit jobs (`kind: presubmit`) don't set `cron` at all — they run per matching trigger fields instead (see the matrix table above).
 
-| Tier | When | Result |
+| Alias | When | Result |
 | --- | --- | --- |
 | `daily` | Once a day | `cron: '@daily'`. Broader matrix (several clouds × OCP versions). |
 | `nightly` | Once a day | Same cron as `daily` (`'@daily'`). |
 | `weekly` | Once a week | `cron: '@weekly'`. Long tail — older versions, upgrades. |
+
+A `cron` value that isn't one of those aliases must be a raw 5-field cron expression (for example `17 3 * * 1`); it is used verbatim.
+
+The old `tier` field was removed outright, with no aliasing or deprecation window — `matrix.yaml` was its only consumer. A job that still sets `tier:` fails generation; migrate it to `cron:`.
 
 ## Adding coverage
 
@@ -110,7 +114,7 @@ Add a Quay release by appending to `quay:`:
 ```yaml
   - branch: redhat-3.17
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
@@ -130,12 +134,12 @@ Add a `stable` source alongside a `nightly` one on the same branch/cloud/OCP/tes
 ```yaml
   - branch: redhat-3.18
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws]
         ocp: ["4.22"]
         test: e2e-install
-      - tier: daily
+      - cron: daily
         source: stable
         clouds: [aws]
         ocp: ["4.22"]
@@ -151,7 +155,7 @@ Branch `env` overrides the test template's default for every job on that branch 
     env:
       PLAYWRIGHT_GREP_INVERT: "@auth:OIDC|@auth:LDAP"
     jobs:
-      - {tier: daily, source: nightly, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
+      - {cron: daily, source: nightly, clouds: [gcp, azure], ocp: ["4.22"], test: e2e-install}
 ```
 
 The presubmit test template adds the two image-unsafe test titles to `PLAYWRIGHT_GREP_INVERT`; the shared regex lives in `templates/tests/_e2e-install.defaults.j2`.

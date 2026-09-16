@@ -16,12 +16,12 @@ managed_files:
 quay:
   - branch: redhat-3.18
     jobs:
-      - tier: daily
+      - cron: daily
         source: nightly
         clouds: [aws,gcp]
         ocp: ["4.22"]
         test: e2e-install
-      - tier: weekly
+      - cron: weekly
         source: nightly
         clouds: [aws]
         ocp: ["5.0"]

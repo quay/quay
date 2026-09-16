@@ -7,7 +7,7 @@
 # test steps, cluster profiles, or to add new OpenShift/Quay versions.
 #
 # WHERE TO MAKE YOUR CHANGES:
-#   1. matrix.yaml — Quay releases, OCP versions, clouds, kind, tiers, source,
+#   1. matrix.yaml — Quay releases, OCP versions, clouds, kind, cron, source,
 #                     env, as, managed_files
 #   2. templates/  — job structure (base, clouds/{cloud}, tests/{test});
 #                     kind: presubmit renders templates/presubmit/ instead
@@ -43,17 +43,17 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateError
 from model import Cell, YamlMap
 
 GENERATOR_DIR = Path(__file__).resolve().parent
-TIERS = ("daily", "nightly", "weekly")
 SOURCES = ("nightly", "stable")
-TIER_INTERVALS = {
+CRON_ALIASES = {
     "daily": "@daily",
     "nightly": "@daily",
     "weekly": "@weekly",
 }
+CRON_FIELD_RE = re.compile(r"^(\*|\d+)(-\d+)?(/\d+)?(,(\*|\d+)(-\d+)?(/\d+)?)*$")
 RELEASE_KEYS = {"branch", "jobs", "env", "layout"}
 JOB_KEYS = {
     "kind",
-    "tier",
+    "cron",
     "source",
     "test",
     "ocp",
@@ -238,6 +238,17 @@ def _job_str_field(job: YamlMap, key: str, where: str) -> str | None:
     return value
 
 
+def _resolve_cron(value: str, where: str) -> str:
+    if value in CRON_ALIASES:
+        return CRON_ALIASES[value]
+    fields = value.split()
+    if len(fields) == 5 and all(CRON_FIELD_RE.match(field) for field in fields):
+        return " ".join(fields)
+    raise ValueError(
+        f"{where}.cron {value!r} is not a known alias or a valid 5-field cron expression"
+    )
+
+
 def expand_cells(matrix: YamlMap) -> list[Cell]:
     defaults = matrix.get("global_defaults") or {}
     if not isinstance(defaults, dict):
@@ -266,6 +277,12 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             where = f"quay[{release_index}].jobs[{job_index}]"
             if not isinstance(job, dict):
                 raise ValueError(f"{where} must be a mapping")
+            if "tier" in job:
+                if job.get("tier") == "presubmit":
+                    raise ValueError(
+                        f"{where}.tier 'presubmit' is retired; use kind: presubmit instead"
+                    )
+                raise ValueError(f"{where}.tier is retired; use cron: instead")
             unknown = set(job) - JOB_KEYS
             if unknown:
                 keys = ", ".join(sorted(unknown))
@@ -273,11 +290,6 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             kind = str(job.get("kind") or "periodic")
             if kind not in ("periodic", "presubmit"):
                 raise ValueError(f"{where}.kind must be 'periodic' or 'presubmit', got {kind!r}")
-            tier_raw = job.get("tier")
-            if tier_raw is not None and str(tier_raw) == "presubmit":
-                raise ValueError(
-                    f"{where}.tier 'presubmit' is retired; use kind: presubmit instead"
-                )
             test = str(job.get("test") or "")
             ocps = _as_str_list(job.get("ocp"))
             clouds = _as_str_list(job.get("clouds"))
@@ -287,11 +299,12 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             optional = _job_bool_field(job, "optional", where)
             run_if_changed = _job_str_field(job, "run_if_changed", where)
             skip_if_only_changed = _job_str_field(job, "skip_if_only_changed", where)
+            cron_raw = job.get("cron")
             source_raw = job.get("source")
             if kind == "periodic":
-                tier = str(tier_raw) if tier_raw else ""
-                if not tier or tier not in TIERS:
-                    raise ValueError(f"{where} periodic job requires tier in {TIERS}")
+                if not cron_raw:
+                    raise ValueError(f"{where} periodic job requires cron")
+                cron = _resolve_cron(str(cron_raw), where)
                 set_trigger_fields = [
                     name
                     for name, value in zip(
@@ -314,9 +327,9 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                         f"branch {branch!r} has none"
                     )
             else:
-                if tier_raw is not None:
-                    raise ValueError(f"{where} presubmit job must not set tier")
-                tier = None
+                if cron_raw is not None:
+                    raise ValueError(f"{where} presubmit job must not set cron")
+                cron = None
                 if source_raw is not None:
                     raise ValueError(f"{where} presubmit job must not set source")
                 source = None
@@ -344,7 +357,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                         ocp_version=ocp,
                         cloud=cloud,
                         test=test,
-                        tier=tier,
+                        cron=cron,
                         source=source,
                         arch=arch,
                         image_source=image_source,
@@ -368,9 +381,9 @@ def apply_kind_settings(config: YamlMap, cell: Cell) -> YamlMap:
         raise ValueError("generated config is missing tests[0]")
     test = tests[0]
     if cell.kind == "periodic":
-        if cell.tier not in TIER_INTERVALS:
-            raise ValueError(f"unsupported tier {cell.tier!r}")
-        test["cron"] = TIER_INTERVALS[cell.tier]
+        if not cell.cron:
+            raise ValueError("missing cron for periodic job")
+        test["cron"] = cell.cron
     elif cell.kind == "presubmit":
         for field_name in TRIGGER_FIELDS:
             value = getattr(cell, field_name)
@@ -552,7 +565,7 @@ def generate_all(
 
 
 def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
-    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "TIER", "SOURCE", "FILE", "AS")
+    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "CRON", "SOURCE", "FILE", "AS")
     rows: list[tuple[str, ...]] = [headers]
     for group, filename, config in results:
         for cell, test in zip(group, config["tests"], strict=True):
@@ -564,7 +577,7 @@ def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
                     cell.ocp_version,
                     cell.cloud,
                     cell.test,
-                    cell.tier or "-",
+                    cell.cron or "-",
                     cell.source or "-",
                     filename,
                     str(test_as),
