@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 
 import redis
 
+from util.redis_utils import create_redis_client, is_cluster_config
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PULL_METRICS_WORKER_COUNT = 5
@@ -176,6 +178,9 @@ class PullMetrics(object):
         self._retry_attempts = redis_config.pop("retry_attempts", DEFAULT_REDIS_RETRY_ATTEMPTS)
         self._retry_delay = redis_config.pop("retry_delay", DEFAULT_REDIS_RETRY_DELAY)
 
+        # Detect cluster mode before stripping internal flags
+        self._is_cluster = is_cluster_config(redis_config)
+
         # Store only Redis connection parameters
         self._redis_config = redis_config
         self._redis = None
@@ -232,11 +237,17 @@ class PullMetrics(object):
             last_exception = None
             for attempt in range(1, self._retry_attempts + 1):
                 try:
-                    self._redis = redis.StrictRedis(
-                        socket_connect_timeout=self._connection_timeout,
-                        socket_timeout=self._socket_timeout,
-                        **self._redis_config,
-                    )
+                    if self._is_cluster:
+                        self._redis = create_redis_client(
+                            self._redis_config,
+                            default_timeout=self._connection_timeout,
+                        )
+                    else:
+                        self._redis = redis.StrictRedis(
+                            socket_connect_timeout=self._connection_timeout,
+                            socket_timeout=self._socket_timeout,
+                            **self._redis_config,
+                        )
                     self._redis.ping()
                     if attempt > 1:
                         logger.info(

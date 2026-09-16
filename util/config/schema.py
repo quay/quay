@@ -500,50 +500,158 @@ CONFIG_SCHEMA = {
         },
         "USER_EVENTS_REDIS": {
             "type": "object",
-            "description": "Connection information for Redis for user event handling",
-            "required": ["host"],
+            "description": "Connection information for Redis for user event handling. "
+            "Supports single-node Redis (legacy format with 'host'/'port'/'password') "
+            "and Redis Cluster (set 'engine' to 'rediscluster' and provide 'redis_config').",
             "properties": {
                 "host": {
                     "type": "string",
-                    "description": "The hostname at which Redis is accessible",
+                    "description": "The hostname at which Redis is accessible (legacy single-node format)",
                     "x-example": "my.redis.cluster",
                 },
                 "port": {
                     "type": "number",
-                    "description": "The port at which Redis is accessible",
+                    "description": "The port at which Redis is accessible (legacy single-node format)",
                     "x-example": 1234,
                 },
                 "password": {
                     "type": "string",
-                    "description": "The password to connect to the Redis instance",
+                    "description": "The password to connect to the Redis instance (legacy single-node format)",
                     "x-example": "mypassword",
+                },
+                "engine": {
+                    "type": "string",
+                    "description": "Redis engine type: 'redis' for single-node or 'rediscluster' for Redis Cluster",
+                    "enum": ["redis", "rediscluster"],
+                    "x-example": "rediscluster",
+                },
+                "redis_config": {
+                    "type": "object",
+                    "description": "Redis connection configuration when 'engine' is set. "
+                    "For engine=redis: accepts host, port, password, ssl, db. "
+                    "For engine=rediscluster: accepts startup_nodes, read_from_replicas, "
+                    "skip_full_coverage_check, password, ssl.",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Redis hostname (engine=redis only)",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Redis port (engine=redis only)",
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "Redis password",
+                        },
+                        "ssl": {
+                            "type": "boolean",
+                            "description": "Use TLS for Redis connections",
+                        },
+                        "startup_nodes": {
+                            "type": "array",
+                            "description": "List of cluster seed nodes (engine=rediscluster only)",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "host": {"type": "string"},
+                                    "port": {"type": "number"},
+                                },
+                                "required": ["host", "port"],
+                            },
+                        },
+                        "read_from_replicas": {
+                            "type": "boolean",
+                            "description": "Read from replica nodes (engine=rediscluster only)",
+                        },
+                        "skip_full_coverage_check": {
+                            "type": "boolean",
+                            "description": "Skip cluster full coverage check (engine=rediscluster only)",
+                        },
+                    },
                 },
             },
         },
         "PULL_METRICS_REDIS": {
             "type": "object",
-            "description": "Connection information for Redis for pull metrics storage",
-            "required": ["host"],
+            "description": "Connection information for Redis for pull metrics storage. "
+            "Supports single-node Redis (legacy format with 'host'/'port'/'password'/'db') "
+            "and Redis Cluster (set 'engine' to 'rediscluster' and provide 'redis_config').",
             "properties": {
                 "host": {
                     "type": "string",
-                    "description": "The hostname at which Redis is accessible",
+                    "description": "The hostname at which Redis is accessible (legacy single-node format)",
                     "x-example": "my.redis.cluster",
                 },
                 "port": {
                     "type": "number",
-                    "description": "The port at which Redis is accessible",
+                    "description": "The port at which Redis is accessible (legacy single-node format)",
                     "x-example": 1234,
                 },
                 "password": {
                     "type": "string",
-                    "description": "The password to connect to the Redis instance",
+                    "description": "The password to connect to the Redis instance (legacy single-node format)",
                     "x-example": "mypassword",
                 },
                 "db": {
                     "type": "number",
-                    "description": "The Redis database number to use for pull metrics",
+                    "description": "The Redis database number to use for pull metrics (legacy single-node format)",
                     "x-example": 1,
+                },
+                "engine": {
+                    "type": "string",
+                    "description": "Redis engine type: 'redis' for single-node or 'rediscluster' for Redis Cluster",
+                    "enum": ["redis", "rediscluster"],
+                    "x-example": "rediscluster",
+                },
+                "redis_config": {
+                    "type": "object",
+                    "description": "Redis connection configuration when 'engine' is set. "
+                    "For engine=redis: accepts host, port, password, ssl, db. "
+                    "For engine=rediscluster: accepts startup_nodes, read_from_replicas, "
+                    "skip_full_coverage_check, password, ssl.",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Redis hostname (engine=redis only)",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Redis port (engine=redis only)",
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "Redis password",
+                        },
+                        "ssl": {
+                            "type": "boolean",
+                            "description": "Use TLS for Redis connections",
+                        },
+                        "db": {
+                            "type": "number",
+                            "description": "Redis database number (engine=redis only)",
+                        },
+                        "startup_nodes": {
+                            "type": "array",
+                            "description": "List of cluster seed nodes (engine=rediscluster only)",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "host": {"type": "string"},
+                                    "port": {"type": "number"},
+                                },
+                                "required": ["host", "port"],
+                            },
+                        },
+                        "read_from_replicas": {
+                            "type": "boolean",
+                            "description": "Read from replica nodes (engine=rediscluster only)",
+                        },
+                        "skip_full_coverage_check": {
+                            "type": "boolean",
+                            "description": "Skip cluster full coverage check (engine=rediscluster only)",
+                        },
+                    },
                 },
             },
         },
