@@ -128,8 +128,10 @@ def test_cell_settings_overwrite_as_and_env() -> None:
 
 def test_periodic_names_use_cloud_storage_source() -> None:
     generated, _retired = generate_all()
-    assert len(generated) == 3
-    group, _filename, config = next(g for g in generated if g[0][0].branch == "redhat-3.18")
+    assert len(generated) == 4
+    group, _filename, config = next(
+        g for g in generated if g[0][0].branch == "redhat-3.18" and g[0][0].ocp_version == "4.22"
+    )
     cell = group[0]
     assert (cell.quay_version, cell.cloud) == ("3.18", "aws")
     assert config["tests"][0]["as"] == "aws-s3-nightly"
