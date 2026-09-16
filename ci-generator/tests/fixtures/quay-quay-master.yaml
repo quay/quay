@@ -126,22 +126,11 @@ tests:
         LOG_ARCHIVE_LOCATION: default
         ACTION_LOG_ARCHIVE_LOCATION: default
         SESSION_TIMEOUT: 2h
-        FEATURE_MAILING: true
-        MAIL_SERVER: mailpit.quay-enterprise.svc.cluster.local
-        MAIL_PORT: 1025
-        MAIL_USE_TLS: false
-        MAIL_USE_AUTH: false
-        MAIL_DEFAULT_SENDER: quay@quayqe.local
         DEFAULT_UI: react
         SUPER_USERS:
           - admin
         GLOBAL_READONLY_SUPER_USERS:
           - readonly
-        FEATURE_OTEL_TRACING: true
-        OTEL_CONFIG:
-          service_name: quay
-          sample_rate: 1.0
-          endpoint: http://jaeger.quay-enterprise.svc.cluster.local:4318/v1/traces
       QUAY_OPERATOR_CHANNEL: stable-3.18
       QUAY_OPERATOR_SOURCE: redhat-operators
       QUAY_STORAGE_PROVIDER: gcp
