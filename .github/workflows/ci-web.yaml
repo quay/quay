@@ -198,7 +198,6 @@ jobs:
           with-builds: true
           use-gha-cache: false
           extra-config: |
-            FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_SCANNER_V2: true
             FEATURE_SECURITY_NOTIFICATIONS: true
