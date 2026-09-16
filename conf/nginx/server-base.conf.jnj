@@ -51,7 +51,7 @@ location / {
     # Show new UI if cookie or default is set to react
     if ($user_requested_ui ~* "^react$") {
         # catch known React UI routes and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security|/search) /index.html break;
         # catch-all for shorthand URLs (/<org>, /<org>/<repo>) handled by React Router
         rewrite ^/[^.]*$ /index.html break;
     }
@@ -67,10 +67,6 @@ location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/au
     proxy_pass   http://web_app_server;
 }
 
-# Capture old UI paths that aren't present in new UI
-location ~* ^(/search) {
-    proxy_pass   http://web_app_server;
-}
 
 location /push {
     proxy_pass   http://web_app_server;

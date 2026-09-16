@@ -1,0 +1,4 @@
+tests:
+- steps:
+    cluster_profile: aws-quay-qe
+    workflow: ipi-aws

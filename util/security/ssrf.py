@@ -99,8 +99,6 @@ def _proxy_route_for_url(
 
     no_proxy = proxy_config.get("no_proxy")
     if no_proxy:
-        if not isinstance(no_proxy, str):
-            return ProxyRoute.UNKNOWN
         try:
             if should_bypass_proxies(url, no_proxy=no_proxy):
                 return ProxyRoute.DIRECT
@@ -110,7 +108,7 @@ def _proxy_route_for_url(
     proxy_url = proxy_config.get(f"{scheme}_proxy")
     if proxy_url is None or proxy_url == "":
         return ProxyRoute.DIRECT
-    if not isinstance(proxy_url, str) or not proxy_url.strip():
+    if not proxy_url.strip():
         return ProxyRoute.UNKNOWN
 
     return ProxyRoute.PROXY

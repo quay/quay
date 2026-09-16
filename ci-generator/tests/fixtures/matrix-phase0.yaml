@@ -1,0 +1,23 @@
+# Minimal matrix for unit/golden tests. Production matrix.yaml may grow freely.
+version: 2
+
+global_defaults:
+  image_source: build
+  arch: amd64
+  repo: quay/quay
+
+managed_files:
+  active:
+    - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+  retired: []
+
+quay:
+  - branch: redhat-3.18
+    env:
+      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
+    jobs:
+      - cron: daily
+        source: nightly
+        clouds: [aws]
+        ocp: ["4.22"]
+        test: e2e-install

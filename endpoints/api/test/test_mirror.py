@@ -1,4 +1,5 @@
 from datetime import datetime
+from socket import gaierror
 from unittest.mock import patch
 
 import pytest
@@ -425,9 +426,9 @@ class TestRepoMirrorSSRFProtection:
         validated = False
         create_rule = model.repo_mirror.create_rule
 
-        def validate_before_mutation(reference):
+        def validate_before_mutation(reference, proxy_config=None):
             nonlocal validated
-            _validate_external_reference(reference)
+            _validate_external_reference(reference, proxy_config=proxy_config)
             validated = True
 
         def create_rule_after_validation(*args, **kwargs):
@@ -447,7 +448,7 @@ class TestRepoMirrorSSRFProtection:
                     body = self._create_body("quay.io/team/repo", robot.username)
                     conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
 
-        validate.assert_called_once_with("quay.io/team/repo")
+        validate.assert_called_once_with("quay.io/team/repo", proxy_config=None)
         mutation.assert_called_once()
 
     def test_update_validates_external_reference_before_mutation(self, app):
@@ -455,9 +456,9 @@ class TestRepoMirrorSSRFProtection:
         validated = False
         change_remote = model.repo_mirror.change_remote
 
-        def validate_before_mutation(reference):
+        def validate_before_mutation(reference, proxy_config=None):
             nonlocal validated
-            _validate_external_reference(reference)
+            _validate_external_reference(reference, proxy_config=proxy_config)
             validated = True
 
         def change_remote_after_validation(*args, **kwargs):
@@ -477,7 +478,9 @@ class TestRepoMirrorSSRFProtection:
                     body = {"external_reference": "quay.io/team/repo"}
                     conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
 
-        validate.assert_called_once_with("quay.io/team/repo")
+        mirror = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
+        stored_proxy = mirror.external_registry_config.get("proxy")
+        validate.assert_called_once_with("quay.io/team/repo", proxy_config=stored_proxy)
         mutation.assert_called_once()
 
     def test_update_with_private_ip_rejected_without_partial_updates(self, app):
@@ -522,6 +525,26 @@ class TestRepoMirrorSSRFProtection:
 
         updated = model.repo_mirror.get_mirror(mirror.repository)
         assert updated.external_reference == "10.0.0.1/team/repo"
+
+    def test_update_reference_with_empty_registry_config_uses_stored_proxy(self, app):
+        _HOST = "isolated-registry.example.com"
+        mirror = _setup_mirror()
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+            with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"repository": "devtable/simple"}
+                    body = {
+                        "external_reference": f"{_HOST}/team/repo",
+                        "external_registry_config": {},
+                    }
+                    conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == f"{_HOST}/team/repo"
+        assert updated.external_registry_config["proxy"]["https_proxy"] == (
+            "https://secure.proxy.corp"
+        )
 
 
 def test_cancel_repo_mirroring(app):

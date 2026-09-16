@@ -270,12 +270,18 @@ class SkopeoMirror(object):
     def setup_env(self, proxy):
         env = os.environ.copy()
 
-        if proxy.get("http_proxy"):
+        has_explicit_http = bool(proxy.get("http_proxy"))
+        has_explicit_https = bool(proxy.get("https_proxy"))
+
+        if has_explicit_http:
             env["HTTP_PROXY"] = proxy.get("http_proxy")
-        if proxy.get("https_proxy"):
+        if has_explicit_https:
             env["HTTPS_PROXY"] = proxy.get("https_proxy")
         if proxy.get("no_proxy"):
             env["NO_PROXY"] = proxy.get("no_proxy")
+        elif has_explicit_http or has_explicit_https:
+            env.pop("NO_PROXY", None)
+            env.pop("no_proxy", None)
 
         return env
 

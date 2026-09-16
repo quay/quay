@@ -461,14 +461,14 @@ def delete_mirror(repository):
     raise NotImplementedError("TODO: Not Implemented")
 
 
-def change_remote(repository, remote_repository, allowed_hosts=None):
+def change_remote(repository, remote_repository, allowed_hosts=None, proxy_config=None):
     """
     Update the external repository for Repository Mirroring.
     """
     mirror = get_mirror(repository)
-    proxy_config = None
-    if mirror and mirror.external_registry_config:
-        proxy_config = mirror.external_registry_config.get("proxy")
+    if proxy_config is None:
+        if mirror and mirror.external_registry_config:
+            proxy_config = mirror.external_registry_config.get("proxy")
 
     try:
         validate_external_registry_reference(

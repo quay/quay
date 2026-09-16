@@ -684,15 +684,19 @@ class TestProxyCacheProxyRouteSSRF:
         response = MagicMock()
         response.status_code = 200
         response.ok = True
-        return patch("proxy.Proxy.get", return_value=response)
+        return patch.multiple(
+            "endpoints.api.organization.Proxy",
+            _authorize=MagicMock(return_value=None),
+            get=MagicMock(return_value=response),
+        )
 
     def test_validate_allowlisted_proxy_route_skips_dns(self, app):
         self._cleanup_proxy_cache_config("buynlarge")
 
         with toggle_feature("PROXY_CACHE", True):
-            with patch.dict(app.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
+            with patch.dict(realapp.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
                 with patch(
-                    "util.security.ssrf.get_environment_proxy_config",
+                    "endpoints.api.organization.get_environment_proxy_config",
                     return_value=self._ENV_PROXY,
                 ):
                     with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
@@ -713,9 +717,9 @@ class TestProxyCacheProxyRouteSSRF:
         self._cleanup_proxy_cache_config("buynlarge")
 
         with toggle_feature("PROXY_CACHE", True):
-            with patch.dict(app.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
+            with patch.dict(realapp.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
                 with patch(
-                    "util.security.ssrf.get_environment_proxy_config",
+                    "endpoints.api.organization.get_environment_proxy_config",
                     return_value=self._ENV_PROXY,
                 ):
                     with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
@@ -738,7 +742,9 @@ class TestProxyCacheProxyRouteSSRF:
         self._cleanup_proxy_cache_config("buynlarge")
 
         with toggle_feature("PROXY_CACHE", True):
-            with patch("util.security.ssrf.get_environment_proxy_config", return_value=None):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config", return_value=None
+            ):
                 with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
                     with client_with_identity("devtable", app) as cl:
                         resp = conduct_api_call(
@@ -761,25 +767,24 @@ class TestProxyCacheProxyRouteSSRF:
             "no_proxy": self._HOST,
         }
         with toggle_feature("PROXY_CACHE", True):
-            with patch.dict(app.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config",
+                return_value=env_proxy,
+            ):
                 with patch(
-                    "util.security.ssrf.get_environment_proxy_config",
-                    return_value=env_proxy,
+                    "util.security.ssrf._getaddrinfo",
+                    return_value=[(2, 1, 6, "", ("10.0.0.1", 0))],
                 ):
-                    with patch(
-                        "util.security.ssrf._getaddrinfo",
-                        return_value=[(2, 1, 6, "", ("10.0.0.1", 0))],
-                    ):
-                        with client_with_identity("devtable", app) as cl:
-                            resp = conduct_api_call(
-                                cl,
-                                ProxyCacheConfigValidation,
-                                "POST",
-                                {"orgname": "buynlarge"},
-                                {"upstream_registry": self._HOST},
-                                400,
-                            )
-                            assert "not allowed" in resp.json.get("error_message", "").lower()
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(
+                            cl,
+                            ProxyCacheConfigValidation,
+                            "POST",
+                            {"orgname": "buynlarge"},
+                            {"upstream_registry": self._HOST},
+                            400,
+                        )
+                        assert "not allowed" in resp.json.get("error_message", "").lower()
 
         self._cleanup_proxy_cache_config("buynlarge")
 
@@ -788,7 +793,7 @@ class TestProxyCacheProxyRouteSSRF:
 
         with toggle_feature("PROXY_CACHE", True):
             with patch(
-                "util.security.ssrf.get_environment_proxy_config",
+                "endpoints.api.organization.get_environment_proxy_config",
                 return_value=self._ENV_PROXY,
             ):
                 with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):

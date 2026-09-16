@@ -6,7 +6,7 @@
 # `make ci-operator-config` (determinize-ci-operator) in openshift/release.
 #
 # Edit these instead:
-#   - matrix.yaml   (releases, clouds, tiers, branch/job env, as)
+#   - matrix.yaml   (releases, clouds, tiers, source, branch/job env, as)
 #   - templates/    (base, cloud, and test layers)
 #   - generate.py   (merge and expansion logic only)
 # =============================================================================
@@ -36,7 +36,7 @@ resources:
       cpu: 100m
       memory: 200Mi
 tests:
-- as: s3-daily
+- as: aws-s3-nightly
   cron: '@daily'
   steps:
     cluster_profile: aws-quay-qe

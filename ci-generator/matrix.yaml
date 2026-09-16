@@ -5,12 +5,36 @@ global_defaults:
   arch: amd64
   repo: quay/quay
 
+managed_files:
+  active:
+    - quay-quay-master.yaml
+    - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+    - quay-quay-redhat-3.18__aws-ocp50-e2e-install.yaml
+    - quay-quay-redhat-3.18__gcp-ocp422-e2e-install.yaml
+  retired: []
+
 quay:
   - branch: redhat-3.18
-    env:
-      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP|@feature:QUOTA_NOTIFICATIONS|@webhook|saves and loads architecture filter with mirror configuration|loads existing architecture filter from saved mirror configuration'
     jobs:
-      - tier: daily
-        clouds: [aws]
+      - cron: daily
+        source: nightly
+        clouds: [aws,gcp]
         ocp: ["4.22"]
         test: e2e-install
+      - cron: weekly
+        source: nightly
+        clouds: [aws]
+        ocp: ["5.0"]
+        test: e2e-install
+  - branch: master
+    layout: base
+    env:
+      QUAY_OPERATOR_CHANNEL: stable-3.18
+      QUAY_OPERATOR_SOURCE: redhat-operators
+    jobs:
+      - kind: presubmit
+        clouds: [aws, gcp]
+        ocp: ["4.22"]
+        test: e2e-install
+        always_run: false
+        optional: true

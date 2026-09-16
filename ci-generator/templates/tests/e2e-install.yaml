@@ -1,8 +1,9 @@
+{% import "tests/_e2e-install.defaults.j2" as d %}
 tests:
 - steps:
     env:
       ENABLE_BUILD_SUPPORT: "true"
-      PLAYWRIGHT_GREP_INVERT: '@auth:OIDC|@auth:LDAP'
+      PLAYWRIGHT_GREP_INVERT: '{{ d.playwright_grep_invert }}'
       QUAY_BUILDER_IMAGE: registry.redhat.io/quay/quay-builder-rhel9@sha256:9ced74943d3147fb6eac6df05c50a47553d550586be736068c47767c6f68c777
       QUAY_EXTRA_CONFIG: |
         FEATURE_PROGRAMMATIC_BOOTSTRAP: false

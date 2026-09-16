@@ -78,7 +78,9 @@ class TestRegistryAdapterSSRFProxy:
             mock_dns.assert_called_once()
 
     def test_validation_proxy_mapping_matches_build_proxies(self):
-        with patch("util.security.ssrf.validate_external_registry_url") as mock_validate:
+        with patch(
+            "util.orgmirror.registry_adapter.validate_external_registry_url"
+        ) as mock_validate:
             _StubRegistryAdapter(
                 url="https://quay.io",
                 namespace="testorg",
