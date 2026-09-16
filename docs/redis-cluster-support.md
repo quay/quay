@@ -144,4 +144,11 @@ The consuming modules have been updated to use this factory:
 - **Lua scripts**: The pull metrics Lua scripts operate on single keys, which
   is compatible with Redis Cluster's slot-based architecture.
 - **SCAN operations**: The flush worker's key scanning works across all cluster
-  nodes transparently.
+  nodes transparently.  A per-cycle time budget (`REDIS_FLUSH_WORKER_MAX_SCAN_SECONDS`,
+  default 30 s) prevents a large cluster from blocking the worker indefinitely;
+  remaining keys are picked up in the next flush cycle.
+- **Hash-tagged keys**: Pull-event Redis keys embed the `repository_id` in a
+  Redis Cluster hash tag (e.g. `pull_events:repo:{42}:tag:…`) so that
+  `RENAME` during claim processing always stays within the same hash slot.
+  Legacy keys written before this change are handled via an in-place
+  fallback when `CROSSSLOT` is detected.

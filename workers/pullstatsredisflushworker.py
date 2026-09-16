@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("REDIS_FLUSH_INTERVAL_SECONDS", 300)  # 5 minutes
 BATCH_SIZE = app.config.get("REDIS_FLUSH_WORKER_BATCH_SIZE", 1000)
 REDIS_SCAN_COUNT = app.config.get("REDIS_FLUSH_WORKER_SCAN_COUNT", 100)
+# Maximum wall-clock seconds a single cluster scan may consume per flush cycle.
+# Prevents a large cluster from blocking the worker indefinitely.
+MAX_SCAN_SECONDS = app.config.get("REDIS_FLUSH_WORKER_MAX_SCAN_SECONDS", 30)
 
 # RENAME atomically claims the key, then we delete only after successful DB write
 # This prevents data loss if database flush fails
@@ -173,7 +176,9 @@ class RedisFlushWorker(Worker):
 
         Uses ``scan_iter()`` for Redis Cluster clients (where ``scan()`` returns
         per-node cursor dicts) and the manual cursor loop for single-node
-        clients.
+        clients.  Cluster scans are bounded by both *limit* and a per-cycle
+        wall-clock budget (:data:`MAX_SCAN_SECONDS`) to prevent a large cluster
+        from blocking the worker indefinitely.
 
         Args:
             pattern: Redis key pattern to match
@@ -189,11 +194,20 @@ class RedisFlushWorker(Worker):
             keys_set: Set[str] = set()
 
             if self._is_cluster:
+                scan_deadline = time.monotonic() + MAX_SCAN_SECONDS
                 for key in self.redis_client.scan_iter(
                     match=pattern, count=REDIS_SCAN_COUNT
                 ):
                     keys_set.add(key)
                     if len(keys_set) >= limit:
+                        break
+                    if time.monotonic() >= scan_deadline:
+                        logger.info(
+                            "RedisFlushWorker: Cluster scan time budget (%ds) "
+                            "exhausted after collecting %d keys",
+                            MAX_SCAN_SECONDS,
+                            len(keys_set),
+                        )
                         break
             else:
                 cursor = 0
@@ -273,6 +287,17 @@ class RedisFlushWorker(Worker):
                         if "no such key" in error_msg or "no such file" in error_msg:
                             # Key doesn't exist (already processed or never created)
                             continue
+                        elif "crossslot" in error_msg:
+                            # Redis Cluster: key and processing_key hash to different
+                            # slots.  This happens for legacy keys written before the
+                            # hash-tag format was introduced.  Read the data in place
+                            # and delete after DB flush instead of renaming.
+                            logger.debug(
+                                "RedisFlushWorker: CROSSSLOT on RENAME for legacy key %s, "
+                                "falling back to in-place read",
+                                key,
+                            )
+                            processing_key = key
                         else:
                             logger.warning(f"RedisFlushWorker: RENAME failed for key {key}: {e}")
                             continue

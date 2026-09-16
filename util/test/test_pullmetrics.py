@@ -34,17 +34,17 @@ class TestPullMetricsKeyGeneration:
     def test_tag_pull_key_format(self):
         """Test tag pull key generation format."""
         key = PullMetrics._tag_pull_key(123, "latest", "sha256:abc123")
-        assert key == "pull_events:repo:123:tag:latest:sha256:abc123"
+        assert key == "pull_events:repo:{123}:tag:latest:sha256:abc123"
 
     def test_manifest_pull_key_format(self):
         """Test manifest pull key generation format."""
         key = PullMetrics._manifest_pull_key(456, "sha256:def456")
-        assert key == "pull_events:repo:456:digest:sha256:def456"
+        assert key == "pull_events:repo:{456}:digest:sha256:def456"
 
     def test_tag_pull_key_with_special_characters(self):
         """Test tag pull key with special characters in tag name."""
         key = PullMetrics._tag_pull_key(789, "v1.2.3-alpha", "sha256:xyz789")
-        assert key == "pull_events:repo:789:tag:v1.2.3-alpha:sha256:xyz789"
+        assert key == "pull_events:repo:{789}:tag:v1.2.3-alpha:sha256:xyz789"
 
 
 class TestPullMetricsBuilder:
@@ -460,7 +460,7 @@ class TestPullMetrics:
         call_args = mock_redis.eval.call_args
         assert call_args[0][0] == pull_metrics_testing._TRACK_TAG_PULL_SCRIPT
         assert call_args[0][1] == 1  # number of keys
-        assert call_args[0][2] == "pull_events:repo:123:tag:latest:sha256:abc123"  # KEYS[1]
+        assert call_args[0][2] == "pull_events:repo:{123}:tag:latest:sha256:abc123"  # KEYS[1]
         assert call_args[0][3] == "123"  # ARGV[1] - repository_id
         assert call_args[0][4] == "latest"  # ARGV[2] - tag_name
         assert call_args[0][5] == "sha256:abc123"  # ARGV[3] - manifest_digest
@@ -503,7 +503,7 @@ class TestPullMetrics:
         call_args = mock_redis.eval.call_args
         assert call_args[0][0] == pull_metrics_testing._TRACK_MANIFEST_PULL_SCRIPT
         assert call_args[0][1] == 1  # number of keys
-        assert call_args[0][2] == "pull_events:repo:789:digest:sha256:xyz789"  # KEYS[1]
+        assert call_args[0][2] == "pull_events:repo:{789}:digest:sha256:xyz789"  # KEYS[1]
         assert call_args[0][3] == "789"  # ARGV[1] - repository_id
         assert call_args[0][4] == "sha256:xyz789"  # ARGV[2] - manifest_digest
         # ARGV[3] is timestamp (dynamic, skip check)
@@ -727,7 +727,7 @@ class TestPullMetrics:
         # Verify
         assert result is not None
         assert result["pull_count"] == 15
-        mock_redis.hgetall.assert_called_once_with("pull_events:repo:123:tag:latest:sha256:abc123")
+        mock_redis.hgetall.assert_called_once_with("pull_events:repo:{123}:tag:latest:sha256:abc123")
 
     def test_get_manifest_pull_statistics(self, pull_metrics_testing, mock_redis):
         """Test get_manifest_pull_statistics method."""
@@ -747,7 +747,7 @@ class TestPullMetrics:
         # Verify
         assert result is not None
         assert result["pull_count"] == 20
-        mock_redis.hgetall.assert_called_once_with("pull_events:repo:456:digest:sha256:def456")
+        mock_redis.hgetall.assert_called_once_with("pull_events:repo:{456}:digest:sha256:def456")
 
     def test_shutdown_with_executor(self, mock_redis):
         """Test shutdown method with thread pool executor."""

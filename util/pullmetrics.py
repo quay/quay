@@ -286,23 +286,29 @@ class PullMetrics(object):
     def _tag_pull_key(repository_id, tag_name, manifest_digest):
         """
         Generate Redis key for tag pull events.
+
         Pattern: pull_events:repo:{repository_id}:tag:{tag_name}:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:tag:*:*
 
-        Note: Uses repository_id for consistent key naming.
+        The ``{repository_id}`` braces form a Redis Cluster hash tag so that
+        the original key and any derived processing key (appended by the flush
+        worker) always hash to the same slot, preventing ``CROSSSLOT`` errors
+        on ``RENAME``.  On single-node Redis the braces are treated as literal
+        characters and have no effect.
         """
-        return "pull_events:repo:%s:tag:%s:%s" % (repository_id, tag_name, manifest_digest)
+        return "pull_events:repo:{%s}:tag:%s:%s" % (repository_id, tag_name, manifest_digest)
 
     @staticmethod
     def _manifest_pull_key(repository_id, manifest_digest):
         """
         Generate Redis key for manifest/digest pull events.
+
         Pattern: pull_events:repo:{repository_id}:digest:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:digest:*
 
-        Note: Uses repository_id for consistent key naming.
+        See :meth:`_tag_pull_key` for hash-tag rationale.
         """
-        return "pull_events:repo:%s:digest:%s" % (repository_id, manifest_digest)
+        return "pull_events:repo:{%s}:digest:%s" % (repository_id, manifest_digest)
 
     def track_tag_pull_sync(self, repository_ref, tag_name, manifest_digest):
         """
