@@ -142,7 +142,7 @@
     "js-yaml": "^4.3.0",
     "brace-expansion": "^1.1.18",
     "browserslist": ">=4.28.7",
-    "compression": "1.8.2"
+    "compression": "1.8.2",
     "qs": ">=6.16.0"
   },
   "pnpm": {
@@ -164,7 +164,7 @@
       "brace-expansion": "^1.1.18",
       "browserslist": ">=4.28.7",
       "fast-uri": "^3.1.7",
-      "compression": "1.8.2"
+      "compression": "1.8.2",
       "qs": ">=6.16.0"
     }
   }
