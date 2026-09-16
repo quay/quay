@@ -21,7 +21,7 @@ Supports two configuration formats:
              - host: node2
                port: 6380
            read_from_replicas: true
-           skip_full_coverage_check: false
+           require_full_coverage: true
            ssl: true
            password: mypassword
 
@@ -125,6 +125,11 @@ def _create_single_node_client(redis_config, default_timeout, extra_kwargs):
 
 def _create_cluster_client(redis_config, default_timeout, extra_kwargs):
     """Create a ``RedisCluster`` client from an ``engine: rediscluster`` config."""
+    if not redis_config.get("startup_nodes") and not redis_config.get("host"):
+        raise ValueError(
+            "RedisCluster requires 'startup_nodes' or 'host' in redis_config"
+        )
+
     if "startup_nodes" in redis_config:
         redis_config["startup_nodes"] = [
             ClusterNode(host=node["host"], port=int(node["port"]))
@@ -133,6 +138,11 @@ def _create_cluster_client(redis_config, default_timeout, extra_kwargs):
 
     if "readonly_mode" in redis_config:
         redis_config["read_from_replicas"] = redis_config.pop("readonly_mode")
+
+    if "skip_full_coverage_check" in redis_config:
+        redis_config["require_full_coverage"] = not redis_config.pop(
+            "skip_full_coverage_check"
+        )
 
     _apply_defaults(redis_config, default_timeout, extra_kwargs)
     return RedisCluster(**redis_config)
@@ -144,3 +154,17 @@ def is_cluster_config(redis_config):
         return False
     engine = redis_config.get("engine", None)
     return engine is not None and engine.lower() == "rediscluster"
+
+
+def has_engine_config(redis_config):
+    """Return ``True`` if *redis_config* contains an ``engine`` key.
+
+    When ``engine`` is present the config uses the cluster-aware schema
+    (``engine`` + ``redis_config``) regardless of whether the engine is
+    ``redis`` or ``rediscluster``.  These configs must be routed through
+    :func:`create_redis_client` instead of being passed directly to
+    ``redis.StrictRedis``.
+    """
+    if not redis_config:
+        return False
+    return redis_config.get("engine", None) is not None

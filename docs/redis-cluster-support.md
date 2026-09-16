@@ -49,7 +49,7 @@ USER_EVENTS_REDIS:
       - host: redis-node-3.example.com
         port: 6379
     read_from_replicas: true
-    skip_full_coverage_check: false
+    require_full_coverage: true
     ssl: true
     password: cluster-secret
 
@@ -106,7 +106,7 @@ USER_EVENTS_REDIS:
 |---|---|---|
 | `startup_nodes` | `array` | List of `{host, port}` seed nodes |
 | `read_from_replicas` | `boolean` | Read from replica nodes |
-| `skip_full_coverage_check` | `boolean` | Skip cluster full coverage check |
+| `require_full_coverage` | `boolean` | Require full hash-slot coverage (default true) |
 | `password` | `string` | Cluster password |
 | `ssl` | `boolean` | Enable TLS |
 

@@ -4,7 +4,7 @@ import threading
 
 import redis
 
-from util.redis_utils import create_redis_client, is_cluster_config
+from util.redis_utils import create_redis_client, has_engine_config, is_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class UserEventBuilder(object):
     def __init__(self, redis_config):
         self._redis_config = redis_config
 
-        if is_cluster_config(redis_config):
+        if has_engine_config(redis_config):
             self._client = create_redis_client(redis_config, default_timeout=2)
         else:
             self._client = redis.StrictRedis(
@@ -114,7 +114,7 @@ class UserEventListener(object):
         channels = [self._user_event_key(username, e) for e in events]
 
         try:
-            if is_cluster_config(redis_config):
+            if has_engine_config(redis_config):
                 self._redis = create_redis_client(redis_config, default_timeout=5)
             else:
                 args = dict(redis_config)

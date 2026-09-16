@@ -19,6 +19,7 @@ import pytest
 from util.redis_utils import (
     REDIS_DRIVERS,
     create_redis_client,
+    has_engine_config,
     is_cluster_config,
 )
 
@@ -321,3 +322,98 @@ class TestConfigIsolation:
         create_redis_client(config)
 
         assert config == original
+
+
+class TestHasEngineConfig:
+    """Tests for the has_engine_config() helper."""
+
+    def test_none_config(self):
+        assert has_engine_config(None) is False
+
+    def test_empty_config(self):
+        assert has_engine_config({}) is False
+
+    def test_legacy_config(self):
+        assert has_engine_config({"host": "localhost", "port": 6379}) is False
+
+    def test_engine_redis(self):
+        assert has_engine_config({"engine": "redis", "redis_config": {}}) is True
+
+    def test_engine_rediscluster(self):
+        assert has_engine_config({"engine": "rediscluster", "redis_config": {}}) is True
+
+
+class TestSkipFullCoverageCheckMigration:
+    """Tests for skip_full_coverage_check → require_full_coverage translation."""
+
+    @patch("util.redis_utils.RedisCluster")
+    @patch("util.redis_utils.ClusterNode")
+    def test_skip_true_becomes_require_false(self, mock_cluster_node, mock_redis_cluster):
+        """skip_full_coverage_check=True should translate to require_full_coverage=False."""
+        mock_redis_cluster.return_value = MagicMock()
+        mock_cluster_node.return_value = MagicMock()
+
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "startup_nodes": [{"host": "node1", "port": 6379}],
+                "skip_full_coverage_check": True,
+            },
+        }
+
+        create_redis_client(config)
+
+        call_kwargs = mock_redis_cluster.call_args[1]
+        assert "skip_full_coverage_check" not in call_kwargs
+        assert call_kwargs["require_full_coverage"] is False
+
+    @patch("util.redis_utils.RedisCluster")
+    @patch("util.redis_utils.ClusterNode")
+    def test_skip_false_becomes_require_true(self, mock_cluster_node, mock_redis_cluster):
+        """skip_full_coverage_check=False should translate to require_full_coverage=True."""
+        mock_redis_cluster.return_value = MagicMock()
+        mock_cluster_node.return_value = MagicMock()
+
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "startup_nodes": [{"host": "node1", "port": 6379}],
+                "skip_full_coverage_check": False,
+            },
+        }
+
+        create_redis_client(config)
+
+        call_kwargs = mock_redis_cluster.call_args[1]
+        assert call_kwargs["require_full_coverage"] is True
+
+
+class TestClusterValidation:
+    """Tests for cluster-specific validation."""
+
+    def test_cluster_without_startup_nodes_or_host_raises(self):
+        """rediscluster without startup_nodes or host should raise ValueError."""
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "password": "secret",
+            },
+        }
+        with pytest.raises(ValueError, match="startup_nodes.*host"):
+            create_redis_client(config)
+
+    @patch("util.redis_utils.RedisCluster")
+    def test_cluster_with_host_only_accepted(self, mock_redis_cluster):
+        """rediscluster with host (no startup_nodes) should work."""
+        mock_redis_cluster.return_value = MagicMock()
+
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "host": "cluster-node.example.com",
+                "port": 6379,
+            },
+        }
+
+        client = create_redis_client(config)
+        assert client is mock_redis_cluster.return_value

@@ -527,10 +527,11 @@ CONFIG_SCHEMA = {
                 },
                 "redis_config": {
                     "type": "object",
+                    "minProperties": 1,
                     "description": "Redis connection configuration when 'engine' is set. "
                     "For engine=redis: accepts host, port, password, ssl, db. "
                     "For engine=rediscluster: accepts startup_nodes, read_from_replicas, "
-                    "skip_full_coverage_check, password, ssl.",
+                    "require_full_coverage, password, ssl.",
                     "properties": {
                         "host": {
                             "type": "string",
@@ -551,6 +552,7 @@ CONFIG_SCHEMA = {
                         "startup_nodes": {
                             "type": "array",
                             "description": "List of cluster seed nodes (engine=rediscluster only)",
+                            "minItems": 1,
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -564,9 +566,9 @@ CONFIG_SCHEMA = {
                             "type": "boolean",
                             "description": "Read from replica nodes (engine=rediscluster only)",
                         },
-                        "skip_full_coverage_check": {
+                        "require_full_coverage": {
                             "type": "boolean",
-                            "description": "Skip cluster full coverage check (engine=rediscluster only)",
+                            "description": "Require full hash-slot coverage to construct cluster client (engine=rediscluster only, default true)",
                         },
                     },
                 },
@@ -606,10 +608,11 @@ CONFIG_SCHEMA = {
                 },
                 "redis_config": {
                     "type": "object",
+                    "minProperties": 1,
                     "description": "Redis connection configuration when 'engine' is set. "
                     "For engine=redis: accepts host, port, password, ssl, db. "
                     "For engine=rediscluster: accepts startup_nodes, read_from_replicas, "
-                    "skip_full_coverage_check, password, ssl.",
+                    "require_full_coverage, password, ssl.",
                     "properties": {
                         "host": {
                             "type": "string",
@@ -634,6 +637,7 @@ CONFIG_SCHEMA = {
                         "startup_nodes": {
                             "type": "array",
                             "description": "List of cluster seed nodes (engine=rediscluster only)",
+                            "minItems": 1,
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -647,9 +651,9 @@ CONFIG_SCHEMA = {
                             "type": "boolean",
                             "description": "Read from replica nodes (engine=rediscluster only)",
                         },
-                        "skip_full_coverage_check": {
+                        "require_full_coverage": {
                             "type": "boolean",
-                            "description": "Skip cluster full coverage check (engine=rediscluster only)",
+                            "description": "Require full hash-slot coverage to construct cluster client (engine=rediscluster only, default true)",
                         },
                     },
                 },

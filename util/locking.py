@@ -4,7 +4,7 @@ import logging
 import redis_lock
 from redis import Redis, RedisError
 
-from util.redis_utils import create_redis_client, is_cluster_config
+from util.redis_utils import create_redis_client, has_engine_config, is_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class LockNotAcquiredException(Exception):
 def _redis_lock_factory(config):
     user_events_config = config["USER_EVENTS_REDIS"]
 
-    if is_cluster_config(user_events_config):
+    if has_engine_config(user_events_config):
         _conn = create_redis_client(
             user_events_config,
             default_timeout=5,
