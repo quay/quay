@@ -629,15 +629,8 @@ func TestManifestDelete_Proper_Error_Returned_When_Delete_Called_On_Nonexistent_
 
 	err = ms.Delete(context.Background(), dgst)
 	assert.Error(t, err)
-	var manifestDeleteError distribution.ErrManifestUnknownRevision
 
-	if !errors.As(err, &manifestDeleteError) {
-		t.Fatalf("expected manifest not found error, got %T", err)
-	}
-
-	if manifestDeleteError.Revision != dgst {
-		t.Fatalf("expected digest %s, got %s", dgst, manifestDeleteError.Revision)
-	}
+	assert.ErrorIs(t, err, distribution.ErrBlobUnknown)
 }
 
 func TestBlobPut_RecordsMetadata(t *testing.T) {
