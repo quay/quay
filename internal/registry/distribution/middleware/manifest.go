@@ -95,23 +95,17 @@ func (ms *manifestService) Delete(ctx context.Context, dgst digest.Digest) (retE
 	repoID, err := ms.repo.lookupRepo(ctx)
 	if err != nil {
 		if errors.Is(err, oci.ErrNotExist) {
-			// this error is incorrect, it should be ErrReposotiryUnknown, but Distribution wires it to a 500
-			// instead of 404, so a pragmatic choice of returning ErrManifestUnknownRevision was made.
+			// this error is incorrect, it should be ErrRepositoryUnknown, but Distribution wires it to a 500
+			// instead of 404, so a pragmatic choice of returning ErrBlobUnknown was made.
 			// to do: add proper error handling for consistency
-			return distribution.ErrManifestUnknownRevision{
-				Name:     ms.repo.Named().Name(),
-				Revision: dgst,
-			}
+			return distribution.ErrBlobUnknown
 		}
 		return logMetadataError("manifest_delete", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
 	if err := ms.repo.store.DeleteManifest(ctx, repoID, dgst); err != nil {
 		if errors.Is(err, oci.ErrNotExist) {
-			return distribution.ErrManifestUnknownRevision{
-				Name:     ms.repo.Named().Name(),
-				Revision: dgst,
-			}
+			return distribution.ErrBlobUnknown
 		}
 		return logMetadataError("manifest_delete", ms.repo.Named().Name(), dgst.String(), err)
 	}
