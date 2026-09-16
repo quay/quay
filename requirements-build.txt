@@ -99,6 +99,47 @@ cffi==2.0.0 \
     #   cryptography
     #   gevent
     #   pyroscope-io
+cython==3.2.9 \
+    --hash=sha256:114b2dee0fa1daa48a59574d848da0ff1b6bdb725a755e9b92fad14962e1ff8d \
+    --hash=sha256:1c2974742433be5c36ae1df1e761ce0063753fc2702316d5a3062b0a4e94a1df \
+    --hash=sha256:23e80bc885c599e72072e18d0746df82d394b73100c1e153cda7359e6e59fe09 \
+    --hash=sha256:2751b7c0cb13135aadcc1cc8fe223be98d458cd1132611d31675e768a5e4a2e9 \
+    --hash=sha256:2b1756ddc3bc0cd4341a515fc420c3e25e13c249f5537159b3fb0bff8d19e55c \
+    --hash=sha256:41637c644d7224d2d3170ee312077c2173693f0d4a0da1c82a0cffa3680a42dc \
+    --hash=sha256:44b7fc417933d65bf31bce00337ff318efa3ea59daed21d10fe842d41e657c08 \
+    --hash=sha256:4b1fd5a9c03f72a18618668a8e90d569442ed742f910e3ad003dcc9348e9598b \
+    --hash=sha256:4b871ad97dd7fb1cbf56f6238c54423febd310afc1d9d9bc70c69c89b7ce57fc \
+    --hash=sha256:522e277c29ebee304e73f3a78307549d09908b0c63098421a12dffc8d779fd74 \
+    --hash=sha256:56d95c0674c25f281c6ae8f1d17bd425d6c2818bb304ff781831bb5d00d04b0b \
+    --hash=sha256:57a6a78d14f7dd7d6062d9bca694e2a8c1c14113b6ceceea076abcd1161fdc5a \
+    --hash=sha256:61d4abbf84f77c8d19361d05d9f51d65d8d95e74f736eae55fa1aed8a1430469 \
+    --hash=sha256:63a42e131112072f912b66734088abc946c6bc42cb7454461a6dfdd2d09d3bae \
+    --hash=sha256:681980fcc82b346ac83bc7d59e68ca1eba74ed9576f5d8584761d0c6c68c45d0 \
+    --hash=sha256:788ea800618d20158166d09f60835aab50922ae1cfe3108c93fa72e173b7002d \
+    --hash=sha256:7c534d782757710e39f3c9582214d7a28a0d68c86e78ee3df1d729cbc270e133 \
+    --hash=sha256:7d41baea51ea00f9237f75af498577827493bca5e9b45bbd4e351543727e589a \
+    --hash=sha256:8c843dd85857cd0d0da055489f448d032866120cfb094ce16205a1ff54d06353 \
+    --hash=sha256:92989da161a7d18a7ad4baebc49289b2b77556d5a94916f90140ba26aecf6892 \
+    --hash=sha256:944dc8747f640b3527649c566a5fc75ee0c15e80642ea2fdae4fe6378e1a9d4a \
+    --hash=sha256:9d3cba9c4770cf76370fead8d2ae71bc474f3ef67ae4119e455d025726bcdc1c \
+    --hash=sha256:a2b0e87f6b80790c929308ca0831d686f7a180feab684fe8cd4a4380bd96aaca \
+    --hash=sha256:a3fc783d12202d1b064b6f125772d85f00e36e62eee6b2e415f56d8fd2d2e7b2 \
+    --hash=sha256:a5cd9c5f138cb052130b40ad3b6976d2180c35348410995812678f4636bd8f94 \
+    --hash=sha256:c6d4a92a87d238231564b5cbf27a8d1e46b7e62040c66b5ff33778a16b22295e \
+    --hash=sha256:cac792b0bde1c86d8f832e513cd061b7e682181cc5a6d843d487e6c8ae9d5fcb \
+    --hash=sha256:ccb0bc6b8437cfcb04459a02bc5ecc58bf161ea11659438945ab5a1392ee39fe \
+    --hash=sha256:d15c4d4ba8a3ad284124384f769465bfba45512aaa4c81caea8a165f79fc042a \
+    --hash=sha256:d249c9022ab13286b17bd66f30609e800c5f95efeecb06168990c7a66cecde6c \
+    --hash=sha256:ddb43637b7749b88644df4319e1c36f767e7fb71a92bb9942558c8de2f1cc5f4 \
+    --hash=sha256:e75ec625d8f8781ced690b7a2f5c2d138067711cf24bb8fb68c872c30c2fefe5 \
+    --hash=sha256:e8ec2d5a7b798c84d6779e7ca5318fd928b8fe9dd021106d714dc2e77cdc7555 \
+    --hash=sha256:e9b6ebc6c74b4318eaa4e51e520dc8b95ebc7b262953c3ecb24131104681f14e \
+    --hash=sha256:e9c39962f749bd40c6e8c5063d498bd3749947888306ffedb99a0cab3a69f995 \
+    --hash=sha256:efd54fe07f808e7e82f6a04f370457ca02e770c948f0e2f83345ccc7ec8bb829 \
+    --hash=sha256:f25b402a6f1eed34af2af57603a9aadcf594dacaced1655e925eb317fba3f337 \
+    --hash=sha256:f2fe4bc1b8fa4130563b94a3614db9ea17e92a455bed00e6a5d03eaff434b33c \
+    --hash=sha256:f815cd3387bd88ca9eeabc357ce4bdf884eef0ab2949db0fbd5e0b69fe5ee422
+    # via lxml
 cython==3.3.0 \
     --hash=sha256:03056533fe4fdbc4f1d34a39178f9a4937ff35196f8bcdde2a67b5b5809c61fe \
     --hash=sha256:03bc5333932f5dda3ba9315298ecdd21daa1b58410bb1f8ce04c78ec8337130a \
@@ -142,11 +183,7 @@ cython==3.3.0 \
     # via
     #   PyYAML
     #   gevent
-    #   lxml
     #   pyyaml
-# flit-core "duplicates" in requirements-build.txt are intentional —
-# different build dependencies have incompatible version constraints
-# (e.g. flit_core<4,>=3.11 vs flit_core>=4).
 flit-core==3.12.0 \
     --hash=sha256:18f63100d6f94385c6ed57a72073443e1a71a4acb4339491615d0f16d6ff01b2 \
     --hash=sha256:e7a0304069ea895172e3c7bb703292e992c5d1555dd1233ab7b5621b5b69e62c
@@ -157,17 +194,16 @@ flit-core==3.12.0 \
     #   cssselect2
     #   hashids
     #   idna
-    #   packaging
-flit-core==4.0.2 \
-    --hash=sha256:8d80717e28d982b41594ed5b14d4e89fbc5bad55473fde27994a3101db18a94e \
-    --hash=sha256:b6929defd93884b584d7c87829e0e7b5c26ed6be17b0b873979019314aa841c8
-    # via
-    #   lxml
-    #   pathspec
     #   pypdf
     #   tinycss2
     #   typing_extensions
     #   wheel
+flit-core==4.1.0 \
+    --hash=sha256:17398cdd2c38b24047a5a9c93089ec5c0bf12ec3d1469bbf69c27ed7965299db \
+    --hash=sha256:62e12b63ead8335b37f59fabb977c7167fe476dafb5e41785dfa8c9aff843bc6
+    # via
+    #   packaging
+    #   pathspec
 greenlet==3.1.1 \
     --hash=sha256:0153404a4bb921f0ff1abeb5ce8a5131da56b953eda6e14b88dc6bbc04d2049e \
     --hash=sha256:03a088b9de532cbfe2ba2034b2b85e82df37874681e8c470d6fb2f8c04d7e4b7 \
