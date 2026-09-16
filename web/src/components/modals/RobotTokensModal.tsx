@@ -15,13 +15,24 @@ import {
   Tabs,
   Content,
   ContentVariants,
+  Checkbox,
+  FormGroup,
+  Stack,
+  StackItem,
 } from '@patternfly/react-core';
 import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
-import {IRobotToken} from 'src/resources/RobotsResource';
+import {
+  fetchRobotAPIScopes,
+  IRobotToken,
+  updateRobotAPIScopes,
+} from 'src/resources/RobotsResource';
+import {OAUTH_SCOPES} from 'src/routes/OrganizationsList/Organization/Tabs/OAuthApplications/types';
 import 'src/routes/RepositoriesList/css/RobotAccount.css';
 
 const EmptyRobotToken = {
@@ -32,6 +43,13 @@ const EmptyRobotToken = {
   token: '',
   unstructured_metadata: {},
 };
+
+const ROBOT_API_SCOPES = Object.fromEntries(
+  ['repo:read', 'repo:write', 'repo:admin', 'repo:create'].map((scope) => [
+    scope,
+    OAUTH_SCOPES[scope],
+  ]),
+);
 
 export default function RobotTokensModal(props: RobotTokensModalProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
@@ -45,6 +63,71 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   );
   const [isSecretScopeSelectOpen, setIsSecretScopeSelectOpen] =
     useState<boolean>(false);
+  const [apiScopes, setAPIScopes] = useState<string[]>([]);
+  const [apiScopesLoaded, setAPIScopesLoaded] = useState(false);
+  const [savingAPIScopes, setSavingAPIScopes] = useState(false);
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(props.namespace);
+
+  useEffect(() => {
+    let active = true;
+    setAPIScopesLoaded(false);
+    setAPIScopes([]);
+
+    fetchRobotAPIScopes(
+      props.namespace,
+      props.name.split('+').pop() || props.name,
+      isUserOrganization,
+    )
+      .then((scope) => {
+        if (active) {
+          setAPIScopes(scope ? scope.split(' ') : []);
+          setAPIScopesLoaded(true);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setErr([addDisplayError('Unable to fetch robot API scopes', err)]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [props.namespace, props.name, isUserOrganization]);
+
+  const toggleAPIScope = (scope: string, checked: boolean) => {
+    setAPIScopes((current) =>
+      checked
+        ? [...current, scope]
+        : current.filter((selected) => selected !== scope),
+    );
+  };
+
+  const saveAPIScopes = async () => {
+    setSavingAPIScopes(true);
+    try {
+      const scope = await updateRobotAPIScopes(
+        props.namespace,
+        props.name.split('+').pop() || props.name,
+        apiScopes.join(' '),
+        isUserOrganization,
+      );
+      setAPIScopes(scope ? scope.split(' ') : []);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: 'Successfully updated robot Management API scopes',
+      });
+    } catch (err) {
+      setErr([addDisplayError('Unable to update robot API scopes', err)]);
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: 'Failed to update robot Management API scopes',
+      });
+    } finally {
+      setSavingAPIScopes(false);
+    }
+  };
   const onToggleClick = () => {
     setIsSecretScopeSelectOpen(!isSecretScopeSelectOpen);
   };
@@ -55,6 +138,8 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
     setSecretScopeSelected(value as string);
     setIsSecretScopeSelectOpen(false);
   };
+
+  const {addAlert} = useUI();
 
   const {regenerateRobotToken} = useRobotToken({
     orgName: props.namespace,
@@ -236,6 +321,44 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               Regenerate token now
             </Button>
+            <br />
+            <br />
+            <FormGroup label="Management API scopes" fieldId="robot-api-scopes">
+              <Content component={ContentVariants.p}>
+                These scopes authorize this robot&apos;s existing token to use
+                specific Quay Management API capabilities. The robot must still
+                have the underlying Quay permissions required for each
+                operation.
+              </Content>
+              <Stack hasGutter>
+                {Object.entries(ROBOT_API_SCOPES).map(
+                  ([scopeName, scopeInfo]) => (
+                    <StackItem key={scopeName}>
+                      <Checkbox
+                        id={`robot-api-scope-${scopeName}`}
+                        label={scopeInfo.title}
+                        description={scopeInfo.description}
+                        isChecked={apiScopes.includes(scopeName)}
+                        isDisabled={!apiScopesLoaded || savingAPIScopes}
+                        onChange={(_event, checked) =>
+                          toggleAPIScope(scopeName, checked)
+                        }
+                        data-testid={`robot-api-scope-${scopeName}`}
+                      />
+                    </StackItem>
+                  ),
+                )}
+              </Stack>
+              <Button
+                variant="primary"
+                onClick={saveAPIScopes}
+                isLoading={savingAPIScopes}
+                isDisabled={!apiScopesLoaded || savingAPIScopes}
+                data-testid="save-robot-api-scopes"
+              >
+                Save API scopes
+              </Button>
+            </FormGroup>
           </>
         </Tab>
         <Tab

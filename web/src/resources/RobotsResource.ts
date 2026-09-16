@@ -284,6 +284,34 @@ export async function fetchRobotPermissionsForNamespace(
   return response.data?.permissions;
 }
 
+export async function fetchRobotAPIScopes(
+  namespace: string,
+  robot: string,
+  isUser = false,
+): Promise<string> {
+  const path = isUser ? 'user' : `organization/${namespace}`;
+  const response: AxiosResponse = await axios.get(
+    `/api/v1/${path}/robots/${robot}/api-scopes`,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data.scope;
+}
+
+export async function updateRobotAPIScopes(
+  namespace: string,
+  robot: string,
+  scope: string,
+  isUser = false,
+): Promise<string> {
+  const path = isUser ? 'user' : `organization/${namespace}`;
+  const response: AxiosResponse = await axios.put(
+    `/api/v1/${path}/robots/${robot}/api-scopes`,
+    {scope},
+  );
+  assertHttpCode(response.status, 200);
+  return response.data.scope;
+}
+
 export async function fetchRobotAccountToken(
   orgName: string,
   robotName: string,
