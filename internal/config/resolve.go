@@ -135,6 +135,9 @@ func NewDefault(hostname, storagePath string) *Config {
 			InstanceServiceKeyService: DefaultInstanceServiceKeyService,
 			RegistryJWTAuthMaxFreshS:  DefaultRegistryJWTAuthMaxFreshS,
 		},
+		Digest: Digest{
+			AllowedHashAlgorithms: HashAlgorithms{DefaultHashAlgorithm},
+		},
 		Storage: Storage{
 			DistributedStorageConfig: StorageEntries{
 				"default": {

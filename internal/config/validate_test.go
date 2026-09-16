@@ -124,6 +124,35 @@ func TestValidateTagExpirationNotInOptions(t *testing.T) {
 	assert.True(t, hasFieldWarning(errs, "DEFAULT_TAG_EXPIRATION"), "expected warning for DEFAULT_TAG_EXPIRATION not in TAG_EXPIRATION_OPTIONS")
 }
 
+func TestValidateAllowedHashAlgorithms(t *testing.T) {
+	tests := []struct {
+		name       string
+		algorithms string
+		wantError  bool
+	}{
+		{name: "sha256 only", algorithms: "[sha256]"},
+		{name: "sha512 only", algorithms: "[sha512]"},
+		{name: "sha256 and sha512", algorithms: "[sha256, sha512]"},
+		{name: "empty", algorithms: "[]", wantError: true},
+		{name: "duplicate", algorithms: "[sha256, sha256]", wantError: true},
+		{name: "unknown", algorithms: "[sha384]", wantError: true},
+		{name: "uppercase", algorithms: "[SHA256]", wantError: true},
+		{name: "malformed hyphen", algorithms: "[sha-256]", wantError: true},
+		{name: "malformed punctuation", algorithms: "[sha512!]", wantError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yaml := minimalValidYAML + "\nALLOWED_HASH_ALGORITHMS: " + tt.algorithms + "\n"
+			cfg, err := Parse([]byte(yaml))
+			require.NoError(t, err)
+
+			errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+			assert.Equal(t, tt.wantError, hasFieldError(errs, "ALLOWED_HASH_ALGORITHMS"), "validation errors: %v", errs)
+		})
+	}
+}
+
 func TestValidateInvalidSecurityEndpoint(t *testing.T) {
 	yaml := minimalValidYAML + `
 SECURITY_SCANNER_V4_ENDPOINT: not-a-url

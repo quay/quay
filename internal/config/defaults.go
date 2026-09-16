@@ -10,6 +10,7 @@ const (
 	DefaultLastAccessedUpdateThresholdS = 60
 	DefaultInstanceServiceKeyService    = "quay"
 	DefaultRegistryJWTAuthMaxFreshS     = 3660
+	DefaultHashAlgorithm                = "sha256"
 
 	// Feature defaults mirror the Python configuration defaults. A nil feature
 	// value is resolved against these defaults by internal/features.
@@ -52,6 +53,9 @@ func newDefaultConfig() Config {
 		},
 		AccessLog: AccessLog{
 			LastAccessedUpdateThresholdS: DefaultLastAccessedUpdateThresholdS,
+		},
+		Digest: Digest{
+			AllowedHashAlgorithms: HashAlgorithms{DefaultHashAlgorithm},
 		},
 		Keys: Keys{
 			InstanceServiceKeyService: DefaultInstanceServiceKeyService,

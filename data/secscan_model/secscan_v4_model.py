@@ -654,7 +654,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     continue
 
             try:
-                (report, state) = self._secscan_api.index(manifest, layers)
+                report, state = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.warning("Failed to perform indexing, invalid content sent")
