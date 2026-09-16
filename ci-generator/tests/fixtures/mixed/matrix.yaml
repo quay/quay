@@ -1,0 +1,25 @@
+version: 2
+
+global_defaults:
+  image_source: build
+  arch: amd64
+  repo: quay/quay
+
+managed_files:
+  active:
+    - quay-quay-redhat-3.18__aws-ocp422-e2e-install.yaml
+  retired: []
+
+quay:
+  - branch: redhat-3.18
+    jobs:
+      - cron: daily
+        source: nightly
+        clouds: [aws]
+        ocp: ["4.22"]
+        test: e2e-install
+      - kind: presubmit
+        clouds: [aws]
+        ocp: ["4.22"]
+        test: e2e-install
+        as: aws-s3-alt

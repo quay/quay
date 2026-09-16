@@ -28,9 +28,7 @@ tests:
   steps:
     env:
       PLAYWRIGHT_GIT_REPO: https://github.com/quay/quay.git
-      QUAY_INDEX_IMAGE_REPO: "{{ index_image_repo }}"
       QUAY_OPERATOR_CHANNEL: "{{ operator_channel }}"
-      QUAY_OPERATOR_SOURCE: fbc-operator-catalog
 zz_generated_metadata:
   branch: "{{ branch }}"
   org: "{{ org }}"

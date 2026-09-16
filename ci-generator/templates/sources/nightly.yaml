@@ -1,0 +1,5 @@
+tests:
+- steps:
+    env:
+      QUAY_INDEX_IMAGE_REPO: "{{ index_image_repo }}"
+      QUAY_OPERATOR_SOURCE: fbc-operator-catalog
