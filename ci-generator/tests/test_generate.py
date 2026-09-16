@@ -673,6 +673,42 @@ def test_periodic_rejects_malformed_cron() -> None:
             expand_cells(matrix)
 
 
+def test_periodic_rejects_out_of_range_cron() -> None:
+    for bad_cron in (
+        "61 24 32 13 7",
+        "*/0 * * * *",
+        "5-3 * * * *",
+        "0 0 0 * *",
+        "0 0 * 0 *",
+        "0 0 * * 8",
+    ):
+        matrix = _matrix_with_job(
+            {"cron": bad_cron, "clouds": ["aws"], "ocp": ["4.22"], "test": "e2e-install"}
+        )
+        with pytest.raises(ValueError, match="not a known alias or a valid 5-field cron"):
+            expand_cells(matrix)
+
+
+def test_periodic_accepts_in_range_cron() -> None:
+    for good_cron in (
+        "59 23 31 12 7",
+        "0 0 1 1 0",
+        "*/15 * * * *",
+        "1,2,3-5/2 * * * *",
+        "17 3 * * 1",
+    ):
+        matrix = _matrix_with_job(
+            {
+                "cron": good_cron,
+                "clouds": ["aws"],
+                "ocp": ["4.22"],
+                "test": "e2e-install",
+                "source": "nightly",
+            }
+        )
+        expand_cells(matrix)
+
+
 def test_presubmit_rejects_cron() -> None:
     matrix = _matrix_with_job(
         {

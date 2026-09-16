@@ -49,7 +49,8 @@ CRON_ALIASES = {
     "nightly": "@daily",
     "weekly": "@weekly",
 }
-CRON_FIELD_RE = re.compile(r"^(\*|\d+)(-\d+)?(/\d+)?(,(\*|\d+)(-\d+)?(/\d+)?)*$")
+CRON_TERM_RE = re.compile(r"^(\*|\d+)(-\d+)?(/\d+)?$")
+CRON_FIELD_BOUNDS = ((0, 59), (0, 23), (1, 31), (1, 12), (0, 7))
 RELEASE_KEYS = {"branch", "jobs", "env", "layout"}
 JOB_KEYS = {
     "kind",
@@ -238,11 +239,33 @@ def _job_str_field(job: YamlMap, key: str, where: str) -> str | None:
     return value
 
 
+def _valid_cron_field(field: str, lo: int, hi: int) -> bool:
+    for term in field.split(","):
+        match = CRON_TERM_RE.match(term)
+        if not match:
+            return False
+        base, range_part, step_part = match.group(1), match.group(2), match.group(3)
+        if step_part is not None and int(step_part[1:]) < 1:
+            return False
+        start = None if base == "*" else int(base)
+        if start is not None and not (lo <= start <= hi):
+            return False
+        if range_part is not None:
+            end = int(range_part[1:])
+            if not (lo <= end <= hi):
+                return False
+            if start is not None and end < start:
+                return False
+    return True
+
+
 def _resolve_cron(value: str, where: str) -> str:
     if value in CRON_ALIASES:
         return CRON_ALIASES[value]
     fields = value.split()
-    if len(fields) == 5 and all(CRON_FIELD_RE.match(field) for field in fields):
+    if len(fields) == 5 and all(
+        _valid_cron_field(field, lo, hi) for field, (lo, hi) in zip(fields, CRON_FIELD_BOUNDS)
+    ):
         return " ".join(fields)
     raise ValueError(
         f"{where}.cron {value!r} is not a known alias or a valid 5-field cron expression"
