@@ -239,7 +239,7 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, stats.ManifestsDeleted, 0)
 
-	//explicitly expire temporary tags
+	// explicitly expire temporary tags
 	require.NoError(t, h.ExpireTemporaryTags(ctx))
 
 	stats, err = h.CollectGarbage(ctx)
