@@ -72,6 +72,7 @@ def test_expand_matrix_cells() -> None:
         ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "@daily", "periodic"),
         ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "@weekly", "periodic"),
         (None, "master", "aws", "4.22", "e2e-install", None, "presubmit"),
+        (None, "master", "gcp", "4.22", "e2e-install", None, "presubmit"),
     }
     cell = next(c for c in cells if c.branch == "redhat-3.18")
     assert cell.filename == PHASE0_NAME
@@ -263,8 +264,8 @@ def test_production_matrix_expands_without_error() -> None:
     matrix = yaml.safe_load((GENERATOR_DIR / "matrix.yaml").read_text())
     cells = expand_cells(matrix)
     assert cells
-    filenames = {cell.filename for cell in cells}
-    assert len(filenames) == len(cells)
+    identities = {(cell.filename, cell.test_as) for cell in cells}
+    assert len(identities) == len(cells)
 
 
 def test_golden_phase0_bytes() -> None:
@@ -295,6 +296,18 @@ def test_golden_master_bytes() -> None:
     }
     assert "variant" not in config["zz_generated_metadata"]
     assert test["steps"]["dependencies"] == {"QUAY_CI_IMAGE": "pipeline:quay-server"}
+
+
+def test_master_presubmit_expands_both_clouds() -> None:
+    results, _retired = generate_all()
+    by_name = {filename: config for _group, filename, config in results}
+    tests = by_name[MASTER_NAME]["tests"]
+    by_as = {test["as"]: test for test in tests}
+    assert set(by_as) == {"aws-s3", "gcp-gcs"}
+
+    gcp_test = by_as["gcp-gcs"]
+    assert gcp_test["optional"] is True
+    assert gcp_test["always_run"] is False
 
 
 def test_mixed_golden_groups_periodic_and_presubmit_into_one_file() -> None:
