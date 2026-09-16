@@ -119,7 +119,7 @@ COPY --chown=1001:0 web .
 RUN pnpm run --silent build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41 AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:7b8e25a1b56ca4d00219198f3b5b51a3e1693a5c4f5369c5e190d7d6cb3f980e AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
@@ -142,7 +142,7 @@ COPY config-tool/ ./
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41 AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:7b8e25a1b56ca4d00219198f3b5b51a3e1693a5c4f5369c5e190d7d6cb3f980e AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
