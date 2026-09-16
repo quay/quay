@@ -33,7 +33,7 @@ quay:
       QUAY_OPERATOR_SOURCE: redhat-operators
     jobs:
       - kind: presubmit
-        clouds: [aws]
+        clouds: [aws, gcp]
         ocp: ["4.22"]
         test: e2e-install
         always_run: false
