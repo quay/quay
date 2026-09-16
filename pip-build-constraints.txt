@@ -1,0 +1,3 @@
+# maturin 1.13+ bumped MSRV to rustc 1.89, but UBI9 rust-toolset provides 1.88.0.
+# Pin maturin to a version compatible with the available rustc in the build image.
+maturin==1.12.6
