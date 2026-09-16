@@ -168,4 +168,15 @@ def test_generated_cells_use_template_extra_config() -> None:
     assert "FEATURE_IMMUTABLE_TAGS: true" in extra
     assert "FEATURE_SPARSE_INDEX: true" in extra
     assert "FEATURE_QUOTA_NOTIFICATIONS: true" in extra
-    assert "FEATURE_OTEL_TRACING: true" in extra
+    assert "SESSION_TIMEOUT: 2h" in extra
+    for key in (
+        "FEATURE_MAILING",
+        "MAIL_SERVER",
+        "MAIL_PORT",
+        "MAIL_USE_TLS",
+        "MAIL_USE_AUTH",
+        "MAIL_DEFAULT_SENDER",
+        "FEATURE_OTEL_TRACING",
+        "OTEL_CONFIG",
+    ):
+        assert key not in extra
