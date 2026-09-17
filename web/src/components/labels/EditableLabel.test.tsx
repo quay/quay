@@ -57,4 +57,41 @@ describe('EditableLabel', () => {
     const input = screen.getByRole('textbox');
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
+
+  it('commits the current value on an outside click that reuses the listener registered before the value changed', async () => {
+    const onEditComplete = vi.fn();
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+    const {rerender} = render(
+      <EditableLabel
+        value=""
+        setValue={vi.fn()}
+        onEditComplete={onEditComplete}
+      />,
+    );
+    await userEvent.click(screen.getByText('Add new label'));
+
+    // The handler captured here is the one registered on mount, before the
+    // parent's value update below. If it closes over a stale value, the
+    // race this test guards against is back.
+    const mousedownCalls = addEventListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === 'mousedown',
+    );
+    const mousedownCall = mousedownCalls[mousedownCalls.length - 1];
+    const mousedownHandler = mousedownCall[1] as (event: {
+      target: EventTarget;
+    }) => void;
+
+    rerender(
+      <EditableLabel
+        value="fail=test"
+        setValue={vi.fn()}
+        onEditComplete={onEditComplete}
+      />,
+    );
+
+    mousedownHandler({target: document.body});
+
+    expect(onEditComplete).toHaveBeenCalledWith('fail=test');
+    addEventListenerSpy.mockRestore();
+  });
 });
