@@ -89,3 +89,99 @@ describe('ApiClient fresh-login retry', () => {
     expect(signInPost).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ApiClient CSRF token cache', () => {
+  it('invalidates a sibling client cached token on sign-in', async () => {
+    const csrfGet = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-1'}))
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-2'}))
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-3'}));
+    const orgPost = vi.fn().mockResolvedValue(jsonResponse(200, {name: 'org'}));
+    const signInPost = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+
+    const request = {
+      get: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/csrf_token`) return csrfGet(url, ...args);
+        throw new Error(`unexpected get: ${url}`);
+      }),
+      post: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/api/v1/signin`) return signInPost(url, ...args);
+        if (url === `${API_URL}/api/v1/organization/`)
+          return orgPost(url, ...args);
+        throw new Error(`unexpected post: ${url}`);
+      }),
+    } as unknown as APIRequestContext;
+
+    const clientA = new ApiClient(request);
+    const clientB = new ApiClient(request);
+
+    await clientB.createOrganization('org');
+    expect(csrfGet).toHaveBeenCalledTimes(1);
+    expect(orgPost).toHaveBeenNthCalledWith(
+      1,
+      `${API_URL}/api/v1/organization/`,
+      expect.objectContaining({
+        headers: {'X-CSRF-Token': 'token-1'},
+      }),
+    );
+
+    // clientA's own first fetch always hits the server (self-healing),
+    // independent of clientB's already-cached token; it invalidates the
+    // shared entry on success regardless.
+    await clientA.signIn('admin', 'password');
+    expect(csrfGet).toHaveBeenCalledTimes(2);
+
+    await clientB.createOrganization('org');
+    expect(csrfGet).toHaveBeenCalledTimes(3);
+    expect(orgPost).toHaveBeenNthCalledWith(
+      2,
+      `${API_URL}/api/v1/organization/`,
+      expect.objectContaining({
+        headers: {'X-CSRF-Token': 'token-3'},
+      }),
+    );
+  });
+
+  it('does not share a cached token across different request contexts', async () => {
+    const csrfGetA = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-a'}));
+    const csrfGetB = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-b'}));
+    const orgPost = vi.fn().mockResolvedValue(jsonResponse(200, {name: 'org'}));
+
+    const makeRequest = (csrfGet: typeof csrfGetA) =>
+      ({
+        get: vi.fn((url: string, ...args: unknown[]) => {
+          if (url === `${API_URL}/csrf_token`) return csrfGet(url, ...args);
+          throw new Error(`unexpected get: ${url}`);
+        }),
+        post: vi.fn((url: string, ...args: unknown[]) => {
+          if (url === `${API_URL}/api/v1/organization/`)
+            return orgPost(url, ...args);
+          throw new Error(`unexpected post: ${url}`);
+        }),
+      }) as unknown as APIRequestContext;
+
+    const clientA = new ApiClient(makeRequest(csrfGetA));
+    const clientB = new ApiClient(makeRequest(csrfGetB));
+
+    await clientA.createOrganization('org');
+    await clientB.createOrganization('org');
+
+    expect(csrfGetA).toHaveBeenCalledTimes(1);
+    expect(csrfGetB).toHaveBeenCalledTimes(1);
+    expect(orgPost).toHaveBeenNthCalledWith(
+      1,
+      `${API_URL}/api/v1/organization/`,
+      expect.objectContaining({headers: {'X-CSRF-Token': 'token-a'}}),
+    );
+    expect(orgPost).toHaveBeenNthCalledWith(
+      2,
+      `${API_URL}/api/v1/organization/`,
+      expect.objectContaining({headers: {'X-CSRF-Token': 'token-b'}}),
+    );
+  });
+});

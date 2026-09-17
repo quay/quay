@@ -213,10 +213,13 @@ export interface ProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
+// CSRF token belongs to the session, i.e. to the request context, not the client.
+const csrfTokenCache = new WeakMap<APIRequestContext, string>();
+
 export class ApiClient {
   private request: APIRequestContext;
-  private csrfToken: string | null = null;
   private credentials: {username: string; password: string} | null = null;
+  private hasFetchedToken = false;
 
   constructor(request: APIRequestContext) {
     this.request = request;
@@ -227,10 +230,17 @@ export class ApiClient {
   }
 
   private async fetchToken(): Promise<string> {
-    if (!this.csrfToken) {
-      this.csrfToken = await requestCsrfToken(this.request, API_URL);
+    // First use always hits the server, so a client self-heals a session
+    // rotation (e.g. a UI-driven fresh-login verify) it never observed.
+    let token = this.hasFetchedToken
+      ? csrfTokenCache.get(this.request)
+      : undefined;
+    if (!token) {
+      token = await requestCsrfToken(this.request, API_URL);
+      csrfTokenCache.set(this.request, token);
+      this.hasFetchedToken = true;
     }
-    return this.csrfToken;
+    return token;
   }
 
   /**
@@ -1118,7 +1128,7 @@ export class ApiClient {
     }
 
     // Creating a user changes the server session; invalidate cached CSRF token
-    this.csrfToken = null;
+    csrfTokenCache.delete(this.request);
 
     const result = await response.json();
     return {
@@ -1256,7 +1266,7 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
-    this.csrfToken = null;
+    csrfTokenCache.delete(this.request);
   }
 
   // User notification methods
