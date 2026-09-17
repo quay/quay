@@ -1,4 +1,15 @@
 import {defineConfig, devices} from '@playwright/test';
+import {
+  BASE_URL,
+  getPlaywrightGrep,
+  getPlaywrightWorkers,
+  isServiceMode,
+  requireServiceTargetAllowed,
+} from './playwright/utils/config';
+
+requireServiceTargetAllowed();
+
+const grep = getPlaywrightGrep();
 
 /**
  * Playwright configuration for Quay E2E tests
@@ -6,6 +17,7 @@ import {defineConfig, devices} from '@playwright/test';
  */
 export default defineConfig({
   testDir: './playwright/e2e',
+  grep: grep ? new RegExp(grep) : undefined,
 
   // Global setup to create test users before all tests
   globalSetup: require.resolve('./playwright/global-setup'),
@@ -16,7 +28,7 @@ export default defineConfig({
   // Run tests in parallel — fixed at 4 for CI so Quay isn't overwhelmed by
   // more workers than it can sustain, regardless of runner CPU count.
   fullyParallel: true,
-  workers: process.env.CI ? 4 : undefined,
+  workers: getPlaywrightWorkers(),
 
   // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
@@ -34,7 +46,7 @@ export default defineConfig({
   // Shared settings for all tests
   use: {
     // Base URL for navigation
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
+    baseURL: BASE_URL,
 
     // Accept self-signed certificates (needed for OpenShift CI clusters)
     ignoreHTTPSErrors: true,
@@ -67,14 +79,16 @@ export default defineConfig({
   // Note: In OpenShift CI (Prow), services are already running on the cluster.
   // API-only tests (test:api) skip this since they only need Quay, not the frontend.
   webServer:
-    process.env.OPENSHIFT_CI || process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    process.env.OPENSHIFT_CI ||
+    process.env.PLAYWRIGHT_SKIP_WEBSERVER ||
+    isServiceMode()
       ? undefined
       : {
           command:
             'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && ' +
             'rm -rf ../static/patternfly && mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
             'echo "React deployed to static/patternfly/" && tail -f /dev/null',
-          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
+          url: BASE_URL,
           reuseExistingServer: true,
           timeout: 120 * 1000,
         },
