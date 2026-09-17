@@ -16,6 +16,7 @@ from auth.permissions import (
 )
 from data.database import FederatedLogin, LoginService
 from data.model import InvalidRobotException
+from data.model.api_token import validate_api_scope_string
 from data.model.user import (
     attach_federated_login,
     create_federated_user,
@@ -43,6 +44,7 @@ from endpoints.api import (
     resource,
     validate_json_request,
 )
+from endpoints.api.organization_application_tokens import _can_mint_scope
 from endpoints.api.robot_models_pre_oci import pre_oci_model as model
 from endpoints.exception import Unauthorized
 from util.names import format_robot_username
@@ -78,12 +80,31 @@ CREATE_ROBOT_FEDERATION_SCHEMA = {
                 "type": "string",
                 "description": "The subject of the token",
             },
+            "api_scopes": {
+                "type": "string",
+                "description": "Optional Management API scopes allowed for this workload identity",
+            },
         },
         "required": ["issuer", "subject"],
     },
 }
 
 ROBOT_MAX_SIZE = 1024 * 1024  # 1 KB.
+
+
+def _validate_federation_scopes(namespace, federation_config):
+    creator = get_authenticated_user()
+    for binding in federation_config:
+        scope = binding.get("api_scopes", "")
+        if not scope:
+            continue
+        if not isinstance(scope, str) or not validate_api_scope_string(scope):
+            abort(400, "Invalid federation API scope")
+        if scopes.SUPERUSER in scopes.scopes_from_scope_string(scope) and not features.SUPER_USERS:
+            abort(400, "super:user scope is disabled")
+        if not _can_mint_scope(namespace, scope, creator):
+            raise Unauthorized()
+
 
 logger = logging.getLogger(__name__)
 
@@ -505,7 +526,8 @@ class UserRobotFederation(ApiResource):
 
         robot_username = format_robot_username(parent.username, robot_shortname)
         robot = lookup_robot(robot_username)
-        create_robot_federation_config(robot, fed_config)
+        _validate_federation_scopes(parent.username, fed_config)
+        fed_config = create_robot_federation_config(robot, fed_config)
         log_action(
             "create_robot_federation",
             parent.username,
@@ -577,7 +599,8 @@ class OrgRobotFederation(ApiResource):
 
             robot_username = format_robot_username(orgname, robot_shortname)
             robot = lookup_robot(robot_username)
-            create_robot_federation_config(robot, fed_config)
+            _validate_federation_scopes(orgname, fed_config)
+            fed_config = create_robot_federation_config(robot, fed_config)
             log_action(
                 "create_robot_federation",
                 orgname,

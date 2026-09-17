@@ -410,6 +410,7 @@ def get_robot_federation_config(robot):
 
 
 def create_robot_federation_config(robot, fed_config):
+    """Persist federation bindings, assigning a stable id and version to each."""
     federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
     assert federated_robot
 
@@ -420,11 +421,34 @@ def create_robot_federation_config(robot, fed_config):
         logger.debug("Error parsing metadata: %s", e)
 
     try:
-        metadata["federation_config"] = fed_config
+        previous = {entry.get("id"): entry for entry in metadata.get("federation_config", [])}
+        normalized = []
+        for entry in fed_config:
+            entry = dict(entry)
+            binding_id = entry.get("id") or str(uuid4())
+            old = previous.get(binding_id)
+            entry["id"] = binding_id
+            if old:
+                old_policy = {key: value for key, value in old.items() if key != "version"}
+                new_policy = {key: value for key, value in entry.items() if key != "version"}
+                entry["version"] = old.get("version", 1) + (old_policy != new_policy)
+            else:
+                entry["version"] = 1
+            normalized.append(entry)
+        metadata["federation_config"] = normalized
         federated_robot.metadata_json = json.dumps(metadata)
         federated_robot.save()
+        return normalized
     except Exception as e:
         raise DataModelException(e)
+
+
+def get_robot_federation_binding(robot, binding_id, version):
+    """Return the active binding matching a JWT's immutable id/version."""
+    for binding in get_robot_federation_config(robot):
+        if binding.get("id") == binding_id and binding.get("version") == version:
+            return binding
+    return None
 
 
 def delete_robot_federation_config(robot):
@@ -597,11 +621,22 @@ def regenerate_robot_token(robot_shortname, parent):
     return robot, password, metadata
 
 
-def generate_temp_robot_jwt_token(instance_keys):
+def generate_temp_robot_jwt_token(instance_keys, api_scopes=None, federation_binding=None):
     context, subject = build_context_and_subject(get_authenticated_context())
     audience_param = config.app_config["SERVER_HOSTNAME"]
+    additional_claims = {}
+    if api_scopes:
+        additional_claims["api_scopes"] = api_scopes
+        additional_claims["federation_binding_id"] = federation_binding["id"]
+        additional_claims["federation_binding_version"] = federation_binding["version"]
     token = generate_bearer_token(
-        audience_param, subject, context, {}, TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S, instance_keys
+        audience_param,
+        subject,
+        context,
+        {},
+        TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
+        instance_keys,
+        additional_claims,
     )
     return token
 

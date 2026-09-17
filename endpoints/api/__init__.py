@@ -745,12 +745,8 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     oauth_token = get_validated_oauth_token()
     if oauth_token:
         metadata["oauth_token_id"] = oauth_token.id
-        if oauth_token.robot_account is not None:
-            metadata["robot"] = oauth_token.robot_account.username
-            metadata["oauth_token_kind"] = "robot_api_token"
-        else:
-            metadata["oauth_token_application_id"] = oauth_token.application.client_id
-            metadata["oauth_token_application"] = oauth_token.application.name
+        metadata["oauth_token_application_id"] = oauth_token.application.client_id
+        metadata["oauth_token_application"] = oauth_token.application.name
 
     if performer is None:
         performer = get_authenticated_user()

@@ -127,4 +127,14 @@ def verify_federated_robot_jwt_token(robot, token):
         },
     )
 
-    return ValidateResult(AuthKind.credentials, robot=robot)
+    result = ValidateResult(AuthKind.credentials, robot=robot)
+    result.context.federation_binding = next(
+        (
+            binding
+            for binding in fed_config
+            if binding.get("issuer") == token_issuer
+            and binding.get("subject") == decoded_token.get("sub")
+        ),
+        None,
+    )
+    return result

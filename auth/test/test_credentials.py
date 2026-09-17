@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from app import app as quay_app
+from app import instance_keys
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -9,6 +11,7 @@ from auth.credentials import CredentialKind, validate_credentials
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import RobotAccountToken
+from data.model import api_token
 from test.fixtures import *
 
 
@@ -77,18 +80,17 @@ def test_valid_oauth(app):
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)
 
 
-def test_robot_api_token_is_rejected_as_basic_oauth_credential(app):
+def test_robot_api_jwt_authenticates_as_basic_robot_credential(app):
     creator = model.user.get_user("devtable")
-    robot, _ = model.user.create_robot("oauth-token", creator)
-    _, secret = model.oauth.create_robot_api_token_under_limit(
-        robot, creator, "repo:read", 3600, "CI token"
-    )
+    robot, _ = model.user.create_robot("api-token", creator)
+    token = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+    jwt = api_token.mint_jwt(token, instance_keys, quay_app.config["SERVER_HOSTNAME"])
 
-    result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, secret)
+    result, kind = validate_credentials(robot.username, jwt)
 
-    assert kind == CredentialKind.oauth_token
-    assert not result.auth_valid
-    assert result.error_message == "Robot API tokens cannot be used for registry access"
+    assert kind == CredentialKind.robot
+    assert result.context.robot == robot
+    assert result.context.api_scopes == "repo:read"
 
 
 def test_invalid_password(app):

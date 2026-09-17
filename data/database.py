@@ -1605,11 +1605,8 @@ class OAuthAuthorizationCode(BaseModel):
 
 class OAuthAccessToken(BaseModel):
     uuid = CharField(default=uuid_generator, index=True)
-    application = ForeignKeyField(OAuthApplication, null=True)
-    # Application tokens have an application; robot API tokens have a robot account.
+    application = ForeignKeyField(OAuthApplication)
     authorized_user = QuayUserField(allows_robots=True)
-    robot_account = QuayUserField(allows_robots=True, null=True, index=True)
-    creator = QuayUserField(allows_robots=False, null=True)
     scope = CharField()
     display_name = CharField(null=True)
     token_name = CharField(index=True, unique=True)
@@ -1626,6 +1623,25 @@ class OAuthAccessToken(BaseModel):
         database = db
         read_only_config = read_only_config
         indexes = ((("application", "last_accessed"), False),)
+
+
+class APIToken(BaseModel):
+    """Lifecycle metadata for a Quay-signed API JWT."""
+
+    uuid = CharField(default=uuid_generator, index=True, unique=True)
+    subject_user = QuayUserField(allows_robots=True, index=True)
+    creator = QuayUserField(allows_robots=False, null=True)
+    scope = CharField()
+    display_name = CharField(null=True)
+    expires_at = DateTimeField()
+    revoked_at = DateTimeField(null=True)
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.now)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("subject_user", "revoked_at", "expires_at"), False),)
 
 
 class NotificationKind(BaseModel):

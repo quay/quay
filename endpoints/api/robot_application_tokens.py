@@ -2,16 +2,19 @@
 
 from flask import request
 
+import features
+from app import app, instance_keys
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.decorators import require_session_login
 from auth.permissions import AdministerOrganizationPermission
-from data.model import oauth as oauth_model
-from data.model.oauth import (
-    MAX_TOKEN_DISPLAY_NAME_LENGTH,
-    ROBOT_TOKEN_DEFAULT_EXPIRATION_SECONDS,
+from data.model import api_token as api_token_model
+from data.model.api_token import (
+    API_TOKEN_DEFAULT_EXPIRATION_SECONDS,
+    MAX_API_TOKEN_DISPLAY_NAME_LENGTH,
     normalize_scope,
-    validate_robot_token_expiration,
+    validate_api_scope_string,
+    validate_expiration,
     validate_token_display_name,
 )
 from data.model.user import lookup_robot
@@ -34,7 +37,7 @@ NEW_ROBOT_TOKEN_SCHEMA = {
     "type": "object",
     "required": ["name", "scope"],
     "properties": {
-        "name": {"type": "string", "minLength": 1, "maxLength": MAX_TOKEN_DISPLAY_NAME_LENGTH},
+        "name": {"type": "string", "minLength": 1, "maxLength": MAX_API_TOKEN_DISPLAY_NAME_LENGTH},
         "scope": {"type": "string"},
         "expiration": {"type": "number", "minimum": 1},
     },
@@ -60,25 +63,26 @@ def _create_token(robot, namespace):
     body = request.get_json()
     try:
         name = validate_token_display_name(body["name"])
-        expiration = validate_robot_token_expiration(
-            body.get("expiration", ROBOT_TOKEN_DEFAULT_EXPIRATION_SECONDS)
+        expiration = validate_expiration(
+            body.get("expiration", API_TOKEN_DEFAULT_EXPIRATION_SECONDS)
         )
     except ValueError as error:
         return {"message": str(error)}, 400
 
     scope = normalize_scope(body["scope"])
-    if not scopes.validate_scope_string(scope):
+    if not validate_api_scope_string(scope):
         return {"message": "Invalid scope: %s" % body["scope"]}, 400
+    if scopes.SUPERUSER in scopes.scopes_from_scope_string(scope) and not features.SUPER_USERS:
+        return {"message": "super:user scope is disabled"}, 400
 
     creator = get_authenticated_user()
     if creator is None or not _can_mint_scope(namespace, scope, creator):
         raise Unauthorized()
 
     try:
-        token, secret = oauth_model.create_robot_api_token_under_limit(
-            robot, creator, scope, expiration, name
-        )
-    except oauth_model.TokenLimitExceeded as error:
+        token = api_token_model.create_token_under_limit(robot, creator, scope, expiration, name)
+        secret = api_token_model.mint_jwt(token, instance_keys, app.config["SERVER_HOSTNAME"])
+    except api_token_model.TokenLimitExceeded as error:
         return {
             "message": "Token limit reached: maximum %d non-expired tokens per robot"
             % error.max_active_tokens
@@ -89,7 +93,7 @@ def _create_token(robot, namespace):
         namespace,
         {
             "robot": robot.username,
-            "oauth_token_uuid": token.uuid,
+            "api_token_uuid": token.uuid,
             "scope": scope,
             "token_display_name": name,
             "expiration": expiration,
@@ -99,12 +103,12 @@ def _create_token(robot, namespace):
 
 
 def _delete_token(robot, namespace, token_uuid):
-    if not oauth_model.delete_robot_api_token(robot, token_uuid):
+    if not api_token_model.revoke_token(robot, token_uuid):
         raise NotFound()
     log_action(
         "revoke_robot_api_token",
         namespace,
-        {"robot": robot.username, "oauth_token_uuid": token_uuid},
+        {"robot": robot.username, "api_token_uuid": token_uuid},
     )
     return "", 204
 
@@ -120,9 +124,7 @@ class UserRobotTokens(ApiResource):
     def get(self, robot_shortname):
         parent = get_authenticated_user()
         robot = lookup_robot(format_robot_username(parent.username, robot_shortname))
-        return {
-            "tokens": [_token_view(token) for token in oauth_model.list_robot_api_tokens(robot)]
-        }
+        return {"tokens": [_token_view(token) for token in api_token_model.list_tokens(robot)]}
 
     @require_session_login
     @require_fresh_login
@@ -162,9 +164,7 @@ class OrganizationRobotTokens(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, robot_shortname):
         robot = _organization_robot(orgname, robot_shortname)
-        return {
-            "tokens": [_token_view(token) for token in oauth_model.list_robot_api_tokens(robot)]
-        }
+        return {"tokens": [_token_view(token) for token in api_token_model.list_tokens(robot)]}
 
     @require_session_login
     @require_fresh_login
