@@ -1974,6 +1974,18 @@ export class ApiClient {
     );
   }
 
+  /**
+   * Get a build via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/build`, {
+        timeout: 10000,
+      });
+    });
+  }
+
   // Proxy cache methods
 
   async getProxyCacheConfig(orgName: string): Promise<ProxyCacheConfig | null> {
