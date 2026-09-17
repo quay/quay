@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 // DatabaseVerifierConfig configures DB-backed credential verification.
@@ -12,6 +13,9 @@ type DatabaseVerifierConfig struct {
 	RobotsWhitelist                []string
 	FeatureUserLastAccessed        bool
 	LastAccessedUpdateThresholdSec int
+	// PasswordCacheTTL is how long a successful user password verification
+	// is remembered so repeat logins skip bcrypt; zero disables the cache.
+	PasswordCacheTTL time.Duration
 }
 
 type databaseVerifier struct {
@@ -22,7 +26,7 @@ type databaseVerifier struct {
 // NewDatabaseVerifier creates a DB-backed verifier for user and robot credentials.
 func NewDatabaseVerifier(db *sql.DB, cfg DatabaseVerifierConfig) Verifier {
 	return &databaseVerifier{
-		user:  NewUserPasswordVerifier(db),
+		user:  NewUserPasswordVerifierWithCacheTTL(db, cfg.PasswordCacheTTL),
 		robot: newRobotVerifier(db, cfg),
 	}
 }

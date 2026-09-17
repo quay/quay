@@ -74,12 +74,14 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 	configureStandaloneSuperuser(resolved, adminUsername)
 
 	featureUserLastAccessed := cfg.Features.FeatureUserLastAccessed
+	passwordAuthCacheTTL := time.Duration(resolved.Config.PasswordAuthCacheTTLS) * time.Second
 	databaseVerifierConfig := auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              resolved.Config.DatabaseSecretKey,
 		RobotsDisallow:                 resolved.Config.RobotsDisallow,
 		RobotsWhitelist:                resolved.Config.RobotsWhitelist,
 		FeatureUserLastAccessed:        featureUserLastAccessed,
 		LastAccessedUpdateThresholdSec: resolved.Config.LastAccessedUpdateThresholdS,
+		PasswordCacheTTL:               passwordAuthCacheTTL,
 	}
 	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
 	if err != nil {
@@ -102,6 +104,7 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 		RobotsWhitelist:                    resolved.Config.RobotsWhitelist,
 		FeatureUserLastAccessed:            featureUserLastAccessed,
 		LastAccessedUpdateThresholdSeconds: resolved.Config.LastAccessedUpdateThresholdS,
+		PasswordAuthCacheTTL:               passwordAuthCacheTTL,
 		SuperUsers:                         resolved.Config.SuperUsers,
 		SuperUsersFullAccess:               cfg.Features.HasFullSuperuserAccess(),
 		JWTService:                         jwtService,
