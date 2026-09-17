@@ -24,6 +24,9 @@ on:
       - master
     paths:
       - ci-generator/matrix.yaml
+      - ci-generator/templates/**
+      - ci-generator/generate.py
+      - ci-generator/model.py
 
 concurrency:
   group: sync-ci-configs-${{ github.ref }}
@@ -239,7 +242,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > "${RUNNER_TEMP}/release-sync-comment.md" <<EOF
-          A pull request has been opened on **openshift/release** to sync ci-operator config and Prow jobs from the \`ci-generator/matrix.yaml\` changes in this PR.
+          A pull request has been opened on **openshift/release** to sync ci-operator config and Prow jobs from the ci-generator changes in this PR.
 
           **Please review and merge:** ${RELEASE_PR_URL}
 
