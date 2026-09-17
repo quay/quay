@@ -79,6 +79,9 @@ jobs:
               - '!.github/workflows/ci-lint.yaml'
               - '!.github/workflows/sentinel.yaml'
               - '!.github/workflows/sync-ci-configs.yaml'
+              - '!.github/workflows/build-and-publish.yaml'
+              - '!.github/workflows/zizmor.yaml'
+              - '!.github/workflows/codeql.yml'
 
   lint-ci:
     name: Lint
