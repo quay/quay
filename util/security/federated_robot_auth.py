@@ -88,7 +88,12 @@ def verify_federated_robot_jwt_token(robot, token):
             f"issuer {token_issuer} not configured for this robot"
         )
 
-    service_config_block = {"OIDC_SERVER": token_issuer}
+    service_config_block = {
+        "OIDC_SERVER": token_issuer,
+        # Permit HTTP discovery only when Quay is explicitly running in debug mode.
+        # Production federation remains HTTPS-only.
+        "DEBUGGING": app.config.get("DEBUG", False),
+    }
     if matched_audiences:
         service_config_block["OIDC_AUDIENCES"] = matched_audiences
         options = {"verify_nbf": False}

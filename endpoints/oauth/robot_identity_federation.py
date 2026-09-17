@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint
+from flask import Blueprint, request
 
 from app import instance_keys
 from auth import scopes
@@ -9,7 +9,6 @@ from data import model
 from data.database import RobotAccountToken
 from data.model.api_token import normalize_scope, validate_api_scope_string
 from data.model.user import generate_temp_robot_jwt_token, retrieve_robot_token
-from util import request
 
 logger = logging.getLogger(__name__)
 federation_bp = Blueprint("federation", __name__)
