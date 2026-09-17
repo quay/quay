@@ -22,7 +22,7 @@ from auth.auth_context import (
     get_sso_token,
     get_validated_oauth_token,
 )
-from auth.decorators import process_basic_auth_no_pass, process_oauth
+from auth.decorators import process_oauth
 from auth.permissions import (
     AdministerRepositoryPermission,
     GlobalReadOnlySuperUserPermission,
@@ -74,44 +74,12 @@ class ApiExceptionHandlingApi(Api):
             return False
 
 
-def _validated_robot_context():
-    auth_context = get_authenticated_context()
-    if not auth_context:
-        return None
-
-    validated_context = auth_context
-    if not getattr(auth_context, "robot", None):
-        get_validated = getattr(auth_context, "_get_validated", None)
-        if get_validated:
-            validated_context = get_validated()
-
-    if validated_context and getattr(validated_context, "robot", None):
-        return validated_context
-
-    return None
-
-
-def require_robot_api_access(func):
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        robot_context = _validated_robot_context()
-        if robot_context and not robot_context.robot_scopes:
-            raise Unauthorized()
-
-        return func(*args, **kwargs)
-
-    return wrapped
-
-
 api = ApiExceptionHandlingApi()
 api.init_app(api_bp)
 api.decorators = [
     csrf_protect(),
     crossorigin(),
     process_oauth,
-    require_robot_api_access,
-    # Authentication must run before csrf_protect so valid robot Basic auth can be exempted.
-    process_basic_auth_no_pass,
     require_xhr_from_browser,
 ]
 
@@ -716,14 +684,6 @@ def require_scope(scope_object):
         @add_method_metadata("oauth2_scope", scope_object)
         @wraps(func)
         def wrapped(*args, **kwargs):
-            robot_context = _validated_robot_context()
-            if robot_context and not robot_context.robot_scopes:
-                raise Unauthorized()
-            if robot_context and not scopes.is_subset_string(
-                robot_context.robot_scopes, scope_object.scope
-            ):
-                raise Unauthorized()
-
             return func(*args, **kwargs)
 
         return wrapped
@@ -785,8 +745,12 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     oauth_token = get_validated_oauth_token()
     if oauth_token:
         metadata["oauth_token_id"] = oauth_token.id
-        metadata["oauth_token_application_id"] = oauth_token.application.client_id
-        metadata["oauth_token_application"] = oauth_token.application.name
+        if oauth_token.robot_account is not None:
+            metadata["robot"] = oauth_token.robot_account.username
+            metadata["oauth_token_kind"] = "robot_api_token"
+        else:
+            metadata["oauth_token_application_id"] = oauth_token.application.client_id
+            metadata["oauth_token_application"] = oauth_token.application.name
 
     if performer is None:
         performer = get_authenticated_user()
@@ -901,6 +865,7 @@ import endpoints.api.repository
 import endpoints.api.repositorynotification
 import endpoints.api.repotoken
 import endpoints.api.robot
+import endpoints.api.robot_application_tokens
 import endpoints.api.search
 import endpoints.api.secscan
 import endpoints.api.signing

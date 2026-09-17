@@ -8,11 +8,9 @@ from data import model
 from endpoints.api import api
 from endpoints.api.robot import (
     OrgRobot,
-    OrgRobotAPIScopes,
     OrgRobotFederation,
     OrgRobotList,
     UserRobot,
-    UserRobotAPIScopes,
     UserRobotFederation,
     UserRobotList,
     _parse_federation_config,
@@ -150,48 +148,6 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
         for robot in result.json["robots"]:
             assert (robot.get("token") is not None) == is_admin
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
-
-
-@pytest.mark.parametrize(
-    "endpoint, params, robot_username",
-    [
-        (UserRobotAPIScopes, {"robot_shortname": "dtrobot"}, "devtable+dtrobot"),
-        (
-            OrgRobotAPIScopes,
-            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
-            "buynlarge+coolrobot",
-        ),
-    ],
-)
-def test_update_robot_api_scopes(endpoint, params, robot_username, app):
-    with client_with_identity("devtable", app) as cl:
-        result = conduct_api_call(cl, endpoint, "GET", params)
-        assert result.json == {"scope": ""}
-
-        result = conduct_api_call(cl, endpoint, "PUT", params, {"scope": "repo:read,repo:write"})
-        assert result.json == {"scope": "repo:read repo:write"}
-
-        result = conduct_api_call(cl, endpoint, "GET", params)
-        assert result.json == {"scope": "repo:read repo:write"}
-
-        result = conduct_api_call(cl, endpoint, "PUT", params, {"scope": ""})
-        assert result.json == {"scope": ""}
-        metadata = model.user.get_robot_metadata(model.user.lookup_robot(robot_username))
-        assert "api_scopes" not in metadata.unstructured_json
-
-
-@pytest.mark.parametrize(
-    "endpoint, params",
-    [
-        (UserRobotAPIScopes, {"robot_shortname": "dtrobot"}),
-        (OrgRobotAPIScopes, {"orgname": "buynlarge", "robot_shortname": "coolrobot"}),
-    ],
-)
-@pytest.mark.parametrize("scope", ["user:read", "user:admin", "org:admin", "super:user"])
-def test_robot_api_scopes_reject_nonrepository_scope(endpoint, params, scope, app):
-    with client_with_identity("devtable", app) as cl:
-        result = conduct_api_call(cl, endpoint, "PUT", params, {"scope": scope}, expected_code=400)
-        assert result.json["message"] == "Invalid scope: %s" % scope
 
 
 def test_duplicate_robot_creation(app):

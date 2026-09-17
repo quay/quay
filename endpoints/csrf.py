@@ -9,7 +9,6 @@ from flask import Response, request, session
 import features
 from app import app
 from auth.auth_context import (
-    get_authenticated_context,
     get_authenticated_user,
     get_sso_token,
     get_validated_oauth_token,
@@ -58,19 +57,6 @@ def verify_csrf(
         abort(403, message="CSRF token was invalid or missing.")
 
 
-def _has_robot_basic_auth() -> bool:
-    """Robot credentials are supplied explicitly in Basic auth and are not cookie credentials."""
-    if request.path == "/api/v1/bootstrap/renew":
-        return False
-
-    auth_context = get_authenticated_context()
-    return bool(
-        auth_context
-        and auth_context.robot
-        and request.headers.get("Authorization", "").lower().startswith("basic ")
-    )
-
-
 def _has_bootstrap_auth() -> bool:
     if not features.PROGRAMMATIC_BOOTSTRAP:
         return False
@@ -100,7 +86,7 @@ def csrf_protect(
             # Verify the CSRF token.
             if get_validated_oauth_token() is None and get_sso_token() is None:
                 if all_methods or (request.method != "GET" and request.method != "HEAD"):
-                    if not (_has_bootstrap_auth() or _has_robot_basic_auth()):
+                    if not _has_bootstrap_auth():
                         verify_csrf(session_token_name, request_token_name, check_header)
 
             # Invoke the handler.

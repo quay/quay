@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 from enum import Enum
 
 from flask import request
@@ -17,7 +16,6 @@ from auth.oauth import validate_oauth_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import User
-from data.model.user import get_robot_metadata
 from util.names import parse_robot_username
 
 logger = logging.getLogger(__name__)
@@ -115,7 +113,21 @@ def validate_credentials(auth_username, auth_password_or_token):
 
     # Check for OAuth tokens.
     if auth_username == OAUTH_TOKEN_USERNAME:
-        return validate_oauth_token(auth_password_or_token), CredentialKind.oauth_token
+        result = validate_oauth_token(auth_password_or_token)
+        # Robot API tokens are bearer credentials for the Management API only.
+        # Basic OAuth authentication is used by the registry token endpoint.
+        if (
+            result.context.oauthtoken is not None
+            and result.context.oauthtoken.robot_account is not None
+        ):
+            return (
+                ValidateResult(
+                    AuthKind.oauth,
+                    error_message="Robot API tokens cannot be used for registry access",
+                ),
+                CredentialKind.oauth_token,
+            )
+        return result, CredentialKind.oauth_token
 
     # Check for robots and users.
     is_robot = parse_robot_username(auth_username)
@@ -125,20 +137,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
             assert robot
             logger.debug("Successfully validated credentials for robot %s", auth_username)
-            metadata = get_robot_metadata(robot)
-            metadata_json = (
-                metadata.unstructured_json
-                if metadata and isinstance(metadata.unstructured_json, Mapping)
-                else {}
-            )
-            return (
-                ValidateResult(
-                    AuthKind.credentials,
-                    robot=robot,
-                    robot_scopes=metadata_json.get("api_scopes", ""),
-                ),
-                CredentialKind.robot,
-            )
+            return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
         except model.DeactivatedRobotOwnerException as dre:
             robot_owner, robot_name = parse_robot_username(auth_username)
 

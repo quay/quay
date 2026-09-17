@@ -34,7 +34,7 @@ def validate_bearer_auth(auth_header):
         logger.debug("Got invalid bearer token format: %s", auth_header)
         return ValidateResult(AuthKind.oauth, missing=True)
 
-    (_, oauth_token) = normalized
+    _, oauth_token = normalized
     return validate_oauth_token(oauth_token)
 
 
@@ -143,15 +143,26 @@ def validate_app_oauth_token(token):
         if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
             log_action(
                 "login_failure",
-                validated.application.organization.username,
+                (
+                    validated.robot_account.username
+                    if validated.robot_account is not None
+                    else validated.application.organization.username
+                ),
                 {
                     "type": "quayauth",
                     "kind": "oauth",
                     "token": validated.token_name,
-                    "application_name": validated.application.name,
+                    "application_name": (
+                        validated.application.name if validated.application else None
+                    ),
                     "oauth_token_id": validated.id,
-                    "oauth_token_application_id": validated.application.client_id,
-                    "oauth_token_application": validated.application.name,
+                    "oauth_token_application_id": (
+                        validated.application.client_id if validated.application else None
+                    ),
+                    "oauth_token_application": (
+                        validated.application.name if validated.application else None
+                    ),
+                    "robot": validated.robot_account.username if validated.robot_account else None,
                     "username": validated.authorized_user.username,
                     "useragent": request.user_agent.string,
                     "message": error_message,
@@ -168,12 +179,19 @@ def validate_app_oauth_token(token):
         if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
             log_action(
                 "login_failure",
-                validated.application.organization.username,
+                (
+                    validated.robot_account.username
+                    if validated.robot_account is not None
+                    else validated.application.organization.username
+                ),
                 {
                     "type": "quayauth",
                     "kind": "oauth",
                     "token": validated.token_name,
-                    "application_name": validated.application.name,
+                    "application_name": (
+                        validated.application.name if validated.application else None
+                    ),
+                    "robot": validated.robot_account.username if validated.robot_account else None,
                     "username": validated.authorized_user.username,
                     "useragent": request.user_agent.string,
                     "message": error_message,

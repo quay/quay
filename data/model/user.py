@@ -431,10 +431,6 @@ def delete_robot_federation_config(robot):
     create_robot_federation_config(robot, [])
 
 
-def get_robot_metadata(robot):
-    return RobotAccountMetadata.get_or_none(robot_account=robot)
-
-
 def get_or_create_robot_metadata(robot):
     defaults = dict(description="", unstructured_json={})
     metadata, _ = RobotAccountMetadata.get_or_create(robot_account=robot, defaults=defaults)

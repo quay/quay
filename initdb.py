@@ -464,7 +464,6 @@ def initialize_database():
 
     LogEntryKind.create(name="create_robot")
     LogEntryKind.create(name="delete_robot")
-    LogEntryKind.create(name="update_robot_api_scopes")
 
     LogEntryKind.create(name="create_robot_federation")
     LogEntryKind.create(name="delete_robot_federation")
@@ -626,6 +625,8 @@ def initialize_database():
 
     LogEntryKind.create(name="create_oauth_api_token")
     LogEntryKind.create(name="revoke_oauth_api_token")
+    LogEntryKind.create(name="create_robot_api_token")
+    LogEntryKind.create(name="revoke_robot_api_token")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")

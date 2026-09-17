@@ -1605,8 +1605,11 @@ class OAuthAuthorizationCode(BaseModel):
 
 class OAuthAccessToken(BaseModel):
     uuid = CharField(default=uuid_generator, index=True)
-    application = ForeignKeyField(OAuthApplication)
-    authorized_user = QuayUserField()
+    application = ForeignKeyField(OAuthApplication, null=True)
+    # Application tokens have an application; robot API tokens have a robot account.
+    authorized_user = QuayUserField(allows_robots=True)
+    robot_account = QuayUserField(allows_robots=True, null=True, index=True)
+    creator = QuayUserField(allows_robots=False, null=True)
     scope = CharField()
     display_name = CharField(null=True)
     token_name = CharField(index=True, unique=True)

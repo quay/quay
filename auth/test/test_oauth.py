@@ -1,10 +1,9 @@
-from test.fixtures import *
-
 import pytest
 
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -35,6 +34,20 @@ def test_valid_oauth(app):
     result = validate_bearer_auth("bearer " + token_string)
     assert result.context.oauthtoken == oauth_token
     assert result.authed_user == user
+    assert result.auth_valid
+
+
+def test_robot_api_token_authenticates_as_its_robot(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("oauth-token", creator)
+    token, secret = model.oauth.create_robot_api_token_under_limit(
+        robot, creator, "repo:read", 3600, "CI token"
+    )
+
+    result = validate_bearer_auth("Bearer " + secret)
+
+    assert result.context.oauthtoken == token
+    assert result.authed_user == robot
     assert result.auth_valid
 
 

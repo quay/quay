@@ -9,7 +9,6 @@ import features
 from app import app, model_cache, usermanager
 from auth import scopes
 from data import model
-from util.names import parse_robot_username
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +114,6 @@ class QuayDeferredPermissionUser(Identity):
     def _translate_role_for_scopes(self, cardinality, max_roles, role):
         if self._scope_set is None:
             return role
-        if not self._scope_set:
-            return None
 
         max_for_scopes = max({cardinality.index(max_roles[scope]) for scope in self._scope_set})
 
@@ -152,12 +149,6 @@ class QuayDeferredPermissionUser(Identity):
         )
         logger.debug("User namespace permission: {0}".format(user_namespace))
         self.provides.add(user_namespace)
-
-        if user_object.robot:
-            parent_namespace, _ = parse_robot_username(user_object.username)
-            parent_creator_grant = _OrganizationNeed(parent_namespace, "creator")
-            logger.debug("Robot parent namespace permission: {0}".format(parent_creator_grant))
-            self.provides.add(parent_creator_grant)
 
         # Org repo roles can differ for scopes
         user_repos = _OrganizationRepoNeed(

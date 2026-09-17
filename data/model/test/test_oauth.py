@@ -46,6 +46,28 @@ def create_access_token_for_last_accessed_test(application_name, expires_at):
     return token, access_token
 
 
+def test_robot_api_token_is_owned_by_robot_and_tracks_creator(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("oauth-token", creator)
+
+    token, secret = model.oauth.create_robot_api_token_under_limit(
+        robot, creator, READ_REPO.scope, 3600, "CI token"
+    )
+
+    assert secret
+    assert token.application is None
+    assert token.authorized_user == robot
+    assert token.robot_account == robot
+    assert token.creator == creator
+    assert [found.id for found in model.oauth.list_robot_api_tokens(robot)] == [token.id]
+    assert model.oauth.delete_robot_api_token(robot, token.uuid)
+    assert model.oauth.list_robot_api_tokens(robot) == []
+
+
+def test_robot_api_token_expiration_is_capped_at_ninety_days():
+    assert model.oauth.validate_robot_token_expiration(60 * 60 * 24 * 365) == 60 * 60 * 24 * 90
+
+
 def test_oauth_access_token_metadata_fields_are_nullable():
     assert OAuthAccessToken._meta.fields["created"].null is True
     assert OAuthAccessToken._meta.fields["created"].default == datetime.now

@@ -66,15 +66,3 @@ def test_signed_auth_context(kind, entity_reference, loader, v1_dict_format, ini
     assert signed.has_nonrobot_user == validated.has_nonrobot_user
 
     assert signed.to_signed_dict() == validated.to_signed_dict()
-
-
-def test_robot_scope_survives_signed_context_round_trip(initialized_db):
-    robot = model.user.lookup_robot("devtable+dtrobot")
-    validated = ValidatedAuthContext(robot=robot, robot_scopes="repo:create repo:read")
-
-    signed_data = validated.to_signed_dict()
-    assert signed_data["robot_scopes"] == "repo:create repo:read"
-
-    signed = SignedAuthContext.build_from_signed_dict(signed_data)
-    assert signed._get_validated().robot_scopes == "repo:create repo:read"
-    assert signed.unique_key == validated.unique_key

@@ -83,7 +83,7 @@ def test_valid_robot(app):
     robot, password = model.user.create_robot("somerobot", model.user.get_user("devtable"))
     token = _token(robot.username, password)
     result = validate_basic_auth(token)
-    assert result == ValidateResult(AuthKind.basic, robot=robot, robot_scopes="")
+    assert result == ValidateResult(AuthKind.basic, robot=robot)
 
 
 def test_valid_token(app):

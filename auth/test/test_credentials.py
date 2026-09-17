@@ -6,14 +6,9 @@ from auth.credential_consts import (
     OAUTH_TOKEN_USERNAME,
 )
 from auth.credentials import CredentialKind, validate_credentials
-from auth.permissions import (
-    AdministerRepositoryPermission,
-    CreateRepositoryPermission,
-    ReadRepositoryPermission,
-)
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
-from data.database import RobotAccountMetadata, RobotAccountToken
+from data.database import RobotAccountToken
 from test.fixtures import *
 
 
@@ -25,31 +20,9 @@ def test_valid_user(app):
 
 def test_valid_robot(app):
     robot, password = model.user.create_robot("somerobot", model.user.get_user("devtable"))
-    model.repository.create_repository(robot.username, "managed", robot)
-    metadata = RobotAccountMetadata.get(robot_account=robot)
     result, kind = validate_credentials(robot.username, password)
     assert kind == CredentialKind.robot
-    assert result == ValidateResult(AuthKind.credentials, robot=robot, robot_scopes="")
-    assert result.context.identity.can(ReadRepositoryPermission(robot.username, "managed"))
-    assert result.context.identity.can(AdministerRepositoryPermission(robot.username, "managed"))
-    assert result.context.identity.can(CreateRepositoryPermission("devtable"))
-    assert not result.context.identity.can(CreateRepositoryPermission("public"))
-    assert RobotAccountMetadata.get(robot_account=robot).id == metadata.id
-
-
-def test_robot_credentials_apply_configured_api_scopes(app):
-    robot, password = model.user.create_robot("scopedrobot", model.user.get_user("devtable"))
-    model.repository.create_repository(robot.username, "managed", robot)
-    metadata = model.user.get_or_create_robot_metadata(robot)
-    metadata.unstructured_json["api_scopes"] = "repo:read"
-    metadata.save()
-
-    result, kind = validate_credentials(robot.username, password)
-
-    assert kind == CredentialKind.robot
-    assert result.authed_user == robot
-    assert result.context.identity.can(ReadRepositoryPermission(robot.username, "managed"))
-    assert result.context.identity.can(AdministerRepositoryPermission(robot.username, "managed"))
+    assert result == ValidateResult(AuthKind.credentials, robot=robot)
 
 
 def test_valid_robot_for_disabled_user(app):
@@ -102,6 +75,20 @@ def test_valid_oauth(app):
     result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, code)
     assert kind == CredentialKind.oauth_token
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)
+
+
+def test_robot_api_token_is_rejected_as_basic_oauth_credential(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("oauth-token", creator)
+    _, secret = model.oauth.create_robot_api_token_under_limit(
+        robot, creator, "repo:read", 3600, "CI token"
+    )
+
+    result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, secret)
+
+    assert kind == CredentialKind.oauth_token
+    assert not result.auth_valid
+    assert result.error_message == "Robot API tokens cannot be used for registry access"
 
 
 def test_invalid_password(app):

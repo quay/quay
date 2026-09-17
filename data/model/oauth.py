@@ -40,6 +40,8 @@ ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
 DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
 MAX_TOKEN_EXPIRATION_SECONDS = DEFAULT_TOKEN_EXPIRATION_SECONDS
+ROBOT_TOKEN_DEFAULT_EXPIRATION_SECONDS = 60 * 60 * 24 * 30
+ROBOT_TOKEN_MAX_EXPIRATION_SECONDS = 60 * 60 * 24 * 90
 MAX_TOKEN_DISPLAY_NAME_LENGTH = 255
 BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
 BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
@@ -188,7 +190,7 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             OAuthAccessToken.select()
             .join(OAuthApplication)
             .switch(OAuthAccessToken)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthApplication.client_id == client_id,
                 User.username == username,
@@ -550,6 +552,68 @@ def count_active_tokens(application: OAuthApplication) -> int:
     )
 
 
+def count_active_robot_tokens(robot: User) -> int:
+    return (
+        OAuthAccessToken.select()
+        .where(
+            OAuthAccessToken.robot_account == robot, OAuthAccessToken.expires_at > datetime.utcnow()
+        )
+        .count()
+    )
+
+
+def validate_robot_token_expiration(value: int | float) -> int:
+    expiration = validate_expiration(value)
+    return min(expiration, ROBOT_TOKEN_MAX_EXPIRATION_SECONDS)
+
+
+def create_robot_api_token_under_limit(
+    robot: User, creator: User, scope: str, expiration_seconds: int, display_name: str
+) -> tuple[OAuthAccessToken, str]:
+    max_active_tokens = (config.app_config or {}).get("OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT")
+    transaction = db_transaction() if max_active_tokens is not None else nullcontext()
+    with transaction:
+        if max_active_tokens is not None:
+            robot = db_for_update(User.select().where(User.id == robot.id)).get()
+            if count_active_robot_tokens(robot) >= int(max_active_tokens):
+                raise TokenLimitExceeded(int(max_active_tokens))
+        access_token = random_string_generator(length=40)()
+        token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
+        token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]
+        token = OAuthAccessToken.create(
+            application=None,
+            authorized_user=robot,
+            robot_account=robot,
+            creator=creator,
+            scope=scope,
+            token_type="Bearer",
+            access_token="",
+            token_name=token_name,
+            token_code=Credential.from_string(token_code),
+            display_name=display_name,
+            expires_at=datetime.utcnow() + timedelta(seconds=expiration_seconds),
+            data="",
+        )
+    return token, access_token
+
+
+def list_robot_api_tokens(robot: User) -> list[OAuthAccessToken]:
+    return list(
+        OAuthAccessToken.select().where(
+            OAuthAccessToken.robot_account == robot, OAuthAccessToken.expires_at > datetime.utcnow()
+        )
+    )
+
+
+def delete_robot_api_token(robot: User, token_uuid: str) -> bool:
+    return (
+        OAuthAccessToken.delete()
+        .where(OAuthAccessToken.robot_account == robot, OAuthAccessToken.uuid == token_uuid)
+        .execute()
+        > 0
+    )
+
+
 def create_oauth_api_token_under_limit(
     application: OAuthApplication,
     user_obj: User,
@@ -818,7 +882,7 @@ def validate_access_token(access_token):
     try:
         found = (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(OAuthAccessToken.token_name == token_name)
             .get()
         )
@@ -880,7 +944,7 @@ def lookup_access_token_for_user(user_obj, token_uuid):
     try:
         return (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthAccessToken.authorized_user == user_obj, OAuthAccessToken.uuid == token_uuid
             )
@@ -895,7 +959,7 @@ def list_access_tokens_for_user(user_obj):
         OAuthAccessToken.select()
         .join(OAuthApplication)
         .switch(OAuthAccessToken)
-        .join(User)
+        .join(User, on=(OAuthAccessToken.authorized_user == User.id))
         .where(OAuthAccessToken.authorized_user == user_obj)
     )
 
