@@ -49,8 +49,11 @@ export interface IRobotToken {
 }
 
 export interface IRobotFederationConfig {
+  id?: string;
+  version?: number;
   issuer: string;
   subject: string;
+  api_scopes?: string;
 }
 
 export interface IRobotAPIToken {
