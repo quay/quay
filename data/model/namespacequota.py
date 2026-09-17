@@ -155,6 +155,45 @@ def get_namespace_quota_limit(quota, limit_id):
         return None
 
 
+def get_namespaces_with_quotas(batch_size: int = 500, max_rows: int = 0):
+    """
+    Yields namespace quota records in batches to avoid full table scans.
+    Each yielded dict contains id, username, organization and limit_bytes.
+
+    When max_rows > 0, stops yielding after that many rows to bound memory
+    and database work.
+    """
+    last_id = 0
+    emitted = 0
+    while True:
+        fetch_limit = batch_size
+        if max_rows > 0:
+            remaining = max_rows - emitted
+            if remaining <= 0:
+                break
+            fetch_limit = min(batch_size, remaining)
+
+        batch = list(
+            UserOrganizationQuota.select(
+                User.id, User.username, User.organization, UserOrganizationQuota.limit_bytes
+            )
+            .join(User)
+            .where(User.id > last_id)
+            .order_by(User.id)  # type: ignore[func-returns-value]
+            .limit(fetch_limit)
+            .dicts()
+        )
+
+        if not batch:
+            break
+
+        for row in batch:
+            yield row
+            emitted += 1
+
+        last_id = batch[-1]["id"]
+
+
 def create_namespace_quota_limit(quota, quota_type, percent_of_limit):
     if not percent_of_limit > 0 or not percent_of_limit <= 100:
         raise InvalidNamespaceQuotaLimit("Quota limit threshold must be between 1 and 100")
