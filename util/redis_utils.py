@@ -145,6 +145,13 @@ def _create_cluster_client(redis_config, default_timeout, extra_kwargs):
         )
 
     _apply_defaults(redis_config, default_timeout, extra_kwargs)
+
+    if "db" in redis_config:
+        raise ValueError(
+            "RedisCluster does not support the 'db' option; omit it because "
+            "Redis Cluster uses database 0"
+        )
+
     return RedisCluster(**redis_config)
 
 

@@ -242,6 +242,10 @@ class PullMetrics(object):
                         self._redis = create_redis_client(
                             self._redis_config,
                             default_timeout=self._connection_timeout,
+                            extra_kwargs={
+                                "socket_connect_timeout": self._connection_timeout,
+                                "socket_timeout": self._socket_timeout,
+                            },
                         )
                     else:
                         self._redis = redis.StrictRedis(

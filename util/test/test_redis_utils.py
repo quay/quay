@@ -417,3 +417,15 @@ class TestClusterValidation:
 
         client = create_redis_client(config)
         assert client is mock_redis_cluster.return_value
+
+    def test_cluster_with_db_raises(self):
+        """rediscluster with db option should raise ValueError (Redis Cluster uses db 0)."""
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "startup_nodes": [{"host": "node1", "port": 6379}],
+                "db": 0,
+            },
+        }
+        with pytest.raises(ValueError, match="does not support the 'db' option"):
+            create_redis_client(config)
