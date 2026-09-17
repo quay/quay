@@ -184,4 +184,48 @@ describe('ApiClient CSRF token cache', () => {
       expect.objectContaining({headers: {'X-CSRF-Token': 'token-b'}}),
     );
   });
+
+  it('does not resurrect a pre-invalidation token from a late-resolving fetch', async () => {
+    let resolveFirstCsrf: (value: APIResponse) => void;
+    const firstCsrf = new Promise<APIResponse>((resolve) => {
+      resolveFirstCsrf = resolve;
+    });
+    const csrfGet = vi
+      .fn()
+      .mockImplementationOnce(() => firstCsrf)
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-2'}))
+      .mockResolvedValueOnce(jsonResponse(200, {csrf_token: 'token-3'}));
+    const signInPost = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+
+    const request = {
+      get: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/csrf_token`) return csrfGet(url, ...args);
+        throw new Error(`unexpected get: ${url}`);
+      }),
+      post: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/api/v1/signin`) return signInPost(url, ...args);
+        throw new Error(`unexpected post: ${url}`);
+      }),
+    } as unknown as APIRequestContext;
+
+    const clientA = new ApiClient(request);
+    const clientB = new ApiClient(request);
+
+    // clientA's fetch starts (csrfGet #1) and is left in flight.
+    const aFetch = clientA.getToken();
+
+    // clientB completes a full sign-in cycle (csrfGet #2), invalidating the
+    // shared cache and bumping the generation before clientA's fetch resolves.
+    await clientB.signIn('admin', 'password');
+
+    // clientA's in-flight fetch now resolves with a pre-invalidation token.
+    resolveFirstCsrf!(jsonResponse(200, {csrf_token: 'token-1'}));
+    const aToken = await aFetch;
+    expect(aToken).toBe('token-1');
+
+    // A third read must not see clientA's stale write -- it refetches.
+    const thirdToken = await clientA.getToken();
+    expect(thirdToken).toBe('token-3');
+    expect(csrfGet).toHaveBeenCalledTimes(3);
+  });
 });

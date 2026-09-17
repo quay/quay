@@ -215,6 +215,10 @@ export interface ProxyCacheConfig {
 
 // CSRF token belongs to the session, i.e. to the request context, not the client.
 const csrfTokenCache = new WeakMap<APIRequestContext, string>();
+// Bumped whenever a session-changing call (signIn/createUser) invalidates the
+// cache above, so a fetchToken() that started before the invalidation can
+// detect it lost the race and skip resurrecting a pre-invalidation token.
+const csrfTokenGeneration = new WeakMap<APIRequestContext, number>();
 
 export class ApiClient {
   private request: APIRequestContext;
@@ -236,9 +240,16 @@ export class ApiClient {
       ? csrfTokenCache.get(this.request)
       : undefined;
     if (!token) {
+      const generation = csrfTokenGeneration.get(this.request) ?? 0;
       token = await requestCsrfToken(this.request, API_URL);
-      csrfTokenCache.set(this.request, token);
-      this.hasFetchedToken = true;
+      // If a sibling client's signIn/createUser invalidated the cache while
+      // this fetch was in flight, writing here would resurrect a token from
+      // before that invalidation. Leave hasFetchedToken false so the next
+      // call refetches instead of trusting a cache another client owns.
+      if ((csrfTokenGeneration.get(this.request) ?? 0) === generation) {
+        csrfTokenCache.set(this.request, token);
+        this.hasFetchedToken = true;
+      }
     }
     return token;
   }
@@ -1129,6 +1140,10 @@ export class ApiClient {
 
     // Creating a user changes the server session; invalidate cached CSRF token
     csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
 
     const result = await response.json();
     return {
@@ -1267,6 +1282,10 @@ export class ApiClient {
       );
     }
     csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
   }
 
   // User notification methods
