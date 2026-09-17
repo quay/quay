@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Superuser Build Logs',
@@ -127,6 +127,7 @@ test.describe(
       superuserPage,
       superuserApi,
       api,
+      quayConfig,
     }) => {
       test.setTimeout(180_000);
 
@@ -142,7 +143,8 @@ test.describe(
       await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
 
       // Re-sign in to refresh the superuser session (stales during build wait)
-      await superuserApi.raw.signIn('admin', 'password');
+      const admin = getTestUsers(quayConfig).admin;
+      await superuserApi.raw.signIn(admin.username, admin.password);
 
       await superuserPage.goto('/build-logs');
 
