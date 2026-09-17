@@ -51,4 +51,41 @@ describe('ApiClient fresh-login retry', () => {
     );
     expect(signInPost).toHaveBeenCalledTimes(1);
   });
+
+  it('re-signs in and retries exactly once on fresh_login_required for build logs', async () => {
+    const logsGet = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(401, {error_type: 'fresh_login_required'}),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, {logs_url: 'http://example'}));
+    const csrfGet = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, {csrf_token: 'test-csrf'}));
+    const signInPost = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+
+    const request = {
+      get: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/csrf_token`) return csrfGet(url, ...args);
+        return logsGet(url, ...args);
+      }),
+      post: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/api/v1/signin`) return signInPost(url, ...args);
+        throw new Error(`unexpected post: ${url}`);
+      }),
+    } as unknown as APIRequestContext;
+
+    const client = new ApiClient(request);
+    client.setCredentials('admin', 'password');
+
+    const response = await client.getBuildLogsAsSuperuser('some-build-uuid');
+
+    expect(response.status()).toBe(200);
+    expect(logsGet).toHaveBeenCalledTimes(2);
+    expect(logsGet).toHaveBeenCalledWith(
+      `${API_URL}/api/v1/superuser/some-build-uuid/logs`,
+      expect.anything(),
+    );
+    expect(signInPost).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,5 +1,4 @@
 import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
 
 test.describe(
   'Superuser Build Logs',
@@ -167,7 +166,7 @@ test.describe(
 
     test('readonly superuser can view archived build logs without repo membership', async ({
       readonlyPage,
-      readonlyContext,
+      readonlyApi,
       superuserApi,
     }) => {
       test.slow();
@@ -192,18 +191,23 @@ test.describe(
 
       // Wait for the build logs archiver to archive this build's logs.
       // The archiver polls every 30s and archives one build per cycle.
-      const readonlyRequest = readonlyContext.request;
-      const logsEndpoint = `${API_URL}/api/v1/superuser/${build.buildId}/logs`;
       const archiveDeadline = Date.now() + 120_000;
       let hasLogsUrl = false;
       while (Date.now() < archiveDeadline) {
-        const resp = await readonlyRequest.get(logsEndpoint);
+        const resp = await readonlyApi.raw.getBuildLogsAsSuperuser(
+          build.buildId,
+        );
         if (resp.ok()) {
           const body = await resp.json();
           if (body.logs_url) {
             hasLogsUrl = true;
             break;
           }
+        } else if ([400, 401, 403].includes(resp.status())) {
+          const body = await resp.text();
+          throw new Error(
+            `Unexpected ${resp.status()} polling build logs for ${build.buildId}: ${body}`,
+          );
         }
         await new Promise((r) => setTimeout(r, 5_000));
       }
