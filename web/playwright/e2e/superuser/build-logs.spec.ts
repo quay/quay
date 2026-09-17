@@ -85,7 +85,7 @@ test.describe(
 
     test('loads a triggerless build without 500 error', async ({
       superuserPage,
-      superuserRequest,
+      superuserApi,
       api,
     }) => {
       const org = await api.organization('sunotrigger');
@@ -93,8 +93,8 @@ test.describe(
       const build = await api.build(org.name, repo.name);
 
       // API layer: verify the fix — trigger is null, not a 500
-      const response = await superuserRequest.get(
-        `${API_URL}/api/v1/superuser/${build.buildId}/build`,
+      const response = await superuserApi.raw.getBuildAsSuperuser(
+        build.buildId,
       );
       expect(response.status()).toBe(200);
       const body = await response.json();
