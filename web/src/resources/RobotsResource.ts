@@ -53,6 +53,23 @@ export interface IRobotFederationConfig {
   subject: string;
 }
 
+export interface IRobotAPIToken {
+  uuid: string;
+  name: string | null;
+  scope: string;
+  expires_at: string;
+  created: string | null;
+  created_by: string | null;
+  last_accessed: string | null;
+  token?: string;
+}
+
+export interface CreateRobotAPITokenParams {
+  name: string;
+  scope: string;
+  expiration: number;
+}
+
 export async function fetchAllRobots(orgnames: string[], signal: AbortSignal) {
   return await Promise.all(
     orgnames.map((org) => fetchRobotsForNamespace(org, false, signal)),
@@ -284,32 +301,51 @@ export async function fetchRobotPermissionsForNamespace(
   return response.data?.permissions;
 }
 
-export async function fetchRobotAPIScopes(
+function robotTokensPath(
   namespace: string,
   robot: string,
-  isUser = false,
-): Promise<string> {
+  isUser: boolean,
+): string {
   const path = isUser ? 'user' : `organization/${namespace}`;
-  const response: AxiosResponse = await axios.get(
-    `/api/v1/${path}/robots/${robot}/api-scopes`,
-  );
-  assertHttpCode(response.status, 200);
-  return response.data.scope;
+  return `/api/v1/${path}/robots/${robot}/tokens`;
 }
 
-export async function updateRobotAPIScopes(
+export async function fetchRobotAPITokens(
   namespace: string,
   robot: string,
-  scope: string,
   isUser = false,
-): Promise<string> {
-  const path = isUser ? 'user' : `organization/${namespace}`;
-  const response: AxiosResponse = await axios.put(
-    `/api/v1/${path}/robots/${robot}/api-scopes`,
-    {scope},
+): Promise<IRobotAPIToken[]> {
+  const response: AxiosResponse = await axios.get(
+    robotTokensPath(namespace, robot, isUser),
   );
   assertHttpCode(response.status, 200);
-  return response.data.scope;
+  return response.data.tokens;
+}
+
+export async function createRobotAPIToken(
+  namespace: string,
+  robot: string,
+  params: CreateRobotAPITokenParams,
+  isUser = false,
+): Promise<IRobotAPIToken> {
+  const response: AxiosResponse = await axios.post(
+    robotTokensPath(namespace, robot, isUser),
+    params,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function revokeRobotAPIToken(
+  namespace: string,
+  robot: string,
+  tokenUuid: string,
+  isUser = false,
+): Promise<void> {
+  const response: AxiosResponse = await axios.delete(
+    `${robotTokensPath(namespace, robot, isUser)}/${tokenUuid}`,
+  );
+  assertHttpCode(response.status, 204);
 }
 
 export async function fetchRobotAccountToken(
