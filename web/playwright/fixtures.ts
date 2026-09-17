@@ -25,6 +25,7 @@ import {
   expect,
   Page,
   APIRequestContext,
+  APIResponse,
   BrowserContext,
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
@@ -897,15 +898,42 @@ export class TestApi {
   }
 
   /**
+   * Track an app token created via another client (e.g. a per-test
+   * RawApiClient) for cleanup. Unlike the other tracked resources, a failed
+   * revoke throws instead of being swallowed, since a silently failed
+   * delete leaves a live token with no other cleanup path to catch it.
+   * A 404 means the token is already gone (e.g. the test revoked it
+   * itself), which is the desired end state, not a failure.
+   */
+  trackAppToken(uuid: string, deleteFn: () => Promise<APIResponse>): void {
+    this.cleanupStack.push(async () => {
+      const r = await deleteFn();
+      if (!r.ok() && r.status() !== 404) {
+        throw new Error(`Failed to revoke app token ${uuid}: ${r.status()}`);
+      }
+    });
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
   async cleanup(): Promise<void> {
-    // Run in reverse order (LIFO)
+    // Run in reverse order (LIFO). Every action runs even if an earlier one
+    // throws, so one failed revoke can't strand resources registered before
+    // it; the first error is rethrown once cleanup is otherwise complete.
+    let firstError: unknown;
     let action = this.cleanupStack.pop();
     while (action) {
-      await action();
+      try {
+        await action();
+      } catch (err) {
+        firstError ??= err;
+      }
       action = this.cleanupStack.pop();
+    }
+    if (firstError !== undefined) {
+      throw firstError;
     }
   }
 }

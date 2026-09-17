@@ -1317,19 +1317,29 @@ test.describe(
         expect(r.status()).toBe(200);
       });
 
-      test('can POST own app token (self-action)', async ({readonlyClient}) => {
+      // Destructure order matters: fixtures tear down in reverse setup
+      // order, so with readonlyClient listed before api, api's cleanup
+      // (which revokes the token below) runs while readonlyClient's
+      // request context is still alive. Swapping the order would dispose
+      // the context first and make the revoke throw.
+      test('can POST own app token (self-action)', async ({
+        readonlyClient,
+        api,
+      }) => {
         const r = await readonlyClient.post('/api/v1/user/apptoken', {
           title: 'ro_test_token',
         });
-        // Creating a token for one's own account is a self-action, not a write
-        expect(r.status()).toBe(200);
-        const body = await r.json();
-        // Revoke the token we created, using the same per-test client.
+        const body = await r.json().catch(() => ({}));
+        // Register revocation as soon as the uuid exists, using the same
+        // per-test client, so a failing assertion below can't skip it.
         if (body.token?.uuid) {
-          await readonlyClient.delete(
-            `/api/v1/user/apptoken/${body.token.uuid}`,
+          const uuid = body.token.uuid;
+          api.trackAppToken(uuid, () =>
+            readonlyClient.delete(`/api/v1/user/apptoken/${uuid}`),
           );
         }
+        // Creating a token for one's own account is a self-action, not a write
+        expect(r.status()).toBe(200);
       });
     });
 
