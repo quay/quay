@@ -24,14 +24,14 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
       test(
         'displays and submits profile form',
         {tag: '@superuser'},
-        async ({browser, superuserRequest, quayConfig}) => {
+        async ({browser, superuserApi, quayConfig}) => {
           const username = uniqueName('updatetest');
           const password = 'testpassword123';
           const email = `${username}@example.com`;
           const mailingEnabled = quayConfig?.features?.MAILING === true;
 
           // Create temp user via superuser API
-          const superApi = new ApiClient(superuserRequest);
+          const superApi = superuserApi.raw;
           await superApi.createUser(username, password, email);
 
           // Create new context for this user
@@ -101,14 +101,14 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
       test(
         'skips profile metadata with No thanks button',
         {tag: '@superuser'},
-        async ({browser, superuserRequest, quayConfig}) => {
+        async ({browser, superuserApi, quayConfig}) => {
           const username = uniqueName('skiptest');
           const password = 'testpassword123';
           const email = `${username}@example.com`;
           const mailingEnabled = quayConfig?.features?.MAILING === true;
 
           // Create temp user via superuser API
-          const superApi = new ApiClient(superuserRequest);
+          const superApi = superuserApi.raw;
           await superApi.createUser(username, password, email);
 
           // Create new context for this user
