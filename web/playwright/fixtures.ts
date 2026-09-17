@@ -1025,10 +1025,13 @@ async function setReactUICookie(context: BrowserContext): Promise<void> {
   ]);
 }
 
+// Quay's FRESH_LOGIN_TIMEOUT = "10m" (config.py), hardcoded here since it is
+// not exposed by the /config endpoint.
+const FRESH_LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
 // Tracks the last time superuserPage refreshed each worker's superuserContext,
 // so the refresh below only re-signs-in once the session is old enough to
-// risk falling outside Quay's FRESH_LOGIN_TIMEOUT (10m, config.py).
-const SUPERUSER_PAGE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+// risk falling outside FRESH_LOGIN_TIMEOUT_MS.
+const SUPERUSER_PAGE_REFRESH_INTERVAL_MS = FRESH_LOGIN_TIMEOUT_MS / 2;
 const superuserPageLastLogin = new WeakMap<BrowserContext, number>();
 
 /**
@@ -1266,6 +1269,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // cached a token before this refresh must refetch it before writing.
     const isOIDC = cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC';
     const lastLogin = superuserPageLastLogin.get(superuserContext) ?? 0;
+    // A test that runs longer than this refresh window can still run the
+    // session past FRESH_LOGIN_TIMEOUT_MS mid-test even though it was fresh
+    // at start; testInfo.timeout during fixture setup
+    // always reads the config default (test.setTimeout() calls in the test
+    // body run later), so there is nothing reliable to key an extra guard
+    // off here. Tests that run that long re-sign in directly instead (see
+    // build-logs.spec.ts's superuserApi.raw.signIn call).
     if (
       !isOIDC &&
       Date.now() - lastLogin > SUPERUSER_PAGE_REFRESH_INTERVAL_MS
