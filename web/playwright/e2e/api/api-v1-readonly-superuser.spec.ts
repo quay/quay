@@ -13,16 +13,12 @@
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
-import {RawApiClient} from '../../utils/api';
-import {API_URL} from '../../utils/config';
 import {TEST_USERS, TEST_USERS_OIDC} from '../../global-setup';
 
 test.describe(
   'Readonly Superuser API',
   {tag: ['@api', '@auth:Database']},
   () => {
-    let readonlyClient: RawApiClient;
-
     // Shared test data names (set once in beforeAll)
     let orgName: string;
     let repoName: string;
@@ -30,49 +26,12 @@ test.describe(
     let robotShortname: string;
     let normalUsername: string;
 
-    test.beforeAll(async ({playwright, cachedQuayConfig}) => {
-      // Build a readonly client
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      readonlyClient = new RawApiClient(request, API_URL);
+    test.beforeAll(async ({cachedQuayConfig}) => {
       const users =
         cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
           ? TEST_USERS_OIDC
           : TEST_USERS;
 
-      try {
-        await readonlyClient.signIn(
-          users.readonly.username,
-          users.readonly.password,
-        );
-      } catch (err: unknown) {
-        // Skip when the readonly user is genuinely not configured (auth
-        // rejection), but let infrastructure errors (5xx, network) fail loudly.
-        const status =
-          err != null &&
-          typeof err === 'object' &&
-          'status' in err &&
-          typeof (err as {status: unknown}).status === 'number'
-            ? (err as {status: number}).status
-            : undefined;
-        if (status === 401 || status === 403) {
-          test.skip(true, 'Readonly superuser is not configured');
-          return;
-        }
-        throw err;
-      }
-
-      // Verify readonly user actually has superuser privileges
-      // (GET /api/v1/superuser/users/ requires superuser access)
-      const suCheck = await readonlyClient.get('/api/v1/superuser/users/');
-      if (suCheck.status() === 401 || suCheck.status() === 403) {
-        test.skip(true, 'Readonly user does not have superuser privileges');
-        return;
-      }
-      expect(suCheck.status()).toBe(200);
-
-      // Prepare unique names
       orgName = uniqueName('roorg');
       repoName = uniqueName('rorepo');
       teamName = uniqueName('roteam');
@@ -85,12 +44,12 @@ test.describe(
     // ========================================================================
 
     test.describe('Public endpoints', () => {
-      test('can GET /api/v1/discovery', async () => {
+      test('can GET /api/v1/discovery', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/discovery');
         expect(r.status()).toBe(200);
       });
 
-      test('can GET error descriptions', async () => {
+      test('can GET error descriptions', async ({readonlyClient}) => {
         const errors = [
           'expired_token',
           'fresh_login_required',
@@ -110,19 +69,19 @@ test.describe(
         }
       });
 
-      test('can GET /health/instance', async () => {
+      test('can GET /health/instance', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/health/instance');
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.data.services.database).toBe(true);
       });
 
-      test('can GET /health/endtoend', async () => {
+      test('can GET /health/endtoend', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/health/endtoend');
         expect(r.status()).toBe(200);
       });
 
-      test('can GET /health/warning', async () => {
+      test('can GET /health/warning', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/health/warning');
         expect(r.status()).toBe(200);
       });
@@ -133,7 +92,7 @@ test.describe(
     // ========================================================================
 
     test.describe('User info', () => {
-      test('can GET own user info', async () => {
+      test('can GET own user info', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/user/');
         expect(r.status()).toBe(200);
         const body = await r.json();
@@ -141,14 +100,14 @@ test.describe(
         expect(body.username).toBeTruthy();
       });
 
-      test('can GET another user info', async () => {
+      test('can GET another user info', async ({readonlyClient}) => {
         const r = await readonlyClient.get(`/api/v1/users/${normalUsername}`);
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.username).toBe(normalUsername);
       });
 
-      test('can GET user aggregate logs', async () => {
+      test('can GET user aggregate logs', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/user/aggregatelogs');
         expect(r.status()).toBe(200);
       });
@@ -172,40 +131,40 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET organization', async () => {
+      test('can GET organization', async ({readonlyClient}) => {
         const r = await readonlyClient.get(`/api/v1/organization/${orgName}`);
         expect(r.status()).toBe(200);
       });
 
-      test('cannot DELETE organization', async () => {
+      test('cannot DELETE organization', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}`,
         );
         expect(r.status()).toBe(403);
       });
 
-      test('cannot PUT (update) organization', async () => {
+      test('cannot PUT (update) organization', async ({readonlyClient}) => {
         const r = await readonlyClient.put(`/api/v1/organization/${orgName}`, {
           email: 'hacked@example.com',
         });
         expect(r.status()).toBe(403);
       });
 
-      test('can GET organization collaborators', async () => {
+      test('can GET organization collaborators', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/collaborators`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET organization logs', async () => {
+      test('can GET organization logs', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/logs`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET organization aggregate logs', async () => {
+      test('can GET organization aggregate logs', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/aggregatelogs`,
         );
@@ -246,7 +205,7 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET organization application', async () => {
+      test('can GET organization application', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/applications/${appClientId}`,
         );
@@ -255,7 +214,9 @@ test.describe(
         expect(body.name).toBe('testapp_ro');
       });
 
-      test('cannot POST new organization application', async () => {
+      test('cannot POST new organization application', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.post(
           `/api/v1/organization/${orgName}/applications`,
           {name: 'should_fail'},
@@ -291,7 +252,7 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET repository', async () => {
+      test('can GET repository', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}`,
         );
@@ -300,14 +261,14 @@ test.describe(
         expect(body.name).toBe(repoName);
       });
 
-      test('cannot DELETE repository', async () => {
+      test('cannot DELETE repository', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/repository/${orgName}/${repoName}`,
         );
         expect(r.status()).toBe(403);
       });
 
-      test('cannot POST new repository', async () => {
+      test('cannot POST new repository', async ({readonlyClient}) => {
         const r = await readonlyClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: 'should_fail',
@@ -318,35 +279,35 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('can GET repository tags', async () => {
+      test('can GET repository tags', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/tag/`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET repository logs', async () => {
+      test('can GET repository logs', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/logs`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET repository aggregate logs', async () => {
+      test('can GET repository aggregate logs', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/aggregatelogs`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can list repository notifications', async () => {
+      test('can list repository notifications', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/notification/`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST repository notification', async () => {
+      test('cannot POST repository notification', async ({readonlyClient}) => {
         const r = await readonlyClient.post(
           `/api/v1/repository/${orgName}/${repoName}/notification/`,
           {
@@ -391,21 +352,21 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET user permission on repo', async () => {
+      test('can GET user permission on repo', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/permissions/user/${normalUsername}`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET transitive permission', async () => {
+      test('can GET transitive permission', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/permissions/user/${normalUsername}/transitive`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('cannot PUT permission on repo', async () => {
+      test('cannot PUT permission on repo', async ({readonlyClient}) => {
         const r = await readonlyClient.put(
           `/api/v1/repository/${orgName}/${repoName}/permissions/user/${normalUsername}`,
           {role: 'admin'},
@@ -413,7 +374,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE permission on repo', async () => {
+      test('cannot DELETE permission on repo', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/repository/${orgName}/${repoName}/permissions/user/${normalUsername}`,
         );
@@ -465,28 +426,28 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET team', async () => {
+      test('can GET team', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/team/${teamName}/members`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET team permissions', async () => {
+      test('can GET team permissions', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/permissions/team/${teamName}`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET organization member', async () => {
+      test('can GET organization member', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/members`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET team member', async () => {
+      test('can GET team member', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/team/${teamName}/members`,
         );
@@ -495,7 +456,7 @@ test.describe(
         expect(body.members).toBeTruthy();
       });
 
-      test('cannot PUT (create) team', async () => {
+      test('cannot PUT (create) team', async ({readonlyClient}) => {
         const r = await readonlyClient.put(
           `/api/v1/organization/${orgName}/team/shouldfail`,
           {name: 'shouldfail', role: 'member'},
@@ -503,21 +464,21 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE team', async () => {
+      test('cannot DELETE team', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/team/${teamName}`,
         );
         expect(r.status()).toBe(403);
       });
 
-      test('cannot PUT team member', async () => {
+      test('cannot PUT team member', async ({readonlyClient}) => {
         const r = await readonlyClient.put(
           `/api/v1/organization/${orgName}/team/${teamName}/members/shouldfail`,
         );
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE team member', async () => {
+      test('cannot DELETE team member', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/team/${teamName}/members/${normalUsername}`,
         );
@@ -550,7 +511,9 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET robot account but token is hidden', async () => {
+      test('can GET robot account but token is hidden', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/robots/${robotShortname}`,
         );
@@ -560,7 +523,9 @@ test.describe(
         expect(body.token).toBeFalsy();
       });
 
-      test('can list all robot accounts but tokens are hidden', async () => {
+      test('can list all robot accounts but tokens are hidden', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/robots?token=true`,
         );
@@ -572,7 +537,9 @@ test.describe(
         }
       });
 
-      test('can list robot accounts with permissions but tokens are hidden', async () => {
+      test('can list robot accounts with permissions but tokens are hidden', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/robots?token=true&permissions=true`,
         );
@@ -595,7 +562,7 @@ test.describe(
         expect(body.token).toBeTruthy();
       });
 
-      test('cannot PUT (create) robot account', async () => {
+      test('cannot PUT (create) robot account', async ({readonlyClient}) => {
         const r = await readonlyClient.put(
           `/api/v1/organization/${orgName}/robots/shouldfail`,
           {},
@@ -603,7 +570,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE robot account', async () => {
+      test('cannot DELETE robot account', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/robots/${robotShortname}`,
         );
@@ -646,14 +613,14 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET default permissions', async () => {
+      test('can GET default permissions', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/prototypes`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST default permission', async () => {
+      test('cannot POST default permission', async ({readonlyClient}) => {
         const r = await readonlyClient.post(
           `/api/v1/organization/${orgName}/prototypes`,
           {
@@ -710,14 +677,14 @@ test.describe(
         }
       });
 
-      test('can GET global messages', async () => {
+      test('can GET global messages', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/messages');
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.messages.length).toBeGreaterThanOrEqual(1);
       });
 
-      test('cannot POST global message', async () => {
+      test('cannot POST global message', async ({readonlyClient}) => {
         const r = await readonlyClient.post('/api/v1/messages', {
           message: {
             media_type: 'text/markdown',
@@ -728,7 +695,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE global message', async () => {
+      test('cannot DELETE global message', async ({readonlyClient}) => {
         // First get a valid UUID
         const msgs = await readonlyClient.get('/api/v1/messages');
         const body = await msgs.json();
@@ -745,7 +712,7 @@ test.describe(
     // ========================================================================
 
     test.describe('Superuser endpoints', () => {
-      test('can GET superuser users list', async () => {
+      test('can GET superuser users list', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/superuser/users/');
         expect(r.status()).toBe(200);
         const body = await r.json();
@@ -753,7 +720,7 @@ test.describe(
         expect(body.users.length).toBeGreaterThanOrEqual(1);
       });
 
-      test('cannot DELETE superuser user', async () => {
+      test('cannot DELETE superuser user', async ({readonlyClient}) => {
         // Attempt to delete a user that doesn't exist; the point is 403 not 404
         const r = await readonlyClient.delete(
           '/api/v1/superuser/users/nonexistent_user_ro_test',
@@ -761,19 +728,21 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('can GET registry status', async () => {
+      test('can GET registry status', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/superuser/registrystatus');
         // 200 = accessible, some deployments may return 404 if not k8s
         expect([200, 404]).toContain(r.status());
       });
 
-      test('can GET registry size', async () => {
+      test('can GET registry size', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/superuser/registrysize/');
         // 200 if calculated, 404 if never triggered
         expect([200, 404]).toContain(r.status());
       });
 
-      test('cannot POST registry size calculation', async () => {
+      test('cannot POST registry size calculation', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.post(
           '/api/v1/superuser/registrysize/',
           {},
@@ -806,21 +775,21 @@ test.describe(
         }
       });
 
-      test('can GET service keys list', async () => {
+      test('can GET service keys list', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/superuser/keys');
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.keys).toBeTruthy();
       });
 
-      test('can GET specific service key', async () => {
+      test('can GET specific service key', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/superuser/keys/${serviceKid}`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST service key', async () => {
+      test('cannot POST service key', async ({readonlyClient}) => {
         const r = await readonlyClient.post('/api/v1/superuser/keys', {
           name: 'should_fail',
           service: 'quay',
@@ -829,7 +798,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE service key', async () => {
+      test('cannot DELETE service key', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/superuser/keys/${serviceKid}`,
         );
@@ -861,12 +830,12 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET starred repos', async () => {
+      test('can GET starred repos', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/user/starred');
         expect(r.status()).toBe(200);
       });
 
-      test('can POST star (own action)', async () => {
+      test('can POST star (own action)', async ({readonlyClient}) => {
         // Starring is a user action on their own account, should be allowed
         const r = await readonlyClient.post('/api/v1/user/starred', {
           namespace: orgName,
@@ -882,14 +851,14 @@ test.describe(
     // ========================================================================
 
     test.describe('Search', () => {
-      test('can search all entities', async () => {
+      test('can search all entities', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/find/all?query=test');
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.results).toBeTruthy();
       });
 
-      test('can search repositories', async () => {
+      test('can search repositories', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           '/api/v1/find/repositories?query=test',
         );
@@ -898,7 +867,7 @@ test.describe(
         expect(body.results).toBeTruthy();
       });
 
-      test('can search entities by prefix', async () => {
+      test('can search entities by prefix', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/entities/test');
         expect(r.status()).toBe(200);
         const body = await r.json();
@@ -924,7 +893,9 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET proxy cache config (may be empty)', async () => {
+      test('can GET proxy cache config (may be empty)', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/proxycache`,
         );
@@ -932,7 +903,7 @@ test.describe(
         expect([200, 404]).toContain(r.status());
       });
 
-      test('cannot POST proxy cache config', async () => {
+      test('cannot POST proxy cache config', async ({readonlyClient}) => {
         const r = await readonlyClient.post(
           `/api/v1/organization/${orgName}/proxycache`,
           {
@@ -944,7 +915,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE proxy cache config', async () => {
+      test('cannot DELETE proxy cache config', async ({readonlyClient}) => {
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/proxycache`,
         );
@@ -991,14 +962,14 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET organization quota list', async () => {
+      test('can GET organization quota list', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/quota`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET organization quota by ID', async () => {
+      test('can GET organization quota by ID', async ({readonlyClient}) => {
         test.skip(!quotaId, 'No quota ID available');
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/quota/${quotaId}`,
@@ -1006,7 +977,7 @@ test.describe(
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST organization quota', async () => {
+      test('cannot POST organization quota', async ({readonlyClient}) => {
         const r = await readonlyClient.post(
           `/api/v1/organization/${orgName}/quota`,
           {limit_bytes: 999999},
@@ -1014,7 +985,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE organization quota', async () => {
+      test('cannot DELETE organization quota', async ({readonlyClient}) => {
         test.skip(!quotaId, 'No quota ID available');
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/quota/${quotaId}`,
@@ -1022,14 +993,16 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('can GET superuser organization quota', async () => {
+      test('can GET superuser organization quota', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/superuser/organization/${orgName}/quota`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST superuser organization quota', async () => {
+      test('cannot POST superuser organization quota', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.post(
           `/api/v1/superuser/organization/${orgName}/quota`,
           {limit_bytes: 999999},
@@ -1071,14 +1044,16 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET org autoprune policies', async () => {
+      test('can GET org autoprune policies', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/autoprunepolicy/`,
         );
         expect(r.status()).toBe(200);
       });
 
-      test('can GET specific org autoprune policy', async () => {
+      test('can GET specific org autoprune policy', async ({
+        readonlyClient,
+      }) => {
         test.skip(!orgPolicyUuid, 'No autoprune policy UUID available');
         const r = await readonlyClient.get(
           `/api/v1/organization/${orgName}/autoprunepolicy/${orgPolicyUuid}`,
@@ -1086,7 +1061,7 @@ test.describe(
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST org autoprune policy', async () => {
+      test('cannot POST org autoprune policy', async ({readonlyClient}) => {
         const r = await readonlyClient.post(
           `/api/v1/organization/${orgName}/autoprunepolicy/`,
           {method: 'number_of_tags', value: 99},
@@ -1094,7 +1069,7 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('cannot DELETE org autoprune policy', async () => {
+      test('cannot DELETE org autoprune policy', async ({readonlyClient}) => {
         test.skip(!orgPolicyUuid, 'No autoprune policy UUID available');
         const r = await readonlyClient.delete(
           `/api/v1/organization/${orgName}/autoprunepolicy/${orgPolicyUuid}`,
@@ -1102,12 +1077,14 @@ test.describe(
         expect(r.status()).toBe(403);
       });
 
-      test('can GET user autoprune policies', async () => {
+      test('can GET user autoprune policies', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/user/autoprunepolicy/');
         expect(r.status()).toBe(200);
       });
 
-      test('can POST user autoprune policy (self-action)', async () => {
+      test('can POST user autoprune policy (self-action)', async ({
+        readonlyClient,
+      }) => {
         // Readonly superusers are admin of their own namespace, so user-level
         // autoprune policies are a self-action that is allowed (like starring).
         const r = await readonlyClient.post('/api/v1/user/autoprunepolicy/', {
@@ -1163,14 +1140,16 @@ test.describe(
           await adminClient.delete(`/api/v1/organization/${orgName}`);
         });
 
-        test('can GET repo autoprune policies', async () => {
+        test('can GET repo autoprune policies', async ({readonlyClient}) => {
           const r = await readonlyClient.get(
             `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/`,
           );
           expect(r.status()).toBe(200);
         });
 
-        test('can GET specific repo autoprune policy', async () => {
+        test('can GET specific repo autoprune policy', async ({
+          readonlyClient,
+        }) => {
           test.skip(!repoPolicyUuid, 'No repo autoprune policy UUID');
           const r = await readonlyClient.get(
             `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/${repoPolicyUuid}`,
@@ -1178,7 +1157,7 @@ test.describe(
           expect(r.status()).toBe(200);
         });
 
-        test('cannot POST repo autoprune policy', async () => {
+        test('cannot POST repo autoprune policy', async ({readonlyClient}) => {
           const r = await readonlyClient.post(
             `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/`,
             {method: 'number_of_tags', value: 99},
@@ -1186,7 +1165,9 @@ test.describe(
           expect(r.status()).toBe(403);
         });
 
-        test('cannot DELETE repo autoprune policy', async () => {
+        test('cannot DELETE repo autoprune policy', async ({
+          readonlyClient,
+        }) => {
           test.skip(!repoPolicyUuid, 'No repo autoprune policy UUID');
           const r = await readonlyClient.delete(
             `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/${repoPolicyUuid}`,
@@ -1220,7 +1201,7 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET mirror config (may be empty)', async () => {
+      test('can GET mirror config (may be empty)', async ({readonlyClient}) => {
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/mirror`,
         );
@@ -1228,7 +1209,10 @@ test.describe(
         expect([200, 404]).toContain(r.status());
       });
 
-      test('cannot POST mirror config', async ({adminClient}) => {
+      test('cannot POST mirror config', async ({
+        readonlyClient,
+        adminClient,
+      }) => {
         const mirrorBot = uniqueName('mirrorbot').replace(/-/g, '_');
         // Create the robot first via admin so the API doesn't reject for missing robot
         await adminClient.put(
@@ -1304,7 +1288,7 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
-      test('can GET specific notification', async () => {
+      test('can GET specific notification', async ({readonlyClient}) => {
         test.skip(!notificationUuid, 'No notification UUID available');
         const r = await readonlyClient.get(
           `/api/v1/repository/${orgName}/${repoName}/notification/${notificationUuid}`,
@@ -1314,7 +1298,7 @@ test.describe(
         expect(body.uuid).toBe(notificationUuid);
       });
 
-      test('cannot DELETE notification', async () => {
+      test('cannot DELETE notification', async ({readonlyClient}) => {
         test.skip(!notificationUuid, 'No notification UUID available');
         const r = await readonlyClient.delete(
           `/api/v1/repository/${orgName}/${repoName}/notification/${notificationUuid}`,
@@ -1328,31 +1312,23 @@ test.describe(
     // ========================================================================
 
     test.describe('App tokens', () => {
-      let createdTokenCode: string | undefined;
-
-      test.afterAll(async () => {
-        // Revoke the token we created during the test
-        if (createdTokenCode) {
-          await readonlyClient.delete(
-            `/api/v1/user/apptoken/${createdTokenCode}`,
-          );
-        }
-      });
-
-      test('can GET own app tokens', async () => {
+      test('can GET own app tokens', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/api/v1/user/apptoken');
         expect(r.status()).toBe(200);
       });
 
-      test('can POST own app token (self-action)', async () => {
+      test('can POST own app token (self-action)', async ({readonlyClient}) => {
         const r = await readonlyClient.post('/api/v1/user/apptoken', {
           title: 'ro_test_token',
         });
         // Creating a token for one's own account is a self-action, not a write
         expect(r.status()).toBe(200);
         const body = await r.json();
+        // Revoke the token we created, using the same per-test client.
         if (body.token?.uuid) {
-          createdTokenCode = body.token.uuid;
+          await readonlyClient.delete(
+            `/api/v1/user/apptoken/${body.token.uuid}`,
+          );
         }
       });
     });
@@ -1362,7 +1338,7 @@ test.describe(
     // ========================================================================
 
     test.describe('Security scanner backfill', () => {
-      test('can GET backfill status', async () => {
+      test('can GET backfill status', async ({readonlyClient}) => {
         const r = await readonlyClient.get('/secscan/_backfill_status');
         // 200 if scanner configured, 404 otherwise
         expect([200, 404]).toContain(r.status());
