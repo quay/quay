@@ -563,6 +563,17 @@ test.describe(
         .locator('input[placeholder="key=value"]')
         .fill('fail=test');
       await authenticatedPage.getByText('Mutable labels').click();
+
+      const mutableLabelContent = authenticatedPage
+        .locator('#mutable-labels .label-content')
+        .first();
+      await expect(mutableLabelContent).toContainText('fail=test');
+
+      const saveLabelsButton = authenticatedPage.getByRole('button', {
+        name: 'Save Labels',
+      });
+      await expect(saveLabelsButton).toBeEnabled();
+
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(
