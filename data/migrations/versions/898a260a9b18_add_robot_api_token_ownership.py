@@ -1,7 +1,7 @@
 """add robot api token ownership
 
 Revision ID: 898a260a9b18
-Revises: 9fa37f66a9b6
+Revises: 3cb9c1acb681
 Create Date: 2026-09-17 15:10:53.391118
 
 """
@@ -9,7 +9,7 @@ Create Date: 2026-09-17 15:10:53.391118
 import sqlalchemy as sa
 
 revision = "898a260a9b18"
-down_revision = "9fa37f66a9b6"
+down_revision = "3cb9c1acb681"
 
 
 def upgrade(op, tables, tester):
