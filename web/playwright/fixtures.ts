@@ -1011,7 +1011,7 @@ export function skipUnlessAuthType(
   ];
 }
 
-function getTestUsers(config?: QuayConfig | null) {
+export function getTestUsers(config?: QuayConfig | null) {
   const authType = config?.config?.AUTHENTICATION_TYPE;
   if (authType === 'OIDC') return TEST_USERS_OIDC;
   if (authType === 'LDAP') return TEST_USERS_LDAP;
