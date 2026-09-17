@@ -25,6 +25,8 @@ on:
     paths:
       - ci-generator/matrix.yaml
       - ci-generator/templates/**
+      - ci-generator/generate.py
+      - ci-generator/model.py
 
 concurrency:
   group: sync-ci-configs-${{ github.ref }}
