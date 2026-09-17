@@ -70,6 +70,7 @@ tests:
       QUAY_OPERATOR_SOURCE: fbc-operator-catalog
     post:
     - ref: quay-gather-jaeger-traces
+    - ref: quay-gather
     - ref: quay-deprovision
     - chain: ipi-aws-post
     test:
