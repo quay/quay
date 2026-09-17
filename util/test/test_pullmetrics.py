@@ -826,3 +826,34 @@ class TestPullMetricsIntegration:
         # Verify
         assert stats is not None
         assert stats["manifest_digest"] == "sha256:integration456"
+
+
+class TestPullMetricsEngineConfig:
+    """Tests for the engine-based config path in PullMetrics."""
+
+    @patch("util.pullmetrics.create_redis_client")
+    def test_engine_config_uses_create_redis_client(self, mock_create_client):
+        """Verify _ensure_redis_connection routes engine config through factory."""
+        mock_conn = MagicMock()
+        mock_conn.ping.return_value = True
+        mock_create_client.return_value = mock_conn
+
+        engine_config = {
+            "engine": "redis",
+            "redis_config": {"host": "localhost", "port": 6379},
+            "_testing": True,
+        }
+        pm = PullMetrics(engine_config)
+        assert pm._has_engine is True
+
+        mock_pipeline = MagicMock()
+        mock_conn.pipeline.return_value = mock_pipeline
+
+        repository = Mock()
+        repository.id = 999
+        pm.track_tag_pull_sync(repository, "latest", "sha256:abc")
+
+        mock_create_client.assert_called_once()
+        call_kwargs = mock_create_client.call_args
+        assert call_kwargs[1]["extra_kwargs"]["socket_connect_timeout"] is not None
+        assert call_kwargs[1]["extra_kwargs"]["socket_timeout"] is not None
