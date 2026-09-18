@@ -208,7 +208,9 @@ test.describe(
         } else if ([400, 401, 403].includes(resp.status())) {
           const body = await resp.text();
           throw new Error(
-            `Unexpected ${resp.status()} polling build logs for ${build.buildId}: ${body}`,
+            `Unexpected ${resp.status()} polling build logs for ${
+              build.buildId
+            }: ${body}`,
           );
         }
         await new Promise((r) => setTimeout(r, 5_000));
