@@ -25,8 +25,8 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: quay-binary
-          path: bin/quay
+          name: mirror-registry-binary
+          path: bin/mirror-registry
           retention-days: 1
 
   lint:
@@ -121,7 +121,7 @@ jobs:
       - name: Download quay binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: quay-binary
+          name: mirror-registry-binary
           path: bin/
 
       - name: Checkout distribution-spec
@@ -148,7 +148,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p /tmp/oci-conformance-logs
-          chmod +x bin/quay
+          chmod +x bin/mirror-registry
           podman build -f Dockerfile.mirror -t quay-mirror:test . \
             2>&1 | tee /tmp/oci-conformance-logs/image-build.log
           podman save quay-mirror:test -o /tmp/quay-mirror.tar \
@@ -159,7 +159,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p /tmp/oci-conformance-logs
-          sudo bin/quay install \
+          sudo bin/mirror-registry install \
             -hostname=localhost \
             -data-dir=/var/lib/quay \
             -image-archive=/tmp/quay-mirror.tar \
@@ -347,12 +347,12 @@ jobs:
       - name: Download quay binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: quay-binary
+          name: mirror-registry-binary
           path: bin/
 
       - name: Build container image
         run: |
-          chmod +x bin/quay
+          chmod +x bin/mirror-registry
           podman build -f Dockerfile.mirror -t quay-mirror:test .
 
       - name: Save image archive
@@ -360,7 +360,7 @@ jobs:
 
       - name: Install registry
         run: |
-          sudo bin/quay install \
+          sudo bin/mirror-registry install \
             -hostname=localhost \
             -data-dir=/var/lib/quay \
             -image-archive=/tmp/quay-mirror.tar
@@ -468,7 +468,7 @@ jobs:
 
       - name: Uninstall registry
         run: |
-          sudo bin/quay uninstall -auto-approve -data-dir=/var/lib/quay
+          sudo bin/mirror-registry uninstall -auto-approve -data-dir=/var/lib/quay
 
       - name: Verify uninstall cleanup
         run: |
@@ -538,7 +538,7 @@ jobs:
       - name: Download quay binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: quay-binary
+          name: mirror-registry-binary
           path: bin/
 
       - name: Enable rootless podman prerequisites
@@ -562,7 +562,7 @@ jobs:
 
       - name: Build container image
         run: |
-          chmod +x bin/quay
+          chmod +x bin/mirror-registry
           podman build -f Dockerfile.mirror -t quay-mirror:test .
 
       - name: Save image archive
@@ -570,7 +570,7 @@ jobs:
 
       - name: Install registry (rootless)
         run: |
-          bin/quay install \
+          bin/mirror-registry install \
             -hostname=localhost \
             -data-dir="$HOME/.local/share/quay" \
             -image-archive=/tmp/quay-mirror.tar
@@ -670,7 +670,7 @@ jobs:
 
       - name: Uninstall registry (rootless)
         run: |
-          bin/quay uninstall -auto-approve -data-dir="$HOME/.local/share/quay"
+          bin/mirror-registry uninstall -auto-approve -data-dir="$HOME/.local/share/quay"
 
       - name: Verify uninstall cleanup
         run: |
@@ -745,12 +745,12 @@ jobs:
       - name: Download quay binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: quay-binary
+          name: mirror-registry-binary
           path: bin/
 
       - name: Build container image
         run: |
-          chmod +x bin/quay
+          chmod +x bin/mirror-registry
           podman build -f Dockerfile.mirror -t quay-mirror:test .
 
       - name: Save image archive next to binary
@@ -1076,7 +1076,7 @@ jobs:
           sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
 
       - name: Run quay migrate
-        run: sudo bin/quay migrate
+        run: sudo bin/mirror-registry migrate
 
       - name: Trust registry TLS certificate
         run: |
@@ -1277,7 +1277,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          sudo bin/quay migrate -cleanup
+          sudo bin/mirror-registry migrate -cleanup
           echo "Cleanup completed"
 
           for unit in quay-app.service quay-redis.service quay-pod.service; do
@@ -1377,7 +1377,7 @@ jobs:
       - name: Download quay binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: quay-binary
+          name: mirror-registry-binary
           path: bin/
 
       - name: Install test dependencies
@@ -1388,7 +1388,7 @@ jobs:
 
       - name: Build target registry image
         run: |
-          chmod +x bin/quay
+          chmod +x bin/mirror-registry
           podman build -f Dockerfile.mirror -t quay-mirror:test .
           podman save quay-mirror:test -o bin/quay-mirror.tar
 
@@ -1554,7 +1554,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/e2e-migrate-postgres"
-          sudo bin/quay migrate \
+          sudo bin/mirror-registry migrate \
             -data-dir="$RUNNER_TEMP/quay-v3" \
             -image-archive="$PWD/bin/quay-mirror.tar" \
             2>&1 | tee "$RUNNER_TEMP/e2e-migrate-postgres/migrate.log"

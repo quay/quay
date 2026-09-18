@@ -32,7 +32,7 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("check existing tables: %w", err)
 	}
 	if tableCount > 0 {
-		return fmt.Errorf("database already contains %d tables; use 'quay db upgrade' instead", tableCount)
+		return fmt.Errorf("database already contains %d tables; use 'mirror-registry db upgrade' instead", tableCount)
 	}
 
 	// Disable FK checks during schema creation (some CREATE TABLE statements
