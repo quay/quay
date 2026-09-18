@@ -117,6 +117,77 @@ func TestQuadletInstallDoesNotPersistBootstrapCredentials(t *testing.T) {
 	}
 }
 
+func TestQuadletDataDir(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+	require.NoError(t, manager.Install("quay", &QuadletSpec{
+		Image:    "localhost/quay:test",
+		DataDir:  "/srv/registry-data",
+		Hostname: "registry.example.com",
+		Port:     "8443",
+	}))
+
+	dataDir, err := manager.DataDir("quay")
+
+	require.NoError(t, err)
+	assert.Equal(t, "/srv/registry-data", dataDir)
+}
+
+func TestQuadletDataDirSkipsUnrelatedVolumes(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	path := env.QuadletPath("quay")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	content := "[Container]\nVolume=/etc/pki/ca-trust:/etc/pki/ca-trust:ro\nVolume=/srv/other:/database:Z\nVolume=/srv/registry-data:/data:Z,U\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+	dataDir, err := NewQuadletManager(OSFS{}, env).DataDir("quay")
+
+	require.NoError(t, err)
+	assert.Equal(t, "/srv/registry-data", dataDir)
+}
+
+func TestQuadletDataDirRejectsMalformedUnit(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		wantErr string
+	}{
+		{
+			name:    "missing volume",
+			content: "[Container]\nImage=localhost/quay:test\nPublishPort=8443:8443\n",
+			wantErr: "no Volume= directive",
+		},
+		{
+			name:    "empty host directory",
+			content: "[Container]\nVolume=:/data:Z\n",
+			wantErr: "invalid Volume= directive",
+		},
+		{
+			name:    "unexpected container path",
+			content: "[Container]\nVolume=/var/lib/quay:/other:Z\n",
+			wantErr: "no Volume= directive for /data",
+		},
+		{
+			name:    "prefix match is not enough",
+			content: "[Container]\nVolume=/var/lib/quay:/database:Z\n",
+			wantErr: "no Volume= directive for /data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+			path := env.QuadletPath("quay")
+			require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+			require.NoError(t, os.WriteFile(path, []byte(tt.content), 0o600))
+
+			_, err := NewQuadletManager(OSFS{}, env).DataDir("quay")
+
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestQuadletHostname(t *testing.T) {
 	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
 	manager := NewQuadletManager(OSFS{}, env)

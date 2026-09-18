@@ -36,6 +36,7 @@ func newRootCmd() *Command {
 		Flags:    fs,
 		Subcommands: []*Command{
 			newInstallCmd(),
+			newUpgradeCmd(),
 			newUninstallCmd(),
 			newInitCmd(),
 			newConfigCmd(),

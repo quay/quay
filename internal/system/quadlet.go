@@ -64,13 +64,13 @@ After=network-online.target
 
 [Container]
 Image=%s
-Volume=%s:/data:Z
+Volume=%s:%s:Z
 PublishPort=%s:%s
 Exec=%s
 
 [Install]
 WantedBy=default.target
-`, spec.Image, spec.DataDir, spec.Port, registryContainerPort, serveCommand)
+`, spec.Image, spec.DataDir, registryDataMount, spec.Port, registryContainerPort, serveCommand)
 
 	path := q.env.QuadletPath(service)
 	if err := q.fs.WriteFile(path, []byte(content), 0o600); err != nil {
@@ -111,6 +111,45 @@ func (q *QuadletManager) HostPort(service string) (string, error) {
 		return "", fmt.Errorf("scan quadlet: %w", err)
 	}
 	return "", fmt.Errorf("no PublishPort= directive found in %s", path)
+}
+
+// registryDataMount is the container path the data directory is mounted at.
+const registryDataMount = "/data"
+
+// DataDir returns the host directory mounted at /data by an existing Quadlet file.
+func (q *QuadletManager) DataDir(service string) (string, error) {
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read quadlet: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		mapping, found := strings.CutPrefix(scanner.Text(), "Volume=")
+		if !found {
+			continue
+		}
+		// Volume=<host>:<container>[:<options>]. Only the mapping whose
+		// container target is exactly /data is the registry data directory;
+		// any other Volume= line is unrelated and skipped.
+		hostDir, rest, found := strings.Cut(mapping, ":")
+		if !found {
+			continue
+		}
+		containerPath, _, _ := strings.Cut(rest, ":")
+		if containerPath != registryDataMount {
+			continue
+		}
+		if hostDir == "" {
+			return "", fmt.Errorf("invalid Volume= directive for %s in %s", registryDataMount, path)
+		}
+		return hostDir, nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan quadlet: %w", err)
+	}
+	return "", fmt.Errorf("no Volume= directive for %s found in %s", registryDataMount, path)
 }
 
 // Hostname returns the hostname passed to serve by an existing Quadlet file.
