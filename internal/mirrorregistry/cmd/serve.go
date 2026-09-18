@@ -22,10 +22,14 @@ func newServeCmd() *Command {
 	hostname := fs.String("hostname", "localhost:8443", "public registry hostname, including port when non-default")
 	addr := fs.String("addr", ":8443", "listen address")
 
+	// serve is the container entrypoint launched by the installed Quadlet
+	// unit; end users manage the service through systemd, so it is hidden
+	// from the top-level help listing.
 	return &Command{
 		Name:     "serve",
 		Synopsis: "Start the OCI container registry",
 		Flags:    fs,
+		Hidden:   true,
 		Run: func(ctx context.Context, _ *Command, _ []string) int {
 			return runServe(ctx, *configPath, *dataDir, *hostname, *addr)
 		},
