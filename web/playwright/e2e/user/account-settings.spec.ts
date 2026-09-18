@@ -747,7 +747,7 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 test.describe('User Self-Delete', {tag: ['@user', '@auth:Database']}, () => {
   test('user can delete their own account via settings', async ({
     browser,
-    superuserRequest,
+    superuserApi,
     quayConfig,
   }) => {
     const delUsername = uniqueName('delme');
@@ -755,7 +755,7 @@ test.describe('User Self-Delete', {tag: ['@user', '@auth:Database']}, () => {
     const email = `${delUsername}@example.com`;
     const mailingEnabled = quayConfig?.features?.MAILING === true;
 
-    const superApi = new ApiClient(superuserRequest);
+    const superApi = superuserApi.raw;
     await superApi.createUser(delUsername, password, email);
 
     const context = await browser.newContext();
