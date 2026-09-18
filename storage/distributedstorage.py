@@ -113,6 +113,9 @@ class DistributedStorage(StoragePaths):
     clean_orphaned_multipart_uploads = _location_aware(
         BaseStorage.clean_orphaned_multipart_uploads, requires_write=True
     )
+    clean_exported_action_logs = _location_aware(
+        BaseStorage.clean_exported_action_logs, requires_write=True
+    )
 
     initiate_chunked_upload = _location_aware(
         BaseStorageV2.initiate_chunked_upload, requires_write=True

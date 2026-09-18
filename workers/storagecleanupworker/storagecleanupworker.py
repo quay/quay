@@ -5,10 +5,11 @@ from datetime import datetime, timedelta
 
 from app import app, storage
 from data.database import UseThenDisconnect
+from storage import TYPE_LOCAL_STORAGE
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
-from workers.blobuploadcleanupworker.models_pre_oci import pre_oci_model as model
 from workers.gunicorn_worker import GunicornWorker
+from workers.storagecleanupworker.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
@@ -26,15 +27,40 @@ MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
 # check if there are any stale MPUs every 6 hours
 MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
 
+# Sets export log deletion threshold to 1 hour
+EXPORTED_LOGS_DELETION_DATE_THRESHOLD = timedelta(seconds=60 * 60)
 
-class BlobUploadCleanupWorker(Worker):
+EXPORT_LOGS_STORAGE_PATH = app.config.get("EXPORT_ACTION_LOGS_STORAGE_PATH", "exportedactionlogs")
+
+
+def _has_local_storage():
+    """
+    Helper function to determine if we have local storage present.
+    """
+    storage_config = app.config.get("DISTRIBUTED_STORAGE_CONFIG", {})
+    return any(params[0] == TYPE_LOCAL_STORAGE for params in storage_config.values())
+
+
+class StorageCleanupWorker(Worker):
     def __init__(self):
-        super(BlobUploadCleanupWorker, self).__init__()
+        super(StorageCleanupWorker, self).__init__()
         self.add_operation(self._try_cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
         if app.config.get("FEATURE_ENABLE_STALE_MPU_CLEANUP", False):
             self.add_operation(self._try_clean_stale_multipart_uploads, MPU_CLEANUP_FREQUENCY)
         else:
             logger.debug("Cleanup of stale multipart uploads not enabled, skipping...")
+
+        if app.config.get("FEATURE_LOG_EXPORT", False):
+            EXPORTED_LOG_CLEANUP_FREQUENCY = (
+                # run every minute if we have local storage present
+                60
+                if _has_local_storage()
+                # for other types of storage engines
+                else BLOBUPLOAD_CLEANUP_FREQUENCY
+            )
+            self.add_operation(self._try_cleanup_exported_logs, EXPORTED_LOG_CLEANUP_FREQUENCY)
+        else:
+            logger.debug("Logs export disabled, skipping scheduling of cleanup...")
 
     def _try_cleanup_uploads(self):
         """
@@ -100,6 +126,36 @@ class BlobUploadCleanupWorker(Worker):
                 "Could not acquire global lock for stale multipart upload cleanup, skipping..."
             )
 
+    def _try_cleanup_exported_logs(self):
+        """
+        Performs cleanup of exported logs on the designated path.
+        """
+        if not storage.preferred_locations:
+            logger.debug(
+                "No preferred storage locations defined, aborting cleanup of exported logs"
+            )
+            return
+
+        logger.debug("Performing cleanup of stale exported logs")
+
+        try:
+            with GlobalLock("EXPORT_LOG_CLEANUP", lock_ttl=LOCK_TTL):
+                try:
+                    storage.clean_exported_action_logs(
+                        storage.preferred_locations,
+                        EXPORTED_LOGS_DELETION_DATE_THRESHOLD,
+                        EXPORT_LOGS_STORAGE_PATH,
+                    )
+                except NotImplementedError:
+                    logger.debug(
+                        "Deletion of stale exported logs is not applicable to storage location %s",
+                        storage.preferred_locations[0],
+                    )
+        except LockNotAcquiredException:
+            logger.debug(
+                "Could not acquire global lock for stale exported log cleanup, skipping..."
+            )
+
     def _cleanup_uploads(self):
         """
         Performs cleanup on the blobupload table.
@@ -145,7 +201,7 @@ def create_gunicorn_worker():
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, app, BlobUploadCleanupWorker(), True)
+    worker = GunicornWorker(__name__, app, StorageCleanupWorker(), True)
     return worker
 
 
@@ -157,5 +213,5 @@ if __name__ == "__main__":
 
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     GlobalLock.configure(app.config)
-    worker = BlobUploadCleanupWorker()
+    worker = StorageCleanupWorker()
     worker.start()

@@ -239,3 +239,9 @@ class MultiCDNStorage(BaseStorageV2):
 
     def copy_to(self, destination, path):
         self.default_provider.copy_to(destination, path)
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        self.default_provider.clean_exported_action_logs(deletion_date_threshold, log_path)
+
+    def clean_orphaned_multipart_uploads(self, deletion_date_threshold):
+        self.default_provider.clean_orphaned_multipart_uploads(deletion_date_threshold)
