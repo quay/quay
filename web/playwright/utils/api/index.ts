@@ -3,7 +3,7 @@
  */
 
 export {ApiClient} from './client';
-export {RawApiClient} from './raw-client';
+export {ApiRequestError, RawApiClient} from './raw-client';
 export {
   initializeSuperuser,
   getAccessToken,

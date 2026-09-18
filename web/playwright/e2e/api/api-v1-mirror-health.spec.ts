@@ -4,8 +4,8 @@
  * Tests the /api/v1/repository/mirror/health endpoint across three roles:
  *   - adminClient  : superuser (full access, global + namespace-scoped)
  *   - userClient   : normal user (namespace-scoped only)
- *   - readonlyClient : global readonly superuser (read-only global access)
- *   - anonClient   : unauthenticated (should get 401)
+ *   - readonlyClient : global readonly superuser fixture (read-only global access)
+ *   - anonClient   : unauthenticated fixture (should get 401)
  *
  * Validates:
  *   - Authorization: superuser global, readonly superuser global,
@@ -17,8 +17,6 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {RawApiClient} from '../../utils/api';
-import {API_URL} from '../../utils/config';
 import {TEST_USERS, TEST_USERS_OIDC} from '../../global-setup';
 
 const HEALTH_URL = '/api/v1/repository/mirror/health';
@@ -28,36 +26,14 @@ test.describe(
   'Mirror Health API',
   {tag: ['@api', '@feature:REPO_MIRROR']},
   () => {
-    let readonlyClient: RawApiClient;
-    let anonClient: RawApiClient;
     let normalUsername: string;
 
-    test.beforeAll(async ({playwright, cachedQuayConfig}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      anonClient = new RawApiClient(request, API_URL);
-
+    test.beforeAll(async ({cachedQuayConfig}) => {
       const users =
         cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
           ? TEST_USERS_OIDC
           : TEST_USERS;
       normalUsername = users.user.username;
-
-      // Build readonly superuser client
-      const roRequest = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      readonlyClient = new RawApiClient(roRequest, API_URL);
-      try {
-        await readonlyClient.signIn(
-          users.readonly.username,
-          users.readonly.password,
-        );
-      } catch {
-        // If readonly user not configured, tests using it will skip individually
-        readonlyClient = null as unknown as RawApiClient;
-      }
     });
 
     // ========================================================================
@@ -177,9 +153,9 @@ test.describe(
     // ========================================================================
 
     test.describe('Readonly superuser global access', () => {
-      test('readonly superuser can GET mirror health globally', async () => {
-        test.skip(!readonlyClient, 'Readonly superuser not configured');
-
+      test('readonly superuser can GET mirror health globally', async ({
+        readonlyClient,
+      }) => {
         const r = await readonlyClient.get(HEALTH_URL);
         expect([200, 503]).toContain(r.status());
 
@@ -232,7 +208,7 @@ test.describe(
     // ========================================================================
 
     test.describe('Anonymous access', () => {
-      test('anonymous user gets 401', async () => {
+      test('anonymous user gets 401', async ({anonClient}) => {
         const r = await anonClient.get(HEALTH_URL);
         expect(r.status()).toBe(401);
       });
