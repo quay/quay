@@ -351,10 +351,11 @@ test.describe(
         expect(repoResp.status()).toBe(201);
 
         // Set a user permission so there's something to read
-        await adminClient.put(
+        const userPermResp = await adminClient.put(
           `/api/v1/repository/${orgName}/${repoName}/permissions/user/${normalUsername}`,
           {role: 'write'},
         );
+        expect(userPermResp.status()).toBe(200);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -428,15 +429,17 @@ test.describe(
         expect(teamResp.status()).toBe(200);
 
         // Add team permission on repo
-        await adminClient.put(
+        const teamPermResp = await adminClient.put(
           `/api/v1/repository/${orgName}/${repoName}/permissions/team/${teamName}`,
           {role: 'write'},
         );
+        expect(teamPermResp.status()).toBe(200);
 
         // Add member to team
-        await adminClient.put(
+        const teamMemberResp = await adminClient.put(
           `/api/v1/organization/${orgName}/team/${teamName}/members/${normalUsername}`,
         );
+        expect(teamMemberResp.status()).toBe(200);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -1088,10 +1091,9 @@ test.describe(
           `/api/v1/organization/${orgName}/autoprunepolicy/`,
           {method: 'number_of_tags', value: 6},
         );
-        if (policyResp.status() === 201) {
-          const policyBody = await policyResp.json();
-          orgPolicyUuid = policyBody.uuid;
-        }
+        expect(policyResp.status()).toBe(201);
+        const policyBody = await policyResp.json();
+        orgPolicyUuid = policyBody.uuid;
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -1189,10 +1191,9 @@ test.describe(
             `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/`,
             {method: 'number_of_tags', value: 10},
           );
-          if (policyResp.status() === 201) {
-            const policyBody = await policyResp.json();
-            repoPolicyUuid = policyBody.uuid;
-          }
+          expect(policyResp.status()).toBe(201);
+          const policyBody = await policyResp.json();
+          repoPolicyUuid = policyBody.uuid;
         });
 
         test.afterAll(async ({adminClient}) => {
