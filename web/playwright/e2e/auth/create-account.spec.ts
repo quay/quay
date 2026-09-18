@@ -1,5 +1,4 @@
 import {test as base, expect, uniqueName, mailpit} from '../../fixtures';
-import {ApiClient} from '../../utils/api';
 import {Page} from '@playwright/test';
 
 /**
@@ -26,8 +25,8 @@ const test = base.extend<CreateAccountFixtures>({
     await context.close();
   },
 
-  cleanupUser: async ({superuserRequest}, use) => {
-    const superApi = new ApiClient(superuserRequest);
+  cleanupUser: async ({superuserApi}, use) => {
+    const superApi = superuserApi.raw;
     const cleanup = async (username: string) => {
       try {
         await superApi.deleteUser(username);
@@ -181,7 +180,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test('shows error for existing username', async ({
     createAccountPage,
-    superuserRequest,
+    superuserApi,
     cleanupUser,
   }) => {
     const username = uniqueName('existing');
@@ -189,8 +188,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
     const password = 'validpassword123';
 
     // Pre-create user via API
-    const superApi = new ApiClient(superuserRequest);
-    await superApi.createUser(username, password, email);
+    await superuserApi.raw.createUser(username, password, email);
 
     await createAccountPage.goto('/createaccount');
 

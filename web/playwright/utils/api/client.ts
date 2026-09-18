@@ -213,10 +213,17 @@ export interface ProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
+// CSRF token belongs to the session, i.e. to the request context, not the client.
+const csrfTokenCache = new WeakMap<APIRequestContext, string>();
+// Bumped whenever a session-changing call (signIn/createUser) invalidates the
+// cache above, so a fetchToken() that started before the invalidation can
+// detect it lost the race and skip resurrecting a pre-invalidation token.
+const csrfTokenGeneration = new WeakMap<APIRequestContext, number>();
+
 export class ApiClient {
   private request: APIRequestContext;
-  private csrfToken: string | null = null;
   private credentials: {username: string; password: string} | null = null;
+  private hasFetchedToken = false;
 
   constructor(request: APIRequestContext) {
     this.request = request;
@@ -227,29 +234,24 @@ export class ApiClient {
   }
 
   private async fetchToken(): Promise<string> {
-    if (!this.csrfToken) {
-      this.csrfToken = await requestCsrfToken(this.request, API_URL);
+    // First use always hits the server, so a client self-heals a session
+    // rotation (e.g. a UI-driven fresh-login verify) it never observed.
+    let token = this.hasFetchedToken
+      ? csrfTokenCache.get(this.request)
+      : undefined;
+    if (!token) {
+      const generation = csrfTokenGeneration.get(this.request) ?? 0;
+      token = await requestCsrfToken(this.request, API_URL);
+      // If a sibling client's signIn/createUser invalidated the cache while
+      // this fetch was in flight, writing here would resurrect a token from
+      // before that invalidation. Leave hasFetchedToken false so the next
+      // call refetches instead of trusting a cache another client owns.
+      if ((csrfTokenGeneration.get(this.request) ?? 0) === generation) {
+        csrfTokenCache.set(this.request, token);
+        this.hasFetchedToken = true;
+      }
     }
-    return this.csrfToken;
-  }
-
-  /**
-   * After login (or other session-mutating calls), Quay rotates the CSRF
-   * token and returns it in X-Next-CSRF-Token — same as the frontend axios
-   * interceptor. When present, cache it; when `invalidateIfMissing` is set
-   * (sign-in always rotates the session), clear the cache so the next call
-   * refetches from /csrf_token.
-   */
-  private applyNextCsrfFromResponse(
-    response: APIResponse,
-    invalidateIfMissing = false,
-  ): void {
-    const next = response.headers()['x-next-csrf-token'];
-    if (next) {
-      this.csrfToken = next;
-    } else if (invalidateIfMissing) {
-      this.csrfToken = null;
-    }
+    return token;
   }
 
   /**
@@ -905,9 +907,12 @@ export class ApiClient {
       );
     }
 
-    // When mailing is disabled, createUser also logs the user in and rotates
-    // the CSRF token via X-Next-CSRF-Token.
-    this.applyNextCsrfFromResponse(response);
+    // Creating a user changes the server session; invalidate cached CSRF token
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
 
     const result = await response.json();
     return {
@@ -1008,8 +1013,8 @@ export class ApiClient {
   }
 
   async clearUserPrompts(): Promise<void> {
-    // Always use a token tied to the current session. After sign-in the
-    // cache should already hold X-Next-CSRF-Token; if not, refetch.
+    // Always use a token tied to the current session. signIn invalidates
+    // the cache, so this refetches.
     const token = await this.fetchToken();
     const response = await this.request.put(`${API_URL}/api/v1/user/`, {
       timeout: 5000,
@@ -1048,9 +1053,11 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
-    // Sign-in always creates a new session and returns the rotated CSRF
-    // token in X-Next-CSRF-Token (see endpoints.common.common_login).
-    this.applyNextCsrfFromResponse(response, true);
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
   }
 
   // User notification methods
@@ -1765,6 +1772,30 @@ export class ApiClient {
     throw new Error(
       `Build ${buildId} did not reach terminal phase within ${timeoutMs}ms. Current phase: ${finalStatus.phase}`,
     );
+  }
+
+  /**
+   * Get a build via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/build`, {
+        timeout: 10000,
+      });
+    });
+  }
+
+  /**
+   * Get build logs via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildLogsAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/logs`, {
+        timeout: 10000,
+      });
+    });
   }
 
   // Proxy cache methods
