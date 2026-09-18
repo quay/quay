@@ -35,32 +35,12 @@ jobs:
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: filter
         with:
+          predicate-quantifier: every
           filters: |
             config-tool:
-              - 'config-tool/**'
-              - '.github/workflows/ci-config-tool.yaml'
+              - '{config-tool/**,.github/workflows/ci-config-tool.yaml}'
             python:
-              - '**/*.py'
-              - 'requirements*.txt'
-              - 'constraints.txt'
-              - 'tox.ini'
-              - 'setup.py'
-              - 'setup.cfg'
-              - 'pyproject.toml'
-              - '.flake8'
-              - '.pre-commit-config.yaml'
-              - 'mypy.ini'
-              - 'mypy_stubs/**'
-              - 'alembic.ini'
-              - 'Makefile'
-              - 'data/migrations/versions/**'
-              - '.github/workflows/ci-python.yaml'
-              - 'local-dev/**'
-              - 'docker-compose.yaml'
-              - 'docker-compose.static'
-              - '.github/actions/**'
-              - '.github/scripts/**'
-              - '.github/workflows/sentinel.yaml'
+              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**,.github/workflows/sentinel.yaml}'
               - '!config-tool/**'
               - '!web/**'
               - '!internal/**'
@@ -78,6 +58,8 @@ jobs:
               - '!cmd/**'
               - '!config-tool/**'
               - '!.github/workflows/ci-config-tool.yaml'
+              - '!.github/workflows/build-and-publish.yaml'
+              - '!.github/workflows/codeql.yml'
 
   pr-lint:
     name: conventional commit check
