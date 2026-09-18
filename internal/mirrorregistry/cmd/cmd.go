@@ -14,11 +14,18 @@ import (
 // Run is the CLI entry point. It constructs the command tree and returns
 // the process exit code.
 func Run(args []string) int {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	return newRootCmd().Execute(ctx, args[1:])
+}
+
+func newRootCmd() *Command {
 	fs := flag.NewFlagSet("quay", flag.ContinueOnError)
 	logLevel := fs.String("log-level", "", "log level: debug, info, warn, error (default: info)")
 	logFormat := fs.String("log-format", "", "log format: json, text (default: json)")
 
-	root := &Command{
+	return &Command{
 		Name:     "quay",
 		Synopsis: "OCI container registry",
 		Flags:    fs,
@@ -36,9 +43,4 @@ func Run(args []string) int {
 			return logging.Setup(level, format, os.Stderr)
 		},
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	return root.Execute(ctx, args[1:])
 }

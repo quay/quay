@@ -22,10 +22,13 @@ func newInitCmdWithDeps(stdin io.Reader, initialize func(context.Context, *insta
 	initUser := fs.String("init-user", "admin", "admin username for initial setup")
 	initPasswordStdin := fs.Bool("init-password-stdin", false, "read the initial admin password from stdin")
 
+	// init runs inside the container image; end users provision through
+	// install, so it is hidden from the top-level help listing.
 	return &Command{
 		Name:     "init",
 		Synopsis: "Initialize the registry database and administrator",
 		Flags:    fs,
+		Hidden:   true,
 		Run: func(ctx context.Context, _ *Command, _ []string) int {
 			var password string
 			if *initPasswordStdin {

@@ -314,6 +314,63 @@ func TestCommand_Usage(t *testing.T) {
 	}
 }
 
+func TestCommand_UsageOmitsHiddenSubcommands(t *testing.T) {
+	cmd := &Command{
+		Name: "root",
+		Subcommands: []*Command{
+			{Name: "public", Synopsis: "Shown to users"},
+			{Name: "internal", Synopsis: "Container entrypoint", Hidden: true},
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd.Usage(&buf)
+	out := buf.String()
+
+	if !strings.Contains(out, "commands:") || !strings.Contains(out, "public") {
+		t.Errorf("Usage() should list visible subcommands in:\n%s", out)
+	}
+	if strings.Contains(out, "internal") || strings.Contains(out, "Container entrypoint") {
+		t.Errorf("Usage() leaked hidden subcommand in:\n%s", out)
+	}
+}
+
+func TestCommand_UsageOmitsCommandsHeaderWhenAllHidden(t *testing.T) {
+	cmd := &Command{
+		Name: "root",
+		Subcommands: []*Command{
+			{Name: "internal", Hidden: true},
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd.Usage(&buf)
+
+	if strings.Contains(buf.String(), "commands:") {
+		t.Errorf("Usage() printed an empty commands section:\n%s", buf.String())
+	}
+}
+
+func TestCommand_HiddenSubcommandStillDispatches(t *testing.T) {
+	ran := false
+	root := &Command{
+		Name: "root",
+		Subcommands: []*Command{
+			{Name: "internal", Hidden: true, Run: func(_ context.Context, _ *Command, _ []string) int {
+				ran = true
+				return 0
+			}},
+		},
+	}
+
+	if got := root.Execute(t.Context(), []string{"internal"}); got != 0 {
+		t.Errorf("Execute() = %d, want 0", got)
+	}
+	if !ran {
+		t.Error("hidden subcommand did not run")
+	}
+}
+
 func TestCommand_UnknownCommandError(t *testing.T) {
 	root := &Command{
 		Name: "root",
