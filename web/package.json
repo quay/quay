@@ -135,10 +135,11 @@
     "node-forge": "1.4.0",
     "minimatch": "3.1.5",
     "svgo": "4.0.1",
-    "immutable": "^5.1.5",
     "fast-uri": "^3.1.7",
+    "immutable": "^5.1.8",
     "brace-expansion": "^1.1.16",
     "js-yaml": "^4.3.0",
+    "qs": "^6.16.0",
     "browserslist": ">=4.28.7"
   },
   "pnpm": {
@@ -155,10 +156,11 @@
       "node-forge": "1.4.0",
       "minimatch": "3.1.5",
       "svgo": "4.0.1",
-      "immutable": "^5.1.5",
       "fast-uri": "^3.1.7",
+      "immutable": "^5.1.8",
       "brace-expansion": "^1.1.16",
       "js-yaml": "^4.3.0",
+      "qs": "^6.16.0",
       "browserslist": ">=4.28.7"
     }
   }
