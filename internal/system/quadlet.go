@@ -113,6 +113,32 @@ func (q *QuadletManager) HostPort(service string) (string, error) {
 	return "", fmt.Errorf("no PublishPort= directive found in %s", path)
 }
 
+// DataDir returns the host directory mounted at /data by an existing Quadlet file.
+func (q *QuadletManager) DataDir(service string) (string, error) {
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read quadlet: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		mapping, found := strings.CutPrefix(scanner.Text(), "Volume=")
+		if !found {
+			continue
+		}
+		hostDir, containerPath, found := strings.Cut(mapping, ":")
+		if !found || hostDir == "" || !strings.HasPrefix(containerPath, "/data") {
+			return "", fmt.Errorf("invalid Volume= directive in %s", path)
+		}
+		return hostDir, nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan quadlet: %w", err)
+	}
+	return "", fmt.Errorf("no Volume= directive found in %s", path)
+}
+
 // Hostname returns the hostname passed to serve by an existing Quadlet file.
 func (q *QuadletManager) Hostname(service string) (string, error) {
 	path := q.env.QuadletPath(service)

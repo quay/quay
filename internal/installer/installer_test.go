@@ -250,6 +250,98 @@ func TestResolveHostnamePreservesUpgradeHostname(t *testing.T) {
 	assert.False(t, detected)
 }
 
+func installedQuadlet(t *testing.T, dataDir string) (*system.Env, *system.QuadletManager) {
+	t.Helper()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image:    "localhost/quay:old",
+		DataDir:  dataDir,
+		Hostname: "registry.example.com",
+		Port:     "8443",
+	}))
+	return env, quadlet
+}
+
+func TestInstallRejectsExistingInstallation(t *testing.T) {
+	env, quadlet := installedQuadlet(t, "/var/lib/quay")
+	services := &recordingServiceManager{}
+	inst := &Installer{systemd: services, quadlet: quadlet, env: env}
+	dataDir := filepath.Join(t.TempDir(), "registry-data")
+
+	err := inst.Install(t.Context(), &Config{DataDir: dataDir})
+
+	require.ErrorContains(t, err, "existing installation found at "+env.QuadletPath(quadletServiceName))
+	assert.ErrorContains(t, err, "run 'quay upgrade'")
+	assert.Empty(t, services.calls, "install must not touch the running service")
+	_, statErr := os.Stat(dataDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "install must not create a second data directory")
+}
+
+func TestInstallRequiresDataDir(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	inst := &Installer{quadlet: system.NewQuadletManager(system.OSFS{}, env), env: env}
+
+	err := inst.Install(t.Context(), &Config{})
+
+	require.ErrorContains(t, err, "data directory is required")
+}
+
+func TestUpgradeRejectsMissingInstallation(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	inst := &Installer{systemd: services, quadlet: system.NewQuadletManager(system.OSFS{}, env), env: env}
+
+	err := inst.Upgrade(t.Context(), &Config{})
+
+	require.ErrorContains(t, err, "no existing installation found; run 'quay install' first")
+	assert.Empty(t, services.calls)
+}
+
+func TestResolveUpgradeDataDir(t *testing.T) {
+	tests := []struct {
+		name      string
+		requested string
+		want      string
+		wantErr   string
+	}{
+		{name: "omitted preserves existing", requested: "", want: "/srv/registry"},
+		{name: "matching path is accepted", requested: "/srv/registry", want: "/srv/registry"},
+		{name: "unclean matching path is accepted", requested: "/srv//registry/", want: "/srv/registry"},
+		{name: "different path is rejected", requested: "/var/lib/quay", wantErr: "does not match the existing installation's /srv/registry"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env, quadlet := installedQuadlet(t, "/srv/registry")
+			inst := &Installer{quadlet: quadlet, env: env}
+
+			got, err := inst.resolveUpgradeDataDir(tt.requested)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestUpgradeRejectsDataDirMismatchBeforeChangingAnything(t *testing.T) {
+	env, quadlet := installedQuadlet(t, "/srv/registry")
+	services := &recordingServiceManager{}
+	inst := &Installer{systemd: services, quadlet: quadlet, env: env}
+	otherDir := filepath.Join(t.TempDir(), "other")
+
+	err := inst.Upgrade(t.Context(), &Config{DataDir: otherDir})
+
+	require.ErrorContains(t, err, "resolve data directory: data directory "+otherDir+" does not match")
+	assert.Empty(t, services.calls)
+	_, statErr := os.Stat(otherDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
 func TestRunStopsBeforeInstallationWhenHostnameDetectionFails(t *testing.T) {
 	root := t.TempDir()
 	dataDir := filepath.Join(root, "registry-data")

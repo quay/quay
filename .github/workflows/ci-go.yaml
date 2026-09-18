@@ -365,6 +365,54 @@ jobs:
             -data-dir=/var/lib/quay \
             -image-archive=/tmp/quay-mirror.tar
 
+      - name: Verify install refuses an existing installation
+        run: |
+          set -euo pipefail
+
+          sudo cp /var/lib/quay/auth/admin-password /tmp/admin-password.before
+          sudo cp /etc/containers/systemd/quay.container /tmp/quay.container.before
+
+          if sudo bin/quay install \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -image-archive=/tmp/quay-mirror.tar 2>/tmp/reinstall.log; then
+            echo "FAIL: install succeeded against an existing installation"
+            cat /tmp/reinstall.log
+            exit 1
+          fi
+          grep -q "existing installation found" /tmp/reinstall.log
+          grep -q "quay upgrade" /tmp/reinstall.log
+          echo "install refused the existing installation"
+
+          sudo cmp /tmp/admin-password.before /var/lib/quay/auth/admin-password
+          sudo cmp /tmp/quay.container.before /etc/containers/systemd/quay.container
+          test "$(sudo systemctl is-active quay.service)" = active
+          echo "Refused install left the installation untouched"
+
+      - name: Upgrade registry in place
+        run: |
+          set -euo pipefail
+
+          if sudo bin/quay upgrade -data-dir=/srv/other-registry \
+            -image-archive=/tmp/quay-mirror.tar 2>/tmp/upgrade-mismatch.log; then
+            echo "FAIL: upgrade accepted a data directory that does not match the installation"
+            cat /tmp/upgrade-mismatch.log
+            exit 1
+          fi
+          grep -q "does not match the existing installation" /tmp/upgrade-mismatch.log
+          sudo test ! -e /srv/other-registry
+          echo "upgrade refused a mismatched data directory"
+
+          sudo bin/quay upgrade -image-archive=/tmp/quay-mirror.tar
+
+          test "$(sudo systemctl is-active quay.service)" = active
+          sudo cmp /tmp/admin-password.before /var/lib/quay/auth/admin-password
+          sudo grep -q '^Volume=/var/lib/quay:/data:Z$' /etc/containers/systemd/quay.container
+          sudo grep -q -- '--hostname localhost:8443' /etc/containers/systemd/quay.container
+          sudo grep -q '^PublishPort=8443:8443$' /etc/containers/systemd/quay.container
+          curl -kfsS https://localhost:8443/healthz
+          echo "Upgrade preserved data directory, hostname, port, and credentials"
+
       - name: Trust registry TLS certificate
         run: |
           sudo install -m 644 /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
@@ -567,6 +615,20 @@ jobs:
 
       - name: Save image archive
         run: podman save quay-mirror:test -o /tmp/quay-mirror.tar
+
+      - name: Verify upgrade refuses a missing installation (rootless)
+        run: |
+          set -euo pipefail
+
+          if bin/quay upgrade -image-archive=/tmp/quay-mirror.tar 2>/tmp/upgrade-missing.log; then
+            echo "FAIL: upgrade succeeded without an existing installation"
+            cat /tmp/upgrade-missing.log
+            exit 1
+          fi
+          grep -q "no existing installation found" /tmp/upgrade-missing.log
+          grep -q "quay install" /tmp/upgrade-missing.log
+          test ! -e "$HOME/.config/containers/systemd/quay.container"
+          echo "upgrade refused without an installation"
 
       - name: Install registry (rootless)
         run: |
