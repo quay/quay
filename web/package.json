@@ -120,7 +120,7 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.8.1",
     "webpack-merge": "^5.10.0",
-    "fast-uri": "^3.1.4"
+    "fast-uri": "^3.1.7"
   },
   "overrides": {
     "cross-spawn": "^7.0.6",
@@ -135,8 +135,8 @@
     "node-forge": "1.4.0",
     "minimatch": "3.1.5",
     "svgo": "4.0.1",
+    "fast-uri": "^3.1.7",
     "immutable": "^5.1.8",
-    "fast-uri": "^3.1.4",
     "brace-expansion": "^1.1.16",
     "js-yaml": "^4.3.0",
     "qs": "^6.16.0",
@@ -156,8 +156,8 @@
       "node-forge": "1.4.0",
       "minimatch": "3.1.5",
       "svgo": "4.0.1",
+      "fast-uri": "^3.1.7",
       "immutable": "^5.1.8",
-      "fast-uri": "^3.1.4",
       "brace-expansion": "^1.1.16",
       "js-yaml": "^4.3.0",
       "qs": "^6.16.0",
