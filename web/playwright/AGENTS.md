@@ -282,6 +282,12 @@ Avoid `beforeEach`/`afterEach` with manual `try/catch` cleanup. The `api` fixtur
 
 Tests that call `/api/v1/signout` require special handling because Quay invalidates **ALL sessions** for that user server-side (`invalidate_all_sessions(user)`). This breaks parallel tests using the same user.
 
+> **Related isolation concern:** Worker-scoped browser contexts (`authenticatedPage`, `superuserPage`) also retain
+> `localStorage`, `sessionStorage`, and cookies between tests in the same worker. If a test writes to browser
+> storage, the next test in the same worker inherits that state — regardless of whether a logout occurred.
+> See the **Worker-scoped context storage** row in [Common Gotchas](#common-gotchas) for the `addInitScript`
+> cleanup pattern.
+
 ### Solution: Unique Temporary Users
 
 Create a custom fixture that provisions a unique user per test:
@@ -493,3 +499,4 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
+| **Worker-scoped context storage** | `authenticatedPage` (and any fixture built on `userContext`) is worker-scoped: `localStorage`, `sessionStorage`, and cookies persist across every test in the same worker. Tests that depend on specific initial storage state must clear the relevant keys before page setup using `await page.addInitScript(() => localStorage.removeItem('your-key'))` (called before `goto()`). Omitting this causes cross-test state bleed and high flake rates when the polluting test runs first in the worker. |
