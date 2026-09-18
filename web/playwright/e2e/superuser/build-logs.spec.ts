@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe(
   'Superuser Build Logs',
