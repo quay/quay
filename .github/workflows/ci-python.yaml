@@ -42,7 +42,7 @@ jobs:
         tox -e py312-unit -- --cov=./ --cov-report=xml
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: unit
@@ -82,7 +82,7 @@ jobs:
         tox -e py312-sqlite-legacy -- --cov=./ --cov-report=xml --cov-append
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: sqlite
