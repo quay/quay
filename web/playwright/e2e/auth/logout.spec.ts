@@ -27,7 +27,7 @@ const test = base.extend<LogoutTestFixtures>({
   },
 
   logoutPage: async (
-    {browser, superuserRequest, logoutUsername, quayConfig},
+    {browser, superuserApi, logoutUsername, quayConfig},
     use,
   ) => {
     const username = logoutUsername;
@@ -36,7 +36,7 @@ const test = base.extend<LogoutTestFixtures>({
     const mailingEnabled = quayConfig?.features?.MAILING === true;
 
     // Create temporary user using superuser API
-    const superApi = new ApiClient(superuserRequest);
+    const superApi = superuserApi.raw;
     await superApi.createUser(username, password, email);
 
     // Create new context for this user
