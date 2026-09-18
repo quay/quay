@@ -87,8 +87,8 @@ func New(stderr io.Writer) (*Installer, error) {
 	}, nil
 }
 
-// Initialize performs the one-shot initialization used by both `quay init`
-// and `quay install`, without starting a long-running server or container.
+// Initialize performs the one-shot initialization used by both `mirror-registry init`
+// and `mirror-registry install`, without starting a long-running server or container.
 func Initialize(ctx context.Context, cfg *Config) error {
 	if cfg == nil {
 		return fmt.Errorf("nil installer config")
