@@ -92,6 +92,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
+          version: v0.37.1
           platforms: linux/amd64
           append: |
             - endpoint: ssh://builder-ppc64le
