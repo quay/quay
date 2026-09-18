@@ -1008,7 +1008,7 @@ export function skipUnlessAuthType(
   ];
 }
 
-function getTestUsers(config?: QuayConfig | null) {
+export function getTestUsers(config?: QuayConfig | null) {
   const authType = config?.config?.AUTHENTICATION_TYPE;
   if (authType === 'OIDC') return TEST_USERS_OIDC;
   if (authType === 'LDAP') return TEST_USERS_LDAP;
@@ -1021,6 +1021,15 @@ async function setReactUICookie(context: BrowserContext): Promise<void> {
     {name: 'defaultui', value: 'react', domain, path: '/'},
   ]);
 }
+
+// Quay's FRESH_LOGIN_TIMEOUT = "10m" (config.py), hardcoded here since it is
+// not exposed by the /config endpoint.
+const FRESH_LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
+// Tracks the last time superuserPage refreshed each worker's superuserContext,
+// so the refresh below only re-signs-in once the session is old enough to
+// risk falling outside FRESH_LOGIN_TIMEOUT_MS.
+const SUPERUSER_PAGE_REFRESH_INTERVAL_MS = FRESH_LOGIN_TIMEOUT_MS / 2;
+const superuserPageLastLogin = new WeakMap<BrowserContext, number>();
 
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
@@ -1084,6 +1093,9 @@ type TestFixtures = {
   // Pre-authenticated API request context as superuser
   superuserRequest: APIRequestContext;
 
+  // Pre-authenticated API request context as readonly user
+  readonlyRequest: APIRequestContext;
+
   // Quay configuration (features, config settings)
   quayConfig: QuayConfig;
 
@@ -1092,6 +1104,9 @@ type TestFixtures = {
 
   // API client for superuser with auto-cleanup
   superuserApi: TestApi;
+
+  // API client for readonly user with auto-cleanup
+  readonlyApi: TestApi;
 
   // RawApiClient authenticated as admin/superuser (no browser required)
   adminClient: RawApiClient;
@@ -1177,6 +1192,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         users.admin.password,
         cachedQuayConfig,
       );
+      superuserPageLastLogin.set(context, Date.now());
       await use(context);
       await context.close();
     },
@@ -1239,7 +1255,37 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await page.close();
   },
 
-  superuserPage: async ({superuserContext}, use) => {
+  superuserPage: async ({superuserContext, cachedQuayConfig}, use) => {
+    // superuserContext is worker-scoped and signs in once; a test running
+    // near the end of a long worker lifetime can land outside Quay's 10m
+    // fresh-login window, so refresh the session before handing out a page.
+    // Skip under OIDC: Quay's SSO pass-through means a repeat browser login
+    // just times out waiting for a Keycloak redirect that never happens
+    // (there is no password-verify modal to refresh on that path anyway).
+    // Re-login also rotates the session CSRF token, so an ApiClient that
+    // cached a token before this refresh must refetch it before writing.
+    const isOIDC = cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC';
+    const lastLogin = superuserPageLastLogin.get(superuserContext) ?? 0;
+    // A test that runs longer than this refresh window can still run the
+    // session past FRESH_LOGIN_TIMEOUT_MS mid-test even though it was fresh
+    // at start; testInfo.timeout during fixture setup
+    // always reads the config default (test.setTimeout() calls in the test
+    // body run later), so there is nothing reliable to key an extra guard
+    // off here. Tests that run that long re-sign in directly instead (see
+    // build-logs.spec.ts's superuserApi.raw.signIn call).
+    if (
+      !isOIDC &&
+      Date.now() - lastLogin > SUPERUSER_PAGE_REFRESH_INTERVAL_MS
+    ) {
+      const users = getTestUsers(cachedQuayConfig);
+      await loginUser(
+        superuserContext,
+        users.admin.username,
+        users.admin.password,
+        cachedQuayConfig,
+      );
+      superuserPageLastLogin.set(superuserContext, Date.now());
+    }
     const page = await superuserContext.newPage();
     await use(page);
     await page.close();
@@ -1268,6 +1314,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(superuserContext.request);
   },
 
+  readonlyRequest: async ({readonlyContext}, use) => {
+    await use(readonlyContext.request);
+  },
+
   quayConfig: async ({cachedQuayConfig}, use) => {
     await use(cachedQuayConfig);
   },
@@ -1286,6 +1336,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const users = getTestUsers(cachedQuayConfig);
     client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
+    await use(testApi);
+    await testApi.cleanup();
+  },
+
+  readonlyApi: async ({readonlyRequest, cachedQuayConfig}, use) => {
+    const client = new ApiClient(readonlyRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.readonly.username, users.readonly.password);
+    const testApi = new TestApi(client, users.readonly.username);
     await use(testApi);
     await testApi.cleanup();
   },

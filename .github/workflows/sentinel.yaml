@@ -28,7 +28,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -44,7 +44,7 @@ jobs:
             config-tool:
               - '{config-tool/**,.github/workflows/ci-config-tool.yaml}'
             python:
-              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**,.github/workflows/sentinel.yaml}'
+              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**}'
               - '!config-tool/**'
               - '!web/**'
               - '!internal/**'
@@ -53,10 +53,12 @@ jobs:
               - '**'
               - '!**/*.md'
               - '!docs/**'
-              - '!.agent/**'
+              - '!web/playwright/Dockerfile'
+              - '!.agents/**'
               - '!.claude/**'
               - '!agent_docs/**'
               - '!.tekton/**'
+              - '!scripts/**'
               - '!deploy/**'
               - '!.chglog/**'
               - '!LICENSE'
@@ -68,6 +70,10 @@ jobs:
               - '!.github/workflows/ci-go.yaml'
               - '!.github/workflows/ci-python.yaml'
               - '!.github/workflows/ci-lint.yaml'
+              - '!.github/workflows/sentinel.yaml'
+              - '!.github/workflows/build-and-publish.yaml'
+              - '!.github/workflows/zizmor.yaml'
+              - '!.github/workflows/codeql.yml'
 
   lint-ci:
     name: Lint
@@ -112,10 +118,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
-        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # release/v1
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # release/v1
         with:
           allowed-skips: >-
             ${{
+              needs.lint-ci.result == 'skipped' && 'lint-ci,' || ''
+            }}${{
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
             }}${{
               needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''

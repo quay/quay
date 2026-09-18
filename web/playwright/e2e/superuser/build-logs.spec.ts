@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Superuser Build Logs',
@@ -85,7 +84,7 @@ test.describe(
 
     test('loads a triggerless build without 500 error', async ({
       superuserPage,
-      superuserRequest,
+      superuserApi,
       api,
     }) => {
       const org = await api.organization('sunotrigger');
@@ -93,8 +92,8 @@ test.describe(
       const build = await api.build(org.name, repo.name);
 
       // API layer: verify the fix — trigger is null, not a 500
-      const response = await superuserRequest.get(
-        `${API_URL}/api/v1/superuser/${build.buildId}/build`,
+      const response = await superuserApi.raw.getBuildAsSuperuser(
+        build.buildId,
       );
       expect(response.status()).toBe(200);
       const body = await response.json();
@@ -128,6 +127,7 @@ test.describe(
       superuserPage,
       superuserApi,
       api,
+      quayConfig,
     }) => {
       test.setTimeout(180_000);
 
@@ -143,7 +143,8 @@ test.describe(
       await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
 
       // Re-sign in to refresh the superuser session (stales during build wait)
-      await superuserApi.raw.signIn('admin', 'password');
+      const admin = getTestUsers(quayConfig).admin;
+      await superuserApi.raw.signIn(admin.username, admin.password);
 
       await superuserPage.goto('/build-logs');
 
@@ -167,7 +168,7 @@ test.describe(
 
     test('readonly superuser can view archived build logs without repo membership', async ({
       readonlyPage,
-      readonlyContext,
+      readonlyApi,
       superuserApi,
     }) => {
       test.slow();
@@ -192,18 +193,23 @@ test.describe(
 
       // Wait for the build logs archiver to archive this build's logs.
       // The archiver polls every 30s and archives one build per cycle.
-      const readonlyRequest = readonlyContext.request;
-      const logsEndpoint = `${API_URL}/api/v1/superuser/${build.buildId}/logs`;
       const archiveDeadline = Date.now() + 120_000;
       let hasLogsUrl = false;
       while (Date.now() < archiveDeadline) {
-        const resp = await readonlyRequest.get(logsEndpoint);
+        const resp = await readonlyApi.raw.getBuildLogsAsSuperuser(
+          build.buildId,
+        );
         if (resp.ok()) {
           const body = await resp.json();
           if (body.logs_url) {
             hasLogsUrl = true;
             break;
           }
+        } else if ([400, 401, 403].includes(resp.status())) {
+          const body = await resp.text();
+          throw new Error(
+            `Unexpected ${resp.status()} polling build logs for ${build.buildId}: ${body}`,
+          );
         }
         await new Promise((r) => setTimeout(r, 5_000));
       }
