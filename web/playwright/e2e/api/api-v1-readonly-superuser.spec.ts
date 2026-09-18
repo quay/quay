@@ -19,11 +19,6 @@ test.describe(
   'Readonly Superuser API',
   {tag: ['@api', '@auth:Database']},
   () => {
-    // Shared test data names (set once in beforeAll)
-    let orgName: string;
-    let repoName: string;
-    let teamName: string;
-    let robotShortname: string;
     let normalUsername: string;
 
     test.beforeAll(async ({cachedQuayConfig}) => {
@@ -32,10 +27,6 @@ test.describe(
           ? TEST_USERS_OIDC
           : TEST_USERS;
 
-      orgName = uniqueName('roorg');
-      repoName = uniqueName('rorepo');
-      teamName = uniqueName('roteam');
-      robotShortname = uniqueName('robot').replace(/-/g, '_');
       normalUsername = users.user.username;
     });
 
@@ -118,7 +109,10 @@ test.describe(
     // ========================================================================
 
     test.describe('Organization', () => {
+      let orgName: string;
+
       test.beforeAll(async ({adminClient}) => {
+        orgName = uniqueName('roorg');
         // Create org with admin
         const create = await adminClient.post('/api/v1/organization/', {
           name: orgName,
@@ -177,14 +171,17 @@ test.describe(
     // ========================================================================
 
     test.describe('Organization Application', () => {
+      let orgName: string;
       let appClientId: string;
 
       test.beforeAll(async ({adminClient}) => {
+        orgName = uniqueName('roorg');
         // Ensure org exists
-        await adminClient.post('/api/v1/organization/', {
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
 
         // Create app as admin
         const appResp = await adminClient.post(
@@ -230,12 +227,18 @@ test.describe(
     // ========================================================================
 
     test.describe('Repository', () => {
+      let orgName: string;
+      let repoName: string;
+
       test.beforeAll(async ({adminClient}) => {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
         // Ensure org
-        await adminClient.post('/api/v1/organization/', {
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
         // Create repo
         const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
@@ -326,19 +329,26 @@ test.describe(
     // ========================================================================
 
     test.describe('Permissions', () => {
+      let orgName: string;
+      let repoName: string;
+
       test.beforeAll(async ({adminClient}) => {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
         // Ensure org + repo exist
-        await adminClient.post('/api/v1/organization/', {
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
-        await adminClient.post('/api/v1/repository', {
+        expect(orgResp.status()).toBe(201);
+        const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
           description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
+        expect(repoResp.status()).toBe(201);
 
         // Set a user permission so there's something to read
         await adminClient.put(
@@ -387,24 +397,35 @@ test.describe(
     // ========================================================================
 
     test.describe('Teams', () => {
+      let orgName: string;
+      let repoName: string;
+      let teamName: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
+        teamName = uniqueName('roteam');
+
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
-        await adminClient.post('/api/v1/repository', {
+        expect(orgResp.status()).toBe(201);
+        const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
           description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
+        expect(repoResp.status()).toBe(201);
 
         // Create team
-        await adminClient.put(
+        const teamResp = await adminClient.put(
           `/api/v1/organization/${orgName}/team/${teamName}`,
           {name: teamName, role: 'member'},
         );
+        expect(teamResp.status()).toBe(200);
 
         // Add team permission on repo
         await adminClient.put(
@@ -491,17 +512,25 @@ test.describe(
     // ========================================================================
 
     test.describe('Robot accounts', () => {
+      let orgName: string;
+      let robotShortname: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        robotShortname = uniqueName('robot').replace(/-/g, '_');
+
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
 
         // Create robot
-        await adminClient.put(
+        const robotResp = await adminClient.put(
           `/api/v1/organization/${orgName}/robots/${robotShortname}`,
           {},
         );
+        expect(robotResp.status()).toBe(201);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -583,27 +612,39 @@ test.describe(
     // ========================================================================
 
     test.describe('Default permissions', () => {
+      let orgName: string;
+      let robotShortname: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        robotShortname = uniqueName('robot').replace(/-/g, '_');
+
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
 
         // Create robot for prototype delegate
-        await adminClient.put(
+        const robotResp = await adminClient.put(
           `/api/v1/organization/${orgName}/robots/${robotShortname}`,
           {},
         );
+        expect(robotResp.status()).toBe(201);
 
         // Create default permission
-        await adminClient.post(`/api/v1/organization/${orgName}/prototypes`, {
-          delegate: {
-            name: `${orgName}+${robotShortname}`,
-            kind: 'user',
-            is_robot: true,
+        const prototypeResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/prototypes`,
+          {
+            delegate: {
+              name: `${orgName}+${robotShortname}`,
+              kind: 'user',
+              is_robot: true,
+            },
+            role: 'read',
           },
-          role: 'read',
-        });
+        );
+        expect(prototypeResp.status()).toBe(200);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -811,18 +852,26 @@ test.describe(
     // ========================================================================
 
     test.describe('Stars', () => {
+      let orgName: string;
+      let repoName: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
+
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
-        await adminClient.post('/api/v1/repository', {
+        expect(orgResp.status()).toBe(201);
+        const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
           description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
+        expect(repoResp.status()).toBe(201);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -880,11 +929,15 @@ test.describe(
     // ========================================================================
 
     test.describe('Proxy cache', {tag: ['@feature:PROXY_CACHE']}, () => {
+      let orgName: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -928,13 +981,16 @@ test.describe(
     // ========================================================================
 
     test.describe('Quotas', {tag: ['@feature:QUOTA_MANAGEMENT']}, () => {
+      let orgName: string;
       let quotaId: string;
 
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
 
         // Create a quota
         const qResp = await adminClient.post(
@@ -1016,13 +1072,16 @@ test.describe(
     // ========================================================================
 
     test.describe('Auto-prune policies', {tag: ['@feature:AUTO_PRUNE']}, () => {
+      let orgName: string;
       let orgPolicyUuid: string;
 
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
+        expect(orgResp.status()).toBe(201);
 
         // Create org autoprune policy
         const policyResp = await adminClient.post(
@@ -1104,20 +1163,26 @@ test.describe(
       'Repository auto-prune policies',
       {tag: ['@feature:AUTO_PRUNE']},
       () => {
+        let orgName: string;
+        let repoName: string;
         let repoPolicyUuid: string;
 
         test.beforeAll(async ({adminClient}) => {
-          await adminClient.post('/api/v1/organization/', {
+          orgName = uniqueName('roorg');
+          repoName = uniqueName('rorepo');
+          const orgResp = await adminClient.post('/api/v1/organization/', {
             name: orgName,
             email: `${orgName}@example.com`,
           });
-          await adminClient.post('/api/v1/repository', {
+          expect(orgResp.status()).toBe(201);
+          const repoResp = await adminClient.post('/api/v1/repository', {
             namespace: orgName,
             repository: repoName,
             visibility: 'public',
             description: 'readonly superuser test repo',
             repo_kind: 'image',
           });
+          expect(repoResp.status()).toBe(201);
 
           // Create repo autoprune policy
           const policyResp = await adminClient.post(
@@ -1182,18 +1247,25 @@ test.describe(
     // ========================================================================
 
     test.describe('Mirror config', {tag: ['@feature:REPO_MIRROR']}, () => {
+      let orgName: string;
+      let repoName: string;
+
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
-        await adminClient.post('/api/v1/repository', {
+        expect(orgResp.status()).toBe(201);
+        const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
           description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
+        expect(repoResp.status()).toBe(201);
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -1240,20 +1312,26 @@ test.describe(
     // ========================================================================
 
     test.describe('Notifications', () => {
+      let orgName: string;
+      let repoName: string;
       let notificationUuid: string;
 
       test.beforeAll(async ({adminClient}) => {
-        await adminClient.post('/api/v1/organization/', {
+        orgName = uniqueName('roorg');
+        repoName = uniqueName('rorepo');
+        const orgResp = await adminClient.post('/api/v1/organization/', {
           name: orgName,
           email: `${orgName}@example.com`,
         });
-        await adminClient.post('/api/v1/repository', {
+        expect(orgResp.status()).toBe(201);
+        const repoResp = await adminClient.post('/api/v1/repository', {
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
           description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
+        expect(repoResp.status()).toBe(201);
 
         // Create a notification
         const notifResp = await adminClient.post(
