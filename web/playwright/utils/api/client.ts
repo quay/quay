@@ -322,16 +322,15 @@ export class ApiClient {
   }
 
   async deleteOrganization(name: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/organization/${name}`,
-      {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(`${API_URL}/api/v1/organization/${name}`, {
         timeout: 5000,
         headers: {
           'X-CSRF-Token': token,
         },
-      },
-    );
+      });
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -978,16 +977,18 @@ export class ApiClient {
   }
 
   async deleteUser(username: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/superuser/users/${username}`,
-      {
-        timeout: 10000,
-        headers: {
-          'X-CSRF-Token': token,
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(
+        `${API_URL}/api/v1/superuser/users/${username}`,
+        {
+          timeout: 10000,
+          headers: {
+            'X-CSRF-Token': token,
+          },
         },
-      },
-    );
+      );
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -1208,19 +1209,21 @@ export class ApiClient {
     severity: MessageSeverity = 'info',
     mediaType: MessageMediaType = 'text/markdown',
   ): Promise<GlobalMessage> {
-    const token = await this.fetchToken();
-    const response = await this.request.post(`${API_URL}/api/v1/messages`, {
-      timeout: 5000,
-      headers: {
-        'X-CSRF-Token': token,
-      },
-      data: {
-        message: {
-          content,
-          media_type: mediaType,
-          severity,
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.post(`${API_URL}/api/v1/messages`, {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
         },
-      },
+        data: {
+          message: {
+            content,
+            media_type: mediaType,
+            severity,
+          },
+        },
+      });
     });
 
     if (response.status() !== 201) {
@@ -1240,16 +1243,15 @@ export class ApiClient {
   }
 
   async deleteMessage(uuid: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/message/${uuid}`,
-      {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(`${API_URL}/api/v1/message/${uuid}`, {
         timeout: 5000,
         headers: {
           'X-CSRF-Token': token,
         },
-      },
-    );
+      });
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -2590,15 +2592,17 @@ export class ApiClient {
     teamName: string,
     groupName: string,
   ): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.post(
-      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
-      {
-        timeout: 5000,
-        headers: {'X-CSRF-Token': token},
-        data: {group_dn: groupName},
-      },
-    );
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.post(
+        `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+        {
+          timeout: 5000,
+          headers: {'X-CSRF-Token': token},
+          data: {group_dn: groupName},
+        },
+      );
+    });
 
     if (!response.ok()) {
       const body = await response.text();
@@ -2609,14 +2613,16 @@ export class ApiClient {
   }
 
   async disableTeamSync(orgName: string, teamName: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
-      {
-        timeout: 5000,
-        headers: {'X-CSRF-Token': token},
-      },
-    );
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(
+        `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+        {
+          timeout: 5000,
+          headers: {'X-CSRF-Token': token},
+        },
+      );
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
