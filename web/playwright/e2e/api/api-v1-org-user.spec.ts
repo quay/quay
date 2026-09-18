@@ -61,7 +61,7 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
         // successfully — skip the sign-in portion of this test
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes('needsEmailVerification')) {
-          return;
+          return test.skip(true, 'Email verification required — sign-in not exercised');
         }
         throw e;
       }
