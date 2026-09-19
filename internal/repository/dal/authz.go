@@ -59,7 +59,7 @@ func (a *Authorizer) CanAdminRepository(ctx context.Context, principal *auth.Pri
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 // CanPullRepository reports whether principal can pull repo contents.
@@ -91,7 +91,7 @@ func (a *Authorizer) CanPullRepository(ctx context.Context, principal *auth.Prin
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 // CanPushRepository reports whether principal can push repo contents.
@@ -129,7 +129,7 @@ func (a *Authorizer) CanPushRepository(ctx context.Context, principal *auth.Prin
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 // CanCreateRepository reports whether principal can create repos in namespace.
@@ -155,7 +155,7 @@ func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Pr
 	if err != nil {
 		return false, err
 	}
-	if isOrgMirrored != 0 {
+	if isOrgMirrored {
 		return false, nil
 	}
 	if isSuperUser {
@@ -170,7 +170,7 @@ func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Pr
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 func (a *Authorizer) canPushMirrorRepository(ctx context.Context, principal *auth.Principal, repositoryID int64) (bool, error) {
@@ -184,7 +184,7 @@ func (a *Authorizer) canPushMirrorRepository(ctx context.Context, principal *aut
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
 
 func (a *Authorizer) canPushOrgMirrorRepository(ctx context.Context, principal *auth.Principal, repositoryID int64) (bool, error) {
@@ -198,5 +198,5 @@ func (a *Authorizer) canPushOrgMirrorRepository(ctx context.Context, principal *
 	if err != nil {
 		return false, err
 	}
-	return allowed != 0, nil
+	return allowed, nil
 }
