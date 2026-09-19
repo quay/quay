@@ -22,7 +22,9 @@ from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import (
     PreemptedException,
+    _build_local_digest_map,
     _get_v2_bearer_token,
+    _remote_manifest_digest,
     copy_filtered_architectures,
     delete_obsolete_tags,
     perform_mirror,
@@ -456,6 +458,8 @@ def test_rollback(
     _create_tag(repo, "updated")
     _create_tag(repo, "deleted")
 
+    different_manifest = b'{"schemaVersion": 2, "config": {"digest": "sha256:different"}}'
+
     skopeo_calls = [
         {
             "args": [
@@ -483,6 +487,16 @@ def test_rollback(
                 "docker://localhost:5000/mirror/repo:created",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository:updated",
+            ],
+            "results": SkopeoResults(True, [], different_manifest, ""),
         },
         {
             "args": [
@@ -2410,3 +2424,343 @@ def test_workers_active_gauge_reset_on_terminate(initialized_db, app):
 
         worker.terminate(graceful=True)
         gauge.set.assert_called_with(0)
+
+
+# ---------------------------------------------------------------------------
+# Tests for incremental sync helpers (PROJQUAY-13193)
+# ---------------------------------------------------------------------------
+
+
+def test_build_local_digest_map_returns_tag_digest_pairs(initialized_db):
+    """_build_local_digest_map returns a {name: digest} dict for alive tags."""
+    mirror, repo = create_mirror_repo_robot(["latest"], repo_name="digest_map")
+    _create_tag(repo, "v1")
+    _create_tag(repo, "v2")
+
+    digest_map = _build_local_digest_map(repo.id)
+
+    assert "v1" in digest_map
+    assert "v2" in digest_map
+    assert digest_map["v1"].startswith("sha256:")
+    assert digest_map["v2"].startswith("sha256:")
+
+
+def test_build_local_digest_map_empty_repo(initialized_db):
+    """_build_local_digest_map returns an empty dict for a repo with no tags."""
+    mirror, repo = create_mirror_repo_robot(["latest"], repo_name="empty_map")
+
+    digest_map = _build_local_digest_map(repo.id)
+
+    assert digest_map == {}
+
+
+def test_build_local_digest_map_returns_empty_on_error(initialized_db):
+    """_build_local_digest_map returns {} on exception so callers fall through to full copy."""
+    with mock.patch(
+        "workers.repomirrorworker.filter_to_alive_tags", side_effect=Exception("db error")
+    ):
+        digest_map = _build_local_digest_map(999999)
+
+    assert digest_map == {}
+
+
+def test_remote_manifest_digest_returns_sha256(initialized_db, app):
+    """_remote_manifest_digest hashes raw manifest bytes and returns sha256:hex."""
+    import hashlib
+
+    raw_manifest = b'{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.index.v1+json"}'
+    expected_digest = "sha256:" + hashlib.sha256(raw_manifest).hexdigest()
+
+    skopeo = mock.MagicMock()
+    skopeo.inspect_raw.return_value = SkopeoResults(True, [], raw_manifest, "")
+
+    result = _remote_manifest_digest(
+        skopeo, "docker://example.com/repo:latest", 300, None, None, True, {}, False
+    )
+
+    assert result == expected_digest
+    skopeo.inspect_raw.assert_called_once()
+
+
+def test_remote_manifest_digest_returns_none_on_failure(initialized_db, app):
+    """_remote_manifest_digest returns None when skopeo inspect_raw fails."""
+    skopeo = mock.MagicMock()
+    skopeo.inspect_raw.return_value = SkopeoResults(False, [], "", "connection refused")
+
+    result = _remote_manifest_digest(
+        skopeo, "docker://example.com/repo:latest", 300, None, None, True, {}, False
+    )
+
+    assert result is None
+
+
+def test_remote_manifest_digest_returns_none_on_exception(initialized_db, app):
+    """_remote_manifest_digest returns None on exception so callers fall through."""
+    skopeo = mock.MagicMock()
+    skopeo.inspect_raw.side_effect = Exception("network error")
+
+    result = _remote_manifest_digest(
+        skopeo, "docker://example.com/repo:latest", 300, None, None, True, {}, False
+    )
+
+    assert result is None
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_skips_unchanged_tag(run_skopeo_mock, initialized_db, app):
+    """When remote digest matches local digest, skopeo copy is not called for that tag."""
+    import hashlib
+
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], repo_name="skip_unchanged", external_registry_config={"verify_tls": False}
+    )
+    _create_tag(repo, "latest")
+
+    # Get the local manifest digest so we can make the remote return matching raw bytes
+    local_map = _build_local_digest_map(repo.id)
+    local_digest = local_map["latest"]
+
+    # Build raw manifest bytes that hash to the same digest as the local tag
+    # We need to find the actual manifest bytes from the DB
+    from data.database import Manifest as ManifestDB
+
+    manifest_row = (
+        ManifestDB.select()
+        .where(ManifestDB.repository == repo.id, ManifestDB.digest == local_digest)
+        .get()
+    )
+    raw_manifest_bytes = manifest_row.manifest_bytes.encode("utf-8")
+
+    # Verify our raw bytes produce the expected digest
+    computed = "sha256:" + hashlib.sha256(raw_manifest_bytes).hexdigest()
+    assert computed == local_digest
+
+    skopeo_calls = [
+        # 1) list-tags
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # 2) inspect --raw for digest comparison — returns matching manifest
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], raw_manifest_bytes, ""),
+        },
+        # NO copy call — tag should be skipped
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            _assert_skopeo_args(args, skopeo_call["args"])
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    # All expected calls consumed, no copy was issued
+    assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_syncs_changed_tag(run_skopeo_mock, initialized_db, app):
+    """When remote digest differs from local, skopeo copy IS called."""
+    from data.model.user import retrieve_robot_token
+
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], repo_name="sync_changed", external_registry_config={"verify_tls": False}
+    )
+    _create_tag(repo, "latest")
+
+    # Return different raw manifest bytes so digest won't match
+    different_manifest = b'{"schemaVersion": 2, "config": {"digest": "sha256:different"}}'
+
+    skopeo_calls = [
+        # 1) list-tags
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # 2) inspect --raw — returns DIFFERENT manifest
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], different_manifest, ""),
+        },
+        # 3) copy IS called because digest differs
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/sync_changed:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            _assert_skopeo_args(args, skopeo_call["args"])
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    # All calls consumed including the copy
+    assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_syncs_new_tag(run_skopeo_mock, initialized_db, app):
+    """New tags not present locally are always synced (no inspect_raw call)."""
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], repo_name="sync_new", external_registry_config={"verify_tls": False}
+    )
+    # Do NOT create a local "latest" tag — repo is empty
+
+    skopeo_calls = [
+        # 1) list-tags
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # 2) copy directly — no inspect_raw because tag is new
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/sync_new:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            _assert_skopeo_args(args, skopeo_call["args"])
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_fallthrough_on_inspect_failure(run_skopeo_mock, initialized_db, app):
+    """When inspect_raw fails, the tag is still synced via copy (safe fallthrough)."""
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], repo_name="fallthrough", external_registry_config={"verify_tls": False}
+    )
+    _create_tag(repo, "latest")
+
+    skopeo_calls = [
+        # 1) list-tags
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # 2) inspect --raw FAILS
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(False, [], "", "connection refused"),
+        },
+        # 3) copy IS called as fallthrough
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/fallthrough:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            _assert_skopeo_args(args, skopeo_call["args"])
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
