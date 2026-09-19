@@ -43,6 +43,64 @@ func (q *Queries) CountManifestBlobRefs(ctx context.Context, blobID int64) (int6
 	return count, err
 }
 
+const countManifestsByRepository = `-- name: CountManifestsByRepository :one
+SELECT COUNT(*) FROM manifest WHERE repository_id = ?
+`
+
+func (q *Queries) CountManifestsByRepository(ctx context.Context, repositoryID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countManifestsByRepository, repositoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTagsByRepository = `-- name: CountTagsByRepository :one
+SELECT COUNT(*) FROM tag WHERE repository_id = ?
+`
+
+func (q *Queries) CountTagsByRepository(ctx context.Context, repositoryID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTagsByRepository, repositoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteAccessTokensByRepository = `-- name: DeleteAccessTokensByRepository :exec
+DELETE FROM accesstoken WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteAccessTokensByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAccessTokensByRepository, repositoryID)
+	return err
+}
+
+const deleteApprTagsByRepository = `-- name: DeleteApprTagsByRepository :exec
+DELETE FROM apprtag WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteApprTagsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteApprTagsByRepository, repositoryID)
+	return err
+}
+
+const deleteBlobUploadsByRepository = `-- name: DeleteBlobUploadsByRepository :exec
+DELETE FROM blobupload WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteBlobUploadsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteBlobUploadsByRepository, repositoryID)
+	return err
+}
+
+const deleteDeletedRepositoryMarkers = `-- name: DeleteDeletedRepositoryMarkers :exec
+DELETE FROM deletedrepository WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteDeletedRepositoryMarkers(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteDeletedRepositoryMarkers, repositoryID)
+	return err
+}
+
 const deleteExpiredTag = `-- name: DeleteExpiredTag :exec
 DELETE FROM tag WHERE id = ?
 `
@@ -70,6 +128,204 @@ func (q *Queries) DeleteImageStorageSignatures(ctx context.Context, storageID in
 	return err
 }
 
+const deleteManifestBlobsByRepository = `-- name: DeleteManifestBlobsByRepository :exec
+DELETE FROM manifestblob WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestBlobsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestBlobsByRepository, repositoryID)
+	return err
+}
+
+const deleteManifestChildrenByRepository = `-- name: DeleteManifestChildrenByRepository :exec
+DELETE FROM manifestchild WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestChildrenByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestChildrenByRepository, repositoryID)
+	return err
+}
+
+const deleteManifestLabelsByRepository = `-- name: DeleteManifestLabelsByRepository :exec
+DELETE FROM manifestlabel WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestLabelsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestLabelsByRepository, repositoryID)
+	return err
+}
+
+const deleteManifestPullStatisticsByRepository = `-- name: DeleteManifestPullStatisticsByRepository :exec
+DELETE FROM manifestpullstatistics WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestPullStatisticsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestPullStatisticsByRepository, repositoryID)
+	return err
+}
+
+const deleteManifestSecurityStatusByRepository = `-- name: DeleteManifestSecurityStatusByRepository :exec
+DELETE FROM manifestsecuritystatus WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestSecurityStatusByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestSecurityStatusByRepository, repositoryID)
+	return err
+}
+
+const deleteManifestsByRepository = `-- name: DeleteManifestsByRepository :exec
+DELETE FROM manifest WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteManifestsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestsByRepository, repositoryID)
+	return err
+}
+
+const deleteOrgMirrorRepositoriesByRepository = `-- name: DeleteOrgMirrorRepositoriesByRepository :exec
+DELETE FROM orgmirrorrepository WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteOrgMirrorRepositoriesByRepository(ctx context.Context, repositoryID sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, deleteOrgMirrorRepositoriesByRepository, repositoryID)
+	return err
+}
+
+const deleteQueueItem = `-- name: DeleteQueueItem :exec
+DELETE FROM queueitem WHERE id = ?
+`
+
+func (q *Queries) DeleteQueueItem(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteQueueItem, id)
+	return err
+}
+
+const deleteQuotaRepositorySizesByRepository = `-- name: DeleteQuotaRepositorySizesByRepository :exec
+DELETE FROM quotarepositorysize WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteQuotaRepositorySizesByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteQuotaRepositorySizesByRepository, repositoryID)
+	return err
+}
+
+const deleteRepoMirrorConfigByRepository = `-- name: DeleteRepoMirrorConfigByRepository :exec
+DELETE FROM repomirrorconfig WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepoMirrorConfigByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepoMirrorConfigByRepository, repositoryID)
+	return err
+}
+
+const deleteRepoMirrorRulesByRepository = `-- name: DeleteRepoMirrorRulesByRepository :exec
+DELETE FROM repomirrorrule WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepoMirrorRulesByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepoMirrorRulesByRepository, repositoryID)
+	return err
+}
+
+const deleteRepository = `-- name: DeleteRepository :exec
+DELETE FROM repository WHERE id = ? AND state = 3
+`
+
+func (q *Queries) DeleteRepository(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepository, id)
+	return err
+}
+
+const deleteRepositoryActionCountsByRepository = `-- name: DeleteRepositoryActionCountsByRepository :exec
+DELETE FROM repositoryactioncount WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryActionCountsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryActionCountsByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryAuthorizedEmailsByRepository = `-- name: DeleteRepositoryAuthorizedEmailsByRepository :exec
+DELETE FROM repositoryauthorizedemail WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryAuthorizedEmailsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryAuthorizedEmailsByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryAutoPrunePoliciesByRepository = `-- name: DeleteRepositoryAutoPrunePoliciesByRepository :exec
+DELETE FROM repositoryautoprunepolicy WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryAutoPrunePoliciesByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryAutoPrunePoliciesByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryBuildTriggersByRepository = `-- name: DeleteRepositoryBuildTriggersByRepository :exec
+DELETE FROM repositorybuildtrigger WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryBuildTriggersByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryBuildTriggersByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryBuildsByRepository = `-- name: DeleteRepositoryBuildsByRepository :exec
+DELETE FROM repositorybuild WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryBuildsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryBuildsByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryImmutabilityPoliciesByRepository = `-- name: DeleteRepositoryImmutabilityPoliciesByRepository :exec
+DELETE FROM repositoryimmutabilitypolicy WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryImmutabilityPoliciesByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryImmutabilityPoliciesByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryNotificationsByRepository = `-- name: DeleteRepositoryNotificationsByRepository :exec
+DELETE FROM repositorynotification WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryNotificationsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryNotificationsByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositoryPermissionsByRepository = `-- name: DeleteRepositoryPermissionsByRepository :exec
+DELETE FROM repositorypermission WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositoryPermissionsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryPermissionsByRepository, repositoryID)
+	return err
+}
+
+const deleteRepositorySearchScoresByRepository = `-- name: DeleteRepositorySearchScoresByRepository :exec
+DELETE FROM repositorysearchscore WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteRepositorySearchScoresByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositorySearchScoresByRepository, repositoryID)
+	return err
+}
+
+const deleteStarsByRepositoryForPurge = `-- name: DeleteStarsByRepositoryForPurge :exec
+DELETE FROM star WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteStarsByRepositoryForPurge(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteStarsByRepositoryForPurge, repositoryID)
+	return err
+}
+
 const deleteTagNotifications = `-- name: DeleteTagNotifications :exec
 DELETE FROM tagnotificationsuccess WHERE tag_id = ?
 `
@@ -79,12 +335,49 @@ func (q *Queries) DeleteTagNotifications(ctx context.Context, tagID int64) error
 	return err
 }
 
+const deleteTagNotificationsByRepository = `-- name: DeleteTagNotificationsByRepository :exec
+DELETE FROM tagnotificationsuccess
+WHERE tag_id IN (SELECT id FROM tag WHERE repository_id = ?)
+`
+
+func (q *Queries) DeleteTagNotificationsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagNotificationsByRepository, repositoryID)
+	return err
+}
+
+const deleteTagPullStatisticsByRepository = `-- name: DeleteTagPullStatisticsByRepository :exec
+DELETE FROM tagpullstatistics WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteTagPullStatisticsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagPullStatisticsByRepository, repositoryID)
+	return err
+}
+
+const deleteTagsByRepository = `-- name: DeleteTagsByRepository :exec
+DELETE FROM tag WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteTagsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagsByRepository, repositoryID)
+	return err
+}
+
 const deleteUploadedBlobsByBlobID = `-- name: DeleteUploadedBlobsByBlobID :exec
 DELETE FROM uploadedblob WHERE blob_id = ?
 `
 
 func (q *Queries) DeleteUploadedBlobsByBlobID(ctx context.Context, blobID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteUploadedBlobsByBlobID, blobID)
+	return err
+}
+
+const deleteUploadedBlobsByRepository = `-- name: DeleteUploadedBlobsByRepository :exec
+DELETE FROM uploadedblob WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteUploadedBlobsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUploadedBlobsByRepository, repositoryID)
 	return err
 }
 
@@ -124,6 +417,50 @@ func (q *Queries) FindExpiredTags(ctx context.Context) ([]FindExpiredTagsRow, er
 			&i.RepositoryID,
 			&i.ManifestID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findMarkedRepositories = `-- name: FindMarkedRepositories :many
+
+SELECT r.id, d.id AS marker_id, d.queue_id
+FROM repository r
+LEFT JOIN deletedrepository d ON d.repository_id = r.id
+WHERE r.state = 3
+ORDER BY r.id
+`
+
+type FindMarkedRepositoriesRow struct {
+	ID       int64          `json:"id"`
+	MarkerID sql.NullInt64  `json:"marker_id"`
+	QueueID  sql.NullString `json:"queue_id"`
+}
+
+// Repository purge (PROJQUAY-13202). The repository API marks a repository as
+// deleted (state = 3, renamed to a UUID, deletedrepository marker plus a
+// queueitem) exactly like Quay's mark_repository_for_deletion. Quay drains
+// that queue with repositorygcworker; the mirror registry purges marked
+// repositories inside its GC cycle instead. Deletes run child tables first so
+// SQLite foreign keys (PRAGMA foreign_keys=1) are satisfied.
+func (q *Queries) FindMarkedRepositories(ctx context.Context) ([]FindMarkedRepositoriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, findMarkedRepositories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindMarkedRepositoriesRow
+	for rows.Next() {
+		var i FindMarkedRepositoriesRow
+		if err := rows.Scan(&i.ID, &i.MarkerID, &i.QueueID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
