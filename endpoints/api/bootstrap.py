@@ -11,6 +11,10 @@ from auth.kubernetes_sa import (
     KubernetesSATokenValidationError,
     KubernetesSATokenValidator,
 )
+from auth.workload_identity import (
+    WorkloadIdentityAuthorizationError,
+    authorize_workload_identity_scope,
+)
 from data.database import OAuthAccessToken
 from data.model import db_transaction
 from data.model.oauth import (
@@ -21,6 +25,9 @@ from data.model.oauth import (
 )
 from endpoints.api import ApiResource, nickname, resource, show_if
 from endpoints.decorators import anon_allowed
+
+# Compatibility alias for callers of the former endpoint-local helper.
+authorize_workload_scope = authorize_workload_identity_scope
 from endpoints.exception import (
     ApiErrorType,
     ApiException,
@@ -42,6 +49,8 @@ class BootstrapTokenCleanupError(Exception):
 
 
 class BootstrapExchangeError(ApiException):
+    """Represent an OAuth token-exchange error as a Quay API problem."""
+
     _ERROR_TYPES = {
         "invalid_request": ApiErrorType.invalid_request,
         "invalid_token": ApiErrorType.invalid_token,
@@ -110,6 +119,7 @@ def _is_local_bootstrap_renewal_request(req: Request) -> bool:
 
 
 def _exchange_bootstrap_token():
+    """Validate an exchange request and mint its bounded bootstrap token."""
     values = request.form
     required = ("grant_type", "subject_token", "subject_token_type")
     if (
@@ -118,13 +128,29 @@ def _exchange_bootstrap_token():
         or values.get("subject_token_type") != "urn:ietf:params:oauth:token-type:jwt"
     ):
         _exchange_error("invalid_request", "invalid token exchange request", 400)
+    raw = values["subject_token"]
     try:
         validated = KubernetesSATokenValidator(
             _exchange_config(), app.config["HTTPCLIENT"], model_cache
-        ).validate(values["subject_token"])
+        ).validate(raw)
     except KubernetesSATokenValidationError:
         _exchange_error("invalid_token", "Kubernetes ServiceAccount token failed validation", 401)
-    _exchange_error("server_error", "workload identity authorization is not available", 503)
+    issuer = validated.issuer
+    subject = validated.subject
+    try:
+        effective_scope = authorize_workload_identity_scope(
+            _exchange_config().get("AUTHORIZED_SUBJECTS", []),
+            issuer,
+            subject,
+            values.get("scope", ""),
+        )
+    except WorkloadIdentityAuthorizationError as exc:
+        _exchange_error("access_denied", str(exc), 403)
+    _exchange_error(
+        "server_error",
+        "workload identity token issuance is not available",
+        503,
+    )
 
 
 @resource("/v1/bootstrap/exchange")
@@ -133,6 +159,7 @@ class BootstrapTokenExchange(ApiResource):
     @anon_allowed
     @nickname("exchangeBootstrapToken")
     def post(self):
+        """Exchange a Kubernetes ServiceAccount JWT for a scoped token."""
         return _exchange_bootstrap_token()
 
 
