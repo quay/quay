@@ -276,6 +276,68 @@ def get_repository_size(repository_id: int):
         return None
 
 
+def get_all_namespace_sizes(batch_size: int = 500):
+    """
+    Yields namespace size records in batches to avoid full table scans.
+    Each yielded dict contains id, username, organization and size_bytes.
+    """
+    last_id = 0
+    while True:
+        batch = list(
+            User.select(
+                User.id,
+                User.username,
+                User.organization,
+                QuotaNamespaceSize.size_bytes,
+            )
+            .join(QuotaNamespaceSize, on=(User.id == QuotaNamespaceSize.namespace_user))
+            .where(User.id > last_id)
+            .order_by(User.id)  # type: ignore[func-returns-value]
+            .limit(batch_size)
+            .dicts()
+        )
+
+        if not batch:
+            break
+
+        for row in batch:
+            yield row
+
+        last_id = batch[-1]["id"]
+
+
+def get_all_repository_sizes(batch_size: int = 500):
+    """
+    Yields repository size records in batches to avoid full table scans.
+    Each yielded dict contains id, name, namespace and size_bytes.
+    """
+    last_id = 0
+    while True:
+        batch = list(
+            Repository.select(
+                Repository.id,
+                Repository.name,
+                User.username.alias("namespace"),
+                QuotaRepositorySize.size_bytes,
+            )
+            .join(User, on=(Repository.namespace_user == User.id))
+            .switch(Repository)
+            .join(QuotaRepositorySize, on=(Repository.id == QuotaRepositorySize.repository))
+            .where(Repository.id > last_id)
+            .order_by(Repository.id)
+            .limit(batch_size)
+            .dicts()
+        )
+
+        if not batch:
+            break
+
+        for row in batch:
+            yield row
+
+        last_id = batch[-1]["id"]
+
+
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):
     return not (
         ManifestBlob.select(1)
