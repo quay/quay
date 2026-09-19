@@ -34,12 +34,28 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
-def _validate_external_reference(reference):
+def _effective_mirror_proxy(stored_config, submitted_config):
+    """Merge stored and submitted mirror proxy fields for SSRF route detection."""
+    stored_proxy = (stored_config or {}).get("proxy") or {}
+    if submitted_config is None:
+        return stored_proxy or None
+    submitted_proxy = submitted_config.get("proxy")
+    if submitted_proxy is None:
+        return stored_proxy or None
+    merged = dict(stored_proxy)
+    for key in ("http_proxy", "https_proxy", "no_proxy"):
+        if key in submitted_proxy:
+            merged[key] = submitted_proxy[key]
+    return merged or None
+
+
+def _validate_external_reference(reference, proxy_config=None):
     """Validate a repository mirror source and normalize SSRF errors."""
     try:
         validate_external_registry_reference(
             reference,
             allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=proxy_config,
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
@@ -341,7 +357,11 @@ class RepoMirrorResource(RepositoryParamResource):
         data = request.get_json()
 
         # Validate the complete request before creating rules or changing permissions.
-        _validate_external_reference(data["external_reference"])
+        registry_config = data.get("external_registry_config") or {}
+        _validate_external_reference(
+            data["external_reference"],
+            proxy_config=registry_config.get("proxy"),
+        )
 
         arch_filter = data.get("architecture_filter")
         if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
@@ -418,8 +438,16 @@ class RepoMirrorResource(RepositoryParamResource):
             raise NotFound()
 
         # Validate and normalize every requested change before applying any update.
+        effective_proxy = None
         if "external_reference" in values:
-            _validate_external_reference(values["external_reference"])
+            effective_proxy = _effective_mirror_proxy(
+                mirror.external_registry_config,
+                values.get("external_registry_config"),
+            )
+            _validate_external_reference(
+                values["external_reference"],
+                proxy_config=effective_proxy,
+            )
 
         if "sync_start_date" in values:
             try:
@@ -489,6 +517,7 @@ class RepoMirrorResource(RepositoryParamResource):
                 repo,
                 values["external_reference"],
                 allowed_hosts=_get_ssrf_allowed_hosts(),
+                proxy_config=effective_proxy,
             ):
                 track_and_log(
                     "repo_mirror_config_changed",

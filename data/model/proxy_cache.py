@@ -2,7 +2,10 @@ import features
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
 from data.model import DataModelException, InvalidProxyCacheConfigException
 from data.model.organization import get_organization
-from util.security.ssrf import validate_external_registry_url
+from util.security.ssrf import (
+    get_environment_proxy_config,
+    validate_external_registry_url,
+)
 
 
 def has_proxy_cache_config(org_name):
@@ -29,7 +32,10 @@ def create_proxy_cache_config(
     scheme = "http" if insecure else "https"
     try:
         validate_external_registry_url(
-            f"{scheme}://{hostname}", resolve_dns=False, allowed_hosts=allowed_hosts or []
+            f"{scheme}://{hostname}",
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts or [],
+            proxy_config=get_environment_proxy_config(),
         )
     except ValueError as e:
         raise DataModelException(str(e))

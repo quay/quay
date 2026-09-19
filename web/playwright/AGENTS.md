@@ -74,6 +74,10 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 | Superuser    | `@superuser`           | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them |
 | Webhook      | `@webhook`             | `@webhook`             | Uses the webhook receiver fixture or helper                            |
 
+### Proxy-route SSRF deployment tests
+
+Some org-mirror and proxy-cache specs are gated on `PLAYWRIGHT_PROXY_SSRF_E2E=1` and require a Quay deployment with real `HTTP_PROXY`/`HTTPS_PROXY`, SSRF allowlist entries, and (for positive cases) DNS-isolated upstream hostnames. Do not simulate proxy or DNS with `page.route()`; routing proof belongs in Python tests.
+
 ### Running Tagged Tests
 
 ```bash
