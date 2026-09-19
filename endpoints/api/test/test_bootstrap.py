@@ -105,6 +105,40 @@ def _expired_time():
     return datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
 
 
+def test_exchange_normalizes_issuer_trailing_slashes():
+    from endpoints.api.bootstrap import _normalize_exchange_issuer
+
+    assert _normalize_exchange_issuer("https://cluster.example.com/") == (
+        "https://cluster.example.com"
+    )
+    assert _normalize_exchange_issuer("https://cluster.example.com") == (
+        "https://cluster.example.com"
+    )
+
+
+def test_exchange_expiration_is_bounded_by_maximum():
+    from endpoints.api.bootstrap import _exchange_expiration_seconds
+
+    with patch.dict(
+        real_app.config,
+        {
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": {"BOOTSTRAP_TOKEN_MAX_TTL": 600},
+            "BOOTSTRAP_TOKEN_EXPIRATION": 3600,
+        },
+    ):
+        assert _exchange_expiration_seconds() == 600
+
+
+def test_exchange_response_returns_no_store_headers():
+    from endpoints.api.bootstrap import _exchange_response
+
+    response_body, status, headers = _exchange_response({"expires_in": 600})
+
+    assert status == 200
+    assert response_body["expires_in"] == 600
+    assert headers == {"Cache-Control": "no-store", "Pragma": "no-cache"}
+
+
 def _assert_expired_renew_rejected_without_rotation(resp, config, application, access_token):
     assert resp.status_code == 401
     assert resp.get_json()["error_type"] == "invalid_token"
