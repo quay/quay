@@ -1,0 +1,610 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from threading import Barrier
+from unittest.mock import Mock
+
+import jwt
+import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+from auth.kubernetes_sa import (
+    OIDC_WELL_KNOWN,
+    KubernetesSATokenValidationError,
+    KubernetesSATokenValidator,
+)
+from data.cache.impl import InMemoryDataModelCache, NoopDataModelCache
+
+ISSUER = "https://kubernetes.default.svc"
+AUDIENCE = "quay-bootstrap"
+KID = "test-key"
+NAMESPACE = "quay-operator"
+SA_NAME = "controller-manager"
+SA_UID = "72bcb00a-38f0-4b1a-9b8e-1f6c3a2d9e11"
+SUBJECT = f"system:serviceaccount:{NAMESPACE}:{SA_NAME}"
+
+
+class _WorkerCache:
+    """Give each simulated worker local state over one shared cache backend."""
+
+    def __init__(self, shared):
+        self.shared = shared
+
+    def retrieve(self, *args, **kwargs):
+        return self.shared.retrieve(*args, **kwargs)
+
+    def invalidate(self, *args, **kwargs):
+        return self.shared.invalidate(*args, **kwargs)
+
+    def add(self, *args, **kwargs):
+        return self.shared.add(*args, **kwargs)
+
+
+class _RecordingCache(InMemoryDataModelCache):
+    def __init__(self):
+        super().__init__({})
+        self.retrieved_keys = []
+
+    def retrieve(self, cache_key, loader, should_cache=lambda value: value is not None):
+        self.retrieved_keys.append(cache_key)
+        return super().retrieve(cache_key, loader, should_cache)
+
+
+def _rsa_key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+def _jwk(
+    private_key,
+    kid=KID,
+    use: str | None = "sig",
+    alg: str | None = "RS256",
+    kty: str | None = "RSA",
+):
+    public_jwk = jwt.algorithms.RSAAlgorithm.to_jwk(private_key.public_key(), as_dict=True)
+    public_jwk["kid"] = kid
+    if use is not None:
+        public_jwk["use"] = use
+    if alg is not None:
+        public_jwk["alg"] = alg
+    if kty is not None:
+        public_jwk["kty"] = kty
+    return public_jwk
+
+
+def _discovery_response(jwks_uri=None, issuer=ISSUER, status_code=200):
+    return Mock(
+        status_code=status_code,
+        json=Mock(
+            return_value={"issuer": issuer, "jwks_uri": jwks_uri or f"{ISSUER}/openid/v1/jwks"}
+        ),
+    )
+
+
+def _jwks_response(keys, status_code=200):
+    return Mock(status_code=status_code, json=Mock(return_value={"keys": keys}))
+
+
+def _sequence(*responses):
+    """Returns each response in order, then repeats the last one indefinitely.
+
+    An item may be an Exception instance, which is raised instead of returned.
+    """
+    remaining = list(responses)
+
+    def _next():
+        item = remaining.pop(0) if len(remaining) > 1 else remaining[0]
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    return _next
+
+
+def _dispatching_client(discovery_fn, jwks_fn):
+    def get(url, **_kwargs):
+        if url.endswith(OIDC_WELL_KNOWN):
+            return discovery_fn()
+        return jwks_fn()
+
+    client = Mock()
+    client.get.side_effect = get
+    return client
+
+
+def _validator(private_key, discovery_fn=None, jwks_fn=None, cache=None, **config_overrides):
+    if discovery_fn is None:
+        discovery_fn = _sequence(_discovery_response())
+    if jwks_fn is None:
+        jwks_fn = _sequence(_jwks_response([_jwk(private_key)]))
+    client = _dispatching_client(discovery_fn, jwks_fn)
+    config = {
+        "ISSUERS": [{"ISSUER": ISSUER}],
+        "REQUIRED_AUDIENCE": AUDIENCE,
+        "JWKS_CACHE_TTL_SECONDS": 3600,
+        **config_overrides,
+    }
+    cache = cache or InMemoryDataModelCache({})
+    return KubernetesSATokenValidator(config, client, cache), client
+
+
+def _token(private_key, kid=KID, no_kid=False, **claim_overrides):
+    now = datetime.now(UTC)
+    claims = {
+        "iss": ISSUER,
+        "sub": SUBJECT,
+        "aud": AUDIENCE,
+        "iat": now,
+        "exp": now + timedelta(minutes=10),
+        "kubernetes.io": {
+            "namespace": NAMESPACE,
+            "serviceaccount": {"name": SA_NAME, "uid": SA_UID},
+        },
+        **claim_overrides,
+    }
+    headers = {} if no_kid else {"kid": kid}
+    return jwt.encode(claims, private_key, algorithm="RS256", headers=headers)
+
+
+def test_validates_service_account_token_with_cached_oidc_data():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    first = validator.validate(_token(private_key))
+    second = validator.validate(_token(private_key))
+
+    assert first.issuer == ISSUER
+    assert first.subject == SUBJECT
+    assert first.claims["sub"] == SUBJECT
+    assert second.subject == SUBJECT
+    assert client.get.call_count == 2
+
+
+def test_oidc_cache_is_shared_between_validator_instances():
+    private_key = _rsa_key()
+    shared_cache = InMemoryDataModelCache({})
+    first_validator, first_client = _validator(private_key, cache=shared_cache)
+    second_validator, second_client = _validator(private_key, cache=shared_cache)
+
+    first_validator.validate(_token(private_key))
+    second_validator.validate(_token(private_key))
+
+    assert first_client.get.call_count == 2
+    assert second_client.get.call_count == 0
+
+
+def test_uses_separate_discovery_and_jwks_cache_entries_with_configured_ttl():
+    private_key = _rsa_key()
+    cache = _RecordingCache()
+    validator, _ = _validator(private_key, cache=cache, JWKS_CACHE_TTL_SECONDS=123)
+
+    validator.validate(_token(private_key))
+
+    cache_keys = {key.key: key.expiration for key in cache.retrieved_keys}
+    assert len(cache_keys) == 2
+    assert all(expiration == "123s" for expiration in cache_keys.values())
+    assert any(key.startswith("kubernetes_sa_oidc_discovery__") for key in cache_keys)
+    assert any(key.startswith("kubernetes_sa_oidc_jwks__") for key in cache_keys)
+
+
+def test_noop_cache_refetches_discovery_and_jwks():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key, cache=NoopDataModelCache({}))
+
+    validator.validate(_token(private_key))
+    validator.validate(_token(private_key))
+
+    assert client.get.call_count == 4
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"iss": "https://untrusted.example.com"},
+        {"aud": "another-service"},
+        {"exp": datetime.now(UTC) - timedelta(minutes=1)},
+        {"nbf": datetime.now(UTC) + timedelta(minutes=5)},
+        {"sub": "ordinary-user"},
+        {"sub": "system:serviceaccount:onlyonepart"},
+        {
+            "kubernetes.io": {
+                "namespace": "wrong-namespace",
+                "serviceaccount": {"name": SA_NAME, "uid": SA_UID},
+            }
+        },
+        {
+            "kubernetes.io": {
+                "namespace": NAMESPACE,
+                "serviceaccount": {"name": "wrong-name", "uid": SA_UID},
+            }
+        },
+        {"kubernetes.io": {"namespace": NAMESPACE, "serviceaccount": {"name": SA_NAME, "uid": ""}}},
+        {"kubernetes.io": {"namespace": NAMESPACE}},
+        {"kubernetes.io": None},
+    ],
+)
+def test_rejects_untrusted_or_invalid_claims(overrides):
+    private_key = _rsa_key()
+    validator, _ = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key, **overrides))
+
+
+def test_rejects_missing_iat_or_exp():
+    private_key = _rsa_key()
+    validator, _ = _validator(private_key)
+
+    token = jwt.encode(
+        {
+            "iss": ISSUER,
+            "sub": SUBJECT,
+            "aud": AUDIENCE,
+            "kubernetes.io": {
+                "namespace": NAMESPACE,
+                "serviceaccount": {"name": SA_NAME, "uid": SA_UID},
+            },
+        },
+        private_key,
+        algorithm="RS256",
+        headers={"kid": KID},
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(token)
+
+
+def test_rejects_malformed_token():
+    private_key = _rsa_key()
+    validator, _ = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate("not-a-jwt")
+
+
+def test_rejects_token_missing_kid():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    token = _token(private_key, no_kid=True)
+    assert "kid" not in jwt.get_unverified_header(token)
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(token)
+    assert client.get.call_count == 0
+
+
+def test_uses_discovery_endpoint_ca_and_mounted_bearer_token(tmp_path):
+    private_key = _rsa_key()
+    bearer_path = tmp_path / "token"
+    bearer_path.write_text("mounted-token\n")
+    ca_path = str(tmp_path / "ca.crt")
+    discovery_endpoint = "https://api.cluster.example.com:6443"
+    issuer_config = {
+        "ISSUER": ISSUER,
+        "DISCOVERY_ENDPOINT": discovery_endpoint,
+        "CA_CERT_PATH": ca_path,
+        "BEARER_TOKEN_PATH": str(bearer_path),
+    }
+    validator, client = _validator(
+        private_key,
+        discovery_fn=_sequence(
+            _discovery_response(jwks_uri=f"{discovery_endpoint}/openid/v1/jwks")
+        ),
+        ISSUERS=[issuer_config],
+    )
+
+    validator.validate(_token(private_key))
+
+    first_call, second_call = client.get.call_args_list
+    assert first_call.args[0] == f"{discovery_endpoint}/.well-known/openid-configuration"
+    assert first_call.kwargs["verify"] == ca_path
+    assert first_call.kwargs["headers"] == {"Authorization": "Bearer mounted-token"}
+    assert first_call.kwargs["allow_redirects"] is False
+
+    assert second_call.args[0] == f"{discovery_endpoint}/openid/v1/jwks"
+    assert second_call.kwargs["allow_redirects"] is False
+
+
+def test_get_json_rejects_http_before_reading_bearer_token(tmp_path):
+    private_key = _rsa_key()
+    missing_bearer_path = tmp_path / "missing-token"
+    validator, client = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError, match="must use https"):
+        validator._get_json(
+            "http://kubernetes.default.svc/openid/v1/jwks",
+            {"BEARER_TOKEN_PATH": str(missing_bearer_path)},
+        )
+
+    assert not missing_bearer_path.exists()
+    client.get.assert_not_called()
+
+
+def test_rejects_jwks_uri_outside_discovery_origin():
+    private_key = _rsa_key()
+    validator, _ = _validator(
+        private_key,
+        discovery_fn=_sequence(_discovery_response(jwks_uri="https://attacker.example.com/jwks")),
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_rejects_non_https_jwks_uri():
+    private_key = _rsa_key()
+    validator, _ = _validator(
+        private_key,
+        discovery_fn=_sequence(
+            _discovery_response(jwks_uri="http://kubernetes.default.svc/openid/v1/jwks")
+        ),
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_rejects_discovery_issuer_mismatch():
+    private_key = _rsa_key()
+    validator, _ = _validator(
+        private_key,
+        discovery_fn=_sequence(_discovery_response(issuer="https://other-cluster.example.com")),
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+@pytest.mark.parametrize(
+    "bad_jwk_overrides",
+    [
+        {"kty": "EC"},
+        {"use": "enc"},
+        {"alg": "RS384"},
+    ],
+)
+def test_filters_out_untrusted_jwks(bad_jwk_overrides):
+    private_key = _rsa_key()
+    bad_jwk = _jwk(private_key, **bad_jwk_overrides)
+    validator, _ = _validator(private_key, jwks_fn=_sequence(_jwks_response([bad_jwk])))
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_accepts_jwk_with_absent_use_and_alg():
+    private_key = _rsa_key()
+    jwk = _jwk(private_key, use=None, alg=None)
+    validator, _ = _validator(private_key, jwks_fn=_sequence(_jwks_response([jwk])))
+
+    result = validator.validate(_token(private_key))
+    assert result.subject == SUBJECT
+
+
+def test_discovery_request_failure_raises():
+    private_key = _rsa_key()
+    validator, _ = _validator(
+        private_key, discovery_fn=_sequence(_discovery_response(status_code=503))
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_jwks_invalid_json_raises():
+    private_key = _rsa_key()
+    bad_response = Mock(status_code=200, json=Mock(side_effect=ValueError("bad json")))
+    validator, _ = _validator(private_key, jwks_fn=_sequence(bad_response))
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_missing_bearer_token_file_raises(tmp_path):
+    private_key = _rsa_key()
+    issuer_config = {
+        "ISSUER": ISSUER,
+        "CA_CERT_PATH": str(tmp_path / "ca.crt"),
+        "BEARER_TOKEN_PATH": str(tmp_path / "missing-token"),
+    }
+    validator, _ = _validator(private_key, ISSUERS=[issuer_config])
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_untrusted_issuer_is_rejected_without_network_call():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    other_key = _rsa_key()
+    now = datetime.now(UTC)
+    other_token = jwt.encode(
+        {
+            "iss": "https://untrusted.example.com",
+            "sub": SUBJECT,
+            "aud": AUDIENCE,
+            "iat": now,
+            "exp": now + timedelta(minutes=10),
+            "kubernetes.io": {
+                "namespace": NAMESPACE,
+                "serviceaccount": {"name": SA_NAME, "uid": SA_UID},
+            },
+        },
+        other_key,
+        algorithm="RS256",
+        headers={"kid": KID},
+    )
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(other_token)
+    assert client.get.call_count == 0
+
+
+def test_unknown_kid_refreshes_cached_jwks():
+    private_key = _rsa_key()
+    second_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(private_key)]),
+        _jwks_response([_jwk(second_key, kid="second-key")]),
+    )
+    validator, client = _validator(private_key, jwks_fn=jwks_fn)
+
+    validator.validate(_token(private_key))
+    result = validator.validate(_token(second_key, kid="second-key"))
+
+    assert result.subject == SUBJECT
+    assert client.get.call_count == 3
+
+
+def test_simultaneous_refresh_attempts_atomically_invalidate_jwks_once():
+    private_key = _rsa_key()
+    refreshed_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(refreshed_key, kid="refreshed-key")]),
+    )
+    shared_cache = InMemoryDataModelCache({})
+    shared_cache.invalidate = Mock(wraps=shared_cache.invalidate)
+    original_add = shared_cache.add
+    add_barrier = Barrier(2)
+
+    def synchronized_add(*args, **kwargs):
+        add_barrier.wait()
+        return original_add(*args, **kwargs)
+
+    shared_cache.add = synchronized_add
+    first, client = _validator(private_key, jwks_fn=jwks_fn, cache=_WorkerCache(shared_cache))
+    second, second_client = _validator(
+        private_key, jwks_fn=jwks_fn, cache=_WorkerCache(shared_cache)
+    )
+    issuer_config = first._issuer_config(ISSUER)
+    metadata = {"jwks_uri": f"{ISSUER}/openid/v1/jwks"}
+    jwks_cache_key = first._jwks_cache_key(issuer_config, metadata["jwks_uri"])
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        results = list(
+            workers.map(
+                lambda validator: validator._refresh_keys(
+                    issuer_config, metadata, jwks_cache_key, {}
+                ),
+                (first, second),
+            )
+        )
+
+    assert sum(bool(result) for result in results) == 1
+    assert client.get.call_count + second_client.get.call_count == 1
+    shared_cache.invalidate.assert_called_once_with(jwks_cache_key)
+    assert shared_cache.retrieve(jwks_cache_key, lambda: {"keys": []}) == {
+        "keys": [_jwk(refreshed_key, kid="refreshed-key")]
+    }
+
+
+def test_refreshes_when_marker_cache_is_unavailable():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+    validator._cache.add = Mock(return_value=None)
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = {"jwks_uri": f"{ISSUER}/openid/v1/jwks"}
+    jwks_cache_key = validator._jwks_cache_key(issuer_config, metadata["jwks_uri"])
+
+    result = validator._refresh_keys(issuer_config, metadata, jwks_cache_key, {})
+
+    assert KID in result
+    assert client.get.call_count == 1
+
+
+def test_repeated_unknown_kids_refresh_jwks_only_once_per_cooldown():
+    private_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    for kid in ("unknown-one", "unknown-two"):
+        with pytest.raises(KubernetesSATokenValidationError):
+            validator.validate(_token(_rsa_key(), kid=kid))
+
+    # Discovery and JWKS are fetched once, followed by one bounded rotation refresh.
+    assert client.get.call_count == 3
+
+
+def test_refresh_failure_rejects_instead_of_using_previous_keys():
+    private_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(private_key)]),
+        Mock(status_code=503, json=Mock(return_value={})),
+    )
+    validator, _ = _validator(private_key, jwks_fn=jwks_fn)
+
+    validator.validate(_token(private_key))
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = validator._metadata(issuer_config)
+    validator._cache.invalidate(validator._jwks_cache_key(issuer_config, metadata["jwks_uri"]))
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_rotated_key_no_longer_published_fails_closed_after_cache_expiry():
+    private_key = _rsa_key()
+    new_key = _rsa_key()
+    jwks_fn = _sequence(
+        _jwks_response([_jwk(private_key)]),
+        _jwks_response([_jwk(new_key, kid="new-key")]),
+    )
+    validator, _ = _validator(private_key, jwks_fn=jwks_fn)
+
+    validator.validate(_token(private_key))
+    issuer_config = validator._issuer_config(ISSUER)
+    metadata = validator._metadata(issuer_config)
+    validator._cache.invalidate(validator._jwks_cache_key(issuer_config, metadata["jwks_uri"]))
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(private_key))
+
+
+def test_unknown_kid_fails_closed_when_current_jwks_does_not_contain_it():
+    private_key = _rsa_key()
+    unknown_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(unknown_key, kid="never-seen"))
+
+    # Discovery is fetched once and the unknown key causes one immediate JWKS refresh.
+    assert client.get.call_count == 3
+
+
+def test_signature_failure_fetches_current_oidc_data_once():
+    private_key = _rsa_key()
+    forged_key = _rsa_key()
+    validator, client = _validator(private_key)
+
+    with pytest.raises(KubernetesSATokenValidationError):
+        validator.validate(_token(forged_key, kid=KID))
+
+    assert client.get.call_count == 2
+
+
+def test_never_logs_bearer_token_or_jwt(tmp_path, caplog):
+    private_key = _rsa_key()
+    bearer_path = tmp_path / "token"
+    bearer_path.write_text("super-secret-mounted-token\n")
+    ca_path = tmp_path / "ca.crt"
+    ca_path.write_text("fake-ca")
+    issuer_config = {
+        "ISSUER": ISSUER,
+        "CA_CERT_PATH": str(ca_path),
+        "BEARER_TOKEN_PATH": str(bearer_path),
+    }
+    validator, _ = _validator(private_key, ISSUERS=[issuer_config])
+
+    with caplog.at_level("DEBUG"):
+        token = _token(private_key)
+        validator.validate(token)
+        unknown_key = _rsa_key()
+        try:
+            validator.validate(_token(unknown_key, kid="unknown"))
+        except KubernetesSATokenValidationError:
+            pass
+
+    log_text = "\n".join(record.getMessage() for record in caplog.records)
+    assert "super-secret-mounted-token" not in log_text
+    assert token not in log_text
