@@ -25,16 +25,23 @@ import {isNullOrUndefined} from 'src/libs/utils';
 import {ImmutabilityPolicy} from 'src/resources/ImmutabilityPolicyResource';
 import ImmutabilityPolicyForm from 'src/components/ImmutabilityPolicyForm';
 import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 function PolicyActionButtons({
   uuid,
   onEdit,
   onDelete,
+  isReadOnlySuperUser,
 }: {
   uuid: string;
   onEdit: (uuid: string) => void;
   onDelete: (uuid: string) => void;
+  isReadOnlySuperUser?: boolean;
 }) {
+  if (isReadOnlySuperUser) {
+    return null;
+  }
+
   return (
     <div className="pf-v6-u-display-flex pf-v6-u-flex-direction-row">
       <Button
@@ -56,6 +63,7 @@ function PolicyActionButtons({
 }
 
 export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [policies, setPolicies] = useState<ImmutabilityPolicy[]>([]);
   const [editingPolicyUuid, setEditingPolicyUuid] = useState<string | null>(
     null,
@@ -178,7 +186,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
     <>
       <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center pf-v6-u-pb-sm">
         <Title headingLevel="h2">Immutability Policies</Title>
-        {(hasPolicies || isAddingNew) && (
+        {(hasPolicies || isAddingNew) && !isReadOnlySuperUser && (
           <Button
             variant="primary"
             onClick={handleAddNew}
@@ -251,21 +259,23 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
           </EmptyStateBody>
           <EmptyStateFooter>
             <EmptyStateActions>
-              <Button
-                variant="primary"
-                onClick={handleAddNew}
-                data-testid="add-immutability-policy-btn"
-                isDisabled={
-                  isOrgMirrorLoading ||
-                  isOrgMirrorError ||
-                  isOrgMirrored ||
-                  isProxyCacheLoading ||
-                  isProxyCacheError ||
-                  isProxyCacheConfigured
-                }
-              >
-                Add Policy
-              </Button>
+              {!isReadOnlySuperUser && (
+                <Button
+                  variant="primary"
+                  onClick={handleAddNew}
+                  data-testid="add-immutability-policy-btn"
+                  isDisabled={
+                    isOrgMirrorLoading ||
+                    isOrgMirrorError ||
+                    isOrgMirrored ||
+                    isProxyCacheLoading ||
+                    isProxyCacheError ||
+                    isProxyCacheConfigured
+                  }
+                >
+                  Add Policy
+                </Button>
+              )}
             </EmptyStateActions>
           </EmptyStateFooter>
         </EmptyState>
@@ -330,6 +340,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
                         uuid={policy.uuid}
                         onEdit={setEditingPolicyUuid}
                         onDelete={onDelete}
+                        isReadOnlySuperUser={isReadOnlySuperUser}
                       />
                     )}
                   </Td>
