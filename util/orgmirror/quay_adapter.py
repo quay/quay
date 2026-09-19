@@ -98,10 +98,9 @@ class QuayAdapter(RegistryAdapter):
             QuayDiscoveryException: On 401, 403, or redirect responses.
         """
         url = f"{self.base_url}/api/v1/user/"
-        response = self.session.get(
+        response = self._get(
             url,
             verify=self.verify_tls,
-            proxies=self._build_proxies(url),
             timeout=self.timeout,
             allow_redirects=False,
         )
@@ -147,11 +146,10 @@ class QuayAdapter(RegistryAdapter):
 
                 logger.debug("Fetching repositories from %s with params %s", url, params)
 
-                response = self.session.get(
+                response = self._get(
                     url,
                     params=params,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(url),
                     timeout=self.timeout,
                     allow_redirects=False,
                 )
@@ -236,10 +234,9 @@ class QuayAdapter(RegistryAdapter):
 
             # Verify namespace exists
             url = f"{self.base_url}/api/v1/organization/{self.namespace}"
-            response = self.session.get(
+            response = self._get(
                 url,
                 verify=self.verify_tls,
-                proxies=self._build_proxies(url),
                 timeout=10,
                 allow_redirects=False,
             )
@@ -252,10 +249,9 @@ class QuayAdapter(RegistryAdapter):
                 # Namespace may be a user namespace rather than an organization.
                 # Fall back to the user endpoint before reporting not found.
                 ns_url = f"{self.base_url}/api/v1/users/{self.namespace}"
-                ns_response = self.session.get(
+                ns_response = self._get(
                     ns_url,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(ns_url),
                     timeout=10,
                     allow_redirects=False,
                 )

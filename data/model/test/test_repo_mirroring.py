@@ -322,6 +322,56 @@ class TestRepoMirrorSSRFProtection:
         )
         assert model.repo_mirror.get_mirror(repo).external_reference == ("10.0.0.1/team/repository")
 
+    def test_create_rejects_private_proxy(self, initialized_db):
+        args = self._create_args()
+        args["external_registry_config"] = {
+            "proxy": {"https_proxy": "https://169.254.169.254:8443"}
+        }
+
+        with pytest.raises(model.DataModelException, match="private or reserved"):
+            model.repo_mirror.enable_mirroring_for_repository(**args)
+
+        assert model.repo_mirror.get_mirror(args["repository"]) is None
+
+    def test_change_proxy_rejects_private_destination_without_mutation(self, initialized_db):
+        mirror, repo = create_mirror_repo_robot(
+            ["latest"],
+            repo_name="ssrf_proxy_update",
+            external_registry_config={
+                "proxy": {"http_proxy": "proxy.example.com:8080", "no_proxy": "quay.io"}
+            },
+        )
+        original_config = mirror.external_registry_config
+
+        with pytest.raises(model.DataModelException, match="private or reserved"):
+            model.repo_mirror.change_external_registry_config(
+                repo,
+                {"proxy": {"https_proxy": "https://127.0.0.1:8443"}},
+            )
+
+        assert model.repo_mirror.get_mirror(repo).external_registry_config == original_config
+
+    def test_change_proxy_allows_allowlisted_destination_and_nullable_cleanup(self, initialized_db):
+        _, repo = create_mirror_repo_robot(["latest"], repo_name="ssrf_proxy_allowed")
+
+        assert model.repo_mirror.change_external_registry_config(
+            repo,
+            {
+                "proxy": {
+                    "http_proxy": "10.0.0.1:8080",
+                    "https_proxy": None,
+                    "no_proxy": "localhost,10.0.0.0/8",
+                }
+            },
+            allowed_hosts=["10.0.0.0/8"],
+        )
+        proxy = model.repo_mirror.get_mirror(repo).external_registry_config["proxy"]
+        assert proxy == {
+            "http_proxy": "10.0.0.1:8080",
+            "https_proxy": None,
+            "no_proxy": "localhost,10.0.0.0/8",
+        }
+
 
 class TestArchitectureFilter:
     """Tests for architecture_filter functionality."""

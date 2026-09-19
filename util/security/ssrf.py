@@ -6,10 +6,11 @@ SSRF prevention utilities for validating user-supplied URLs.
 import ipaddress
 import logging
 import re
+from dataclasses import dataclass
 from socket import AF_UNSPEC, SOCK_STREAM
 from socket import gaierror as _gaierror
 from socket import getaddrinfo as _getaddrinfo
-from typing import List, Optional
+from typing import Dict, List, Mapping, Optional, Tuple
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,17 @@ class SSRFBlockedError(ValueError):
     modification.  The API layer catches this type explicitly to return a
     generic error message instead of leaking internal network topology.
     """
+
+
+@dataclass(frozen=True)
+class ValidatedMirrorProxy:
+    """Canonical proxy destination and the addresses approved for connection."""
+
+    scheme: str
+    hostname: str
+    port: int
+    userinfo: Optional[str]
+    resolved_ips: Tuple[str, ...]
 
 
 # Private and reserved IP networks that must never be accessed by user-controlled URLs.
@@ -70,6 +82,10 @@ _REGISTRY_HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
 )
+_EXPLICIT_URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
+_VALID_PERCENT_ESCAPE_RE = re.compile(r"%(?![0-9A-Fa-f]{2})")
+_ASCII_DECIMAL_RE = re.compile(r"^[0-9]+$")
+_PROXY_KEYS = ("http_proxy", "https_proxy")
 
 
 def _is_ip_blocked(ip_str: str) -> bool:
@@ -135,6 +151,118 @@ def _is_allowed(hostname: str, ip_str: Optional[str], allowed_hosts: List[str]) 
             return True
 
     return False
+
+
+def validate_mirror_proxy_config(
+    proxy_config: Optional[Mapping[str, object]],
+    resolve_dns: bool = True,
+    allowed_hosts: Optional[List[str]] = None,
+) -> Dict[str, ValidatedMirrorProxy]:
+    """Validate outbound destinations in a repository or organization mirror proxy mapping.
+
+    Explicit HTTP and HTTPS URLs and legacy scheme-less authorities are accepted. Scheme-less
+    values are prefixed with ``http://`` only for parsing and validation; the caller's mapping and
+    values are never changed. ``no_proxy`` is routing policy and is intentionally ignored.
+
+    Args:
+        proxy_config: Mapping containing optional ``http_proxy`` and ``https_proxy`` values
+        resolve_dns: Whether to resolve and inspect every address for proxy hostnames
+        allowed_hosts: Optional hostnames/CIDRs that bypass the SSRF blocklist
+
+    Raises:
+        SSRFBlockedError: If a proxy destination is blocked by SSRF protection
+        ValueError: If the proxy mapping or a configured destination is malformed
+    """
+    if proxy_config is None:
+        return {}
+    if not isinstance(proxy_config, Mapping):
+        raise ValueError("Mirror proxy configuration must be an object")
+
+    validated = {}
+    for proxy_key in _PROXY_KEYS:
+        proxy_value = proxy_config.get(proxy_key)
+        if proxy_value is None or proxy_value == "":
+            continue
+        if not isinstance(proxy_value, str):
+            raise ValueError(f"{proxy_key} must be a string or null")
+        if proxy_value != proxy_value.strip() or any(char.isspace() for char in proxy_value):
+            raise ValueError(f"{proxy_key} must not include whitespace")
+        if "\\" in proxy_value:
+            raise ValueError(f"{proxy_key} contains an invalid character")
+
+        explicit_scheme = _EXPLICIT_URL_SCHEME_RE.match(proxy_value)
+        if "://" in proxy_value and not explicit_scheme:
+            raise ValueError(f"{proxy_key} has an invalid URL scheme")
+        validation_url = proxy_value if explicit_scheme else f"http://{proxy_value}"
+
+        try:
+            parsed = urlparse(validation_url)
+            scheme = parsed.scheme.lower()
+            hostname = parsed.hostname
+            port = parsed.port
+            username = parsed.username
+            password = parsed.password
+        except (TypeError, ValueError):
+            raise ValueError(f"{proxy_key} contains an invalid proxy authority")
+
+        if scheme not in ALLOWED_SCHEMES:
+            raise ValueError(f"{proxy_key} must use an HTTP or HTTPS proxy")
+        if not parsed.netloc or not hostname:
+            raise ValueError(f"{proxy_key} must include a valid proxy hostname")
+        if parsed.params or parsed.query or parsed.fragment or parsed.path not in ("", "/"):
+            raise ValueError(f"{proxy_key} must contain only a proxy authority")
+        if parsed.netloc.count("@") > 1:
+            raise ValueError(f"{proxy_key} contains an ambiguous proxy authority")
+
+        authority = parsed.netloc.rsplit("@", 1)[-1]
+        if "@" in parsed.netloc:
+            userinfo = parsed.netloc.rsplit("@", 1)[0]
+            if not userinfo or (username is None and password is None):
+                raise ValueError(f"{proxy_key} contains invalid proxy credentials")
+            if _VALID_PERCENT_ESCAPE_RE.search(userinfo):
+                raise ValueError(f"{proxy_key} contains invalid proxy credentials")
+
+        if authority.startswith("["):
+            bracket_end = authority.find("]")
+            if bracket_end < 0:
+                raise ValueError(f"{proxy_key} contains an invalid proxy authority")
+            suffix = authority[bracket_end + 1 :]
+            if suffix and not suffix.startswith(":"):
+                raise ValueError(f"{proxy_key} contains an invalid proxy authority")
+            if suffix == ":" or (
+                suffix.startswith(":") and not _ASCII_DECIMAL_RE.fullmatch(suffix[1:])
+            ):
+                raise ValueError(f"{proxy_key} contains an invalid proxy port")
+        else:
+            if authority.count(":") > 1:
+                raise ValueError(f"{proxy_key} contains an invalid proxy authority")
+            if ":" in authority:
+                _, raw_port = authority.rsplit(":", 1)
+                if not _ASCII_DECIMAL_RE.fullmatch(raw_port):
+                    raise ValueError(f"{proxy_key} contains an invalid proxy port")
+
+        if port == 0:
+            raise ValueError(f"{proxy_key} contains an invalid proxy port")
+
+        try:
+            ipaddress.ip_address(hostname)
+        except ValueError:
+            if hostname.endswith(".") or not _REGISTRY_HOSTNAME_RE.fullmatch(hostname):
+                raise ValueError(f"{proxy_key} must include a valid proxy hostname")
+
+        resolved_ips = _validate_host_destination(hostname, resolve_dns, allowed_hosts)
+        proxy_userinfo: Optional[str] = (
+            parsed.netloc.rsplit("@", 1)[0] if "@" in parsed.netloc else None
+        )
+        validated[proxy_key] = ValidatedMirrorProxy(
+            scheme=scheme,
+            hostname=hostname,
+            port=port or (443 if scheme == "https" else 80),
+            userinfo=proxy_userinfo,
+            resolved_ips=tuple(resolved_ips),
+        )
+
+    return validated
 
 
 def validate_external_registry_reference(
@@ -221,7 +349,7 @@ def validate_external_registry_url(
     url: str,
     resolve_dns: bool = True,
     allowed_hosts: Optional[List[str]] = None,
-) -> None:
+) -> List[str]:
     """
     Validate an external registry URL to prevent Server-Side Request Forgery (SSRF).
 
@@ -277,6 +405,15 @@ def validate_external_registry_url(
     if not hostname:
         raise ValueError("URL must include a hostname")
 
+    return _validate_host_destination(hostname, resolve_dns, allowed_hosts)
+
+
+def _validate_host_destination(
+    hostname: str,
+    resolve_dns: bool,
+    allowed_hosts: Optional[List[str]],
+) -> List[str]:
+    """Validate a hostname or IP against the shared SSRF policy and return approved IPs."""
     _allowed_hosts = allowed_hosts or []
 
     # Check blocked hostnames (case-insensitive)
@@ -299,7 +436,7 @@ def validate_external_registry_url(
                 logger.warning("SSRF blocked: IP literal '%s' is in a blocked network", hostname)
                 raise SSRFBlockedError("URL points to a private or reserved IP address")
         # IP literal is allowed (public or allowlisted), no DNS resolution needed
-        return
+        return [str(ip)]
     except SSRFBlockedError:
         raise
     except ValueError:
@@ -307,7 +444,7 @@ def validate_external_registry_url(
         pass
 
     if not resolve_dns:
-        return
+        return []
 
     # Resolve hostname and check all resulting IPs
     try:
@@ -337,3 +474,5 @@ def validate_external_registry_url(
                     ip_str,
                 )
                 raise SSRFBlockedError("URL resolves to a private or reserved IP address")
+
+    return list(dict.fromkeys(resolved_ips))
