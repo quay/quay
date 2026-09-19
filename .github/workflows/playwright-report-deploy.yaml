@@ -126,3 +126,62 @@ jobs:
               body: commentBody
             });
           }
+
+    # When the Playwright job did not run in this CI pass (e.g. the job was
+    # skipped on a /retest) the report artifact will be absent but the
+    # pr-info artifact may still exist. Without this step a stale failure
+    # comment posted by an earlier run would remain unrectified on the PR.
+    # See https://github.com/quay/quay/issues/7034.
+    - name: Mark existing Playwright comment as stale when artifact is missing
+      if: steps.download-report.outputs.found_artifact != 'true' && steps.download-pr-info.outputs.found_artifact == 'true'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        RUN_URL: ${{ github.event.workflow_run.html_url }}
+        RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      with:
+        script: |
+          const prNumber = parseInt(process.env.PR_NUMBER, 10);
+          const runUrl = process.env.RUN_URL;
+          const conclusion = process.env.RUN_CONCLUSION;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Playwright Test Report')
+          );
+
+          // No prior Playwright comment, nothing to update.
+          if (!botComment) {
+            core.info('No existing Playwright comment to mark stale.');
+            return;
+          }
+
+          // Skip if the existing comment has already been marked stale by a
+          // previous run, so we do not re-edit it on every subsequent retest.
+          if (botComment.body.includes('Playwright tests were not re-run')) {
+            core.info('Existing Playwright comment is already marked as stale.');
+            return;
+          }
+
+          const staleBody = `## Playwright Test Report
+
+          ⚠️ **Tests not re-run in most recent CI pass**
+
+          The result above is from a prior run. The Playwright job was skipped or produced no artifact in the latest [workflow run](${runUrl}) (conclusion: \`${conclusion}\`), so the deployed report could not be refreshed.
+
+          If this PR still needs Playwright validation, trigger a full re-run (rather than \`/retest\` alone) so the E2E job executes and uploads a fresh report.
+
+          _This notice was added automatically because the \`playwright-report\` artifact was not found._`;
+
+          await github.rest.issues.updateComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: botComment.id,
+            body: staleBody,
+          });
