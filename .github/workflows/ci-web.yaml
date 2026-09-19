@@ -291,7 +291,7 @@ jobs:
           version: v0.20.6
 
       - name: Install ORAS for registry interaction tests
-        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
         with:
           version: 1.2.2
 
