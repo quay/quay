@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 
 test.describe(
   'OIDC Team Sync',
@@ -67,6 +67,34 @@ test.describe(
         await page.getByRole('button', {name: 'Confirm'}).click();
         await expect(
           page.getByText('Successfully removed team synchronization').first(),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'API-created team sync shows group name in UI',
+      {tag: ['@superuser', '@PROJQUAY-12494']},
+      async ({superuserPage: page, superuserApi: api}) => {
+        const groupName = 'test_oidc_group';
+        const org = await api.organization('apiteamsync');
+        const teamName = uniqueName('apisyncteam');
+
+        // Create team with directory sync attached in a single PUT (RFE-8184)
+        await api.raw.createTeam(org.name, teamName, 'member', {
+          group_name: groupName,
+        });
+
+        await page.goto(
+          `/organization/${org.name}/teams/${teamName}?tab=Teamsandmembership`,
+        );
+
+        await expect(
+          page.getByText('synchronized with a group in oidc'),
+        ).toBeVisible();
+        await expect(page.getByText('Bound to group')).toBeVisible();
+        await expect(page.getByText(groupName)).toBeVisible();
+        await expect(
+          page.getByRole('button', {name: 'Remove synchronization'}),
         ).toBeVisible();
       },
     );
