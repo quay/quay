@@ -4,11 +4,17 @@ import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
 from httmock import HTTMock, urlmatch
 
 from app import app as real_app
+from auth.kubernetes_sa import KubernetesSATokenValidator, ValidatedKubernetesSA
 from data import model
-from endpoints.api.bootstrap import _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER
+from endpoints.api.bootstrap import (
+    _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER,
+    BootstrapExchangeError,
+    _exchange_bootstrap_token,
+)
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 from util.bootstrap_token import KubernetesTokenProvider
@@ -34,6 +40,31 @@ def _k8s_bootstrap_config(tmp_path, owner="devtable"):
         }
     )
     return config
+
+
+def _exchange_endpoint_config(tmp_path, owner="devtable"):
+    issuer = "https://kubernetes.default.svc"
+    subject = "system:serviceaccount:quay-operator:controller-manager"
+    config = _bootstrap_config(tmp_path, owner=owner)
+    config.update(
+        {
+            "FEATURE_KUBERNETES_SA_BOOTSTRAP": True,
+            "KUBERNETES_SA_BOOTSTRAP_CONFIG": {
+                "ISSUERS": [{"ISSUER": issuer}],
+                "AUTHORIZED_SUBJECTS": [
+                    {
+                        "ISSUER": issuer,
+                        "SUBJECT": subject,
+                        "SCOPES": "repo:read repo:write",
+                    }
+                ],
+                "BOOTSTRAP_TOKEN_MAX_TTL": 600,
+            },
+        }
+    )
+    return config, ValidatedKubernetesSA(
+        issuer, subject, {"exp": datetime.now(UTC).timestamp() + 3600}
+    )
 
 
 def _create_bootstrap_token(config):
@@ -103,6 +134,96 @@ def _k8s_secret_access_token(secret, key="token.json"):
 
 def _expired_time():
     return datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+
+
+def test_exchange_uses_shared_validator_cache_and_mints_bounded_token(
+    app, initialized_db, tmp_path
+):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "scope": "repo:read",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated) as validate,
+        app.test_request_context(method="POST", data=form),
+    ):
+        payload, status, headers = _exchange_bootstrap_token()
+
+    assert status == 200
+    assert payload["scope"] == "repo:read"
+    assert payload["expires_in"] == 600
+    assert headers["Cache-Control"] == "no-store"
+    validate.assert_called_once_with("service-account-jwt")
+
+
+def test_exchange_invalid_request_uses_matching_api_error_type(app, initialized_db, tmp_path):
+    config, _ = _exchange_endpoint_config(tmp_path)
+
+    with (
+        patch.dict(real_app.config, config),
+        app.test_request_context(method="POST", data={}),
+        pytest.raises(BootstrapExchangeError) as exc_info,
+    ):
+        _exchange_bootstrap_token()
+
+    assert exc_info.value.code == 400
+    assert exc_info.value.data["error"] == "invalid_request"
+    assert exc_info.value.data["error_type"] == "invalid_request"
+    assert exc_info.value.data["title"] == "invalid_request"
+
+
+def test_exchange_access_denied_uses_unauthorized_api_error_type(app, initialized_db, tmp_path):
+    config, validated = _exchange_endpoint_config(tmp_path)
+    denied = ValidatedKubernetesSA(
+        validated.issuer,
+        "system:serviceaccount:untrusted:workload",
+        {},
+    )
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=denied),
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(BootstrapExchangeError) as exc_info,
+    ):
+        _exchange_bootstrap_token()
+
+    assert exc_info.value.code == 403
+    assert exc_info.value.data["error"] == "access_denied"
+    assert exc_info.value.data["error_type"] == "unauthorized"
+    assert exc_info.value.data["title"] == "unauthorized"
+
+
+def test_exchange_server_error_uses_matching_api_error_type(app, initialized_db, tmp_path):
+    config, validated = _exchange_endpoint_config(tmp_path, owner="missing-owner")
+    form = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "service-account-jwt",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    }
+
+    with (
+        patch.dict(real_app.config, config),
+        patch.object(KubernetesSATokenValidator, "validate", return_value=validated),
+        app.test_request_context(method="POST", data=form),
+        pytest.raises(BootstrapExchangeError) as exc_info,
+    ):
+        _exchange_bootstrap_token()
+
+    assert exc_info.value.code == 500
+    assert exc_info.value.data["error"] == "server_error"
+    assert exc_info.value.data["error_type"] == "server_error"
+    assert exc_info.value.data["title"] == "server_error"
 
 
 def test_exchange_normalizes_issuer_trailing_slashes():
