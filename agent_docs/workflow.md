@@ -117,6 +117,36 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
+### CI Workflow Changes
+
+When adding a new `.github/workflows/*.yaml` file for CI infrastructure that does **not** touch web or frontend code, you **must** also update `sentinel.yaml`.
+
+**Why:** The `web` filter in `sentinel.yaml` uses a `**` catch-all to detect any change that might affect the web/frontend suite (Playwright E2E, Vitest, Build Frontend Plugin). It carves out explicit exclusions for known CI-infrastructure workflow files. Without an exclusion, commits that touch only your new workflow file will match the `**` catch-all and incorrectly trigger the full web suite — wasted Playwright, Vitest, and Build Frontend Plugin runner time on every CI-infrastructure commit.
+
+**What to update:** Add `!.github/workflows/<new-file>.yaml` to the `web` filter's exclusion block in `.github/workflows/sentinel.yaml`. The exclusion block currently covers:
+
+```yaml
+web:
+  - '**'
+  ...
+  - '!.github/workflows/ci-config-tool.yaml'
+  - '!.github/workflows/ci-generator.yaml'
+  - '!.github/workflows/ci-go.yaml'
+  - '!.github/workflows/ci-python.yaml'
+  - '!.github/workflows/ci-lint.yaml'
+  - '!.github/workflows/sentinel.yaml'
+  - '!.github/workflows/sync-ci-configs.yaml'
+```
+
+Add your new file to this list in the same commit that adds the workflow file.
+
+**When to add an exclusion:** If the new workflow does **not** build, test, lint, or deploy web/frontend code, add it to the exclusion list. If in doubt, check whether changes to the new file should trigger jobs like Playwright or Vitest — if not, exclude it.
+
+**When NOT to add an exclusion:** If the workflow is `ci-web.yaml` or any other workflow that controls web/frontend CI, omit the exclusion so that changes to it do correctly trigger the web suite.
+
+**Checklist for PRs that add a new workflow file:**
+- [ ] Does this workflow affect web/frontend code? If **no**, add `!.github/workflows/<new-file>.yaml` to sentinel.yaml's `web` filter in the same commit.
+
 ## Session Setup
 
 All hooks are consolidated in `.claude/settings.json` — no manual setup required.
