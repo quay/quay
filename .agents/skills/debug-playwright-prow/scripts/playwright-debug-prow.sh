@@ -202,6 +202,14 @@ if [ "$RESULTS_FOUND" != "true" ]; then
     STEP_LIST_URL="https://storage.googleapis.com/${GCS_BUCKET}?prefix=${dir}&delimiter=/"
     STEP_DIRS=$(curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "$STEP_LIST_URL" 2>/dev/null | grep -oP '(?<=<Prefix>)[^<]+' || true)
     for stepdir in $STEP_DIRS; do
+      # Restrict probing to directories whose name matches a known Playwright
+      # step name; skip unrelated steps that also happen to upload results.json.
+      _candidate="${stepdir%/}"
+      _candidate="${_candidate##*/}"
+      case "$_candidate" in
+        quay-test-e2e|e2e|e2e-test|quay-e2e) ;;
+        *) continue ;;
+      esac
       PROBE_URL="https://storage.googleapis.com/${GCS_BUCKET}/${stepdir}artifacts/results.json"
       if curl -sfL "${CURL_TIMEOUT[@]}" --head "$PROBE_URL" >/dev/null 2>&1; then
         ARTIFACT_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${stepdir}artifacts"
