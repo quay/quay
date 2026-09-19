@@ -128,7 +128,7 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 		return "", err
 	}
 	req.SetBasicAuth(c.username, c.password)
-	resp, err := c.client.Do(req) //nolint:bodyclose // readBody closes every response body
+	resp, err := c.client.Do(req) //nolint:bodyclose,gosec // G704: URL is built from the registry client's configured base URL; readBody closes every response body
 	if err != nil {
 		return "", err
 	}
@@ -142,7 +142,7 @@ func (c *RegistryClient) tokenForScopes(ctx context.Context, scopes ...string) (
 
 	var tokenResponse struct {
 		Token       string `json:"token"`
-		AccessToken string `json:"access_token"`
+		AccessToken string `json:"access_token"` //nolint:gosec // G117: field name mirrors the OCI distribution token response schema
 	}
 	if err := json.Unmarshal(body, &tokenResponse); err != nil {
 		return "", fmt.Errorf("decode token response: %w", err)
@@ -685,7 +685,7 @@ func (c *RegistryClient) doWithHeaders(ctx context.Context, method, endpoint, to
 	if len(accept) > 0 {
 		req.Header.Set("Accept", strings.Join(accept, ", "))
 	}
-	return c.client.Do(req)
+	return c.client.Do(req) //nolint:gosec // G704: URL is built from the registry client's configured base URL, not user input
 }
 
 func (c *RegistryClient) resolveLocation(location string) (string, error) {
