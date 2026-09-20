@@ -13,7 +13,11 @@
  * ```
  */
 
-import {fetchWithRetry, FetchRetryExhaustedError} from './fetch-retry';
+import {
+  fetchJsonWithRetry,
+  fetchWithRetry,
+  FetchRetryExhaustedError,
+} from './fetch-retry';
 
 const MAILPIT_API =
   process.env.MAILPIT_API_URL || 'http://localhost:8025/api/v1';
@@ -46,11 +50,10 @@ export const mailpit = {
    * Get all emails in the inbox
    */
   async getEmails(): Promise<MailpitMessagesResponse> {
-    const response = await fetchWithRetry(
+    return fetchJsonWithRetry<MailpitMessagesResponse>(
       'mailpit.getEmails',
       `${MAILPIT_API}/messages`,
     );
-    return response.json();
   },
 
   /**
@@ -92,21 +95,21 @@ export const mailpit = {
    * @returns Email body (plain text if available, otherwise HTML)
    */
   async getEmailBody(id: string): Promise<string> {
-    const response = await fetchWithRetry(
+    const data = await fetchJsonWithRetry<{Text?: string; HTML?: string}>(
       'mailpit.getEmailBody',
       `${MAILPIT_API}/message/${id}`,
     );
-    const data = await response.json();
     return data.Text || data.HTML;
   },
 
   /**
    * Check if Mailpit is available
    *
-   * Retries transient failures, then splits the exhausted case in two:
-   * Mailpit answered but every response was non-ok is treated as "not
-   * available" (returns false, as before). Never receiving a response at
-   * all (e.g. DNS/connect failure) is let to throw instead of being
+   * Retries transient failures, then splits on whether a response was ever
+   * received: Mailpit answering but non-ok (whether fast-failed or retries
+   * exhausted) is treated as "not available" (returns false, as before).
+   * Never receiving a response at all (e.g. DNS/connect failure) is let to
+   * throw instead of being
    * reported as "not available" — isAvailable is only consulted when
    * FEATURE_MAILING is on, so an unreachable Mailpit means the environment
    * itself is broken, and masking that as "absent" would silently skip
