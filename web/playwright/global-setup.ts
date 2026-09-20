@@ -14,6 +14,7 @@ import {chromium, FullConfig, request} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
+import {fetchWithRetry} from './utils/fetch-retry';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -95,32 +96,14 @@ async function globalSetup(config: FullConfig) {
     const failures: string[] = [];
 
     // Fetch Quay config with retry to check auth type and features
-    let mailingEnabled = false;
-    let authType: string | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const configResponse = await fetch(`${API_URL}/config`);
-        if (configResponse.ok) {
-          const quayConfig = await configResponse.json();
-          mailingEnabled = quayConfig?.features?.MAILING === true;
-          authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
-          process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
-          break;
-        }
-      } catch {
-        console.log(
-          `[Global Setup] Config fetch attempt ${
-            attempt + 1
-          }/3 failed, retrying...`,
-        );
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-    }
-    if (!authType) {
-      throw new Error(
-        '[Global Setup] Failed to fetch Quay config after 3 attempts',
-      );
-    }
+    const configResponse = await fetchWithRetry(
+      'global-setup config fetch',
+      `${API_URL}/config`,
+    );
+    const quayConfig = await configResponse.json();
+    const mailingEnabled = quayConfig?.features?.MAILING === true;
+    const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+    process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
 
     // For OIDC auth, skip user creation — users are created on first login
     // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
