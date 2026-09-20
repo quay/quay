@@ -55,10 +55,43 @@ export const mailpit = {
    * Clear all emails from the inbox
    */
   async clearInbox(): Promise<void> {
-    const response = await fetch(`${MAILPIT_API}/messages`, {method: 'DELETE'});
-    if (!response.ok) {
-      throw new Error(`Mailpit API error: ${response.status}`);
+    const attempts = 3;
+    const backoffMs = [500, 1000];
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const response = await fetch(`${MAILPIT_API}/messages`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          return;
+        }
+        lastError = new Error(`Mailpit API error: ${response.status}`);
+      } catch (err) {
+        lastError = err;
+      }
+
+      const cause =
+        lastError instanceof Error && 'cause' in lastError
+          ? lastError.cause
+          : undefined;
+      console.error(
+        `mailpit.clearInbox attempt ${attempt}/${attempts} failed:`,
+        lastError,
+        cause !== undefined ? `cause: ${cause}` : '',
+      );
+
+      if (attempt < attempts) {
+        await new Promise((r) => setTimeout(r, backoffMs[attempt - 1]));
+      }
     }
+
+    const exhaustedError = new Error(
+      `mailpit.clearInbox exhausted ${attempts} attempts`,
+    ) as Error & {cause?: unknown};
+    exhaustedError.cause = lastError;
+    throw exhaustedError;
   },
 
   /**
