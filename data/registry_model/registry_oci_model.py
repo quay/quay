@@ -918,12 +918,14 @@ class OCIModel(RegistryDataInterface):
         manifest_interface_instance,
         expiration_sec,
         storage,
+        raise_on_error=False,
         model_cache=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
-        Returns the manifest object created or None on error.
+        Returns the manifest object created or None on error, unless raise_on_error is set to
+        True, in which case a CreateManifestException may also be raised.
 
         If model_cache is provided and the manifest has a subject, the referrers
         cache for the subject digest is invalidated so that subsequent queries
@@ -937,6 +939,7 @@ class OCIModel(RegistryDataInterface):
                 manifest_interface_instance,
                 storage,
                 temp_tag_expiration_sec=expiration_sec,
+                raise_on_error=raise_on_error,
             )
             if created_manifest is None:
                 return None
