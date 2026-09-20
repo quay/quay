@@ -368,4 +368,11 @@ class RedisDataModelCache(DataModelCache):
 
     def invalidate(self, cache_key):
         if self.client is not None:
-            self.client.delete(cache_key.key)
+            try:
+                self.client.delete(cache_key.key)
+            except RedisError as re:
+                logger.warning(
+                    "Got RedisError exception when trying to invalidate key %s: %s",
+                    cache_key.key,
+                    re,
+                )
