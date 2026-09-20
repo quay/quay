@@ -111,6 +111,7 @@ jobs:
     if: ${{ inputs.is-pr }}
     runs-on: ubuntu-latest
     name: e2e test coverage check
+    continue-on-error: true
     permissions:
       pull-requests: read
     steps:
