@@ -136,6 +136,60 @@ describe('fetchWithRetry', () => {
     }
   });
 
+  it('honours a custom backoff override, not the default schedule', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce({ok: false, status: 500})
+        .mockResolvedValueOnce({ok: false, status: 500})
+        .mockResolvedValueOnce({ok: true, status: 200});
+      vi.stubGlobal('fetch', fetchFn);
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+      const resultPromise = fetchWithRetry(
+        'test',
+        'http://example.com',
+        undefined,
+        undefined,
+        [2000, 2000],
+      );
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.ok).toBe(true);
+      const delays = setTimeoutSpy.mock.calls.map((call) => call[1]);
+      expect(delays).toEqual([2000, 2000]);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('uses the default backoff schedule when no override is passed', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce({ok: false, status: 500})
+        .mockResolvedValueOnce({ok: false, status: 500})
+        .mockResolvedValueOnce({ok: true, status: 200});
+      vi.stubGlobal('fetch', fetchFn);
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+      const resultPromise = fetchWithRetry('test', 'http://example.com');
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.ok).toBe(true);
+      const delays = setTimeoutSpy.mock.calls.map((call) => call[1]);
+      expect(delays).toEqual([500, 1000]);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('retries a thrown network error and then succeeds', async () => {
     vi.useFakeTimers();
     try {
