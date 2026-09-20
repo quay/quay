@@ -5,7 +5,7 @@ bencode.py==4.0.0
 black==24.4.2
 flake8==4.0.1
 boto3-stubs==1.14.9.0
-fakeredis==1.6.1
+fakeredis==2.26.2
 freezegun==0.3.12
 httmock==1.4.0
 ipdb
@@ -50,7 +50,7 @@ types-pyOpenSSL==20.0.9
 types-python-dateutil==2.8.19.14
 types-pytz==2023.3.1.1
 types-PyYAML==5.4.12
-types-redis==3.5.14
+types-redis==4.6.0.20241004
 types-requests==2.25.11
 types-setuptools==68.2.0.0
 types-six==1.16.21.20240513
