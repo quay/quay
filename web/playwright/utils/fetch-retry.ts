@@ -20,6 +20,10 @@
  *
  * The per-attempt AbortSignal.timeout always replaces `init.signal`; no
  * caller passes one today, so this is latent, not broken.
+ *
+ * The backoff schedule between attempts defaults to BACKOFF_MS but can be
+ * overridden per call (e.g. a boot-wait caller that needs a longer window
+ * than a steady-state health probe).
  */
 
 const ATTEMPTS = 3;
@@ -52,6 +56,7 @@ async function fetchWithRetryInternal<T>(
   init: RequestInit | undefined,
   timeoutMs: number,
   handleResponse: (response: Response) => Promise<T>,
+  backoffMs: number[] = BACKOFF_MS,
 ): Promise<T> {
   let lastError: unknown;
   let receivedResponse = false;
@@ -106,7 +111,7 @@ async function fetchWithRetryInternal<T>(
     );
 
     if (attempt < ATTEMPTS) {
-      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1]));
+      await new Promise((r) => setTimeout(r, backoffMs[attempt - 1]));
     }
   }
 
@@ -122,6 +127,7 @@ export async function fetchWithRetry(
   url: string,
   init?: RequestInit,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  backoffMs: number[] = BACKOFF_MS,
 ): Promise<Response> {
   return fetchWithRetryInternal(
     callSite,
@@ -129,6 +135,7 @@ export async function fetchWithRetry(
     init,
     timeoutMs,
     async (response) => response,
+    backoffMs,
   );
 }
 
@@ -137,6 +144,7 @@ export async function fetchJsonWithRetry<T>(
   url: string,
   init?: RequestInit,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  backoffMs: number[] = BACKOFF_MS,
 ): Promise<T> {
   return fetchWithRetryInternal(
     callSite,
@@ -144,5 +152,6 @@ export async function fetchJsonWithRetry<T>(
     init,
     timeoutMs,
     (response) => response.json() as Promise<T>,
+    backoffMs,
   );
 }

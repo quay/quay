@@ -96,10 +96,15 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
-    // Fetch Quay config with retry to check auth type and features
+    // Fetch Quay config with retry to check auth type and features. Quay
+    // may not be listening yet at this point (this is the boot-wait path),
+    // so use a longer backoff than the default to give it time to come up.
     const quayConfig = await fetchJsonWithRetry<QuayConfig>(
       'global-setup config fetch',
       `${API_URL}/config`,
+      undefined,
+      undefined,
+      [2000, 2000],
     );
     const mailingEnabled = quayConfig?.features?.MAILING === true;
     const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
