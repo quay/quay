@@ -3,19 +3,20 @@
  *
  * Retries 3 times with 500ms/1000ms backoff between attempts, applies a
  * per-attempt timeout via AbortSignal.timeout, and logs each failed attempt
- * (including err.cause when present). Both a thrown fetch error and a
- * non-ok response count as a failed attempt. `fetchJsonWithRetry` parses
- * the response body inside the same per-attempt try as the fetch itself, so
- * a truncated or malformed 200 body also counts as a failed attempt and is
- * retried with the normal backoff, and is logged like any other failed
- * attempt.
+ * (including err.cause when present). A thrown fetch error (network
+ * failure, AbortSignal timeout), any 5xx response, 408, and 429 count as
+ * failed attempts and are retried. Any other non-ok status (403, 404, 400,
+ * ...) is not retryable: the loop stops immediately and throws.
+ * `fetchJsonWithRetry` parses the response body inside the same per-attempt
+ * try as the fetch itself, so a truncated or malformed 200 body also counts
+ * as a failed attempt and is retried with the normal backoff.
  *
- * On final failure it throws a single error naming the call site and
- * attempt count, with `cause` set to the last error and `receivedResponse`
- * set to true if any attempt received a non-ok HTTP response, or an ok
- * response whose body failed to parse — callers that need to distinguish
- * "server answered but errored" from "never reached the server" (e.g.
- * DNS/connect failure) can check that flag.
+ * On failure (fast-fail or exhaustion) it throws a single
+ * FetchRetryExhaustedError naming the call site, with `cause` set to the
+ * last error and `receivedResponse` set to true if any attempt received an
+ * HTTP response (including one whose body failed to parse) — callers that
+ * need to distinguish "server answered but errored" from "never reached the
+ * server" (e.g. DNS/connect failure) can check that flag.
  *
  * The per-attempt AbortSignal.timeout always replaces `init.signal`; no
  * caller passes one today, so this is latent, not broken.
@@ -30,6 +31,21 @@ export interface FetchRetryExhaustedError extends Error {
   receivedResponse: boolean;
 }
 
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || (status >= 500 && status <= 599);
+}
+
+function toFetchRetryError(
+  message: string,
+  cause: unknown,
+  receivedResponse: boolean,
+): FetchRetryExhaustedError {
+  const error = new Error(message) as FetchRetryExhaustedError;
+  error.cause = cause;
+  error.receivedResponse = receivedResponse;
+  return error;
+}
+
 async function fetchWithRetryInternal<T>(
   callSite: string,
   url: string,
@@ -40,7 +56,9 @@ async function fetchWithRetryInternal<T>(
   let lastError: unknown;
   let receivedResponse = false;
 
-  for (let attemptNum = 1; attemptNum <= ATTEMPTS; attemptNum++) {
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    let nonRetryable = false;
+
     try {
       const response = await fetch(url, {
         ...init,
@@ -57,6 +75,7 @@ async function fetchWithRetryInternal<T>(
       } else {
         receivedResponse = true;
         lastError = new Error(`${callSite}: HTTP ${response.status}`);
+        nonRetryable = !isRetryableStatus(response.status);
       }
     } catch (err) {
       lastError = err;
@@ -66,23 +85,36 @@ async function fetchWithRetryInternal<T>(
       lastError instanceof Error && 'cause' in lastError
         ? lastError.cause
         : undefined;
+
+    if (nonRetryable) {
+      console.error(
+        `${callSite} failed with non-retryable status:`,
+        lastError,
+        cause !== undefined ? `cause: ${cause}` : '',
+      );
+      throw toFetchRetryError(
+        `${(lastError as Error).message} is not retryable`,
+        lastError,
+        true,
+      );
+    }
+
     console.error(
-      `${callSite} attempt ${attemptNum}/${ATTEMPTS} failed:`,
+      `${callSite} attempt ${attempt}/${ATTEMPTS} failed:`,
       lastError,
       cause !== undefined ? `cause: ${cause}` : '',
     );
 
-    if (attemptNum < ATTEMPTS) {
-      await new Promise((r) => setTimeout(r, BACKOFF_MS[attemptNum - 1]));
+    if (attempt < ATTEMPTS) {
+      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1]));
     }
   }
 
-  const exhaustedError = new Error(
+  throw toFetchRetryError(
     `${callSite} exhausted ${ATTEMPTS} attempts`,
-  ) as FetchRetryExhaustedError;
-  exhaustedError.cause = lastError;
-  exhaustedError.receivedResponse = receivedResponse;
-  throw exhaustedError;
+    lastError,
+    receivedResponse,
+  );
 }
 
 export async function fetchWithRetry(
