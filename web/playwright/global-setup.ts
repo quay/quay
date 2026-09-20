@@ -14,7 +14,8 @@ import {chromium, FullConfig, request} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
-import {fetchWithRetry} from './utils/fetch-retry';
+import {fetchJsonWithRetry} from './utils/fetch-retry';
+import type {QuayConfig} from './fixtures';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -96,11 +97,10 @@ async function globalSetup(config: FullConfig) {
     const failures: string[] = [];
 
     // Fetch Quay config with retry to check auth type and features
-    const configResponse = await fetchWithRetry(
+    const quayConfig = await fetchJsonWithRetry<QuayConfig>(
       'global-setup config fetch',
       `${API_URL}/config`,
     );
-    const quayConfig = await configResponse.json();
     const mailingEnabled = quayConfig?.features?.MAILING === true;
     const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
     process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
