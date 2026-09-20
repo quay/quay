@@ -36,10 +36,31 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 
 ### Release Branch Model
 
-- `redhat-3.18` is synced with `master` — do **not** cherry-pick to it
-- Actively maintained branches: `redhat-3.15` through `redhat-3.17`
-- Older branches (`redhat-3.12` through `redhat-3.14`) receive critical/security fixes only
-- When backporting, skip `redhat-3.18` and target only the branches older than master
+Branch facts go stale every release. Verify before backporting instead of
+trusting the snapshot below.
+
+- The newest `redhat-*` branch is kept in sync with `master` — do **not**
+  cherry-pick to it. Identify and confirm it:
+  ```
+  git fetch upstream --prune
+  git branch -r --list 'upstream/redhat-*' | sed 's|.*upstream/||' | sort -V | tail -1
+  git rev-list --left-right --count upstream/<branch>...upstream/master  # "0  0" == synced
+  ```
+  As of 2026-09-20 that branch is `redhat-3.19`. `redhat-3.18` is a normal
+  release branch and **does** take cherry-picks.
+- For which older branches are still maintained, check recent activity
+  rather than a hardcoded range:
+  ```
+  git log --oneline --since='3 months ago' upstream/<branch> ^upstream/master
+  ```
+  Read the tier off the subjects: a `feat` subject means regular backports;
+  fixes/CVE/dependency/changelog only means critical/security fixes only; no
+  commits means dormant. As of 2026-09-20: `redhat-3.15`-`redhat-3.18` take
+  regular backports; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
+  `redhat-3.14` receive critical/security fixes only; `redhat-3.11` is
+  dormant.
+- When backporting, target the branch the JIRA Target Version names and
+  skip only the master-synced branch identified above.
 - CodeRabbit auto-review is intentionally scoped to `master` only — it is
   not enabled for `redhat-*` branches. Backport/cherry-pick PRs carry code
   already reviewed on `master`, so re-running review on the release branch
