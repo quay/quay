@@ -28,8 +28,8 @@ func makeGarageMockServer(t *testing.T) (url string, locationCalled *bool) {
 		if strings.Contains(r.Header.Get("Authorization"), "failimmediately") {
 			w.Header().Set("Content-type", "application/xml")
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`<?xml version="1.0"?><Error><Code>InternalError</Code>` +
-				`<Message>Internal server error</Message></Error>`))
+			w.Write([]byte(`<?xml version="1.0"?><Error><Code>BadRequest</Code>` +
+				`<Message>bad request was sent</Message></Error>`))
 			return
 		}
 		if r.Method == http.MethodGet {
