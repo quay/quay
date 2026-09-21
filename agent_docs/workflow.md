@@ -30,16 +30,40 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 ### Target Version & Backporting
 
 - **Target Version** (customfield_10855) indicates the release this fix targets
-- If set, backporting is **required** after merge to master
+- If set, backporting is **required** after merge to master, except to the
+  branch the sync check in Release Branch Model (below) identifies as
+  master-synced
 - Map version to branch: `quay-v3.12.0` → `redhat-3.12`
 - Use `/backport <PR#> <branch>` after merge
 
 ### Release Branch Model
 
-- `redhat-3.18` is synced with `master` — do **not** cherry-pick to it
-- Actively maintained branches: `redhat-3.15` through `redhat-3.17`
-- Older branches (`redhat-3.12` through `redhat-3.14`) receive critical/security fixes only
-- When backporting, skip `redhat-3.18` and target only the branches older than master
+Branch facts go stale every release. Verify before backporting instead of
+trusting the snapshot below.
+
+- The newest `redhat-*` branch is kept in sync with `master` — do **not**
+  cherry-pick to it. Identify and confirm it:
+  ```
+  git fetch upstream --prune
+  git branch -r --list 'upstream/redhat-*' | sed 's|.*upstream/||' | sort -V | tail -1
+  git rev-list --left-right --count upstream/<branch>...upstream/master  # "0  0" == synced
+  ```
+  As of 2026-09-20 that branch is `redhat-3.19`. `redhat-3.18` is a normal
+  release branch and **does** take cherry-picks.
+- For which older branches are still maintained, check recent activity
+  rather than a hardcoded range:
+  ```
+  git log --oneline --since='3 months ago' upstream/<branch> ^upstream/master
+  ```
+  Read the tier off the subjects: a `feat` subject means regular backports;
+  fixes/CVE/dependency/changelog only means critical/security fixes only; no
+  commits means dormant. As of 2026-09-20: `redhat-3.15`-`redhat-3.18` take
+  regular backports; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
+  `redhat-3.14` receive critical/security fixes only; `redhat-3.11` is
+  dormant.
+- When backporting, target the branch the JIRA Target Version names (see
+  Target Version & Backporting, above) and skip only the master-synced
+  branch identified above.
 - CodeRabbit auto-review is intentionally scoped to `master` only — it is
   not enabled for `redhat-*` branches. Backport/cherry-pick PRs carry code
   already reviewed on `master`, so re-running review on the release branch
@@ -147,7 +171,9 @@ All hooks are consolidated in `.claude/settings.json` — no manual setup requir
 
 After a PR merges to master, if the JIRA ticket has a Target Version:
 
-1. Post `/cherrypick <branch>` as a comment on the merged PR
-2. `openshift-ci-robot` (via the cherrypick plugin) creates a new PR against the release branch
-3. The JIRA lifecycle plugin clones the parent ticket for the target release
-4. Monitor the backport PR for CI results
+1. Run the sync check from Release Branch Model to confirm the target
+   branch isn't the master-synced branch — do not cherry-pick to it
+2. Post `/cherrypick <branch>` as a comment on the merged PR
+3. `openshift-ci-robot` (via the cherrypick plugin) creates a new PR against the release branch
+4. The JIRA lifecycle plugin clones the parent ticket for the target release
+5. Monitor the backport PR for CI results
