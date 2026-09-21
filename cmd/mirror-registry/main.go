@@ -1,4 +1,4 @@
-// Package main is the entrypoint for the Quay Go CLI.
+// Package main is the entrypoint for the mirror-registry CLI.
 package main
 
 import (
