@@ -388,6 +388,12 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
+
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
     ):
@@ -396,13 +402,8 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
+            uploader.cancel_upload()
             raise QuotaExceeded
-
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob.
     _upload_chunk(uploader)
@@ -442,6 +443,12 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
+
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
     ):
@@ -450,13 +457,8 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
+            uploader.cancel_upload()
             raise QuotaExceeded
-
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob and commit it once complete.
     with complete_when_uploaded(uploader):
