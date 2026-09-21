@@ -141,7 +141,8 @@
     "fast-uri": "^3.1.4",
     "brace-expansion": "^1.1.18",
     "qs": "^6.16.0",
-    "browserslist": ">=4.28.7"
+    "browserslist": ">=4.28.7",
+    "compression": "1.8.2"
   },
   "pnpm": {
     "overrides": {
@@ -161,7 +162,8 @@
       "fast-uri": "^3.1.4",
       "brace-expansion": "^1.1.18",
       "qs": "^6.16.0",
-      "browserslist": ">=4.28.7"
+      "browserslist": ">=4.28.7",
+      "compression": "1.8.2"
     }
   }
 }
