@@ -355,6 +355,29 @@ jobs:
           chmod +x bin/quay
           podman build -f Dockerfile.mirror -t quay-mirror:test .
 
+      - name: Verify end-user help hides internal commands
+        run: |
+          set -euo pipefail
+
+          help_output=$(bin/quay help 2>&1)
+          printf '%s\n' "$help_output"
+
+          for cmd in install uninstall config migrate version; do
+            if ! grep -Eq "^  ${cmd} " <<< "$help_output"; then
+              echo "FAIL: '${cmd}' is missing from end-user help"
+              exit 1
+            fi
+          done
+          for cmd in init serve; do
+            if grep -Eq "^  ${cmd} " <<< "$help_output"; then
+              echo "FAIL: internal command '${cmd}' is listed in end-user help"
+              exit 1
+            fi
+            # Hidden commands must remain dispatchable for the container entrypoint.
+            bin/quay "$cmd" -h >/dev/null 2>&1
+          done
+          echo "End-user help verified"
+
       - name: Save image archive
         run: podman save quay-mirror:test -o /tmp/quay-mirror.tar
 
