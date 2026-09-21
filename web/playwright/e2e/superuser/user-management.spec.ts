@@ -59,6 +59,15 @@ test.describe(
 
       await superuserPage.goto('/organization');
 
+      // Wait for the table to load
+      await expect(
+        superuserPage.locator('td[data-label="Name"]').first(),
+      ).toBeVisible();
+
+      // Filter to the created user so the assertion below doesn't depend on
+      // which page of the unfiltered, paginated list the user landed on
+      await superuserPage.getByPlaceholder(/Search by/).fill(user.username);
+
       // User should appear in the list (use first() since superuser view
       // may show the same user in both org and user sections)
       await expect(
@@ -73,6 +82,15 @@ test.describe(
       const user = await superuserApi.user('testmgmt');
 
       await superuserPage.goto('/organization');
+
+      // Wait for the table to load
+      await expect(
+        superuserPage.locator('td[data-label="Name"]').first(),
+      ).toBeVisible();
+
+      // Filter to the created user so the kebab lookup below doesn't depend
+      // on which page of the unfiltered, paginated list the user landed on
+      await superuserPage.getByPlaceholder(/Search by/).fill(user.username);
 
       // Open kebab for the user
       await superuserPage
