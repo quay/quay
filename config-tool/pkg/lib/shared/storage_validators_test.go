@@ -22,7 +22,7 @@ func makeGarageMockServer(t *testing.T) (url string, locationCalled *bool) {
 			w.Header().Set("Content-type", "application/xml")
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`<?xml version="1.0"?><Error><Code>AuthorizationHeaderMalformed</code>` +
-				`<Message>unexpected scope</Message></Error`))
+				`<Message>unexpected scope</Message></Error>`))
 			return
 		}
 		if strings.Contains(r.Header.Get("Authorization"), "failimmediately") {
