@@ -493,3 +493,30 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
+| **Paginated list assertions** | Never assert an entity is visible in an unfiltered paginated list view. The list paginates at 20 entries; once the test database exceeds that limit a newly created entity lands on a later page and the assertion fails for a reason unrelated to the test. Always filter via the search input before asserting. See the pattern below. |
+
+### Paginated List Assertions: Filter Before Assert
+
+Tests that create an entity and then check its presence in a paginated list must
+filter the list to that entity before asserting. The `/organization` list (and
+similar paginated views) shows at most 20 entries per page; once the test
+database accumulates more entries, a newly created entity lands on a later page
+and an unfiltered assertion fails even though the feature works correctly. CI
+failures of this type show screenshots like "1 - 20 of 24" with the entity
+absent from the visible page.
+
+Use this three-step pattern:
+
+```typescript
+// 1. Wait for the table to render (confirms the page has loaded data)
+await expect(page.locator('td[data-label="Name"]').first()).toBeVisible();
+
+// 2. Filter to the entity so the assertion is not affected by pagination
+await page.getByPlaceholder(/Search by/).fill(entityName);
+
+// 3. Assert on the filtered result
+await expect(page.getByRole('link', {name: entityName})).toBeVisible();
+```
+
+This pattern is used in 16+ places in `e2e/organization/org-list.spec.ts` and
+is the established convention for list-view assertions throughout the suite.
