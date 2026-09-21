@@ -88,6 +88,39 @@ describe('ApiClient fresh-login retry', () => {
     );
     expect(signInPost).toHaveBeenCalledTimes(1);
   });
+
+  it('does not retry and surfaces the 401 when no credentials are set', async () => {
+    const orgDelete = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(401, {error_type: 'fresh_login_required'}),
+      );
+    const csrfGet = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, {csrf_token: 'test-csrf'}));
+    const signInPost = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+
+    const request = {
+      get: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/csrf_token`) return csrfGet(url, ...args);
+        throw new Error(`unexpected get: ${url}`);
+      }),
+      delete: vi.fn((url: string, ...args: unknown[]) =>
+        orgDelete(url, ...args),
+      ),
+      post: vi.fn((url: string, ...args: unknown[]) => {
+        if (url === `${API_URL}/api/v1/signin`) return signInPost(url, ...args);
+        throw new Error(`unexpected post: ${url}`);
+      }),
+    } as unknown as APIRequestContext;
+
+    const client = new ApiClient(request);
+    // No setCredentials() call: withFreshLoginRetry must not attempt a retry.
+
+    await expect(client.deleteOrganization('some-org')).rejects.toThrow(/401/);
+    expect(orgDelete).toHaveBeenCalledTimes(1);
+    expect(signInPost).not.toHaveBeenCalled();
+  });
 });
 
 describe('ApiClient CSRF token cache', () => {
