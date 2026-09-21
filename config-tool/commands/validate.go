@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,13 +52,13 @@ var validateCmd = &cobra.Command{
 		configFilePath := path.Join(configDir, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatalf("%v", err)
 		}
 
 		// Unmarshal from json
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatalf("%v", err)
 		}
 
 		// Clean config
@@ -67,13 +67,13 @@ var validateCmd = &cobra.Command{
 		// Load into struct
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
-			log.Fatalf("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
+			log.Fatalf("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: %v", err)
 		}
 
 		// Load certs
 		certs := shared.LoadCerts(configDir)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatalf("%v", err)
 		}
 
 		// Sort keys
