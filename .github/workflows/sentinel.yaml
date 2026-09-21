@@ -82,6 +82,7 @@ jobs:
               - '!.github/workflows/build-and-publish.yaml'
               - '!.github/workflows/zizmor.yaml'
               - '!.github/workflows/codeql.yml'
+              - '!.github/workflows/label-backported-pr.yml'
 
   lint-ci:
     name: Lint
