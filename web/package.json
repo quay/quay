@@ -140,7 +140,8 @@
     "brace-expansion": "^1.1.16",
     "js-yaml": "^4.3.0",
     "qs": "^6.16.0",
-    "browserslist": ">=4.28.7"
+    "browserslist": ">=4.28.7",
+    "compression": "1.8.2"
   },
   "pnpm": {
     "overrides": {
@@ -161,7 +162,8 @@
       "brace-expansion": "^1.1.16",
       "js-yaml": "^4.3.0",
       "qs": "^6.16.0",
-      "browserslist": ">=4.28.7"
+      "browserslist": ">=4.28.7",
+      "compression": "1.8.2"
     }
   }
 }
