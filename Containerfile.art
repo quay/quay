@@ -66,7 +66,6 @@ RUN set -ex\
 WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
-COPY pip-build-constraints.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -80,11 +79,6 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 # ARM64 and x86_64 have wheels available - use them to avoid slow QEMU compilation.
 # gevent has wheels for all platforms, no need to build from source.
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
-
-# Apply pip constraints in both the main install and pip's build-isolation
-# subprocesses (which inherit environment variables but not --constraint flags).
-# Pins maturin<1.13 to avoid MSRV 1.89 requirement when UBI9 provides rustc 1.88.
-ENV PIP_CONSTRAINT=/build/pip-build-constraints.txt
 
 USER 1001
 
