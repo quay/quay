@@ -124,7 +124,8 @@
     "brace-expansion": "^1.1.18",
     "js-yaml": "4.3.2",
     "qs": "6.16.0",
-    "browserslist": ">=4.28.7"
+    "browserslist": ">=4.28.7",
+    "compression": "1.8.2"
   },
   "optionalDependencies": {
     "cypress": "^13.13.2"
