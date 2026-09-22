@@ -262,6 +262,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             mirror.external_reference,
             resolve_dns=True,
             allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+            proxy_config=(mirror.external_registry_config or {}).get("proxy"),
         )
     except ValueError:
         logger.warning(

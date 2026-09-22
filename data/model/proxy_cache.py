@@ -28,8 +28,12 @@ def create_proxy_cache_config(
     hostname = upstream_registry.split("/", 1)[0]
     scheme = "http" if insecure else "https"
     try:
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
         validate_external_registry_url(
-            f"{scheme}://{hostname}", resolve_dns=False, allowed_hosts=allowed_hosts or []
+            f"{scheme}://{hostname}",
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts or [],
         )
     except ValueError as e:
         raise DataModelException(str(e))
