@@ -4,8 +4,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
-
 from util.repomirror.skopeomirror import SkopeoMirror
 
 
@@ -26,7 +24,7 @@ class TestSkopeoMirrorProxyEnv:
         assert env["HTTP_PROXY"] == "http://explicit:8080"
         assert env["HTTPS_PROXY"] == "http://explicit:8443"
 
-    def test_setup_env_does_not_inherit_ambient_when_explicit_empty(self):
+    def test_setup_env_falls_back_to_ambient_when_explicit_empty(self):
         mirror = SkopeoMirror()
         with patch.dict(
             os.environ,
@@ -82,6 +80,32 @@ class TestSkopeoMirrorProxyEnv:
         assert env["HTTP_PROXY"] == "http://ambient:9999"
         assert env["HTTPS_PROXY"] == "http://ambient:9999"
         assert env["NO_PROXY"] == "ambient.local"
+
+    def test_setup_env_clears_ambient_no_proxy_when_explicit_proxy_omits_no_proxy(self):
+        """Explicit proxy without no_proxy must agree with proxy_route_for_url (PROXY)."""
+        from util.security.ssrf import ProxyRoute, proxy_route_for_url
+
+        mirror = SkopeoMirror()
+        explicit = {
+            "http_proxy": "http://explicit:8080",
+            "https_proxy": "http://explicit:8443",
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "HTTP_PROXY": "http://ambient:9999",
+                "HTTPS_PROXY": "http://ambient:9999",
+                "NO_PROXY": "registry.example.com",
+            },
+            clear=False,
+        ):
+            env = mirror.setup_env(explicit)
+
+        assert env["HTTP_PROXY"] == "http://explicit:8080"
+        assert env["HTTPS_PROXY"] == "http://explicit:8443"
+        assert "NO_PROXY" not in env
+        assert "no_proxy" not in env
+        assert proxy_route_for_url("https://registry.example.com", explicit) is ProxyRoute.PROXY
 
     def test_ssrf_validator_uses_explicit_proxy_not_ambient_env(self):
         from util.security.ssrf import ProxyRoute, proxy_route_for_url

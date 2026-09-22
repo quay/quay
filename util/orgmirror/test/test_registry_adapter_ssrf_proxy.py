@@ -7,11 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from util.orgmirror.registry_adapter import RegistryAdapter
-from util.security.ssrf import (
-    ProxyRoute,
-    SSRFBlockedError,
-    proxy_route_for_url,
-)
+from util.security.ssrf import ProxyRoute, SSRFBlockedError, proxy_route_for_url
 
 
 class _StubRegistryAdapter(RegistryAdapter):

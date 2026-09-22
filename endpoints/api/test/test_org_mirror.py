@@ -5,10 +5,12 @@ Unit tests for organization-level mirror API endpoints.
 
 import logging
 from datetime import datetime, timedelta
+from socket import gaierror
 from unittest.mock import patch
 
 import pytest
 
+from app import app as quay_app
 from data import model
 from data.database import (
     OrgMirrorConfig,
@@ -1739,6 +1741,64 @@ class TestOrgMirrorSSRFProtection:
         assert kwargs.get("proxy_config") == stored_proxy
         assert kwargs.get("resolve_dns") is True
 
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_url_without_config_uses_stored_proxy_route(self, app):
+        """Omitting external_registry_config keeps the stored proxy for validation."""
+        _cleanup_org_mirror_config("buynlarge")
+        stored_proxy = {
+            "http_proxy": "http://insecure.proxy.corp",
+            "https_proxy": "https://secure.proxy.corp",
+        }
+        _create_config_directly(
+            external_registry_url="https://harbor.example.com",
+            external_registry_config={"proxy": stored_proxy},
+        )
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["unresolvable.proxy.example"]}):
+            with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")) as mock_dns:
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": "buynlarge"}
+                    body = {"external_registry_url": "https://unresolvable.proxy.example"}
+                    conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, body, 200)
+
+        updated = model.org_mirror.get_org_mirror_config(
+            model.organization.get_organization("buynlarge")
+        )
+        assert updated.external_registry_url == "https://unresolvable.proxy.example"
+        mock_dns.assert_not_called()
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_url_uses_submitted_proxy_not_stored_merge(self, app):
+        """Org-mirror replaces external_registry_config wholesale; validate submitted proxy only."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_url="https://harbor.example.com",
+            external_registry_config={
+                "proxy": {
+                    "http_proxy": "http://insecure.proxy.corp",
+                    "https_proxy": "https://secure.proxy.corp",
+                    "no_proxy": "mylocalhost",
+                }
+            },
+        )
+
+        with patch("endpoints.api.org_mirror._validate_registry_url") as mock_validate:
+            mock_validate.return_value = None
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {
+                    "external_registry_url": "https://registry.example.com",
+                    "external_registry_config": {
+                        "proxy": {"https_proxy": "http://new-proxy:8443"},
+                    },
+                }
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, body, 200)
+
+        mock_validate.assert_called_once()
+        assert mock_validate.call_args[1]["proxy_config"] == {
+            "https_proxy": "http://new-proxy:8443",
+        }
         _cleanup_org_mirror_config("buynlarge")
 
 

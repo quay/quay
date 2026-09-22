@@ -48,6 +48,19 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
+def _effective_proxy_config(stored_registry_config, submitted_registry_config):
+    """
+    Proxy mapping used for SSRF validation on org-mirror updates.
+
+    Unlike repository mirror, org-mirror persistence replaces the entire
+    external_registry_config when the key is present. Only fall back to the
+    stored proxy when the request omits external_registry_config entirely.
+    """
+    if submitted_registry_config is None:
+        return dict((stored_registry_config or {}).get("proxy") or {}) or None
+    return dict(submitted_registry_config.get("proxy") or {}) or None
+
+
 def _validate_registry_url(url, proxy_config=None):
     """
     Validate an external registry URL for SSRF and raise InvalidRequest on failure.
@@ -413,12 +426,12 @@ class OrgMirrorConfig(ApiResource):
         # Handle external_registry_url
         if "external_registry_url" in data:
             # Validate URL to prevent SSRF (CWE-918)
-            registry_config = data.get("external_registry_config")
-            if registry_config is None:
-                registry_config = existing.external_registry_config or {}
             _validate_registry_url(
                 data["external_registry_url"],
-                proxy_config=registry_config.get("proxy"),
+                proxy_config=_effective_proxy_config(
+                    existing.external_registry_config,
+                    data.get("external_registry_config"),
+                ),
             )
             update_kwargs["external_registry_url"] = data["external_registry_url"]
 
