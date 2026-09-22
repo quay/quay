@@ -100,103 +100,82 @@ test.describe(
       }
     });
 
-    test('list tags of image repository', async ({playwright}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+    test('list tags of image repository', async ({request}) => {
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const r = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/tags/list`,
-          {headers: {authorization: `Bearer ${v2Token}`}},
-        );
-        expect(r.status()).toBe(200);
+      const r = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/tags/list`,
+        {headers: {authorization: `Bearer ${v2Token}`}},
+      );
+      expect(r.status()).toBe(200);
 
-        const body = await r.json();
-        expect(body.tags).toContain('latest');
-      } finally {
-        await request.dispose();
-      }
+      const body = await r.json();
+      expect(body.tags).toContain('latest');
     });
 
-    test('get manifest by tag name', async ({playwright}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+    test('get manifest by tag name', async ({request}) => {
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const r = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/manifests/latest`,
-          {
-            headers: {
-              authorization: `Bearer ${v2Token}`,
-              Accept: DOCKER_MANIFEST_V2,
-            },
+      const r = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/manifests/latest`,
+        {
+          headers: {
+            authorization: `Bearer ${v2Token}`,
+            Accept: DOCKER_MANIFEST_V2,
           },
-        );
-        expect(r.status()).toBe(200);
+        },
+      );
+      expect(r.status()).toBe(200);
 
-        const body = await r.json();
-        expect(body.layers).toBeTruthy();
+      const body = await r.json();
+      expect(body.layers).toBeTruthy();
 
-        const digest = r.headers()['docker-content-digest'];
-        expect(digest).toBeTruthy();
-      } finally {
-        await request.dispose();
-      }
+      const digest = r.headers()['docker-content-digest'];
+      expect(digest).toBeTruthy();
     });
 
-    test('get manifest by digest', async ({playwright}) => {
+    test('get manifest by digest', async ({request}) => {
       expect(manifestDigest).toBeTruthy();
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const r = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/manifests/${manifestDigest}`,
-          {
-            headers: {
-              authorization: `Bearer ${v2Token}`,
-              Accept: DOCKER_MANIFEST_V2,
-            },
+      const r = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/manifests/${manifestDigest}`,
+        {
+          headers: {
+            authorization: `Bearer ${v2Token}`,
+            Accept: DOCKER_MANIFEST_V2,
           },
-        );
-        expect(r.status()).toBe(200);
+        },
+      );
+      expect(r.status()).toBe(200);
 
-        const body = await r.json();
-        expect(body.layers).toBeTruthy();
-      } finally {
-        await request.dispose();
-      }
+      const body = await r.json();
+      expect(body.layers).toBeTruthy();
     });
 
-    test('list referrers for manifest', async ({playwright}) => {
+    test('list referrers for manifest', async ({request}) => {
       const orasAvailable = await isOrasAvailable();
       test.skip(!orasAvailable, 'oras CLI required for referrer tests');
 
@@ -238,180 +217,144 @@ test.describe(
         path.join(fixturesDir, 'referrer.cyclonedx.json'),
       );
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        // Referrer index may take a moment to reflect all three attachments;
-        // poll until the count stabilises instead of asserting immediately.
-        await expect
-          .poll(
-            async () => {
-              const r = await request.get(
-                `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}`,
-                {headers: {authorization: `Bearer ${v2Token}`}},
-              );
-              expect(r.status()).toBe(200);
-              const body = await r.json();
-              return body.manifests.length;
-            },
-            {
-              message:
-                'Waiting for referrer index to contain all 3 attachments',
-              timeout: 10_000,
-              intervals: [500, 1_000, 2_000],
-            },
-          )
-          .toBe(3);
+      // Referrer index may take a moment to reflect all three attachments;
+      // poll until the count stabilises instead of asserting immediately.
+      await expect
+        .poll(
+          async () => {
+            const r = await request.get(
+              `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}`,
+              {headers: {authorization: `Bearer ${v2Token}`}},
+            );
+            expect(r.status()).toBe(200);
+            const body = await r.json();
+            return body.manifests.length;
+          },
+          {
+            message: 'Waiting for referrer index to contain all 3 attachments',
+            timeout: 10_000,
+            intervals: [500, 1_000, 2_000],
+          },
+        )
+        .toBe(3);
 
-        // Filtered referrer queries must return only the requested artifact
-        // type and use a cache entry distinct from the unfiltered result.
-        const filtered = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}?artifactType=${encodeURIComponent(
-            'application/spdx+json',
-          )}`,
-          {headers: {authorization: `Bearer ${v2Token}`}},
-        );
-        expect(filtered.status()).toBe(200);
-        const filteredBody = await filtered.json();
-        expect(filteredBody.manifests).toHaveLength(1);
-        expect(filteredBody.manifests[0].artifactType).toBe(
+      // Filtered referrer queries must return only the requested artifact
+      // type and use a cache entry distinct from the unfiltered result.
+      const filtered = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}?artifactType=${encodeURIComponent(
           'application/spdx+json',
-        );
-      } finally {
-        await request.dispose();
-      }
+        )}`,
+        {headers: {authorization: `Bearer ${v2Token}`}},
+      );
+      expect(filtered.status()).toBe(200);
+      const filteredBody = await filtered.json();
+      expect(filteredBody.manifests).toHaveLength(1);
+      expect(filteredBody.manifests[0].artifactType).toBe(
+        'application/spdx+json',
+      );
     });
 
-    test('get catalog', async ({playwright}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+    test('get catalog', async ({request}) => {
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
+
+      const r = await request.get(`${API_URL}/v2/_catalog`, {
+        headers: {authorization: `Bearer ${v2Token}`},
       });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      expect(r.status()).toBe(200);
 
-        const r = await request.get(`${API_URL}/v2/_catalog`, {
-          headers: {authorization: `Bearer ${v2Token}`},
-        });
-        expect(r.status()).toBe(200);
-
-        const body = await r.json();
-        expect(body.repositories).toContain(`${orgName}/${repoName}`);
-      } finally {
-        await request.dispose();
-      }
+      const body = await r.json();
+      expect(body.repositories).toContain(`${orgName}/${repoName}`);
     });
 
     test('referrers with invalid digest returns 400 MANIFEST_INVALID', async ({
-      playwright,
+      request,
     }) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const badDigest =
-          'sha256:5403064f94b617f7975a19ba4d1a1299fd584397f6ee4393d0e16744ed11aab3';
-        const r = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/referrers/${badDigest}`,
-          {
-            headers: {authorization: `Bearer ${v2Token}`},
-          },
-        );
-        expect(r.status()).toBe(400);
+      const badDigest =
+        'sha256:5403064f94b617f7975a19ba4d1a1299fd584397f6ee4393d0e16744ed11aab3';
+      const r = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/referrers/${badDigest}`,
+        {
+          headers: {authorization: `Bearer ${v2Token}`},
+        },
+      );
+      expect(r.status()).toBe(400);
 
-        const body = await r.json();
-        expect(body.errors[0].code).toBe('MANIFEST_INVALID');
-      } finally {
-        await request.dispose();
-      }
+      const body = await r.json();
+      expect(body.errors[0].code).toBe('MANIFEST_INVALID');
     });
 
-    test('delete manifest by digest', async ({playwright}) => {
+    test('delete manifest by digest', async ({request}) => {
       expect(manifestDigest).toBeTruthy();
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const r = await request.delete(
-          `${API_URL}/v2/${orgName}/${repoName}/manifests/${manifestDigest}`,
-          {
-            headers: {
-              authorization: `Bearer ${v2Token}`,
-              Accept: DOCKER_MANIFEST_V2,
-            },
+      const r = await request.delete(
+        `${API_URL}/v2/${orgName}/${repoName}/manifests/${manifestDigest}`,
+        {
+          headers: {
+            authorization: `Bearer ${v2Token}`,
+            Accept: DOCKER_MANIFEST_V2,
           },
-        );
-        expect(r.status()).toBe(202);
-      } finally {
-        await request.dispose();
-      }
+        },
+      );
+      expect(r.status()).toBe(202);
     });
 
-    test('delete manifest by tag name', async ({playwright}) => {
+    test('delete manifest by tag name', async ({request}) => {
       // Push a new image with a different tag for this deletion test
       await pushImage(orgName, repoName, 'python3', username, password);
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${orgName}/${repoName}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-        const r = await request.delete(
-          `${API_URL}/v2/${orgName}/${repoName}/manifests/python3`,
-          {
-            headers: {
-              authorization: `Bearer ${v2Token}`,
-              Accept: DOCKER_MANIFEST_V2,
-            },
+      const r = await request.delete(
+        `${API_URL}/v2/${orgName}/${repoName}/manifests/python3`,
+        {
+          headers: {
+            authorization: `Bearer ${v2Token}`,
+            Accept: DOCKER_MANIFEST_V2,
           },
-        );
-        expect(r.status()).toBe(202);
-      } finally {
-        await request.dispose();
-      }
+        },
+      );
+      expect(r.status()).toBe(202);
     });
   },
 );
@@ -426,7 +369,7 @@ test.describe(
   () => {
     test('delete a blob by digest', async ({
       userContext,
-      playwright,
+      request,
       cachedContainerAvailable,
     }) => {
       if (!cachedContainerAvailable) return;
@@ -467,22 +410,15 @@ test.describe(
         const configDigest = manifest.config?.digest;
         expect(configDigest).toBeTruthy();
 
-        const request = await playwright.request.newContext({
-          ignoreHTTPSErrors: true,
-        });
-        try {
-          const deleteResp = await request.delete(
-            `${API_URL}/v2/${orgName}/${repoName}/blobs/${configDigest}`,
-            {
-              headers: {
-                authorization: `Bearer ${v2Token}`,
-              },
+        const deleteResp = await request.delete(
+          `${API_URL}/v2/${orgName}/${repoName}/blobs/${configDigest}`,
+          {
+            headers: {
+              authorization: `Bearer ${v2Token}`,
             },
-          );
-          expect([202, 404, 405]).toContain(deleteResp.status());
-        } finally {
-          await request.dispose();
-        }
+          },
+        );
+        expect([202, 404, 405]).toContain(deleteResp.status());
       } finally {
         try {
           await api.deleteRepository(orgName, repoName);
@@ -509,7 +445,7 @@ test.describe(
   () => {
     test('start blob upload and check upload status', async ({
       userContext,
-      playwright,
+      request,
       cachedContainerAvailable,
     }) => {
       if (!cachedContainerAvailable) return;
@@ -527,45 +463,38 @@ test.describe(
 
         const scope = `repository:${orgName}/${repoName}:pull,push`;
 
-        const request = await playwright.request.newContext({
-          ignoreHTTPSErrors: true,
-        });
-        try {
-          const v2Token = await getV2Token(
-            request,
-            API_URL,
-            username,
-            password,
-            scope,
-          );
+        const v2Token = await getV2Token(
+          request,
+          API_URL,
+          username,
+          password,
+          scope,
+        );
 
-          const startResp = await request.post(
-            `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/`,
-            {
-              headers: {
-                authorization: `Bearer ${v2Token}`,
-              },
+        const startResp = await request.post(
+          `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/`,
+          {
+            headers: {
+              authorization: `Bearer ${v2Token}`,
             },
-          );
-          expect([201, 202]).toContain(startResp.status());
+          },
+        );
+        expect([201, 202]).toContain(startResp.status());
 
-          const location = startResp.headers()['location'] || '';
-          const uuidMatch = location.match(/uploads\/([a-f0-9-]+)/);
-          expect(uuidMatch).toBeTruthy();
-          const uploadUuid = uuidMatch![1];
+        const location = startResp.headers()['location'] || '';
+        const uuidMatch = location.match(/uploads\/([a-f0-9-]+)/);
+        expect(uuidMatch).toBeTruthy();
+        const uploadUuid = uuidMatch![1];
 
-          const statusResp = await request.get(
-            `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/${uploadUuid}`,
-            {
-              headers: {
-                authorization: `Bearer ${v2Token}`,
-              },
+        const statusResp = await request.get(
+          `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/${uploadUuid}`,
+          {
+            headers: {
+              authorization: `Bearer ${v2Token}`,
             },
-          );
-          expect([200, 204]).toContain(statusResp.status());
-        } finally {
-          await request.dispose();
-        }
+          },
+        );
+        expect([200, 204]).toContain(statusResp.status());
       } finally {
         try {
           await api.deleteRepository(orgName, repoName);
@@ -602,7 +531,7 @@ test.describe(
     test(
       'small upload succeeds after an oversized upload is rejected',
       {tag: '@PROJQUAY-12368'},
-      async ({api, superuserApi, playwright}) => {
+      async ({api, superuserApi, request}) => {
         const username = TEST_USERS.user.username;
         const password = TEST_USERS.user.password;
         const org = await api.organization('v2quota');
@@ -615,77 +544,70 @@ test.describe(
           100,
         );
 
-        const request = await playwright.request.newContext({
-          ignoreHTTPSErrors: true,
+        const scope = `repository:${repo.fullName}:pull,push`;
+        const v2Token = await getV2Token(
+          request,
+          API_URL,
+          username,
+          password,
+          scope,
+        );
+        const headers = {authorization: `Bearer ${v2Token}`};
+        const uploadsUrl = `${API_URL}/v2/${repo.fullName}/blobs/uploads/`;
+
+        const oversizedBlob = Buffer.alloc(6 * 1024, 'x');
+        const oversizedDigest = `sha256:${createHash('sha256')
+          .update(oversizedBlob)
+          .digest('hex')}`;
+        const startResponse = await request.post(uploadsUrl, {headers});
+        expect(startResponse.status()).toBe(202);
+        const rejectedUploadUuid =
+          startResponse.headers()['docker-upload-uuid'];
+        expect(rejectedUploadUuid).toBeTruthy();
+
+        const rejectedUploadUrl = `${uploadsUrl}${rejectedUploadUuid}`;
+        const uploadResponse = await request.patch(rejectedUploadUrl, {
+          headers: {
+            ...headers,
+            'Content-Range': '0-6143',
+            'Content-Type': 'application/octet-stream',
+          },
+          data: oversizedBlob,
         });
-        try {
-          const scope = `repository:${repo.fullName}:pull,push`;
-          const v2Token = await getV2Token(
-            request,
-            API_URL,
-            username,
-            password,
-            scope,
-          );
-          const headers = {authorization: `Bearer ${v2Token}`};
-          const uploadsUrl = `${API_URL}/v2/${repo.fullName}/blobs/uploads/`;
+        expect(uploadResponse.status()).toBe(202);
 
-          const oversizedBlob = Buffer.alloc(6 * 1024, 'x');
-          const oversizedDigest = `sha256:${createHash('sha256')
-            .update(oversizedBlob)
-            .digest('hex')}`;
-          const startResponse = await request.post(uploadsUrl, {headers});
-          expect(startResponse.status()).toBe(202);
-          const rejectedUploadUuid =
-            startResponse.headers()['docker-upload-uuid'];
-          expect(rejectedUploadUuid).toBeTruthy();
+        const rejectionResponse = await request.put(
+          `${rejectedUploadUrl}?digest=${encodeURIComponent(oversizedDigest)}`,
+          {headers},
+        );
+        expect(rejectionResponse.status()).toBe(403);
 
-          const rejectedUploadUrl = `${uploadsUrl}${rejectedUploadUuid}`;
-          const uploadResponse = await request.patch(rejectedUploadUrl, {
-            headers: {
-              ...headers,
-              'Content-Range': '0-6143',
-              'Content-Type': 'application/octet-stream',
-            },
-            data: oversizedBlob,
-          });
-          expect(uploadResponse.status()).toBe(202);
+        const tinyBlob = Buffer.from('z');
+        const tinyDigest = `sha256:${createHash('sha256')
+          .update(tinyBlob)
+          .digest('hex')}`;
+        const retryStartResponse = await request.post(uploadsUrl, {headers});
+        expect(retryStartResponse.status()).toBe(202);
+        const retryUploadUuid =
+          retryStartResponse.headers()['docker-upload-uuid'];
+        expect(retryUploadUuid).toBeTruthy();
 
-          const rejectionResponse = await request.put(
-            `${rejectedUploadUrl}?digest=${encodeURIComponent(oversizedDigest)}`,
-            {headers},
-          );
-          expect(rejectionResponse.status()).toBe(403);
+        const retryUploadUrl = `${uploadsUrl}${retryUploadUuid}`;
+        const retryPatchResponse = await request.patch(retryUploadUrl, {
+          headers: {
+            ...headers,
+            'Content-Range': '0-0',
+            'Content-Type': 'application/octet-stream',
+          },
+          data: tinyBlob,
+        });
+        expect(retryPatchResponse.status()).toBe(202);
 
-          const tinyBlob = Buffer.from('z');
-          const tinyDigest = `sha256:${createHash('sha256')
-            .update(tinyBlob)
-            .digest('hex')}`;
-          const retryStartResponse = await request.post(uploadsUrl, {headers});
-          expect(retryStartResponse.status()).toBe(202);
-          const retryUploadUuid =
-            retryStartResponse.headers()['docker-upload-uuid'];
-          expect(retryUploadUuid).toBeTruthy();
-
-          const retryUploadUrl = `${uploadsUrl}${retryUploadUuid}`;
-          const retryPatchResponse = await request.patch(retryUploadUrl, {
-            headers: {
-              ...headers,
-              'Content-Range': '0-0',
-              'Content-Type': 'application/octet-stream',
-            },
-            data: tinyBlob,
-          });
-          expect(retryPatchResponse.status()).toBe(202);
-
-          const retryPutResponse = await request.put(
-            `${retryUploadUrl}?digest=${encodeURIComponent(tinyDigest)}`,
-            {headers},
-          );
-          expect(retryPutResponse.status()).toBe(201);
-        } finally {
-          await request.dispose();
-        }
+        const retryPutResponse = await request.put(
+          `${retryUploadUrl}?digest=${encodeURIComponent(tinyDigest)}`,
+          {headers},
+        );
+        expect(retryPutResponse.status()).toBe(201);
       },
     );
   },
@@ -699,32 +621,18 @@ test.describe(
   'V2 Invalid Bearer Token',
   {tag: ['@api', '@v2', '@auth:Database']},
   () => {
-    test('malformed bearer token returns 401', async ({playwright}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+    test('malformed bearer token returns 401', async ({request}) => {
+      const resp = await request.get(`${API_URL}/v2/`, {
+        headers: {authorization: 'Bearer invalidtokenvalue'},
       });
-      try {
-        const resp = await request.get(`${API_URL}/v2/`, {
-          headers: {authorization: 'Bearer invalidtokenvalue'},
-        });
-        expect(resp.status()).toBe(401);
-      } finally {
-        await request.dispose();
-      }
+      expect(resp.status()).toBe(401);
     });
 
-    test('garbage authorization header returns 401', async ({playwright}) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
+    test('garbage authorization header returns 401', async ({request}) => {
+      const resp = await request.get(`${API_URL}/v2/`, {
+        headers: {authorization: 'Bearer: notavalidformat'},
       });
-      try {
-        const resp = await request.get(`${API_URL}/v2/`, {
-          headers: {authorization: 'Bearer: notavalidformat'},
-        });
-        expect(resp.status()).toBe(401);
-      } finally {
-        await request.dispose();
-      }
+      expect(resp.status()).toBe(401);
     });
   },
 );
@@ -735,36 +643,26 @@ test.describe(
 
 test.describe('V2 Auth POST', {tag: ['@api', '@v2', '@auth:Database']}, () => {
   test('POST /v2/auth returns token or method-not-allowed', async ({
-    playwright,
+    request,
   }) => {
     const username = TEST_USERS.user.username;
     const password = TEST_USERS.user.password;
 
-    const request = await playwright.request.newContext({
-      ignoreHTTPSErrors: true,
+    const params = new URLSearchParams({
+      service: new URL(API_URL).host,
     });
-    try {
-      const params = new URLSearchParams({
-        service: new URL(API_URL).host,
-      });
 
-      const resp = await request.post(
-        `${API_URL}/v2/auth?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Basic ${Buffer.from(
-              `${username}:${password}`,
-            ).toString('base64')}`,
-          },
-        },
-      );
-      expect([200, 405]).toContain(resp.status());
-      if (resp.status() === 200) {
-        const body = await resp.json();
-        expect(body.token).toBeTruthy();
-      }
-    } finally {
-      await request.dispose();
+    const resp = await request.post(`${API_URL}/v2/auth?${params.toString()}`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+          'base64',
+        )}`,
+      },
+    });
+    expect([200, 405]).toContain(resp.status());
+    if (resp.status() === 200) {
+      const body = await resp.json();
+      expect(body.token).toBeTruthy();
     }
   });
 });
