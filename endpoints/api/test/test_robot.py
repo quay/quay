@@ -467,4 +467,37 @@ def test_parse_federation_config(app, fed_config, raises_error, error_message):
                 parsed = _parse_federation_config(request)
             assert error_message in str(ex.value)
         else:
-            parsed = _parse_federation_config(request)
+            _parse_federation_config(request)
+
+
+def test_parse_federation_config_defaults_and_preserves_audiences(app):
+    request = Mock(requests.Request)
+    request.json = [
+        {
+            "issuer": "https://issuer1",
+            "subject": "subject1",
+            "api_scopes": "repo:read",
+            "audiences": ["quay", "ci"],
+        },
+        {"issuer": "https://issuer2", "subject": "subject2"},
+    ]
+
+    with app.app_context():
+        assert _parse_federation_config(request) == [
+            {
+                "issuer": "https://issuer1",
+                "subject": "subject1",
+                "api_scopes": "repo:read",
+                "audiences": ["quay", "ci"],
+            },
+            {"issuer": "https://issuer2", "subject": "subject2", "audiences": ["quay"]},
+        ]
+
+
+@pytest.mark.parametrize("audiences", [[], [""], "quay"])
+def test_parse_federation_config_rejects_invalid_audiences(app, audiences):
+    request = Mock(requests.Request)
+    request.json = [{"issuer": "https://issuer1", "subject": "subject1", "audiences": audiences}]
+
+    with app.app_context(), pytest.raises(Exception, match="Audiences must be a non-empty list"):
+        _parse_federation_config(request)

@@ -1,13 +1,14 @@
 import logging
 
-from flask import Blueprint
+from flask import Blueprint, request
 
 from app import instance_keys
+from auth import scopes
 from auth.decorators import process_basic_auth, process_federated_auth
 from data import model
 from data.database import RobotAccountToken
+from data.model.api_token import normalize_scope, validate_api_scope_string
 from data.model.user import generate_temp_robot_jwt_token, retrieve_robot_token
-from util import request
 
 logger = logging.getLogger(__name__)
 federation_bp = Blueprint("federation", __name__)
@@ -29,6 +30,17 @@ def auth_federated_robot_identity(auth_result):
     robot = auth_result.context.robot
     assert robot
 
-    # generate a JWT based robot token instead of static
-    token = generate_temp_robot_jwt_token(instance_keys)
+    binding = getattr(auth_result.context, "federation_binding", None)
+    allowed_scope = normalize_scope((binding or {}).get("api_scopes", ""))
+    requested_scope = normalize_scope(request.args.get("scope", ""))
+    if requested_scope:
+        if not validate_api_scope_string(requested_scope) or not scopes.is_subset_string(
+            allowed_scope, requested_scope
+        ):
+            return {"error": "Requested scope is not allowed for this federation binding"}, 400
+        allowed_scope = requested_scope
+
+    # API capability is opt-in: legacy bindings without api_scopes mint a
+    # registry-only robot JWT.
+    token = generate_temp_robot_jwt_token(instance_keys, allowed_scope, binding)
     return {"token": token}

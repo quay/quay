@@ -12,11 +12,14 @@ from auth.credential_consts import (
     OAUTH_TOKEN_USERNAME,
 )
 from auth.log import log_action
-from auth.oauth import validate_oauth_token
+from auth.oauth import validate_oauth_token, validate_robot_api_jwt
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import User
+from data.model.api_token import API_TOKEN_MAX_EXPIRATION_SECONDS
 from util.names import parse_robot_username
+from util.security.jwtutil import is_jwt
+from util.security.registry_jwt import InvalidBearerTokenException, decode_bearer_token
 
 logger = logging.getLogger(__name__)
 
@@ -113,13 +116,35 @@ def validate_credentials(auth_username, auth_password_or_token):
 
     # Check for OAuth tokens.
     if auth_username == OAUTH_TOKEN_USERNAME:
-        return validate_oauth_token(auth_password_or_token), CredentialKind.oauth_token
+        if is_jwt(auth_password_or_token):
+            return (
+                ValidateResult(
+                    AuthKind.oauth,
+                    error_message="Quay-signed robot JWTs require the robot username",
+                ),
+                CredentialKind.oauth_token,
+            )
+        result = validate_oauth_token(auth_password_or_token)
+        return result, CredentialKind.oauth_token
 
     # Check for robots and users.
     is_robot = parse_robot_username(auth_username)
     if is_robot:
         logger.debug("Found credentials header for robot %s", auth_username)
         try:
+            if is_jwt(auth_password_or_token):
+                try:
+                    jwt_config = dict(app.config)
+                    jwt_config["REGISTRY_JWT_AUTH_MAX_FRESH_S"] = API_TOKEN_MAX_EXPIRATION_SECONDS
+                    decoded = decode_bearer_token(auth_password_or_token, instance_keys, jwt_config)
+                except InvalidBearerTokenException:
+                    decoded = None
+                if decoded and decoded.get("api_scopes"):
+                    result = validate_robot_api_jwt(auth_password_or_token)
+                    if result.auth_valid and result.context.robot.username == auth_username:
+                        return result, CredentialKind.robot
+                    return result, CredentialKind.robot
+
             robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
             assert robot
             logger.debug("Successfully validated credentials for robot %s", auth_username)
@@ -217,7 +242,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             )
 
     # Otherwise, treat as a standard user.
-    (authenticated, err) = authentication.verify_and_link_user(
+    authenticated, err = authentication.verify_and_link_user(
         auth_username, auth_password_or_token, basic_auth=True
     )
     if authenticated:

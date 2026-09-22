@@ -1,10 +1,12 @@
-from test.fixtures import *
-
 import pytest
 
+from app import app as quay_app
+from app import instance_keys
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.model import api_token
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -36,6 +38,25 @@ def test_valid_oauth(app):
     assert result.context.oauthtoken == oauth_token
     assert result.authed_user == user
     assert result.auth_valid
+
+
+def test_robot_api_token_authenticates_as_its_robot(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("api-token", creator)
+    token = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+    jwt = api_token.mint_jwt(token, instance_keys, quay_app.config["SERVER_HOSTNAME"])
+
+    result = validate_bearer_auth("Bearer " + jwt)
+
+    assert result.context.robot == robot
+    assert result.context.api_scopes == "repo:read"
+    assert result.authed_user == robot
+    assert result.auth_valid
+
+    assert api_token.revoke_token(robot, token.uuid)
+    revoked_result = validate_bearer_auth("Bearer " + jwt)
+    assert not revoked_result.auth_valid
+    assert revoked_result.error_message == "API token is revoked or expired"
 
 
 def test_disabled_user_oauth(app):
