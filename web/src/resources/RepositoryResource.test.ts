@@ -245,6 +245,25 @@ describe('RepositoryResource', () => {
     });
   });
 
+  describe('fetchAllRepositoriesWithNoQuotaSet', () => {
+    it('forwards quota=false to subsequent pages if we have multiple pages of repos', async () => {
+      const page1Repos = [createMockRepo('org1', 'repo1')];
+      const page2Repos = [createMockRepo('org1', 'repo2')];
+
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({repositories: [page1Repos], next_page: 'token123'}),
+      );
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({repositories: [page2Repos], next_page: null}),
+      );
+
+      await fetchRepositoriesForNamespace('org1', {}, false);
+      expect(vi.mocked(axios.get).mock.calls[1][1]).toMatchObject({
+        params: expect.objectContaining({quota: false}),
+      });
+    });
+  });
+
   describe('fetchAllReposAsSuperUser', () => {
     it('returns repos with truncated=false for single page', async () => {
       const repos = [createMockRepo('ns', 'r1')];
