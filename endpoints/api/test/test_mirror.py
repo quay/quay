@@ -1,4 +1,5 @@
 from datetime import datetime
+from socket import gaierror
 from unittest.mock import patch
 
 import pytest
@@ -561,6 +562,80 @@ class TestRepoMirrorSSRFProtection:
         updated = model.repo_mirror.get_mirror(mirror.repository)
         assert updated.external_reference == "quay.io/redhat/quay"
         mock_dns.assert_called()
+
+    def test_update_reference_config_without_proxy_keeps_stored_proxy_route(self, app):
+        """Submitted config omitting proxy must still validate via the stored proxy."""
+        mirror = _setup_mirror()
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["unresolvable.proxy.example"]}):
+            with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")) as mock_dns:
+                with client_with_identity("devtable", app) as cl:
+                    params = {"repository": "devtable/simple"}
+                    body = {
+                        "external_reference": "unresolvable.proxy.example/team/repo",
+                        "external_registry_config": {"verify_tls": True},
+                    }
+                    conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        updated = model.repo_mirror.get_mirror(mirror.repository)
+        assert updated.external_reference == "unresolvable.proxy.example/team/repo"
+        mock_dns.assert_not_called()
+
+    def test_update_reference_merges_partial_submitted_proxy(self, app):
+        """Partial proxy updates overlay stored fields for SSRF validation."""
+        _setup_mirror()
+
+        with patch("endpoints.api.mirror._validate_external_reference") as mock_validate:
+            mock_validate.return_value = None
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "devtable/simple"}
+                body = {
+                    "external_reference": "registry.example.com/team/repo",
+                    "external_registry_config": {
+                        "proxy": {"https_proxy": "http://new-proxy:8443"},
+                    },
+                }
+                conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+        mock_validate.assert_called_once()
+        assert mock_validate.call_args[1]["proxy_config"] == {
+            "http_proxy": "http://insecure.proxy.corp",
+            "https_proxy": "http://new-proxy:8443",
+            "no_proxy": "mylocalhost",
+        }
+
+
+def test_first_proxy_field_persists_when_proxy_mapping_absent(app):
+    """Setting the first proxy key must persist the value, not an empty proxy map."""
+    repo = model.repository.get_repository("devtable", "simple")
+    robot = model.user.lookup_robot("devtable+dtrobot")
+    rule = model.repo_mirror.create_rule(repo, ["latest"])
+    mirror = model.repo_mirror.enable_mirroring_for_repository(
+        repo,
+        root_rule=rule,
+        internal_robot=robot,
+        is_enabled=True,
+        external_reference="quay.io/redhat/quay",
+        sync_interval=5000,
+        sync_start_date=datetime(2020, 1, 2, 6, 30, 0),
+        skopeo_timeout_interval=300,
+        external_registry_config={"verify_tls": True},
+    )
+    assert "proxy" not in (mirror.external_registry_config or {})
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        body = {
+            "external_registry_config": {
+                "proxy": {"https_proxy": "http://corp-proxy:8080"},
+            }
+        }
+        conduct_api_call(cl, RepoMirrorResource, "PUT", params, body, 201)
+
+    updated = model.repo_mirror.get_mirror(repo)
+    assert updated.external_registry_config.get("proxy") == {
+        "https_proxy": "http://corp-proxy:8080",
+    }
 
 
 def test_cancel_repo_mirroring(app):
