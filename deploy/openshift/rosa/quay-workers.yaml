@@ -147,6 +147,7 @@ objects:
             mountPath: /conf/stack
           startupProbe:
             failureThreshold: ${{STARTUP_PROBE_FAILURE_THRESHOLD}}
+            initialDelaySeconds: ${{STARTUP_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{STARTUP_PROBE_PERIOD_SECONDS}}
             tcpSocket:
               port: 50051
@@ -274,6 +275,8 @@ parameters:
   ## Lifecycle probes
   - name: STARTUP_PROBE_FAILURE_THRESHOLD
     value: "10"
+  - name: STARTUP_PROBE_INITIAL_DELAY_SECONDS
+    value: "45"
   - name: STARTUP_PROBE_PERIOD_SECONDS
     value: "15"
   - name: LIVENESS_PROBE_FAILURE_THRESHOLD
