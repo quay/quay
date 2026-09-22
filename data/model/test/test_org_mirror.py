@@ -466,6 +466,42 @@ class TestCreateOrgMirrorConfig:
 
         assert "already contains repositories" in str(excinfo.value)
 
+    def test_create_org_mirror_config_rejects_private_proxy(self, initialized_db):
+        org, robot = _create_org_and_robot("create_private_proxy")
+
+        with pytest.raises(DataModelException, match="private or reserved"):
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=Visibility.get(name="private"),
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+                external_registry_config={"proxy": {"http_proxy": "http://169.254.169.254:8080"}},
+            )
+
+        assert get_org_mirror_config(org) is None
+
+    def test_create_org_mirror_config_allows_allowlisted_proxy(self, initialized_db):
+        org, robot = _create_org_and_robot("create_allowlisted_proxy")
+
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+            external_registry_config={"proxy": {"https_proxy": "10.0.0.1:8443"}},
+            allowed_hosts=["10.0.0.0/8"],
+        )
+
+        assert config.external_registry_config["proxy"]["https_proxy"] == "10.0.0.1:8443"
+
 
 class TestDeleteOrgMirrorConfig:
     """Tests for delete_org_mirror_config function."""
@@ -795,6 +831,41 @@ class TestUpdateOrgMirrorConfig:
         updated = update_org_mirror_config(org, external_registry_config=new_config)
 
         assert updated is not None
+        assert updated.external_registry_config == new_config
+
+    def test_update_org_mirror_config_rejects_private_proxy_without_mutation(self, initialized_db):
+        org, robot = _create_org_and_robot("update_private_proxy")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            external_registry_config={"proxy": {"http_proxy": "http://proxy.example.com:8080"}},
+        )
+        original_config = config.external_registry_config
+
+        with pytest.raises(DataModelException, match="private or reserved"):
+            update_org_mirror_config(
+                org,
+                external_registry_config={"proxy": {"https_proxy": "https://127.0.0.1:8443"}},
+                sync_interval=7200,
+            )
+
+        unchanged = get_org_mirror_config(org)
+        assert unchanged.external_registry_config == original_config
+        assert unchanged.sync_interval == 3600
+
+    def test_update_org_mirror_config_preserves_no_proxy_and_nullable_values(self, initialized_db):
+        org, robot = _create_org_and_robot("update_nullable_proxy")
+        _create_org_mirror_config(org, robot)
+        new_config = {
+            "proxy": {
+                "http_proxy": None,
+                "https_proxy": "proxy.example.com:8443",
+                "no_proxy": "localhost,10.0.0.0/8",
+            }
+        }
+
+        updated = update_org_mirror_config(org, external_registry_config=new_config)
+
         assert updated.external_registry_config == new_config
 
     def test_update_org_mirror_config_multiple_fields(self, initialized_db):

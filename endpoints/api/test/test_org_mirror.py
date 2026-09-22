@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app import app as quay_app
 from data import model
 from data.database import (
     OrgMirrorConfig,
@@ -1624,6 +1625,37 @@ class TestOrgMirrorSSRFProtection:
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
+    def test_create_with_private_proxy_rejected_before_persistence(self, app):
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+        body = self._base_create_body("https://harbor.example.com")
+        body["external_registry_config"] = {
+            "proxy": {"https_proxy": "https://169.254.169.254:8443"}
+        }
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": _EMPTY_ORG}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "The provided mirror proxy location is not allowed"
+        org = model.organization.get_organization(_EMPTY_ORG)
+        assert model.org_mirror.get_org_mirror_config(org) is None
+
+    def test_create_with_scheme_less_proxy_succeeds(self, app):
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+        body = self._base_create_body("https://harbor.example.com")
+        body["external_registry_config"] = {
+            "proxy": {"http_proxy": "proxy.example.com:8080", "no_proxy": "localhost"}
+        }
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": _EMPTY_ORG}
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+
+        org = model.organization.get_organization(_EMPTY_ORG)
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_config["proxy"]["http_proxy"] == ("proxy.example.com:8080")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
     def test_create_with_kubernetes_hostname_rejected(self, app):
         """POST with Kubernetes internal hostname returns 400 with generic error."""
         _cleanup_org_mirror_config(_EMPTY_ORG)
@@ -1677,6 +1709,53 @@ class TestOrgMirrorSSRFProtection:
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_with_private_proxy_rejected_and_prior_config_preserved(self, app):
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+        config.external_registry_config = {"proxy": {"http_proxy": "http://proxy.example.com:8080"}}
+        config.save()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            update_body = {
+                "external_registry_config": {"proxy": {"http_proxy": "http://127.0.0.1:8080"}},
+                "sync_interval": config.sync_interval + 60,
+            }
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
+
+        assert resp.json["error_message"] == "The provided mirror proxy location is not allowed"
+        updated = model.org_mirror.get_org_mirror_config(config.organization)
+        assert updated.external_registry_config == {
+            "proxy": {"http_proxy": "http://proxy.example.com:8080"}
+        }
+        assert updated.sync_interval == config.sync_interval
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_with_allowlisted_private_proxy_succeeds(self, app):
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": ["10.0.0.0/8"]}):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                update_body = {
+                    "external_registry_config": {
+                        "proxy": {
+                            "https_proxy": "10.0.0.1:8443",
+                            "http_proxy": None,
+                            "no_proxy": "localhost",
+                        }
+                    }
+                }
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 200)
+
+        updated = model.org_mirror.get_org_mirror_config(config.organization)
+        assert (
+            updated.external_registry_config["proxy"]
+            == update_body["external_registry_config"]["proxy"]
+        )
         _cleanup_org_mirror_config("buynlarge")
 
     def test_update_with_aws_metadata_rejected(self, app):
