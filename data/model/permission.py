@@ -20,7 +20,7 @@ from util.names import parse_robot_username
 
 def list_team_permissions(team):
     return (
-        RepositoryPermission.select(RepositoryPermission)
+        RepositoryPermission.select(RepositoryPermission, Role)
         .join(Repository)
         .join(Visibility)
         .switch(RepositoryPermission)
@@ -32,7 +32,7 @@ def list_team_permissions(team):
 
 def list_robot_permissions(robot_name):
     return (
-        RepositoryPermission.select(RepositoryPermission, User, Repository)
+        RepositoryPermission.select(RepositoryPermission, User, Repository, Role)
         .join(Repository)
         .join(Visibility)
         .switch(RepositoryPermission)
