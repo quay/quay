@@ -276,7 +276,9 @@ function execFileWithInput(
       }
     });
 
-    child.stdin.end(input);
+    // Append newline if not already present - most CLI tools expect newline-terminated stdin
+    const normalizedInput = input.endsWith('\n') ? input : `${input}\n`;
+    child.stdin.end(normalizedInput);
   });
 }
 

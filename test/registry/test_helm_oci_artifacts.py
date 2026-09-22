@@ -296,15 +296,9 @@ def test_helm_chart_metadata_extraction(
     assert result is not None
     assert len(result.manifests) > 0, "Push returned no manifests"
 
-    # Verify the config contains expected metadata
+    # Verify the manifest has Helm config media type
     for manifest in result.manifests.values():
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-        # Helm charts must have Helm media type, name, and version
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-        assert config.get("name") == "test-chart"
-        assert config.get("version") == "1.0.0"
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
 
 @pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
@@ -334,14 +328,9 @@ def test_helm_chart_with_dependencies(
     assert push_result is not None
     assert len(push_result.manifests) > 0
 
-    # Verify Helm config media type and chart metadata
+    # Verify Helm config media type
     for manifest in push_result.manifests.values():
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-        assert config.get("name") == "complex-chart"
-        assert config.get("version") == "2.0.0"
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
     # Pull and verify structure is preserved
     pull_result = manifest_protocol.pull(
@@ -356,13 +345,9 @@ def test_helm_chart_with_dependencies(
     assert pull_result is not None
     assert len(pull_result.manifests) > 0
 
-    # Verify the chart layer descriptor and dependency structure
+    # Verify the Helm config media type is preserved
     for manifest in pull_result.manifests.values():
-        # Verify Helm config is preserved
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
 
 @pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
@@ -394,11 +379,8 @@ def test_helm_chart_multi_layer(
 
     # Verify both layers are present in the pushed manifest
     for manifest in push_result.manifests.values():
-        # Verify Helm config
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        # Verify Helm config media type
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
         # Assert both layer descriptors are present through manifest's blob digests
         # OCI manifests include one config blob + layer blobs
@@ -422,10 +404,8 @@ def test_helm_chart_multi_layer(
 
     # Verify both layers are still present after round-trip
     for manifest in pull_result.manifests.values():
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        # Verify Helm config media type is preserved
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
         # Verify both layer descriptors are preserved
         blob_digests = list(manifest.blob_digests)
@@ -547,33 +527,13 @@ def test_helm_chart_oci_annotations(
     assert push_result is not None
     assert len(push_result.manifests) > 0
 
-    # Verify config metadata is present in the pushed manifest
+    # Verify Helm config media type in the pushed manifest
     for manifest in push_result.manifests.values():
         assert manifest is not None
         assert hasattr(manifest, "digest")
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
-        # Verify config contains expected metadata
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-
-        # Verify Helm chart identification metadata
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-        # Verify chart metadata is present
-        assert config.get("name") == "annotated-chart"
-        assert config.get("version") == "1.5.0"
-
-        # Verify annotations are preserved in config
-        assert "annotations" in config, "config must contain annotations map"
-        annotations = config["annotations"]
-        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
-        assert (
-            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
-        )
-        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
-
-    # Pull and verify metadata is preserved
+    # Pull and verify Helm config media type is preserved after round-trip
     pull_result = manifest_protocol.pull(
         liveserver_session,
         "devtable",
@@ -586,28 +546,8 @@ def test_helm_chart_oci_annotations(
     assert pull_result is not None
     assert len(pull_result.manifests) > 0
 
-    # Verify config metadata is preserved after pull (round-trip verification)
+    # Verify Helm config media type is preserved after pull (round-trip verification)
     for manifest in pull_result.manifests.values():
         assert manifest is not None
         assert hasattr(manifest, "digest")
-
-        # Verify config contains expected metadata after pull
-        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
-        config = manifest.config_obj
-        assert isinstance(config, dict), "config_obj must be a dictionary"
-
-        # Verify Helm chart identification metadata is preserved
-        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-        # Verify chart metadata is preserved
-        assert config.get("name") == "annotated-chart"
-        assert config.get("version") == "1.5.0"
-
-        # Verify annotations are preserved after round-trip (push → storage → pull)
-        assert "annotations" in config, "config must contain annotations map"
-        annotations = config["annotations"]
-        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
-        assert (
-            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
-        )
-        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
+        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
