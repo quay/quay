@@ -256,7 +256,15 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
             isInline
             title="This is the only time this token secret will be displayed."
           />
-          <ClipboardCopy isReadOnly>{generatedToken}</ClipboardCopy>
+          <ClipboardCopy
+            isReadOnly
+            isExpanded
+            isCode
+            variant="expansion"
+            style={{overflowWrap: 'anywhere', whiteSpace: 'pre-wrap'}}
+          >
+            {generatedToken}
+          </ClipboardCopy>
         </ModalBody>
         <ModalFooter>
           <Button variant="primary" onClick={() => setGeneratedToken(null)}>

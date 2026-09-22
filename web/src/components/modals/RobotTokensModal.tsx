@@ -16,7 +16,12 @@ import {
   Content,
   ContentVariants,
 } from '@patternfly/react-core';
-import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
+import {
+  AngleRightIcon,
+  CodeIcon,
+  DockerIcon,
+  KeyIcon,
+} from '@patternfly/react-icons';
 import {useState} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
@@ -243,15 +248,33 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           </>
         </Tab>
         <Tab
+          eventKey={1}
+          title={
+            <>
+              <TabTitleIcon>
+                <CodeIcon />
+              </TabTitleIcon>
+              <TabTitleText>API Tokens</TabTitleText>
+            </>
+          }
+        >
+          <br />
+          <RobotAPITokensTab
+            namespace={props.namespace}
+            robotName={props.name}
+            isUserOrganization={isUserOrganization}
+          />
+        </Tab>
+        <Tab
           id="kubernetes-tab"
           data-testid="kubernetes-tab"
-          eventKey={1}
+          eventKey={2}
           title={
             <>
               <TabTitleIcon>
                 <img
                   src={require(
-                    activeTabKey == 1
+                    activeTabKey == 2
                       ? 'src/assets/kubernetes.svg'
                       : 'src/assets/kubernetes-grey.svg',
                   )}
@@ -363,13 +386,13 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           </Content>
         </Tab>
         <Tab
-          eventKey={2}
+          eventKey={3}
           title={
             <>
               <TabTitleIcon>
                 <img
                   src={require(
-                    activeTabKey == 2
+                    activeTabKey == 3
                       ? 'src/assets/podman.svg'
                       : 'src/assets/podman-grey.svg',
                   )}
@@ -401,7 +424,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           </Content>
         </Tab>
         <Tab
-          eventKey={3}
+          eventKey={4}
           title={
             <>
               <TabTitleIcon>
@@ -432,18 +455,10 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             </ClipboardCopy>
           </Content>
         </Tab>
-        <Tab eventKey={5} title={<TabTitleText>API Tokens</TabTitleText>}>
-          <br />
-          <RobotAPITokensTab
-            namespace={props.namespace}
-            robotName={props.name}
-            isUserOrganization={isUserOrganization}
-          />
-        </Tab>
         <Tab
           id="docker-config-tab"
           data-testid="docker-config-tab"
-          eventKey={4}
+          eventKey={5}
           title={
             <>
               <TabTitleIcon>
