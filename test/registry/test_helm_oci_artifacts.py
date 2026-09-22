@@ -71,9 +71,11 @@ appVersion: "1.0"
 @pytest.fixture(scope="session")
 def helm_chart_with_dependencies():
     """
-    Returns a Helm chart with multiple layers (dependencies).
+    Returns a Helm chart with dependencies packaged within the main chart.
 
-    Tests that complex charts with multiple layers maintain structure.
+    Tests that complex charts with dependencies maintain structure. In real Helm
+    charts, dependencies are packaged under charts/ subdirectory within the main
+    chart archive (one layer), not as separate layers.
     """
     chart_yaml = b"""apiVersion: v2
 name: complex-chart
@@ -87,37 +89,22 @@ dependencies:
     repository: "https://charts.bitnami.com/bitnami"
 """
 
-    # Base layer - dependency chart
-    dependency_bytes = layer_bytes_for_contents(
-        b"dependency chart contents",
-        mode="|gz",
-        other_files={
-            "postgresql/Chart.yaml": b"apiVersion: v2\nname: postgresql\nversion: 12.0.0\n",
-        },
-    )
-
-    # Top layer - main chart
+    # Single layer with main chart and dependency nested inside
     chart_bytes = layer_bytes_for_contents(
         b"main chart contents",
         mode="|gz",
         other_files={
             "complex-chart/Chart.yaml": chart_yaml,
             "complex-chart/values.yaml": b"# Values with dependencies\n",
+            "complex-chart/charts/postgresql/Chart.yaml": b"apiVersion: v2\nname: postgresql\nversion: 12.0.0\n",
         },
     )
 
     return [
         Image(
-            id="dependency-id",
-            bytes=dependency_bytes,
-            parent_id=None,
-            size=len(dependency_bytes),
-            config={"mediaType": "application/vnd.cncf.helm.config.v1+json"},
-        ),
-        Image(
             id="main-chart-id",
             bytes=chart_bytes,
-            parent_id="dependency-id",
+            parent_id=None,
             size=len(chart_bytes),
             config={
                 "name": "complex-chart",
@@ -242,25 +229,28 @@ def test_helm_chart_metadata_extraction(
     )
 
     assert result is not None
+    assert len(result.manifests) > 0, "Push returned no manifests"
 
     # Verify the config contains expected metadata
     for manifest in result.manifests.values():
-        if hasattr(manifest, "config_obj"):
-            config = manifest.config_obj
-            assert config is not None
-            # Helm charts should have config with name and version
-            if isinstance(config, dict):
-                assert "mediaType" in config or "name" in config
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
+        # Helm charts must have Helm media type, name, and version
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        assert config.get("name") == "test-chart"
+        assert config.get("version") == "1.0.0"
 
 
 def test_helm_chart_multiple_layers(
     manifest_protocol, helm_chart_with_dependencies, liveserver_session, app_reloader
 ):
     """
-    Test 1.3: Multiple layers (dependencies) - structure maintained.
+    Test 1.3: Helm chart with dependencies - structure maintained.
 
-    Validates that Helm charts with dependencies (multiple layers) maintain
-    their structure through push/pull operations.
+    Validates that Helm charts with dependencies maintain their structure through
+    push/pull operations. Dependencies are packaged within the main chart archive
+    under the charts/ subdirectory.
     """
     credentials = ("devtable", "password")
 
@@ -277,7 +267,16 @@ def test_helm_chart_multiple_layers(
     assert push_result is not None
     assert len(push_result.manifests) > 0
 
-    # Pull and verify all layers are present
+    # Verify Helm config media type and chart metadata
+    for manifest in push_result.manifests.values():
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        assert config.get("name") == "complex-chart"
+        assert config.get("version") == "2.0.0"
+
+    # Pull and verify structure is preserved
     pull_result = manifest_protocol.pull(
         liveserver_session,
         "devtable",
@@ -288,12 +287,18 @@ def test_helm_chart_multiple_layers(
     )
 
     assert pull_result is not None
-    # image_ids is keyed by tag (and only populated for schema1), so it can't be
-    # used to count layers. Verify layer preservation via the pulled manifest's
-    # blob digests instead. schema2/OCI include one extra config blob, so the
-    # manifest must contain at least one blob per pushed layer.
     assert len(pull_result.manifests) > 0
+
+    # Verify the chart layer descriptor uses Helm chart content media type
     for manifest in pull_result.manifests.values():
+        # Verify Helm config is preserved
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+
+        # Verify chart content layer is present
+        # schema2/OCI manifests include one config blob + layer blobs
         assert len(list(manifest.blob_digests)) >= len(helm_chart_with_dependencies)
 
 
@@ -413,21 +418,26 @@ def test_helm_chart_oci_annotations(
         assert manifest is not None
         assert hasattr(manifest, "digest")
 
-        # Verify config contains expected metadata if accessible
-        if hasattr(manifest, "config_obj") and manifest.config_obj:
-            config = manifest.config_obj
-            if isinstance(config, dict):
-                # Verify Helm chart identification metadata
-                assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-                # Verify chart metadata is present
-                assert config.get("name") == "annotated-chart"
-                assert config.get("version") == "1.5.0"
+        # Verify config contains expected metadata
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
 
-                # Verify annotations are preserved in config
-                if "annotations" in config:
-                    annotations = config["annotations"]
-                    assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-                    assert annotations.get("org.opencontainers.image.version") == "1.5.0"
+        # Verify Helm chart identification metadata
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        # Verify chart metadata is present
+        assert config.get("name") == "annotated-chart"
+        assert config.get("version") == "1.5.0"
+
+        # Verify annotations are preserved in config
+        assert "annotations" in config, "config must contain annotations map"
+        annotations = config["annotations"]
+        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
+        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
+        assert (
+            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
+        )
+        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
 
     # Pull and verify metadata is preserved
     pull_result = manifest_protocol.pull(
@@ -448,25 +458,22 @@ def test_helm_chart_oci_annotations(
         assert hasattr(manifest, "digest")
 
         # Verify config contains expected metadata after pull
-        if hasattr(manifest, "config_obj") and manifest.config_obj:
-            config = manifest.config_obj
-            if isinstance(config, dict):
-                # Verify Helm chart identification metadata is preserved
-                assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
-                # Verify chart metadata is preserved
-                assert config.get("name") == "annotated-chart"
-                assert config.get("version") == "1.5.0"
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
 
-                # Verify annotations are preserved after round-trip (push → storage → pull)
-                if "annotations" in config:
-                    annotations = config["annotations"]
-                    assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-                    assert annotations.get("org.opencontainers.image.version") == "1.5.0"
-                    assert (
-                        annotations.get("org.opencontainers.image.description")
-                        == "Chart with OCI annotations"
-                    )
-                    assert (
-                        annotations.get("org.opencontainers.image.created")
-                        == "2026-05-07T00:00:00Z"
-                    )
+        # Verify Helm chart identification metadata is preserved
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+        # Verify chart metadata is preserved
+        assert config.get("name") == "annotated-chart"
+        assert config.get("version") == "1.5.0"
+
+        # Verify annotations are preserved after round-trip (push → storage → pull)
+        assert "annotations" in config, "config must contain annotations map"
+        annotations = config["annotations"]
+        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
+        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
+        assert (
+            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
+        )
+        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"

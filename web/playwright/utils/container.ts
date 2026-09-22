@@ -186,15 +186,26 @@ async function retryOperation(
 }
 
 /**
- * Execute a shell command, retrying with fixed 1s delays on failure.
+ * Execute a command, retrying with fixed 1s delays on failure.
  *
- * Similar to retryOperation but for direct shell commands via execAsync.
+ * Accepts either an async callback or a {command, args, env} object for execFileAsync.
  */
-async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
+async function retryPush(
+  operation:
+    | (() => Promise<void>)
+    | {command: string; args: string[]; env?: NodeJS.ProcessEnv},
+  maxAttempts = 5,
+): Promise<void> {
   let lastErr: unknown;
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      await execAsync(cmd);
+      if (typeof operation === 'function') {
+        await operation();
+      } else {
+        await execFileAsync(operation.command, operation.args, {
+          env: operation.env,
+        });
+      }
       return;
     } catch (err) {
       lastErr = err;
@@ -898,7 +909,7 @@ Create a default fully qualified app name.
     );
 
     // Package the chart
-    await execAsync(`helm package ${chartDir}`, {cwd: tmpDir});
+    await execFileAsync('helm', ['package', chartDir], {cwd: tmpDir});
 
     // Use a per-invocation registry config so parallel Playwright workers don't
     // race on the shared default (~/.config/helm/registry/config.json). A
@@ -907,20 +918,38 @@ Create a default fully qualified app name.
     // Username or Password".
     const registryConfig = path.join(tmpDir, 'registry-config.json');
 
-    // Login to registry
-    await execAsync(
-      `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure --registry-config ${registryConfig}`,
+    // Login to registry using --password-stdin to avoid shell interpolation
+    await execFileWithInput(
+      'helm',
+      [
+        'registry',
+        'login',
+        REGISTRY_HOST,
+        '-u',
+        username,
+        '--password-stdin',
+        '--insecure',
+        '--registry-config',
+        registryConfig,
+      ],
+      password,
     );
 
     // Push the chart (with retries for repo-init race)
     const registryUrl = `oci://${REGISTRY_HOST}`;
     const packagedChart = `${repo}-${version}.tgz`;
-    await retryPush(
-      `helm push ${path.join(
-        tmpDir,
-        packagedChart,
-      )} ${registryUrl}/${namespace} --insecure --registry-config ${registryConfig}`,
-    );
+    const chartPath = path.join(tmpDir, packagedChart);
+    await retryPush({
+      command: 'helm',
+      args: [
+        'push',
+        chartPath,
+        `${registryUrl}/${namespace}`,
+        '--insecure',
+        '--registry-config',
+        registryConfig,
+      ],
+    });
   } finally {
     // Cleanup temporary directory
     fs.rmSync(tmpDir, {recursive: true, force: true});
