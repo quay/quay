@@ -24,15 +24,14 @@ from data.database import QuotaNamespaceSize, QuotaRepositorySize, QuotaTypes, T
 from data.model import gc as gc_model
 from data.model import storage as storage_model
 from data.model.organization import create_organization
-from data.model.quota import run_backfill
+from data.model.quota import reset_namespace_backfill, run_backfill
 from data.model.repository import create_repository
+from data.model.test.test_quota import create_manifest_for_testing
 from data.model.user import get_user
 from test.fixtures import *
 from workers.test.gc_quota_test_helpers import (
     calculate_expected_size,
-    create_manifest_with_blobs,
     create_tag_for_manifest,
-    delete_tag_by_name,
     enable_gc_and_quota,
     enable_quota_management,
     expire_tag,
@@ -43,8 +42,6 @@ from workers.test.gc_quota_test_helpers import (
     run_quota_worker,
     set_namespace_quota_limit,
 )
-
-pytestmark = pytest.mark.workers
 
 
 @pytest.fixture
@@ -90,7 +87,7 @@ class TestGCQuotaInteraction:
 
         # Disable quota initially to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [blob1, blob2])
+            manifest1 = create_manifest_for_testing(repo, [blob1, blob2])
             tag1 = create_tag_for_manifest(repo, manifest1, "v1.0")
 
         # Run initial quota backfill
@@ -108,7 +105,8 @@ class TestGCQuotaInteraction:
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker to recalculate
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
         # Verify quota is freed
@@ -119,11 +117,10 @@ class TestGCQuotaInteraction:
         with enable_quota_management():
             blob3 = "C" * (4 * 1024 * 1024)  # 4 MB
             blob4 = "D" * (4 * 1024 * 1024)  # 4 MB
-            manifest2 = create_manifest_with_blobs(repo, [blob3, blob4])
+            manifest2 = create_manifest_for_testing(repo, [blob3, blob4])
             tag2 = create_tag_for_manifest(repo, manifest2, "v2.0")
 
-        # Run quota recalculation
-        run_backfill(org.id)
+        # Verify quota shows the new content (incremental update during push)
         final_quota = get_namespace_quota(org)
         expected_final = calculate_expected_size(blob3, blob4)
         assert (
@@ -156,7 +153,7 @@ class TestGCQuotaInteraction:
 
         # Set up initial content
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [blob1, blob2, blob3])
+            manifest1 = create_manifest_for_testing(repo, [blob1, blob2, blob3])
             tag1 = create_tag_for_manifest(repo, manifest1, "v1.0")
 
         # Run initial quota backfill
@@ -179,7 +176,8 @@ class TestGCQuotaInteraction:
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker to recalculate
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
         # Verify usage dropped below the limit and the warning state is cleared
@@ -216,11 +214,11 @@ class TestGCQuotaInteraction:
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
             # Repo1 has shared_blob + unique_blob1
-            manifest1 = create_manifest_with_blobs(repo1, [shared_blob, unique_blob1])
+            manifest1 = create_manifest_for_testing(repo1, [shared_blob, unique_blob1])
             tag1 = create_tag_for_manifest(repo1, manifest1, "v1.0")
 
             # Repo2 has shared_blob + unique_blob2
-            manifest2 = create_manifest_with_blobs(repo2, [shared_blob, unique_blob2])
+            manifest2 = create_manifest_for_testing(repo2, [shared_blob, unique_blob2])
             tag2 = create_tag_for_manifest(repo2, manifest2, "v1.0")
 
         # Run initial quota backfill
@@ -240,7 +238,8 @@ class TestGCQuotaInteraction:
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
         # Verify quota after GC
@@ -279,7 +278,7 @@ class TestGCQuotaInteraction:
 
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [blob1])
+            manifest1 = create_manifest_for_testing(repo, [blob1])
             tag1 = create_tag_for_manifest(repo, manifest1, "orphan-tag")
 
         # Run initial quota backfill
@@ -291,16 +290,27 @@ class TestGCQuotaInteraction:
         # Delete the tag, making the blob orphaned
         expire_tag(repo, "orphan-tag")
 
-        # Verify blob is now orphaned (no tags point to it)
-        tag_count = Tag.select().where(Tag.repository == repo).count()
-        assert tag_count >= 0  # Tag might still exist with expired lifetime_end_ms
-
         # Run GC to remove orphaned blob
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker to recalculate
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
+
+        # Verify the tag is gone
+        from data.model.oci.tag import get_tag
+
+        assert get_tag(repo.id, "orphan-tag") is None, "Tag should be removed after GC"
+
+        # Verify the blob's ImageStorage row was deleted
+        from data.database import ImageStorage, ManifestBlob
+
+        storage_ids = [
+            mb.blob_id for mb in ManifestBlob.select().where(ManifestBlob.manifest == manifest1.id)
+        ]
+        remaining_storage = ImageStorage.select().where(ImageStorage.id << storage_ids).count()
+        assert remaining_storage == 0, "Orphaned blob's ImageStorage should be removed by GC"
 
         # Verify quota decreased (blob removed)
         quota_after_gc = get_namespace_quota(org)
@@ -308,16 +318,17 @@ class TestGCQuotaInteraction:
             quota_after_gc == 0
         ), f"Orphaned blob should be removed, quota should be 0, got {quota_after_gc}"
 
-    def test_partial_gc_failure_quota_reflects_actual_removal(self, setup_orgs):
+    def test_skipped_manifest_remains_counted(self, setup_orgs):
         """
-        Test 5: Partial GC (inject failure for some blobs) → quota reflects only successfully removed blobs.
+        Test 5: Partial GC (manifest not collected) → quota reflects only successfully removed blobs.
 
         Verifies that:
-        1. If GC partially fails, quota only reflects successfully removed blobs
-        2. Failed blob removal doesn't incorrectly update quota
-        3. System handles partial failures gracefully
+        1. If GC skips a manifest (returns False), quota only reflects successfully removed blobs
+        2. Skipped manifest's blobs remain counted in quota
+        3. System handles partial collection correctly
 
-        Note: This test simulates failure by using mock patches.
+        Note: This test simulates a skipped manifest by patching _garbage_collect_manifest
+        to return False, which indicates the manifest is still referenced or already gone.
         """
         user = setup_orgs["user"]
         org = setup_orgs["org1"]
@@ -331,13 +342,13 @@ class TestGCQuotaInteraction:
 
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [blob1])
+            manifest1 = create_manifest_for_testing(repo, [blob1])
             tag1 = create_tag_for_manifest(repo, manifest1, "v1.0")
 
-            manifest2 = create_manifest_with_blobs(repo, [blob2])
+            manifest2 = create_manifest_for_testing(repo, [blob2])
             tag2 = create_tag_for_manifest(repo, manifest2, "v2.0")
 
-            manifest3 = create_manifest_with_blobs(repo, [blob3])
+            manifest3 = create_manifest_for_testing(repo, [blob3])
             tag3 = create_tag_for_manifest(repo, manifest3, "v3.0")
 
         # Run initial quota backfill
@@ -368,7 +379,8 @@ class TestGCQuotaInteraction:
             with enable_gc_and_quota():
                 run_gc_worker()
 
-        # Run quota worker
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
         # blob2 was removed successfully, but blob1's collection "failed" so its
@@ -403,7 +415,7 @@ class TestGCQuotaInteraction:
 
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [old_blob])
+            manifest1 = create_manifest_for_testing(repo, [old_blob])
             tag1 = create_tag_for_manifest(repo, manifest1, "old-tag")
 
         # Run initial quota backfill
@@ -431,7 +443,7 @@ class TestGCQuotaInteraction:
         def _push_during_gc(storage_id_whitelist):
             if "manifest" not in push_state:
                 with enable_quota_management():
-                    push_state["manifest"] = create_manifest_with_blobs(repo, [new_blob])
+                    push_state["manifest"] = create_manifest_for_testing(repo, [new_blob])
                     push_state["tag"] = create_tag_for_manifest(
                         repo, push_state["manifest"], "new-tag"
                     )
@@ -444,10 +456,36 @@ class TestGCQuotaInteraction:
         # The push must have actually been injected during GC.
         assert "manifest" in push_state, "Concurrent push hook did not fire during GC"
 
-        # Run quota worker
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
-        # Verify the concurrently-pushed blob is NOT removed and quota is correct
+        # Verify the pushed content survived: tag must still resolve
+        from data.model.oci.tag import get_tag
+
+        new_tag = get_tag(repo.id, "new-tag")
+        assert new_tag is not None, "Concurrently pushed tag should survive GC"
+        assert (
+            new_tag.manifest_id == push_state["manifest"].id
+        ), "Tag should point to pushed manifest"
+
+        # Verify the pushed manifest's ImageStorage rows still exist
+        from data.database import ImageStorage, ManifestBlob
+
+        pushed_storage_ids = [
+            mb.blob_id
+            for mb in ManifestBlob.select().where(
+                ManifestBlob.manifest == push_state["manifest"].id
+            )
+        ]
+        remaining_storage = (
+            ImageStorage.select().where(ImageStorage.id << pushed_storage_ids).count()
+        )
+        assert remaining_storage == len(
+            pushed_storage_ids
+        ), "All ImageStorage rows for pushed manifest should survive GC"
+
+        # Verify quota reflects the new blob
         quota_after = get_namespace_quota(org)
         expected_after = calculate_expected_size(new_blob)
         assert quota_after == expected_after, f"New blob should be preserved, got {quota_after}"
@@ -473,7 +511,7 @@ class TestGCQuotaInteraction:
 
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest1 = create_manifest_with_blobs(repo, [blob1, blob2])
+            manifest1 = create_manifest_for_testing(repo, [blob1, blob2])
             tag1 = create_tag_for_manifest(repo, manifest1, "overflow-tag")
 
         # Run initial quota backfill
@@ -496,7 +534,8 @@ class TestGCQuotaInteraction:
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker to recalculate
+        # Reset backfill markers so quota worker recalculates from scratch
+        reset_namespace_backfill(org.id)
         run_quota_worker()
 
         # Verify quota is corrected to actual usage (0) and enforcement cleared.
@@ -528,10 +567,10 @@ class TestGCQuotaInteraction:
 
         # Disable quota to set up test data
         with patch("data.model.quota.features", MagicMock(QUOTA_MANAGEMENT=False)):
-            manifest_a = create_manifest_with_blobs(repo_a, [blob_a])
+            manifest_a = create_manifest_for_testing(repo_a, [blob_a])
             tag_a = create_tag_for_manifest(repo_a, manifest_a, "v1.0")
 
-            manifest_b = create_manifest_with_blobs(repo_b, [blob_b])
+            manifest_b = create_manifest_for_testing(repo_b, [blob_b])
             tag_b = create_tag_for_manifest(repo_b, manifest_b, "v1.0")
 
         # Run initial quota backfill for both orgs
@@ -556,7 +595,9 @@ class TestGCQuotaInteraction:
         with enable_gc_and_quota():
             run_gc_worker()
 
-        # Run quota worker (processes all orgs)
+        # Reset backfill markers for both orgs so quota worker recalculates from scratch
+        reset_namespace_backfill(org_a.id)
+        reset_namespace_backfill(org_b.id)
         run_quota_worker()
 
         # Verify org A quota is freed

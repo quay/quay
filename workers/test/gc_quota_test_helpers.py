@@ -1,75 +1,32 @@
-import json
 import time
 from unittest.mock import MagicMock, patch
 
-from app import storage
 from data.database import (
-    ImageStorageLocation,
     QuotaNamespaceSize,
     QuotaRepositorySize,
     QuotaTypes,
     Tag,
     User,
 )
-from data.model.blob import store_blob_record_and_temp_link
 from data.model.namespacequota import (
     check_limits,
     create_namespace_quota,
     create_namespace_quota_limit,
     get_namespace_size,
 )
-from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import find_repository_with_garbage, get_tag, retarget_tag
-from data.model.organization import create_organization
 from data.model.quota import get_namespace_size as get_namespace_size_row
 from data.model.quota import get_repository_size as get_repository_size_row
-from data.model.quota import run_backfill
-from data.model.repository import create_repository, get_repository_size
-from data.model.storage import get_layer_path
-from data.model.user import get_namespace_user_by_user_id, get_user
-from digest.digest_tools import sha256_digest
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from util.bytes import Bytes
+from data.model.test.test_quota import (
+    CONFIG_LAYER_JSON,
+    _populate_blob,
+    create_manifest_for_testing,
+)
 from workers.gc.gcworker import GarbageCollectionWorker
 from workers.quotatotalworker import QuotaTotalWorker
 
-CONFIG_LAYER_JSON = json.dumps(
-    {
-        "config": {},
-        "rootfs": {"type": "layers", "diff_ids": []},
-        "history": [],
-    }
-)
 
-
-def create_manifest_with_blobs(repository, blobs):
-    """
-    Create a test manifest with specified blobs.
-
-    Args:
-        repository: Repository object to create manifest in
-        blobs: List of blob content strings
-
-    Returns:
-        Created manifest object
-    """
-    remote_digest = sha256_digest(b"something")
-    builder = DockerSchema2ManifestBuilder()
-    namespace = get_namespace_user_by_user_id(repository.namespace_user)
-    _, config_digest = _populate_blob(CONFIG_LAYER_JSON, namespace.username, repository.name)
-    builder.set_config_digest(config_digest, len(CONFIG_LAYER_JSON.encode("utf-8")))
-    builder.add_layer(remote_digest, 1234, urls=["http://hello/world"])
-    for blob in blobs:
-        _, blob_digest = _populate_blob(blob, namespace.username, repository.name)
-        builder.add_layer(blob_digest, len(blob))
-
-    manifest = builder.build()
-    created = get_or_create_manifest(repository.id, manifest, storage)
-    assert created
-    return created.manifest
-
-
-def create_tag_for_manifest(repository, manifest, tag_name, expiration_ms=None):
+def create_tag_for_manifest(repository, manifest, tag_name):
     """
     Create a tag pointing to a manifest.
 
@@ -77,38 +34,11 @@ def create_tag_for_manifest(repository, manifest, tag_name, expiration_ms=None):
         repository: Repository object
         manifest: Manifest object to tag
         tag_name: Name of the tag
-        expiration_ms: Optional expiration time in milliseconds
 
     Returns:
         Created tag object
     """
-    tag = retarget_tag(tag_name, manifest.id, raise_on_error=True)
-    if expiration_ms is not None:
-        Tag.update(lifetime_end_ms=expiration_ms).where(Tag.id == tag.id).execute()
-        # Reflect the new expiration on the returned object directly. Reloading
-        # via get_tag would apply an alive-only filter and return None for a
-        # tag expired in the past, dropping the created tag's ID that callers
-        # rely on (e.g. when seeding an already-expired GC root).
-        tag.lifetime_end_ms = expiration_ms
-    return tag
-
-
-def delete_tag_by_name(repository, tag_name):
-    """
-    Delete a tag by name.
-
-    Args:
-        repository: Repository object
-        tag_name: Name of tag to delete
-
-    Returns:
-        True if tag was deleted, False otherwise
-    """
-    try:
-        count = Tag.delete().where(Tag.repository == repository, Tag.name == tag_name).execute()
-        return count > 0
-    except Tag.DoesNotExist:
-        return False
+    return retarget_tag(tag_name, manifest.id, raise_on_error=True)
 
 
 def run_gc_worker(skip_lock=True):
@@ -289,28 +219,6 @@ def calculate_expected_size(*blobs):
     for blob in blobs:
         size += len(blob)
     return size
-
-
-def _populate_blob(content, namespace_name, repository_name):
-    """
-    Store a blob in storage.
-
-    Args:
-        content: Blob content (string or bytes)
-        namespace_name: Namespace name
-        repository_name: Repository name
-
-    Returns:
-        Tuple of (blob object, digest)
-    """
-    content = Bytes.for_string_or_unicode(content).as_encoded_str()
-    digest = str(sha256_digest(content))
-    location = ImageStorageLocation.get(name="local_us")
-    blob = store_blob_record_and_temp_link(
-        namespace_name, repository_name, digest, location, len(content), 120
-    )
-    storage.put_content(["local_us"], get_layer_path(blob), content)
-    return blob, digest
 
 
 def enable_quota_management():
