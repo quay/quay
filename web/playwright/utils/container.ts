@@ -919,21 +919,24 @@ Create a default fully qualified app name.
     const registryConfig = path.join(tmpDir, 'registry-config.json');
 
     // Login to registry using --password-stdin to avoid shell interpolation
-    await execFileWithInput(
-      'helm',
-      [
-        'registry',
-        'login',
-        REGISTRY_HOST,
-        '-u',
-        username,
-        '--password-stdin',
-        '--insecure',
-        '--registry-config',
-        registryConfig,
-      ],
-      password,
-    );
+    // Retry login to handle registry startup race conditions
+    await retryPush(async () => {
+      await execFileWithInput(
+        'helm',
+        [
+          'registry',
+          'login',
+          REGISTRY_HOST,
+          '-u',
+          username,
+          '--password-stdin',
+          '--insecure',
+          '--registry-config',
+          registryConfig,
+        ],
+        password,
+      );
+    });
 
     // Push the chart (with retries for repo-init race)
     const registryUrl = `oci://${REGISTRY_HOST}`;

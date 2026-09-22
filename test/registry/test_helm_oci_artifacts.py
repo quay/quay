@@ -116,6 +116,69 @@ dependencies:
 
 
 @pytest.fixture(scope="session")
+def helm_chart_multi_layer():
+    """
+    Returns a Helm chart with multiple layers (chart content + provenance).
+
+    Tests multi-layer OCI artifacts where additional layers (like provenance files)
+    are included alongside the chart layer. This is a dedicated fixture for testing
+    multi-layer scenarios, separate from the dependency fixture which focuses on
+    chart structure.
+    """
+    chart_yaml = b"""apiVersion: v2
+name: multi-layer-chart
+description: A Helm chart with provenance layer
+type: application
+version: 3.0.0
+appVersion: "3.0"
+"""
+
+    # Chart content layer
+    chart_bytes = layer_bytes_for_contents(
+        b"chart content layer",
+        mode="|gz",
+        other_files={
+            "multi-layer-chart/Chart.yaml": chart_yaml,
+            "multi-layer-chart/values.yaml": b"# Multi-layer chart values\n",
+        },
+    )
+
+    # Provenance layer (separate layer for chart provenance/signature data)
+    provenance_bytes = layer_bytes_for_contents(
+        b"-----BEGIN PGP SIGNED MESSAGE-----\nChart provenance data\n-----END PGP SIGNATURE-----\n",
+        mode="|gz",
+        other_files={
+            "multi-layer-chart.prov": b"PGP signature data for chart verification\n",
+        },
+    )
+
+    return [
+        Image(
+            id="chart-content-layer",
+            bytes=chart_bytes,
+            parent_id=None,
+            size=len(chart_bytes),
+            config={
+                "name": "multi-layer-chart",
+                "version": "3.0.0",
+                "mediaType": "application/vnd.cncf.helm.config.v1+json",
+            },
+        ),
+        Image(
+            id="provenance-layer",
+            bytes=provenance_bytes,
+            parent_id="chart-content-layer",
+            size=len(provenance_bytes),
+            config={
+                "name": "multi-layer-chart",
+                "version": "3.0.0",
+                "mediaType": "application/vnd.cncf.helm.config.v1+json",
+            },
+        ),
+    ]
+
+
+@pytest.fixture(scope="session")
 def helm_chart_with_annotations():
     """
     Returns a Helm chart with OCI annotations.
@@ -207,6 +270,7 @@ def test_helm_chart_push_and_pull(manifest_protocol, helm_chart, liveserver_sess
     )
 
 
+@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
 def test_helm_chart_metadata_extraction(
     manifest_protocol, helm_chart, liveserver_session, app_reloader
 ):
@@ -214,7 +278,8 @@ def test_helm_chart_metadata_extraction(
     Test 1.2: Chart metadata extraction - Chart.yaml parsed correctly.
 
     Validates that Chart.yaml metadata from the Helm chart is correctly
-    extracted and accessible after push.
+    extracted and accessible after push. Only runs for OCI protocol since
+    Helm charts are OCI artifacts.
     """
     credentials = ("devtable", "password")
 
@@ -242,7 +307,8 @@ def test_helm_chart_metadata_extraction(
         assert config.get("version") == "1.0.0"
 
 
-def test_helm_chart_multiple_layers(
+@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
+def test_helm_chart_with_dependencies(
     manifest_protocol, helm_chart_with_dependencies, liveserver_session, app_reloader
 ):
     """
@@ -250,7 +316,8 @@ def test_helm_chart_multiple_layers(
 
     Validates that Helm charts with dependencies maintain their structure through
     push/pull operations. Dependencies are packaged within the main chart archive
-    under the charts/ subdirectory.
+    under the charts/ subdirectory. Only runs for OCI protocol since Helm charts
+    are OCI artifacts.
     """
     credentials = ("devtable", "password")
 
@@ -289,7 +356,7 @@ def test_helm_chart_multiple_layers(
     assert pull_result is not None
     assert len(pull_result.manifests) > 0
 
-    # Verify the chart layer descriptor uses Helm chart content media type
+    # Verify the chart layer descriptor and dependency structure
     for manifest in pull_result.manifests.values():
         # Verify Helm config is preserved
         assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
@@ -297,9 +364,74 @@ def test_helm_chart_multiple_layers(
         assert isinstance(config, dict), "config_obj must be a dictionary"
         assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
 
-        # Verify chart content layer is present
-        # schema2/OCI manifests include one config blob + layer blobs
-        assert len(list(manifest.blob_digests)) >= len(helm_chart_with_dependencies)
+
+@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
+def test_helm_chart_multi_layer(
+    manifest_protocol, helm_chart_multi_layer, liveserver_session, app_reloader
+):
+    """
+    Test 1.3b: Multi-layer Helm OCI artifact - chart content + provenance layers.
+
+    Validates that multi-layer Helm OCI artifacts (chart with separate provenance
+    layer) maintain both layers through push/pull operations. Asserts both layer
+    descriptors are present in the manifest's blob digests. Only runs for OCI
+    protocol since Helm charts are OCI artifacts.
+    """
+    credentials = ("devtable", "password")
+
+    # Push the multi-layer chart
+    push_result = manifest_protocol.push(
+        liveserver_session,
+        "devtable",
+        "helm-multi-layer-repo",
+        "3.0.0",
+        helm_chart_multi_layer,
+        credentials=credentials,
+    )
+
+    assert push_result is not None
+    assert len(push_result.manifests) > 0
+
+    # Verify both layers are present in the pushed manifest
+    for manifest in push_result.manifests.values():
+        # Verify Helm config
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+
+        # Assert both layer descriptors are present through manifest's blob digests
+        # OCI manifests include one config blob + layer blobs
+        blob_digests = list(manifest.blob_digests)
+        assert len(blob_digests) >= len(
+            helm_chart_multi_layer
+        ), f"Expected at least {len(helm_chart_multi_layer)} layers, got {len(blob_digests)}"
+
+    # Pull and verify both layers are preserved
+    pull_result = manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "helm-multi-layer-repo",
+        "3.0.0",
+        helm_chart_multi_layer,
+        credentials=credentials,
+    )
+
+    assert pull_result is not None
+    assert len(pull_result.manifests) > 0
+
+    # Verify both layers are still present after round-trip
+    for manifest in pull_result.manifests.values():
+        assert hasattr(manifest, "config_obj"), "Manifest missing config_obj"
+        config = manifest.config_obj
+        assert isinstance(config, dict), "config_obj must be a dictionary"
+        assert config.get("mediaType") == "application/vnd.cncf.helm.config.v1+json"
+
+        # Verify both layer descriptors are preserved
+        blob_digests = list(manifest.blob_digests)
+        assert len(blob_digests) >= len(
+            helm_chart_multi_layer
+        ), f"Expected at least {len(helm_chart_multi_layer)} layers after pull, got {len(blob_digests)}"
 
 
 def test_helm_chart_version_overwrite(
@@ -384,6 +516,7 @@ appVersion: "2.0"
     assert pull_result is not None
 
 
+@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
 def test_helm_chart_oci_annotations(
     manifest_protocol, helm_chart_with_annotations, liveserver_session, app_reloader
 ):
@@ -392,6 +525,7 @@ def test_helm_chart_oci_annotations(
 
     Validates that OCI config metadata and embedded annotations on Helm charts
     are correctly preserved through push and pull operations (round-trip test).
+    Only runs for OCI protocol since Helm charts are OCI artifacts.
 
     Note: This tests config-level metadata (stored in the OCI config blob),
     which includes Helm chart metadata and embedded annotations. Manifest-level
