@@ -644,11 +644,11 @@ func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
 		return "", err
 	}
 
-	passwordPath := filepath.Join(authDir, "admin-password")
-	info, err := inst.fs.Lstat(passwordPath)
+	credFilePath := filepath.Join(authDir, "admin-password")
+	info, err := inst.fs.Lstat(credFilePath)
 	switch {
 	case err == nil && !info.Mode().IsRegular():
-		return "", fmt.Errorf("credential destination %s is not a regular file", passwordPath)
+		return "", fmt.Errorf("credential destination %s is not a regular file", credFilePath)
 	case err != nil && !errors.Is(err, os.ErrNotExist):
 		return "", fmt.Errorf("inspect credential destination: %w", err)
 	}
@@ -656,9 +656,9 @@ func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
 	provided := cfg.InitPasswordSet || cfg.InitPassword != ""
 	if err == nil && !provided {
 		if info.Mode().Perm() != 0o600 {
-			return "", fmt.Errorf("existing credential file %s has unsafe permissions %04o", passwordPath, info.Mode().Perm())
+			return "", fmt.Errorf("existing credential file %s has unsafe permissions %04o", credFilePath, info.Mode().Perm())
 		}
-		data, readErr := inst.fs.ReadFile(passwordPath)
+		data, readErr := inst.fs.ReadFile(credFilePath)
 		if readErr != nil {
 			return "", fmt.Errorf("read existing credential file: %w", readErr)
 		}
@@ -676,7 +676,7 @@ func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
 	if err := ValidateInitPassword(password); err != nil {
 		return "", fmt.Errorf("invalid password: %w", err)
 	}
-	if err := inst.atomicWriteCredential(authDir, passwordPath, []byte(password)); err != nil {
+	if err := inst.atomicWriteCredential(authDir, credFilePath, []byte(password)); err != nil {
 		return "", err
 	}
 	return password, nil
