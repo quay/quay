@@ -18,9 +18,9 @@ func newInstallCmd() *Command {
 
 func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *installer.Config) int) *Command {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	hostname := fs.String("hostname", "", "server hostname for TLS and config (auto-detected for new installations; preserved on upgrade)")
+	hostname := fs.String("hostname", "", "server hostname for TLS and config (auto-detected from the system when omitted)")
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
-	port := fs.String("port", "", "HTTPS port for the registry (default 8443; an existing port is preserved on upgrade)")
+	port := fs.String("port", "", "HTTPS port for the registry (default 8443)")
 	sslCert := fs.String("ssl-cert", "", "path to TLS certificate (PEM)")
 	sslKey := fs.String("ssl-key", "", "path to TLS private key (PEM)")
 	sslSkipHostnameVerification := fs.Bool("ssl-skip-hostname-verification", false, "allow TLS certificate hostname to differ from -hostname")
@@ -29,9 +29,10 @@ func newInstallCmdWithDeps(stdin io.Reader, install func(context.Context, *insta
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
 
 	return &Command{
-		Name:     "install",
-		Synopsis: "Set up or upgrade registry (Quadlet service)",
-		Flags:    fs,
+		Name:        "install",
+		Synopsis:    "Install the registry as a Quadlet service",
+		Description: "Performs a fresh installation. Fails if the registry is already installed; use '" + BinaryName + " upgrade' to update an existing installation.",
+		Flags:       fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
 			if err := installer.ValidateSSLFlags(*sslCert, *sslKey); err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
@@ -91,7 +92,7 @@ func runInstall(ctx context.Context, cfg *installer.Config) int {
 		return 1
 	}
 
-	if err := inst.Run(ctx, cfg); err != nil {
+	if err := inst.Install(ctx, cfg); err != nil {
 		slog.Error("install failed", "err", err)
 		return 1
 	}

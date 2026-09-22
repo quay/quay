@@ -129,13 +129,54 @@ func (inst *Installer) RemoveFailedInstallation(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+// Install performs a fresh installation. It fails when a Quadlet unit already
+// exists so that an accidental re-run cannot silently modify a live registry.
+func (inst *Installer) Install(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	if inst.HasInstallation() {
+		return fmt.Errorf(
+			"existing installation found at %s; run 'mirror-registry upgrade' to update it or 'mirror-registry uninstall' to remove it",
+			inst.env.QuadletPath(quadletServiceName),
+		)
+	}
+	if cfg.DataDir == "" {
+		return fmt.Errorf("data directory is required")
+	}
+	return inst.run(ctx, cfg, false)
+}
+
+// Upgrade updates an existing installation in place, preserving its data
+// directory, hostname, and port unless explicitly overridden. It fails when
+// no Quadlet unit exists.
+func (inst *Installer) Upgrade(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	if !inst.HasInstallation() {
+		return fmt.Errorf("no existing installation found; run 'mirror-registry install' first")
+	}
+	dataDir, err := inst.resolveUpgradeDataDir(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("resolve data directory: %w", err)
+	}
+	resolvedCfg := *cfg
+	resolvedCfg.DataDir = dataDir
+	return inst.run(ctx, &resolvedCfg, true)
+}
+
 // Run performs an install or upgrade based on whether a Quadlet unit already
-// exists.
+// exists. The migration workflow uses it to deploy a converted registry; the
+// CLI exposes the explicit Install and Upgrade entry points instead.
 func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 	if cfg == nil {
 		return fmt.Errorf("nil installer config")
 	}
+	return inst.run(ctx, cfg, inst.HasInstallation())
+}
 
+func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) error {
 	resolvedCfg := *cfg
 	if resolvedCfg.InitUser == "" {
 		resolvedCfg.InitUser = defaultInitUsername
@@ -148,7 +189,6 @@ func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("system compatibility: %w", err)
 	}
 
-	upgrading := inst.quadlet.Exists(quadletServiceName)
 	hostname, err := inst.resolveHostname(ctx, cfg.Hostname, upgrading)
 	if err != nil {
 		return fmt.Errorf("resolve hostname: %w", err)
@@ -278,6 +318,33 @@ func (inst *Installer) resolvePort(requestedPort string, upgrading bool) (string
 		return "", err
 	}
 	return port, nil
+}
+
+// resolveUpgradeDataDir returns the data directory recorded in the existing
+// Quadlet unit. A requested directory must match it: pointing an upgrade at a
+// different directory would initialize a second, empty registry there.
+func (inst *Installer) resolveUpgradeDataDir(requestedDataDir string) (string, error) {
+	existing, err := inst.quadlet.DataDir(quadletServiceName)
+	if err != nil {
+		return "", fmt.Errorf("determine existing data directory: %w", err)
+	}
+	if requestedDataDir == "" {
+		slog.Info("preserving existing data directory", "data-dir", existing)
+		return existing, nil
+	}
+	// The unit records an absolute path; resolve a relative -data-dir the
+	// same way so "registry" matches "$PWD/registry".
+	requested, err := filepath.Abs(requestedDataDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve requested data directory %s: %w", requestedDataDir, err)
+	}
+	if requested != filepath.Clean(existing) {
+		return "", fmt.Errorf(
+			"data directory %s does not match the existing installation's %s; omit -data-dir to preserve it",
+			requestedDataDir, existing,
+		)
+	}
+	return existing, nil
 }
 
 func (inst *Installer) validateUpgradePortChange(requestedPort, resolvedPort string, upgrading bool) error {
