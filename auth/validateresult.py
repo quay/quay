@@ -34,6 +34,7 @@ class ValidateResult(object):
         error_message=None,
         sso_token=None,
         api_scopes=None,
+        federation_binding=None,
     ):
         self.kind = kind
         self.missing = missing
@@ -47,6 +48,7 @@ class ValidateResult(object):
             signed_data=signed_data,
             sso_token=sso_token,
             api_scopes=api_scopes,
+            federation_binding=federation_binding,
         )
 
     def tuple(self):

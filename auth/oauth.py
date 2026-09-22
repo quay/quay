@@ -53,17 +53,18 @@ def validate_oauth_token(token):
     return validate_app_oauth_token(token)
 
 
-def validate_robot_api_jwt(token):
+def validate_robot_api_jwt(token, decoded=None):
     """Validate a Quay-signed, scoped robot API JWT.
 
     Return None for non-Quay JWTs so they continue through the SSO JWT path.
     """
-    try:
-        jwt_config = dict(app.config)
-        jwt_config["REGISTRY_JWT_AUTH_MAX_FRESH_S"] = api_token.API_TOKEN_MAX_EXPIRATION_SECONDS
-        decoded = decode_bearer_token(token, instance_keys, jwt_config)
-    except InvalidBearerTokenException:
-        return None
+    if decoded is None:
+        try:
+            jwt_config = dict(app.config)
+            jwt_config["REGISTRY_JWT_AUTH_MAX_FRESH_S"] = api_token.API_TOKEN_MAX_EXPIRATION_SECONDS
+            decoded = decode_bearer_token(token, instance_keys, jwt_config)
+        except InvalidBearerTokenException:
+            return None
 
     scope = decoded.get("api_scopes")
     if not scope:

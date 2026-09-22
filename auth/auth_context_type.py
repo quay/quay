@@ -139,6 +139,7 @@ class ValidatedAuthContext(AuthContext):
         signed_data=None,
         sso_token=None,
         api_scopes=None,
+        federation_binding=None,
     ):
         # Note: These field names *MUST* match the string values of the kinds defined in
         # ContextEntityKind.
@@ -150,6 +151,7 @@ class ValidatedAuthContext(AuthContext):
         self.signed_data = signed_data
         self.sso_token = sso_token
         self.api_scopes = api_scopes
+        self.federation_binding = federation_binding
 
     def tuple(self):
         return list(vars(self).values())

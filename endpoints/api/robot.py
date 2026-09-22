@@ -72,6 +72,10 @@ CREATE_ROBOT_FEDERATION_SCHEMA = {
     "items": {
         "type": "object",
         "properties": {
+            "id": {
+                "type": "string",
+                "description": "Stable identifier of an existing federation binding",
+            },
             "issuer": {
                 "type": "string",
                 "description": "The issuer of the token",
@@ -486,6 +490,8 @@ def _parse_federation_config(request):
         if not (issuer.startswith("http://") or issuer.startswith("https://")):
             raise request_error(message="Issuer must be a URL (http:// or https://)")
         entry = {"issuer": issuer, "subject": subject}
+        if item.get("id"):
+            entry["id"] = item["id"]
         if "api_scopes" in item:
             entry["api_scopes"] = item["api_scopes"]
         audiences = item.get("audiences", ["quay"])

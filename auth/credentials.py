@@ -140,9 +140,15 @@ def validate_credentials(auth_username, auth_password_or_token):
                 except InvalidBearerTokenException:
                     decoded = None
                 if decoded and decoded.get("api_scopes"):
-                    result = validate_robot_api_jwt(auth_password_or_token)
-                    if result.auth_valid and result.context.robot.username == auth_username:
-                        return result, CredentialKind.robot
+                    result = validate_robot_api_jwt(auth_password_or_token, decoded=decoded)
+                    if result.auth_valid and result.context.robot.username != auth_username:
+                        return (
+                            ValidateResult(
+                                AuthKind.credentials,
+                                error_message="JWT subject does not match the supplied username",
+                            ),
+                            CredentialKind.robot,
+                        )
                     return result, CredentialKind.robot
 
             robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)

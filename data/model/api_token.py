@@ -7,6 +7,7 @@ from math import isfinite
 from auth import scopes
 from data.database import APIToken, User, db_for_update
 from data.model import config, db_transaction
+from data.readreplica import ReadOnlyModeException
 from util.security.registry_jwt import generate_bearer_token
 
 API_TOKEN_DEFAULT_EXPIRATION_SECONDS = 60 * 60 * 24 * 30
@@ -74,7 +75,7 @@ def create_token_under_limit(subject_user, creator, scope, expiration_seconds, d
         return APIToken.create(
             subject_user=subject_user,
             creator=creator,
-            scope=scope,
+            scope=normalize_scope(scope),
             display_name=display_name,
             expires_at=datetime.utcnow() + timedelta(seconds=expiration_seconds),
         )
@@ -114,6 +115,20 @@ def revoke_token(subject_user, token_uuid):
     )
 
 
+def _update_last_accessed(token):
+    now = datetime.utcnow()
+    threshold = timedelta(
+        seconds=config.app_config.get("OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S", 60)
+    )
+    if token.last_accessed is not None and now - token.last_accessed < threshold:
+        return
+    try:
+        APIToken.update(last_accessed=now).where(APIToken.id == token.id).execute()
+        token.last_accessed = now
+    except ReadOnlyModeException:
+        pass
+
+
 def get_active_token(token_uuid, subject_username, scope):
     try:
         token = APIToken.get(APIToken.uuid == token_uuid, APIToken.revoked_at.is_null())
@@ -125,6 +140,5 @@ def get_active_token(token_uuid, subject_username, scope):
         or token.expires_at <= datetime.utcnow()
     ):
         return None
-    token.last_accessed = datetime.utcnow()
-    token.save(only=[APIToken.last_accessed])
+    _update_last_accessed(token)
     return token

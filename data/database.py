@@ -1631,7 +1631,7 @@ class APIToken(BaseModel):
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     subject_user = QuayUserField(allows_robots=True, index=True)
     creator = QuayUserField(allows_robots=False, null=True)
-    scope = CharField()
+    scope = TextField()
     display_name = CharField(null=True)
     expires_at = DateTimeField()
     revoked_at = DateTimeField(null=True)

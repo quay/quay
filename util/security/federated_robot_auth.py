@@ -99,12 +99,12 @@ def verify_federated_robot_jwt_token(robot, token):
         raise InvalidRobotCredentialException(f"Invalid token: {e}")
 
     assert decoded_token
-    binding = next(
-        (item for item in issuer_bindings if item.get("subject") == decoded_token.get("sub")),
-        None,
-    )
-    if binding is None:
+    matches = [item for item in issuer_bindings if item.get("subject") == decoded_token.get("sub")]
+    if len(matches) > 1:
+        raise InvalidRobotCredentialException("Ambiguous federation binding for this robot")
+    if not matches:
         raise InvalidRobotCredentialException("Token does not match robot")
+    binding = matches[0]
 
     allowed_audiences = binding.get("audiences")
     if allowed_audiences:
@@ -134,6 +134,4 @@ def verify_federated_robot_jwt_token(robot, token):
         },
     )
 
-    result = ValidateResult(AuthKind.credentials, robot=robot)
-    result.context.federation_binding = binding
-    return result
+    return ValidateResult(AuthKind.credentials, robot=robot, federation_binding=binding)

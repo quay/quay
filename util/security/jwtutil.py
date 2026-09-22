@@ -54,11 +54,11 @@ class _StrictJWT(PyJWT):
             options["verify_exp"] = True
 
         # Do all of the other checks
-        # Older supported PyJWT releases do not accept the optional subject
-        # argument. Subject validation is performed by the caller when needed.
         super(_StrictJWT, self)._validate_claims(
             payload, options, audience=audience, issuer=issuer, leeway=leeway
         )
+        if subject is not None and payload.get("sub") != subject:
+            raise InvalidTokenError("Invalid subject")
 
         now = timegm(datetime.utcnow().utctimetuple())
         self._reject_future_iat(payload, now, leeway)
