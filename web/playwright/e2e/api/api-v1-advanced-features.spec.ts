@@ -257,7 +257,7 @@ test.describe(
     test('admin can get user quota by ID and list its limits', async ({
       superuserApi,
       adminClient,
-      playwright,
+      request,
     }) => {
       const user = await superuserApi.user('quotauser');
 
@@ -285,23 +285,16 @@ test.describe(
       expect(verifyEmailResp.status()).toBe(200);
 
       // Sign in as the created user for user-scoped quota endpoints
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const userClient = new RawApiClient(request, API_URL);
-        await userClient.signIn(user.username, user.password);
+      const userClient = new RawApiClient(request, API_URL);
+      await userClient.signIn(user.username, user.password);
 
-        const quotaResp = await userClient.get(`/api/v1/user/quota/${quotaId}`);
-        expect(quotaResp.status()).toBe(200);
+      const quotaResp = await userClient.get(`/api/v1/user/quota/${quotaId}`);
+      expect(quotaResp.status()).toBe(200);
 
-        const limitsResp = await userClient.get(
-          `/api/v1/user/quota/${quotaId}/limit`,
-        );
-        expect(limitsResp.status()).toBe(200);
-      } finally {
-        await request.dispose();
-      }
+      const limitsResp = await userClient.get(
+        `/api/v1/user/quota/${quotaId}/limit`,
+      );
+      expect(limitsResp.status()).toBe(200);
 
       // Superuser update and verify
       try {

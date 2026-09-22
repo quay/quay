@@ -140,6 +140,7 @@ jobs:
       AWS_ACCESS_KEY_ID: GKe2e0123456789abcdef01234
       AWS_SECRET_ACCESS_KEY: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
       S3_ENDPOINT: http://localhost:3900
+      JAEGER_QUERY_URL: http://localhost:16686
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -151,6 +152,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-jaeger: true
           with-repomirror: true
           with-georep: true
           with-builds: true
@@ -365,6 +367,41 @@ jobs:
           name: playwright-test-results
           path: web/test-results/
           retention-days: 30
+
+      - name: Export Jaeger traces
+        if: always()
+        run: |
+          mkdir -p jaeger-traces
+          curl -sf "http://localhost:16686/api/traces?service=quay&limit=50000&lookback=2h" \
+            -o jaeger-traces/traces.json \
+            || echo "::warning::Could not export Jaeger traces"
+
+      - name: Analyze Jaeger traces
+        if: always()
+        continue-on-error: true
+        run: bash .github/scripts/analyze-jaeger-traces.sh
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          METRICS_FILE: jaeger-traces/trace-metrics.json
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Analyze API endpoint coverage
+        if: always()
+        continue-on-error: true
+        run: python3 .github/scripts/analyze-api-coverage.py
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          COVERAGE_FILE: jaeger-traces/api-coverage.json
+          QUAY_API_URL: http://localhost:8080
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Upload Jaeger traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jaeger-traces
+          path: jaeger-traces/
+          retention-days: 7
 
       - name: Collect Quay logs on failure
         if: failure()
