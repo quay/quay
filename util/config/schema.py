@@ -1710,6 +1710,25 @@ CONFIG_SCHEMA = {
             "description": "The amount of time between runs of the quota registry size worker in seconds",
             "x-example": 30,
         },
+        "QUOTA_METRICS": {
+            "type": "boolean",
+            "description": "Whether quota metrics are exposed about total registry storage consumption, organization and repository usage and organization quota limits and attainment. Defaults to False. Beware of high cardinality if there are many organizations and repositories. Metrics use mutable namespace/repository names as labels for dashboard readability; renames create new Prometheus series until stale ones expire. Use QUOTA_METRICS_*_LIMIT to cap cardinality.",
+            "x-example": False,
+        },
+        "QUOTA_METRICS_REPOS_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of repositories to report per-repository quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
+        },
+        "QUOTA_METRICS_NAMESPACES_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of namespaces to report per-namespace quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
+        },
         "FEATURE_EDIT_QUOTA": {
             "type": "boolean",
             "description": "Allow editing of quota configurations",

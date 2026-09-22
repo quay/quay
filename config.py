@@ -952,6 +952,20 @@ class DefaultConfig(ImmutableConfig):
     # Enables the quota backfill worker
     QUOTA_BACKFILL = True
 
+    # Enables exposing quota metrics for the registry, organizations and repositories.
+    # Beware of high cardinality if there are many organizations and repositories.
+    # Per-tenant series use namespace/repository names as labels (needed for
+    # dashboards); renames create new series until Prometheus drops stale ones.
+    QUOTA_METRICS = False
+
+    # Maximum number of repositories to report per-repository quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_REPOS_LIMIT = 10000
+
+    # Maximum number of namespaces to report per-namespace quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_NAMESPACES_LIMIT = 10000
+
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
 
