@@ -93,8 +93,8 @@ def test_move_tag(manifest_exists, test_tag, expected_status, app):
         ("devtable", "history", 6),  # +2 for converting object to and from json
         ("devtable", "complex", 6),  # +2 for converting object to and from json
         ("devtable", "gargantuan", 6),  # +2 for converting object to and from json
-        ("buynlarge", "orgrepo", 9),  # +3 for permissions checks.
-        ("buynlarge", "anotherorgrepo", 9),  # +3 for permissions checks.
+        ("buynlarge", "orgrepo", 6),  # +2 for permissions checks (uses UNION).
+        ("buynlarge", "anotherorgrepo", 6),  # +2 for permissions checks (uses UNION).
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, query_count, app):

@@ -167,7 +167,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            400,
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.put_image_layer", image_id=FAKE_IMAGE_ID),
@@ -197,7 +197,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            400,
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.put_image_checksum", image_id=FAKE_IMAGE_ID),
@@ -299,7 +299,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            400,
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.put_image_json", image_id=FAKE_IMAGE_ID),
@@ -336,7 +336,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            201,
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.create_repository", repository=PRIVATE_REPO),
@@ -369,7 +369,7 @@ def build_v1_index_specs():
             201,
         ).set_method("PUT"),
         IndexV1TestSpec(
-            url_for("v1.update_images", repository=PUBLIC_REPO), NO_REPO, 403, 403, 403, 403, 403
+            url_for("v1.update_images", repository=PUBLIC_REPO), NO_REPO, 403, 403, 403, 403, 400
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.update_images", repository=PRIVATE_REPO), NO_REPO, 403, 403, 403, 403, 400
@@ -497,7 +497,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            400,
         ).set_method("PUT"),
         IndexV1TestSpec(
             url_for("v1.put_tag", repository=PRIVATE_REPO, tag=FAKE_TAG_NAME),
@@ -533,7 +533,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            403,
+            404,
         ).set_method("DELETE"),
         IndexV1TestSpec(
             url_for("v1.delete_tag", repository=PRIVATE_REPO, tag=FAKE_TAG_NAME),
