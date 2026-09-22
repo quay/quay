@@ -51,8 +51,8 @@ export function useRepositories(
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
     : user?.anonymous
-    ? [] // Anonymous users have no namespaces to fetch
-    : user?.organizations?.map((org) => org.name).concat(user.username) || [];
+      ? [] // Anonymous users have no namespaces to fetch
+      : user?.organizations?.map((org) => org.name).concat(user.username) || [];
 
   const handlePartialResults = useCallback((newRepos: IRepository[]) => {
     setPartialResults((prev) => [...prev, ...newRepos]);

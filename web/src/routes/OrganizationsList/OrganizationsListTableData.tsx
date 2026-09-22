@@ -112,8 +112,8 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const teamCountVal: string = props.isUser
     ? 'N/A'
     : organization?.teams
-    ? Object.keys(organization.teams).length.toString()
-    : '0';
+      ? Object.keys(organization.teams).length.toString()
+      : '0';
 
   return (
     <>

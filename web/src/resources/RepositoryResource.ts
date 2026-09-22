@@ -164,7 +164,7 @@ export async function fetchRepositories(
 ): Promise<IRepository[]> {
   const {signal, next_page_token = null, onPartialResult} = options;
 
-  const params: Record<string, any> = {
+  const params: Record<string, string | boolean | number | undefined> = {
     public: true,
     last_modified: true,
   };
