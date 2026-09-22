@@ -5,7 +5,8 @@ import pytest
 
 from auth.scopes import READ_REPO
 from data import model
-from data.database import LogEntryKind, OAuthAccessToken
+from data.database import APIToken, LogEntryKind, OAuthAccessToken
+from data.model import api_token
 from data.model.oauth import DatabaseAuthorizationProvider
 from test.fixtures import *
 
@@ -44,6 +45,51 @@ def create_access_token_for_last_accessed_test(application_name, expires_at):
     )
     token.expires_at = expires_at
     return token, access_token
+
+
+def test_robot_api_token_is_owned_by_robot_and_tracks_creator(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("api-token", creator)
+
+    token, _ = api_token.create_token_under_limit(robot, creator, READ_REPO.scope, 3600, "CI token")
+
+    assert token.subject_user == robot
+    assert token.creator == creator
+    tokens, next_page = api_token.list_tokens(robot)
+    assert [found.id for found in tokens] == [token.id]
+    assert next_page is None
+    assert api_token.revoke_token(robot, token.uuid)
+    tokens, next_page = api_token.list_tokens(robot)
+    assert tokens == []
+    assert next_page is None
+
+
+def test_robot_api_tokens_support_pagination(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("paginated-api-token", creator)
+    token_one, _ = api_token.create_token_under_limit(
+        robot, creator, READ_REPO.scope, 3600, "First token"
+    )
+    token_two, _ = api_token.create_token_under_limit(
+        robot, creator, READ_REPO.scope, 3600, "Second token"
+    )
+
+    first_page, next_page = api_token.list_tokens(robot, limit=1)
+    second_page, final_page = api_token.list_tokens(robot, page_token=next_page, limit=1)
+
+    assert {token.id for token in first_page + second_page} == {token_one.id, token_two.id}
+    assert next_page is not None
+    assert final_page is None
+
+
+def test_robot_api_token_expiration_is_capped_at_ninety_days():
+    assert api_token.validate_expiration(60 * 60 * 24 * 365) == 60 * 60 * 24 * 90
+
+
+def test_api_token_metadata_fields_are_nullable():
+    assert APIToken._meta.fields["created"].null is True
+    assert APIToken._meta.fields["last_accessed"].null is True
+    assert APIToken._meta.fields["display_name"].null is True
 
 
 def test_oauth_access_token_metadata_fields_are_nullable():
