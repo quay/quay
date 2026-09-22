@@ -178,6 +178,7 @@ jobs:
       AWS_ACCESS_KEY_ID: GKe2e0123456789abcdef01234
       AWS_SECRET_ACCESS_KEY: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
       S3_ENDPOINT: http://localhost:3900
+      JAEGER_QUERY_URL: http://localhost:16686
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
