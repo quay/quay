@@ -60,6 +60,22 @@ jobs:
               - '!.github/workflows/ci-config-tool.yaml'
               - '!.github/workflows/build-and-publish.yaml'
               - '!.github/workflows/codeql.yml'
+              - '!.github/workflows/label-backported-pr.yml'
+              - '!.github/workflows/agent-pr-metrics.yaml'
+              - '!.github/workflows/aws-ip-json.yaml'
+              - '!.github/workflows/branch-sync.yaml'
+              - '!.github/workflows/CI-nightly.yaml'
+              - '!.github/workflows/cut-release.yml'
+              - '!.github/workflows/frozen-branch-check.yaml'
+              - '!.github/workflows/fullsend.yaml'
+              - '!.github/workflows/playwright-report-cleanup.yaml'
+              - '!.github/workflows/playwright-report-deploy.yaml'
+              - '!.github/workflows/pr-labeler.yaml'
+              - '!.github/workflows/pr-status-labeler.yaml'
+              - '!.github/workflows/prepare-release.yml'
+              - '!.github/workflows/renovate-pybuild-deps.yaml'
+              - '!.github/workflows/retest.yaml'
+              - '!.github/workflows/surge-preview-cleanup.yaml'
 
   pr-lint:
     name: conventional commit check
