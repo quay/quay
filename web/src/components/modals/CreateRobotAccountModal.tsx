@@ -37,7 +37,7 @@ export default function CreateRobotAccountModal(
   }
 
   // Fetching repos
-  const {repos: repos} = useRepositories(props.orgName);
+  const {repos: repos} = useRepositories(props.orgName, false);
 
   const [robotName, setRobotName] = useState('');
   const [robotDescription, setrobotDescription] = useState('');

@@ -122,6 +122,20 @@ def test_list_repos(initialized_db, app):
             assert state in ["NORMAL", "MIRROR", "ORG_MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
 
 
+def test_repository_listing_no_quota_information_if_quota_false_parameter_is_passed(
+    initialized_db, app
+):
+    """
+    Verifies that the repository listing API does not return the quota information if
+    quota parameter is provided and explicitly set to false.
+    """
+    with client_with_identity("devtable", app) as cl:
+        params = {"quota": "false", "repo_kind": "image", "starred": "true"}
+        response = conduct_api_call(cl, RepositoryList, "GET", params).json
+        for repo in response.get("repositories", []):
+            assert "quota_report" not in repo
+
+
 def test_list_repositories_last_modified(app):
     with client_with_identity("devtable", app) as cl:
         params = {

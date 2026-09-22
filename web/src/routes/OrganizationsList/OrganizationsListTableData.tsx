@@ -87,6 +87,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
   // Get repositories
   const {repos: repositories, totalResults: repoCount} = useRepositories(
     props.name,
+    false,
   );
 
   const getLastModifiedRepoTime = (repos: IRepository[]) => {
