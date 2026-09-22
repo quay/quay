@@ -151,6 +151,7 @@ objects:
                 command: ["/bin/sh", "-c", "sleep 20 && kill -QUIT $(cat /tmp/nginx.pid)"]
           startupProbe:
             failureThreshold: ${{STARTUP_PROBE_FAILURE_THRESHOLD}}
+            initialDelaySeconds: ${{STARTUP_PROBE_INITIAL_DELAY_SECONDS}}
             timeoutSeconds: ${{STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{STARTUP_PROBE_PERIOD_SECONDS}}
             httpGet:
@@ -293,6 +294,8 @@ parameters:
   ## Lifecycle probes
   - name: STARTUP_PROBE_FAILURE_THRESHOLD
     value: "20"
+  - name: STARTUP_PROBE_INITIAL_DELAY_SECONDS
+    value: "30"
   - name: STARTUP_PROBE_TIMEOUT_SECONDS
     value: "60"
   - name: STARTUP_PROBE_PERIOD_SECONDS
