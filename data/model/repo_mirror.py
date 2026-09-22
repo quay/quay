@@ -576,8 +576,7 @@ def change_external_registry_config(repository, config_updates):
             if key in config_updates["proxy"]:
                 if "proxy" not in external_registry_config:
                     external_registry_config["proxy"] = {}
-                else:
-                    external_registry_config["proxy"][key] = proxy_updates[key]
+                external_registry_config["proxy"][key] = proxy_updates[key]
 
     return update_with_transaction(mirror, external_registry_config=external_registry_config)
 

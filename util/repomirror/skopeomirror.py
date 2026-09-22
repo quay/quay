@@ -269,12 +269,26 @@ class SkopeoMirror(object):
 
     def setup_env(self, proxy):
         env = os.environ.copy()
+        proxy = proxy or {}
 
-        if proxy.get("http_proxy"):
-            env["HTTP_PROXY"] = proxy.get("http_proxy")
-        if proxy.get("https_proxy"):
-            env["HTTPS_PROXY"] = proxy.get("https_proxy")
-        if proxy.get("no_proxy"):
+        has_explicit_proxy = bool(proxy.get("http_proxy") or proxy.get("https_proxy"))
+        if has_explicit_proxy:
+            if proxy.get("http_proxy"):
+                env["HTTP_PROXY"] = proxy.get("http_proxy")
+            if proxy.get("https_proxy"):
+                env["HTTPS_PROXY"] = proxy.get("https_proxy")
+            # Explicit proxies without no_proxy must not inherit ambient NO_PROXY,
+            # or Skopeo can route DIRECT while SSRF classified the request as PROXY.
+            if "no_proxy" in proxy:
+                if proxy.get("no_proxy"):
+                    env["NO_PROXY"] = proxy.get("no_proxy")
+                else:
+                    env.pop("NO_PROXY", None)
+                    env.pop("no_proxy", None)
+            else:
+                env.pop("NO_PROXY", None)
+                env.pop("no_proxy", None)
+        elif proxy.get("no_proxy"):
             env["NO_PROXY"] = proxy.get("no_proxy")
 
         return env

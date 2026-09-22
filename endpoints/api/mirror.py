@@ -34,6 +34,29 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
+_PROXY_KEYS = ("http_proxy", "https_proxy", "no_proxy", "all_proxy")
+
+
+def _effective_proxy_config(stored_registry_config, submitted_registry_config):
+    """
+    Build the proxy mapping that will be active after a field-wise config update.
+
+    Persistence overlays only submitted proxy keys onto the stored mapping. SSRF
+    validation must use that same effective mapping so the validated route matches
+    the runtime route.
+    """
+    stored = dict((stored_registry_config or {}).get("proxy") or {})
+    if submitted_registry_config is None or "proxy" not in submitted_registry_config:
+        return stored or None
+
+    merged = dict(stored)
+    submitted_proxy = submitted_registry_config.get("proxy") or {}
+    for key in _PROXY_KEYS:
+        if key in submitted_proxy:
+            merged[key] = submitted_proxy[key]
+    return merged or None
+
+
 def _validate_external_reference(reference, proxy_config=None):
     """Validate a repository mirror source and normalize SSRF errors."""
     try:
@@ -424,12 +447,12 @@ class RepoMirrorResource(RepositoryParamResource):
 
         # Validate and normalize every requested change before applying any update.
         if "external_reference" in values:
-            registry_config = values.get("external_registry_config")
-            if registry_config is None:
-                registry_config = mirror.external_registry_config or {}
             _validate_external_reference(
                 values["external_reference"],
-                proxy_config=registry_config.get("proxy"),
+                proxy_config=_effective_proxy_config(
+                    mirror.external_registry_config,
+                    values.get("external_registry_config"),
+                ),
             )
 
         if "sync_start_date" in values:
