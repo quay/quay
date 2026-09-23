@@ -66,19 +66,21 @@ RUN curl -fsSL "https://github.com/google/go-containerregistry/releases/download
 
 WORKDIR /app
 
-# Install Playwright (version pinned from package.json so it stays in sync with
-# the project) and the Chromium browser. Browsers live in a shared /opt/playwright
-# so an arbitrary OpenShift UID (group 0) can read/write them; the CI step points
-# PLAYWRIGHT_BROWSERS_PATH here and reuses them instead of re-downloading.
-COPY web/package.json /tmp/package.json
+# Install Playwright (version pinned from package-lock.json so the baked browser
+# matches what the suite resolves at test time, not just the caret range in
+# package.json) and the Chromium browser. Browsers live in a shared
+# /opt/playwright so an arbitrary OpenShift UID (group 0) can read/write them;
+# the CI step points PLAYWRIGHT_BROWSERS_PATH here and reuses them instead of
+# re-downloading.
+COPY web/package-lock.json /tmp/package-lock.json
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
-RUN PW_VERSION=$(node -p "require('/tmp/package.json').devDependencies['@playwright/test']") \
+RUN PW_VERSION=$(node -p "require('/tmp/package-lock.json').packages['node_modules/@playwright/test'].version") \
     && npm init -y > /dev/null 2>&1 \
     && npm install --no-package-lock "@playwright/test@${PW_VERSION}" \
     && npx playwright install chromium \
     && mkdir -p /opt/playwright \
     && chgrp -R 0 /opt/playwright && chmod -R g+rwX /opt/playwright \
-    && rm -rf /tmp/package.json /opt/app-root/src/.npm /tmp/npm-*
+    && rm -rf /tmp/package-lock.json /opt/app-root/src/.npm /tmp/npm-*
 
 # Bake the test files for standalone use. The OpenShift CI step ignores these and
 # clones the version-matched suite at runtime, so this only serves use #1.
