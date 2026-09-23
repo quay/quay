@@ -193,10 +193,9 @@ test.describe(
         await expect(historyTable).toContainText('earlydeleted was deleted');
 
         // Without a search, the oldest entries appear only after "Load more".
+        // Sort by name: the flood shares timestamps, so time order can tie.
         await search.fill('');
-        await historyTable
-          .getByRole('button', {name: 'Modified date/time'})
-          .click();
+        await historyTable.getByRole('button', {name: 'Tag change'}).click();
         await expect(historyTable).toContainText('floodtag');
         await expect(historyTable).not.toContainText('earlydeleted');
         const loadMore = authenticatedPage.getByRole('button', {
