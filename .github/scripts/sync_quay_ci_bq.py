@@ -11,15 +11,16 @@ Environment variables:
     GOOGLE_APPLICATION_CREDENTIALS - set automatically by google-github-actions/auth
 """
 
-import os
+import hashlib
 import io
+import json
+import os
 import re
 import time
 import zipfile
-import requests
-import json
-import hashlib
 from datetime import datetime, timedelta, timezone
+
+import requests
 from google.cloud import bigquery
 
 # =========================================================
