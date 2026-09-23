@@ -53,6 +53,7 @@ jobs:
               - '**'
               - '!**/*.md'
               - '!docs/**'
+              - '!web/Containerfile.playwright'
               - '!agent_docs/**'
               - '!deploy/**'
               - '!.chglog/**'
