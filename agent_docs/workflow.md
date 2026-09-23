@@ -177,3 +177,5 @@ After a PR merges to master, if the JIRA ticket has a Target Version:
 3. `openshift-ci-robot` (via the cherrypick plugin) creates a new PR against the release branch
 4. The JIRA lifecycle plugin clones the parent ticket for the target release
 5. Monitor the backport PR for CI results
+
+For predecessor surveys, the cascade order, bot failures and manual ports, follow `agent_docs/backports.md`.
