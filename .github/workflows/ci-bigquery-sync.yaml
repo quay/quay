@@ -1,0 +1,48 @@
+name: BigQuery CI Sync
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Monday 6:00 UTC
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: 'Number of days to look back for CI runs'
+        required: false
+        default: '7'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sync:
+    if: github.repository == 'quay/quay'
+    name: Sync CI data to BigQuery
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery requests
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Run BigQuery sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_CI_SYNC_PAT }}
+          PROJECT_ID: quay-devel
+          DATASET_ID: quay_ci
+          DAYS_BACK: ${{ inputs.days_back || '7' }}
+        run: python .github/scripts/sync_quay_ci_bq.py
