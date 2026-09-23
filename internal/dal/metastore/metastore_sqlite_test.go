@@ -2,12 +2,16 @@ package metastore_test
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
@@ -139,18 +143,32 @@ func TestPutManifest_Simple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blobDgst := digest.FromString("layer-data")
+	blobData := make([]byte, 16)
+	_, err = rand.Read(blobData)
+	assert.NoError(t, err)
+
+	blobDgst := digest.FromBytes(blobData)
 	manifestDgst := digest.FromString("manifest-content")
 	content := []byte(`{"schemaVersion":2}`)
+
+	_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+		Digest: blobDgst,
+		Size:   16,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mid, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    manifestDgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   content,
 		BlobDigests: []oci.BlobRef{
-			{Digest: blobDgst, Size: 100},
+			{Digest: blobDgst, Size: 16},
 		},
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,6 +191,61 @@ func TestPutManifest_Simple(t *testing.T) {
 	if mid != mid2 {
 		t.Errorf("expected idempotent ID %d, got %d", mid, mid2)
 	}
+}
+
+func TestPutManifest_MissingBlob(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+	var i int
+	var buffer []byte
+
+	var blobRefList []oci.BlobRef
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create some blobs
+	for i = 0; i < 5; i++ {
+		buffer = make([]byte, 16)
+		_, err := rand.Read(buffer)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		blobDgst := digest.FromBytes(buffer)
+		blobRefList = append(blobRefList, oci.BlobRef{
+			Digest: blobDgst,
+			Size:   int64(len(buffer)),
+		})
+		_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{
+			Digest: blobDgst, Size: 16})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// add an additional blob to the list of blobs that isn't committed
+	uncommitted := []byte(`uncommitted layer`)
+	blobRefList = append(blobRefList, oci.BlobRef{
+		Digest: digest.FromBytes(uncommitted),
+		Size:   int64(len(uncommitted)),
+	})
+
+	// create a manifest with the list of blobs
+	manifestDgst := digest.FromString("manifest-content")
+	content := []byte(`{"schemaVersion":2}`)
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:      manifestDgst,
+		MediaType:   "application/vnd.oci.image.manifest.v1+json",
+		Content:     content,
+		BlobDigests: blobRefList,
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), digest.FromBytes(uncommitted).String())
 }
 
 func TestPutManifest_WithTag(t *testing.T) {
@@ -272,6 +345,54 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 	}
 }
 
+func TestPutManifest_MissingChildren(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var childDigests []digest.Digest
+
+	for i := 0; i < 5; i++ {
+		buffer := make([]byte, 16)
+		_, err := rand.Read(buffer)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childDgst := digest.FromBytes(buffer)
+		childDigests = append(childDigests, childDgst)
+
+		_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+			Digest:    childDgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{"schemaVersion":2}`),
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// add an uncommitted child digest
+	uncommitted := digest.FromString("uncommitted-child-manifest")
+	childDigests = append(childDigests, uncommitted)
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("index-manifest"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"schemaVersion":2}`),
+		ChildDigests: childDigests,
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), uncommitted.String())
+
+}
+
 func TestPutManifest_UnknownMediaType(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
@@ -290,6 +411,64 @@ func TestPutManifest_UnknownMediaType(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unknown media type")
 	}
+}
+
+func TestPutManifest_Create_Temporary_Tag(t *testing.T) {
+	store := setupStore(t)
+	sqliteStore := store.(*metastore.SQLiteStore)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "unique-repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blobDgst := digest.FromString("layer-data")
+	manifestDgst := digest.FromString("manifest-content")
+	content := []byte(`{"schemaVersion":2}`)
+
+	_, err = store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{Digest: blobDgst, Size: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    manifestDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   content,
+		BlobDigests: []oci.BlobRef{
+			{Digest: blobDgst, Size: 100},
+		},
+	})
+	assert.NoError(t, err)
+
+	// verify that we have a temporary tag present
+	q := daldb.New(sqliteStore.DB())
+	tags, err := q.GetAllTagsForRepositoryIncludingHidden(ctx, repoID)
+	assert.NoError(t, err)
+
+	firstExpiry := tags[0].LifetimeEndMs.Int64
+
+	// sleep again and then push again, verify we still have one tag
+	// and verify that expiry time increased
+	time.Sleep(3 * time.Second)
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    manifestDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   content,
+		BlobDigests: []oci.BlobRef{
+			{Digest: blobDgst, Size: 100},
+		},
+	})
+	assert.NoError(t, err)
+
+	newTags, err := q.GetAllTagsForRepositoryIncludingHidden(ctx, repoID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(newTags))
+
+	secondExpiry := newTags[0].LifetimeEndMs.Int64
+	assert.Greater(t, secondExpiry, firstExpiry)
 }
 
 func TestDeleteManifest(t *testing.T) {
@@ -316,9 +495,9 @@ func TestDeleteManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Deleting again should be a no-op.
-	if err := store.DeleteManifest(ctx, repoID, dgst); err != nil {
-		t.Fatal(err)
+	// Deleting again should properly return an oci.ErrNotExist now
+	if err := store.DeleteManifest(ctx, repoID, dgst); !errors.Is(err, oci.ErrNotExist) {
+		t.Fatalf("expected ErrNotExist on second delete, got %v", err)
 	}
 }
 

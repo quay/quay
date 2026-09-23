@@ -233,7 +233,16 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	}
 
 	require.NoError(t, h.Registry().DeleteManifest(ctx, repository, indexResponse.Digest))
+
+	// run garbage collection before we manipulate expired tags
 	stats, err := h.CollectGarbage(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, stats.ManifestsDeleted, 0)
+
+	// explicitly expire temporary tags
+	require.NoError(t, h.ExpireTemporaryTags(ctx))
+
+	stats, err = h.CollectGarbage(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, stats.ManifestsDeleted)
 	assert.Zero(t, stats.BlobsDeleted)
@@ -245,10 +254,8 @@ func TestRegistryMultiArchGarbageCollectionCascade(t *testing.T) {
 	assert.Equal(t, 4, stats.BlobsDeleted)
 	assert.Equal(t, int64(len(amd64Config)+len(amd64Layer)+len(arm64Config)+len(arm64Layer)), stats.BytesReclaimed)
 	assertRegistryMissing(t, h, repository, "latest")
-	// GC removes both child metadata rows, but Distribution digest revision
-	// links remain readable until manifest-link collection is implemented.
-	// Blob 404s below prove the collected child images are no longer usable.
 	for _, child := range []pushedImage{amd64, arm64} {
+		assertRegistryMissing(t, h, repository, child.digest.String())
 		assertBlobMissing(t, h, repository, child.config)
 		assertBlobMissing(t, h, repository, child.layer)
 	}
