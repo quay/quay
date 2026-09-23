@@ -11,7 +11,7 @@ export default function RobotRepositoryPermissions(
   props: RobotRepositoryPermissionsProps,
 ) {
   // Fetching repos
-  const {repos: repos} = useRepositories(props.namespace);
+  const {repos: repos} = useRepositories(props.namespace, false);
   const [loading, setLoading] = useState<boolean>(true);
   const [robotPermissions, setRobotPermissions] = useState([]);
   const [err, setErr] = useState<string[]>();

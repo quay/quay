@@ -87,6 +87,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
   // Get repositories
   const {repos: repositories, totalResults: repoCount} = useRepositories(
     props.name,
+    false,
   );
 
   const getLastModifiedRepoTime = (repos: IRepository[]) => {
@@ -111,8 +112,8 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const teamCountVal: string = props.isUser
     ? 'N/A'
     : organization?.teams
-    ? Object.keys(organization.teams).length.toString()
-    : '0';
+      ? Object.keys(organization.teams).length.toString()
+      : '0';
 
   return (
     <>
