@@ -156,7 +156,8 @@ async function requireTool(tool: keyof ToolAvailability): Promise<void> {
  * Execute an async operation, retrying with fixed 1s delays on failure.
  *
  * Registry pushes can race with repository initialization, so push-like
- * helpers retry their registry operation a few times.
+ * helpers retry their registry operation a few times. Each failed attempt is
+ * logged so the final thrown error isn't the only one visible.
  */
 async function retryOperation(
   operation: () => Promise<void>,
@@ -169,6 +170,10 @@ async function retryOperation(
       return;
     } catch (err) {
       lastErr = err;
+      console.warn(
+        `retryOperation attempt ${i + 1}/${maxAttempts} failed:`,
+        err,
+      );
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
