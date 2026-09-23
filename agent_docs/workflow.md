@@ -29,12 +29,19 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 
 ### Target Version & Backporting
 
-- **Target Version** (customfield_10855) indicates the release this fix targets
-- If set, backporting is **required** after merge to master, except to the
-  branch the sync check in Release Branch Model (below) identifies as
-  master-synced
-- Map version to branch: `quay-v3.12.0` → `redhat-3.12`
-- Use `/backport <PR#> <branch>` after merge
+- **Target Version** (customfield_10855) holds exactly one version: `.0`
+  means master (e.g. `quay-v3.19.0`), `quay-vX.Y.z` means `redhat-X.Y`
+- The list of releases to backport to is **fixVersions**, not Target Version,
+  except the branch the sync check in Release Branch Model (below) identifies
+  as master-synced — never backport to that branch
+- For a PROJQUAY-titled PR, fire the cascade with `/jira backport <branch>`,
+  one branch per comment; for a NO-ISSUE or QUAYIO-titled PR, use
+  `/cherrypick <branch>`, also one branch per comment. To skip over an
+  intermediate branch, `/jira backport` a comma-separated list naming every
+  branch from the current PR down to the target — this also clones the
+  skipped branch's ticket, which a human then sets to Won't Do. `/cherrypick`
+  has no such form: skip a branch by firing `/cherrypick <target>` alone on
+  the last merged PR. See `agent_docs/backports.md` for the cascade order
 
 ### Release Branch Model
 
@@ -61,9 +68,9 @@ trusting the snapshot below.
   regular backports; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
   `redhat-3.14` receive critical/security fixes only; `redhat-3.11` is
   dormant.
-- When backporting, target the branch the JIRA Target Version names (see
-  Target Version & Backporting, above) and skip only the master-synced
-  branch identified above.
+- When backporting, target the branches fixVersions names, mapped the same
+  way as Target Version above (`quay-vX.Y.z` → `redhat-X.Y`, `.0` → master),
+  and skip only the master-synced branch identified above.
 - CodeRabbit auto-review is intentionally scoped to `master` only — it is
   not enabled for `redhat-*` branches. Backport/cherry-pick PRs carry code
   already reviewed on `master`, so re-running review on the release branch
@@ -113,7 +120,7 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 
 | Bot | Role | Common Actions |
 |-----|------|----------------|
-| **openshift-ci-robot** | JIRA lifecycle plugin | Validates ticket refs, transitions status (ASSIGNED→POST→MODIFIED), supports `/cherrypick` for backports |
+| **openshift-ci-robot** | JIRA lifecycle plugin | Validates ticket refs, transitions status (ASSIGNED→POST→MODIFIED), supports `/cherrypick` and `/jira backport` for backports |
 | **coderabbitai[bot]** | AI code review | Runs 7 pre-merge checks with `chill` profile. Flags are generally valid — fix or reply with rationale |
 | **codecov[bot]** | Coverage reporting | Reports coverage diffs. Project baseline ~72% |
 | **github-actions[bot]** | CI results | Playwright reports, Surge preview links |
@@ -169,13 +176,23 @@ All hooks are consolidated in `.claude/settings.json` — no manual setup requir
 
 ## Backport Process
 
-After a PR merges to master, if the JIRA ticket has a Target Version:
+After a PR merges to master, if it needs to land on a release branch (a
+PROJQUAY/QUAYIO ticket with fixVersions naming one, or a NO-ISSUE PR whose
+change a release branch carries):
 
 1. Run the sync check from Release Branch Model to confirm the target
    branch isn't the master-synced branch — do not cherry-pick to it
-2. Post `/cherrypick <branch>` as a comment on the merged PR
+2. Post `/jira backport <branch>` as a comment on the merged PR for a
+   PROJQUAY-titled PR, or `/cherrypick <branch>` for a NO-ISSUE or
+   QUAYIO-titled PR — one branch per comment; to skip an intermediate
+   branch, `/jira backport` a comma-separated list naming every branch from
+   the current PR down to the target instead — this also clones the skipped
+   branch's ticket, which a human then sets to Won't Do. `/cherrypick` has no
+   such form: skip a branch by firing `/cherrypick <target>` alone on the
+   last merged PR
 3. `openshift-ci-robot` (via the cherrypick plugin) creates a new PR against the release branch
-4. The JIRA lifecycle plugin clones the parent ticket for the target release
+4. The JIRA lifecycle plugin clones on a successful `/cherrypick` apply only;
+   `/jira backport` clones first, before any apply is attempted
 5. Monitor the backport PR for CI results
 
 For predecessor surveys, the cascade order, bot failures and manual ports, follow `agent_docs/backports.md`.
