@@ -239,6 +239,75 @@ def fetch_and_insert_test_artifacts(
 # =========================================================
 # 5. Main Extraction Logic
 # =========================================================
+def _process_run(bq_client, run):
+    """Process a single workflow run: fetch jobs, insert into BQ, fetch test artifacts."""
+    run_id = run["id"]
+    pr_num = extract_pr_number(run)
+    branch_name = run.get("head_branch", "Unknown")
+
+    jobs_url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=100"
+    has_e2e_tests = False
+    all_jobs = []
+
+    while jobs_url:
+        j_resp = requests.get(jobs_url, headers=HEADERS, timeout=(10, 60))
+        if handle_rate_limit(j_resp):
+            continue
+        if j_resp.status_code != 200:
+            raise RuntimeError(f"Failed to fetch jobs for run {run_id}: HTTP {j_resp.status_code}")
+        all_jobs.extend(j_resp.json().get("jobs", []))
+        jobs_url = j_resp.links.get("next", {}).get("url")
+
+    jobs_to_insert = []
+    job_row_ids = []
+
+    for job in all_jobs:
+        jobs_to_insert.append(
+            {
+                "job_id": job["id"],
+                "run_id": run_id,
+                "run_attempt": run.get("run_attempt", 1),
+                "workflow_name": run.get("name", "Unknown"),
+                "job_name": job["name"],
+                "head_sha": job["head_sha"],
+                "branch_name": branch_name,
+                "pr_number": pr_num,
+                "conclusion": job["conclusion"],
+                "started_at": job["started_at"],
+                "completed_at": job["completed_at"],
+                "runner_group": job.get("runner_group_name"),
+            }
+        )
+        job_row_ids.append(str(job["id"]))
+
+        if "playwright" in job["name"].lower() or "e2e" in job["name"].lower():
+            has_e2e_tests = True
+
+    if jobs_to_insert:
+        errors = bq_client.insert_rows_json(
+            f"{PROJECT_ID}.{DATASET_ID}.{JOBS_TABLE}",
+            jobs_to_insert,
+            row_ids=job_row_ids,
+        )
+        if errors:
+            print(f"  -> Error inserting jobs for run {run_id}: {errors[:1]}")
+        else:
+            print(
+                f"  -> Inserted {len(jobs_to_insert)} jobs for run {run_id} "
+                f"(Branch: {branch_name}, PR: {pr_num})"
+            )
+
+    if has_e2e_tests:
+        fetch_and_insert_test_artifacts(
+            bq_client=bq_client,
+            run_id=run_id,
+            head_sha=run.get("head_sha"),
+            branch_name=branch_name,
+            pr_number=pr_num,
+            execution_date=run["created_at"],
+        )
+
+
 def sync_ci_data(bq_client):
     """Fetches Runs -> Jobs -> Test Artifacts and streams to BQ."""
     existing_run_ids = get_existing_run_ids(bq_client)
@@ -267,98 +336,34 @@ def sync_ci_data(bq_client):
         print(f"\nProcessing page with {len(runs)} workflow runs...")
 
         for run in runs:
-            run_id = run["id"]
-
-            if run_id in existing_run_ids:
-                print(f"Skipping run {run_id} (already present in BigQuery)")
+            if run["id"] in existing_run_ids:
+                print(f"Skipping run {run['id']} (already present in BigQuery)")
                 continue
 
             try:
-                pr_num = extract_pr_number(run)
-                branch_name = run.get("head_branch", "Unknown")
-
-                jobs_url = (
-                    f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=100"
-                )
-                has_e2e_tests = False
-                all_jobs = []
-                jobs_fetch_failed = False
-
-                while jobs_url:
-                    j_resp = requests.get(jobs_url, headers=HEADERS, timeout=(10, 60))
-                    if handle_rate_limit(j_resp):
-                        continue
-                    if j_resp.status_code != 200:
-                        print(
-                            f"  -> Failed to fetch jobs for run {run_id}: "
-                            f"HTTP {j_resp.status_code}; will retry next sync"
-                        )
-                        jobs_fetch_failed = True
-                        break
-                    all_jobs.extend(j_resp.json().get("jobs", []))
-                    jobs_url = j_resp.links.get("next", {}).get("url")
-
-                if jobs_fetch_failed:
-                    continue
-
-                jobs_to_insert = []
-                job_row_ids = []
-
-                for job in all_jobs:
-                    jobs_to_insert.append(
-                        {
-                            "job_id": job["id"],
-                            "run_id": run_id,
-                            "run_attempt": run.get("run_attempt", 1),
-                            "workflow_name": run.get("name", "Unknown"),
-                            "job_name": job["name"],
-                            "head_sha": job["head_sha"],
-                            "branch_name": branch_name,
-                            "pr_number": pr_num,
-                            "conclusion": job["conclusion"],
-                            "started_at": job["started_at"],
-                            "completed_at": job["completed_at"],
-                            "runner_group": job.get("runner_group_name"),
-                        }
-                    )
-                    job_row_ids.append(str(job["id"]))
-
-                    if "playwright" in job["name"].lower() or "e2e" in job["name"].lower():
-                        has_e2e_tests = True
-
-                if jobs_to_insert:
-                    errors = bq_client.insert_rows_json(
-                        f"{PROJECT_ID}.{DATASET_ID}.{JOBS_TABLE}",
-                        jobs_to_insert,
-                        row_ids=job_row_ids,
-                    )
-                    if errors:
-                        print(f"  -> Error inserting jobs for run {run_id}: {errors[:1]}")
-                    else:
-                        print(
-                            f"  -> Inserted {len(jobs_to_insert)} jobs for run {run_id} "
-                            f"(Branch: {branch_name}, PR: {pr_num})"
-                        )
-
-                if has_e2e_tests:
-                    fetch_and_insert_test_artifacts(
-                        bq_client=bq_client,
-                        run_id=run_id,
-                        head_sha=run.get("head_sha"),
-                        branch_name=branch_name,
-                        pr_number=pr_num,
-                        execution_date=run["created_at"],
-                    )
-
+                _process_run(bq_client, run)
             except Exception as e:
-                print(f"  -> Error processing run {run_id}: {e}; will retry next sync")
-                failed_runs.append(run_id)
+                print(f"  -> Error processing run {run['id']}: {e}; queued for retry")
+                failed_runs.append(run)
 
         runs_url = resp.links.get("next", {}).get("url")
 
     if failed_runs:
-        print(f"\nSync finished with {len(failed_runs)} failed run(s): {failed_runs}")
-        raise SystemExit(1)
+        print(f"\nRetrying {len(failed_runs)} failed run(s)...")
+        still_failed = []
+        for run in failed_runs:
+            try:
+                _process_run(bq_client, run)
+            except Exception as e:
+                print(f"  -> Retry failed for run {run['id']}: {e}")
+                still_failed.append(run["id"])
+
+        if still_failed:
+            print(
+                f"\nSync finished with {len(still_failed)} permanently failed run(s): "
+                f"{still_failed}"
+            )
+            raise SystemExit(1)
 
     print("\nSync Complete!")
 
