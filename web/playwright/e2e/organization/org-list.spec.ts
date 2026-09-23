@@ -5,202 +5,216 @@ test.describe(
   'Organization List',
   {tag: ['@organization', '@critical']},
   () => {
-    test('search and filtering', async ({authenticatedPage}) => {
-      await authenticatedPage.goto('/organization');
+    // 'search and filtering' asserts the test user's own namespace is on
+    // page 1 of the unfiltered org list. 'pagination' and 'search resets
+    // pagination to page 1' each create 20+ orgs owned by that same shared
+    // test user and only clean them up after their own test body finishes,
+    // so a fullyParallel run can race: if those orgs exist when 'search and
+    // filtering' loads the page, they push the test user's row off page 1.
+    // Scope serial mode to just these three so the rest of the file keeps
+    // running in parallel.
+    test.describe('Search, filtering and pagination', () => {
+      test.describe.configure({mode: 'serial'});
 
-      // Wait for the table to load
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]').first(),
-      ).toBeVisible();
-
-      // Test basic search - search for current user
-      const searchInput = authenticatedPage.getByPlaceholder(/Search by/);
-      await searchInput.fill(TEST_USERS.user.username);
-
-      // Should find the user's namespace
-      await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
-      ).toBeVisible();
-
-      // Reset search
-      await authenticatedPage.locator('[aria-label="Reset search"]').click();
-
-      // Search for non-existent org
-      await searchInput.fill('nonexistent_org_xyz_123456');
-      await expect(
-        authenticatedPage.locator(
-          '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
-        ),
-      ).toContainText('0 - 0 of 0');
-      await authenticatedPage.locator('[aria-label="Reset search"]').click();
-
-      // Test regex search via advanced search
-      await expect(
-        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
-      ).not.toBeVisible();
-      await authenticatedPage
-        .locator('[aria-label="Open advanced search"]')
-        .click();
-      await expect(
-        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
-      ).toBeVisible();
-      await authenticatedPage
-        .locator('[id="filter-input-regex-checker"]')
-        .click();
-
-      // Search with regex pattern starting with 't' (should match testuser)
-      await searchInput.fill(`^${TEST_USERS.user.username.charAt(0)}`);
-      await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
-      ).toBeVisible();
-
-      // Reset and verify results restored
-      await authenticatedPage.locator('[aria-label="Reset search"]').click();
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]').first(),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
-      ).toBeVisible();
-    });
-
-    test('pagination', async ({authenticatedPage, api}) => {
-      // Create multiple organizations to ensure pagination (in parallel for speed)
-      const orgPromises = Array.from({length: 25}, () =>
-        api.organization('paginationtest'),
-      );
-      await Promise.all(orgPromises);
-
-      await authenticatedPage.goto('/organization');
-
-      // Filter to our test orgs to ensure we're testing pagination of known data
-      await authenticatedPage
-        .getByPlaceholder(/Search by/)
-        .fill('paginationtest');
-
-      // Wait for results to load
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]').first(),
-      ).toBeVisible();
-
-      // Should show pagination (20 per page default, so 25 orgs = 2 pages)
-      await expect(
-        authenticatedPage.locator(
-          '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
-        ),
-      ).toContainText(/1 - 20 of \d+/);
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(20);
-
-      // Go to next page
-      await authenticatedPage
-        .locator('button[aria-label="Go to next page"]')
-        .first()
-        .click();
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(5);
-
-      // Go to first page
-      await authenticatedPage
-        .locator('button[aria-label="Go to first page"]')
-        .first()
-        .click();
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(20);
-
-      // Go to last page
-      await authenticatedPage
-        .locator('button[aria-label="Go to last page"]')
-        .first()
-        .click();
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(5);
-
-      // Change per page - click the pagination per-page dropdown then select option
-      await authenticatedPage
-        .locator('[data-testid="orgslist-pagination"] button')
-        .first()
-        .click();
-      await authenticatedPage.getByText('10 per page').click();
-
-      // After changing per-page, we're reset to page 1 with 10 items
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(10);
-
-      // Go to last page and verify remaining items (25 orgs / 10 per page = 5 on last page)
-      await authenticatedPage
-        .locator('button[aria-label="Go to last page"]')
-        .first()
-        .click();
-      await expect(
-        authenticatedPage.locator('td[data-label="Name"]'),
-      ).toHaveCount(5);
-    });
-
-    test(
-      'search resets pagination to page 1',
-      {tag: '@PROJQUAY-5746'},
-      async ({authenticatedPage, api}) => {
-        // Create enough organizations to span two pages. Use a run-unique
-        // prefix so the search below only ever matches orgs from this test.
-        const testPrefix = uniqueName('pageresettest');
-        const orgPromises = Array.from({length: 21}, () =>
-          api.organization(testPrefix),
-        );
-        await Promise.all(orgPromises);
-
+      test('search and filtering', async ({authenticatedPage}) => {
         await authenticatedPage.goto('/organization');
-        await authenticatedPage.getByPlaceholder(/Search by/).fill(testPrefix);
 
+        // Wait for the table to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Test basic search - search for current user
+        const searchInput = authenticatedPage.getByPlaceholder(/Search by/);
+        await searchInput.fill(TEST_USERS.user.username);
+
+        // Should find the user's namespace
+        await expect(
+          authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        ).toBeVisible();
+
+        // Reset search
+        await authenticatedPage.locator('[aria-label="Reset search"]').click();
+
+        // Search for non-existent org
+        await searchInput.fill('nonexistent_org_xyz_123456');
         await expect(
           authenticatedPage.locator(
             '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
           ),
-        ).toContainText('1 - 20 of 21');
+        ).toContainText('0 - 0 of 0');
+        await authenticatedPage.locator('[aria-label="Reset search"]').click();
 
-        // Capture the org shown first on page 1
-        const page1OrgName = (
-          await authenticatedPage
-            .locator('td[data-label="Name"] a')
-            .first()
-            .textContent()
-        ).trim();
+        // Test regex search via advanced search
+        await expect(
+          authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+        ).not.toBeVisible();
+        await authenticatedPage
+          .locator('[aria-label="Open advanced search"]')
+          .click();
+        await expect(
+          authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+        ).toBeVisible();
+        await authenticatedPage
+          .locator('[id="filter-input-regex-checker"]')
+          .click();
 
-        // Go to page 2
+        // Search with regex pattern starting with 't' (should match testuser)
+        await searchInput.fill(`^${TEST_USERS.user.username.charAt(0)}`);
+        await expect(
+          authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        ).toBeVisible();
+
+        // Reset and verify results restored
+        await authenticatedPage.locator('[aria-label="Reset search"]').click();
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        ).toBeVisible();
+      });
+
+      test('pagination', async ({authenticatedPage, api}) => {
+        // Create multiple organizations to ensure pagination (in parallel for speed)
+        const orgPromises = Array.from({length: 25}, () =>
+          api.organization('paginationtest'),
+        );
+        await Promise.all(orgPromises);
+
+        await authenticatedPage.goto('/organization');
+
+        // Filter to our test orgs to ensure we're testing pagination of known data
+        await authenticatedPage
+          .getByPlaceholder(/Search by/)
+          .fill('paginationtest');
+
+        // Wait for results to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Should show pagination (20 per page default, so 25 orgs = 2 pages)
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText(/1 - 20 of \d+/);
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(20);
+
+        // Go to next page
         await authenticatedPage
           .locator('button[aria-label="Go to next page"]')
           .first()
           .click();
         await expect(
-          authenticatedPage.locator(
-            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
-          ),
-        ).toContainText('21 - 21 of 21');
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(5);
 
-        // Search for the org that is on page 1 while still on page 2
+        // Go to first page
         await authenticatedPage
-          .getByPlaceholder(/Search by/)
-          .fill(page1OrgName);
+          .locator('button[aria-label="Go to first page"]')
+          .first()
+          .click();
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(20);
 
-        // Pagination should reset to page 1 and show the matched org
+        // Go to last page
+        await authenticatedPage
+          .locator('button[aria-label="Go to last page"]')
+          .first()
+          .click();
         await expect(
-          authenticatedPage.locator(
-            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
-          ),
-        ).toContainText('1 - 1 of 1');
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(5);
+
+        // Change per page - click the pagination per-page dropdown then select option
+        await authenticatedPage
+          .locator('[data-testid="orgslist-pagination"] button')
+          .first()
+          .click();
+        await authenticatedPage.getByText('10 per page').click();
+
+        // After changing per-page, we're reset to page 1 with 10 items
         await expect(
-          authenticatedPage.getByRole('link', {
-            name: page1OrgName,
-            exact: true,
-          }),
-        ).toBeVisible();
-      },
-    );
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(10);
+
+        // Go to last page and verify remaining items (25 orgs / 10 per page = 5 on last page)
+        await authenticatedPage
+          .locator('button[aria-label="Go to last page"]')
+          .first()
+          .click();
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]'),
+        ).toHaveCount(5);
+      });
+
+      test(
+        'search resets pagination to page 1',
+        {tag: '@PROJQUAY-5746'},
+        async ({authenticatedPage, api}) => {
+          // Create enough organizations to span two pages. Use a run-unique
+          // prefix so the search below only ever matches orgs from this test.
+          const testPrefix = uniqueName('pageresettest');
+          const orgPromises = Array.from({length: 21}, () =>
+            api.organization(testPrefix),
+          );
+          await Promise.all(orgPromises);
+
+          await authenticatedPage.goto('/organization');
+          await authenticatedPage
+            .getByPlaceholder(/Search by/)
+            .fill(testPrefix);
+
+          await expect(
+            authenticatedPage.locator(
+              '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+            ),
+          ).toContainText('1 - 20 of 21');
+
+          // Capture the org shown first on page 1
+          const page1OrgName = (
+            await authenticatedPage
+              .locator('td[data-label="Name"] a')
+              .first()
+              .textContent()
+          ).trim();
+
+          // Go to page 2
+          await authenticatedPage
+            .locator('button[aria-label="Go to next page"]')
+            .first()
+            .click();
+          await expect(
+            authenticatedPage.locator(
+              '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+            ),
+          ).toContainText('21 - 21 of 21');
+
+          // Search for the org that is on page 1 while still on page 2
+          await authenticatedPage
+            .getByPlaceholder(/Search by/)
+            .fill(page1OrgName);
+
+          // Pagination should reset to page 1 and show the matched org
+          await expect(
+            authenticatedPage.locator(
+              '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+            ),
+          ).toContainText('1 - 1 of 1');
+          await expect(
+            authenticatedPage.getByRole('link', {
+              name: page1OrgName,
+              exact: true,
+            }),
+          ).toBeVisible();
+        },
+      );
+    });
 
     test(
       'organization CRUD lifecycle',
