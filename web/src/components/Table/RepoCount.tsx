@@ -3,7 +3,7 @@ import {useRepositories} from 'src/hooks/UseRepositories';
 
 export default function RepoCount(props: RepoCountProps) {
   const [value, setValue] = useState<string>('Loading...');
-  const {totalResults} = useRepositories(props.name);
+  const {totalResults} = useRepositories(props.name, false);
 
   useEffect(() => {
     (async () => {
