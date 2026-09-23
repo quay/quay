@@ -143,6 +143,66 @@ test.describe(
     });
 
     test(
+      'search resets pagination to page 1',
+      {tag: '@PROJQUAY-5746'},
+      async ({authenticatedPage, api}) => {
+        // Create enough organizations to span two pages. Use a run-unique
+        // prefix so the search below only ever matches orgs from this test.
+        const testPrefix = uniqueName('pageresettest');
+        const orgPromises = Array.from({length: 21}, () =>
+          api.organization(testPrefix),
+        );
+        await Promise.all(orgPromises);
+
+        await authenticatedPage.goto('/organization');
+        await authenticatedPage.getByPlaceholder(/Search by/).fill(testPrefix);
+
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('1 - 20 of 21');
+
+        // Capture the org shown first on page 1
+        const page1OrgName = (
+          await authenticatedPage
+            .locator('td[data-label="Name"] a')
+            .first()
+            .textContent()
+        ).trim();
+
+        // Go to page 2
+        await authenticatedPage
+          .locator('button[aria-label="Go to next page"]')
+          .first()
+          .click();
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('21 - 21 of 21');
+
+        // Search for the org that is on page 1 while still on page 2
+        await authenticatedPage
+          .getByPlaceholder(/Search by/)
+          .fill(page1OrgName);
+
+        // Pagination should reset to page 1 and show the matched org
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('1 - 1 of 1');
+        await expect(
+          authenticatedPage.getByRole('link', {
+            name: page1OrgName,
+            exact: true,
+          }),
+        ).toBeVisible();
+      },
+    );
+
+    test(
       'organization CRUD lifecycle',
       {tag: ['@PROJQUAY-9948', '@PROJQUAY-9843']},
       async ({authenticatedPage}) => {
