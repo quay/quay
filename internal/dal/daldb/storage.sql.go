@@ -174,7 +174,7 @@ func (q *Queries) InsertBlob(ctx context.Context, arg InsertBlobParams) (int64, 
 
 const insertUploadedBlob = `-- name: InsertUploadedBlob :exec
 INSERT OR IGNORE INTO uploadedblob (repository_id, blob_id, uploaded_at, expires_at)
-VALUES (?, ?, datetime('now'), datetime('now', '+1 hour'))
+VALUES (?, ?, datetime('now'), datetime('now', '+6 hour'))
 `
 
 type InsertUploadedBlobParams struct {

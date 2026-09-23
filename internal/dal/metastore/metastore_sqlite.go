@@ -227,7 +227,7 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 	}
 
 	// if we are missing both tag and subject, assume we're dealing with child images,
-	// insert temporary tag with a 1 hour expiry
+	// insert temporary tag with a 6 hour expiry
 	if m.Subject == "" && m.Tag == "" {
 		err := s.insertTempTag(ctx, q, repoID, manifestID)
 		if err != nil {
@@ -326,9 +326,8 @@ func (s *SQLiteStore) insertTempTag(ctx context.Context, q *daldb.Queries, repoI
 	expireMs := time.Now().Add(6 * time.Hour).UnixMilli()
 
 	rows, err := q.ExtendTemporaryTag(ctx, daldb.ExtendTemporaryTagParams{
-		LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
-		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
-		LifetimeEndMs_2: sql.NullInt64{Int64: startMs, Valid: true},
+		LifetimeEndMs: sql.NullInt64{Int64: expireMs, Valid: true},
+		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
 	})
 
 	if err != nil {

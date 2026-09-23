@@ -39,20 +39,18 @@ UPDATE tag SET lifetime_end_ms = ?
 WHERE manifest_id = ?
 AND hidden = 1
 AND name LIKE '$temp-%'
-AND lifetime_end_ms > ?
 `
 
 type ExtendTemporaryTagParams struct {
-	LifetimeEndMs   sql.NullInt64 `json:"lifetime_end_ms"`
-	ManifestID      sql.NullInt64 `json:"manifest_id"`
-	LifetimeEndMs_2 sql.NullInt64 `json:"lifetime_end_ms_2"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+	ManifestID    sql.NullInt64 `json:"manifest_id"`
 }
 
 // Updates the current temporary tag's expiry time to new expiry time.
 // Matches by both the manifest_id and name (in the form '$temp-%') so it doesn't
 // accidentally pick up any real tags in the process.
 func (q *Queries) ExtendTemporaryTag(ctx context.Context, arg ExtendTemporaryTagParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, extendTemporaryTag, arg.LifetimeEndMs, arg.ManifestID, arg.LifetimeEndMs_2)
+	result, err := q.db.ExecContext(ctx, extendTemporaryTag, arg.LifetimeEndMs, arg.ManifestID)
 	if err != nil {
 		return 0, err
 	}

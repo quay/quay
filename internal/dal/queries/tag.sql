@@ -24,8 +24,7 @@ RETURNING id;
 UPDATE tag SET lifetime_end_ms = ?
 WHERE manifest_id = ?
 AND hidden = 1
-AND name LIKE '$temp-%'
-AND lifetime_end_ms > ?;
+AND name LIKE '$temp-%';
 
 -- name: ExpireActiveTag :execresult
 UPDATE tag SET lifetime_end_ms = ?
