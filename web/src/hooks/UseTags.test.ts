@@ -93,7 +93,7 @@ describe('UseTags', () => {
       await waitFor(() => expect(result.current.errorLoadingTags).toBe(true));
     });
 
-    it('fetches every page while has_additional is true', async () => {
+    it('loads one page up front and the next page on demand', async () => {
       const page1Tags = [{name: 'latest'}];
       const page2Tags = [{name: 'v1.0'}];
       vi.mocked(getTags)
@@ -106,17 +106,17 @@ describe('UseTags', () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.loadingTags).toBe(false));
-      expect(result.current.tags).toEqual([...page1Tags, ...page2Tags]);
-      expect(getTags).toHaveBeenCalledTimes(2);
-      expect(getTags).toHaveBeenNthCalledWith(
-        1,
-        'myorg',
-        'myrepo',
-        1,
-        50,
-        null,
-        false,
+      expect(result.current.tags).toEqual(page1Tags);
+      expect(result.current.hasMoreTags).toBe(true);
+      expect(getTags).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current.loadMoreTags();
+      });
+      await waitFor(() =>
+        expect(result.current.tags).toEqual([...page1Tags, ...page2Tags]),
       );
+      expect(result.current.hasMoreTags).toBe(false);
       expect(getTags).toHaveBeenNthCalledWith(
         2,
         'myorg',
@@ -125,6 +125,61 @@ describe('UseTags', () => {
         50,
         null,
         false,
+        null,
+      );
+    });
+
+    it('filters by tag name on the server', async () => {
+      vi.mocked(getTags).mockResolvedValueOnce({tags: []} as any);
+      const {result} = renderHook(
+        () => useAllTags('myorg', 'myrepo', 'early'),
+        {wrapper},
+      );
+      await waitFor(() => expect(result.current.loadingTags).toBe(false));
+      expect(getTags).toHaveBeenCalledWith(
+        'myorg',
+        'myrepo',
+        1,
+        50,
+        null,
+        false,
+        'like:early',
+      );
+    });
+
+    it('debounces rapid query changes into a single server-side filter', async () => {
+      vi.mocked(getTags).mockResolvedValue({tags: []} as any);
+      vi.useFakeTimers();
+      const {rerender} = renderHook(
+        ({query}) => useAllTags('myorg', 'myrepo', query),
+        {wrapper, initialProps: {query: ''}},
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      vi.mocked(getTags).mockClear();
+
+      act(() => {
+        rerender({query: 'a'});
+      });
+      act(() => {
+        rerender({query: 'ab'});
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      vi.useRealTimers();
+
+      await waitFor(() => expect(getTags).toHaveBeenCalledTimes(1));
+      expect(getTags).toHaveBeenCalledWith(
+        'myorg',
+        'myrepo',
+        1,
+        50,
+        null,
+        false,
+        'like:ab',
       );
     });
   });

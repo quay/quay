@@ -124,7 +124,7 @@ test.describe(
     });
 
     test(
-      'search finds a history entry beyond the first 50 rows',
+      'search and load more reach a history entry beyond the first page',
       {tag: '@PROJQUAY-8767'},
       async ({authenticatedPage, api}) => {
         test.setTimeout(120 * 1000);
@@ -181,14 +181,30 @@ test.describe(
         await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
         await authenticatedPage.getByText('Tag history').click();
 
-        const historyTable = authenticatedPage.locator('#tag-history-table');
+        const historyTable = authenticatedPage.getByRole('grid', {
+          name: 'Tag history table',
+        });
         await expect(historyTable).toBeVisible();
 
-        await authenticatedPage
-          .getByPlaceholder('Search by tag name...')
-          .fill('earlydeleted');
-
+        const search = authenticatedPage.getByPlaceholder(
+          'Search by tag name...',
+        );
+        await search.fill('earlydeleted');
         await expect(historyTable).toContainText('earlydeleted was deleted');
+
+        // Without a search, the oldest entries appear only after "Load more".
+        await search.fill('');
+        await historyTable
+          .getByRole('button', {name: 'Modified date/time'})
+          .click();
+        await expect(historyTable).toContainText('floodtag');
+        await expect(historyTable).not.toContainText('earlydeleted');
+        const loadMore = authenticatedPage.getByRole('button', {
+          name: 'Load more',
+        });
+        await loadMore.click();
+        await expect(historyTable).toContainText('earlydeleted was deleted');
+        await expect(loadMore).toBeHidden();
       },
     );
 

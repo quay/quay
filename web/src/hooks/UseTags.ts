@@ -1,5 +1,11 @@
+import {useEffect, useState} from 'react';
 import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   bulkSetExpiration,
   bulkSetTagImmutability,
@@ -8,33 +14,47 @@ import {
   bulkDeleteTags,
   getTagPullStatistics,
 } from 'src/resources/TagResource';
-import {getTags, restoreTag, Tag} from 'src/resources/TagResource';
+import {getTags, restoreTag} from 'src/resources/TagResource';
 
-async function fetchAllTagPages(org: string, repo: string) {
-  let page = 1;
-  let hasAdditional = false;
-  let tags: Tag[] = [];
-  do {
-    const resp = await getTags(org, repo, page, 50, null, false);
-    tags = page == 1 ? resp.tags : [...tags, ...resp.tags];
-    hasAdditional = resp.has_additional;
-    page++;
-  } while (hasAdditional);
-  return {tags};
-}
+// Tag history can hold thousands of entries, so load one page at a time
+// and filter by name on the server.
+export function useAllTags(org: string, repo: string, query = '') {
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
 
-export function useAllTags(org: string, repo: string) {
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const {
-    data: tagsResponse,
+    data,
     isLoading: loadingTags,
     isError: errorLoadingTags,
     error: errorTagsDetails,
     dataUpdatedAt,
-  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
-    fetchAllTagPages(org, repo),
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(
+    ['namespace', org, 'repo', repo, 'alltags', debouncedQuery],
+    ({pageParam = 1}) =>
+      getTags(
+        org,
+        repo,
+        pageParam,
+        50,
+        null,
+        false,
+        debouncedQuery ? `like:${debouncedQuery}` : null,
+      ),
+    {
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.has_additional ? allPages.length + 1 : undefined,
+      keepPreviousData: true,
+    },
   );
 
-  const tags = tagsResponse?.tags || [];
+  const tags = data?.pages.flatMap((page) => page.tags || []) || [];
 
   return {
     tags: tags,
@@ -42,6 +62,10 @@ export function useAllTags(org: string, repo: string) {
     errorLoadingTags: errorLoadingTags,
     errorTagsDetails: errorTagsDetails,
     lastUpdated: dataUpdatedAt,
+    hasMoreTags: hasNextPage,
+    loadMoreTags: fetchNextPage,
+    loadingMoreTags: isFetchingNextPage,
+    debouncedQuery: debouncedQuery,
   };
 }
 
