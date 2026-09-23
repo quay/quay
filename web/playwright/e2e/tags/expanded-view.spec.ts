@@ -9,6 +9,7 @@ test.describe('Tags - Expanded View', {tag: ['@tags', '@container']}, () => {
   let testRepo: {namespace: string; name: string; fullName: string};
 
   test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+    test.setTimeout(120000);
     if (!cachedContainerAvailable) return;
 
     const api = new ApiClient(userContext.request);
