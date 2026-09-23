@@ -2,6 +2,7 @@ package gc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,7 +14,9 @@ import (
 
 const staleUploadThreshold = 48 * time.Hour
 
-// Collector runs the four-phase GC algorithm. It depends on a Store for
+// Collector runs the GC algorithm: upload-marker cleanup, purge of
+// API-deleted repositories, tag expiry, orphaned manifests, orphaned blobs,
+// and stale uploads. It depends on a Store for
 // metadata operations and a BlobStore for storage file deletion. It has no
 // knowledge of SQL, transactions, or FK relationships — the Store handles
 // all of that.
@@ -39,24 +42,38 @@ func (c *collector) Collect(ctx context.Context) (Stats, error) {
 		return total, fmt.Errorf("gc: clean expired uploaded blobs: %w", err)
 	}
 
+	// Phase 0b: Purge repositories the API marked for deletion. Their tags,
+	// manifests and links go away here; their blobs fall through to Phase 3
+	// once nothing else references them (PROJQUAY-13202).
+	// A repository that cannot be purged must not stop tag expiry, manifest
+	// collection or blob reclamation, so the error is carried to the end of
+	// the cycle instead of returned here.
+	purged, purgeErr := c.purgeMarkedRepositories(ctx)
+	if purgeErr != nil {
+		purgeErr = fmt.Errorf("gc: purge repositories: %w", purgeErr)
+	}
+	total.RepositoriesPurged = purged.repositories
+	total.TagsExpired += purged.tags
+	total.ManifestsDeleted += purged.manifests
+
 	// Phase 1: Expire tags past their grace period.
 	expired, err := c.expireTags(ctx)
 	if err != nil {
-		return total, fmt.Errorf("gc: expire tags: %w", err)
+		return total, errors.Join(purgeErr, fmt.Errorf("gc: expire tags: %w", err))
 	}
-	total.TagsExpired = expired
+	total.TagsExpired += expired
 
 	// Phase 2: Collect orphaned manifests (globally, iterative for cascades).
 	manifests, err := c.collectManifests(ctx)
 	if err != nil {
-		return total, fmt.Errorf("gc: collect manifests: %w", err)
+		return total, errors.Join(purgeErr, fmt.Errorf("gc: collect manifests: %w", err))
 	}
-	total.ManifestsDeleted = manifests
+	total.ManifestsDeleted += manifests
 
 	// Phase 3: Collect orphaned blobs and delete storage files.
 	blobCount, blobBytes, err := c.collectBlobs(ctx)
 	if err != nil {
-		return total, fmt.Errorf("gc: collect blobs: %w", err)
+		return total, errors.Join(purgeErr, fmt.Errorf("gc: collect blobs: %w", err))
 	}
 	total.BlobsDeleted = blobCount
 	total.BytesReclaimed = blobBytes
@@ -64,7 +81,7 @@ func (c *collector) Collect(ctx context.Context) (Stats, error) {
 	// Phase 4: Clean stale uploads (abandoned uploads older than 48 hours).
 	stale, err := c.blobs.CleanStaleUploads(ctx, staleUploadThreshold)
 	if err != nil {
-		return total, fmt.Errorf("gc: clean stale uploads: %w", err)
+		return total, errors.Join(purgeErr, fmt.Errorf("gc: clean stale uploads: %w", err))
 	}
 	if stale.Removed > 0 {
 		total.StaleUploadsRemoved = stale.Removed
@@ -72,7 +89,49 @@ func (c *collector) Collect(ctx context.Context) (Stats, error) {
 		c.log.Info("gc: cleaned stale uploads", "removed", stale.Removed, "bytes_freed", stale.BytesFreed)
 	}
 
-	return total, nil
+	return total, purgeErr
+}
+
+type purgeTotals struct {
+	repositories int
+	tags         int
+	manifests    int
+}
+
+// purgeMarkedRepositories deletes every repository the API soft-deleted.
+// Each repository is purged in its own transaction. A failure is logged and
+// the remaining repositories are still attempted; the failed ones are retried
+// on the next cycle and reported in the returned error.
+func (c *collector) purgeMarkedRepositories(ctx context.Context) (purgeTotals, error) {
+	var totals purgeTotals
+	repos, err := c.store.FindMarkedRepositories(ctx)
+	if err != nil {
+		return totals, err
+	}
+	var errs []error
+	for _, repo := range repos {
+		purge, err := c.store.PurgeRepository(ctx, repo)
+		if errors.Is(err, ErrRepositoryNotMarked) {
+			c.log.Info("gc: skipped repository purge, no longer marked for deletion", "repo_id", repo.ID)
+			continue
+		}
+		if err != nil {
+			// Keep going: one repository that cannot be purged must not hold
+			// up the others, and the error is reported after the loop.
+			c.log.Error("gc: repository purge failed", "repo_id", repo.ID, "err", err)
+			errs = append(errs, fmt.Errorf("purge repository %d: %w", repo.ID, err))
+			continue
+		}
+		totals.repositories++
+		totals.tags += purge.TagsDeleted
+		totals.manifests += purge.ManifestsDeleted
+		c.log.Info("gc: purged deleted repository",
+			"repo_id", repo.ID,
+			"tags_deleted", purge.TagsDeleted,
+			"manifests_deleted", purge.ManifestsDeleted,
+		)
+	}
+	return totals, errors.Join(errs...)
 }
 
 func (c *collector) expireTags(ctx context.Context) (int, error) {

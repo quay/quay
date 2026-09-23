@@ -42,11 +42,13 @@ func (w *Worker) Run(ctx context.Context) error {
 		case <-ticker.C:
 			stats, err := w.safeCollect(ctx)
 			if err != nil {
+				// Collect returns partial stats alongside the error when only
+				// the repository purge phase failed; report both.
 				w.log.Error("gc cycle failed", "err", err)
-				continue
 			}
-			if stats.TagsExpired+stats.ManifestsDeleted+stats.BlobsDeleted+stats.StaleUploadsRemoved > 0 {
+			if stats.RepositoriesPurged+stats.TagsExpired+stats.ManifestsDeleted+stats.BlobsDeleted+stats.StaleUploadsRemoved > 0 {
 				w.log.Info("gc cycle complete",
+					"repositories_purged", stats.RepositoriesPurged,
 					"tags_expired", stats.TagsExpired,
 					"manifests_deleted", stats.ManifestsDeleted,
 					"blobs_deleted", stats.BlobsDeleted,

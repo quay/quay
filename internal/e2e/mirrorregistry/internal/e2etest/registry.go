@@ -634,6 +634,29 @@ func (c *RegistryClient) getReferrers(ctx context.Context, repository string, su
 	return response, nil
 }
 
+// DeleteRepository calls the repository API (DELETE /api/v1/repository/<name>)
+// with the client's Basic credentials, as the CLI and UI do, and returns nil
+// on 204.
+func (c *RegistryClient) DeleteRepository(ctx context.Context, repository string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/api/v1/repository/"+repository, http.NoBody)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(c.username, c.password)
+	resp, err := c.client.Do(req) //nolint:bodyclose // readBody closes every response body
+	if err != nil {
+		return err
+	}
+	body, err := readBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return responseError(resp, body)
+	}
+	return nil
+}
+
 // DeleteManifest deletes a manifest by digest.
 func (c *RegistryClient) DeleteManifest(ctx context.Context, repository string, dgst digest.Digest) error {
 	token, err := c.token(ctx, repository, "pull", "push")
