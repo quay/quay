@@ -500,7 +500,7 @@ class DefaultConfig(ImmutableConfig):
     # Temporary tag expiration in seconds, this may actually be longer based on GC policy
     # Increased to 6 hours by default, to protect big multiarch images from not being
     # GCed while pushes are still in progress
-    PUSH_TEMP_TAG_EXPIRATION_SEC = 6 * 60 * 60  # One hour per layer
+    PUSH_TEMP_TAG_EXPIRATION_SEC = 6 * 60 * 60  # Six hours per layer
 
     # Signed registry grant token expiration in seconds
     SIGNED_GRANT_EXPIRATION_SEC = 60 * 60 * 24  # One day to complete a push/pull
