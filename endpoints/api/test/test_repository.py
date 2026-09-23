@@ -23,6 +23,7 @@ from endpoints.api.repository import (
     RepositoryStateResource,
     RepositoryTrust,
 )
+from endpoints.api.repository_models_pre_oci import pre_oci_model
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.exception import InvalidRequest
 from endpoints.test.shared import client_with_identity
@@ -129,11 +130,52 @@ def test_repository_listing_no_quota_information_if_quota_false_parameter_is_pas
     Verifies that the repository listing API does not return the quota information if
     quota parameter is provided and explicitly set to false.
     """
-    with client_with_identity("devtable", app) as cl:
-        params = {"quota": "false", "repo_kind": "image", "starred": "true"}
-        response = conduct_api_call(cl, RepositoryList, "GET", params).json
-        for repo in response.get("repositories", []):
-            assert "quota_report" not in repo
+    with patch.dict(app.config, {"FEATURE_QUOTA_MANAGEMENT": True}):
+        with patch.dict(app.config, {"FEATURE_EDIT_QUOTA": True}):
+            with client_with_identity("devtable", app) as cl:
+                params = {"quota": "false", "repo_kind": "image", "public": "true"}
+                response = conduct_api_call(cl, RepositoryList, "GET", params).json
+
+                for repo in response.get("repositories", []):
+                    assert "quota_report" not in repo
+
+
+def test_repository_listing_does_not_invoke_quota_view(initialized_db, app):
+    """
+    Verifies that with the quota parameter added we don't invoke the quota view at all.
+    """
+    with patch.dict(app.config, {"FEATURE_QUOTA_MANAGEMENT": True}):
+        with patch.dict(app.config, {"FEATURE_EDIT_QUOTA": True}):
+            with patch.object(
+                pre_oci_model, "add_quota_view", wraps=pre_oci_model.add_quota_view
+            ) as mock_view:
+                with client_with_identity("devtable", app) as cl:
+                    params = {"quota": "false", "repo_kind": "image", "public": "true"}
+                    resp = conduct_api_call(cl, RepositoryList, "GET", params).json
+
+                    for repo in resp.get("repositories", []):
+                        assert "quota_report" not in repo
+
+                    mock_view.assert_not_called()
+
+
+def test_repository_listing_invokes_quota_view_if_quota_is_omitted(initialized_db, app):
+    """
+    Verifies that the quota view is invoked if we don't provide the quota parameter.
+    """
+    with patch.dict(app.config, {"FEATURE_QUOTA_MANAGEMENT": True}):
+        with patch.dict(app.config, {"FEATURE_EDIT_QUOTA": True}):
+            with patch.object(
+                pre_oci_model, "add_quota_view", wraps=pre_oci_model.add_quota_view
+            ) as mock_view:
+                with client_with_identity("devtable", app) as cl:
+                    params = {"repo_kind": "image", "public": "true"}
+                    resp = conduct_api_call(cl, RepositoryList, "GET", params).json
+
+                    for repo in resp.get("repositories", []):
+                        assert "quota_report" in repo
+
+                    mock_view.assert_called()
 
 
 def test_list_repositories_last_modified(app):
