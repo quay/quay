@@ -13,6 +13,12 @@
  * ```
  */
 
+import {
+  fetchJsonWithRetry,
+  fetchWithRetry,
+  FetchRetryExhaustedError,
+} from './fetch-retry';
+
 const MAILPIT_API =
   process.env.MAILPIT_API_URL || 'http://localhost:8025/api/v1';
 
@@ -44,21 +50,19 @@ export const mailpit = {
    * Get all emails in the inbox
    */
   async getEmails(): Promise<MailpitMessagesResponse> {
-    const response = await fetch(`${MAILPIT_API}/messages`);
-    if (!response.ok) {
-      throw new Error(`Mailpit API error: ${response.status}`);
-    }
-    return response.json();
+    return fetchJsonWithRetry<MailpitMessagesResponse>(
+      'mailpit.getEmails',
+      `${MAILPIT_API}/messages`,
+    );
   },
 
   /**
    * Clear all emails from the inbox
    */
   async clearInbox(): Promise<void> {
-    const response = await fetch(`${MAILPIT_API}/messages`, {method: 'DELETE'});
-    if (!response.ok) {
-      throw new Error(`Mailpit API error: ${response.status}`);
-    }
+    await fetchWithRetry('mailpit.clearInbox', `${MAILPIT_API}/messages`, {
+      method: 'DELETE',
+    });
   },
 
   /**
@@ -91,27 +95,47 @@ export const mailpit = {
    * @returns Email body (plain text if available, otherwise HTML)
    */
   async getEmailBody(id: string): Promise<string> {
-    const response = await fetch(`${MAILPIT_API}/message/${id}`);
-    if (!response.ok) {
-      throw new Error(`Mailpit API error: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await fetchJsonWithRetry<{Text?: string; HTML?: string}>(
+      'mailpit.getEmailBody',
+      `${MAILPIT_API}/message/${id}`,
+    );
     return data.Text || data.HTML;
   },
 
   /**
    * Check if Mailpit is available
    *
+   * Retries transient failures, then splits on whether a response was ever
+   * received: Mailpit answering but non-ok (whether fast-failed or retries
+   * exhausted) is treated as "not available" (returns false, as before).
+   * Never receiving a response at all (e.g. DNS/connect failure) is let to
+   * throw instead of being
+   * reported as "not available" — isAvailable is only consulted when
+   * FEATURE_MAILING is on, so an unreachable Mailpit means the environment
+   * itself is broken, and masking that as "absent" would silently skip
+   * email verification and fail the run later with a 403 far from the
+   * real cause.
+   *
    * @returns true if Mailpit is running and accessible
    */
   async isAvailable(): Promise<boolean> {
     try {
-      const response = await fetch(`${MAILPIT_API}/messages`, {
-        signal: AbortSignal.timeout(1000),
-      });
-      return response.ok;
-    } catch {
-      return false;
+      await fetchWithRetry(
+        'mailpit.isAvailable',
+        `${MAILPIT_API}/messages`,
+        undefined,
+        1000,
+      );
+      return true;
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        'receivedResponse' in err &&
+        (err as FetchRetryExhaustedError).receivedResponse
+      ) {
+        return false;
+      }
+      throw err;
     }
   },
 

@@ -14,6 +14,8 @@ import {chromium, FullConfig, request} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
+import {fetchJsonWithRetry} from './utils/fetch-retry';
+import type {QuayConfig} from './fixtures';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -94,33 +96,19 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
-    // Fetch Quay config with retry to check auth type and features
-    let mailingEnabled = false;
-    let authType: string | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const configResponse = await fetch(`${API_URL}/config`);
-        if (configResponse.ok) {
-          const quayConfig = await configResponse.json();
-          mailingEnabled = quayConfig?.features?.MAILING === true;
-          authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
-          process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
-          break;
-        }
-      } catch {
-        console.log(
-          `[Global Setup] Config fetch attempt ${
-            attempt + 1
-          }/3 failed, retrying...`,
-        );
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-    }
-    if (!authType) {
-      throw new Error(
-        '[Global Setup] Failed to fetch Quay config after 3 attempts',
-      );
-    }
+    // Fetch Quay config with retry to check auth type and features. Quay
+    // may not be listening yet at this point (this is the boot-wait path),
+    // so use a longer backoff than the default to give it time to come up.
+    const quayConfig = await fetchJsonWithRetry<QuayConfig>(
+      'global-setup config fetch',
+      `${API_URL}/config`,
+      undefined,
+      undefined,
+      [2000, 2000],
+    );
+    const mailingEnabled = quayConfig?.features?.MAILING === true;
+    const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+    process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
 
     // For OIDC auth, skip user creation — users are created on first login
     // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
