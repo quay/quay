@@ -6,9 +6,10 @@ five predecessors it turned out to need, 2026-09-20 to 2026-09-23). Where a
 current fact is stated, it is dated and names the command that produced it —
 re-run the command instead of trusting the date.
 
-For JIRA Target Version rules and the basic `/cherrypick` mechanics, see
-`agent_docs/workflow.md` (Target Version & Backporting, Release Branch Model,
-Backport Process). This document does not restate them.
+For JIRA Target Version/fixVersions rules and the basic `/cherrypick`/`/jira
+backport` mechanics, see `agent_docs/workflow.md` (Target Version &
+Backporting, Release Branch Model, Backport Process). This document does not
+restate them.
 
 ## The rule: fidelity
 
@@ -29,6 +30,15 @@ Never hardcode the range; it rots. Use the sync check and activity check in
   upstream/<branch>...upstream/master` prints `0 0`) already has the change.
   Never target it. On 2026-09-20 that was `redhat-3.19`.
 - Treat any branch list you are handed as a claim to verify.
+- For a PROJQUAY-titled change, read the root ticket (the one with no
+  outward `clones` link; clones inherit fixVersions) and treat its
+  fixVersions as the branch list, mapping `quay-vX.Y.z` → `redhat-X.Y` and
+  any `.0` → master: `jira issue view <KEY> --raw | jq
+  -c '{target: [.fields.customfield_10855[]?.name], fix:
+  [.fields.fixVersions[].name]}'`. If that list disagrees with the
+  sync/activity determination above, or fixVersions is empty, stop for a
+  maintainer decision and get Jira corrected before firing the cascade.
+  NO-ISSUE changes keep the sync/activity rule above unchanged.
 
 ## 2. Survey for missing predecessors before firing anything
 
@@ -80,18 +90,25 @@ recorded as "deleted in 3.18"; `git log --diff-filter=AD upstream/master --
 <path>` showed #6892 created it and was never backported. Deleted-on-purpose
 and never-backported look the same in a conflict and need opposite fixes.
 
-Report the ordered chain before the first `/cherrypick`. What to do about a
+Report the ordered chain before the first hop command. What to do about a
 missing predecessor is the maintainer's call; never absorb it silently into
 another change's backport.
 
 ## 3. Bot first, as a cascade
 
 The cascade runs newest branch to oldest, each step picked from the previous
-branch's **merged** PR:
+branch's **merged** PR, one branch per comment. For a PROJQUAY-titled PR,
+fire `/jira backport <branch>`; for a NO-ISSUE or QUAYIO-titled PR, fire
+`/cherrypick <branch>`. To skip over an intermediate branch, `/jira backport`
+a comma-separated list naming every branch from the current PR down to the
+target — this also clones the skipped branch's ticket, which a human then
+sets to Won't Do. `/cherrypick` has no such form: skip a branch by firing
+`/cherrypick <target>` alone on the last merged PR (see the multi-branch
+caveat below):
 
-1. `/cherrypick redhat-3.18` on the master PR.
-2. After that PR merges: `/cherrypick redhat-3.17` on the 3.18 PR.
-3. After that PR merges: `/cherrypick redhat-3.16` on the 3.17 PR.
+1. `/jira backport redhat-3.18` on the master PR.
+2. After that PR merges: `/jira backport redhat-3.17` on the 3.18 PR.
+3. After that PR merges: `/jira backport redhat-3.16` on the 3.17 PR.
 
 (Branch names as of 2026-09-20; determine yours with step 1.)
 
@@ -106,6 +123,8 @@ branch's **merged** PR:
   twice.
 - Picking from the previous branch reuses its adaptations. Firing an older
   branch from `master` skips them and manufactures conflicts.
+- After a `/jira backport`, read the bot's "The following backport issues
+  have been created" reply; an empty list means no clone was made.
 
 Bot-first is also a scheduling rule. A bot-authored PR can be approved by any
 approver; a hand-written one needs an approving review from someone who is not
@@ -140,7 +159,12 @@ Then, in order:
    cleanly, and the whole item stayed bot-authored.
 2. Hand-port only when the bot fails again, or no predecessor explains it.
    Port to the newest failing branch first, get it reviewed and merged, and
-   continue the cascade from that merged PR.
+   continue the cascade from that merged PR. Title a PROJQUAY hand-port
+   `[redhat-X.Y] PROJQUAY-<clone>: ...` using the clone key from the
+   `/jira backport` reply, never the master key: #7319 retitled from the
+   master key to PROJQUAY-13339, which then moved to MODIFIED on merge, while
+   the master-key hand-ports #7268/#7276/#7310 got "unrecognized state
+   (MODIFIED)".
 3. Land predecessors in `master` merge order, oldest first.
 
 If `git rerere` is enabled, a conflict you resolved on an earlier branch is
@@ -196,3 +220,4 @@ the markers.
   verified.
 - In a chain status, say which PRs were bot-authored and which were manual; the
   two merge on very different timescales.
+- Title the PR per step 4's hand-port rule above.
