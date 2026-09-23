@@ -54,6 +54,7 @@ jobs:
               - '!**/*.md'
               - '!docs/**'
               - '!web/playwright/Dockerfile'
+              - '!web/Containerfile.playwright'
               - '!.agents/**'
               - '!.claude/**'
               - '!agent_docs/**'
