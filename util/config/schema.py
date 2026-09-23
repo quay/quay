@@ -2330,8 +2330,8 @@ CONFIG_SCHEMA = {
     },
     "PUSH_TEMP_TAG_EXPIRATION_SEC": {
         "type": "number",
-        "description": "Temporary Tag expiration time in seconds. Defaults to 3600",
-        "x-example": 3600,
+        "description": "Temporary Tag expiration time in seconds. Defaults to 6 hours",
+        "x-example": 21600,
         "x-reference": None,
     },
     "QUEUE_METRICS_TYPE": {
