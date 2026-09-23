@@ -137,8 +137,11 @@ def get_existing_run_ids(bq_client: bigquery.Client) -> set:
 def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr_number, execution_date):
     """Downloads ZIP artifacts, parses Playwright JSON, and streams into BQ using MD5 row_ids."""
     artifacts_url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/artifacts"
-    resp = requests.get(artifacts_url, headers=HEADERS)
-    if handle_rate_limit(resp) or resp.status_code != 200:
+    while True:
+        resp = requests.get(artifacts_url, headers=HEADERS)
+        if not handle_rate_limit(resp):
+            break
+    if resp.status_code != 200:
         return
 
     artifacts = resp.json().get("artifacts", [])
@@ -146,7 +149,8 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
     row_ids = []
 
     def process_suite(suite, parent_title=""):
-        suite_title = f"{parent_title} > {suite.get('title', '')}".strip(" > ")
+        parts = [parent_title, suite.get("title", "")]
+        suite_title = " > ".join(p for p in parts if p)
         if not suite_title:
             suite_title = suite.get("file", "Unknown Suite")
 
@@ -180,7 +184,7 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
                     })
 
                     raw_id_str = f"{run_id}_{clean_suite}_{clean_name}_{duration_sec}"
-                    deterministic_id = hashlib.md5(raw_id_str.encode('utf-8')).hexdigest()
+                    deterministic_id = hashlib.md5(raw_id_str.encode('utf-8'), usedforsecurity=False).hexdigest()
                     row_ids.append(deterministic_id)
 
         for nested_suite in suite.get("suites", []):
@@ -248,16 +252,21 @@ def sync_ci_data(bq_client):
 
             jobs_url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=100"
             has_e2e_tests = False
+            all_jobs = []
 
-            j_resp = requests.get(jobs_url, headers=HEADERS)
-            if handle_rate_limit(j_resp):
-                continue
+            while jobs_url:
+                j_resp = requests.get(jobs_url, headers=HEADERS)
+                if handle_rate_limit(j_resp):
+                    continue
+                if j_resp.status_code != 200:
+                    break
+                all_jobs.extend(j_resp.json().get("jobs", []))
+                jobs_url = j_resp.links.get("next", {}).get("url")
 
-            jobs = j_resp.json().get("jobs", []) if j_resp.status_code == 200 else []
             jobs_to_insert = []
             job_row_ids = []
 
-            for job in jobs:
+            for job in all_jobs:
                 jobs_to_insert.append({
                     "job_id": job["id"],
                     "run_id": run_id,
