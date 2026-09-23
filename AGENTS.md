@@ -86,6 +86,7 @@ make types-test                      # Type checking (mypy)
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
   - `[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153`
+- **Commit messages:** When a Jira key is assigned, use it in the first commit's subject line in place of `NO-ISSUE:`, matching the PR title format (e.g., `PROJQUAY-13363: fix(api): skip quota when not needed`). Commits with `NO-ISSUE:` while the PR title carries a Jira key cause cherry-picks to lose Jira traceability on release branches — the cherry-pick robot reads commit messages, not PR titles.
 - **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
