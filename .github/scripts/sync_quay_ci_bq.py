@@ -120,16 +120,15 @@ def extract_pr_number(run: dict) -> int | None:
     return None
 
 def get_existing_run_ids(bq_client: bigquery.Client) -> set:
-    """Fetches already ingested run_ids to prevent re-fetching/re-inserting."""
+    """Fetches already ingested run_ids to prevent re-fetching/re-inserting.
+
+    Raises on query failure to avoid duplicating all data when BQ is unreachable.
+    """
     query = f"SELECT DISTINCT run_id FROM `{PROJECT_ID}.{DATASET_ID}.{JOBS_TABLE}`"
-    try:
-        query_job = bq_client.query(query)
-        existing_ids = {row["run_id"] for row in query_job.result()}
-        print(f"Found {len(existing_ids)} existing run_ids in BigQuery. Will skip these.")
-        return existing_ids
-    except Exception as e:
-        print(f"Could not fetch existing run_ids (Table might be empty): {e}")
-        return set()
+    query_job = bq_client.query(query)
+    existing_ids = {row["run_id"] for row in query_job.result()}
+    print(f"Found {len(existing_ids)} existing run_ids in BigQuery. Will skip these.")
+    return existing_ids
 
 # =========================================================
 # 4. Artifact & Test Case Extractor (Playwright JSON)
@@ -157,8 +156,8 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
         for spec in suite.get("specs", []):
             test_name = spec.get("title", "Unknown Test")
 
-            for test in spec.get("tests", []):
-                for result in test.get("results", []):
+            for test_idx, test in enumerate(spec.get("tests", [])):
+                for result_idx, result in enumerate(test.get("results", [])):
                     raw_status = result.get("status", "unknown")
                     duration_sec = result.get("duration", 0) / 1000.0
 
@@ -183,7 +182,7 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
                         "execution_date": execution_date
                     })
 
-                    raw_id_str = f"{run_id}_{clean_suite}_{clean_name}_{duration_sec}"
+                    raw_id_str = f"{run_id}_{clean_suite}_{clean_name}_{test_idx}_{result_idx}"
                     deterministic_id = hashlib.md5(raw_id_str.encode('utf-8'), usedforsecurity=False).hexdigest()
                     row_ids.append(deterministic_id)
 
