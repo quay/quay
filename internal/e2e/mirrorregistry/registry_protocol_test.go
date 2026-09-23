@@ -207,3 +207,41 @@ func TestRegistryMonolithicBlobUpload(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, content, got)
 }
+
+// TestRegistryTaggedPushLeavesSingleTagRow verifies that one tagged manifest
+// PUT (manifest store write followed by the distribution tag-service write)
+// records exactly one live tag row and no expired history, and that a re-push
+// of the same content stays idempotent, while retargeting the tag to a new
+// manifest still records one expired row (PROJQUAY-13201).
+func TestRegistryTaggedPushLeavesSingleTagRow(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/single-tag-row"
+
+	first := pushImage(t, h, repository, "latest", []byte(`{"arch":"amd64"}`), []byte("layer-one"))
+	live, expired, err := h.TagRows(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, 1, live, "live tag rows after first push")
+	assert.Equal(t, 0, expired, "expired tag rows after first push")
+
+	// Re-push the identical tagged manifest.
+	response, err := h.Registry().PutManifest(ctx, repository, "latest", first.manifest, v1.MediaTypeImageManifest)
+	require.NoError(t, err)
+	assert.Equal(t, first.digest, response.Digest)
+	live, expired, err = h.TagRows(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, 1, live, "live tag rows after re-push")
+	assert.Equal(t, 0, expired, "expired tag rows after re-push")
+
+	// Retarget the tag to a different manifest.
+	second := pushImage(t, h, repository, "latest", []byte(`{"arch":"arm64"}`), []byte("layer-two"))
+	require.NotEqual(t, first.digest, second.digest)
+	live, expired, err = h.TagRows(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, 1, live, "live tag rows after retarget")
+	assert.Equal(t, 1, expired, "expired tag rows after retarget")
+
+	manifest, err := h.Registry().GetManifest(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, second.manifest, manifest.Body)
+}
