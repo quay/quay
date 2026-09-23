@@ -137,10 +137,11 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
     """Downloads ZIP artifacts, parses Playwright JSON, and streams into BQ using MD5 row_ids."""
     artifacts_url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/artifacts"
     while True:
-        resp = requests.get(artifacts_url, headers=HEADERS)
+        resp = requests.get(artifacts_url, headers=HEADERS, timeout=(10, 60))
         if not handle_rate_limit(resp):
             break
     if resp.status_code != 200:
+        print(f"    -> Failed to fetch artifacts for run {run_id}: HTTP {resp.status_code}")
         return
 
     artifacts = resp.json().get("artifacts", [])
@@ -192,7 +193,7 @@ def fetch_and_insert_test_artifacts(bq_client, run_id, head_sha, branch_name, pr
     for artifact in artifacts:
         if "test" in artifact["name"].lower() or "playwright" in artifact["name"].lower():
             zip_url = artifact["archive_download_url"]
-            zip_resp = requests.get(zip_url, headers=HEADERS)
+            zip_resp = requests.get(zip_url, headers=HEADERS, timeout=(10, 120))
             if zip_resp.status_code != 200:
                 continue
 
@@ -228,15 +229,20 @@ def sync_ci_data(bq_client):
     start_date = (datetime.now(timezone.utc) - timedelta(days=DAYS_BACK)).strftime('%Y-%m-%d')
     print(f"Starting extraction for {REPO} (Since {start_date})...")
 
-    runs_url = f"https://api.github.com/repos/{REPO}/actions/runs?created=>{start_date}&per_page=100"
+    runs_url = f"https://api.github.com/repos/{REPO}/actions/runs?created=>{start_date}&status=completed&per_page=100"
 
     while runs_url:
-        resp = requests.get(runs_url, headers=HEADERS)
+        resp = requests.get(runs_url, headers=HEADERS, timeout=(10, 60))
         if handle_rate_limit(resp):
             continue
         resp.raise_for_status()
 
-        runs = resp.json().get("workflow_runs", [])
+        data = resp.json()
+        total_count = data.get("total_count", 0)
+        runs = data.get("workflow_runs", [])
+        if total_count > 1000:
+            print(f"\nWARNING: {total_count} total runs exceed GitHub's 1,000-result cap. "
+                  f"Reduce DAYS_BACK to avoid missing data.")
         print(f"\nProcessing page with {len(runs)} workflow runs...")
 
         for run in runs:
@@ -252,15 +258,21 @@ def sync_ci_data(bq_client):
             jobs_url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=100"
             has_e2e_tests = False
             all_jobs = []
+            jobs_fetch_failed = False
 
             while jobs_url:
-                j_resp = requests.get(jobs_url, headers=HEADERS)
+                j_resp = requests.get(jobs_url, headers=HEADERS, timeout=(10, 60))
                 if handle_rate_limit(j_resp):
                     continue
                 if j_resp.status_code != 200:
+                    print(f"  -> Failed to fetch jobs for run {run_id}: HTTP {j_resp.status_code}; will retry next sync")
+                    jobs_fetch_failed = True
                     break
                 all_jobs.extend(j_resp.json().get("jobs", []))
                 jobs_url = j_resp.links.get("next", {}).get("url")
+
+            if jobs_fetch_failed:
+                continue
 
             jobs_to_insert = []
             job_row_ids = []
