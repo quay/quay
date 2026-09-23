@@ -92,6 +92,41 @@ describe('UseTags', () => {
       });
       await waitFor(() => expect(result.current.errorLoadingTags).toBe(true));
     });
+
+    it('fetches every page while has_additional is true', async () => {
+      const page1Tags = [{name: 'latest'}];
+      const page2Tags = [{name: 'v1.0'}];
+      vi.mocked(getTags)
+        .mockResolvedValueOnce({tags: page1Tags, has_additional: true} as any)
+        .mockResolvedValueOnce({
+          tags: page2Tags,
+          has_additional: false,
+        } as any);
+      const {result} = renderHook(() => useAllTags('myorg', 'myrepo'), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.loadingTags).toBe(false));
+      expect(result.current.tags).toEqual([...page1Tags, ...page2Tags]);
+      expect(getTags).toHaveBeenCalledTimes(2);
+      expect(getTags).toHaveBeenNthCalledWith(
+        1,
+        'myorg',
+        'myrepo',
+        1,
+        50,
+        null,
+        false,
+      );
+      expect(getTags).toHaveBeenNthCalledWith(
+        2,
+        'myorg',
+        'myrepo',
+        2,
+        50,
+        null,
+        false,
+      );
+    });
   });
 
   describe('useCreateTag', () => {

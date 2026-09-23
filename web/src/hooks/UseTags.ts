@@ -8,11 +8,22 @@ import {
   bulkDeleteTags,
   getTagPullStatistics,
 } from 'src/resources/TagResource';
-import {getTags, restoreTag} from 'src/resources/TagResource';
+import {getTags, restoreTag, Tag} from 'src/resources/TagResource';
+
+async function fetchAllTagPages(org: string, repo: string) {
+  let page = 1;
+  let hasAdditional = false;
+  let tags: Tag[] = [];
+  do {
+    const resp = await getTags(org, repo, page, 50, null, false);
+    tags = page == 1 ? resp.tags : [...tags, ...resp.tags];
+    hasAdditional = resp.has_additional;
+    page++;
+  } while (hasAdditional);
+  return {tags};
+}
 
 export function useAllTags(org: string, repo: string) {
-  // TODO: Returns the first 50 tags due to performance concerns.
-  // Need to fetch pages on demand after API redesign.
   const {
     data: tagsResponse,
     isLoading: loadingTags,
@@ -20,7 +31,7 @@ export function useAllTags(org: string, repo: string) {
     error: errorTagsDetails,
     dataUpdatedAt,
   } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
-    getTags(org, repo, 1, 50, null, false),
+    fetchAllTagPages(org, repo),
   );
 
   const tags = tagsResponse?.tags || [];

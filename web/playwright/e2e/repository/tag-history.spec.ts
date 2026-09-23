@@ -123,6 +123,75 @@ test.describe(
       }
     });
 
+    test(
+      'search finds a history entry beyond the first 50 rows',
+      {tag: '@PROJQUAY-8767'},
+      async ({authenticatedPage, api}) => {
+        test.setTimeout(120 * 1000);
+
+        const repo = await api.repository();
+        await pushImage(
+          repo.namespace,
+          repo.name,
+          'latest',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+
+        const rawApi = api.raw;
+
+        // Poll for the tag to be indexed (push is sync but indexing may lag)
+        let latestDigest: string | undefined;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const tags = await rawApi.getTags(repo.namespace, repo.name, {
+            specificTag: 'latest',
+          });
+          if (tags.tags.length > 0) {
+            latestDigest = tags.tags[0].manifest_digest;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!latestDigest) {
+          throw new Error('Pushed tag was not indexed after 10 attempts');
+        }
+
+        // Create and delete an early history entry, then flood in enough
+        // newer tag events to push it past the raw API's page-1 cap.
+        // Isolated to its own repo so the flood does not disturb the
+        // other tests' assumptions about sharedRepo.
+        await rawApi.createTag(
+          repo.namespace,
+          repo.name,
+          'earlydeleted',
+          latestDigest,
+        );
+        await rawApi.deleteTag(repo.namespace, repo.name, 'earlydeleted');
+
+        const floodCount = 60;
+        for (let i = 0; i < floodCount; i++) {
+          await rawApi.createTag(
+            repo.namespace,
+            repo.name,
+            `floodtag${i}`,
+            latestDigest,
+          );
+        }
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+        await authenticatedPage.getByText('Tag history').click();
+
+        const historyTable = authenticatedPage.locator('#tag-history-table');
+        await expect(historyTable).toBeVisible();
+
+        await authenticatedPage
+          .getByPlaceholder('Search by tag name...')
+          .fill('earlydeleted');
+
+        await expect(historyTable).toContainText('earlydeleted was deleted');
+      },
+    );
+
     test('show future entries toggle', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
         `/repository/${sharedRepo.fullName}?tab=tags`,
