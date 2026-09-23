@@ -290,7 +290,7 @@ def _process_run(bq_client, run):
             row_ids=job_row_ids,
         )
         if errors:
-            print(f"  -> Error inserting jobs for run {run_id}: {errors[:1]}")
+            raise RuntimeError(f"BQ insert failed for run {run_id}: {errors[:2]}")
         else:
             print(
                 f"  -> Inserted {len(jobs_to_insert)} jobs for run {run_id} "
