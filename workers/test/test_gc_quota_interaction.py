@@ -440,14 +440,14 @@ class TestGCQuotaInteraction:
         real_gc_storage = storage_model.garbage_collect_storage
         push_state = {}
 
-        def _push_during_gc(storage_id_whitelist):
+        def _push_during_gc(storage_id_whitelist, namespace=None, repo_name=None):
             if "manifest" not in push_state:
                 with enable_quota_management():
                     push_state["manifest"] = create_manifest_for_testing(repo, [new_blob])
                     push_state["tag"] = create_tag_for_manifest(
                         repo, push_state["manifest"], "new-tag"
                     )
-            return real_gc_storage(storage_id_whitelist)
+            return real_gc_storage(storage_id_whitelist, namespace=namespace, repo_name=repo_name)
 
         with patch.object(storage_model, "garbage_collect_storage", side_effect=_push_during_gc):
             with enable_gc_and_quota():
