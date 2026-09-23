@@ -241,6 +241,12 @@ class RepositoryList(ApiResource):
         default=False,
     )
     @query_param("repo_kind", "The kind of repositories to return", type=str, default="image")
+    @query_param(
+        "quota",
+        "Whether to include quota information in the returned output",
+        type=truthy_bool,
+        default=True,
+    )
     @page_support()
     def get(self, page_token, parsed_args):
         """
@@ -277,7 +283,7 @@ class RepositoryList(ApiResource):
             popularity,
         )
 
-        if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
+        if parsed_args["quota"] and features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
             repositories_with_view = model.add_quota_view(repos)
         else:
             repositories_with_view = [repo.to_dict() for repo in repos]
