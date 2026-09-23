@@ -22,7 +22,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'playwright/**/*.test.ts'],
-    exclude: ['node_modules', 'dist', 'cypress', 'playwright/e2e/**'],
+    exclude: ['node_modules', 'dist', 'playwright/e2e/**'],
     css: false,
     clearMocks: true,
     restoreMocks: true,
