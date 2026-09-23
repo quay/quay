@@ -296,9 +296,37 @@ def test_helm_chart_metadata_extraction(
     assert result is not None
     assert len(result.manifests) > 0, "Push returned no manifests"
 
-    # Verify the manifest has Helm config media type
+    # Fetch and verify config blob content
+    token, _ = manifest_protocol.auth(
+        liveserver_session, credentials, "devtable", "helm-metadata-repo"
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
     for manifest in result.manifests.values():
+        # Verify Helm config media type
         assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
+
+        # Fetch the config blob via authenticated V2 blobs endpoint
+        blob_response = manifest_protocol.conduct(
+            liveserver_session,
+            "GET",
+            f"/v2/devtable/helm-metadata-repo/blobs/{manifest.config.digest}",
+            headers=headers,
+            expected_status=200,
+        )
+
+        # Decode and validate config payload
+        config_blob = json.loads(blob_response.content)
+        assert config_blob.get("config") is not None, "Config blob missing 'config' field"
+
+        # Validate Helm chart metadata in config
+        config = config_blob["config"]
+        assert (
+            config.get("name") == "test-chart"
+        ), f"Expected name 'test-chart', got {config.get('name')}"
+        assert (
+            config.get("version") == "1.0.0"
+        ), f"Expected version '1.0.0', got {config.get('version')}"
 
 
 @pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
@@ -527,13 +555,46 @@ def test_helm_chart_oci_annotations(
     assert push_result is not None
     assert len(push_result.manifests) > 0
 
-    # Verify Helm config media type in the pushed manifest
+    # Fetch and verify config blob with annotations after push
+    token, _ = manifest_protocol.auth(
+        liveserver_session, credentials, "devtable", "helm-annotated-repo"
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
     for manifest in push_result.manifests.values():
         assert manifest is not None
         assert hasattr(manifest, "digest")
         assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
-    # Pull and verify Helm config media type is preserved after round-trip
+        # Fetch the config blob via authenticated V2 blobs endpoint
+        blob_response = manifest_protocol.conduct(
+            liveserver_session,
+            "GET",
+            f"/v2/devtable/helm-annotated-repo/blobs/{manifest.config.digest}",
+            headers=headers,
+            expected_status=200,
+        )
+
+        # Decode and validate config payload with annotations
+        config_blob = json.loads(blob_response.content)
+        assert config_blob.get("config") is not None, "Config blob missing 'config' field"
+        config = config_blob["config"]
+
+        # Validate Helm chart metadata
+        assert config.get("name") == "annotated-chart"
+        assert config.get("version") == "1.5.0"
+
+        # Validate OCI annotations in config
+        assert "annotations" in config, "config must contain annotations map"
+        annotations = config["annotations"]
+        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
+        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
+        assert (
+            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
+        )
+        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
+
+    # Pull and verify config blob with annotations is preserved after round-trip
     pull_result = manifest_protocol.pull(
         liveserver_session,
         "devtable",
@@ -546,8 +607,28 @@ def test_helm_chart_oci_annotations(
     assert pull_result is not None
     assert len(pull_result.manifests) > 0
 
-    # Verify Helm config media type is preserved after pull (round-trip verification)
     for manifest in pull_result.manifests.values():
         assert manifest is not None
         assert hasattr(manifest, "digest")
         assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
+
+        # Fetch the config blob again after pull
+        blob_response = manifest_protocol.conduct(
+            liveserver_session,
+            "GET",
+            f"/v2/devtable/helm-annotated-repo/blobs/{manifest.config.digest}",
+            headers=headers,
+            expected_status=200,
+        )
+
+        # Verify annotations are preserved after round-trip
+        config_blob = json.loads(blob_response.content)
+        config = config_blob["config"]
+        assert "annotations" in config
+        annotations = config["annotations"]
+        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
+        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
+        assert (
+            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
+        )
+        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
