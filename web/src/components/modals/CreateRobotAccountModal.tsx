@@ -262,7 +262,9 @@ export default function CreateRobotAccountModal(
           <Footer
             onSubmit={onSubmit}
             isDrawerExpanded={isDrawerExpanded}
-            isDataValid={() => validateRobotName(robotName)}
+            isDataValid={() =>
+              validateRobotName(robotName) && robotDescription.length <= 255
+            }
           />
         }
       >
