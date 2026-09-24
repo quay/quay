@@ -2,6 +2,7 @@ import functools
 import logging
 import os
 import socket
+import time
 import uuid
 
 import redis_lock
@@ -9,10 +10,33 @@ from redis import Redis, RedisError
 
 logger = logging.getLogger(__name__)
 
+# How often a GlobalLock with a blocking_timeout retries a lock held by someone else.
+_BOUNDED_ACQUIRE_POLL_INTERVAL = 0.05
+
+
+class _SkipFailedAcquireWarning(logging.Filter):
+    """redis_lock logs a WARNING on every failed non-blocking acquire; GlobalLock's bounded poll
+    (_acquire_before_deadline) calls acquire(blocking=False) up to blocking_timeout /
+    _BOUNDED_ACQUIRE_POLL_INTERVAL times per wait, which would flood logs with an expected,
+    already-handled event. GlobalLock logs its own WARNING once the deadline is reached."""
+
+    def filter(self, record):
+        return not record.getMessage().startswith("Failed to acquire Lock")
+
+
+logging.getLogger("redis_lock.acquire").addFilter(_SkipFailedAcquireWarning())
+
 
 class LockNotAcquiredException(Exception):
     """
     Exception raised if a GlobalLock could not be acquired.
+    """
+
+
+class LockAcquireTimeout(LockNotAcquiredException):
+    """
+    Exception raised if a GlobalLock with a blocking_timeout was still held by another holder
+    when the timeout ran out, as opposed to Redis being unavailable.
     """
 
 
@@ -49,7 +73,7 @@ class GlobalLock(object):
     def __init__(self, name, lock_ttl=600, auto_renewal=False, blocking_timeout=None):
         """
         :param blocking_timeout:
-            Maximum number of whole seconds (1..lock_ttl) to block waiting to acquire the lock.
+            Maximum number of seconds, measured across all retries, to wait for the lock.
             None (the default) blocks until the lock is acquired.
         """
         if GlobalLock.lock_factory is None:
@@ -60,6 +84,7 @@ class GlobalLock(object):
         self._auto_renewal = auto_renewal
         self._blocking_timeout = blocking_timeout
         self._lock = None
+        self._timed_out = False
         # Identifies the current process to other waiters if this instance acquires the lock;
         # the uuid suffix keeps ids unique across concurrent GlobalLock instances in this same
         # process, so one greenlet's held lock is never mistaken for another's acquire attempt.
@@ -67,6 +92,8 @@ class GlobalLock(object):
 
     def __enter__(self):
         if not self.acquire():
+            if self._timed_out:
+                raise LockAcquireTimeout()
             raise LockNotAcquiredException()
 
     def __exit__(self, type, value, traceback):
@@ -82,8 +109,12 @@ class GlobalLock(object):
                 id=self._holder_id,
             )
 
-            acquired = self._lock.acquire(timeout=self._blocking_timeout)
+            if self._blocking_timeout is None:
+                acquired = self._lock.acquire()
+            else:
+                acquired = self._acquire_before_deadline()
             if not acquired:
+                self._timed_out = True
                 logger.warning(
                     "Timed out acquiring lock %s (currently held by %s)",
                     self._lock_name,
@@ -99,6 +130,19 @@ class GlobalLock(object):
         except:
             logger.debug("Could not acquire lock %s", self._lock_name)
             return False
+
+    def _acquire_before_deadline(self):
+        # Poll with non-blocking SETs instead of redis_lock's blocking wait. That wait is a BLPOP
+        # on the lock client's single shared connection, so every other greenlet's commands on it
+        # (including the holder's release and extend) queue behind the waiter, and its timeout
+        # restarts whenever a release wakes the waiter but another contender wins the lock.
+        deadline = time.monotonic() + self._blocking_timeout
+        while not self._lock.acquire(blocking=False):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            time.sleep(min(_BOUNDED_ACQUIRE_POLL_INTERVAL, remaining))
+        return True
 
     def _current_holder(self):
         try:
