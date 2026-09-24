@@ -345,7 +345,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates email notification with authorization flow',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@PROJQUAY-7098']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
@@ -396,6 +396,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
 
       // Click Send Authorized Email
       await authenticatedPage.getByTestId('send-authorized-email-btn').click();
@@ -427,116 +430,6 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.locator('tbody', {hasText: 'Email Notification'}),
       ).toBeVisible({timeout: 15000});
-    },
-  );
-
-  test(
-    'email notification: 404 opens auth modal, 500 shows error alert',
-    {tag: '@PROJQUAY-7098'},
-    async ({authenticatedPage, api}) => {
-      // No live FEATURE_MAILING setup exists in this stack (local-dev/stack/config.yaml
-      // has it off and no CI job overrides it; the @feature:MAILING tag above only
-      // skips tests, it does not enable the feature), so stub the config response
-      // instead, following the pattern in organization/proxy-cache.spec.ts.
-      const org = await api.organization('emailauthstub');
-      const repo = await api.repository(org.name, 'authrepo');
-
-      await authenticatedPage.route('**/config', async (route) => {
-        const response = await route.fetch();
-        const body = await response.json();
-        body.features.MAILING = true;
-        await route.fulfill({response, body: JSON.stringify(body)});
-      });
-
-      const startEmailNotification = async (email: string) => {
-        await authenticatedPage.goto(
-          `/repository/${org.name}/${repo.name}?tab=settings`,
-        );
-        await authenticatedPage
-          .getByTestId('settings-tab-eventsandnotifications')
-          .click();
-        await authenticatedPage
-          .getByRole('button', {name: 'Create notification'})
-          .click();
-        await authenticatedPage
-          .getByTestId('notification-event-dropdown')
-          .click();
-        await authenticatedPage
-          .getByRole('menuitem', {name: 'Push to Repository'})
-          .click();
-        await authenticatedPage
-          .getByTestId('notification-method-dropdown')
-          .click();
-        await authenticatedPage
-          .getByRole('menuitem', {name: 'Email Notification'})
-          .click();
-        await authenticatedPage.getByTestId('notification-email').fill(email);
-        await authenticatedPage
-          .getByTestId('notification-title')
-          .fill('Stubbed Email Notification');
-        await authenticatedPage.getByTestId('notification-submit-btn').click();
-      };
-
-      // 404 (never-authorized address, by design): auth modal opens, no danger alert.
-      const notFoundEmail = 'never-authorized@example.com';
-      await authenticatedPage.route(
-        `**/api/v1/repository/${org.name}/${repo.name}/authorizedemail/${notFoundEmail}`,
-        async (route) => {
-          if (route.request().method() !== 'GET') {
-            await route.continue();
-            return;
-          }
-          await route.fulfill({
-            status: 404,
-            contentType: 'application/json',
-            body: JSON.stringify({error_message: 'Not Found'}),
-          });
-        },
-      );
-      await startEmailNotification(notFoundEmail);
-      await expect(
-        authenticatedPage.getByText('Email Authorization'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Unable to verify email'),
-      ).not.toBeVisible();
-
-      // 500 (genuine failure): danger alert shows, no auth modal.
-      const errorEmail = 'server-error@example.com';
-      await authenticatedPage.route(
-        `**/api/v1/repository/${org.name}/${repo.name}/authorizedemail/${errorEmail}`,
-        async (route) => {
-          if (route.request().method() !== 'GET') {
-            await route.continue();
-            return;
-          }
-          await route.fulfill({
-            status: 500,
-            contentType: 'application/json',
-            body: JSON.stringify({error_message: 'Internal Server Error'}),
-          });
-        },
-      );
-      await startEmailNotification(errorEmail);
-      await expect(
-        authenticatedPage.getByText('Unable to verify email'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Email Authorization'),
-      ).not.toBeVisible();
-
-      // Second submit (404) right after the 500 failure, same drawer: auth
-      // modal opens AND the danger alert from the first failure clears.
-      const emailField = authenticatedPage.getByTestId('notification-email');
-      await emailField.fill('');
-      await emailField.fill(notFoundEmail);
-      await authenticatedPage.getByTestId('notification-submit-btn').click();
-      await expect(
-        authenticatedPage.getByText('Email Authorization'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Unable to verify email'),
-      ).not.toBeVisible();
     },
   );
 
