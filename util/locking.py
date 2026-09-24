@@ -1,5 +1,8 @@
 import functools
 import logging
+import os
+import socket
+import uuid
 
 import redis_lock
 from redis import Redis, RedisError
@@ -43,14 +46,24 @@ class GlobalLock(object):
         if cls.lock_factory is None:
             cls.lock_factory = _redis_lock_factory(config)
 
-    def __init__(self, name, lock_ttl=600, auto_renewal=False):
+    def __init__(self, name, lock_ttl=600, auto_renewal=False, blocking_timeout=None):
+        """
+        :param blocking_timeout:
+            Maximum number of whole seconds (1..lock_ttl) to block waiting to acquire the lock.
+            None (the default) blocks until the lock is acquired.
+        """
         if GlobalLock.lock_factory is None:
             raise LockNotAcquiredException("GlobalLock not configured")
 
         self._lock_name = name
         self._lock_ttl = lock_ttl
         self._auto_renewal = auto_renewal
+        self._blocking_timeout = blocking_timeout
         self._lock = None
+        # Identifies the current process to other waiters if this instance acquires the lock;
+        # the uuid suffix keeps ids unique across concurrent GlobalLock instances in this same
+        # process, so one greenlet's held lock is never mistaken for another's acquire attempt.
+        self._holder_id = "%s:%s:%s" % (socket.gethostname(), os.getpid(), uuid.uuid4().hex[:8])
 
     def __enter__(self):
         if not self.acquire():
@@ -63,12 +76,19 @@ class GlobalLock(object):
         logger.debug("Acquiring global lock %s", self._lock_name)
         try:
             self._lock = GlobalLock.lock_factory(
-                self._lock_name, expire=self._lock_ttl, auto_renewal=self._auto_renewal
+                self._lock_name,
+                expire=self._lock_ttl,
+                auto_renewal=self._auto_renewal,
+                id=self._holder_id,
             )
 
-            acquired = self._lock.acquire()
+            acquired = self._lock.acquire(timeout=self._blocking_timeout)
             if not acquired:
-                logger.debug("Was unable to not acquire lock %s", self._lock_name)
+                logger.warning(
+                    "Timed out acquiring lock %s (currently held by %s)",
+                    self._lock_name,
+                    self._current_holder(),
+                )
                 return False
 
             logger.debug("Acquired lock %s", self._lock_name)
@@ -79,6 +99,12 @@ class GlobalLock(object):
         except:
             logger.debug("Could not acquire lock %s", self._lock_name)
             return False
+
+    def _current_holder(self):
+        try:
+            return self._lock.get_owner_id()
+        except RedisError:
+            return None
 
     def release(self):
         if self._lock is not None:
