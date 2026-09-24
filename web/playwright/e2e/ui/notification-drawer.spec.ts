@@ -73,13 +73,25 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
 
   test(
     'notification bell badge shows N+ when more than 5 notifications exist',
-    {tag: '@PROJQUAY-9038'},
+    {tag: ['@notification-drawer', '@PROJQUAY-9038']},
     async ({authenticatedPage, api}) => {
       test.setTimeout(120_000);
       const namespace = TEST_USERS.user.username;
 
       // 1. Create repository
       const repo = await api.repository(namespace, 'notif-repo-badge');
+
+      // Well above the endpoint's default limit of 5, so a single fetch
+      // covers every undismissed notification for this test's repo.
+      const NOTIFICATION_FETCH_LIMIT = 1000;
+      const ourNotifications = async () => {
+        const {notifications} = await api.raw.getUserNotifications(
+          NOTIFICATION_FETCH_LIMIT,
+        );
+        return notifications.filter(
+          (n) => n.metadata.repository === repo.fullName,
+        );
+      };
 
       // 2. Configure quay_notification for repo_push targeting the user
       await api.raw.createRepositoryNotification(
@@ -92,38 +104,55 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
         'Test push notification for badge overflow',
       );
 
-      // 3. Push 6 tags to trigger 6 push notifications (backend fetch limit is 5)
-      for (let i = 0; i < 6; i++) {
-        await pushImage(
-          namespace,
-          repo.name,
-          `tag${i}`,
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
+      try {
+        // 3. Push 6 tags to trigger 6 push notifications (backend fetch limit is 5)
+        for (let i = 0; i < 6; i++) {
+          await pushImage(
+            namespace,
+            repo.name,
+            `tag${i}`,
+            TEST_USERS.user.username,
+            TEST_USERS.user.password,
+          );
+        }
+
+        // Wait for all 6 of this test's notifications to land, so a
+        // pre-existing backlog can't satisfy "5+" on its own.
+        await expect
+          .poll(async () => (await ourNotifications()).length, {
+            timeout: 20000,
+            intervals: [1000, 2000, 3000],
+          })
+          .toBeGreaterThanOrEqual(6);
+
+        // 4. Navigate and verify the bell shows "5+", not the plain count
+        await authenticatedPage.goto('/organization');
+        const bell = authenticatedPage.getByTestId('notification-bell');
+
+        await expect(async () => {
+          await authenticatedPage.reload();
+          await expect(bell).toBeVisible();
+          await expect(bell).toContainText('5+');
+        }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
+      } finally {
+        // Dismiss the notifications this test created so they don't linger on
+        // the user for later runs/tests (repository deletion doesn't clean
+        // them up). Runs on success or failure, and polls until none remain
+        // since on the failure path a late-arriving push notification can
+        // still land after the badge assertion.
+        await expect
+          .poll(
+            async () => {
+              const remaining = await ourNotifications();
+              await Promise.all(
+                remaining.map((n) => api.raw.dismissUserNotification(n.id)),
+              );
+              return (await ourNotifications()).length;
+            },
+            {timeout: 20000, intervals: [1000, 2000, 3000]},
+          )
+          .toBe(0);
       }
-
-      // Brief wait for notification processing
-      await authenticatedPage.waitForTimeout(2000);
-
-      // 4. Navigate and verify the bell shows "5+", not the plain count
-      await authenticatedPage.goto('/organization');
-      const bell = authenticatedPage.getByTestId('notification-bell');
-
-      await expect(async () => {
-        await authenticatedPage.reload();
-        await expect(bell).toBeVisible();
-        await expect(bell).toContainText('5+');
-      }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
-
-      // Dismiss the notifications this test created so they don't linger on
-      // the user for later runs/tests (repository deletion doesn't clean them up).
-      const {notifications} = await api.raw.getUserNotifications(10);
-      await Promise.all(
-        notifications
-          .filter((n) => n.metadata.repository === repo.fullName)
-          .map((n) => api.raw.dismissUserNotification(n.id)),
-      );
     },
   );
 });
