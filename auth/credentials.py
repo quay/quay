@@ -48,9 +48,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             logger.debug("Successfully validated credentials for access token %s", token.id)
             return ValidateResult(AuthKind.credentials, token=token), CredentialKind.token
         except model.DataModelException:
-            logger.warning(
-                "Failed to validate credentials for access token %s", auth_password_or_token
-            )
+            logger.warning("Failed to validate credentials for access token")
             return (
                 ValidateResult(AuthKind.credentials, error_message="Invalid access token"),
                 CredentialKind.token,
@@ -61,9 +59,7 @@ def validate_credentials(auth_username, auth_password_or_token):
         logger.debug("Found credentials for app specific auth token")
         token = model.appspecifictoken.access_valid_token(auth_password_or_token)
         if token is None:
-            logger.debug(
-                "Failed to validate credentials for app specific token: %s", auth_password_or_token
-            )
+            logger.debug("Failed to validate credentials for app specific token")
 
             error_message = "Invalid token"
 

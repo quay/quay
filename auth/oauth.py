@@ -37,7 +37,7 @@ def validate_bearer_auth(auth_header):
 
     normalized = [part.strip() for part in auth_header.split(" ") if part]
     if normalized[0].lower() != "bearer" or len(normalized) != 2:
-        logger.debug("Got invalid bearer token format: %s", auth_header)
+        logger.debug("Got invalid bearer token format")
         return ValidateResult(AuthKind.oauth, missing=True)
 
     _, oauth_token = normalized
@@ -199,7 +199,7 @@ def validate_app_oauth_token(token):
     """
     validated = model.oauth.validate_access_token(token)
     if not validated:
-        logger.warning("OAuth access token could not be validated: %s", token)
+        logger.warning("OAuth access token could not be validated")
 
         error_message = "OAuth access token could not be validated"
 
@@ -218,7 +218,7 @@ def validate_app_oauth_token(token):
         return ValidateResult(AuthKind.oauth, error_message=error_message)
 
     if validated.expires_at <= datetime.utcnow():
-        logger.warning("OAuth access with an expired token: %s", token)
+        logger.warning("OAuth access with an expired token")
 
         error_message = "OAuth access token has expired"
 
