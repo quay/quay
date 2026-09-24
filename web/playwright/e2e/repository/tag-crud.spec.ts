@@ -479,6 +479,9 @@ test.describe(
 
       // cancel
       await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Add tag modal'}),
+      ).not.toBeVisible();
     });
 
     test('alert on failure to add tag', async ({authenticatedPage, api}) => {
