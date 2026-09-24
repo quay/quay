@@ -3,16 +3,18 @@ import logging
 import time
 
 import fakeredis
+import pytest
 import redis_lock
 
 import data.model.storage as storage_module
+from data.database import ImageStorage
 from data.model.storage import (
     BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
     get_or_create_blob_with_lock,
     with_blob_lock_or_fallback,
 )
 from test.fixtures import *
-from util.locking import GlobalLock
+from util.locking import GlobalLock, LockAcquireTimeout
 
 
 def _digest(byte):
@@ -37,10 +39,12 @@ def _patch_lock_factory(monkeypatch):
     return server
 
 
-def test_with_blob_lock_or_fallback_bounded_when_lock_held(initialized_db, monkeypatch):
+def test_with_blob_lock_or_fallback_timeout_does_not_create_missing_blob(
+    initialized_db, monkeypatch
+):
     server = _patch_lock_factory(monkeypatch)
     digest = _digest(1)
-    _hold_lock(server, digest)
+    _hold_lock(server, digest, holder_id="gc-worker:7:aaaaaaaa")
 
     calls = []
 
@@ -49,12 +53,51 @@ def test_with_blob_lock_or_fallback_bounded_when_lock_held(initialized_db, monke
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
     start = time.time()
-    result = with_blob_lock_or_fallback(digest, func)
+    with pytest.raises(LockAcquireTimeout):
+        with_blob_lock_or_fallback(digest, func)
     elapsed = time.time() - start
 
-    assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 3, f"took too long: {elapsed}s"
-    assert result.content_checksum == digest
+    assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 2, f"took too long: {elapsed}s"
     assert calls == [True]
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == digest).exists()
+
+
+def test_with_blob_lock_or_fallback_timeout_returns_existing_blob(
+    initialized_db, monkeypatch, caplog
+):
+    server = _patch_lock_factory(monkeypatch)
+    digest = _digest(5)
+    existing = ImageStorage.create(content_checksum=digest, image_size=1)
+    _hold_lock(server, digest)
+
+    def func(**kwargs):
+        return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
+
+    start = time.time()
+    with caplog.at_level(logging.WARNING):
+        result = with_blob_lock_or_fallback(digest, func)
+    elapsed = time.time() - start
+
+    assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 2, f"took too long: {elapsed}s"
+    assert result.id == existing.id
+    assert "proceeding without lock" not in caplog.text
+
+
+def test_with_blob_lock_or_fallback_redis_down_creates_without_lock(
+    initialized_db, monkeypatch, caplog
+):
+    server = _patch_lock_factory(monkeypatch)
+    server.connected = False
+    digest = _digest(6)
+
+    def func(**kwargs):
+        return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
+
+    with caplog.at_level(logging.WARNING):
+        result = with_blob_lock_or_fallback(digest, func)
+
+    assert result.content_checksum == digest
+    assert f"Blob {digest}: proceeding without lock" in caplog.text
 
 
 def test_with_blob_lock_or_fallback_acquires_lock_once_on_fallback(initialized_db, monkeypatch):
@@ -63,21 +106,21 @@ def test_with_blob_lock_or_fallback_acquires_lock_once_on_fallback(initialized_d
     _hold_lock(server, digest)
 
     acquire_attempts = []
-    original_acquire = redis_lock.Lock.acquire
+    original_acquire = GlobalLock.acquire
 
-    def spy_acquire(self, *args, **kwargs):
-        acquire_attempts.append(self._name)
-        return original_acquire(self, *args, **kwargs)
+    def spy_acquire(self):
+        acquire_attempts.append(self._lock_name)
+        return original_acquire(self)
 
-    monkeypatch.setattr(redis_lock.Lock, "acquire", spy_acquire)
+    monkeypatch.setattr(GlobalLock, "acquire", spy_acquire)
 
     def func(**kwargs):
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
-    with_blob_lock_or_fallback(digest, func)
+    with pytest.raises(LockAcquireTimeout):
+        with_blob_lock_or_fallback(digest, func)
 
-    lock_key = f"lock:BLOB_DELETE_{digest}"
-    assert acquire_attempts.count(lock_key) == 1, acquire_attempts
+    assert acquire_attempts == [f"BLOB_DELETE_{digest}"], acquire_attempts
 
 
 def test_with_blob_lock_or_fallback_logs_holder_on_timeout(initialized_db, monkeypatch, caplog):
@@ -89,7 +132,8 @@ def test_with_blob_lock_or_fallback_logs_holder_on_timeout(initialized_db, monke
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
     with caplog.at_level(logging.WARNING):
-        with_blob_lock_or_fallback(digest, func)
+        with pytest.raises(LockAcquireTimeout):
+            with_blob_lock_or_fallback(digest, func)
 
     messages = [record.getMessage() for record in caplog.records]
     assert any(
@@ -97,12 +141,14 @@ def test_with_blob_lock_or_fallback_logs_holder_on_timeout(initialized_db, monke
     ), messages
 
 
-def test_with_blob_lock_or_fallback_no_contention(initialized_db, monkeypatch):
+def test_with_blob_lock_or_fallback_no_contention(initialized_db, monkeypatch, caplog):
     _patch_lock_factory(monkeypatch)
     digest = _digest(4)
 
     def func(**kwargs):
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
-    result = with_blob_lock_or_fallback(digest, func)
+    with caplog.at_level(logging.WARNING):
+        result = with_blob_lock_or_fallback(digest, func)
     assert result.content_checksum == digest
+    assert "proceeding without lock" not in caplog.text
