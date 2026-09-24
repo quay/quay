@@ -399,10 +399,13 @@ test.describe(
       await expect(
         authenticatedPage.getByText(/Add tag to manifest sha256:/),
       ).toBeVisible();
-      await authenticatedPage
-        .locator('input[placeholder="New tag name"]')
-        .fill('newtag');
-      await authenticatedPage.getByText('Create tag').click();
+
+      const tagTextField = authenticatedPage.getByRole('textbox', {
+        name: 'new tag name',
+      });
+
+      await tagTextField.fill('newtag');
+      await authenticatedPage.getByRole('button', {name: 'Create tag'}).click();
 
       await expect(
         authenticatedPage.getByText('Successfully created tag newtag'),
@@ -410,6 +413,72 @@ test.describe(
       await expect(
         authenticatedPage.getByRole('link', {name: 'newtag'}),
       ).toBeVisible();
+    });
+
+    test('add new tag: Create tag button disabled for bad tag names', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // push test image
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const errorMessage = `Must start with a letter, digit or underscore. Only letters, digits, underscores, hyphens and periods allowed. Max 128 characters.`;
+
+      // verify UI can be rendered
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1'}),
+      ).toBeVisible();
+
+      // open modal dialog for tag addition
+      const tagRow = authenticatedPage.getByTestId('table-entry').filter({
+        has: authenticatedPage.getByRole('link', {name: 'v1'}),
+      });
+      await tagRow.locator('#tag-actions-kebab').click();
+      await authenticatedPage.getByText('Add new tag').click();
+      await expect(
+        authenticatedPage.getByText(/Add tag to manifest sha256:/),
+      ).toBeVisible();
+
+      const tagTextField = authenticatedPage.getByRole('textbox', {
+        name: 'new tag name',
+      });
+      const createButton = authenticatedPage.getByRole('button', {
+        name: 'Create tag',
+      });
+
+      // try filling a bad tag
+      await tagTextField.fill('*!"387%%%abdac');
+
+      // verify that error message is shown and button is not available
+      await expect(authenticatedPage.getByText(errorMessage)).toBeVisible();
+      await expect(createButton).toBeDisabled();
+
+      // replace tag with a too long tag name
+      await tagTextField.clear();
+      await tagTextField.fill('a'.repeat(129));
+
+      // verify that error message is shown and button is not available
+      await expect(authenticatedPage.getByText(errorMessage)).toBeVisible();
+      await expect(createButton).toBeDisabled();
+
+      // replace tag with a proper tag
+      await tagTextField.clear();
+      await tagTextField.fill('proper-tag');
+
+      // verify that error message is no longer present and button is enabled
+      await expect(authenticatedPage.getByText(errorMessage)).not.toBeVisible();
+      await expect(createButton).toBeEnabled();
+
+      // cancel
+      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
     });
 
     test('alert on failure to add tag', async ({authenticatedPage, api}) => {
