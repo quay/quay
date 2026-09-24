@@ -86,4 +86,28 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
       page.getByTestId('signin-forgot-password-link'),
     ).not.toBeVisible();
   });
+
+  test('failed login does not expose password in page content', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const testPassword = 'S3cret!P@ss#w0rd';
+
+    await page.goto('/signin');
+
+    await page
+      .getByRole('textbox', {name: /username/i})
+      .fill('nonexistentuser');
+    await page.getByLabel(/password/i).fill(testPassword);
+    await page.locator('button[type="submit"]').click();
+
+    await expect(page.getByText('Invalid Username or Password')).toBeVisible();
+
+    const bodyText = await page.locator('body').innerText();
+    expect(bodyText).not.toContain(testPassword);
+
+    await page.close();
+    await context.close();
+  });
 });
