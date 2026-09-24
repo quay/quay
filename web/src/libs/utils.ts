@@ -64,6 +64,14 @@ export const validateTeamName = (name: string) => {
   return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
 };
 
+export const validateRobotName = (name: string) => {
+  return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
+};
+
+export const validateTagName = (name: string) => {
+  return /^[\w][\w.-]{0,127}$/.test(name);
+};
+
 export function parseRepoNameFromUrl(url: string): string {
   //url is in the format of <prefix>/repository/<org>/<repo>
   //or for nested repo: <prefix>/repository/<org>/<nested>/<repo>
