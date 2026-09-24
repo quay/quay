@@ -110,52 +110,55 @@ test.describe(
       await expect(paginationInfo).toContainText('0 - 0 of 0');
     });
 
-    test('robot wizard next button disabled if robot name or description fail validation (PROJQUAY-6016)', async ({
-      authenticatedPage,
-      api,
-    }) => {
-      const org = await api.organization('validationorg');
-      await authenticatedPage.goto(
-        `/organization/${org.name}?tab=Robotaccounts`,
-      );
-      await authenticatedPage
-        .getByRole('button', {name: 'Create robot account'})
-        .click();
+    test(
+      'robot wizard next button disabled if robot name or description fail validation (PROJQUAY-6016)',
+      {tag: '@PROJQUAY-6016'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('validationorg');
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
 
-      const modal = authenticatedPage.locator('#create-robot-account-modal');
-      await expect(modal).toBeVisible();
+        const modal = authenticatedPage.getByRole('dialog', {
+          name: 'CreateRobotAccount',
+        });
+        await expect(modal).toBeVisible();
 
-      const nextBtn = modal.getByTestId('next-btn');
-      const reviewAndFinish = modal.getByTestId('create-robot-submit');
+        const nextBtn = modal.getByTestId('next-btn');
+        const reviewAndFinish = modal.getByTestId('create-robot-submit');
 
-      // no robot name -> next should be disabled
-      await expect(nextBtn).toBeDisabled();
-      await expect(reviewAndFinish).toBeDisabled();
+        // no robot name -> next should be disabled
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
 
-      // valid name -> buttons should be enabled
-      await modal.getByTestId('robot-wizard-form-name').fill('validbot');
-      await expect(nextBtn).toBeEnabled();
-      await expect(reviewAndFinish).toBeEnabled();
+        // valid name -> buttons should be enabled
+        await modal.getByTestId('robot-wizard-form-name').fill('validbot');
+        await expect(nextBtn).toBeEnabled();
+        await expect(reviewAndFinish).toBeEnabled();
 
-      // description over 255 characters -> buttons should be disabled
-      await modal
-        .getByTestId('robot-wizard-form-description')
-        .fill('a'.repeat(300));
-      await expect(nextBtn).toBeDisabled();
-      await expect(reviewAndFinish).toBeDisabled();
+        // description over 255 characters -> buttons should be disabled
+        await modal
+          .getByTestId('robot-wizard-form-description')
+          .fill('a'.repeat(300));
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
 
-      // description exactly 255 characters -> buttons should be enabled
-      await modal
-        .getByTestId('robot-wizard-form-description')
-        .fill('a'.repeat(255));
-      await expect(nextBtn).toBeEnabled();
-      await expect(reviewAndFinish).toBeEnabled();
+        // description exactly 255 characters -> buttons should be enabled
+        await modal
+          .getByTestId('robot-wizard-form-description')
+          .fill('a'.repeat(255));
+        await expect(nextBtn).toBeEnabled();
+        await expect(reviewAndFinish).toBeEnabled();
 
-      // robot account name over 255 characters -> next should be disabled
-      await modal.getByTestId('robot-wizard-form-name').fill('a'.repeat(300));
-      await expect(nextBtn).toBeDisabled();
-      await expect(reviewAndFinish).toBeDisabled();
-    });
+        // robot account name over 255 characters -> next should be disabled
+        await modal.getByTestId('robot-wizard-form-name').fill('a'.repeat(300));
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
+      },
+    );
 
     test('robot credentials and Kubernetes secrets', async ({
       authenticatedPage,

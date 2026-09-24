@@ -55,11 +55,14 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           value={props.name}
           onChange={(_event, robotName: string) => handleNameChange(robotName)}
           validated={validatedName}
+          aria-describedby="name-helper"
+          aria-invalid={validatedName === 'error'}
         />
 
         <FormHelperText>
           <HelperText>
             <HelperTextItem
+              id="name-helper"
               variant={validatedName}
               {...(validatedName === 'error' && {
                 icon: <ExclamationCircleIcon />,
@@ -81,11 +84,14 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
             handleDescriptionChange(robotDescription)
           }
           validated={validatedDescription}
+          aria-describedby="description-helper"
+          aria-invalid={validatedDescription === 'error'}
         />
 
         <FormHelperText>
           <HelperText>
             <HelperTextItem
+              id="description-helper"
               variant={validatedDescription}
               {...(validatedDescription === 'error' && {
                 icon: <ExclamationCircleIcon />,
