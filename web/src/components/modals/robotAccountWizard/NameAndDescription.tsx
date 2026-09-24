@@ -15,6 +15,15 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
   const [validatedName, setValidatedName] = useState<validate>('default');
   const [nameHelperText, setNameHelperText] = useState(props.nameHelperText);
 
+  // validate description
+  const [validatedDescription, setValidatedDescription] =
+    useState<validate>('default');
+
+  const handleDescriptionChange = (desc: string) => {
+    props.setDescription(desc);
+    setValidatedDescription(desc.length > 255 ? 'error' : 'default');
+  };
+
   const handleNameChange = (robotName: string) => {
     props.setName(robotName);
     setNameHelperText('Validating...');
@@ -69,13 +78,23 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           name="form-description"
           value={props.description}
           onChange={(_event, robotDescription: string) =>
-            props.setDescription(robotDescription)
+            handleDescriptionChange(robotDescription)
           }
+          validated={validatedDescription}
         />
 
         <FormHelperText>
           <HelperText>
-            <HelperTextItem>{props.helperText}</HelperTextItem>
+            <HelperTextItem
+              variant={validatedDescription}
+              {...(validatedDescription === 'error' && {
+                icon: <ExclamationCircleIcon />,
+              })}
+            >
+              {validatedDescription === 'error'
+                ? 'Description must not exceed 255 characters.'
+                : props.helperText}
+            </HelperTextItem>
           </HelperText>
         </FormHelperText>
       </FormGroup>
