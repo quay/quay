@@ -16,7 +16,7 @@ import {
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {isAxiosError} from 'axios';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import {useAuthorizedEmails} from 'src/hooks/UseAuthorizedEmails';
 import {NotificationEvent} from 'src/hooks/UseEvents';
@@ -32,6 +32,7 @@ export default function CreateEmailNotification(
   const [title, setTitle] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState<boolean>();
+  const hasVerifyError = useRef(false);
   const {
     create,
     successCreatingNotification,
@@ -103,8 +104,13 @@ export default function CreateEmailNotification(
     } catch (err) {
       if (!isAxiosError(err) || err.response?.status !== 404) {
         props.setError('Unable to verify email');
+        hasVerifyError.current = true;
         return;
       }
+    }
+    if (hasVerifyError.current) {
+      props.setError('');
+      hasVerifyError.current = false;
     }
     if (emailStatus != null && emailStatus.confirmed) {
       create({
