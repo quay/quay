@@ -260,7 +260,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Remove').click();
 
       await expect(
@@ -393,7 +393,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Add new tag').click();
 
       await expect(
@@ -441,7 +441,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Add new tag').click();
       await expect(
         authenticatedPage.getByText(/Add tag to manifest sha256:/),
@@ -510,7 +510,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Add new tag').click();
       await authenticatedPage
         .locator('input[placeholder="New tag name"]')
@@ -549,7 +549,7 @@ test.describe(
       });
 
       // Open labels modal and create labels
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
 
       const mutableLabels = authenticatedPage
@@ -574,7 +574,7 @@ test.describe(
       ).toBeVisible();
 
       // Re-open labels and delete them
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
 
       const mutableLabels2 = authenticatedPage
@@ -625,7 +625,7 @@ test.describe(
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
 
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
