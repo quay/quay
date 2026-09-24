@@ -345,7 +345,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates email notification with authorization flow',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@PROJQUAY-7098']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
@@ -396,6 +396,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
 
       // Click Send Authorized Email
       await authenticatedPage.getByTestId('send-authorized-email-btn').click();
