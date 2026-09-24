@@ -524,6 +524,20 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).not.toBeVisible();
+
+      // Second submit (404) right after the 500 failure, same drawer: auth
+      // modal opens AND the danger alert from the first failure clears
+      // (CodeRabbit r4091886737).
+      const emailField = authenticatedPage.getByTestId('notification-email');
+      await emailField.fill('');
+      await emailField.fill(notFoundEmail);
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+      await expect(
+        authenticatedPage.getByText('Email Authorization'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
     },
   );
 
