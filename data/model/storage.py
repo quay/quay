@@ -34,6 +34,11 @@ _Location = namedtuple("_Location", ["id", "name"])
 EMPTY_LAYER_BLOB_DIGEST = "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
 SPECIAL_BLOB_DIGESTS = set([EMPTY_LAYER_BLOB_DIGEST])
 
+# Kept below GlobalLock's Redis client socket_timeout (5s, util/locking.py) so a contested
+# BLOB_DELETE lock returns a clean "not acquired" result instead of racing a socket-level
+# TimeoutError.
+BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT = 3
+
 
 @lru_cache(maxsize=1)
 def get_image_locations():
@@ -307,12 +312,13 @@ def _get_storage(query_modifier):
 
 def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
     """
-    Execute a function with GlobalLock protection, falling back to per-operation locking if unavailable.
+    Execute a function under the BLOB_DELETE GlobalLock, or without a lock if it cannot be
+    acquired within BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT.
 
     This helper consolidates the common pattern of:
-    1. Try to acquire GlobalLock for blob deletion coordination (outer lock)
-    2. Execute func with skip_lock=True (caller holds lock)
-    3. If outer lock acquisition fails, execute func with skip_lock=False (per-operation locking)
+    1. Try to acquire GlobalLock for blob deletion coordination (outer lock), bounded by
+       BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT
+    2. Execute func with skip_lock=True (caller holds, or has already given up on, the lock)
 
     The primary purpose is to coordinate with garbage collection (GC) to prevent the race condition
     where GC deletes a blob from object storage while another operation is creating database entries
@@ -327,21 +333,25 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
         Result of func()
 
     Fallback behavior:
-        If the global lock is unavailable (e.g., GC holds it or Redis is down), the function
-        delegates locking to the called function by passing skip_lock=False. This allows the
-        operation to proceed with per-operation locking. If Redis is completely unavailable,
-        the final fallback is lockless creation, which means the race condition can *still*
-        happen, but the window is extremely narrow. In this scenario, database uniqueness
-        constraints provide the ultimate safety guarantee. This lockless creation is the same
-        as the logic that existed before the race condition fix.
+        If the global lock is unavailable (e.g., GC holds it or Redis is down), func is still
+        called with skip_lock=True so it does not re-attempt the same BLOB_DELETE_<digest> lock;
+        this is lockless creation, which means the race condition can *still* happen, but the
+        window is extremely narrow. In this scenario, database uniqueness constraints provide the
+        ultimate safety guarantee. This lockless creation is the same as the logic that existed
+        before the race condition fix.
     """
     try:
-        with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+        with GlobalLock(
+            f"BLOB_DELETE_{digest}",
+            lock_ttl=30,
+            blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
+        ):
             return func(*args, skip_lock=True, **kwargs)
     except LockNotAcquiredException as e:
         logger.warning("Could not acquire lock for blob %s: %s", digest, e)
-        logger.warning("Falling back to per-operation locking.")
-        return func(*args, skip_lock=False, **kwargs)
+        # The lock was just attempted above; skip_lock=True here means "don't try to
+        # acquire BLOB_DELETE_<digest> again", not "the lock is held".
+        return func(*args, skip_lock=True, **kwargs)
 
 
 def _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs):
@@ -354,7 +364,7 @@ def _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs):
         return ImageStorage.get(content_checksum=digest)
     except ImageStorage.DoesNotExist:
         if not lock_acquired:
-            logger.warning("Creating blob %s without lock as fallback", digest)
+            logger.warning("Blob %s: proceeding without lock", digest)
         try:
             return ImageStorage.create(content_checksum=digest, **blob_attrs)
         except IntegrityError as e:
@@ -372,8 +382,8 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
 
     Args:
         digest: The blob digest (e.g., "sha256:abc123...")
-        skip_lock: If False (default), acquire a lock inside this function. If True, assume that the lock
-        is already held by the caller function.
+        skip_lock: If False (default), acquire a lock inside this function. If True, do not acquire
+        the lock (the caller holds it or has already given up on it).
         **blob_attrs: Additional attributes to pass to ImageStorage.create() if creating
 
     Returns:
@@ -386,7 +396,11 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
         # No locking configured, proceed without lock
         return _get_or_create_blob_with_lock(digest, lock_acquired=False, **blob_attrs)
     try:
-        with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+        with GlobalLock(
+            f"BLOB_DELETE_{digest}",
+            lock_ttl=30,
+            blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
+        ):
             # If multiple workers try to create a blob at the same time, we must ensure that blob creation doesn't
             # fail. Otherwise, push will fail.
             return _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs)
