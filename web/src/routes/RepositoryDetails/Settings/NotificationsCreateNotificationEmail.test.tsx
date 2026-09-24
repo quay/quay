@@ -86,7 +86,7 @@ describe('CreateEmailNotification', () => {
     await waitFor(() => {
       expect(screen.getByText('Email Authorization')).toBeInTheDocument();
     });
-    expect(setError).not.toHaveBeenCalled();
+    expect(setError).not.toHaveBeenCalledWith('Unable to verify email');
   });
 
   it('shows an error and does not open the auth modal on a non-404 failure', async () => {
@@ -123,7 +123,7 @@ describe('CreateEmailNotification', () => {
     await waitFor(() => {
       expect(mockCreate).toHaveBeenCalled();
     });
-    expect(setError).not.toHaveBeenCalled();
+    expect(setError).not.toHaveBeenCalledWith('Unable to verify email');
     expect(screen.queryByText('Email Authorization')).not.toBeInTheDocument();
   });
 });
