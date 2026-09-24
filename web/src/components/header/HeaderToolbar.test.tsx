@@ -116,6 +116,9 @@ describe('HeaderToolbar', () => {
 
     renderToolbar();
     expect(screen.getByTestId('notification-bell')).toHaveTextContent('5+');
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications, more than 5 unread',
+    );
   });
 
   it('shows the plain count on the notification badge when there is no more', () => {
@@ -134,5 +137,8 @@ describe('HeaderToolbar', () => {
     renderToolbar();
     expect(screen.getByTestId('notification-bell')).toHaveTextContent('3');
     expect(screen.getByTestId('notification-bell')).not.toHaveTextContent('3+');
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications, 3 unread',
+    );
   });
 });

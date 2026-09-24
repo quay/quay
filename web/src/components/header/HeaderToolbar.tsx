@@ -397,6 +397,12 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
 
   const isAuthenticated = !!user?.username;
   const {unreadCount, additional} = useAppNotifications(isAuthenticated);
+  const notificationLabel =
+    unreadCount === 0
+      ? 'Notifications'
+      : additional
+      ? `Notifications, more than ${unreadCount} unread`
+      : `Notifications, ${unreadCount} unread`;
   // The search page has its own search box, so don't render a second one.
   const searchingAllowed =
     (quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated) &&
@@ -434,7 +440,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                   }
                   count={additional ? undefined : unreadCount}
                   onClick={toggleDrawer}
-                  aria-label="Notifications"
+                  aria-label={notificationLabel}
                   data-testid="notification-bell"
                 >
                   {additional ? `${unreadCount}+` : undefined}
