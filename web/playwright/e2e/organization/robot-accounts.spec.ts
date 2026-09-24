@@ -111,7 +111,7 @@ test.describe(
     });
 
     test(
-      'robot wizard next button disabled if robot name or description fail validation (PROJQUAY-6016)',
+      'robot wizard next button disabled if robot name or description fail validation',
       {tag: '@PROJQUAY-6016'},
       async ({authenticatedPage, api}) => {
         const org = await api.organization('validationorg');
