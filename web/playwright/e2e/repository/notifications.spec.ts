@@ -526,8 +526,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).not.toBeVisible();
 
       // Second submit (404) right after the 500 failure, same drawer: auth
-      // modal opens AND the danger alert from the first failure clears
-      // (CodeRabbit r4091886737).
+      // modal opens AND the danger alert from the first failure clears.
       const emailField = authenticatedPage.getByTestId('notification-email');
       await emailField.fill('');
       await emailField.fill(notFoundEmail);
