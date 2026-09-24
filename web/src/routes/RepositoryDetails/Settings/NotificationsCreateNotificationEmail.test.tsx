@@ -105,6 +105,30 @@ describe('CreateEmailNotification', () => {
     expect(screen.queryByText('Email Authorization')).not.toBeInTheDocument();
   });
 
+  it('retries after a 500 and opens the auth modal on the following 404', async () => {
+    mockFetchAuthorizedEmail
+      .mockRejectedValueOnce(axiosErrorWithStatus(500))
+      .mockRejectedValueOnce(axiosErrorWithStatus(404));
+    const {setError} = renderComponent();
+
+    await userEvent.type(
+      screen.getByTestId('notification-email'),
+      'new@example.com',
+    );
+    await userEvent.click(screen.getByTestId('notification-submit-btn'));
+
+    await waitFor(() => {
+      expect(setError).toHaveBeenCalledWith('Unable to verify email');
+    });
+
+    await userEvent.click(screen.getByTestId('notification-submit-btn'));
+
+    await waitFor(() => {
+      expect(setError).toHaveBeenLastCalledWith('');
+    });
+    expect(screen.getByText('Email Authorization')).toBeInTheDocument();
+  });
+
   it('creates the notification directly when the email is already confirmed', async () => {
     mockFetchAuthorizedEmail.mockResolvedValue({
       email: 'confirmed@example.com',
