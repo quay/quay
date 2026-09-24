@@ -3,9 +3,9 @@ import {
   Modal,
   ModalBody,
   ModalFooter,
+  ModalHeader,
   ModalVariant,
   TextInput,
-  Title,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
@@ -58,9 +58,9 @@ export default function AddTagModal(props: AddTagModalProps) {
         onClose={() => props.setIsOpen(false)}
         variant={ModalVariant.small}
       >
-        <Title headingLevel="h2">
-          Add tag to manifest {props.manifest.substring(0, 19)}
-        </Title>
+        <ModalHeader
+          title={`Add tag to manifest ${props.manifest.substring(0, 19)}`}
+        />
         <ModalBody>
           <TextInput
             value={value}
@@ -72,13 +72,6 @@ export default function AddTagModal(props: AddTagModalProps) {
         </ModalBody>
         <ModalFooter>
           <Button
-            key="cancel"
-            variant="primary"
-            onClick={() => props.setIsOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
             key="modal-action-button"
             variant="primary"
             onClick={() => {
@@ -86,6 +79,13 @@ export default function AddTagModal(props: AddTagModalProps) {
             }}
           >
             Create tag
+          </Button>
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={() => props.setIsOpen(false)}
+          >
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>
