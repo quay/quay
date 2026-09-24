@@ -448,6 +448,21 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       return;
     }
 
+    // Check for duplicate reject limits
+    if (
+      updatedLimit.type === 'Reject' &&
+      organizationQuota.limits.some(
+        (limit) => limit.type === 'Reject' && limit.id !== limitId,
+      )
+    ) {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Error: A quota policy should only have a single reject threshold.',
+      });
+      return;
+    }
+
     updateLimitMutation({
       quotaId: organizationQuota.id,
       limitId: limitId,
