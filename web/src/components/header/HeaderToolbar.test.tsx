@@ -81,6 +81,9 @@ describe('HeaderToolbar', () => {
     renderToolbar();
     expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
     expect(screen.queryByText('Sign In')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications',
+    );
   });
 
   it('renders the header search bar on ordinary pages', () => {
@@ -117,7 +120,7 @@ describe('HeaderToolbar', () => {
     renderToolbar();
     expect(screen.getByTestId('notification-bell')).toHaveTextContent('5+');
     expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
-      'Notifications, more than 5 unread',
+      'Notifications, more than 5',
     );
   });
 
@@ -138,7 +141,7 @@ describe('HeaderToolbar', () => {
     expect(screen.getByTestId('notification-bell')).toHaveTextContent('3');
     expect(screen.getByTestId('notification-bell')).not.toHaveTextContent('3+');
     expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
-      'Notifications, 3 unread',
+      'Notifications, 3',
     );
   });
 });
