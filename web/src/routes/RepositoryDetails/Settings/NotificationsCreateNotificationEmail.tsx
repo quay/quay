@@ -15,6 +15,7 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
+import {isAxiosError} from 'axios';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import {useAuthorizedEmails} from 'src/hooks/UseAuthorizedEmails';
@@ -100,7 +101,10 @@ export default function CreateEmailNotification(
     try {
       emailStatus = await fetchAuthorizedEmail(props.org, props.repo, email);
     } catch (err) {
-      props.setError('Unable to verify email');
+      if (!isAxiosError(err) || err.response?.status !== 404) {
+        props.setError('Unable to verify email');
+        return;
+      }
     }
     if (emailStatus != null && emailStatus.confirmed) {
       create({
