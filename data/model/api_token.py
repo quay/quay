@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from math import isfinite
 
 from auth import scopes
-from data.database import APIToken, User, db_for_update
+from data.database import APIToken, User, db_for_update, random_string_generator
+from data.fields import Credential
 from data.model import config, db_transaction
 from data.readreplica import ReadOnlyModeException
 from util.security.registry_jwt import generate_bearer_token
@@ -13,6 +14,9 @@ from util.security.registry_jwt import generate_bearer_token
 API_TOKEN_DEFAULT_EXPIRATION_SECONDS = 60 * 60 * 24 * 30
 API_TOKEN_MAX_EXPIRATION_SECONDS = 60 * 60 * 24 * 90
 MAX_API_TOKEN_DISPLAY_NAME_LENGTH = 255
+API_TOKEN_PREFIX = "qro_"
+API_TOKEN_NAME_LENGTH = 20
+API_TOKEN_CODE_LENGTH = 40
 
 
 def normalize_scope(scope_string):
@@ -72,13 +76,18 @@ def create_token_under_limit(subject_user, creator, scope, expiration_seconds, d
             subject_user = db_for_update(User.select().where(User.id == subject_user.id)).get()
             if count_active_tokens(subject_user) >= int(max_active_tokens):
                 raise TokenLimitExceeded(int(max_active_tokens))
-        return APIToken.create(
+        token_name = API_TOKEN_PREFIX + random_string_generator(API_TOKEN_NAME_LENGTH)()
+        token_code = random_string_generator(API_TOKEN_CODE_LENGTH)()
+        token = APIToken.create(
             subject_user=subject_user,
             creator=creator,
+            token_name=token_name,
+            token_code=Credential.from_string(token_code),
             scope=normalize_scope(scope),
             display_name=display_name,
             expires_at=datetime.utcnow() + timedelta(seconds=expiration_seconds),
         )
+        return token, token_name + token_code
 
 
 def mint_jwt(token, instance_keys, audience):
@@ -129,16 +138,23 @@ def _update_last_accessed(token):
         pass
 
 
-def get_active_token(token_uuid, subject_username, scope):
+def validate_token(token_string):
+    if not token_string.startswith(API_TOKEN_PREFIX):
+        return None
+
+    token_name_length = len(API_TOKEN_PREFIX) + API_TOKEN_NAME_LENGTH
+    token_name = token_string[:token_name_length]
+    token_code = token_string[token_name_length:]
+    if not token_code:
+        return None
+
     try:
-        token = APIToken.get(APIToken.uuid == token_uuid, APIToken.revoked_at.is_null())
+        token = APIToken.get(APIToken.token_name == token_name, APIToken.revoked_at.is_null())
     except APIToken.DoesNotExist:
         return None
-    if (
-        token.subject_user.username != subject_username
-        or token.scope != normalize_scope(scope)
-        or token.expires_at <= datetime.utcnow()
-    ):
+
+    if token.expires_at <= datetime.utcnow() or not token.token_code.matches(token_code):
         return None
+
     _update_last_accessed(token)
     return token

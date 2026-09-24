@@ -12,7 +12,11 @@ from auth.credential_consts import (
     OAUTH_TOKEN_USERNAME,
 )
 from auth.log import log_action
-from auth.oauth import validate_oauth_token, validate_robot_api_jwt
+from auth.oauth import (
+    validate_oauth_token,
+    validate_robot_api_jwt,
+    validate_robot_api_token,
+)
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import User
@@ -132,6 +136,18 @@ def validate_credentials(auth_username, auth_password_or_token):
     if is_robot:
         logger.debug("Found credentials header for robot %s", auth_username)
         try:
+            result = validate_robot_api_token(auth_password_or_token)
+            if result is not None:
+                if result.auth_valid and result.context.robot.username != auth_username:
+                    return (
+                        ValidateResult(
+                            AuthKind.credentials,
+                            error_message="API token subject does not match the supplied username",
+                        ),
+                        CredentialKind.robot,
+                    )
+                return result, CredentialKind.robot
+
             if is_jwt(auth_password_or_token):
                 try:
                     jwt_config = dict(app.config)

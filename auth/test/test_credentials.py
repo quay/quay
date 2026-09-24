@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from app import app as quay_app
-from app import instance_keys
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -80,13 +78,12 @@ def test_valid_oauth(app):
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)
 
 
-def test_robot_api_jwt_authenticates_as_basic_robot_credential(app):
+def test_robot_api_token_authenticates_as_basic_robot_credential(app):
     creator = model.user.get_user("devtable")
     robot, _ = model.user.create_robot("api-token", creator)
-    token = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
-    jwt = api_token.mint_jwt(token, instance_keys, quay_app.config["SERVER_HOSTNAME"])
+    _, secret = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
 
-    result, kind = validate_credentials(robot.username, jwt)
+    result, kind = validate_credentials(robot.username, secret)
 
     assert kind == CredentialKind.robot
     assert result.context.robot == robot

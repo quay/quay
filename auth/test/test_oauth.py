@@ -1,7 +1,5 @@
 import pytest
 
-from app import app as quay_app
-from app import instance_keys
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
@@ -43,10 +41,14 @@ def test_valid_oauth(app):
 def test_robot_api_token_authenticates_as_its_robot(app):
     creator = model.user.get_user("devtable")
     robot, _ = model.user.create_robot("api-token", creator)
-    token = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
-    jwt = api_token.mint_jwt(token, instance_keys, quay_app.config["SERVER_HOSTNAME"])
+    token, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "CI token"
+    )
 
-    result = validate_bearer_auth("Bearer " + jwt)
+    assert secret.startswith(api_token.API_TOKEN_PREFIX)
+    assert token.token_code.matches(secret[len(token.token_name) :])
+
+    result = validate_bearer_auth("Bearer " + secret)
 
     assert result.context.robot == robot
     assert result.context.api_scopes == "repo:read"
@@ -54,9 +56,9 @@ def test_robot_api_token_authenticates_as_its_robot(app):
     assert result.auth_valid
 
     assert api_token.revoke_token(robot, token.uuid)
-    revoked_result = validate_bearer_auth("Bearer " + jwt)
+    revoked_result = validate_bearer_auth("Bearer " + secret)
     assert not revoked_result.auth_valid
-    assert revoked_result.error_message == "API token is revoked or expired"
+    assert revoked_result.error_message == "API token is invalid, revoked or expired"
 
 
 def test_disabled_user_oauth(app):

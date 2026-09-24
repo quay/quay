@@ -45,12 +45,34 @@ def validate_bearer_auth(auth_header):
 
 
 def validate_oauth_token(token):
+    robot_result = validate_robot_api_token(token)
+    if robot_result is not None:
+        return robot_result
     if is_jwt(token):
         robot_result = validate_robot_api_jwt(token)
         if robot_result is not None:
             return robot_result
         return validate_sso_oauth_token(token)
     return validate_app_oauth_token(token)
+
+
+def validate_robot_api_token(token):
+    """Validate an opaque, scoped robot API token."""
+    if not token.startswith(api_token.API_TOKEN_PREFIX):
+        return None
+
+    persisted = api_token.validate_token(token)
+    if persisted is None:
+        return ValidateResult(
+            AuthKind.oauth, error_message="API token is invalid, revoked or expired"
+        )
+
+    robot = persisted.subject_user
+    robot_owner, _ = parse_robot_username(robot.username)
+    if not model.user.get_username(robot_owner).enabled:
+        return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
+
+    return ValidateResult(AuthKind.oauth, robot=robot, api_scopes=persisted.scope)
 
 
 def validate_robot_api_jwt(token, decoded=None):
@@ -89,9 +111,7 @@ def validate_robot_api_jwt(token, decoded=None):
 
     token_uuid = decoded.get("jti")
     if token_uuid:
-        persisted = api_token.get_active_token(token_uuid, robot.username, scope)
-        if persisted is None:
-            return ValidateResult(AuthKind.oauth, error_message="API token is revoked or expired")
+        return ValidateResult(AuthKind.oauth, error_message="JWT API tokens are not supported")
 
     else:
         binding = model.user.get_robot_federation_binding(

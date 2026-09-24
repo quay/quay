@@ -1626,11 +1626,13 @@ class OAuthAccessToken(BaseModel):
 
 
 class APIToken(BaseModel):
-    """Lifecycle metadata for a Quay-signed API JWT."""
+    """Lifecycle metadata for an opaque, scoped API credential."""
 
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     subject_user = QuayUserField(allows_robots=True, index=True)
     creator = QuayUserField(allows_robots=False, null=True)
+    token_name = CharField(index=True, unique=True)
+    token_code = CredentialField()
     scope = TextField()
     display_name = CharField(null=True)
     expires_at = DateTimeField()
