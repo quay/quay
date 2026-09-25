@@ -170,6 +170,7 @@ export async function getTags(
   limit = 100,
   specificTag = null,
   onlyActiveTags = true,
+  filterTagName: string = null,
 ) {
   let path = `/api/v1/repository/${org}/${repo}/tag/?limit=${limit}&page=${page}`;
   if (onlyActiveTags) {
@@ -181,7 +182,9 @@ export async function getTags(
 
   const urlSearchParams = new URLSearchParams(window.location.search);
   const urlParams = Object.fromEntries(urlSearchParams.entries());
-  if (urlParams['filter_tag_name']) {
+  if (filterTagName) {
+    path = path.concat(`&filter_tag_name=${encodeURIComponent(filterTagName)}`);
+  } else if (urlParams['filter_tag_name']) {
     path = path.concat(`&filter_tag_name=${urlParams['filter_tag_name']}`);
   }
   const response: AxiosResponse<TagsResponse> = await axios.get(path);

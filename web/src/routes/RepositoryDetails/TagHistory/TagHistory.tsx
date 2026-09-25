@@ -1,5 +1,5 @@
 import {useMemo, useState} from 'react';
-import {Spinner} from '@patternfly/react-core';
+import {Alert, Button, Spinner} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useAllTags} from 'src/hooks/UseTags';
 import {Tag} from 'src/resources/TagResource';
@@ -21,10 +21,16 @@ export default function TagHistory(props: TagHistoryProps) {
   const [query, setQuery] = useState<string>('');
   const [startTime, setStartTime] = useState<Date>(null);
   const [endTime, setEndTime] = useState<Date>(null);
-  const {tags, loadingTags, errorLoadingTags, lastUpdated} = useAllTags(
-    props.org,
-    props.repo,
-  );
+  const {
+    tags,
+    loadingTags,
+    errorLoadingTags,
+    lastUpdated,
+    hasMoreTags,
+    loadMoreTags,
+    loadingMoreTags,
+    debouncedQuery,
+  } = useAllTags(props.org, props.repo, query);
   // Memo these to prevent recalculating on every render
   const {tagList} = useMemo(
     () => processTags(tags, showFuture),
@@ -67,12 +73,17 @@ export default function TagHistory(props: TagHistoryProps) {
     return <Spinner size="md" />;
   }
 
-  if (errorLoadingTags) {
+  if (errorLoadingTags && tags.length === 0 && !debouncedQuery) {
     return <RequestError message="Unable to load tag history" />;
   }
 
   return (
     <>
+      <Conditional if={errorLoadingTags}>
+        <Alert variant="danger" title="Unable to load tag history" isInline>
+          Some tag history may be missing or out of date.
+        </Alert>
+      </Conditional>
       <TagHistoryToolBar
         showFuture={showFuture}
         setShowFuture={setShowFuture}
@@ -164,6 +175,18 @@ export default function TagHistory(props: TagHistoryProps) {
           ))}
         </Tbody>
       </Table>
+      <Conditional if={hasMoreTags}>
+        <div style={{textAlign: 'center', margin: '20px'}}>
+          <Button
+            variant="secondary"
+            onClick={() => loadMoreTags()}
+            isLoading={loadingMoreTags}
+            isDisabled={loadingMoreTags}
+          >
+            Load more
+          </Button>
+        </div>
+      </Conditional>
     </>
   );
 }
