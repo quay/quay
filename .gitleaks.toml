@@ -1,0 +1,9 @@
+title = "Project Quay Gitleaks configuration"
+minVersion = "v8.25.0"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow values explicitly marked as non-production test credentials"
+stopwords = ["QUAY_FIXTURE_ONLY"]

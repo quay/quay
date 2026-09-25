@@ -1,2 +1,2 @@
 SETUP_COMPLETE: true
-DATABASE_SECRET_KEY: anothercrazykey!
+DATABASE_SECRET_KEY: QUAY_FIXTURE_ONLY-anothercrazykey!

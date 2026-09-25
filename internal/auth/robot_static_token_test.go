@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const testEncryptedRobotToken = "v0$$XTxqlz/Kw8s9WKw+GaSvXFEKgpO/a2cGNhvnozzkaUh4C+FgHqZqnA=="
+const testEncryptedRobotToken = "v0$$XTxqlz/Kw8s9WKw+GaSvXFEKgpO/a2cGNhvnozzkaUh4C+FgHqZqnA==" // gitleaks:allow: fixed ciphertext, format must match exactly to decrypt
 
 func setupRobotStaticTokenTestDB(t *testing.T) *sql.DB {
 	t.Helper()

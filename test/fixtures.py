@@ -162,7 +162,7 @@ def _init_db_path_real_db(db_uri):
                     "autorollback": True,
                 },
                 "DB_TRANSACTION_FACTORY": _create_transaction,
-                "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
+                "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
             }
         )
         populate_database()
@@ -193,7 +193,7 @@ def _init_db_path_real_db(db_uri):
             "SECRET_KEY": "superdupersecret!!!1",
             "DB_CONNECTION_ARGS": connection_args,
             "DB_TRANSACTION_FACTORY": _create_transaction,
-            "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
+            "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
         }
     )
 
@@ -212,7 +212,7 @@ def _init_db_path_sqlite(tmpdir_factory):
         "TESTING": True,
         "DEBUG": True,
         "SECRET_KEY": "superdupersecret!!!1",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
+        "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
         "DB_URI": sqlitedb,
     }
     os.environ["DB_URI"] = str(sqlitedb)
@@ -296,7 +296,7 @@ def appconfig(database_uri):
         "USERFILES_PATH": "userfiles/",
         "MAIL_SERVER": "",
         "MAIL_DEFAULT_SENDER": "admin@example.com",
-        "DATABASE_SECRET_KEY": "anothercrazykey!",  # gitleaks:allow
+        "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
         "FEATURE_PROXY_CACHE": True,
         "ACTION_LOG_AUDIT_LOGINS": True,
         "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,

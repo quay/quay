@@ -416,7 +416,7 @@ def _create_seed_media_types():
 
 
 def initialize_database():
-    db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
+    db_encrypter.initialize(FieldEncrypter("QUAY_FIXTURE_ONLY-anothercrazykey!"))
     db.create_tables(all_models)
 
     Role.create(name="admin")

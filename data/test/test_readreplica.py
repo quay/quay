@@ -30,7 +30,7 @@ def test_readreplica(init_db_path, tmpdir_factory):
         },
         "DB_TRANSACTION_FACTORY": lambda x: FakeTransaction(),
         "FOR_TESTING": True,
-        "DATABASE_SECRET_KEY": "anothercrazykey!",
+        "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
     }
 
     # Initialize the DB with the primary and the replica.
@@ -115,6 +115,6 @@ def test_readreplica(init_db_path, tmpdir_factory):
                 "autorollback": True,
             },
             "DB_TRANSACTION_FACTORY": lambda x: FakeTransaction(),
-            "DATABASE_SECRET_KEY": "anothercrazykey!",
+            "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
         }
     )
