@@ -152,3 +152,25 @@ def test_with_blob_lock_or_fallback_no_contention(initialized_db, monkeypatch, c
         result = with_blob_lock_or_fallback(digest, func)
     assert result.content_checksum == digest
     assert "proceeding without lock" not in caplog.text
+
+
+def test_get_or_create_blob_with_lock_timeout_does_not_create_missing_blob(
+    initialized_db, monkeypatch
+):
+    server = _patch_lock_factory(monkeypatch)
+    digest = _digest(8)
+    _hold_lock(server, digest, holder_id="gc-worker:7:aaaaaaaa")
+
+    with pytest.raises(LockAcquireTimeout):
+        get_or_create_blob_with_lock(digest=digest, image_size=1)
+
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == digest).exists()
+
+
+def test_get_or_create_blob_with_lock_timeout_returns_existing_blob(initialized_db, monkeypatch):
+    server = _patch_lock_factory(monkeypatch)
+    digest = _digest(9)
+    existing = ImageStorage.create(content_checksum=digest, image_size=1)
+    _hold_lock(server, digest)
+
+    assert get_or_create_blob_with_lock(digest=digest, image_size=1).id == existing.id

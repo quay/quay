@@ -58,9 +58,6 @@ def _redis_lock_factory(config):
 class GlobalLock(object):
     """
     A lock object that blocks globally via Redis.
-
-    Note that Redis is not considered a tier-1 service, so this lock should not be used for any
-    critical code paths.
     """
 
     lock_factory = None

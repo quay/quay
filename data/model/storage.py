@@ -436,6 +436,12 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
             # If multiple workers try to create a blob at the same time, we must ensure that blob creation doesn't
             # fail. Otherwise, push will fail.
             return _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs)
+    except LockAcquireTimeout:
+        # Another holder (e.g. GC) still has the lock: use an existing blob, but do not create a
+        # missing one while that holder may be removing its object from storage.
+        return _get_or_create_blob_with_lock(
+            digest, lock_acquired=False, may_create=False, **blob_attrs
+        )
     except LockNotAcquiredException:
         # If we cannot acquire a lock, check if we have the ImageStorage entries for the provided
         # digest. If that reading fails, then create new entries in the table anyway but report

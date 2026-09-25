@@ -222,3 +222,9 @@ class PushesDisabled(V2RegistryException):
             + " the administrator for more information."
         )
         super(PushesDisabled, self).__init__("METHOD NOT ALLOWED", message, {}, 405)
+
+
+class TemporarilyUnavailable(V2RegistryException):
+    def __init__(self, detail=None):
+        message = "The blob is temporarily locked by another operation. Please retry the request."
+        super(TemporarilyUnavailable, self).__init__("UNAVAILABLE", message, detail, 503)
