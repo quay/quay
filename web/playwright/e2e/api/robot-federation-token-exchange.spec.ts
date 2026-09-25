@@ -7,6 +7,8 @@ const TOKEN_EXCHANGE_GRANT_TYPE =
   'urn:ietf:params:oauth:grant-type:token-exchange';
 const JWT_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:jwt';
 const ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
+// Playwright runs on the host, where localhost reaches the published port.
+// Keycloak is configured to issue the container-reachable host alias as `iss`.
 const KEYCLOAK_TOKEN_ENDPOINT =
   'http://localhost:8081/realms/quay/protocol/openid-connect/token';
 const KEYCLOAK_CLIENT_ID = 'quay-ui';
