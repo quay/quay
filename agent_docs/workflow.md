@@ -31,9 +31,9 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 
 - **Target Version** (customfield_10855) holds exactly one version: `.0`
   means master (e.g. `quay-v3.19.0`), `quay-vX.Y.z` means `redhat-X.Y`
-- The list of releases to backport to is **fixVersions**, not Target Version,
-  except the branch the sync check in Release Branch Model (below) identifies
-  as master-synced — never backport to that branch
+- The list of releases to backport to is **fixVersions**, mapped like Target
+  Version above (`quay-vX.Y.z` → `redhat-X.Y`; drop `.0` — master already has
+  the change), skipping the sync check's master-synced branch even if named.
 - For a PROJQUAY-titled PR, fire the cascade with `/jira backport <branch>`,
   one branch per comment; for a NO-ISSUE or QUAYIO-titled PR, use
   `/cherrypick <branch>`, also one branch per comment. To skip over an
@@ -68,9 +68,9 @@ trusting the snapshot below.
   regular backports; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
   `redhat-3.14` receive critical/security fixes only; `redhat-3.11` is
   dormant.
-- When backporting, target the branches fixVersions names, mapped the same
-  way as Target Version above (`quay-vX.Y.z` → `redhat-X.Y`, `.0` → master),
-  and skip only the master-synced branch identified above.
+- When backporting, target the branches fixVersions names: map
+  `quay-vX.Y.z` → `redhat-X.Y`, drop `.0` (master has it already), then skip
+  the master-synced branch identified above.
 - CodeRabbit auto-review is intentionally scoped to `master` only — it is
   not enabled for `redhat-*` branches. Backport/cherry-pick PRs carry code
   already reviewed on `master`, so re-running review on the release branch

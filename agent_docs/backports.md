@@ -32,8 +32,9 @@ Never hardcode the range; it rots. Use the sync check and activity check in
 - Treat any branch list you are handed as a claim to verify.
 - For a PROJQUAY-titled change, read the root ticket (the one with no
   outward `clones` link; clones inherit fixVersions) and treat its
-  fixVersions as the branch list, mapping `quay-vX.Y.z` → `redhat-X.Y` and
-  any `.0` → master: `jira issue view <KEY> --raw | jq
+  fixVersions as the branch list: map `quay-vX.Y.z` to `redhat-X.Y`, drop any
+  `.0` entry (master already has the change), and never target the
+  master-synced branch either: `jira issue view <KEY> --raw | jq
   -c '{target: [.fields.customfield_10855[]?.name], fix:
   [.fields.fixVersions[].name]}'`. If that list disagrees with the
   sync/activity determination above, or fixVersions is empty, stop for a
@@ -48,7 +49,7 @@ missing five predecessors, and a conflict-scoped survey found one.
 
 ```bash
 git fetch upstream --prune
-PATHS=$(git show --name-only --format="" <master-sha> | grep -v '^$')
+PATHS=$(git diff-tree --no-commit-id --name-only -r <master-sha>^1 <master-sha>)
 git log --oneline --cherry-pick --right-only --no-merges \
     upstream/<branch>...upstream/master -- $PATHS
 ```
@@ -164,7 +165,8 @@ Then, in order:
    `/jira backport` reply, never the master key: #7319 retitled from the
    master key to PROJQUAY-13339, which then moved to MODIFIED on merge, while
    the master-key hand-ports #7268/#7276/#7310 got "unrecognized state
-   (MODIFIED)".
+   (MODIFIED)". After opening the hand-port PR, comment `/jira refresh` to
+   link the clone ticket and validate its Target Version.
 3. Land predecessors in `master` merge order, oldest first.
 
 If `git rerere` is enabled, a conflict you resolved on an earlier branch is
