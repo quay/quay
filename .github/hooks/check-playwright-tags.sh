@@ -19,13 +19,13 @@ fi
 if [ ! -d "${WEB_DIR}/node_modules" ]; then
   if command -v pnpm &>/dev/null; then
     echo "web/node_modules not found; installing dependencies via pnpm..."
-    (cd "${WEB_DIR}" && pnpm install --frozen-lockfile --prefer-offline --silent)
+    (cd "${WEB_DIR}" && pnpm install --frozen-lockfile) || true
+  elif command -v npx &>/dev/null; then
+    echo "web/node_modules not found; installing dependencies via npx pnpm@10..."
+    (cd "${WEB_DIR}" && npx --yes pnpm@10 install --frozen-lockfile) || true
   elif command -v corepack &>/dev/null; then
     echo "web/node_modules not found; installing dependencies via corepack pnpm..."
-    (cd "${WEB_DIR}" && corepack pnpm install --frozen-lockfile --prefer-offline --silent)
-  elif command -v npx &>/dev/null; then
-    echo "web/node_modules not found; installing dependencies via npx pnpm..."
-    (cd "${WEB_DIR}" && npx --yes pnpm install --frozen-lockfile --prefer-offline --silent)
+    (cd "${WEB_DIR}" && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install --frozen-lockfile) || true
   fi
 fi
 
