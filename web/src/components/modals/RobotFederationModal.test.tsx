@@ -36,6 +36,7 @@ const props = {
     description: '',
   },
   namespace: 'testorg',
+  isUser: false,
   isModalOpen: true,
   setIsModalOpen: vi.fn(),
 };
@@ -58,6 +59,18 @@ describe('RobotFederationModal', () => {
     expect(resourceMocks.fetchMintableScopes).toHaveBeenCalledWith(
       'testorg',
       'testorg+robot',
+      false,
+    );
+  });
+
+  it('uses the user mintable-scopes endpoint for personal robots', async () => {
+    render(<RobotFederationModal {...props} isUser />);
+
+    await screen.findByRole('button', {name: 'Save'});
+    expect(resourceMocks.fetchMintableScopes).toHaveBeenCalledWith(
+      'testorg',
+      'testorg+robot',
+      true,
     );
   });
 });

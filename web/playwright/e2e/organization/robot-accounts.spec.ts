@@ -35,10 +35,11 @@ test.describe(
           await authenticatedPage
             .getByRole('button', {name: 'Create API token'})
             .click();
-          await authenticatedPage
-            .locator('#robot-api-token-name')
-            .fill('CI token');
-          await authenticatedPage
+          const createTokenModal = authenticatedPage.getByRole('dialog', {
+            name: 'Close Create robot API token',
+          });
+          await createTokenModal.getByLabel('Token name').fill('CI token');
+          await createTokenModal
             .getByLabel('View all visible repositories')
             .check();
 

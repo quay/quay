@@ -80,8 +80,18 @@ function RobotFederationForm(props: RobotFederationFormProps) {
     isLoading: isLoadingMintableScopes,
     isError: isMintableScopesError,
   } = useQuery(
-    ['robot-mintable-scopes', props.namespace, props.robotAccount.name],
-    () => fetchRobotMintableScopes(props.namespace, props.robotAccount.name),
+    [
+      'robot-mintable-scopes',
+      props.namespace,
+      props.robotAccount.name,
+      props.isUser,
+    ],
+    () =>
+      fetchRobotMintableScopes(
+        props.namespace,
+        props.robotAccount.name,
+        props.isUser,
+      ),
   );
   const hasInaccessibleScopes = federationFormState.some((config) =>
     config.api_scopes
@@ -211,7 +221,17 @@ function RobotFederationFormEntry({
   onRemove,
   onUpdate,
 }: RobotFederationFormEntryProps) {
+  const normalizedAudiences = (config.audiences || ['quay']).join(', ');
+  const [audienceText, setAudienceText] = useState(normalizedAudiences);
+  const previousAudiences = useRef(normalizedAudiences);
   const selectedScopes = config.api_scopes?.split(' ').filter(Boolean) || [];
+
+  useEffect(() => {
+    if (normalizedAudiences !== previousAudiences.current) {
+      setAudienceText(normalizedAudiences);
+      previousAudiences.current = normalizedAudiences;
+    }
+  }, [normalizedAudiences]);
   const toggleScope = (scope: string, checked: boolean) => {
     const nextScopes = checked
       ? [...selectedScopes, scope]
@@ -262,17 +282,18 @@ function RobotFederationFormEntry({
         isRequired
       >
         <TextInput
-          value={(config.audiences || ['quay']).join(', ')}
+          value={audienceText}
           type="text"
           isRequired
-          onChange={(_event, value) =>
+          onChange={(_event, value) => {
+            setAudienceText(value);
             onUpdate(index, {
               audiences: value
                 .split(',')
                 .map((audience) => audience.trim())
                 .filter(Boolean),
-            })
-          }
+            });
+          }}
         />
       </FormGroup>
       <FormGroup
@@ -312,6 +333,7 @@ export function RobotFederationModal(props: RobotFederationModalProps) {
         <RobotFederationForm
           robotAccount={props.robotAccount}
           namespace={props.namespace}
+          isUser={props.isUser}
           onClose={() => props.setIsModalOpen(false)}
         />
       }
@@ -324,6 +346,7 @@ export function RobotFederationModal(props: RobotFederationModalProps) {
 interface RobotFederationModalProps {
   robotAccount: IRobot;
   namespace: string;
+  isUser: boolean;
   isModalOpen: boolean;
   setIsModalOpen: (modalState: boolean) => void;
 }
@@ -331,5 +354,6 @@ interface RobotFederationModalProps {
 interface RobotFederationFormProps {
   robotAccount: IRobot;
   namespace: string;
+  isUser: boolean;
   onClose: () => void;
 }

@@ -620,6 +620,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           isModalOpen={isRobotFederationModalOpen}
           setIsModalOpen={setRobotFederationModalOpen}
           namespace={props.organizationName}
+          isUser={props.isUser}
         />
         <Table
           aria-label="Expandable table"
