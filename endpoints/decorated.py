@@ -81,7 +81,7 @@ def handle_bad_redirect(ex):
 @app.errorhandler(MaxConnectionsExceeded)
 def handle_max_connections_count(ex):
     logger.exception(ex)
-    response = jsonify({"message": "Service temporary unavailable due to high load. Please retry!"})
+    response = jsonify({"message": "Service temporarily unavailable"})
     response.status_code = 503
-    response.headers["Retry-After"] = 1
+    response.headers["Retry-After"] = "5"
     return response

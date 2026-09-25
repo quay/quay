@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from flask import url_for
 from playhouse.pool import MaxConnectionsExceeded
@@ -58,6 +60,8 @@ def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
         except Exception as e:
             response = app.handle_user_exception(e)
 
+    logging.debug("%s", response)
+
     assert response.status_code == 503
     assert "Retry-After" in response.headers
-    assert response.headers["Retry-After"] == "1"
+    assert response.headers["Retry-After"] == "5"

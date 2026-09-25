@@ -224,6 +224,14 @@ class PushesDisabled(V2RegistryException):
         super(PushesDisabled, self).__init__("METHOD NOT ALLOWED", message, {}, 405)
 
 
+# normally, we'd return "SERVICE_UNAVAILABLE" here but this is not a standard OCI error
+# so instead, return just an empty string
+class MaxConnExceeded(V2RegistryException):
+    def __init__(self, detail=None):
+        message = "Service temporarily unavailable"
+        super(MaxConnExceeded, self).__init__("", message, detail, 503)
+
+
 class TemporarilyUnavailable(V2RegistryException):
     def __init__(self, detail=None):
         message = "The blob is temporarily locked by another operation. Please retry the request."
