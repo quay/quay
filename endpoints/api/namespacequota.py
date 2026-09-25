@@ -6,7 +6,7 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import OrganizationMemberPermission
+from auth.permissions import OrganizationMemberPermission, SuperUserPermission
 from data import model
 from data.model import config
 from endpoints.api import (
@@ -351,7 +351,10 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
-        if not allow_if_superuser_with_full_access():
+        # Quota policy management is a core superuser operation. Unlike quota
+        # size writes through the tenant route, it intentionally does not
+        # require FEATURE_SUPERUSERS_FULL_ACCESS.
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -441,7 +444,7 @@ class OrganizationQuotaLimit(ApiResource):
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -486,7 +489,7 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
