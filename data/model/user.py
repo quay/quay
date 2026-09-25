@@ -411,35 +411,40 @@ def get_robot_federation_config(robot):
 
 def create_robot_federation_config(robot, fed_config):
     """Persist federation bindings, assigning a stable id and version to each."""
-    federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
-    assert federated_robot
-
-    metadata = {}
     try:
-        metadata = json.loads(federated_robot.metadata_json)
-    except Exception as e:
-        logger.debug("Error parsing metadata: %s", e)
+        with db_transaction():
+            # Serialize the read-modify-write cycle so every policy change receives a
+            # unique version and invalidates JWTs minted under the previous policy.
+            federated_robot = db_for_update(
+                FederatedLogin.select().where(FederatedLogin.user == robot)
+            ).get()
+            assert federated_robot
 
-    try:
-        previous = {entry.get("id"): entry for entry in metadata.get("federation_config", [])}
-        normalized = []
-        for entry in fed_config:
-            entry = dict(entry)
-            requested_id = entry.get("id")
-            binding_id = requested_id if requested_id in previous else str(uuid4())
-            old = previous.get(binding_id)
-            entry["id"] = binding_id
-            if old:
-                old_policy = {key: value for key, value in old.items() if key != "version"}
-                new_policy = {key: value for key, value in entry.items() if key != "version"}
-                entry["version"] = old.get("version", 1) + (old_policy != new_policy)
-            else:
-                entry["version"] = 1
-            normalized.append(entry)
-        metadata["federation_config"] = normalized
-        federated_robot.metadata_json = json.dumps(metadata)
-        federated_robot.save()
-        return normalized
+            metadata = {}
+            try:
+                metadata = json.loads(federated_robot.metadata_json)
+            except Exception as e:
+                logger.debug("Error parsing metadata: %s", e)
+
+            previous = {entry.get("id"): entry for entry in metadata.get("federation_config", [])}
+            normalized = []
+            for entry in fed_config:
+                entry = dict(entry)
+                requested_id = entry.get("id")
+                binding_id = requested_id if requested_id in previous else str(uuid4())
+                old = previous.get(binding_id)
+                entry["id"] = binding_id
+                if old:
+                    old_policy = {key: value for key, value in old.items() if key != "version"}
+                    new_policy = {key: value for key, value in entry.items() if key != "version"}
+                    entry["version"] = old.get("version", 1) + (old_policy != new_policy)
+                else:
+                    entry["version"] = 1
+                normalized.append(entry)
+            metadata["federation_config"] = normalized
+            federated_robot.metadata_json = json.dumps(metadata)
+            federated_robot.save()
+            return normalized
     except Exception as e:
         raise DataModelException(e)
 

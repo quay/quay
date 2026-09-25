@@ -67,6 +67,9 @@ def validate_robot_api_token(token):
             AuthKind.oauth, error_message="API token is invalid, revoked or expired"
         )
 
+    if not api_token.validate_api_scope_string(persisted.scope):
+        return ValidateResult(AuthKind.oauth, error_message="API token has invalid scopes")
+
     robot = persisted.subject_user
     robot_owner, _ = parse_robot_username(robot.username)
     if not model.user.get_username(robot_owner).enabled:

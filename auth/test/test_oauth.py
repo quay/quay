@@ -61,6 +61,30 @@ def test_robot_api_token_authenticates_as_its_robot(app):
     assert revoked_result.error_message == "API token is invalid, revoked or expired"
 
 
+@pytest.mark.parametrize("scope", ["", "   ", "direct_user_login"])
+def test_robot_api_token_requires_a_non_direct_api_scope(app, scope):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("scoped-api-token", creator)
+
+    with pytest.raises(ValueError, match="must include at least one API scope"):
+        api_token.create_token_under_limit(robot, creator, scope, 3600, "Invalid token")
+
+
+def test_robot_api_token_with_persisted_empty_scope_is_rejected(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("empty-scope-token", creator)
+    token, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "CI token"
+    )
+    token.scope = " "
+    token.save()
+
+    result = validate_bearer_auth("Bearer " + secret)
+
+    assert not result.auth_valid
+    assert result.error_message == "API token has invalid scopes"
+
+
 def test_disabled_user_oauth(app):
     user = model.user.get_user("disabled")
     token_string = "%s%s" % ("a" * 20, "b" * 20)

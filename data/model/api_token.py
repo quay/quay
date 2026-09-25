@@ -69,6 +69,10 @@ def count_active_tokens(subject_user):
 
 
 def create_token_under_limit(subject_user, creator, scope, expiration_seconds, display_name):
+    scope = normalize_scope(scope)
+    if not validate_api_scope_string(scope):
+        raise ValueError("'scope' must include at least one API scope")
+
     max_active_tokens = (config.app_config or {}).get("API_TOKEN_MAXIMUM_TOKEN_COUNT")
     transaction = db_transaction() if max_active_tokens is not None else nullcontext()
     with transaction:

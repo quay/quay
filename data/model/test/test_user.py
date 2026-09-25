@@ -23,6 +23,7 @@ from data.database import (
     Team,
     User,
     Visibility,
+    db_for_update,
 )
 from data.fields import Credential
 from data.model.notification import create_notification
@@ -77,6 +78,29 @@ def test_create_user_with_expiration(initialized_db):
     with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
         user = create_user_noverify("foobar", "foo@example.com", email_required=False)
         assert user.removed_tag_expiration_s == 60 * 60
+
+
+def test_robot_federation_config_locks_binding_before_versioning(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = create_robot("federated-lock", creator)
+    binding = {"issuer": "https://issuer.example", "subject": "original-subject"}
+    model.user.create_robot_federation_config(robot, [binding])
+    binding_id = model.user.get_robot_federation_config(robot)[0]["id"]
+
+    with patch("data.model.user.db_for_update", wraps=db_for_update) as locked_query:
+        updated = model.user.create_robot_federation_config(
+            robot,
+            [
+                {
+                    "id": binding_id,
+                    "issuer": "https://issuer.example",
+                    "subject": "updated-subject",
+                }
+            ],
+        )
+
+    assert locked_query.called
+    assert updated[0]["version"] == 2
 
 
 @pytest.mark.parametrize(
