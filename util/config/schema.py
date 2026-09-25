@@ -1020,6 +1020,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to allow exporting of action logs. Defaults to True",
             "x-example": True,
         },
+        "LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS": {
+            "type": "boolean",
+            "description": "Whether to explicitly require secure callback URLs. Defaults to True",
+            "x-example": True,
+        },
         # Feature Flag: User last accessed.
         "FEATURE_USER_LAST_ACCESSED": {
             "type": "boolean",

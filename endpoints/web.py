@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -21,7 +23,11 @@ from flask_login import current_user
 
 import features
 from _init import ROOT_DIR, __version__
-from app import app, authentication, avatar
+from app import (
+    app,
+    authentication,
+    avatar,
+)
 from app import billing as stripe
 from app import (
     build_logs,
@@ -80,6 +86,7 @@ from util.invoice import renderInvoiceToPdf
 from util.metrics.prometheus import ui_page_views
 from util.registry.gzipinputstream import GzipInputStream
 from util.request import crossorigin, get_request_ip
+from util.security.crypto import decrypt_string
 from util.useremails import send_email_changed
 
 PGP_KEY_MIMETYPE = "application/pgp-keys"
@@ -301,7 +308,7 @@ def privacy():
 @no_cache
 def instance_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_instance()
+    data, status_code = checker.check_instance()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -313,7 +320,7 @@ def instance_health():
 @no_cache
 def endtoend_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_endtoend()
+    data, status_code = checker.check_endtoend()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -324,7 +331,7 @@ def endtoend_health():
 @no_cache
 def warning_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_warning()
+    data, status_code = checker.check_warning()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -420,19 +427,36 @@ def exportedlogs(file_id):
     if not has_local_storage:
         abort(404)
 
+    # verify we have a valid token
+    token = request.args.get("token", "")
+    config_secret_key = app.config.get("SECRET_KEY", None)
+    if config_secret_key is None:
+        abort(403)
+
+    fernet_key = base64.urlsafe_b64encode(hashlib.sha256(config_secret_key.encode()).digest())
+
+    expiration = app.config.get("EXPORT_ACTION_LOGS_SECONDS", 60 * 60)
+    decrypted = decrypt_string(token, fernet_key, ttl=expiration)
+    if decrypted != file_id:
+        logger.exception("Failed to verify provided token for export log download")
+        abort(403)
+
     JSON_MIMETYPE = "application/json"
     exported_logs_storage_path = app.config.get(
         "EXPORT_ACTION_LOGS_STORAGE_PATH", "exportedactionlogs"
     )
+
     export_storage_path = os.path.join(exported_logs_storage_path, file_id)
     if not storage.exists(storage.preferred_locations, export_storage_path):
         abort(404)
 
     try:
-        return send_file(
+        response = send_file(
             storage.stream_read_file(storage.preferred_locations, export_storage_path),
             mimetype=JSON_MIMETYPE,
         )
+        response.headers["Cache-control"] = "no-store"
+        return response
     except IOError:
         logger.exception("Could not read exported logs")
         abort(403)

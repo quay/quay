@@ -2,13 +2,13 @@ from datetime import datetime, timedelta
 
 from data import model
 from data.database import BlobUpload as BlobUploadTable
-from workers.blobuploadcleanupworker.models_interface import (
+from workers.storagecleanupworker.models_interface import (
     BlobUpload,
-    BlobUploadCleanupWorkerDataInterface,
+    StorageCleanupWorkerDataInterface,
 )
 
 
-class PreOCIModel(BlobUploadCleanupWorkerDataInterface):
+class PreOCIModel(StorageCleanupWorkerDataInterface):
     def get_stale_blob_upload(self, stale_threshold):
         blob_upload = model.blob.get_stale_blob_upload(stale_threshold)
         if blob_upload is None:

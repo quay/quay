@@ -24,7 +24,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
-from storage.basestorage import BaseStorageV2
+from storage.basestorage import _EXPORTED_LOG_FILENAME_RE, BaseStorageV2
 from util.ipresolver import ResolvedLocation
 from util.registry import filelike
 
@@ -811,6 +811,45 @@ class _CloudStorage(BaseStorageV2):
                                     str(s3r),
                                 )
         return deleted
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        """
+        Lists and deletes all exported log files which are older than the defined threshold
+        (defaults to 1 hour)
+        """
+        self._initialize_cloud_conn()
+        path = self._init_path(log_path)
+
+        paginator = self.get_cloud_conn().get_paginator(self._list_object_version)
+        for page in paginator.paginate(Bucket=self._bucket_name, Prefix=path):
+            for obj_info in page.get("Contents", []):
+                # if the file is older than 1 hour AND the file name matches our format uuid-uuid
+                filename = obj_info["Key"].split("/")[-1]
+                threshold_time = datetime.now(timezone.utc) - deletion_date_threshold
+                if obj_info["LastModified"] <= datetime.now(
+                    timezone.utc
+                ) - deletion_date_threshold and _EXPORTED_LOG_FILENAME_RE.fullmatch(
+                    obj_info["Key"].split("/")[-1]
+                ):
+                    obj = self.get_cloud_bucket().Object(obj_info["Key"])
+                    try:
+                        obj.load()
+                        obj.delete()
+                        logger.debug(
+                            "Expired exported log deleted from %s: %s", log_path, obj_info["Key"]
+                        )
+                    except botocore.exceptions.ClientError as s3r:
+                        if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                            logger.exception(
+                                "Got error when attempting to clean exported log file with key in %s folder: %s",
+                                log_path,
+                                obj_info["Key"],
+                                str(s3r),
+                            )
+                        else:
+                            logger.debug(
+                                "File not found in %s folder with key %s", log_path, obj_info["Key"]
+                            )
 
 
 class S3Storage(_CloudStorage):
