@@ -510,8 +510,8 @@ class ObservablePooledDatabase(ObservableDatabase):
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT 1")
-                # roll back the request immediately so it doesn't end in IDLE_IN_TRANSACTION
-                conn.rollback()
+            # roll back the request immediately so it doesn't end in IDLE_IN_TRANSACTION
+            conn.rollback()
             return conn  # Connection is healthy
         except Exception as e:
             # Catch ALL exceptions during liveness check - includes ProtocolViolation,
