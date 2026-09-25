@@ -485,6 +485,81 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 });
 ```
 
+## URL Assertions for Routing-Sensitive Features
+
+Some UI flows select between two or more API routes depending on user role,
+superuser status, or a feature flag. **Outcome assertions alone (success toasts,
+modal dismissal, state updates) cannot detect that the wrong route was called**
+when both routes return `200`. This gap is especially common in superuser flows
+where `FEATURE_SUPERUSERS_FULL_ACCESS` is enabled in the e2e environment —
+enabling that flag causes the non-superuser tenant route to accept writes that
+it would reject in production, so a lifecycle test that only checks for a
+success toast will pass even when the UI is calling the wrong endpoint.
+
+### When to add `waitForRequest` URL assertions
+
+Add URL assertions whenever the feature under test:
+
+- Selects between a tenant route and a superuser route based on `isUser`,
+  `isSuperUser`, or a `view` prop (e.g., `/api/v1/organization/<org>/quota`
+  vs. `/api/v1/superuser/organization/<org>/quota`).
+- Conditionally targets different endpoints based on a feature flag that may be
+  enabled in CI but disabled in production.
+- Has two code paths that produce the same visible outcome but call different
+  HTTP methods or URLs.
+
+### How to assert the request URL
+
+Call `page.waitForRequest()` (or the fixture's equivalent, e.g.
+`superuserPage.waitForRequest()`) **before** triggering the action. The call
+returns a `Promise<Request>`; `await` it after the action fires:
+
+```typescript
+// START intercepting before the action
+const createRequest = superuserPage.waitForRequest(
+  (req) => req.method() === 'POST' && req.url().includes('/quota'),
+);
+
+// Trigger the action
+await superuserPage.getByTestId('apply-quota-button').click();
+
+// ASSERT the exact path — not just the outcome
+expect(new URL((await createRequest).url()).pathname).toBe(
+  `/api/v1/superuser/organization/${org.name}/quota`,
+);
+
+// THEN assert the visible outcome as well — both checks belong together
+await expect(
+  superuserPage.getByText('Successfully created quota'),
+).toBeVisible();
+```
+
+URL assertions **complement** outcome assertions — they do not replace them.
+Include both: the URL assertion guards against routing regressions that feature
+flags can mask, and the outcome assertion guards against silent network failures.
+
+For `PUT`/`PATCH`/`DELETE` operations that include a resource ID in the path,
+use a regex match:
+
+```typescript
+const updateRequest = superuserPage.waitForRequest(
+  (req) => req.method() === 'PUT' && req.url().includes('/quota/'),
+);
+await superuserPage.getByTestId('apply-quota-button').click();
+expect(new URL((await updateRequest).url()).pathname).toMatch(
+  new RegExp(`^/api/v1/superuser/organization/${org.name}/quota/\\d+$`),
+);
+```
+
+### Reference implementation
+
+See `web/playwright/e2e/organization/quota.spec.ts`, test tagged
+`@PROJQUAY-11177` ("superuser organization quota writes target the superuser
+endpoint"). It demonstrates the full pattern for `POST` and `PUT` operations
+with inline commentary explaining why the URL must be asserted here. That test
+was written specifically to catch the class of bug where `FEATURE_SUPERUSERS_FULL_ACCESS`
+masked a routing regression for the lifetime of the v2 quota feature.
+
 ## Common Gotchas
 
 | Issue | What to Know |
