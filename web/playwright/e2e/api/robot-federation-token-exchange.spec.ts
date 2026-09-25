@@ -7,54 +7,22 @@ const TOKEN_EXCHANGE_GRANT_TYPE =
   'urn:ietf:params:oauth:grant-type:token-exchange';
 const JWT_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:jwt';
 const ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
-
-type KeycloakConfig = {
-  tokenEndpoint: string;
-  clientId: string;
-};
+const KEYCLOAK_TOKEN_ENDPOINT =
+  'http://localhost:8081/realms/quay/protocol/openid-connect/token';
+const KEYCLOAK_CLIENT_ID = 'quay-ui';
 
 type KeycloakTokenClaims = {
   iss: string;
   sub: string;
 };
 
-function getKeycloakConfig(quayConfig: {
-  config: Record<string, unknown>;
-}): KeycloakConfig | null {
-  for (const value of Object.values(quayConfig.config)) {
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      !('OIDC_SERVER' in value) ||
-      !('CLIENT_ID' in value)
-    ) {
-      continue;
-    }
-
-    const loginConfig = value as Record<string, string>;
-    let oidcServer = loginConfig.OIDC_SERVER;
-    // The browser test process reaches Keycloak through the host port, while
-    // Quay itself uses host.containers.internal from inside its container.
-    oidcServer = oidcServer.replace('host.containers.internal', 'localhost');
-    if (!oidcServer.endsWith('/')) oidcServer += '/';
-
-    return {
-      tokenEndpoint: `${oidcServer}protocol/openid-connect/token`,
-      clientId: loginConfig.CLIENT_ID,
-    };
-  }
-
-  return null;
-}
-
 async function getKeycloakAccessToken(
   request: APIRequestContext,
-  keycloak: KeycloakConfig,
 ): Promise<string> {
-  const response = await request.post(keycloak.tokenEndpoint, {
+  const response = await request.post(KEYCLOAK_TOKEN_ENDPOINT, {
     form: {
       grant_type: 'password',
-      client_id: keycloak.clientId,
+      client_id: KEYCLOAK_CLIENT_ID,
       username: 'testuser_oidc',
       password: 'password',
       scope: 'openid profile email',
@@ -81,33 +49,27 @@ test.describe(
   () => {
     test('exchanges a Keycloak token through STS and the legacy endpoint', async ({
       request,
-      quayConfig,
       superuserApi,
-      adminClient,
     }) => {
-      const keycloak = getKeycloakConfig(quayConfig);
-      test.skip(!keycloak, 'No Keycloak OIDC login configuration found');
-      if (!keycloak) return;
-
-      const subjectToken = await getKeycloakAccessToken(request, keycloak);
+      const subjectToken = await getKeycloakAccessToken(request);
       const claims = decodeJwtClaims(subjectToken);
       expect(claims.iss).toBeTruthy();
       expect(claims.sub).toBeTruthy();
 
       const organization = await superuserApi.organization('federation');
       const robot = await superuserApi.robot(organization.name, 'sts');
-      const federationResponse = await adminClient.post(
-        `/api/v1/organization/${organization.name}/robots/${robot.shortname}/federation`,
+      await superuserApi.raw.createRobotFederation(
+        organization.name,
+        robot.shortname,
         [
           {
             issuer: claims.iss,
             subject: claims.sub,
-            audiences: [keycloak.clientId],
+            audiences: [KEYCLOAK_CLIENT_ID],
             api_scopes: 'user:read',
           },
         ],
       );
-      expect(federationResponse.status()).toBe(200);
 
       const stsResponse = await request.post(`${API_URL}/sts/token`, {
         form: {
