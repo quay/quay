@@ -20,7 +20,7 @@ TEST_DB_FILE = NamedTemporaryFile(delete=True)
 class TestConfig(DefaultConfig):
     TESTING = True
     SECRET_KEY = "superdupersecret!!!1"
-    DATABASE_SECRET_KEY = "anothercrazykey!"
+    DATABASE_SECRET_KEY = "QUAY_FIXTURE_ONLY-anothercrazykey!"
     BILLING_TYPE = "FakeStripe"
 
     TEST_DB_FILE = TEST_DB_FILE

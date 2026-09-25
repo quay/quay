@@ -53,7 +53,7 @@ certs-test:
 	./test/test_certs_install.sh
 
 full-db-test: ensure-test-db
-	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
+	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!"}' \
 	alembic upgrade head
 	TEST=true PYTHONPATH=. \
 	SKIP_DB_SCHEMA=true py.test -m 'not e2e' --timeout=7200 \

@@ -104,7 +104,7 @@ FEATURE_USER_METADATA: True
 #  SERVICE_NAME: "Keycloak"
 #  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
 #  CLIENT_ID: "quay-ui"
-#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
+#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h" # gitleaks:allow: local Keycloak example client secret
 #  LOGIN_SCOPES: ["openid", "profile", "email"]
 #  DEBUGGING: true
 #  USE_PKCE: true

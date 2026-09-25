@@ -173,7 +173,7 @@ def test_invalid_robot_token(app):
 
 
 def test_invalid_unicode_robot(app):
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
+    token = "“QUAY_FIXTURE_ONLY-4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
     result, kind = validate_credentials("devtable+somerobot", token)
     assert kind == CredentialKind.robot
     assert not result.auth_valid
@@ -185,7 +185,7 @@ def test_invalid_unicode_robot_2(app):
     user = model.user.get_user("devtable")
     robot, password = model.user.create_robot("somerobot", user)
 
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
+    token = "“QUAY_FIXTURE_ONLY-4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
     result, kind = validate_credentials("devtable+somerobot", token)
     assert kind == CredentialKind.robot
     assert not result.auth_valid

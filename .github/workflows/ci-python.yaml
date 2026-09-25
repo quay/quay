@@ -266,7 +266,7 @@ jobs:
         mkdir -p /tmp/config
         cat >/tmp/config/config.yaml <<EOF
         BUILDLOGS_REDIS: {"host": "$IP", "port": 6379}
-        DATABASE_SECRET_KEY: anothercrazykey!
+        DATABASE_SECRET_KEY: QUAY_FIXTURE_ONLY-anothercrazykey!
         DB_URI: postgresql://postgres_user:postgres_password@$IP:5432/postgres_db
         DISTRIBUTED_STORAGE_CONFIG: {"default": ["LocalStorage", {"storage_path": "/datastorage/registry"}]}
         DISTRIBUTED_STORAGE_PREFERENCE: ["default"]

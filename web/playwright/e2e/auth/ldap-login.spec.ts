@@ -92,7 +92,7 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
   }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    const testPassword = 'S3cret!P@ss#w0rd';
+    const testPassword = 'QUAY_FIXTURE_ONLY-S3cret!P@ss#w0rd';
 
     await page.goto('/signin');
 

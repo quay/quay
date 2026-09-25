@@ -112,6 +112,16 @@ cd web && npx playwright test e2e/some.spec.ts  # Single E2E test
 See [agent_docs/testing.md](agent_docs/testing.md) for test fixtures, database
 testing, and detailed patterns.
 
+### Test Credentials and Secret Scanning
+
+Never commit a real credential. Prefix dummy test credentials with
+`QUAY_FIXTURE_ONLY-` when their required format permits it. This explicit
+marker is allowlisted without exempting test paths, so realistic unmarked
+values still fail secret scanning. Use a same-line `gitleaks:allow` comment
+only when a test must preserve an exact token format or ciphertext. See the
+test credential guidance in [agent_docs/testing.md](../agent_docs/testing.md)
+for handling scanner reports and historical findings.
+
 ## Commit and PR Format
 
 ### PR Title (CI-enforced)
