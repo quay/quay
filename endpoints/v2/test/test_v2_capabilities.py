@@ -32,7 +32,7 @@ def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
     Verifies that a 503 is returned back to the caller with a retry header if
     MaxConnectionsExceeded is raised by the app during access.
     """
-    with app.test_request_context("/"):
+    with app.test_request_context("/v2/"):
         try:
             raise MaxConnectionsExceeded("pool full")
         except Exception as e:

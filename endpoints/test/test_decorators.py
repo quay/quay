@@ -54,7 +54,7 @@ def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
     """
     app.register_error_handler(MaxConnectionsExceeded, handle_max_connections_count)
 
-    with app.test_request_context("/v2/"):
+    with app.test_request_context("/"):
         try:
             raise MaxConnectionsExceeded("pool full")
         except Exception as e:
