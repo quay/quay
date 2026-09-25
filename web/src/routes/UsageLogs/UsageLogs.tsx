@@ -235,6 +235,8 @@ export const logKinds = {
   delete_repo_notification: 'Delete repository notification',
   reset_repo_notification: 'Re-enable repository notification',
   regenerate_robot_token: 'Regenerate Robot Token',
+  create_robot_api_token: 'Create Robot API Token',
+  revoke_robot_api_token: 'Revoke Robot API Token',
   create_robot_federation: 'Create Robot Federation',
   delete_robot_federation: 'Delete Robot Federation',
   federated_robot_token_exchange: 'Federated Robot Token Exchange',

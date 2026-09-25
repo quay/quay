@@ -12,6 +12,10 @@ import {
   regenerateRobotToken,
   fetchRobotFederationConfig,
   createRobotFederationConfig,
+  createRobotAPIToken,
+  fetchRobotAPITokens,
+  fetchRobotMintableScopes,
+  revokeRobotAPIToken,
   IRobot,
 } from './RobotsResource';
 
@@ -63,6 +67,60 @@ describe('RobotsResource', () => {
 
       await fetchRobotsForNamespace('user1', true, controller.signal);
       expect(vi.mocked(axios.get).mock.calls[0][0]).toContain('/user/robots');
+    });
+  });
+
+  describe('Robot API tokens', () => {
+    it('fetches scopes the current editor can mint', async () => {
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({scopes: ['repo:read']}),
+      );
+
+      await expect(
+        fetchRobotMintableScopes('org', 'org+robot'),
+      ).resolves.toEqual(['repo:read']);
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/v1/organization/org/robots/robot/mintable-scopes',
+      );
+    });
+
+    it('lists, creates, and revokes organization robot API tokens', async () => {
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse({tokens: []}));
+      vi.mocked(axios.post).mockResolvedValueOnce(
+        mockResponse({uuid: 'token-id'}),
+      );
+      vi.mocked(axios.delete).mockResolvedValueOnce(mockResponse({}, 204));
+
+      await fetchRobotAPITokens('org', 'robot');
+      await createRobotAPIToken('org', 'robot', {
+        name: 'CI',
+        scope: 'repo:read',
+        expiration: 30 * 24 * 60 * 60,
+      });
+      await revokeRobotAPIToken('org', 'robot', 'token-id');
+
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/v1/organization/org/robots/robot/tokens',
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        '/api/v1/organization/org/robots/robot/tokens',
+        {
+          name: 'CI',
+          scope: 'repo:read',
+          expiration: 30 * 24 * 60 * 60,
+        },
+      );
+      expect(axios.delete).toHaveBeenCalledWith(
+        '/api/v1/organization/org/robots/robot/tokens/token-id',
+      );
+    });
+
+    it('uses the user robot token path', async () => {
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse({tokens: []}));
+      await fetchRobotAPITokens('user', 'robot', true);
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/v1/user/robots/robot/tokens',
+      );
     });
   });
 
@@ -213,7 +271,13 @@ describe('RobotsResource', () => {
     it('creates federation config', async () => {
       vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
 
-      const config = [{issuer: 'https://example.com', subject: 'sub1'}];
+      const config = [
+        {
+          issuer: 'https://example.com',
+          subject: 'sub1',
+          audiences: ['quay'],
+        },
+      ];
       await createRobotFederationConfig('org', 'org+bot1', config);
       expect(vi.mocked(axios.post).mock.calls[0][0]).toContain(
         '/robots/bot1/federation',

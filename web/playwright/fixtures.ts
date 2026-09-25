@@ -31,6 +31,7 @@ import {
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL, BASE_URL} from './utils/config';
+import {requestCsrfToken} from './utils/api/csrf';
 import {
   ApiClient,
   ApiRequestError,
@@ -1085,8 +1086,30 @@ async function loginUser(
   if (isOIDC) {
     const page = await context.newPage();
     try {
-      await page.goto('/signin');
-      await page.locator('[data-testid^="external-login-"]').first().click();
+      // Request the provider URL directly. This avoids depending on whether
+      // the React sign-in page has rendered before its single-provider
+      // auto-redirect runs, and keeps the OAuth session in this context.
+      const provider = config?.external_login?.[0];
+      if (!provider) {
+        throw new Error('No OIDC external login provider is configured');
+      }
+      const csrfToken = await requestCsrfToken(context.request, BASE_URL);
+      const loginResponse = await context.request.post(
+        `${BASE_URL}/api/v1/externallogin/${provider.id}`,
+        {
+          data: {kind: 'login'},
+          headers: {'X-CSRF-Token': csrfToken},
+        },
+      );
+      if (!loginResponse.ok()) {
+        throw new Error(
+          `Could not obtain OIDC login URL: ${loginResponse.status()}`,
+        );
+      }
+      const {auth_url: authUrl} = (await loginResponse.json()) as {
+        auth_url: string;
+      };
+      await page.goto(authUrl);
       await page.waitForURL(/.*realms\/.*/, {timeout: 15000});
       await page.fill('#username', username);
       await page.fill('#password', password);
