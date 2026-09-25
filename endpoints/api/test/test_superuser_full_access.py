@@ -283,6 +283,32 @@ class TestSuperuserFullAccessRequired:
             # Should be blocked without FULL_ACCESS
             conduct_api_call(cl, OrganizationQuota, "DELETE", params, None, 403)
 
+    def test_superuser_can_manage_quota_limits_without_full_access(self, app):
+        """Quota policy writes remain a core superuser operation."""
+        from data import model
+
+        org = model.organization.get_organization("testorg")
+        quota = model.namespacequota.create_namespace_quota(org, 1073741824)
+        params = {"orgname": "testorg", "quota_id": quota.id}
+
+        with client_with_identity("devtable", app) as cl:
+            body = {"type": "Warning", "threshold_percent": 80}
+            conduct_api_call(cl, OrganizationQuotaLimitList, "POST", params, body, 201)
+
+            limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+            assert len(limits) == 1
+            limit = limits[0]
+
+            limit_params = {**params, "limit_id": limit.id}
+            body = {"type": "Warning", "threshold_percent": 85}
+            conduct_api_call(cl, OrganizationQuotaLimit, "PUT", limit_params, body, 200)
+
+            updated_limit = model.namespacequota.get_namespace_quota_limit(quota, limit.id)
+            assert updated_limit.percent_of_limit == 85
+
+            conduct_api_call(cl, OrganizationQuotaLimit, "DELETE", limit_params, None, 204)
+            assert list(model.namespacequota.get_namespace_quota_limit_list(quota)) == []
+
 
 class TestSuperuserFullAccessEnabled:
     """
