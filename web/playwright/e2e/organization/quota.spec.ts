@@ -118,6 +118,71 @@ test.describe(
       },
     );
 
+    // PROJQUAY-11177: the v2 UI sent organization quota writes to the tenant
+    // route /api/v1/organization/<org>/quota, which rejects every write with
+    // 403 insufficient_scope unless FEATURE_SUPERUSERS_FULL_ACCESS is on -- and
+    // it is off by default. The v1 Angular UI has always used the superuser
+    // route, which needs only SuperUserPermission.
+    //
+    // This asserts the endpoint rather than just the success toast. When
+    // FEATURE_SUPERUSERS_FULL_ACCESS is enabled, both routes return 200 and the
+    // lifecycle test above passes even with the bug present, so success alone
+    // is not a regression guard.
+    test(
+      'superuser organization quota writes target the superuser endpoint',
+      {tag: ['@superuser', '@PROJQUAY-11177']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('quotaendpoint');
+
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+
+        // CREATE must go to /api/v1/superuser/organization/<org>/quota
+        const createRequest = superuserPage.waitForRequest(
+          (req) => req.method() === 'POST' && req.url().includes('/quota'),
+        );
+        await superuserPage.getByTestId('quota-value-input').fill('10');
+        await superuserPage.getByTestId('apply-quota-button').click();
+        expect(new URL((await createRequest).url()).pathname).toBe(
+          `/api/v1/superuser/organization/${org.name}/quota`,
+        );
+        await expect(
+          superuserPage.getByText('Successfully created quota'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).not.toBeVisible();
+
+        // Reopen and wait for the existing value to populate
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByTestId('quota-value-input'),
+        ).toHaveValue('10');
+
+        // UPDATE must go to /api/v1/superuser/organization/<org>/quota/<id>.
+        // This is the request that produced "quota update error, Unauthorized".
+        const updateRequest = superuserPage.waitForRequest(
+          (req) => req.method() === 'PUT' && req.url().includes('/quota/'),
+        );
+        await superuserPage.getByTestId('quota-value-input').fill('20');
+        await superuserPage.getByTestId('apply-quota-button').click();
+        expect(new URL((await updateRequest).url()).pathname).toMatch(
+          new RegExp(`^/api/v1/superuser/organization/${org.name}/quota/\\d+$`),
+        );
+        await expect(
+          superuserPage.getByText('Successfully updated quota'),
+        ).toBeVisible();
+      },
+    );
+
     test(
       'regular user sees read-only quota in organization settings',
       {tag: '@superuser'},
