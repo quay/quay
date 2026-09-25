@@ -4,10 +4,13 @@ from contextlib import nullcontext
 from datetime import datetime, timedelta
 from math import isfinite
 
+from peewee import JOIN
+
 from auth import scopes
 from data.database import APIToken, User, db_for_update, random_string_generator
 from data.fields import Credential
 from data.model import config, db_transaction
+from data.model.modelutil import paginate
 from data.readreplica import ReadOnlyModeException
 from util.security.registry_jwt import generate_bearer_token
 
@@ -107,12 +110,14 @@ def mint_jwt(token, instance_keys, audience):
     )
 
 
-def list_tokens(subject_user):
-    return list(
-        APIToken.select()
+def list_tokens(subject_user, page_token=None, limit=50):
+    query = (
+        APIToken.select(APIToken, User)
+        .join(User, JOIN.LEFT_OUTER, on=(APIToken.creator == User.id))
+        .switch(APIToken)
         .where(APIToken.subject_user == subject_user, APIToken.revoked_at.is_null())
-        .order_by(APIToken.created.desc())
     )
+    return paginate(query, APIToken, descending=True, page_token=page_token, limit=limit)
 
 
 def revoke_token(subject_user, token_uuid):
