@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import auth.credentials
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -9,6 +10,7 @@ from auth.credentials import CredentialKind, validate_credentials
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import RobotAccountToken
+from data.model import api_token
 from test.fixtures import *
 
 
@@ -68,6 +70,19 @@ def test_valid_token(app):
     assert result == ValidateResult(AuthKind.credentials, token=access_token)
 
 
+def test_oauthtoken_sso_jwt_uses_sso_validation(app, monkeypatch):
+    token = "header.payload.signature"
+    expected = ValidateResult(AuthKind.ssojwt)
+    monkeypatch.setattr(auth.credentials, "is_jwt", lambda value: True)
+    monkeypatch.setattr(auth.credentials, "validate_robot_api_jwt", lambda value: None)
+    monkeypatch.setattr(auth.credentials, "validate_oauth_token", lambda value: expected)
+
+    result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, token)
+
+    assert kind == CredentialKind.oauth_token
+    assert result is expected
+
+
 def test_valid_oauth(app):
     user = model.user.get_user("devtable")
     app = model.oauth.list_applications_for_org(model.user.get_user_or_org("buynlarge"))[0]
@@ -75,6 +90,18 @@ def test_valid_oauth(app):
     result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, code)
     assert kind == CredentialKind.oauth_token
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)
+
+
+def test_robot_api_token_authenticates_as_basic_robot_credential(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("api-token", creator)
+    _, secret = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+
+    result, kind = validate_credentials(robot.username, secret)
+
+    assert kind == CredentialKind.robot
+    assert result.context.robot == robot
+    assert result.context.api_scopes == "repo:read"
 
 
 def test_invalid_password(app):

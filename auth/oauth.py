@@ -4,11 +4,15 @@ from datetime import datetime
 from flask import request
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-from app import analytics, app, authentication, oauth_login
+import features
+from app import analytics, app, authentication, instance_keys, oauth_login
+from auth import scopes
 from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import User
+from data.model import api_token
 from oauth.login import OAuthLoginException
 from oauth.login_utils import (
     _conduct_oauth_login,
@@ -16,7 +20,9 @@ from oauth.login_utils import (
     get_sub_username_email_from_token,
 )
 from oauth.oidc import PublicKeyLoadException
+from util.names import parse_robot_username
 from util.security.jwtutil import is_jwt
+from util.security.registry_jwt import InvalidBearerTokenException, decode_bearer_token
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +37,97 @@ def validate_bearer_auth(auth_header):
 
     normalized = [part.strip() for part in auth_header.split(" ") if part]
     if normalized[0].lower() != "bearer" or len(normalized) != 2:
-        logger.debug("Got invalid bearer token format: %s", auth_header)
+        logger.debug("Got invalid bearer token format")
         return ValidateResult(AuthKind.oauth, missing=True)
 
-    (_, oauth_token) = normalized
+    _, oauth_token = normalized
     return validate_oauth_token(oauth_token)
 
 
 def validate_oauth_token(token):
+    robot_result = validate_robot_api_token(token)
+    if robot_result is not None:
+        return robot_result
     if is_jwt(token):
+        robot_result = validate_robot_api_jwt(token)
+        if robot_result is not None:
+            return robot_result
         return validate_sso_oauth_token(token)
+    return validate_app_oauth_token(token)
+
+
+def validate_robot_api_token(token):
+    """Validate an opaque, scoped robot API token."""
+    if not token.startswith(api_token.API_TOKEN_PREFIX):
+        return None
+
+    persisted = api_token.validate_token(token)
+    if persisted is None:
+        return ValidateResult(
+            AuthKind.oauth, error_message="API token is invalid, revoked or expired"
+        )
+
+    if not api_token.validate_api_scope_string(persisted.scope):
+        return ValidateResult(AuthKind.oauth, error_message="API token has invalid scopes")
+
+    robot = persisted.subject_user
+    robot_owner, _ = parse_robot_username(robot.username)
+    if not model.user.get_username(robot_owner).enabled:
+        return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
+
+    return ValidateResult(AuthKind.oauth, robot=robot, api_scopes=persisted.scope)
+
+
+def validate_robot_api_jwt(token, decoded=None):
+    """Validate a Quay-signed, scoped robot API JWT.
+
+    Return None for non-Quay JWTs so they continue through the SSO JWT path.
+    """
+    if decoded is None:
+        try:
+            jwt_config = dict(app.config)
+            jwt_config["REGISTRY_JWT_AUTH_MAX_FRESH_S"] = api_token.API_TOKEN_MAX_EXPIRATION_SECONDS
+            decoded = decode_bearer_token(token, instance_keys, jwt_config)
+        except InvalidBearerTokenException:
+            return None
+
+    scope = decoded.get("api_scopes")
+    if not scope:
+        # A Quay registry JWT without API scopes is never an API credential.
+        return ValidateResult(AuthKind.oauth, error_message="JWT is not valid for API access")
+    scope_set = scopes_from_scope_string(scope) if isinstance(scope, str) else set()
+    if (
+        not scope_set
+        or scopes.DIRECT_LOGIN in scope_set
+        or (scopes.SUPERUSER in scope_set and not features.SUPER_USERS)
+    ):
+        return ValidateResult(AuthKind.oauth, error_message="JWT contains invalid API scopes")
+
+    subject = decoded.get("sub")
+    try:
+        robot = model.user.lookup_robot(subject)
+        robot_owner, _ = parse_robot_username(subject)
+        if not model.user.get_username(robot_owner).enabled:
+            return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
+    except (model.InvalidRobotException, User.DoesNotExist):
+        return ValidateResult(AuthKind.oauth, error_message="JWT subject is not a robot")
+
+    token_uuid = decoded.get("jti")
+    if token_uuid:
+        return ValidateResult(AuthKind.oauth, error_message="JWT API tokens are not supported")
+
     else:
-        return validate_app_oauth_token(token)
+        binding = model.user.get_robot_federation_binding(
+            robot,
+            decoded.get("federation_binding_id"),
+            decoded.get("federation_binding_version"),
+        )
+        if binding is None or not scopes.is_subset_string(binding.get("api_scopes", ""), scope):
+            return ValidateResult(
+                AuthKind.oauth, error_message="Federation binding is no longer valid"
+            )
+
+    return ValidateResult(AuthKind.oauth, robot=robot, api_scopes=scope)
 
 
 def validate_sso_oauth_token(token):
@@ -117,7 +202,7 @@ def validate_app_oauth_token(token):
     """
     validated = model.oauth.validate_access_token(token)
     if not validated:
-        logger.warning("OAuth access token could not be validated: %s", token)
+        logger.warning("OAuth access token could not be validated")
 
         error_message = "OAuth access token could not be validated"
 
@@ -136,7 +221,7 @@ def validate_app_oauth_token(token):
         return ValidateResult(AuthKind.oauth, error_message=error_message)
 
     if validated.expires_at <= datetime.utcnow():
-        logger.warning("OAuth access with an expired token: %s", token)
+        logger.warning("OAuth access with an expired token")
 
         error_message = "OAuth access token has expired"
 

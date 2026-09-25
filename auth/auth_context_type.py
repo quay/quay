@@ -138,6 +138,8 @@ class ValidatedAuthContext(AuthContext):
         appspecifictoken=None,
         signed_data=None,
         sso_token=None,
+        api_scopes=None,
+        federation_binding=None,
     ):
         # Note: These field names *MUST* match the string values of the kinds defined in
         # ContextEntityKind.
@@ -148,6 +150,8 @@ class ValidatedAuthContext(AuthContext):
         self.appspecifictoken = appspecifictoken
         self.signed_data = signed_data
         self.sso_token = sso_token
+        self.api_scopes = api_scopes
+        self.federation_binding = federation_binding
 
     def tuple(self):
         return list(vars(self).values())
@@ -220,7 +224,8 @@ class ValidatedAuthContext(AuthContext):
             return QuayDeferredPermissionUser.for_user(self.oauthtoken.authorized_user, scope_set)
 
         if self.authed_user:
-            return QuayDeferredPermissionUser.for_user(self.authed_user)
+            scope_set = scopes_from_scope_string(self.api_scopes) if self.api_scopes else None
+            return QuayDeferredPermissionUser.for_user(self.authed_user, scope_set)
 
         if self.token:
             return Identity(self.token.get_code(), "token")

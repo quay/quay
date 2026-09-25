@@ -3,12 +3,15 @@ import logging
 
 from jwt import InvalidTokenError
 
+import features
 from app import app
+from auth import scopes
 from auth.basic import _parse_basic_auth_header
 from auth.log import log_action
 from auth.validateresult import AuthKind, ValidateResult
 from data.database import FederatedLogin
 from data.model import InvalidRobotCredentialException
+from data.model.api_token import normalize_scope, validate_api_scope_string
 from data.model.user import lookup_robot
 from oauth.login_utils import get_jwt_issuer
 from oauth.oidc import OIDCLoginService
@@ -43,14 +46,54 @@ def validate_federated_auth(auth_header):
         )
         return ValidateResult(AuthKind.federated, missing=True, error_message="Invalid robot")
 
-    # find out if the robot is federated
-    # get the issuer from the DB config
-    # validate the token
-    robot = lookup_robot(auth_username)
-    assert robot.robot
+    robot, binding = validate_federated_robot_subject_token(auth_username, federated_token)
+    return ValidateResult(AuthKind.federated, robot=robot, federation_binding=binding)
 
-    result = verify_federated_robot_jwt_token(robot, federated_token)
-    return result.with_kind(AuthKind.federated)
+
+def parse_federated_robot_resource(resource):
+    """Returns the robot username encoded by a Quay federation resource URI."""
+    prefix = "urn:quay:robot:"
+    if not isinstance(resource, str) or not resource.startswith(prefix):
+        raise InvalidRobotCredentialException("Invalid robot resource")
+
+    robot_username = resource[len(prefix) :]
+    if not robot_username or not parse_robot_username(robot_username):
+        raise InvalidRobotCredentialException("Invalid robot resource")
+
+    return robot_username
+
+
+def validate_federated_robot_subject_token(robot_username, subject_token):
+    """Validates an external subject token for the explicitly selected robot."""
+    robot = lookup_robot(robot_username)
+    result = verify_federated_robot_jwt_token(robot, subject_token)
+    binding = result.context.federation_binding
+    if not result.auth_valid or binding is None:
+        raise InvalidRobotCredentialException("Token does not match robot")
+    return robot, binding
+
+
+def resolve_federation_scope(binding, requested_scope):
+    """Returns the requested scope when it is a valid subset of the binding scope."""
+    allowed_scope = normalize_scope(binding.get("api_scopes", ""))
+    if allowed_scope and (
+        not validate_api_scope_string(allowed_scope)
+        or (
+            scopes.SUPERUSER in scopes.scopes_from_scope_string(allowed_scope)
+            and not features.SUPER_USERS
+        )
+    ):
+        raise InvalidRobotCredentialException("Federation binding scope is not allowed")
+
+    requested_scope = normalize_scope(requested_scope or "")
+    if not requested_scope:
+        return allowed_scope
+
+    if not validate_api_scope_string(requested_scope) or not scopes.is_subset_string(
+        allowed_scope, requested_scope
+    ):
+        raise InvalidRobotCredentialException("Requested scope is not allowed")
+    return requested_scope
 
 
 def verify_federated_robot_jwt_token(robot, token):
@@ -74,34 +117,23 @@ def verify_federated_robot_jwt_token(robot, token):
     if not fed_config:
         raise InvalidRobotCredentialException("Robot does not have federated login configured")
 
-    matched_subs = []
-    matched_audiences = None
-    for item in fed_config:
-        if item.get("issuer") == token_issuer:
-            matched_subs.append(item.get("subject"))
-            item_audiences = item.get("audiences")
-            if item_audiences:
-                matched_audiences = item_audiences
-
-    if not matched_subs:
+    issuer_bindings = [item for item in fed_config if item.get("issuer") == token_issuer]
+    if not issuer_bindings:
         raise InvalidRobotCredentialException(
             f"issuer {token_issuer} not configured for this robot"
         )
 
-    service_config_block = {"OIDC_SERVER": token_issuer}
-    if matched_audiences:
-        service_config_block["OIDC_AUDIENCES"] = matched_audiences
-        options = {"verify_nbf": False}
-    else:
-        options = {"verify_aud": False, "verify_nbf": False}
-        logger.warning(
-            "Federated robot '%s' authenticated without audience validation. "
-            "Configure 'audiences' in federation config to suppress this warning. "
-            "Audience-less federation is deprecated and will be removed in a future release.",
-            robot.username,
-        )
-
-    service_config = {"quayrobot": service_config_block}
+    service_config = {
+        "quayrobot": {
+            "OIDC_SERVER": token_issuer,
+            # Permit HTTP discovery only when Quay is explicitly running in debug mode.
+            # Production federation remains HTTPS-only.
+            "DEBUGGING": app.config.get("DEBUG", False),
+        }
+    }
+    # The matching binding, including its audience policy, is selected after
+    # signature and issuer validation based on the JWT subject.
+    options = {"verify_aud": False, "verify_nbf": True}
     service = OIDCLoginService(service_config, "quayrobot", client=app.config["HTTPCLIENT"])
 
     try:
@@ -110,10 +142,28 @@ def verify_federated_robot_jwt_token(robot, token):
         raise InvalidRobotCredentialException(f"Invalid token: {e}")
 
     assert decoded_token
-    # check if the token is for the robot
-
-    if decoded_token.get("sub") not in matched_subs:
+    matches = [item for item in issuer_bindings if item.get("subject") == decoded_token.get("sub")]
+    if len(matches) > 1:
+        raise InvalidRobotCredentialException("Ambiguous federation binding for this robot")
+    if not matches:
         raise InvalidRobotCredentialException("Token does not match robot")
+    binding = matches[0]
+
+    allowed_audiences = binding.get("audiences")
+    if allowed_audiences:
+        token_audience = decoded_token.get("aud", [])
+        if isinstance(token_audience, str):
+            token_audience = [token_audience]
+        if not isinstance(token_audience, list) or not set(token_audience).intersection(
+            allowed_audiences
+        ):
+            raise InvalidRobotCredentialException("Token audience is not allowed for this robot")
+    else:
+        logger.warning(
+            "Federated robot '%s' authenticated without audience validation. "
+            "Audience-less federation is deprecated and will be removed in a future release.",
+            robot.username,
+        )
 
     namespace, robot_name = parse_robot_username(robot.username)
 
@@ -127,4 +177,4 @@ def verify_federated_robot_jwt_token(robot, token):
         },
     )
 
-    return ValidateResult(AuthKind.credentials, robot=robot)
+    return ValidateResult(AuthKind.credentials, robot=robot, federation_binding=binding)

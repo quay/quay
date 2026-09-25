@@ -786,6 +786,10 @@ class DefaultConfig(ImmutableConfig):
     # None disables the cap.
     OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT: Optional[int] = None
 
+    # Optional maximum number of active Quay-issued API JWTs per user or robot.
+    # None disables the cap.
+    API_TOKEN_MAXIMUM_TOKEN_COUNT: Optional[int] = None
+
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 
