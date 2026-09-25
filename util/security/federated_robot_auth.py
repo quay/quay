@@ -90,7 +90,7 @@ def verify_federated_robot_jwt_token(robot, token):
     }
     # The matching binding, including its audience policy, is selected after
     # signature and issuer validation based on the JWT subject.
-    options = {"verify_aud": False, "verify_nbf": False}
+    options = {"verify_aud": False, "verify_nbf": True}
     service = OIDCLoginService(service_config, "quayrobot", client=app.config["HTTPCLIENT"])
 
     try:

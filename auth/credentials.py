@@ -116,7 +116,7 @@ def validate_credentials(auth_username, auth_password_or_token):
 
     # Check for OAuth tokens.
     if auth_username == OAUTH_TOKEN_USERNAME:
-        if is_jwt(auth_password_or_token):
+        if is_jwt(auth_password_or_token) and validate_robot_api_jwt(auth_password_or_token):
             return (
                 ValidateResult(
                     AuthKind.oauth,

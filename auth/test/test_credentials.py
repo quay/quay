@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import auth.credentials
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -67,6 +68,19 @@ def test_valid_token(app):
     result, kind = validate_credentials(ACCESS_TOKEN_USERNAME, access_token.get_code())
     assert kind == CredentialKind.token
     assert result == ValidateResult(AuthKind.credentials, token=access_token)
+
+
+def test_oauthtoken_sso_jwt_uses_sso_validation(app, monkeypatch):
+    token = "header.payload.signature"
+    expected = ValidateResult(AuthKind.ssojwt)
+    monkeypatch.setattr(auth.credentials, "is_jwt", lambda value: True)
+    monkeypatch.setattr(auth.credentials, "validate_robot_api_jwt", lambda value: None)
+    monkeypatch.setattr(auth.credentials, "validate_oauth_token", lambda value: expected)
+
+    result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, token)
+
+    assert kind == CredentialKind.oauth_token
+    assert result is expected
 
 
 def test_valid_oauth(app):

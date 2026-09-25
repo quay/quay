@@ -90,6 +90,24 @@ def test_validate_federated_robot_auth_expired_jwt(app):
 
 @patch.object(requests.Session, "request", mock_request)
 @patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_rejects_jwt_before_not_before(app):
+    robot, _ = model.user.create_robot("somerobot", model.user.get_user("devtable"))
+    model.user.create_robot_federation_config(
+        robot,
+        [{"issuer": "https://mock-oidc-server.com", "subject": robot.username}],
+    )
+    token = generate_mock_oidc_token(
+        subject=robot.username,
+        not_before=datetime.datetime.now() + datetime.timedelta(minutes=5),
+    )
+    header = f"Basic {base64.b64encode(f'{robot.username}:{token}'.encode()).decode()}"
+
+    with pytest.raises(InvalidRobotCredentialException, match="not yet valid"):
+        validate_federated_auth(header)
+
+
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
 def test_validate_federated_robot_auth_valid_jwt(app):
     robot, password = model.user.create_robot("somerobot", model.user.get_user("devtable"))
     fed_config = [

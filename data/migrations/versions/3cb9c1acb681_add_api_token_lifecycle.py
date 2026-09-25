@@ -36,6 +36,7 @@ def upgrade(op, tables, tester):
         sa.UniqueConstraint("uuid"),
     )
     op.create_index("apitoken_subject_user_id", "apitoken", ["subject_user_id"])
+    op.create_index("apitoken_creator_id", "apitoken", ["creator_id"])
     op.create_index("apitoken_token_name", "apitoken", ["token_name"], unique=True)
     op.create_index(
         "apitoken_subject_user_id_revoked_at_expires_at",
