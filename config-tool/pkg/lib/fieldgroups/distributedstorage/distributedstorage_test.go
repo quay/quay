@@ -79,6 +79,28 @@ func TestValidateDistributedStorage(t *testing.T) {
     hostname: jonathan-registry.com
     region_name: someregion
     storage_path: /datastorage/registry`), want: "invalid"},
+		{name: "IBMStorageCannotContainRegionName", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - IBMCloudStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: 1.2.3.4
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "invalid"},
+		{name: "RegionNameMustBeString", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: 1.2.3.4
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: 12345
+    storage_path: /datastorage/registry`), want: "typeError"},
 	}
 
 	// Iterate through tests
@@ -95,13 +117,17 @@ func TestValidateDistributedStorage(t *testing.T) {
 
 			// Get validation result
 			fg, err := NewDistributedStorageFieldGroup(conf)
-			if err != nil && tt.want != "typeError" {
-				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+			if err != nil {
+				if tt.want != "typeError" {
+					t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+				}
+				// stop here, fg is partially constructed
+				return
 			}
 
 			// explicitly validate that region is populated
 			if tt.name == "StorageWithRegionSet" {
-				assert.Equal(t, fg.DistributedStorageConfig["local_us"].Args.RegionName, "someregion")
+				assert.Equal(t, "someregion", fg.DistributedStorageConfig["local_us"].Args.RegionName)
 			}
 
 			opts := shared.Options{

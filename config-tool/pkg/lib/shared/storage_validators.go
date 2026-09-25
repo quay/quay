@@ -128,12 +128,8 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		var region string
-		// apply the region name if available and only to RadosGWStorage/RHOCSStorage driver,
-		// skip IBM
-		if storageType == "RadosGWStorage" || storageType == "RHOCSStorage" {
-			if args.RegionName != "" {
-				region = args.RegionName
-			}
+		if args.RegionName != "" {
+			region = args.RegionName
 		}
 
 		// Grab necessary variables
@@ -155,6 +151,17 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		log.Debugf("Storage parameters: ")
 		log.Debugf("hostname: %s, region (if available): %s, bucket name: %s, TLS enabled: %t",
 			endpoint, region, bucketName, isSecure)
+
+		// for IBMCloudStorage region name should not be present in the config parameters
+		// because the driver doesn't support it
+		if storageType == "IBMCloudStorage" && region != "" {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    fmt.Sprintf("%s does not support region_name as parameter", storageName),
+			}
+			errors = append(errors, newError)
+		}
 
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, region, accessKey,
 			secretKey, bucketName, token, isSecure, fgName); !ok {
