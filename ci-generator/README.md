@@ -166,6 +166,33 @@ Then regenerate:
 python3 generate.py
 ```
 
+## Syncing to openshift/release
+
+Merging a `ci-generator/matrix.yaml` change to `master` triggers the `Sync openshift CI configs` workflow (`.github/workflows/sync-ci-configs.yaml`). It regenerates the configs and copies the files listed in `managed_files` into `openshift/release`, deleting any previously-copied file that is no longer generated (for example one moved to `managed_files.retired`) from the release tree. It then regenerates Prow jobs and determinizes the ci-operator config (`make jobs` and `make ci-operator-config`), and opens or updates a PR on `openshift/release` from the fork configured in the `RELEASE_SYNC_FORK` repository variable. Nothing opens if the regenerated config and jobs are byte-identical to what is already in the release repo.
+
+The workflow comments the release PR link on the merged Quay PR; that comment is the primary way to find it. If the comment is missing, search https://github.com/openshift/release/pulls?q=is%3Apr+is%3Aopen+sync-quay-ci-config or look for a branch named `sync-quay-ci-config-quay-<quay PR number>`.
+
+After your matrix change merges:
+
+1. Follow the linked `openshift/release` PR.
+2. Comment `/pj-rehearse <job names>` (or the bare `/pj-rehearse` form the release repo supports) on the jobs the change touches. Read the changed job names from the PR's own diff under `ci-operator/jobs/quay/quay/` — `python3 generate.py --list` prints the matrix's short `AS` names, not the full Prow job names, so it is not a substitute.
+3. Wait for the rehearsal jobs to report on the PR, then comment `/pj-rehearse ack` (or open with `/pj-rehearse auto-ack` up front) to satisfy the `rehearsals-ack` label.
+4. Get `/lgtm` from a reviewer other than the change's author and `/approve` from an approver listed in the OWNERS file for `ci-operator/config/quay/quay` and `ci-operator/jobs/quay/quay` in `openshift/release`. Tide's merge query for this repo requires all three labels — `lgtm`, `approved`, `rehearsals-ack` — before it merges.
+
+If a rehearsal fails, fix it in `quay/quay`'s `matrix.yaml` and merge that fix — only a `matrix.yaml` change retriggers the sync automatically (see below); a template-only fix needs the manual `workflow_dispatch` path too. Because the fix lands as a new Quay PR, the workflow pushes a new branch (`sync-quay-ci-config-quay-<new PR number>`) and opens a second `openshift/release` PR rather than updating the first — close the stale PR, or rerun the workflow manually with `quay_pr_number` set to the original PR to update the same release PR in place. Never hand-edit the generated config in the release PR.
+
+A change to `ci-generator/templates/` or `generate.py` alone does not trigger the sync — only `ci-generator/matrix.yaml` is in the workflow's push paths filter. Run it by hand from the Actions tab (`Sync openshift CI configs` -> `Run workflow`), optionally passing the Quay PR number; it runs against whichever ref you pick.
+
+Verify locally before merging. Bare `python3 generate.py --check` always fails in this checkout because `ci-generator/out/` is gitignored and nothing generated is committed to compare against, so use the round-trip form instead:
+
+```bash
+OUT=$(mktemp -d)
+python3 generate.py --output "$OUT"
+python3 generate.py --check --output "$OUT"
+```
+
+For a `templates/` or `generate.py` change, the stronger check is generating from the pre-change and post-change trees into two temp directories and diffing them (`diff -r`).
+
 ## Tests
 
 ```bash

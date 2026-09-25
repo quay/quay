@@ -246,6 +246,8 @@ jobs:
 
           **Please review and merge:** ${RELEASE_PR_URL}
 
+          Not sure what the next steps are? See [ci-generator/README.md](https://github.com/quay/quay/blob/master/ci-generator/README.md#syncing-to-openshiftrelease) for how to follow, rehearse, and get this PR merged.
+
           Automated by [\`${WORKFLOW_NAME}\`](${WORKFLOW_RUN_URL}).
           EOF
           gh pr comment "$QUAY_PR_NUMBER" --repo "${GITHUB_REPOSITORY}" --body-file "${RUNNER_TEMP}/release-sync-comment.md"
