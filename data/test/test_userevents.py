@@ -67,3 +67,33 @@ def test_publish_event_through_shared_client():
             break
 
         listener.stop()
+
+
+def test_builder_with_engine_config():
+    """Verify UserEventBuilder routes engine-based config through create_redis_client."""
+    engine_config = {
+        "engine": "redis",
+        "redis_config": {"host": "localhost", "port": 6379},
+    }
+    with patch("data.userevent.create_redis_client") as mock_factory:
+        mock_factory.return_value = fakeredis.FakeStrictRedis()
+        builder = UserEventBuilder(engine_config)
+
+        mock_factory.assert_called_once_with(engine_config, default_timeout=2)
+        assert builder.client is mock_factory.return_value
+
+
+def test_listener_with_engine_config():
+    """Verify UserEventListener routes engine-based config through create_redis_client."""
+    engine_config = {
+        "engine": "redis",
+        "redis_config": {"host": "localhost", "port": 6379},
+    }
+    with patch("data.userevent.create_redis_client") as mock_factory:
+        mock_client = fakeredis.FakeStrictRedis()
+        mock_factory.return_value = mock_client
+        listener = UserEventListener(engine_config, "testuser", {"event1"})
+
+        mock_factory.assert_called_once_with(engine_config, default_timeout=5)
+        assert listener._redis is mock_client
+        listener.stop()

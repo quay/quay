@@ -5,6 +5,7 @@ Tests the main worker that processes Redis pull events.
 """
 
 import sys
+import time
 from typing import List, Set
 from unittest.mock import MagicMock, patch
 
@@ -1808,3 +1809,176 @@ def test_cleanup_redis_keys_general_exception_during_cleanup():
         keys = {"key1", "key2"}
         # Should handle error gracefully
         worker._cleanup_redis_keys(keys)
+
+
+class TestFlushWorkerEngineConfig:
+    """Tests covering the engine-based configuration path in RedisFlushWorker."""
+
+    def test_initialize_redis_client_with_engine_config(self):
+        """Verify _initialize_redis_client routes engine config through create_redis_client."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "PULL_METRICS_REDIS": {
+                    "engine": "redis",
+                    "redis_config": {"host": "redis.example.com", "port": 6379},
+                },
+                "REDIS_CONNECTION_TIMEOUT": 5,
+            }.get(key, default)
+
+            with patch(
+                "workers.pullstatsredisflushworker.create_redis_client"
+            ) as mock_factory:
+                mock_client = MagicMock()
+                mock_client.ping.return_value = True
+                mock_factory.return_value = mock_client
+
+                worker = RedisFlushWorker()
+
+                mock_factory.assert_called_once()
+                assert worker.redis_client is mock_client
+                assert worker._is_cluster is False
+
+    def test_initialize_redis_client_with_cluster_config(self):
+        """Verify cluster config sets _is_cluster flag and uses factory."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "PULL_METRICS_REDIS": {
+                    "engine": "rediscluster",
+                    "redis_config": {
+                        "startup_nodes": [{"host": "node1", "port": 6379}],
+                    },
+                },
+                "REDIS_CONNECTION_TIMEOUT": 5,
+            }.get(key, default)
+
+            with patch(
+                "workers.pullstatsredisflushworker.create_redis_client"
+            ) as mock_factory:
+                mock_client = MagicMock()
+                mock_client.ping.return_value = True
+                mock_factory.return_value = mock_client
+
+                worker = RedisFlushWorker()
+
+                mock_factory.assert_called_once()
+                assert worker.redis_client is mock_client
+                assert worker._is_cluster is True
+
+
+class TestFlushWorkerClusterScan:
+    """Tests covering the cluster scan_iter path in _scan_redis_keys."""
+
+    def test_scan_cluster_uses_scan_iter(self):
+        """Verify cluster mode uses scan_iter() instead of scan()."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            worker._is_cluster = True
+            mock_client = MagicMock()
+            mock_client.scan_iter.return_value = iter(
+                ["key1", "key2", "key3"]
+            )
+            worker.redis_client = mock_client
+
+            result = worker._scan_redis_keys("pull_events:*", 10)
+
+            assert set(result) == {"key1", "key2", "key3"}
+            mock_client.scan_iter.assert_called_once_with(
+                match="pull_events:*", count=100
+            )
+            mock_client.scan.assert_not_called()
+
+    def test_scan_cluster_respects_limit(self):
+        """Verify cluster scan stops at key limit."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            worker._is_cluster = True
+            mock_client = MagicMock()
+            mock_client.scan_iter.return_value = iter(
+                [f"key{i}" for i in range(100)]
+            )
+            worker.redis_client = mock_client
+
+            result = worker._scan_redis_keys("pull_events:*", 5)
+
+            assert len(result) == 5
+
+    def test_scan_cluster_respects_time_budget(self):
+        """Verify cluster scan stops when time budget is exhausted."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            worker._is_cluster = True
+            mock_client = MagicMock()
+
+            def slow_scan_iter(**kwargs):
+                for i in range(1000):
+                    yield f"key{i}"
+
+            mock_client.scan_iter.side_effect = slow_scan_iter
+            worker.redis_client = mock_client
+
+            with patch("workers.pullstatsredisflushworker.time") as mock_time:
+                mock_time.time = time.time
+                times = iter([0.0, 0.0, 0.0, 999.0])
+                mock_time.monotonic = lambda: next(times, 999.0)
+
+                result = worker._scan_redis_keys("pull_events:*", 10000)
+
+            assert len(result) < 1000
+
+
+class TestFlushWorkerCrossslotFallback:
+    """Tests covering the CROSSSLOT fallback in _process_redis_events."""
+
+    def test_crossslot_error_falls_back_to_inplace_read(self):
+        """Verify CROSSSLOT on RENAME falls back to reading key in-place."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            mock_client = MagicMock()
+            worker.redis_client = mock_client
+
+            mock_client.rename.side_effect = redis.ResponseError(
+                "CROSSSLOT Keys in request don't hash to the same slot"
+            )
+            mock_client.hgetall.return_value = {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "5",
+                "last_pull_timestamp": "1694168400",
+                "pull_method": "digest",
+            }
+
+            keys = ["pull_events:repo:123:digest:sha256:abc123"]
+            tag_updates, manifest_updates, db_dependent = worker._process_redis_events(keys)
+
+            assert len(manifest_updates) == 1
+            assert manifest_updates[0]["pull_count"] == 5
+            assert "pull_events:repo:123:digest:sha256:abc123" in db_dependent
+
+    def test_rename_nosuchkey_skips_key(self):
+        """Verify 'no such key' on RENAME is handled gracefully."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            mock_client = MagicMock()
+            worker.redis_client = mock_client
+
+            mock_client.rename.side_effect = redis.ResponseError(
+                "no such key"
+            )
+
+            keys = ["pull_events:repo:999:tag:latest:sha256:def"]
+            tag_updates, manifest_updates, db_dependent = worker._process_redis_events(keys)
+
+            assert len(tag_updates) == 0
+            assert len(manifest_updates) == 0
+            assert len(db_dependent) == 0
