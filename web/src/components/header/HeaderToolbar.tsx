@@ -387,7 +387,13 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
 
   const signInButton = <Button>{signInButtonText}</Button>;
 
-  const {unreadCount} = useAppNotifications();
+  const {unreadCount, additional} = useAppNotifications();
+  const notificationLabel =
+    unreadCount === 0
+      ? 'Notifications'
+      : additional
+      ? `Notifications, more than ${unreadCount}`
+      : `Notifications, ${unreadCount}`;
 
   return (
     <>
@@ -413,11 +419,13 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                     ? NotificationBadgeVariant.unread
                     : NotificationBadgeVariant.read
                 }
-                count={unreadCount}
+                count={additional ? undefined : unreadCount}
                 onClick={toggleDrawer}
-                aria-label="Notifications"
+                aria-label={notificationLabel}
                 data-testid="notification-bell"
-              />
+              >
+                {additional ? `${unreadCount}+` : undefined}
+              </NotificationBadge>
             </ToolbarItem>
             <ToolbarItem>{helpDropdown}</ToolbarItem>
             <ToolbarItem>
