@@ -36,7 +36,7 @@ test.describe(
             .getByRole('button', {name: 'Create API token'})
             .click();
           const createTokenModal = authenticatedPage.getByRole('dialog', {
-            name: 'Close Create robot API token',
+            name: 'Create robot API token',
           });
           await createTokenModal.getByLabel('Token name').fill('CI token');
           await createTokenModal

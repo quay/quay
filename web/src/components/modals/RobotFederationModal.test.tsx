@@ -3,6 +3,13 @@ import {RobotFederationModal} from './RobotFederationModal';
 
 const resourceMocks = vi.hoisted(() => ({
   fetchMintableScopes: vi.fn(),
+  federationConfig: [
+    {
+      issuer: 'https://issuer.example.com',
+      subject: 'robot-subject',
+      api_scopes: 'super:user',
+    },
+  ],
 }));
 
 vi.mock('src/resources/RobotsResource', async () => {
@@ -15,13 +22,7 @@ vi.mock('src/resources/RobotsResource', async () => {
 
 vi.mock('src/hooks/useRobotFederation', () => ({
   useRobotFederation: () => ({
-    robotFederationConfig: [
-      {
-        issuer: 'https://issuer.example.com',
-        subject: 'robot-subject',
-        api_scopes: 'super:user',
-      },
-    ],
+    robotFederationConfig: resourceMocks.federationConfig,
     loading: false,
     fetchError: null,
     setRobotFederationConfig: vi.fn(),
@@ -44,6 +45,13 @@ const props = {
 describe('RobotFederationModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resourceMocks.federationConfig = [
+      {
+        issuer: 'https://issuer.example.com',
+        subject: 'robot-subject',
+        api_scopes: 'super:user',
+      },
+    ];
     resourceMocks.fetchMintableScopes.mockResolvedValue(['repo:read']);
   });
 
@@ -72,5 +80,28 @@ describe('RobotFederationModal', () => {
       'testorg+robot',
       true,
     );
+  });
+
+  it('treats comma-separated scopes as individual scopes', async () => {
+    resourceMocks.federationConfig = [
+      {
+        issuer: 'https://issuer.example.com',
+        subject: 'robot-subject',
+        api_scopes: 'repo:read,repo:write',
+      },
+    ];
+    resourceMocks.fetchMintableScopes.mockResolvedValue([
+      'repo:read',
+      'repo:write',
+    ]);
+
+    render(<RobotFederationModal {...props} />);
+
+    expect(await screen.findByRole('button', {name: 'Save'})).toBeEnabled();
+    expect(
+      screen.queryByText(
+        /One or more configured scopes are no longer available to your account/,
+      ),
+    ).not.toBeInTheDocument();
   });
 });

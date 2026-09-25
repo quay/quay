@@ -95,7 +95,7 @@ function RobotFederationForm(props: RobotFederationFormProps) {
   );
   const hasInaccessibleScopes = federationFormState.some((config) =>
     config.api_scopes
-      ?.split(' ')
+      ?.split(/[ ,]+/)
       .filter(Boolean)
       .some((scope) => !mintableScopes.includes(scope)),
   );
@@ -224,7 +224,8 @@ function RobotFederationFormEntry({
   const normalizedAudiences = (config.audiences || ['quay']).join(', ');
   const [audienceText, setAudienceText] = useState(normalizedAudiences);
   const previousAudiences = useRef(normalizedAudiences);
-  const selectedScopes = config.api_scopes?.split(' ').filter(Boolean) || [];
+  const selectedScopes =
+    config.api_scopes?.split(/[ ,]+/).filter(Boolean) || [];
 
   useEffect(() => {
     if (normalizedAudiences !== previousAudiences.current) {
