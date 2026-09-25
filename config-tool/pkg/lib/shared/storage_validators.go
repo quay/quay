@@ -127,11 +127,13 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			errors = append(errors, err)
 		}
 
-		// apply the region name if available, else skip
 		var region string
-
-		if args.RegionName != "" {
-			region = args.RegionName
+		// apply the region name if available and only to RadosGWStorage/RHOCSStorage driver,
+		// skip IBM
+		if storageType == "RadosGWStorage" || storageType == "RHOCSStorage" {
+			if args.RegionName != "" {
+				region = args.RegionName
+			}
 		}
 
 		// Grab necessary variables
@@ -151,9 +153,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		log.Debugf("Storage parameters: ")
-		log.Debugf("hostname: %s, region (if available): %s, bucket name: %s, TLS enabled: %t", endpoint, region, bucketName, isSecure)
+		log.Debugf("hostname: %s, region (if available): %s, bucket name: %s, TLS enabled: %t",
+			endpoint, region, bucketName, isSecure)
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, region, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, region, accessKey,
+			secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
