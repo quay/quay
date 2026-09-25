@@ -5,7 +5,7 @@ import pytest
 
 from auth.scopes import READ_REPO
 from data import model
-from data.database import APIToken, LogEntryKind, OAuthAccessToken
+from data.database import APIToken, LogEntryKind, OAuthAccessToken, RobotAccountToken
 from data.model import api_token
 from data.model.oauth import DatabaseAuthorizationProvider
 from test.fixtures import *
@@ -62,6 +62,22 @@ def test_robot_api_token_is_owned_by_robot_and_tracks_creator(initialized_db):
     tokens, next_page = api_token.list_tokens(robot)
     assert tokens == []
     assert next_page is None
+
+
+def test_static_robot_token_rotation_preserves_api_tokens(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, original_static_token = model.user.create_robot("rotated-api-token", creator)
+    token, api_token_secret = api_token.create_token_under_limit(
+        robot, creator, READ_REPO.scope, 3600, "CI token"
+    )
+
+    _, rotated_static_token, _ = model.user.regenerate_robot_token("rotated-api-token", creator)
+
+    persisted_static_token = RobotAccountToken.get(robot_account=robot)
+    assert rotated_static_token != original_static_token
+    assert persisted_static_token.token.matches(rotated_static_token)
+    assert not persisted_static_token.token.matches(original_static_token)
+    assert api_token.validate_token(api_token_secret).uuid == token.uuid
 
 
 def test_robot_api_tokens_support_pagination(initialized_db):

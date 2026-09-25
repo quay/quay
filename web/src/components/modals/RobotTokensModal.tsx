@@ -18,6 +18,10 @@ import {
 } from '@patternfly/react-core';
 import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
 import {useState} from 'react';
+import KubernetesIcon from 'src/assets/kubernetes.svg';
+import KubernetesGreyIcon from 'src/assets/kubernetes-grey.svg';
+import PodmanIcon from 'src/assets/podman.svg';
+import PodmanGreyIcon from 'src/assets/podman-grey.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -225,7 +229,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             </Content>
             <br />
             <Alert
-              title="Note that once you regenerate token, all existing logins of this robot account will become invalid."
+              title="Regenerating replaces only this robot's static push/pull token. Robot API tokens remain valid and must be revoked separately. Previously issued registry sessions may remain valid until they expire."
               variant="warning"
               isPlain
               isInline
@@ -246,11 +250,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <>
               <TabTitleIcon>
                 <img
-                  src={require(
-                    activeTabKey == 1
-                      ? 'src/assets/kubernetes.svg'
-                      : 'src/assets/kubernetes-grey.svg',
-                  )}
+                  src={activeTabKey == 1 ? KubernetesIcon : KubernetesGreyIcon}
                 />
               </TabTitleIcon>
               <TabTitleText>Kubernetes</TabTitleText>
@@ -363,13 +363,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           title={
             <>
               <TabTitleIcon>
-                <img
-                  src={require(
-                    activeTabKey == 2
-                      ? 'src/assets/podman.svg'
-                      : 'src/assets/podman-grey.svg',
-                  )}
-                />
+                <img src={activeTabKey == 2 ? PodmanIcon : PodmanGreyIcon} />
               </TabTitleIcon>
               <TabTitleText>Podman</TabTitleText>
             </>
