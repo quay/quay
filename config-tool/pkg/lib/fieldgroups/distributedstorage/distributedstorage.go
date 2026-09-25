@@ -142,10 +142,13 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
-	if value, ok := storageArgs["region_name"]; ok {
-		newDistributedStorageArgs.RegionName, ok = value.(string)
+	if value, ok := storageArgs["region_name"]; ok && value != nil {
+		str, ok := value.(string)
 		if !ok {
 			return newDistributedStorageArgs, errors.New("region_name must be of type string")
+		}
+		if str != "" {
+			newDistributedStorageArgs.RegionName = str
 		}
 	}
 
