@@ -3522,7 +3522,7 @@ def test_push_new_blob_while_blob_delete_lock_held(
     v22_protocol, liveserver_session, liveserver, registry_server_executor, app_reloader
 ):
     """Test: Committing a new blob while another holder has its BLOB_DELETE lock fails with a
-    retryable 5xx within the bound instead of stalling or creating the blob unlocked, and a retry
+    retryable 503 within the bound instead of stalling or creating the blob unlocked, and a retry
     after the lock is released succeeds."""
     credentials = ("devtable", "password")
     blob_bytes = layer_bytes_for_contents(b"blob delete lock contents")
@@ -3568,7 +3568,8 @@ def test_push_new_blob_while_blob_delete_lock_held(
     assert executor.hold_blob_lock(digest, 60).status_code == 200
 
     start = time.time()
-    upload_blob(500)
+    response = upload_blob(503)
+    assert response.json()["errors"][0]["code"] == "UNAVAILABLE"
     assert time.time() - start < 20
 
     v22_protocol.conduct(
