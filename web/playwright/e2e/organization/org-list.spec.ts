@@ -407,6 +407,30 @@ test.describe(
         );
 
         test(
+          'shows organization management tabs to full-access superusers',
+          {tag: ['@superuser', '@PROJQUAY-10152']},
+          async ({superuserPage, api}) => {
+            const org = await api.organization('superuserorg');
+            await superuserPage.goto(`/organization/${org.name}`);
+            await expect(
+              superuserPage.getByRole('heading', {name: org.name, exact: true}),
+            ).toBeVisible();
+
+            for (const tabName of [
+              'Teams and membership',
+              'Robot accounts',
+              'Default permissions',
+              'OAuth Applications',
+              'Logs',
+              'Settings',
+            ]) {
+              await expect(
+                superuserPage.getByRole('tab', {name: tabName, exact: true}),
+              ).toBeVisible();
+            }
+          },
+        );
+        test(
           'shows user orgs when superuser API fails',
           {tag: '@superuser'},
           async ({superuserPage, superuserApi}) => {
