@@ -1,5 +1,6 @@
 import logging
 from collections import namedtuple
+from contextvars import ContextVar
 
 from cachetools.func import lru_cache
 from peewee import SQL, IntegrityError
@@ -24,7 +25,7 @@ from data.model import (
     config,
     db_transaction,
 )
-from util.locking import GlobalLock, LockNotAcquiredException
+from util.locking import GlobalLock, LockAcquireTimeout, LockNotAcquiredException
 from util.metrics.prometheus import gc_storage_blobs_deleted, gc_table_rows_deleted
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,16 @@ _Location = namedtuple("_Location", ["id", "name"])
 
 EMPTY_LAYER_BLOB_DIGEST = "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
 SPECIAL_BLOB_DIGESTS = set([EMPTY_LAYER_BLOB_DIGEST])
+
+# Total seconds a blob writer waits for a contended BLOB_DELETE lock before giving up.
+BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT = 3
+
+# Why with_blob_lock_or_fallback is running func without the BLOB_DELETE lock (None while it holds
+# the lock). func only receives skip_lock=True either way, so get_or_create_blob_with_lock reads
+# this to decide whether it may create a missing blob.
+_BLOB_LOCK_TIMED_OUT = "timed_out"
+_BLOB_LOCK_UNAVAILABLE = "unavailable"
+_blob_lock_fallback = ContextVar("blob_lock_fallback", default=None)
 
 
 @lru_cache(maxsize=1)
@@ -307,12 +318,13 @@ def _get_storage(query_modifier):
 
 def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
     """
-    Execute a function with GlobalLock protection, falling back to per-operation locking if unavailable.
+    Execute a function under the BLOB_DELETE GlobalLock, or without a lock if it cannot be
+    acquired within BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT.
 
     This helper consolidates the common pattern of:
-    1. Try to acquire GlobalLock for blob deletion coordination (outer lock)
-    2. Execute func with skip_lock=True (caller holds lock)
-    3. If outer lock acquisition fails, execute func with skip_lock=False (per-operation locking)
+    1. Try to acquire GlobalLock for blob deletion coordination (outer lock), bounded by
+       BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT
+    2. Execute func with skip_lock=True (caller holds, or has already given up on, the lock)
 
     The primary purpose is to coordinate with garbage collection (GC) to prevent the race condition
     where GC deletes a blob from object storage while another operation is creating database entries
@@ -327,24 +339,44 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
         Result of func()
 
     Fallback behavior:
-        If the global lock is unavailable (e.g., GC holds it or Redis is down), the function
-        delegates locking to the called function by passing skip_lock=False. This allows the
-        operation to proceed with per-operation locking. If Redis is completely unavailable,
-        the final fallback is lockless creation, which means the race condition can *still*
-        happen, but the window is extremely narrow. In this scenario, database uniqueness
-        constraints provide the ultimate safety guarantee. This lockless creation is the same
-        as the logic that existed before the race condition fix.
+        func is still called with skip_lock=True, so it does not re-attempt the same
+        BLOB_DELETE_<digest> lock.
+
+        If another holder (e.g., GC) still has the lock after BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT, func
+        may use an existing blob, but a missing one is not created: LockAcquireTimeout is raised
+        and the registry returns a 5xx that clients retry. GC could be removing that blob's object
+        from storage right now.
+
+        If Redis is unavailable, func may also create a missing blob without the lock. The race
+        condition can *still* happen then, but the window is extremely narrow, and database
+        uniqueness constraints provide the ultimate safety guarantee. This lockless creation is
+        the same as the logic that existed before the race condition fix.
+
+        The fallback state is communicated to func via a ContextVar, so it only applies to
+        digests that func creates by calling get_or_create_blob_with_lock(skip_lock=True); a
+        func that creates blobs some other way is not covered by this fallback behavior.
     """
     try:
-        with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+        with GlobalLock(
+            f"BLOB_DELETE_{digest}",
+            lock_ttl=30,
+            blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
+        ):
             return func(*args, skip_lock=True, **kwargs)
+    except LockAcquireTimeout:
+        fallback = _BLOB_LOCK_TIMED_OUT
     except LockNotAcquiredException as e:
         logger.warning("Could not acquire lock for blob %s: %s", digest, e)
-        logger.warning("Falling back to per-operation locking.")
-        return func(*args, skip_lock=False, **kwargs)
+        fallback = _BLOB_LOCK_UNAVAILABLE
+
+    token = _blob_lock_fallback.set(fallback)
+    try:
+        return func(*args, skip_lock=True, **kwargs)
+    finally:
+        _blob_lock_fallback.reset(token)
 
 
-def _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs):
+def _get_or_create_blob_with_lock(digest, lock_acquired=True, may_create=True, **blob_attrs):
     """
     Gets or creates the ImageStorage reference for the provided blob digest. If the reference to the blob
     does not exists in storage, we attempt to create it. If during creation an integrity error is raised (meaning
@@ -353,8 +385,13 @@ def _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs):
     try:
         return ImageStorage.get(content_checksum=digest)
     except ImageStorage.DoesNotExist:
+        if not may_create:
+            raise LockAcquireTimeout(
+                "BLOB_DELETE_%s is held elsewhere; not creating blob %s without it"
+                % (digest, digest)
+            )
         if not lock_acquired:
-            logger.warning("Creating blob %s without lock as fallback", digest)
+            logger.warning("Blob %s: proceeding without lock", digest)
         try:
             return ImageStorage.create(content_checksum=digest, **blob_attrs)
         except IntegrityError as e:
@@ -372,24 +409,39 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
 
     Args:
         digest: The blob digest (e.g., "sha256:abc123...")
-        skip_lock: If False (default), acquire a lock inside this function. If True, assume that the lock
-        is already held by the caller function.
+        skip_lock: If False (default), acquire a lock inside this function. If True, do not acquire
+        the lock (the caller holds it or has already given up on it).
         **blob_attrs: Additional attributes to pass to ImageStorage.create() if creating
 
     Returns:
         ImageStorage object (either existing or newly created)
     """
     if skip_lock:
-        # Caller function holds the lock so we don't need to create a new one
-        return _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs)
+        fallback = _blob_lock_fallback.get()
+        return _get_or_create_blob_with_lock(
+            digest,
+            lock_acquired=fallback is None,
+            may_create=fallback != _BLOB_LOCK_TIMED_OUT,
+            **blob_attrs,
+        )
     if GlobalLock.lock_factory is None:
         # No locking configured, proceed without lock
         return _get_or_create_blob_with_lock(digest, lock_acquired=False, **blob_attrs)
     try:
-        with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+        with GlobalLock(
+            f"BLOB_DELETE_{digest}",
+            lock_ttl=30,
+            blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
+        ):
             # If multiple workers try to create a blob at the same time, we must ensure that blob creation doesn't
             # fail. Otherwise, push will fail.
             return _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs)
+    except LockAcquireTimeout:
+        # Another holder (e.g. GC) still has the lock: use an existing blob, but do not create a
+        # missing one while that holder may be removing its object from storage.
+        return _get_or_create_blob_with_lock(
+            digest, lock_acquired=False, may_create=False, **blob_attrs
+        )
     except LockNotAcquiredException:
         # If we cannot acquire a lock, check if we have the ImageStorage entries for the provided
         # digest. If that reading fails, then create new entries in the table anyway but report

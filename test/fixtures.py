@@ -52,7 +52,7 @@ class MockGlobalLock:
 
     lock_factory = object()  # Non-None to pass checks
 
-    def __init__(self, name, lock_ttl=600, auto_renewal=False):
+    def __init__(self, name, lock_ttl=600, auto_renewal=False, blocking_timeout=None):
         self._lock_name = name
 
     def __enter__(self):
