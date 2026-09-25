@@ -54,6 +54,11 @@ export function TagsToolbar(props: ToolBarProps) {
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    props.setPage(1);
+  };
+
   // Filter selected tags to get only mutable ones for bulk immutability
   const selectedMutableTags = selectedTags.filter((tagName) => {
     const tag = props.TagList.find((t) => t.name === tagName);
@@ -223,13 +228,13 @@ export function TagsToolbar(props: ToolBarProps) {
         />
         <SearchDropdown
           searchState={search}
-          setSearchState={setSearch}
+          setSearchState={handleSearchChange}
           items={[ColumnNames.name, ColumnNames.digest]}
         />
         <FilterInput
           id="tagslist-search-input"
           searchState={search}
-          onChange={setSearch}
+          onChange={handleSearchChange}
         />
         <ToolbarItem>
           <Dropdown
