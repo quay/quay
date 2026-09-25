@@ -74,7 +74,8 @@ def handle_pushes_disabled(error):
     return _format_error_response(PushesDisabled())
 
 
-@v2_bp.app_errorhandler(MaxConnectionsExceeded)
+# only register on v2 blueprint instead of app wide
+@v2_bp.errorhandler(MaxConnectionsExceeded)
 def handle_max_connections_exceeded(error):
     logger.exception(error)
     response = _format_error_response(MaxConnExceeded())
