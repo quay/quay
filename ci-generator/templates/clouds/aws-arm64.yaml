@@ -1,0 +1,4 @@
+tests:
+- steps:
+    env:
+      COMPUTE_NODE_TYPE: m6g.4xlarge

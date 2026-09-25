@@ -12,10 +12,13 @@ images:
   items:
   - dockerfile_path: Dockerfile
     to: quay-server
+{% if arch != "amd64" %}
+    capabilities: [arm64]
+{% endif %}
   - dockerfile_path: web/Containerfile.playwright
     to: quay-playwright-runner
   skip_if_only_changed: ^(\.agents/|\.claude/|ci-generator/|docs/|.*\.md$)
-{% if layout == "base" %}
+{% if layout == "base" and arch == "amd64" %}
 promotion:
   to:
   - namespace: quay
@@ -27,7 +30,7 @@ prowgen:
 releases:
   latest:
     candidate:
-      architecture: "{{ arch }}"
+      architecture: amd64
       product: ocp
       stream: nightly
       version: "{{ ocp_version }}"
@@ -47,4 +50,6 @@ zz_generated_metadata:
   repo: "{{ repo }}"
 {% if layout != "base" %}
   variant: "{{ variant }}"
+{% elif arch != "amd64" %}
+  variant: "{{ arch }}"
 {% endif %}

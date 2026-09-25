@@ -128,7 +128,7 @@ def test_cell_settings_overwrite_as_and_env() -> None:
 
 def test_periodic_names_use_cloud_storage_source() -> None:
     generated, _retired = generate_all()
-    assert len(generated) == 4
+    assert len(generated) == 5
     group, _filename, config = next(
         g for g in generated if g[0][0].branch == "redhat-3.18" and g[0][0].ocp_version == "4.22"
     )
