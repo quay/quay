@@ -11,7 +11,31 @@ from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.model import InvalidRobotCredentialException, InvalidRobotException
 from test.fixtures import *
-from util.security.federated_robot_auth import validate_federated_auth
+from util.security.federated_robot_auth import (
+    parse_federated_robot_resource,
+    resolve_federation_scope,
+    validate_federated_auth,
+)
+
+
+def test_parse_federated_robot_resource_requires_robot_urn():
+    assert parse_federated_robot_resource("urn:quay:robot:devtable+ci") == "devtable+ci"
+    with pytest.raises(InvalidRobotCredentialException, match="resource"):
+        parse_federated_robot_resource("devtable+ci")
+
+
+@pytest.mark.parametrize("resource", ["", "urn:quay:robot:", "urn:quay:user:devtable"])
+def test_parse_federated_robot_resource_rejects_invalid_resource(resource):
+    with pytest.raises(InvalidRobotCredentialException, match="resource"):
+        parse_federated_robot_resource(resource)
+
+
+def test_resolve_federation_scope_allows_only_binding_subset():
+    binding = {"api_scopes": "repo:read repo:write"}
+    assert resolve_federation_scope(binding, "repo:read") == "repo:read"
+    assert resolve_federation_scope(binding, None) == "repo:read repo:write"
+    with pytest.raises(InvalidRobotCredentialException, match="scope"):
+        resolve_federation_scope(binding, "super:user")
 
 
 def test_validate_federated_robot_auth_bad_header(app):

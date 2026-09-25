@@ -621,15 +621,18 @@ def regenerate_robot_token(robot_shortname, parent):
     return robot, password, metadata
 
 
-def generate_temp_robot_jwt_token(instance_keys, api_scopes=None, federation_binding=None):
-    context, subject = build_context_and_subject(get_authenticated_context())
+def generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federation_binding):
+    """Mints a short-lived Quay JWT for a validated federated robot."""
+    from auth.auth_context_type import ValidatedAuthContext
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(robot=robot))
     audience_param = config.app_config["SERVER_HOSTNAME"]
     additional_claims = {}
     if api_scopes:
         additional_claims["api_scopes"] = api_scopes
         additional_claims["federation_binding_id"] = federation_binding["id"]
         additional_claims["federation_binding_version"] = federation_binding["version"]
-    token = generate_bearer_token(
+    return generate_bearer_token(
         audience_param,
         subject,
         context,
@@ -638,7 +641,13 @@ def generate_temp_robot_jwt_token(instance_keys, api_scopes=None, federation_bin
         instance_keys,
         additional_claims,
     )
-    return token
+
+
+def generate_temp_robot_jwt_token(instance_keys, api_scopes=None, federation_binding=None):
+    """Mints a short-lived JWT for the robot authenticated in the current request."""
+    robot = get_authenticated_context().robot
+    assert robot
+    return generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federation_binding)
 
 
 def delete_robot(robot_username):
