@@ -64,8 +64,15 @@ trusting the snapshot below.
   ```
   Read the tier off the subjects: a `feat` subject means regular backports;
   fixes/CVE/dependency/changelog only means critical/security fixes only; no
-  commits means dormant. As of 2026-09-20: `redhat-3.15`-`redhat-3.18` take
-  regular backports; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
+  commits means dormant. The lifecycle API is the authoritative tier check,
+  not this heuristic:
+  ```
+  curl -s 'https://access.redhat.com/product-life-cycles/api/v1/products?name=Red%20Hat%20Quay' | jq -c '.data[].versions[] | {name, type}'
+  ```
+  As of 2026-09-25: `redhat-3.17`/`redhat-3.18` (Full Support) take regular
+  backports; `redhat-3.15`/`redhat-3.16` (Maintenance Support) take only
+  critical/important security fixes and urgent or selected high-priority bug
+  fixes; `redhat-3.9`, `redhat-3.10`, `redhat-3.12`, `redhat-3.13`,
   `redhat-3.14` receive critical/security fixes only; `redhat-3.11` is
   dormant.
 - When backporting, target the branches fixVersions names: map

@@ -40,6 +40,10 @@ Never hardcode the range; it rots. Use the sync check and activity check in
   sync/activity determination above, or fixVersions is empty, stop for a
   maintainer decision and get Jira corrected before firing the cascade.
   NO-ISSUE changes keep the sync/activity rule above unchanged.
+- Check the branch's lifecycle phase (workflow.md → Release Branch Model): a
+  Maintenance Support branch takes only a Critical/Important security fix or
+  an urgent or selected high-priority bug fix — otherwise drop it, and for a
+  PROJQUAY change whose fixVersions names it, get a maintainer call.
 
 ## 2. Survey for missing predecessors before firing anything
 
@@ -111,7 +115,8 @@ caveat below):
 2. After that PR merges: `/jira backport redhat-3.17` on the 3.18 PR.
 3. After that PR merges: `/jira backport redhat-3.16` on the 3.17 PR.
 
-(Branch names as of 2026-09-20; determine yours with step 1.)
+(Branch names as of 2026-09-20; determine yours with step 1. `redhat-3.16` is
+Maintenance Support — port to it only if the change qualifies, per step 1.)
 
 - One branch per comment. A multi-branch comment chains automatically, but a
   failure comment lands on the intermediate PR it opened, not the one you
