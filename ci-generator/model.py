@@ -89,18 +89,26 @@ class Cell:
 
     @property
     def variant(self) -> str:
-        return f"{self.cloud}-ocp{self.ocp_version_nodot}-{self.test}"
+        cloud = self.cloud if self.arch == "amd64" else f"{self.cloud}-{self.arch}"
+        return f"{cloud}-ocp{self.ocp_version_nodot}-{self.test}"
 
     @property
     def test_as(self) -> str:
-        if self.kind == "periodic":
-            return f"{self.cloud}-{self.storage}-{self.source}"
-        return f"{self.cloud}-{self.storage}"
+        base = (
+            f"{self.cloud}-{self.storage}-{self.source}"
+            if self.kind == "periodic"
+            else f"{self.cloud}-{self.storage}"
+        )
+        if self.arch == "amd64":
+            return base
+        return f"{base}-{self.arch}"
 
     @property
     def filename(self) -> str:
         if self.layout == "base":
-            return f"{self.org}-{self.repo}-{self.branch}.yaml"
+            if self.arch == "amd64":
+                return f"{self.org}-{self.repo}-{self.branch}.yaml"
+            return f"{self.org}-{self.repo}-{self.branch}__{self.arch}.yaml"
         return f"{self.org}-{self.repo}-{self.branch}__{self.variant}.yaml"
 
     def context(self) -> dict[str, Any]:

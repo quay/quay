@@ -59,6 +59,7 @@ JOB_KEYS = {
     "test",
     "ocp",
     "clouds",
+    "arches",
     "env",
     "as",
     "always_run",
@@ -66,6 +67,7 @@ JOB_KEYS = {
     "run_if_changed",
     "skip_if_only_changed",
 }
+ALLOWED_ARCHES = {"amd64", "arm64"}
 TRIGGER_FIELDS = ("always_run", "optional", "run_if_changed", "skip_if_only_changed")
 GENERATED_HEADER = """\
 # =============================================================================
@@ -161,6 +163,22 @@ def _as_str_list(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in value]
     return [str(value)]
+
+
+def _job_arches_field(job: YamlMap, default_arch: str, where: str) -> list[str]:
+    if "arches" not in job:
+        return [default_arch]
+    value = job.get("arches")
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{where}.arches must be a non-empty list of strings")
+    arches = [str(item) for item in value]
+    if len(set(arches)) != len(arches):
+        raise ValueError(f"{where}.arches must not contain duplicates")
+    unknown = sorted(set(arches) - ALLOWED_ARCHES)
+    if unknown:
+        keys = ", ".join(unknown)
+        raise ValueError(f"{where}.arches has unsupported values: {keys}")
+    return arches
 
 
 def _as_mapping(value: Any, where: str) -> YamlMap:
@@ -278,7 +296,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
         raise ValueError("global_defaults must be a mapping")
 
     org, repo = _parse_github_repo(str(defaults.get("repo") or "quay/quay"))
-    arch = str(defaults.get("arch") or "amd64")
+    default_arch = str(defaults.get("arch") or "amd64")
     image_source = str(defaults.get("image_source") or "build")
 
     cells: list[Cell] = []
@@ -316,6 +334,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             test = str(job.get("test") or "")
             ocps = _as_str_list(job.get("ocp"))
             clouds = _as_str_list(job.get("clouds"))
+            arches = _job_arches_field(job, default_arch, where)
             if not test or not ocps or not clouds:
                 raise ValueError(f"{where} is missing test, ocp, or clouds")
             always_run = _job_bool_field(job, "always_run", where)
@@ -370,7 +389,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
             job_env = copy.deepcopy(_as_mapping(job.get("env"), f"{where}.env"))
             merged_env = {**branch_env, **job_env}
             as_name = _job_as_name(job, where)
-            for ocp, cloud in itertools.product(ocps, clouds):
+            for ocp, cloud, job_arch in itertools.product(ocps, clouds, arches):
                 cells.append(
                     Cell(
                         org=org,
@@ -382,7 +401,7 @@ def expand_cells(matrix: YamlMap) -> list[Cell]:
                         test=test,
                         cron=cron,
                         source=source,
-                        arch=arch,
+                        arch=job_arch,
                         image_source=image_source,
                         env=copy.deepcopy(merged_env),
                         as_name=as_name,
@@ -450,6 +469,9 @@ def build_config(cell: Cell, templates_dir: Path) -> YamlMap:
     if cell.kind == "periodic":
         layers.append(render_template(env, f"sources/{cell.source}.yaml", context))
     layers.append(render_template(env, cloud_template, context))
+    if cell.arch != "amd64":
+        layers.append(render_template(env, f"arches/{cell.arch}.yaml", context))
+        layers.append(render_template(env, f"clouds/{cell.cloud}-{cell.arch}.yaml", context))
     layers.append(render_template(env, f"tests/{cell.test}.yaml", context))
     presubmit_test_template = f"{template_root}tests/{cell.test}.yaml"
     if template_root and (templates_dir / presubmit_test_template).exists():
@@ -588,7 +610,7 @@ def generate_all(
 
 
 def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
-    headers = ("QUAY", "KIND", "OCP", "CLOUD", "TEST", "CRON", "SOURCE", "FILE", "AS")
+    headers = ("QUAY", "KIND", "OCP", "CLOUD", "ARCH", "TEST", "CRON", "SOURCE", "FILE", "AS")
     rows: list[tuple[str, ...]] = [headers]
     for group, filename, config in results:
         for cell, test in zip(group, config["tests"], strict=True):
@@ -599,6 +621,7 @@ def _print_list(results: list[tuple[list[Cell], str, YamlMap]]) -> None:
                     cell.kind,
                     cell.ocp_version,
                     cell.cloud,
+                    cell.arch,
                     cell.test,
                     cell.cron or "-",
                     cell.source or "-",

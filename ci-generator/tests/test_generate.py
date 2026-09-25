@@ -30,6 +30,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / PHASE0_NAME
 MASTER_NAME = "quay-quay-master.yaml"
 MASTER_FIXTURE = Path(__file__).parent / "fixtures" / MASTER_NAME
 MIXED_DIR = Path(__file__).parent / "fixtures" / "mixed"
+ARM64_CANARY_NAME = "quay-quay-redhat-3.18__aws-arm64-ocp422-e2e-install.yaml"
+ARM64_CANARY_FIXTURE = Path(__file__).parent / "fixtures" / ARM64_CANARY_NAME
 
 
 def _phase0_results() -> list[tuple[list[Cell], str, dict[str, Any]]]:
@@ -65,21 +67,27 @@ def test_expand_matrix_cells() -> None:
             cell.test,
             cell.cron,
             cell.kind,
+            cell.arch,
         )
         for cell in cells
     } == {
-        ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "@daily", "periodic"),
-        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "@daily", "periodic"),
-        ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "@weekly", "periodic"),
-        (None, "master", "aws", "4.22", "e2e-install", None, "presubmit"),
-        (None, "master", "gcp", "4.22", "e2e-install", None, "presubmit"),
+        ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "@daily", "periodic", "amd64"),
+        ("3.18", "redhat-3.18", "gcp", "4.22", "e2e-install", "@daily", "periodic", "amd64"),
+        ("3.18", "redhat-3.18", "aws", "5.0", "e2e-install", "@weekly", "periodic", "amd64"),
+        ("3.18", "redhat-3.18", "aws", "4.22", "e2e-install", "@weekly", "periodic", "arm64"),
+        (None, "master", "aws", "4.22", "e2e-install", None, "presubmit", "amd64"),
+        (None, "master", "gcp", "4.22", "e2e-install", None, "presubmit", "amd64"),
     }
-    cell = next(c for c in cells if c.branch == "redhat-3.18")
+    cell = next(c for c in cells if c.branch == "redhat-3.18" and c.arch == "amd64")
     assert cell.filename == PHASE0_NAME
     assert cell.arch == "amd64"
     assert cell.as_name is None
     assert cell.test_as == "aws-s3-nightly"
     assert "PLAYWRIGHT_GREP_INVERT" not in cell.env
+
+    arm_cell = next(c for c in cells if c.branch == "redhat-3.18" and c.arch == "arm64")
+    assert arm_cell.filename == "quay-quay-redhat-3.18__aws-arm64-ocp422-e2e-install.yaml"
+    assert arm_cell.test_as == "aws-s3-nightly-arm64"
 
     master_cell = next(c for c in cells if c.branch == "master")
     assert master_cell.filename == MASTER_NAME
@@ -296,6 +304,28 @@ def test_golden_master_bytes() -> None:
     }
     assert "variant" not in config["zz_generated_metadata"]
     assert test["steps"]["dependencies"] == {"QUAY_CI_IMAGE": "pipeline:quay-server"}
+
+
+def test_golden_redhat_318_arm64_canary_bytes() -> None:
+    results, _retired = generate_all()
+    by_name = {filename: config for _group, filename, config in results}
+    assert ARM64_CANARY_NAME in by_name
+    config = by_name[ARM64_CANARY_NAME]
+    dumped = dump_config(config)
+    assert dumped == ARM64_CANARY_FIXTURE.read_text()
+    assert dumped.startswith(GENERATED_HEADER)
+
+    test = config["tests"][0]
+    assert test["as"] == "aws-s3-nightly-arm64"
+    assert test["cron"] == "@weekly"
+    assert test["steps"]["dependencies"] == {
+        "OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE": "release:arm64-latest"
+    }
+    assert test["steps"]["env"]["COMPUTE_NODE_TYPE"] == "m6g.4xlarge"
+    assert test["steps"]["env"]["OCP_ARCH"] == "arm64"
+    assert config["releases"]["latest"]["candidate"]["architecture"] == "amd64"
+    assert config["releases"]["arm64-latest"]["candidate"]["architecture"] == "arm64"
+    assert config["zz_generated_metadata"]["variant"] == "aws-arm64-ocp422-e2e-install"
 
 
 def test_master_presubmit_expands_both_clouds() -> None:
@@ -887,3 +917,162 @@ def test_master_context_has_no_quay_version_key() -> None:
     context = master_cell.context()
     for key in ("quay_version", "quay_version_dashed", "operator_channel", "index_image_repo"):
         assert key not in context
+
+
+def test_arches_default_to_global_default() -> None:
+    matrix = _matrix_with_job(
+        {
+            "cron": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+        }
+    )
+    cells = expand_cells(matrix)
+    assert [cell.arch for cell in cells] == ["amd64"]
+
+
+def test_arches_list_doubles_cells() -> None:
+    matrix = _matrix_with_job(
+        {
+            "cron": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+            "arches": ["amd64", "arm64"],
+        }
+    )
+    cells = expand_cells(matrix)
+    assert {cell.arch for cell in cells} == {"amd64", "arm64"}
+    assert len(cells) == 2
+
+
+def test_arches_rejects_empty_list() -> None:
+    matrix = _matrix_with_job(
+        {
+            "cron": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+            "arches": [],
+        }
+    )
+    with pytest.raises(ValueError, match="arches must be a non-empty list"):
+        expand_cells(matrix)
+
+
+def test_arches_rejects_unsupported_value() -> None:
+    matrix = _matrix_with_job(
+        {
+            "cron": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+            "arches": ["ppc64le"],
+        }
+    )
+    with pytest.raises(ValueError, match="unsupported values"):
+        expand_cells(matrix)
+
+
+def test_arches_rejects_duplicates() -> None:
+    matrix = _matrix_with_job(
+        {
+            "cron": "daily",
+            "source": "nightly",
+            "clouds": ["aws"],
+            "ocp": ["4.22"],
+            "test": "e2e-install",
+            "arches": ["arm64", "arm64"],
+        }
+    )
+    with pytest.raises(ValueError, match="must not contain duplicates"):
+        expand_cells(matrix)
+
+
+def test_missing_arch_layer_raises() -> None:
+    cell = _phase0_cell(arch="ppc64le")
+    with pytest.raises(ValueError, match="failed to render template arches/ppc64le.yaml"):
+        build_config(cell, GENERATOR_DIR / "templates")
+
+
+def test_missing_cloud_arch_overlay_raises() -> None:
+    cell = _phase0_cell(cloud="gcp", arch="arm64")
+    with pytest.raises(ValueError, match="failed to render template clouds/gcp-arm64.yaml"):
+        build_config(cell, GENERATOR_DIR / "templates")
+
+
+def test_list_includes_arch_header_and_values(capsys: object) -> None:
+    results, _retired = generate_all()
+    _print_list(results)
+    out = capsys.readouterr().out  # type: ignore[attr-defined]
+    lines = out.splitlines()
+    arch_idx = lines[0].split().index("ARCH")
+    arches = {line.split()[arch_idx] for line in lines[1:]}
+    assert arches == {"amd64", "arm64"}
+
+
+MASTER_ARM64_NAME = "quay-quay-master__arm64.yaml"
+MASTER_ARM64_FIXTURE = Path(__file__).parent / "fixtures" / MASTER_ARM64_NAME
+
+
+def test_master_arm64_variant_without_promotion(tmp_path: Path) -> None:
+    filename = MASTER_ARM64_NAME
+    matrix = {
+        "version": 2,
+        "global_defaults": {"image_source": "build", "arch": "amd64", "repo": "quay/quay"},
+        "managed_files": {"active": [filename], "retired": []},
+        "quay": [
+            {
+                "branch": "master",
+                "layout": "base",
+                "jobs": [
+                    {
+                        "kind": "presubmit",
+                        "clouds": ["aws"],
+                        "ocp": ["4.22"],
+                        "test": "e2e-install",
+                        "arches": ["arm64"],
+                        "always_run": False,
+                        "optional": True,
+                    }
+                ],
+            }
+        ],
+    }
+    matrix_path = tmp_path / "matrix.yaml"
+    matrix_path.write_text(yaml.dump(matrix))
+    results, _retired = generate_all(
+        matrix_path=matrix_path, templates_dir=GENERATOR_DIR / "templates"
+    )
+    assert len(results) == 1
+    _group, out_filename, config = results[0]
+    assert out_filename == filename
+    dumped = dump_config(config)
+    assert dumped == MASTER_ARM64_FIXTURE.read_text()
+    assert dumped.startswith(GENERATED_HEADER)
+    assert "promotion" not in config
+    assert config["zz_generated_metadata"]["variant"] == "arm64"
+    assert config["releases"]["latest"]["candidate"]["architecture"] == "amd64"
+    assert config["releases"]["arm64-latest"]["candidate"]["architecture"] == "arm64"
+
+    image_items = config["images"]["items"]
+    server_item = next(item for item in image_items if item["to"] == "quay-server")
+    playwright_item = next(item for item in image_items if item["to"] == "quay-playwright-runner")
+    assert server_item["capabilities"] == ["arm64"]
+    assert "capabilities" not in playwright_item
+
+    tests = config["tests"]
+    by_as = {test["as"]: test for test in tests}
+    assert set(by_as) == {"aws-s3-arm64"}
+
+    aws_test = by_as["aws-s3-arm64"]
+    assert aws_test["steps"]["env"]["COMPUTE_NODE_TYPE"] == "m6g.4xlarge"
+    assert aws_test["steps"]["dependencies"] == {
+        "OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE": "release:arm64-latest",
+        "QUAY_CI_IMAGE": "pipeline:quay-server",
+    }

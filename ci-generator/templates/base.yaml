@@ -12,7 +12,7 @@ prowgen:
 releases:
   latest:
     candidate:
-      architecture: "{{ arch }}"
+      architecture: amd64
       product: ocp
       stream: nightly
       version: "{{ ocp_version }}"
