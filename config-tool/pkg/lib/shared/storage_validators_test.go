@@ -21,7 +21,7 @@ func makeGarageMockServer(t *testing.T) (url string, locationCalled *bool) {
 			// Garage returns 400 when scope is wrong
 			w.Header().Set("Content-type", "application/xml")
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`<?xml version="1.0"?><Error><Code>AuthorizationHeaderMalformed</code>` +
+			w.Write([]byte(`<?xml version="1.0"?><Error><Code>AuthorizationHeaderMalformed</Code>` +
 				`<Message>unexpected scope</Message></Error>`))
 			return
 		}

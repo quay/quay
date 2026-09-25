@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/quay/quay/config-tool/pkg/lib/shared"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
@@ -96,6 +97,11 @@ func TestValidateDistributedStorage(t *testing.T) {
 			fg, err := NewDistributedStorageFieldGroup(conf)
 			if err != nil && tt.want != "typeError" {
 				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+			}
+
+			// explicitly validate that region is populated
+			if tt.name == "StorageWithRegionSet" {
+				assert.Equal(t, fg.DistributedStorageConfig["local_us"].Args.RegionName, "someregion")
 			}
 
 			opts := shared.Options{
