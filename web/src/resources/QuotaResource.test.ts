@@ -63,6 +63,19 @@ describe('QuotaResource', () => {
       );
     });
 
+    it('uses superuser organization endpoint for viewMode=superuser-organization', async () => {
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse([]));
+
+      await fetchOrganizationQuota(
+        'myorg',
+        undefined,
+        'superuser-organization',
+      );
+      expect(vi.mocked(axios.get).mock.calls[0][0]).toBe(
+        '/api/v1/superuser/organization/myorg/quota',
+      );
+    });
+
     it('returns empty array on 404', async () => {
       const err = new AxiosError('Not Found');
       (err as any).response = {status: 404};
@@ -116,6 +129,23 @@ describe('QuotaResource', () => {
       await createOrganizationQuota('user1', {limit_bytes: 1000}, 'superuser');
       expect(vi.mocked(axios.post).mock.calls[0][0]).toContain('superuser');
     });
+
+    // PROJQUAY-11177: the tenant route rejects superuser writes unless
+    // FEATURE_SUPERUSERS_FULL_ACCESS is on, so org quota must use the
+    // superuser organization route.
+    it('uses superuser organization endpoint for viewMode=superuser-organization', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
+
+      await createOrganizationQuota(
+        'myorg',
+        {limit_bytes: 1000},
+        'superuser-organization',
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        '/api/v1/superuser/organization/myorg/quota',
+        {limit_bytes: 1000},
+      );
+    });
   });
 
   describe('updateOrganizationQuota', () => {
@@ -128,6 +158,38 @@ describe('QuotaResource', () => {
         {limit_bytes: 2000},
       );
     });
+
+    it('uses superuser users endpoint for viewMode=superuser', async () => {
+      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse({}));
+
+      await updateOrganizationQuota(
+        'user1',
+        'q1',
+        {limit_bytes: 2000},
+        'superuser',
+      );
+      expect(axios.put).toHaveBeenCalledWith(
+        '/api/v1/superuser/users/user1/quota/q1',
+        {limit_bytes: 2000},
+      );
+    });
+
+    // PROJQUAY-11177: this is the exact request that returned 403
+    // insufficient_scope when it went to the tenant route.
+    it('uses superuser organization endpoint for viewMode=superuser-organization', async () => {
+      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse({}));
+
+      await updateOrganizationQuota(
+        'myorg',
+        'q1',
+        {limit_bytes: 2000},
+        'superuser-organization',
+      );
+      expect(axios.put).toHaveBeenCalledWith(
+        '/api/v1/superuser/organization/myorg/quota/q1',
+        {limit_bytes: 2000},
+      );
+    });
   });
 
   describe('deleteOrganizationQuota', () => {
@@ -137,6 +199,24 @@ describe('QuotaResource', () => {
       await deleteOrganizationQuota('myorg', 'q1');
       expect(axios.delete).toHaveBeenCalledWith(
         '/api/v1/organization/myorg/quota/q1',
+      );
+    });
+
+    it('uses superuser users endpoint for viewMode=superuser', async () => {
+      vi.mocked(axios.delete).mockResolvedValueOnce(mockResponse(null, 204));
+
+      await deleteOrganizationQuota('user1', 'q1', 'superuser');
+      expect(axios.delete).toHaveBeenCalledWith(
+        '/api/v1/superuser/users/user1/quota/q1',
+      );
+    });
+
+    it('uses superuser organization endpoint for viewMode=superuser-organization', async () => {
+      vi.mocked(axios.delete).mockResolvedValueOnce(mockResponse(null, 204));
+
+      await deleteOrganizationQuota('myorg', 'q1', 'superuser-organization');
+      expect(axios.delete).toHaveBeenCalledWith(
+        '/api/v1/superuser/organization/myorg/quota/q1',
       );
     });
   });

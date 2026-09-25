@@ -27,7 +27,30 @@ export interface ICreateQuotaLimitParams {
   threshold_percent: number;
 }
 
-export type QuotaViewMode = 'self' | 'organization' | 'superuser';
+// 'superuser' targets a user namespace, 'superuser-organization' an organization.
+// Both resolve to /api/v1/superuser/... routes, which require only
+// SuperUserPermission -- unlike the /api/v1/organization/... routes, which
+// additionally require FEATURE_SUPERUSERS_FULL_ACCESS for any write.
+export type QuotaViewMode =
+  | 'self'
+  | 'organization'
+  | 'superuser'
+  | 'superuser-organization';
+
+// Namespace-scoped superuser quota route for a given view mode, or null when the
+// view mode is not a superuser one.
+function superuserQuotaPath(
+  namespace: string,
+  viewMode?: QuotaViewMode,
+): string | null {
+  if (viewMode === 'superuser') {
+    return `/api/v1/superuser/users/${namespace}/quota`;
+  }
+  if (viewMode === 'superuser-organization') {
+    return `/api/v1/superuser/organization/${namespace}/quota`;
+  }
+  return null;
+}
 
 // Fetch quota based on view context
 export async function fetchOrganizationQuota(
@@ -41,12 +64,11 @@ export async function fetchOrganizationQuota(
     if (viewMode === 'self') {
       // User viewing their own quota (no username in path - auth determines user)
       endpoint = '/api/v1/user/quota';
-    } else if (viewMode === 'superuser') {
-      // Superuser managing a user's quota
-      endpoint = `/api/v1/superuser/users/${orgName}/quota`;
     } else {
-      // Organization quota (default)
-      endpoint = `/api/v1/organization/${orgName}/quota`;
+      // Superuser managing a user's or organization's quota, else org quota
+      endpoint =
+        superuserQuotaPath(orgName, viewMode) ??
+        `/api/v1/organization/${orgName}/quota`;
     }
 
     const response = await axios.get(endpoint, {
@@ -80,9 +102,8 @@ export async function createOrganizationQuota(
   viewMode?: QuotaViewMode,
 ): Promise<void> {
   const endpoint =
-    viewMode === 'superuser'
-      ? `/api/v1/superuser/users/${orgName}/quota`
-      : `/api/v1/organization/${orgName}/quota`;
+    superuserQuotaPath(orgName, viewMode) ??
+    `/api/v1/organization/${orgName}/quota`;
   await axios.post(endpoint, params);
 }
 
@@ -93,11 +114,10 @@ export async function updateOrganizationQuota(
   params: IUpdateQuotaParams,
   viewMode?: QuotaViewMode,
 ): Promise<void> {
-  const endpoint =
-    viewMode === 'superuser'
-      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
-      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
-  await axios.put(endpoint, params);
+  const base =
+    superuserQuotaPath(orgName, viewMode) ??
+    `/api/v1/organization/${orgName}/quota`;
+  await axios.put(`${base}/${quotaId}`, params);
 }
 
 // Delete quota (only superusers can delete quotas)
@@ -106,11 +126,10 @@ export async function deleteOrganizationQuota(
   quotaId: string,
   viewMode?: QuotaViewMode,
 ): Promise<void> {
-  const endpoint =
-    viewMode === 'superuser'
-      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
-      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
-  await axios.delete(endpoint);
+  const base =
+    superuserQuotaPath(orgName, viewMode) ??
+    `/api/v1/organization/${orgName}/quota`;
+  await axios.delete(`${base}/${quotaId}`);
 }
 
 // Create quota limit (for organization or user quota)
