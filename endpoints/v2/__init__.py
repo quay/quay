@@ -17,12 +17,14 @@ from auth.permissions import (
     SuperUserPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
+from data.database import MaxConnectionsExceeded
 from data.model import PushesDisabledException, QuotaExceededException
 from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
 from endpoints.decorators import anon_allowed, route_show_if
 from endpoints.v2.errors import (
     InvalidRequest,
+    MaxConnExceeded,
     PushesDisabled,
     QuotaExceeded,
     ReadOnlyMode,
@@ -70,6 +72,15 @@ def handle_quota_error(error):
 @v2_bp.app_errorhandler(PushesDisabledException)
 def handle_pushes_disabled(error):
     return _format_error_response(PushesDisabled())
+
+
+# only register on v2 blueprint instead of app wide
+@v2_bp.errorhandler(MaxConnectionsExceeded)
+def handle_max_connections_exceeded(error):
+    logger.exception(error)
+    response = _format_error_response(MaxConnExceeded())
+    response.headers["Retry-After"] = "5"
+    return response
 
 
 def _format_error_response(error: V2RegistryException) -> Response:

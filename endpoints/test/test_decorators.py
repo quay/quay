@@ -1,11 +1,15 @@
-from test.fixtures import *
+import logging
 
 import pytest
+from flask import url_for
+from playhouse.pool import MaxConnectionsExceeded
 
 from data import model
 from endpoints.api import api
 from endpoints.api.repository import Repository
+from endpoints.decorated import handle_max_connections_count
 from endpoints.test.shared import conduct_call
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -41,3 +45,23 @@ def test_require_xhr_from_browser(user_agent, include_header, expected_code, app
     conduct_call(
         client, Repository, api.url_for, "GET", params, headers=headers, expected_code=expected_code
     )
+
+
+def test_MaxConnectionsExceeded_properly_returns_a_503_when_raised(app, client):
+    """
+    Verifies that a 503 is returned back to the caller with a retry header if
+    MaxConnectionsExceeded is raised by the app during access.
+    """
+    app.register_error_handler(MaxConnectionsExceeded, handle_max_connections_count)
+
+    with app.test_request_context("/"):
+        try:
+            raise MaxConnectionsExceeded("pool full")
+        except Exception as e:
+            response = app.handle_user_exception(e)
+
+    logging.debug("%s", response)
+
+    assert response.status_code == 503
+    assert "Retry-After" in response.headers
+    assert response.headers["Retry-After"] == "5"
