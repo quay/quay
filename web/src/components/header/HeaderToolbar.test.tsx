@@ -17,14 +17,19 @@ vi.mock('src/hooks/UseQuayConfig', () => ({
   }),
 }));
 
-vi.mock('src/hooks/useAppNotifications', () => ({
-  useAppNotifications: () => ({
+const mockUseAppNotifications = vi.hoisted(() =>
+  vi.fn(() => ({
     notifications: [],
     unreadCount: 0,
+    additional: false,
     loading: false,
     dismissNotification: vi.fn(),
     refetch: vi.fn(),
-  }),
+  })),
+);
+
+vi.mock('src/hooks/useAppNotifications', () => ({
+  useAppNotifications: mockUseAppNotifications,
 }));
 
 vi.mock('src/resources/AuthResource', () => ({
@@ -76,6 +81,9 @@ describe('HeaderToolbar', () => {
     renderToolbar();
     expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
     expect(screen.queryByText('Sign In')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications',
+    );
   });
 
   it('renders the header search bar on ordinary pages', () => {
@@ -94,5 +102,46 @@ describe('HeaderToolbar', () => {
 
     renderToolbar('/search');
     expect(screen.queryByTestId('header-search-item')).not.toBeInTheDocument();
+  });
+
+  it('shows "N+" on the notification badge when more notifications exist', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {username: 'testuser'},
+    });
+    mockUseAppNotifications.mockReturnValue({
+      notifications: [],
+      unreadCount: 5,
+      additional: true,
+      loading: false,
+      dismissNotification: vi.fn(),
+      refetch: vi.fn(),
+    });
+
+    renderToolbar();
+    expect(screen.getByTestId('notification-bell')).toHaveTextContent('5+');
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications, more than 5',
+    );
+  });
+
+  it('shows the plain count on the notification badge when there is no more', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {username: 'testuser'},
+    });
+    mockUseAppNotifications.mockReturnValue({
+      notifications: [],
+      unreadCount: 3,
+      additional: false,
+      loading: false,
+      dismissNotification: vi.fn(),
+      refetch: vi.fn(),
+    });
+
+    renderToolbar();
+    expect(screen.getByTestId('notification-bell')).toHaveTextContent('3');
+    expect(screen.getByTestId('notification-bell')).not.toHaveTextContent('3+');
+    expect(screen.getByTestId('notification-bell')).toHaveAccessibleName(
+      'Notifications, 3',
+    );
   });
 });
