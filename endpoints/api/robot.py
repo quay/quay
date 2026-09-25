@@ -480,6 +480,7 @@ def _parse_federation_config(request):
     """
     fed_config = list()
     seen = set()
+    seen_ids = set()
     for item in request.json:
         if not item:
             raise request_error(message="Missing one or more required fields (issuer, subject)")
@@ -491,6 +492,9 @@ def _parse_federation_config(request):
             raise request_error(message="Issuer must be a URL (http:// or https://)")
         entry = {"issuer": issuer, "subject": subject}
         if item.get("id"):
+            if item["id"] in seen_ids:
+                raise request_error(message="Duplicate federation config entry")
+            seen_ids.add(item["id"])
             entry["id"] = item["id"]
         if "api_scopes" in item:
             entry["api_scopes"] = item["api_scopes"]

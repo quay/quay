@@ -16,17 +16,15 @@ from endpoints.oauth.robot_identity_federation import (
 from test.fixtures import *
 
 
-def test_sts_token_route_is_registered():
-    from web import application
-
-    routes = {(rule.rule, frozenset(rule.methods)) for rule in application.url_map.iter_rules()}
-    assert ("/sts/token", frozenset({"POST", "OPTIONS"})) in routes
-
-
 @pytest.fixture()
 def sts_app(app):
     app.register_blueprint(sts_bp)
     return app
+
+
+def test_sts_token_route_is_registered(sts_app):
+    routes = {(rule.rule, frozenset(rule.methods)) for rule in sts_app.url_map.iter_rules()}
+    assert ("/sts/token", frozenset({"POST", "OPTIONS"})) in routes
 
 
 def _federated_robot(scopes="repo:read repo:write"):

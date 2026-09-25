@@ -349,6 +349,38 @@ def test_user_robot_federation_create(app):
         assert len(resp.json) == 0
 
 
+def test_user_robot_federation_does_not_reuse_deleted_binding_id(app):
+    with client_with_identity("devtable", app) as cl:
+        params = {"robot_shortname": "dtrobot"}
+        response = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            params,
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=200,
+        )
+        deleted_binding_id = response.json[0]["id"]
+
+        conduct_api_call(cl, UserRobotFederation, "DELETE", params, expected_code=204)
+
+        response = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            params,
+            [
+                {
+                    "id": deleted_binding_id,
+                    "issuer": "https://issuer2",
+                    "subject": "subject2",
+                }
+            ],
+            expected_code=200,
+        )
+        assert response.json[0]["id"] != deleted_binding_id
+
+
 def test_user_robot_federation_multiple_configs(app):
     with client_with_identity("devtable", app) as cl:
         fed_config = [
@@ -451,6 +483,14 @@ def test_org_robot_federation_unauthorized_reader(app):
                 {"issuer": "https://issuer1", "subject": "subject1"},
                 {"issuer": "https://issuer2", "subject": "subject1"},
                 {"issuer": "https://issuer1", "subject": "subject1"},
+            ],
+            True,
+            "Duplicate federation config entry",
+        ),
+        (
+            [
+                {"id": "binding", "issuer": "https://issuer1", "subject": "subject1"},
+                {"id": "binding", "issuer": "https://issuer2", "subject": "subject2"},
             ],
             True,
             "Duplicate federation config entry",

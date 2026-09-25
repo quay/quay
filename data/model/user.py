@@ -425,7 +425,8 @@ def create_robot_federation_config(robot, fed_config):
         normalized = []
         for entry in fed_config:
             entry = dict(entry)
-            binding_id = entry.get("id") or str(uuid4())
+            requested_id = entry.get("id")
+            binding_id = requested_id if requested_id in previous else str(uuid4())
             old = previous.get(binding_id)
             entry["id"] = binding_id
             if old:
