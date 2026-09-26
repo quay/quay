@@ -33,30 +33,30 @@ func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []share
 		return errors
 	}
 
-	// Check for consumer key
-	if fg.BitbucketTriggerConfig.ConsumerKey == "" {
+	// Check for client ID
+	if fg.BitbucketTriggerConfig.ClientID == "" {
 		newError := shared.ValidationError{
-			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY"},
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CLIENT_ID"},
 			FieldGroup: fgName,
-			Message:    "BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY is required",
+			Message:    "BITBUCKET_TRIGGER_CONFIG.CLIENT_ID is required",
 		}
 		errors = append(errors, newError)
 	}
 
-	// Check consumer secret
-	if fg.BitbucketTriggerConfig.ConsumerSecret == "" {
+	// Check client secret
+	if fg.BitbucketTriggerConfig.ClientSecret == "" {
 		newError := shared.ValidationError{
-			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CLIENT_SECRET"},
 			FieldGroup: fgName,
-			Message:    "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET is required",
+			Message:    "BITBUCKET_TRIGGER_CONFIG.CLIENT_SECRET is required",
 		}
 		errors = append(errors, newError)
 	}
 
 	// Check OAuth credentials
-	if !shared.ValidateBitbucketOAuth(fg.BitbucketTriggerConfig.ConsumerKey, fg.BitbucketTriggerConfig.ConsumerSecret) {
+	if !shared.ValidateBitbucketOAuth(fg.BitbucketTriggerConfig.ClientID, fg.BitbucketTriggerConfig.ClientSecret) {
 		newError := shared.ValidationError{
-			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_ID", "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CLIENT_ID", "BITBUCKET_TRIGGER_CONFIG.CLIENT_SECRET"},
 			FieldGroup: fgName,
 			Message:    "Cannot validate BITBUCKET_TRIGGER_CONFIG credentials",
 		}
