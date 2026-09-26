@@ -14,13 +14,19 @@
  * Migrated from: web/cypress/e2e/repository-autopruning.cy.ts (17 tests consolidated to 6)
  */
 
+import path from 'path';
+import {APIRequestContext} from '@playwright/test';
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
+import {getV2Token} from '../../utils/api/auth';
+import {API_URL} from '../../utils/config';
 import {
   pushImage,
   pushMultiArchImage,
   pushUniqueImage,
+  orasAttach,
+  isOrasAvailable,
 } from '../../utils/container';
 
 /**
@@ -41,6 +47,27 @@ async function createCosignSigTag(
   const sigName = `${digest.replace(':', '-')}.sig`;
   await api.createTag(namespace, repo, sigName, digest);
   return sigName;
+}
+
+async function countReferrers(
+  request: APIRequestContext,
+  token: string,
+  namespace: string,
+  repo: string,
+  digest: string,
+): Promise<number> {
+  const response = await request.get(
+    `${API_URL}/v2/${namespace}/${repo}/referrers/${digest}`,
+    {headers: {authorization: `Bearer ${token}`}},
+  );
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(
+      `Failed to list referrers for ${digest}: ${response.status()} - ${body}`,
+    );
+  }
+  const body = await response.json();
+  return body.manifests?.length ?? 0;
 }
 
 test.describe(
@@ -848,6 +875,100 @@ test.describe(
         const names = tags.tags.map((t) => t.name);
         expect(names).toContain('v1');
         expect(names).toContain(sigName);
+      },
+    );
+
+    test(
+      'autoprune of last subject tag allows Cosign V3 referrer GC',
+      {tag: ['@PROJQUAY-12396', '@container']},
+      async ({api, playwright}) => {
+        test.slow();
+        test.skip(
+          !(await isOrasAvailable()),
+          'oras CLI required for referrer attach',
+        );
+
+        const org = await api.organization('pruneref');
+        const repo = await api.repository(org.name, 'prunetest');
+
+        // Single subject tag so prune removes the last visible alias
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+
+        const v1Tags = await api.raw.getTags(org.name, repo.name, {
+          specificTag: 'v1',
+        });
+        expect(v1Tags.tags.length).toBeGreaterThan(0);
+        const digest = v1Tags.tags[0].manifest_digest;
+
+        const fixturesDir = path.resolve(__dirname, '../../fixtures/oras');
+        orasAttach(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+          'application/spdx+json',
+          'producer=syft 0.63.0',
+          path.join(fixturesDir, 'referrer.spdx.json'),
+        );
+
+        const request = await playwright.request.newContext({
+          ignoreHTTPSErrors: true,
+        });
+        try {
+          const scope = `repository:${org.name}/${repo.name}:pull,push`;
+          const v2Token = await getV2Token(
+            request,
+            API_URL,
+            user.username,
+            user.password,
+            scope,
+          );
+
+          await expect
+            .poll(
+              async () =>
+                countReferrers(request, v2Token, org.name, repo.name, digest),
+              {
+                message: 'Waiting for ORAS referrer to appear',
+                timeout: 30_000,
+                intervals: [500, 1_000, 2_000],
+              },
+            )
+            .toBe(1);
+
+          await api.repoAutoPrunePolicy(org.name, repo.name, {
+            method: 'creation_date',
+            value: '10s',
+          });
+
+          // Autoprune removes the last subject tag
+          await expect(async () => {
+            const tags = await api.raw.getTags(org.name, repo.name);
+            expect(tags.tags).toHaveLength(0);
+          }).toPass({timeout: 180_000, intervals: [10_000]});
+
+          // Temp-tag expiry unblocks GC of the referrer manifest
+          await expect
+            .poll(
+              async () =>
+                countReferrers(request, v2Token, org.name, repo.name, digest),
+              {
+                message: 'Waiting for referrer GC after subject autoprune',
+                timeout: 240_000,
+                intervals: [10_000],
+              },
+            )
+            .toBe(0);
+        } finally {
+          await request.dispose();
+        }
       },
     );
   },
