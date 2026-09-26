@@ -59,6 +59,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
 
             <Conditional
               if={
+                !props.isReadOnly &&
                 props.displaySyncDirectory &&
                 ['ldap', 'keystone', 'oidc'].includes(
                   props.teamCanSync?.service || '',
@@ -73,7 +74,11 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </Conditional>
 
             <Conditional
-              if={props.pageInReadOnlyMode && props.teamCanSync !== null}
+              if={
+                !props.isReadOnly &&
+                props.pageInReadOnlyMode &&
+                props.teamCanSync !== null
+              }
             >
               <FlexItem>
                 <Button onClick={props.toggleRemoveTeamSyncModal}>

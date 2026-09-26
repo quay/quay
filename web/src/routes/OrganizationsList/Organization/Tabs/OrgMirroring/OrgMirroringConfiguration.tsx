@@ -22,8 +22,8 @@ interface OrgMirroringConfigurationProps {
   isSyncingNow: boolean;
   isCancellingSync: boolean;
   isOrgSyncing: boolean;
-  onSyncNow: () => Promise<void>;
-  onToggleEnabled: (
+  onSyncNow?: () => Promise<void>;
+  onToggleEnabled?: (
     checked: boolean,
     onChange: (value: boolean) => void,
   ) => Promise<void>;
@@ -70,9 +70,13 @@ export const OrgMirroringConfiguration: React.FC<
               : 'Scheduled organization mirroring disabled.'
           }
           data-testid="org-mirror-enabled-checkbox"
-          customOnChange={(checked, onChange) => {
-            void onToggleEnabled(checked, onChange);
-          }}
+          customOnChange={
+            onToggleEnabled
+              ? (checked, onChange) => {
+                  void onToggleEnabled(checked, onChange);
+                }
+              : undefined
+          }
         />
       )}
 
