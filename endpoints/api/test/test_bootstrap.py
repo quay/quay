@@ -116,6 +116,28 @@ def test_exchange_normalizes_issuer_trailing_slashes():
     )
 
 
+def test_authorize_workload_scope_normalizes_issuer_and_scope():
+    from endpoints.api.bootstrap import authorize_workload_scope
+
+    authorized_subjects = [
+        {
+            "ISSUER": "https://cluster.example.com",
+            "SUBJECT": "system:serviceaccount:quay:operator",
+            "SCOPES": "org:admin repo:read",
+        }
+    ]
+
+    assert (
+        authorize_workload_scope(
+            authorized_subjects,
+            "https://cluster.example.com/",
+            "system:serviceaccount:quay:operator",
+            "repo:read",
+        )
+        == "repo:read"
+    )
+
+
 def test_exchange_expiration_is_bounded_by_maximum():
     from endpoints.api.bootstrap import _exchange_expiration_seconds
 
