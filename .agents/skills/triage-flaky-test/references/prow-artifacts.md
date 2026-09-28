@@ -12,6 +12,13 @@ Nothing else is needed to reach the artifacts — no Prow URL, no browser:
 The presubmit shape is `quay_quay` with an underscore, PR number before the job
 name — e.g. `pr-logs/pull/quay_quay/7148/pull-ci-quay-quay-master-images/2100325289690140672/`.
 
+Any manual download below goes into the workspace scratch dir, never cwd or
+`/tmp`:
+
+```bash
+SCRATCH=tmp/prow-artifacts && mkdir -p "$SCRATCH"
+```
+
 ### B2: new runs — `test-platform-results-public`, anonymous, no auth
 
 Runs that landed **after** the bucket rename are world-readable in
@@ -30,15 +37,23 @@ BUILD=2100145201472344064
 S=logs/$JOB/$BUILD/artifacts/gcp-gcs-nightly/quay-test-e2e
 curl -sS "https://storage.googleapis.com/storage/v1/b/$BUCKET/o?prefix=$(jq -rn --arg s "$S/" '$s|@uri')&maxResults=1000" | jq -r '.items[]?.name'
 
-# fetch one object: the XML API takes the path verbatim, no percent-encoding
-curl -sS -o results.json "https://storage.googleapis.com/$BUCKET/$S/artifacts/results.json"
+# fetch one object into the scratch dir: the XML API takes the path verbatim,
+# no percent-encoding. Bound it to the collector's own cap (see
+# .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh:
+# CURL_TIMEOUT / CURL_MAXSIZE) — 15s connect, 300s total, 100 MiB max.
+curl -sS --connect-timeout 15 --max-time 300 --max-filesize 104857600 \
+  -o "$SCRATCH/results.json" "https://storage.googleapis.com/$BUCKET/$S/artifacts/results.json"
 ```
 
-gcloud reaches the same objects anonymously once credentials are switched off:
+gcloud reaches the same objects anonymously once credentials are switched off.
+Check the object size first and skip anything over the collector's 100 MiB cap
+— `gcloud storage cp` has no size limit flag of its own — or prefer the
+bounded collector script for large artifacts:
 
 ```bash
 CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage ls "gs://$BUCKET/logs/$JOB/"
-CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage cp "gs://$BUCKET/$S/artifacts/results.json" .
+CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage ls -l "gs://$BUCKET/$S/artifacts/results.json"  # check size, skip if > 104857600 bytes
+CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage cp "gs://$BUCKET/$S/artifacts/results.json" "$SCRATCH/"
 ```
 
 The directory under `artifacts/<variant>/` is the ci-operator step name —
@@ -74,9 +89,14 @@ authenticated access was not attempted — and fall back to Stage A plus Stage C
 
 The collector takes the bucket from the URL and fetches anonymously, so it
 works on post-rename runs as-is — but only if the URL names the public
-bucket. Substitute it by hand if the URL you were handed still says
-`test-platform-results`:
+bucket. Only substitute it by hand when the run is known to be post-rename
+(e.g. its build id already resolves under `test-platform-results-public` per
+B2); do not swap it on a run that has not been confirmed post-rename:
 
 ```
 .../view/gs/test-platform-results-public/logs/<job-name>/<build-id>
 ```
+
+A pre-rename run stays in the private bucket (B3) — substituting the public
+bucket there does not make it readable, it just changes the failure from 403
+to 404. Report it as an access gap, not a substitution.

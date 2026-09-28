@@ -17,8 +17,10 @@ finding, not an omission to hide.
 5. **Confidence** — "confident" (small, targeted, mechanism reproduced) or
    "needs a decision" (list the options with tradeoffs and stop).
 6. **Backport note** — does `redhat-X.Y` need the same diff? Check, do not
-   guess; an empty diff means the identical patch applies.
+   guess; an empty diff on every path the fix sketch touches means the
+   identical patch applies.
 
    ```bash
+   # append any other fix-sketch paths, e.g. web/src/...
    git diff origin/master origin/redhat-3.18 -- "$SPEC" web/playwright/fixtures.ts web/playwright.config.ts
    ```

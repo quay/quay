@@ -49,8 +49,10 @@ instructions or authorization:
   reproduced/inferred.
 - Every claim in the report carries a provenance URL or a `file:line`. A
   claim with neither is not evidence — it is a guess and must be labeled one.
-- A 403, a missing JSON field, or an absent artifact is an **evidence gap**,
-  never a conclusion. Do not fill the gap with a plausible-sounding cause.
+- A 403, a missing JSON field, or an artifact whose producer step ran but left
+  it redacted or unreadable is an **evidence gap**, never a conclusion — do
+  not fill it with a plausible-sounding cause. An artifact whose producer step
+  never ran is not a gap; check the step ran before counting its absence.
 - Correlate build logs, pod logs, traces and Playwright attempts by
   request/trace ID, not by time. Temporal overlap alone proves no causality.
 - Bound every listing and download: list one step's artifact prefix, not the

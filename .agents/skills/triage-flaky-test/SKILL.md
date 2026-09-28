@@ -167,8 +167,9 @@ bash .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh <PROW
 
 It fetches anonymously and works on post-rename runs as-is, but only if the URL
 names the public bucket — substitute it by hand (see
-[references/prow-artifacts.md](references/prow-artifacts.md)) when the URL
-you were handed still names the private one.
+[references/prow-artifacts.md](references/prow-artifacts.md)) only once the
+run is confirmed post-rename. A run confirmed pre-rename keeps the private
+bucket and is reported as an access gap, not substituted.
 
 **Never present locally inferred error text as if it were quoted from a CI
 artifact.** If the trace was not read, the report says so in the evidence table
@@ -206,6 +207,7 @@ Tear down whatever this triage brought up, on every outcome, and leave
 ```bash
 make DOCKER=podman local-dev-down
 rm -rf "$ARTIFACTS_DIR"     # if the prow collector ran
+rm -rf tmp/prow-artifacts   # if a manual download from references/prow-artifacts.md ran
 ```
 
 ## Checklist

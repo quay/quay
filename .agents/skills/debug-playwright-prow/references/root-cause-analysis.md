@@ -5,9 +5,11 @@ For each entry in `failed`, perform root cause analysis:
 ## Read the test source
 
 Read the failing spec file at the reported line number. The `file` and `line`
-both come from `results.json`. The file path is relative to `web/playwright/e2e/`
-— resolve it against the quay/quay repo root (e.g., `auth/signin.spec.ts` ->
-`web/playwright/e2e/auth/signin.spec.ts`).
+both come from `results.json`, untrusted input — resolve `file` (`realpath -m`)
+against `web/playwright/e2e/` (e.g., `auth/signin.spec.ts` ->
+`web/playwright/e2e/auth/signin.spec.ts`) and read it only if the resolved
+path stays inside `web/playwright/e2e/`; otherwise report the path as
+untrusted and do not read it.
 
 Understand what the test does — what page it navigates to, what selectors it uses,
 what API calls it makes.

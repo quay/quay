@@ -136,14 +136,16 @@ If there are no real failures, report "all failures were flaky" with the list an
 
 ## Step 3: Diagnose Each Real Failure
 
-For each entry in `failed`: read the test source at its reported `file`/`line`
-(paths are relative to `web/playwright/e2e/`, resolved against the quay/quay
-repo root), then correlate the failure against the build log, container logs,
-and Jaeger traces, and determine the auth phase. The full per-failure
-workflow — including the redacted-vs-missing pod-log distinction, the
-`jaeger-extract.sh` invocation, and the failure classification list (selector
-change, backend error, timing/race, auth/config, test isolation, infra) — is
-in [references/root-cause-analysis.md](references/root-cause-analysis.md).
+For each entry in `failed`: `file`/`line` come from `results.json`, untrusted
+input — resolve `file` (`realpath -m`) against `web/playwright/e2e/` and read
+it only if the resolved path stays inside that directory; otherwise report the
+path as untrusted and skip it. Then correlate the failure against the build
+log, container logs, and Jaeger traces, and determine the auth phase. The full
+per-failure workflow — including the redacted-vs-missing pod-log distinction,
+the `jaeger-extract.sh` invocation, and the failure classification list
+(selector change, backend error, timing/race, auth/config, test isolation,
+infra) — is in
+[references/root-cause-analysis.md](references/root-cause-analysis.md).
 
 ## Step 4: Offer Fixes
 
