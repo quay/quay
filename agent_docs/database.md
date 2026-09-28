@@ -166,3 +166,60 @@ above.
 
 **Reference:** `data/model/oci/tag.py` —
 `remove_tag_from_timemachine()`, `_expire_cosign_sibling_tags()`
+
+### QuotaNamespaceSize / QuotaRepositorySize Backfill Lifecycle
+
+`QuotaNamespaceSize` and `QuotaRepositorySize` use a two-field state machine
+to track whether the stored `size_bytes` value is reliable:
+
+| `backfill_complete` | `size_bytes` meaning |
+|---------------------|----------------------|
+| `True` | Accurate; safe to use for metrics, enforcement, and reporting |
+| `False` | Transient `0`; undergoing recalculation — do **not** use |
+
+**What triggers `backfill_complete=False`:** The row is reset to
+`size_bytes=0, backfill_complete=False` by `reset_backfill()` /
+`reset_namespace_backfill()` in `data/model/quota.py` whenever a tag push,
+namespace invalidation, or explicit recomputation request arrives. A background
+GC worker (`workers/`) then recalculates the true total and flips
+`backfill_complete` back to `True`.
+
+**The invariant — apply this every time you read `size_bytes`:** Any
+production code path that reads `size_bytes` from `QuotaNamespaceSize` or
+`QuotaRepositorySize` for metrics, quota enforcement, or reporting **must**
+either:
+
+1. Filter `backfill_complete=True` to exclude in-progress rows, **or**
+2. Explicitly handle the incomplete case with a documented rationale explaining
+   why exposing a `0` or stale value is acceptable.
+
+Omitting the filter causes a namespace mid-backfill to appear as if it has zero
+usage, making its available quota appear at 100% until recomputation finishes —
+a correctness bug that is invisible in unit tests unless the test explicitly
+creates `backfill_complete=False` rows.
+
+**Canonical examples of the pattern in `data/model/quota.py`:**
+
+- `_next_namespace_quota_candidate_ids()` — filters
+  `QuotaNamespaceSize.backfill_complete == True` in the candidate-ID query
+  so that mid-backfill namespaces are not selected as export candidates.
+- `get_all_namespace_quota_data()` — adds `backfill_complete == True` to the
+  `LEFT OUTER JOIN` condition on `QuotaNamespaceSize`, so incomplete rows
+  yield `size_bytes=None` rather than `0`.
+- `get_all_repository_sizes()` — filters `QuotaRepositorySize.backfill_complete
+  == True` in the `WHERE` clause, excluding mid-backfill repositories
+  entirely.
+
+**Checklist for new quota-reading code:**
+
+- [ ] Does every query that reads `size_bytes` from `QuotaNamespaceSize` or
+  `QuotaRepositorySize` include a `backfill_complete=True` filter (or a
+  documented rationale for omitting it)?
+- [ ] Does the test file include a case that inserts a
+  `backfill_complete=False` row and asserts the function skips it (or
+  handles it explicitly)? See `test_quota_metrics_queries.py` for
+  reference test patterns.
+
+**Reference:** `data/model/quota.py` — `_next_namespace_quota_candidate_ids`,
+`get_all_namespace_quota_data`, `get_all_repository_sizes`,
+`reset_backfill`, `reset_namespace_backfill`; `data/model/test/test_quota_metrics_queries.py`
