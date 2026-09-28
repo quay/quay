@@ -268,6 +268,9 @@ if [ "$RESULTS_FOUND" != "true" ]; then
 
   for dir in $ARTIFACT_DIRS; do
     # dir looks like: logs/JOB_NAME/BUILD_ID/artifacts/WORKFLOW_NAME/
+    # STEP_NAME still holds its initial default here (this block only runs
+    # when the first-pass loop above found nothing); the nested fallback
+    # below probes the other step-name candidates against listed step dirs.
     PROBE_URL="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${STEP_NAME}/artifacts/results.json"
     if curl -sfL "${CURL_TIMEOUT[@]}" --head "$PROBE_URL" >/dev/null 2>&1; then
       ARTIFACT_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${dir}${STEP_NAME}/artifacts"
@@ -286,11 +289,21 @@ if [ "$RESULTS_FOUND" != "true" ]; then
     STEP_LIST_URL="https://storage.googleapis.com/${GCS_BUCKET}?prefix=${dir}&delimiter=/"
     STEP_DIRS=$(curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "$STEP_LIST_URL" 2>/dev/null | grep -oP '(?<=<Prefix>)[^<]+' || true)
     for stepdir in $STEP_DIRS; do
+      # Restrict probing to directories whose leaf name matches a known
+      # Playwright step, so a multi-step workflow whose unrelated sibling
+      # also uploads results.json can never be selected. quay-test-playwright
+      # is included alongside the four e2e names as another step that runs
+      # Playwright.
+      candidate_step="${stepdir%/}"
+      candidate_step="${candidate_step##*/}"
+      case "$candidate_step" in
+        quay-test-e2e | e2e | e2e-test | quay-e2e | quay-test-playwright) ;;
+        *) continue ;;
+      esac
       PROBE_URL="https://storage.googleapis.com/${GCS_BUCKET}/${stepdir}artifacts/results.json"
       if curl -sfL "${CURL_TIMEOUT[@]}" --head "$PROBE_URL" >/dev/null 2>&1; then
         ARTIFACT_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${stepdir}artifacts"
-        STEP_NAME="${stepdir%/}"
-        STEP_NAME="${STEP_NAME##*/}"
+        STEP_NAME="$candidate_step"
         RESULTS_FOUND=true
         echo "  Found artifacts at: ${stepdir}artifacts/" >&2
         break 2
@@ -301,7 +314,9 @@ fi
 
 if [ "$RESULTS_FOUND" != "true" ]; then
   echo "ERROR: Could not locate results.json in artifacts" >&2
-  echo "  This run may predate the Playwright JSON reporter (results.json)." >&2
+  echo "  Tried step names: quay-test-e2e, e2e, e2e-test, quay-e2e, quay-test-playwright" >&2
+  echo "  If this job uses a different step name, results.json was not found under any candidate." >&2
+  echo "  This run may also predate the Playwright JSON reporter (results.json)." >&2
   echo "  Browse the artifacts manually at: ${GCSWEB_BASE}/artifacts/" >&2
   exit 1
 fi
@@ -345,8 +360,23 @@ if [ ! -s "$WORK_DIR/results.json" ]; then
   exit 1
 fi
 
-if ! jq -e . "$WORK_DIR/results.json" >/dev/null; then
-  echo "ERROR: downloaded results.json is invalid or partial JSON" >&2
+if ! jq -e . "$WORK_DIR/results.json" >/dev/null 2>&1; then
+  echo "ERROR: downloaded results.json is not valid JSON" >&2
+  exit 1
+fi
+
+# A shape that merely parses (e.g. {} or []) is not enough: require the
+# specific fields the jq emit below actually reads, so a schema-empty file
+# does not pass through into misleading diagnostic output.
+if ! jq -e '
+    type == "object"
+    and (.stats | type) == "object"
+    and ([.stats.expected, .stats.unexpected, .stats.flaky, .stats.skipped] | all(type == "number"))
+    and (.suites | type) == "array"
+    and (.config | type) == "object"
+  ' "$WORK_DIR/results.json" >/dev/null 2>&1; then
+  echo "ERROR: downloaded results.json is valid JSON but missing the Playwright reporter shape" >&2
+  echo "  Expected an object with numeric stats.expected/unexpected/flaky/skipped, an array suites, and an object config" >&2
   exit 1
 fi
 

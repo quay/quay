@@ -461,6 +461,154 @@ test_removed_on_failed_run() {
     [ ! -d "$work_dir" ]
 }
 
+# --- T9: each step-name candidate is found one level under a workflow dir ---
+test_workflow_list_fallback_candidates() {
+  local candidate root artifacts_dir step_dir
+  for candidate in "quay-test-e2e" "e2e" "e2e-test" "quay-e2e"; do
+    root="$(new_fixture_root)"
+    write_prowjob "$root"
+    step_dir="$root/$GCS_BASE_REL/artifacts/some-workflow/${candidate}/artifacts"
+    mkdir -p "$step_dir"
+    cat >"$step_dir/results.json" <<EOF
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+    run_collector "$root"
+    artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+    assert_eq "0" "$COLLECTOR_RC" "exit code (candidate=$candidate)" &&
+      assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/some-workflow/${candidate}/artifacts" \
+        "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "artifact_base_url (candidate=$candidate)" || return 1
+    rm -rf "$artifacts_dir"
+  done
+}
+
+# --- T10: workflow-list fallback miss reports the tried step names ---
+test_workflow_list_fallback_miss_reports_tried_names() {
+  local root work_dir
+  root="$(new_fixture_root)"
+  write_prowjob "$root"
+  mkdir -p "$root/$GCS_BASE_REL/artifacts/some-workflow/unrelated-step"
+
+  run_collector "$root"
+  work_dir="$(printf '%s' "$COLLECTOR_STDERR" | sed -n 's/^Downloading artifacts to \(.*\) \.\.\.$/\1/p' | head -1)"
+
+  assert_eq "1" "$COLLECTOR_RC" "exit code (miss)" &&
+    printf '%s' "$COLLECTOR_STDERR" | grep -q "Tried step names: quay-test-e2e, e2e, e2e-test, quay-e2e, quay-test-playwright" &&
+    [ -n "$work_dir" ] &&
+    [ ! -d "$work_dir" ]
+}
+
+# --- T11: nested filter admits quay-test-playwright, skips an unrelated step with its own results.json ---
+test_nested_filter_admits_quay_test_playwright_skips_unrelated() {
+  local root artifacts_dir
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root"
+
+  # Unrelated step under the same workflow, sorts before quay-test-playwright
+  # and also uploads its own results.json -- must never be selected.
+  local unrelated_dir="$root/$GCS_BASE_REL/artifacts/e2e/aaa-unrelated-step/artifacts"
+  mkdir -p "$unrelated_dir"
+  printf '{"unrelated":true}' >"$unrelated_dir/results.json"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/e2e/quay-test-playwright/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/e2e/quay-test-playwright/artifacts" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "quay-test-playwright selected over unrelated sibling"
+}
+
+# --- T12: nested discovery with no eligible step name is a total miss ---
+test_nested_filter_no_eligible_step() {
+  local root work_dir
+  root="$(new_fixture_root)"
+  write_prowjob "$root"
+  local unrelated_dir="$root/$GCS_BASE_REL/artifacts/e2e/some-other-step/artifacts"
+  mkdir -p "$unrelated_dir"
+  printf '{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":1,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}' \
+    >"$unrelated_dir/results.json"
+
+  run_collector "$root"
+  work_dir="$(printf '%s' "$COLLECTOR_STDERR" | sed -n 's/^Downloading artifacts to \(.*\) \.\.\.$/\1/p' | head -1)"
+
+  assert_eq "1" "$COLLECTOR_RC" "exit code (no eligible nested step)" &&
+    [ -n "$work_dir" ] &&
+    [ ! -d "$work_dir" ]
+}
+
+# --- T13: results.json with invalid syntax is rejected before the shape check ---
+test_results_json_invalid_syntax_rejected() {
+  local root step_dir artifacts_dir
+  root="$(new_fixture_root)"
+  write_prowjob "$root"
+  step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  printf '{"stats": {' >"$step_dir/results.json"
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDERR" | sed -n 's/^Downloading artifacts to \(.*\) \.\.\.$/\1/p' | head -1)"
+
+  assert_eq "1" "$COLLECTOR_RC" "exit code (invalid JSON)" &&
+    printf '%s' "$COLLECTOR_STDERR" | grep -q "not valid JSON" &&
+    [ -n "$artifacts_dir" ] &&
+    [ ! -d "$artifacts_dir" ]
+}
+
+# --- T14: results.json that parses but lacks the reporter shape is rejected ---
+test_results_json_wrong_shape_rejected() {
+  local root step_dir artifacts_dir label body i
+  root="$(new_fixture_root)"
+  write_prowjob "$root"
+  step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+
+  local labels=("empty object" "scalar" "array" "missing stats" "non-numeric stats")
+  local bodies=(
+    '{}'
+    '"just a string"'
+    '[]'
+    '{"config":{"workers":1},"suites":[]}'
+    '{"config":{"workers":1},"suites":[],"stats":{"expected":"one","unexpected":0,"flaky":0,"skipped":0}}'
+  )
+
+  for i in "${!labels[@]}"; do
+    label="${labels[$i]}"
+    body="${bodies[$i]}"
+    printf '%s' "$body" >"$step_dir/results.json"
+    run_collector "$root"
+    artifacts_dir="$(printf '%s' "$COLLECTOR_STDERR" | sed -n 's/^Downloading artifacts to \(.*\) \.\.\.$/\1/p' | head -1)"
+    if [ "$COLLECTOR_RC" != "1" ] || [ -z "$artifacts_dir" ] || [ -d "$artifacts_dir" ]; then
+      echo "  failed on shape: $label (rc=$COLLECTOR_RC)" >&2
+      return 1
+    fi
+  done
+}
+
+# --- T15: a zero-test setup-failure reporter is accepted, not rejected as wrong shape ---
+test_zero_test_setup_failure_reporter_accepted() {
+  local root artifacts_dir step_dir
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root"
+  step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[],"stats":{"expected":0,"unexpected":0,"flaky":0,"skipped":0,"duration":10,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[{"message":"global setup failed"}]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code (zero-test setup failure)" &&
+    assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.global_setup_failure')" "global_setup_failure true"
+}
+
 # --- source_clone_ref falls back to finished.json's .revision when
 # clone-records.json has a matching element with no refs.base_ref ---
 test_source_clone_ref_falls_back_to_finished_revision() {
