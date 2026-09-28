@@ -275,7 +275,9 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(
+              ' ',
+            )} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
@@ -425,14 +427,7 @@ export async function pushUniqueImageWithLayerBytes(
       () =>
         execFileAsync(
           'crane',
-          [
-            'append',
-            '--insecure',
-            '--new_layer',
-            layerTar,
-            '--new_tag',
-            image,
-          ],
+          ['append', '--insecure', '--new_layer', layerTar, '--new_tag', image],
           {env: {...process.env, DOCKER_CONFIG: authDir}},
         ).then(() => undefined),
       5,
