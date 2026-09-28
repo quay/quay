@@ -574,6 +574,55 @@ class TestRepoMirrorSSRFProtection:
             "no_proxy": "mylocalhost",
         }
 
+    def test_create_allowlisted_unresolved_uses_environment_proxy(self, app):
+        """Empty UI proxy falls back to process env for proxy-route SSRF skip."""
+        _HOST = "isolated-registry.example.com"
+        robot, _ = model.user.create_robot(
+            "ssrfenvproxybot", model.user.get_namespace_user("devtable")
+        )
+        env_proxy = {
+            "http_proxy": "http://corp-proxy:8080",
+            "https_proxy": "http://corp-proxy:8080",
+        }
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+            with patch(
+                "util.security.ssrf.get_environment_proxy_config",
+                return_value=env_proxy,
+            ):
+                with patch(
+                    "util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")
+                ) as mock_dns:
+                    with client_with_identity("devtable", app) as cl:
+                        params = {"repository": "devtable/simple"}
+                        body = self._create_body(f"{_HOST}/team/repo", robot.username)
+                        body["external_registry_config"] = {"verify_tls": True}
+                        conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 201)
+
+        mirror = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
+        assert mirror.external_reference == f"{_HOST}/team/repo"
+        mock_dns.assert_not_called()
+
+    def test_create_allowlisted_unresolved_without_env_proxy_rejected(self, app):
+        """Without UI or env proxy, unresolved allowlisted hosts still require DNS."""
+        _HOST = "isolated-registry.example.com"
+        robot, _ = model.user.create_robot(
+            "ssrfnoenvproxybot", model.user.get_namespace_user("devtable")
+        )
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+            with patch(
+                "util.security.ssrf.get_environment_proxy_config",
+                return_value=None,
+            ):
+                with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                    with client_with_identity("devtable", app) as cl:
+                        params = {"repository": "devtable/simple"}
+                        body = self._create_body(f"{_HOST}/team/repo", robot.username)
+                        resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, body, 400)
+
+        assert "Cannot resolve hostname" in resp.json.get("error_message", "")
+
 
 def test_first_proxy_field_persists_when_proxy_mapping_absent(app):
     """Setting the first proxy key must persist the value, not an empty proxy map."""

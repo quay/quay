@@ -148,6 +148,67 @@ def get_environment_proxy_config() -> Optional[Mapping[str, Optional[str]]]:
     }
 
 
+def resolve_proxy_config_for_ssrf(
+    explicit_proxy: Optional[Mapping[str, Optional[str]]] = None,
+) -> Optional[Mapping[str, Optional[str]]]:
+    """
+    Resolve proxy settings for SSRF validation.
+
+    Prefer an explicit per-mirror proxy mapping when it defines a usable proxy
+    URL (http_proxy, https_proxy, or all_proxy). Otherwise fall back to process
+    environment proxies so validation matches Skopeo/requests ambient routing
+    when mirror UI proxy fields are empty.
+
+    When an explicit mapping sets only some scheme keys, fill the unset schemes
+    from the process environment so validation matches Skopeo/requests (which
+    keep ambient proxies for schemes the mirror does not override). Explicit
+    ``no_proxy`` is preserved when present; otherwise ambient ``no_proxy`` is
+    cleared to match ``SkopeoMirror.setup_env``.
+
+    A no_proxy-only explicit mapping overlays its bypass rule on the environment
+    proxy mapping (or is returned as-is when no ambient proxy is set).
+    """
+    has_explicit_proxy_url = bool(
+        explicit_proxy
+        and (
+            explicit_proxy.get("http_proxy")
+            or explicit_proxy.get("https_proxy")
+            or explicit_proxy.get("all_proxy")
+        )
+    )
+    if has_explicit_proxy_url:
+        # all_proxy alone covers both schemes for routing; both scheme-specific
+        # keys already set means nothing to inherit from the environment.
+        if explicit_proxy.get("all_proxy") and not (
+            explicit_proxy.get("http_proxy") or explicit_proxy.get("https_proxy")
+        ):
+            return explicit_proxy
+        if explicit_proxy.get("http_proxy") and explicit_proxy.get("https_proxy"):
+            return explicit_proxy
+
+        environment_proxy = get_environment_proxy_config()
+        if not environment_proxy:
+            return explicit_proxy
+        return {
+            "http_proxy": explicit_proxy.get("http_proxy") or environment_proxy.get("http_proxy"),
+            "https_proxy": explicit_proxy.get("https_proxy")
+            or environment_proxy.get("https_proxy"),
+            "all_proxy": explicit_proxy.get("all_proxy") or environment_proxy.get("all_proxy"),
+            "no_proxy": (explicit_proxy.get("no_proxy") if "no_proxy" in explicit_proxy else None),
+        }
+
+    environment_proxy = get_environment_proxy_config()
+    explicit_no_proxy = explicit_proxy.get("no_proxy") if explicit_proxy else None
+    if explicit_no_proxy:
+        if environment_proxy:
+            return {
+                **environment_proxy,
+                "no_proxy": explicit_no_proxy,
+            }
+        return explicit_proxy
+    return environment_proxy
+
+
 def _is_ip_blocked(ip_str: str) -> bool:
     """
     Check whether an IP address is unsafe for a user-controlled destination.
