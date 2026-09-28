@@ -12,19 +12,16 @@ Nothing else is needed to reach the artifacts — no Prow URL, no browser:
 The presubmit shape is `quay_quay` with an underscore, PR number before the job
 name — e.g. `pr-logs/pull/quay_quay/7148/pull-ci-quay-quay-master-images/2100325289690140672/`.
 
-Any manual download below goes into the workspace scratch dir, never cwd or
-`/tmp`:
-
-```bash
-SCRATCH=tmp/prow-artifacts && mkdir -p "$SCRATCH"
-```
-
 ### B2: new runs — `test-platform-results-public`, anonymous, no auth
 
 Runs that landed **after** the bucket rename are world-readable in
 `test-platform-results-public`. This is the default path; try it first.
 
+Any manual download below goes into the workspace scratch dir, never cwd or
+`/tmp`:
+
 ```bash
+SCRATCH=tmp/prow-artifacts && mkdir -p "$SCRATCH"
 BUCKET=test-platform-results-public
 JOB=periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-nightly
 
@@ -45,15 +42,16 @@ curl -sS --connect-timeout 15 --max-time 300 --max-filesize 104857600 \
   -o "$SCRATCH/results.json" "https://storage.googleapis.com/$BUCKET/$S/artifacts/results.json"
 ```
 
-gcloud reaches the same objects anonymously once credentials are switched off.
-Check the object size first and skip anything over the collector's 100 MiB cap
-— `gcloud storage cp` has no size limit flag of its own — or prefer the
-bounded collector script for large artifacts:
+gcloud can list the same objects anonymously; downloads use the bounded curl
+above (or the collector script) — avoid gcloud storage's `cp` subcommand,
+which has no size or time limit.
 
 ```bash
+BUCKET=test-platform-results-public
+JOB=periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-nightly
+BUILD=2100145201472344064
+S=logs/$JOB/$BUILD/artifacts/gcp-gcs-nightly/quay-test-e2e
 CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage ls "gs://$BUCKET/logs/$JOB/"
-CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage ls -l "gs://$BUCKET/$S/artifacts/results.json"  # check size, skip if > 104857600 bytes
-CLOUDSDK_AUTH_DISABLE_CREDENTIALS=1 gcloud storage cp "gs://$BUCKET/$S/artifacts/results.json" "$SCRATCH/"
 ```
 
 The directory under `artifacts/<variant>/` is the ci-operator step name —
