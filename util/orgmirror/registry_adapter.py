@@ -11,7 +11,10 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from requests.utils import should_bypass_proxies
 
-from util.security.ssrf import validate_external_registry_url
+from util.security.ssrf import (
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_url,
+)
 
 DEFAULT_TIMEOUT = 30
 DEFAULT_MAX_RETRIES = 3
@@ -55,7 +58,7 @@ class RegistryAdapter(ABC):
             url,
             resolve_dns=True,
             allowed_hosts=allowed_hosts,
-            proxy_config=mirror_config.get("proxy"),
+            proxy_config=resolve_proxy_config_for_ssrf(mirror_config.get("proxy")),
         )
 
         self.base_url = url.rstrip("/")
@@ -69,15 +72,24 @@ class RegistryAdapter(ABC):
         self.session = self._create_session()
 
     def _build_proxies(self, url: str) -> Dict:
-        """Build proxies dict for requests, respecting no_proxy."""
+        """Build proxies dict for requests, respecting no_proxy and all_proxy.
+
+        Always pass the mirror ``no_proxy`` value through when set so Requests'
+        ``merge_environment_settings`` uses it instead of ambient ``NO_PROXY``.
+        Without that, a no_proxy-only mirror config returns ``{}`` and ambient
+        bypass rules can force DIRECT while SSRF validation selected PROXY.
+        """
         no_proxy = self.proxy.get("no_proxy", "")
+        proxies = {"no_proxy": no_proxy} if no_proxy else {}
         if no_proxy and should_bypass_proxies(url, no_proxy=no_proxy):
-            return {}
-        proxies = {}
-        if self.proxy.get("http_proxy"):
-            proxies["http"] = self.proxy["http_proxy"]
-        if self.proxy.get("https_proxy"):
-            proxies["https"] = self.proxy["https_proxy"]
+            return proxies
+        # Scheme-specific proxy wins; otherwise fall back to all_proxy (requests-compatible).
+        http_proxy = self.proxy.get("http_proxy") or self.proxy.get("all_proxy")
+        https_proxy = self.proxy.get("https_proxy") or self.proxy.get("all_proxy")
+        if http_proxy:
+            proxies["http"] = http_proxy
+        if https_proxy:
+            proxies["https"] = https_proxy
         return proxies
 
     def _create_session(self) -> requests.Session:

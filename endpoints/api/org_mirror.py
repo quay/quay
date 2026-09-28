@@ -36,7 +36,11 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 from util.orgmirror import get_registry_adapter
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+from util.security.ssrf import (
+    SSRFBlockedError,
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_url,
+)
 
 # Generic error message for SSRF rejections. Avoids leaking internal network topology
 # by not distinguishing between blocked hostnames, private IPs, and DNS results.
@@ -72,7 +76,7 @@ def _validate_registry_url(url, proxy_config=None):
         validate_external_registry_url(
             url,
             allowed_hosts=_get_ssrf_allowed_hosts(),
-            proxy_config=proxy_config,
+            proxy_config=resolve_proxy_config_for_ssrf(proxy_config),
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
@@ -714,7 +718,9 @@ class OrgMirrorVerify(ApiResource):
                 mirror.external_registry_url,
                 resolve_dns=True,
                 allowed_hosts=allowed_hosts,
-                proxy_config=(mirror.external_registry_config or {}).get("proxy"),
+                proxy_config=resolve_proxy_config_for_ssrf(
+                    (mirror.external_registry_config or {}).get("proxy")
+                ),
             )
         except ValueError:
             return {"success": False, "message": "The provided URL is not allowed"}

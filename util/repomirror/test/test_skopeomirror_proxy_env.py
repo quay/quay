@@ -107,6 +107,90 @@ class TestSkopeoMirrorProxyEnv:
         assert "no_proxy" not in env
         assert proxy_route_for_url("https://registry.example.com", explicit) is ProxyRoute.PROXY
 
+    def test_setup_env_applies_explicit_all_proxy(self):
+        """Explicit all_proxy must reach Skopeo so SSRF PROXY routing is not stranded."""
+        from util.security.ssrf import ProxyRoute, proxy_route_for_url
+
+        mirror = SkopeoMirror()
+        explicit = {"all_proxy": "http://all-proxy:8080"}
+        with patch.dict(os.environ, {}, clear=True):
+            env = mirror.setup_env(explicit)
+
+        assert env["HTTP_PROXY"] == "http://all-proxy:8080"
+        assert env["HTTPS_PROXY"] == "http://all-proxy:8080"
+        assert env["ALL_PROXY"] == "http://all-proxy:8080"
+        assert proxy_route_for_url("https://registry.example.com", explicit) is ProxyRoute.PROXY
+
+    def test_setup_env_scheme_proxy_wins_over_all_proxy(self):
+        mirror = SkopeoMirror()
+        with patch.dict(os.environ, {}, clear=True):
+            env = mirror.setup_env(
+                {
+                    "https_proxy": "http://https-proxy:8443",
+                    "all_proxy": "http://all-proxy:8080",
+                }
+            )
+        assert env["HTTPS_PROXY"] == "http://https-proxy:8443"
+        assert env["HTTP_PROXY"] == "http://all-proxy:8080"
+        assert env["ALL_PROXY"] == "http://all-proxy:8080"
+
+    def test_setup_env_http_proxy_wins_https_falls_back_to_all_proxy(self):
+        mirror = SkopeoMirror()
+        with patch.dict(os.environ, {}, clear=True):
+            env = mirror.setup_env(
+                {
+                    "http_proxy": "http://http-proxy:8080",
+                    "all_proxy": "http://all-proxy:8080",
+                }
+            )
+        assert env["HTTP_PROXY"] == "http://http-proxy:8080"
+        assert env["HTTPS_PROXY"] == "http://all-proxy:8080"
+        assert env["ALL_PROXY"] == "http://all-proxy:8080"
+
+    def test_setup_env_explicit_empty_no_proxy_clears_ambient(self):
+        """Explicit proxy with empty no_proxy must clear ambient NO_PROXY."""
+        mirror = SkopeoMirror()
+        with patch.dict(
+            os.environ,
+            {
+                "HTTP_PROXY": "http://ambient:9999",
+                "HTTPS_PROXY": "http://ambient:9999",
+                "NO_PROXY": "registry.example.com",
+            },
+            clear=True,
+        ):
+            env = mirror.setup_env(
+                {
+                    "http_proxy": "http://explicit:8080",
+                    "https_proxy": "http://explicit:8443",
+                    "no_proxy": "",
+                }
+            )
+        assert env["HTTP_PROXY"] == "http://explicit:8080"
+        assert env["HTTPS_PROXY"] == "http://explicit:8443"
+        assert "NO_PROXY" not in env
+        assert "no_proxy" not in env
+
+    def test_setup_env_no_proxy_only_keeps_ambient_proxy(self):
+        mirror = SkopeoMirror()
+        with patch.dict(
+            os.environ,
+            {"HTTPS_PROXY": "http://ambient:9999", "NO_PROXY": "other.example.com"},
+            clear=True,
+        ):
+            env = mirror.setup_env({"no_proxy": "registry.example.com"})
+        assert env["HTTPS_PROXY"] == "http://ambient:9999"
+        assert env["NO_PROXY"] == "registry.example.com"
+
+    def test_setup_env_materializes_ambient_all_proxy_into_scheme_vars(self):
+        """Go ignores ALL_PROXY; empty mirror proxy must still reach HTTP(S)_PROXY."""
+        mirror = SkopeoMirror()
+        with patch.dict(os.environ, {"ALL_PROXY": "http://all-proxy:8080"}, clear=True):
+            env = mirror.setup_env({})
+        assert env["ALL_PROXY"] == "http://all-proxy:8080"
+        assert env["HTTP_PROXY"] == "http://all-proxy:8080"
+        assert env["HTTPS_PROXY"] == "http://all-proxy:8080"
+
     def test_ssrf_validator_uses_explicit_proxy_not_ambient_env(self):
         from util.security.ssrf import ProxyRoute, proxy_route_for_url
 
