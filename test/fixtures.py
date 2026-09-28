@@ -67,6 +67,9 @@ class MockGlobalLock:
     def release(self):
         pass
 
+    def is_held_by_us(self):
+        return True
+
 
 INIT_DB_PATH = 0
 

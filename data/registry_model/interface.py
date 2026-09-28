@@ -377,7 +377,9 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def commit_blob_upload(self, blob_upload, blob_digest_str, blob_expiration_seconds):
+    def commit_blob_upload(
+        self, blob_upload, blob_digest_str, blob_expiration_seconds, already_locked=False
+    ):
         """
         Commits the blob upload into a blob and sets an expiration before that blob will be GCed.
         """

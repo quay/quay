@@ -7,8 +7,10 @@ import bitmath
 from prometheus_client import Counter, Histogram
 
 from data.database import CloseForLongOperation, db_transaction
+from data.model import storage as storage_model
 from data.registry_model import registry_model
 from digest import digest_tools
+from util.locking import LockOwnershipLost
 from util.registry.filelike import StreamSlice, wrap_with_handler
 from util.registry.gzipstream import calculate_size_handler
 
@@ -300,21 +302,59 @@ class _BlobUploadManager(object):
         if expected_digest is not None:
             self._validate_digest(expected_digest)
 
-        # Finalize the storage.
-        storage_already_existed = self._finalize_blob_storage(app_config)
-
-        # Convert the upload to a blob.
         computed_digest_str = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
 
-        with db_transaction():
-            blob = registry_model.commit_blob_upload(
-                self.blob_upload, computed_digest_str, self.settings.committed_blob_expiration
-            )
-            if blob is None:
-                return None
+        # Finalize the storage and commit the blob record as a single per-digest critical
+        # section, so GC cannot remove the CAS object between the storage finalize (which may
+        # dedupe against an existing object) and the DB/temp-link commit that relies on it still
+        # being there. There is no unlocked fallback for this section: if the lock is still held
+        # elsewhere after the bounded wait, LockAcquireTimeout propagates (a 503, which clients
+        # retry) rather than reopening the finalize/GC race.
+        # auto_renewal=True means a live-but-hung finalize holds the lock for as long as the
+        # thread lives, blocking same-digest uploaders and GC behind it; without auto-renewal a
+        # long finalize loses the lock mid-section and the race this fix closes comes back.
+        blob = storage_model.with_blob_lock(
+            computed_digest_str,
+            self._finalize_storage_and_commit,
+            app_config,
+            computed_digest_str,
+            lock_ttl=120,
+            auto_renewal=True,
+        )
+        if blob is None:
+            return None
 
         self.committed_blob = blob
         return blob
+
+    def _finalize_storage_and_commit(
+        self, app_config, computed_digest_str, skip_lock=False, lock=None
+    ):
+        # Finalize the storage.
+        self._finalize_blob_storage(app_config)
+
+        # The CAS finalize above has already happened; that's safe even if we lose the lock
+        # below, since an orphan CAS object is GC-collectable. A DB row pointing at a CAS object
+        # that GC has since deleted is not, so verify we still own the lock before committing:
+        # auto-renewal failure in python-redis-lock is silent (the renewal thread does not
+        # report back to the owner), so a stale `lock` object can look held when it is not.
+        if lock is not None and not lock.is_held_by_us():
+            logger.error(
+                "Lost ownership of finalize/commit lock for blob %s before DB commit",
+                computed_digest_str,
+            )
+            raise LockOwnershipLost(
+                f"Lost ownership of lock for blob {computed_digest_str} before DB commit"
+            )
+
+        # Convert the upload to a blob.
+        with db_transaction():
+            return registry_model.commit_blob_upload(
+                self.blob_upload,
+                computed_digest_str,
+                self.settings.committed_blob_expiration,
+                already_locked=skip_lock,
+            )
 
     def _validate_digest(self, expected_digest):
         """
