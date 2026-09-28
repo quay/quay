@@ -168,8 +168,9 @@ bash .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh <PROW
 It fetches anonymously and works on post-rename runs as-is, but only if the URL
 names the public bucket — substitute it by hand (see
 [references/prow-artifacts.md](references/prow-artifacts.md)) only once the
-run is confirmed post-rename. A run confirmed pre-rename keeps the private
-bucket and is reported as an access gap, not substituted.
+run is confirmed post-rename. Any run not confirmed post-rename (including one
+whose public-bucket lookup 404s) keeps the private bucket and is reported as
+an access gap, not substituted.
 
 **Never present locally inferred error text as if it were quoted from a CI
 artifact.** If the trace was not read, the report says so in the evidence table
@@ -214,7 +215,7 @@ rm -rf tmp/prow-artifacts   # if a manual download from references/prow-artifact
 
 - [ ] Sippy numbers recorded (`current_runs` / `current_successes` / `current_flakes` / `current_failures`, per-variant split, run URLs)
 - [ ] "When did it start" answered from `git log` on both branches
-- [ ] CI artifacts fetched from the public bucket, **or** — pre-rename run only — the access gap reported directly to the caller
+- [ ] CI artifacts fetched from the public bucket, **or** — run not confirmed post-rename only — the access gap reported directly to the caller
 - [ ] Spec, fixtures (worker vs test scope) and product code read
 - [ ] Reproduction attempted with both commands, rate stated, worker reuse confirmed
 - [ ] Candidate causes rejected with evidence, not just the winner asserted

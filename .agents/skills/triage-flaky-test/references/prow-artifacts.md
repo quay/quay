@@ -97,4 +97,7 @@ B2); do not swap it on a run that has not been confirmed post-rename:
 
 A pre-rename run stays in the private bucket (B3) — substituting the public
 bucket there does not make it readable, it just changes the failure from 403
-to 404. Report it as an access gap, not a substitution.
+to 404. Report it as an access gap, not a substitution. A public-bucket 404
+does not confirm the run either way: any run not confirmed post-rename is
+reported as an access gap (bucket and prefix tried) and falls back to Stage A
+plus Stage C, as in B3.
