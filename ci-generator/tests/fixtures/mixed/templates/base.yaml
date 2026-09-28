@@ -1,9 +1,0 @@
-prowgen:
-  enable_secrets_store_csi_driver: true
-tests:
-- as: "{{ test_as }}"
-zz_generated_metadata:
-  branch: "{{ branch }}"
-  org: "{{ org }}"
-  repo: "{{ repo }}"
-  variant: "{{ variant }}"
