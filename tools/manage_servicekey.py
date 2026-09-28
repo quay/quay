@@ -49,10 +49,16 @@ def expire_key(kid, grace_seconds):
         print("Key '%s' already expiring within the requested grace window." % kid)
         return 0
 
-    key.expiration_date = grace_deadline
-    key.save()
+    ServiceKey.update(expiration_date=grace_deadline).where(ServiceKey.kid == kid).execute()
     print("Key '%s' expiration set to %s." % (kid, grace_deadline.isoformat() + "Z"))
     return 0
+
+
+def _non_negative_int(value):
+    ivalue = int(value)
+    if ivalue < 0:
+        raise argparse.ArgumentTypeError("--grace-seconds must be a non-negative integer")
+    return ivalue
 
 
 def main():
@@ -63,7 +69,7 @@ def main():
     expire_parser.add_argument("--kid", required=True, help="The key ID to expire")
     expire_parser.add_argument(
         "--grace-seconds",
-        type=int,
+        type=_non_negative_int,
         default=DEFAULT_GRACE_SECONDS,
         help="Seconds from now until the key expires. Defaults to %(default)s",
     )

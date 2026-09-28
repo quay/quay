@@ -207,9 +207,10 @@ def _verify_service_key():
     return kid
 
 
-def _verify_legacy_service_key():
+def _verify_generated_service_key():
     """
-    Preserves manual readonly behavior when mounted key import is not enabled.
+    Verifies a locally generated service key during readonly boot.
+    Used when INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES is false (default).
     """
     try:
         with open(app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"]) as f:
@@ -239,7 +240,7 @@ def setup_instance_service_key():
         if app.config.get("INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES", False):
             quay_key_id = _verify_service_key()
         else:
-            quay_key_id = _verify_legacy_service_key()
+            quay_key_id = _verify_generated_service_key()
         if quay_key_id is None:
             raise Exception("No valid service key found for read-only registry.")
         return
