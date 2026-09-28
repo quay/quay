@@ -646,47 +646,51 @@ test.describe(
     // Group 5: Recovery Flow — Email Lookup
     // =========================================================================
 
-    test.describe('Recovery — Email Lookup', () => {
-      const GENERIC_RECOVERY_MESSAGE =
-        'Recovery instructions have been sent to';
+    test.describe(
+      'Recovery — Email Lookup',
+      {tag: ['@feature:MAILING']},
+      () => {
+        const GENERIC_RECOVERY_MESSAGE =
+          'Recovery instructions have been sent to';
 
-      test('recovery shows generic sent message for any email type', async ({
-        unauthenticatedPage,
-      }) => {
-        await unauthenticatedPage.goto('/signin');
+        test('recovery shows generic sent message for any email type', async ({
+          unauthenticatedPage,
+        }) => {
+          await unauthenticatedPage.goto('/signin');
 
-        // Click forgot password
-        await unauthenticatedPage.getByText('Forgot password?').click();
+          // Click forgot password
+          await unauthenticatedPage.getByText('Forgot password?').click();
 
-        // Enter an arbitrary email
-        await unauthenticatedPage
-          .getByTestId('signin-recovery-email')
-          .fill('anyemail@example.com');
-        await unauthenticatedPage.getByRole('button', {name: 'Send'}).click();
+          // Enter an arbitrary email
+          await unauthenticatedPage
+            .getByTestId('signin-recovery-email')
+            .fill('anyemail@example.com');
+          await unauthenticatedPage.getByRole('button', {name: 'Send'}).click();
 
-        // Verify generic message (no info leak)
-        await expect(
-          unauthenticatedPage.getByText(GENERIC_RECOVERY_MESSAGE),
-        ).toBeVisible();
-      });
+          // Verify generic message (no info leak)
+          await expect(
+            unauthenticatedPage.getByText(GENERIC_RECOVERY_MESSAGE),
+          ).toBeVisible();
+        });
 
-      test('recovery with unknown email shows same generic message', async ({
-        unauthenticatedPage,
-      }) => {
-        await unauthenticatedPage.goto('/signin');
+        test('recovery with unknown email shows same generic message', async ({
+          unauthenticatedPage,
+        }) => {
+          await unauthenticatedPage.goto('/signin');
 
-        await unauthenticatedPage.getByText('Forgot password?').click();
-        await unauthenticatedPage
-          .getByTestId('signin-recovery-email')
-          .fill('nonexistent-xyz-999@nowhere.test');
-        await unauthenticatedPage.getByRole('button', {name: 'Send'}).click();
+          await unauthenticatedPage.getByText('Forgot password?').click();
+          await unauthenticatedPage
+            .getByTestId('signin-recovery-email')
+            .fill('nonexistent-xyz-999@nowhere.test');
+          await unauthenticatedPage.getByRole('button', {name: 'Send'}).click();
 
-        // Same generic message — no information leak about account existence
-        await expect(
-          unauthenticatedPage.getByText(GENERIC_RECOVERY_MESSAGE),
-        ).toBeVisible();
-      });
-    });
+          // Same generic message — no information leak about account existence
+          await expect(
+            unauthenticatedPage.getByText(GENERIC_RECOVERY_MESSAGE),
+          ).toBeVisible();
+        });
+      },
+    );
 
     // =========================================================================
     // Group 6: Feature Flag — FEATURE_ORG_SHARED_EMAIL
