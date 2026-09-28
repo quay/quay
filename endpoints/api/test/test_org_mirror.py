@@ -1743,6 +1743,70 @@ class TestOrgMirrorSSRFProtection:
 
         _cleanup_org_mirror_config("buynlarge")
 
+    def test_create_allowlisted_unresolved_uses_environment_proxy(self, app):
+        """Empty UI proxy falls back to process env for proxy-route SSRF skip."""
+        _HOST = "isolated-orgmirror.example.com"
+        env_proxy = {
+            "http_proxy": "http://corp-proxy:8080",
+            "https_proxy": "http://corp-proxy:8080",
+        }
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+            with patch(
+                "util.security.ssrf.get_environment_proxy_config",
+                return_value=env_proxy,
+            ):
+                with patch(
+                    "util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")
+                ) as mock_dns:
+                    with client_with_identity("devtable", app) as cl:
+                        params = {"orgname": _EMPTY_ORG}
+                        body = self._base_create_body(f"https://{_HOST}")
+                        body["external_registry_config"] = {"verify_tls": True}
+                        conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+
+        created = model.org_mirror.get_org_mirror_config(
+            model.organization.get_organization(_EMPTY_ORG)
+        )
+        assert created is not None
+        assert created.external_registry_url == f"https://{_HOST}"
+        mock_dns.assert_not_called()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+    def test_verify_allowlisted_unresolved_uses_environment_proxy(self, app):
+        """Verify uses ambient env proxy when stored mirror proxy fields are empty."""
+        _HOST = "isolated-orgmirror-verify.example.com"
+        env_proxy = {
+            "http_proxy": "http://corp-proxy:8080",
+            "https_proxy": "http://corp-proxy:8080",
+        }
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_url=f"https://{_HOST}",
+            external_registry_config={"verify_tls": True},
+        )
+
+        with patch.dict(quay_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+            with patch(
+                "util.security.ssrf.get_environment_proxy_config",
+                return_value=env_proxy,
+            ):
+                with patch(
+                    "util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")
+                ) as mock_dns:
+                    with patch("endpoints.api.org_mirror.get_registry_adapter") as mock_adapter:
+                        mock_adapter.return_value.test_connection.return_value = (True, "ok")
+                        with client_with_identity("devtable", app) as cl:
+                            params = {"orgname": "buynlarge"}
+                            result = conduct_api_call(
+                                cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200
+                            ).json
+
+        assert result["success"] is True
+        mock_dns.assert_not_called()
+        _cleanup_org_mirror_config("buynlarge")
+
     def test_update_url_without_config_uses_stored_proxy_route(self, app):
         """Omitting external_registry_config keeps the stored proxy for validation."""
         _cleanup_org_mirror_config("buynlarge")

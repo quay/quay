@@ -2063,5 +2063,57 @@ test.describe(
       const config = await api.raw.getOrgMirrorConfig(org.name);
       expect(config).toBeNull();
     });
+
+    test('verify connection succeeds with ambient env proxy and empty UI proxy', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const registryUrl = process.env.PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL;
+      test.skip(
+        !registryUrl,
+        'PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL required (Quay process must already have HTTP(S)_PROXY)',
+      );
+
+      const org = await api.organization('orgmirrorenvproxy');
+      const robot = await api.robot(org.name, 'envproxybot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryUrl,
+        namespace: process.env.PLAYWRIGHT_ORG_MIRROR_NAMESPACE ?? 'testns',
+      });
+
+      // Leave http/https/no_proxy inputs empty — SSRF must use Quay process env.
+      await expect(
+        authenticatedPage.getByTestId('http-proxy-input'),
+      ).toHaveValue('');
+      await expect(
+        authenticatedPage.getByTestId('https-proxy-input'),
+      ).toHaveValue('');
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText('Connection verified successfully').first(),
+      ).toBeVisible({timeout: 15000});
+
+      await authenticatedPage.getByTestId('submit-button').click();
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.external_registry_url).toBe(registryUrl);
+      expect(config?.external_registry_config?.proxy?.http_proxy).toBeFalsy();
+      expect(config?.external_registry_config?.proxy?.https_proxy).toBeFalsy();
+    });
   },
 );

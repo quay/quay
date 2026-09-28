@@ -25,7 +25,11 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
+from util.security.ssrf import (
+    SSRFBlockedError,
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_reference,
+)
 
 SSRF_GENERIC_ERROR = "The provided registry location is not allowed"
 
@@ -63,7 +67,7 @@ def _validate_external_reference(reference, proxy_config=None):
         validate_external_registry_reference(
             reference,
             allowed_hosts=_get_ssrf_allowed_hosts(),
-            proxy_config=proxy_config,
+            proxy_config=resolve_proxy_config_for_ssrf(proxy_config),
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
