@@ -163,7 +163,7 @@ else
 fi
 mkdir -p "$REPO_ROOT/tmp"
 RECORDS_FILE=$(mktemp "$REPO_ROOT/tmp/jaeger-extract.XXXXXX")
-trap 'rm -f "$RECORDS_FILE"' EXIT
+trap 'rm -f "$RECORDS_FILE" "$RECORDS_FILE.part" "$RECORDS_FILE.tmp"' EXIT
 
 # Matching rule (non-negotiable): a span matches only via its endpoint /
 # request identifiers. A time window (applied below via $since/$until) is a
@@ -215,10 +215,13 @@ for file in "${CHUNK_FILES[@]}"; do
     break
   fi
   if ! jq -c --arg pat "$ENDPOINT" --argjson since "$SINCE_US" --argjson until "$UNTIL_US" --argjson remaining "$(( remaining + 1 ))" \
-    "$JQ_FILTER" "$file" >>"$RECORDS_FILE"; then
+    "$JQ_FILTER" "$file" >"$RECORDS_FILE.part"; then
     echo "WARNING: jq failed while scanning $file; skipping" >&2
+    rm -f "$RECORDS_FILE.part"
     continue
   fi
+  cat "$RECORDS_FILE.part" >>"$RECORDS_FILE"
+  rm -f "$RECORDS_FILE.part"
   added=$(( $(wc -l <"$RECORDS_FILE" | tr -d ' ') - before ))
   if [ "$added" -gt "$remaining" ]; then
     head -n "$(( before + remaining ))" "$RECORDS_FILE" >"$RECORDS_FILE.tmp" && mv "$RECORDS_FILE.tmp" "$RECORDS_FILE"

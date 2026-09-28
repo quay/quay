@@ -339,7 +339,7 @@ test_attachment_validation_usable_missing_redacted() {
   local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
   mkdir -p "$step_dir/attach-coverage"
   cat >"$step_dir/results.json" <<'EOF'
-{"config":{"workers":1},"suites":[{"specs":[{"title":"attachment coverage","file":"attach.spec.ts","line":5,"tests":[{"projectName":"chromium","status":"unexpected","results":[{"retry":0,"status":"failed","duration":50,"errors":[{"message":"failure"}],"attachments":[{"name":"trace","path":"/work/test-results/attach-coverage/trace.zip"},{"name":"screenshot","path":"/work/test-results/attach-coverage/missing.png"},{"name":"screenshot","path":"/work/test-results/attach-coverage/redacted.png"},{"name":"trace","path":"/work/test-results/attach-coverage/badmagic-trace.zip"},{"name":"trace","path":"/work/test-results/attach-coverage/corrupt-trace.zip"}]}]}]}]}],"stats":{"expected":0,"unexpected":1,"flaky":0,"skipped":0,"duration":50,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+{"config":{"workers":1},"suites":[{"specs":[{"title":"attachment coverage","file":"attach.spec.ts","line":5,"tests":[{"projectName":"chromium","status":"unexpected","results":[{"retry":0,"status":"failed","duration":50,"errors":[{"message":"failure"}],"attachments":[{"name":"trace","path":"/work/test-results/attach-coverage/trace.zip"},{"name":"screenshot","path":"/work/test-results/attach-coverage/missing.png"},{"name":"screenshot","path":"/work/test-results/attach-coverage/redacted.png"},{"name":"trace","path":"/work/test-results/attach-coverage/badmagic-trace.zip"},{"name":"trace","path":"/work/test-results/attach-coverage/corrupt-trace.zip"},{"name":"screenshot","contentType":"image/png","body":"aGVsbG8="}]}]}]}]}],"stats":{"expected":0,"unexpected":1,"flaky":0,"skipped":0,"duration":50,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
 EOF
 
   TRACE_ZIP_PATH="$step_dir/attach-coverage/trace.zip" python3 - <<'PY'
@@ -370,6 +370,9 @@ PY
     assert_eq "not a valid zip (bad magic bytes)" "$(printf '%s' "$attachments" | jq -r '.[3].reason')" "bad magic bytes reason" &&
     assert_eq "missing" "$(printf '%s' "$attachments" | jq -r '.[4].status')" "corrupt zip trace is missing" &&
     assert_eq "unzip -t failed (corrupt archive)" "$(printf '%s' "$attachments" | jq -r '.[4].reason')" "corrupt archive reason" &&
+    assert_eq "inline" "$(printf '%s' "$attachments" | jq -r '.[5].status')" "inline-body attachment is inline" &&
+    assert_eq "attachment body embedded in results.json" "$(printf '%s' "$attachments" | jq -r '.[5].reason')" "inline attachment reason" &&
+    assert_eq "null" "$(printf '%s' "$attachments" | jq -r '.[5].body')" "inline attachment does not leak the body field" &&
     assert_eq "traces captured on failing/retried attempts (inferred from 3 trace attachment(s) in results.json; config.projects[].use.trace not serialized)" \
       "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.provenance.tracing_configuration.value')" "tracing_configuration inferred from trace attachments" &&
     assert_eq "null" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.provenance.tracing_configuration.reason')" "tracing_configuration reason null when inferred"
@@ -632,8 +635,9 @@ EOF
   assert_eq "0" "$COLLECTOR_RC" "exit code" &&
     assert_eq "revfallback999" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.provenance.source_clone_ref.value')" \
       "source_clone_ref falls back to finished.json revision" &&
-    assert_eq "null" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.provenance.source_clone_ref.reason')" \
-      "source_clone_ref reason null when the fallback resolves it"
+    assert_eq "matched clone-records.json element has no refs.base_ref; using finished.json .revision, which may be a commit SHA rather than a ref" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.provenance.source_clone_ref.reason')" \
+      "source_clone_ref reason names the finished.json fallback and keeps the clone-records reason"
 }
 
 # --- index.html itself is the CI redaction placeholder ---

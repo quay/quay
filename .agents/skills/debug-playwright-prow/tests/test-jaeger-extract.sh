@@ -223,6 +223,48 @@ test_max_records_exact_limit_no_false_positive() {
     esac
 }
 
+# --- a matching span preceding a span that makes jq error mid-file must not
+# leave a partial record in the output; the whole file is skipped, not
+# half-written ---
+test_partial_records_not_written_on_mid_file_error() {
+  local dir="$TMP_ROOT/partialerror"
+  mkdir -p "$dir"
+  jq -n '
+    {
+      data: [
+        {
+          spans: [
+            {
+              traceID: "t1", spanID: "s1", operationName: "GET /api/v1/ok", duration: 10, startTime: 1000000000000000,
+              tags: [{key: "span.kind", value: "server"}, {key: "http.target", value: "/api/v1/ok"}]
+            }
+          ]
+        },
+        {
+          spans: [
+            {
+              traceID: "t2", spanID: "s2", operationName: "GET /api/v1/bad", duration: 10, startTime: 1000000000000001,
+              tags: [{key: "span.kind", value: "server"}, {key: "http.target", value: 12345}]
+            }
+          ]
+        }
+      ]
+    }
+  ' >"$dir/traces.json"
+
+  run_jaeger --dir "$dir" --endpoint '/api/v1/'
+
+  assert_eq "0" "$JAEGER_RC" "exit code (a per-file jq error is a warning, not a failure)" &&
+    assert_eq "0" "$(printf '%s' "$JAEGER_STDOUT" | jq 'length')" "no records from a file with a mid-file jq error" &&
+    case "$JAEGER_STDERR" in
+      *"jq failed while scanning"*) : ;;
+      *)
+        echo "  expected a jq-failed warning, got: $JAEGER_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
 # --- invalid --endpoint regex: rejected up front, not read as "no spans" ---
 test_invalid_endpoint_regex_rejected() {
   local dir="$TMP_ROOT/badregex"

@@ -123,11 +123,11 @@ echo "GCS base: $GCS_BASE" >&2
 # gitignored tmp/ so a successful run's artifacts_dir is easy to find inside
 # the workspace instead of orphaned somewhere outside it. (A failed run's
 # scratch dir is removed by the EXIT trap below, not left behind.)
-if REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
+if REPO_ROOT=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null); then
   :
 else
-  REPO_ROOT="$PWD"
-  echo "WARNING: not inside a git work tree; using \$PWD ($REPO_ROOT) as the repo root for scratch storage" >&2
+  REPO_ROOT="$SCRIPT_DIR"
+  echo "WARNING: not inside a git work tree; using the script directory ($REPO_ROOT) as the repo root for scratch storage" >&2
 fi
 mkdir -p "$REPO_ROOT/tmp"
 WORK_DIR=$(mktemp -d "$REPO_ROOT/tmp/playwright-prow.XXXXXX")
@@ -205,8 +205,8 @@ parse_finished "$FINISHED_PATH"
 # finished.json .revision is a fallback for the base ref, used whenever
 # clone-records.json could not supply one for any reason.
 if [ -z "$SOURCE_CLONE_REF" ] && [ -n "$FINISHED_REVISION" ]; then
+  SOURCE_CLONE_REF_REASON="$SOURCE_CLONE_REF_REASON; using finished.json .revision, which may be a commit SHA rather than a ref"
   SOURCE_CLONE_REF="$FINISHED_REVISION"
-  SOURCE_CLONE_REF_REASON=""
 elif [ -z "$SOURCE_CLONE_REF" ] && [ -z "$SOURCE_CLONE_REF_REASON" ]; then
   SOURCE_CLONE_REF_REASON="clone-records.json has no refs.base_ref and finished.json has no .revision"
 fi
@@ -797,8 +797,13 @@ jq \
   '
   def strip_ansi: if type == "string" then gsub("[[:cntrl:]]\\[[0-9;]*m"; "") else . end;
   def nullify: if . == "" then null else . end;
-  def with_attachment_status: . as $a | if $a.url == null then $a + {status: "missing", reason: "no attachment path in results.json"} else $a + ($attachment_status_map[$a.url] // {status: null, reason: null}) end;
-  def build_attachments: [ .attachments[] | { name, path, url: (if .path then ('"$ATTACHMENT_URL_JQ"') else null end) } | with_attachment_status ];
+  def with_attachment_status:
+    . as $a
+    | (if $a.url != null then ($attachment_status_map[$a.url] // {status: null, reason: null})
+       elif $a.body != null then {status: "inline", reason: "attachment body embedded in results.json"}
+       else {status: "missing", reason: "no attachment path in results.json"} end) as $st
+    | {name: $a.name, path: $a.path, url: $a.url} + $st;
+  def build_attachments: [ .attachments[] | { name, path, body, url: (if .path then ('"$ATTACHMENT_URL_JQ"') else null end) } | with_attachment_status ];
   (.config.projects // []) as $projects
   | ([$projects[]?.metadata.actualWorkers] | map(select(. != null)) | first) as $project_actual_workers
   | (if $project_actual_workers != null then $project_actual_workers else .config.workers end) as $actual_workers
