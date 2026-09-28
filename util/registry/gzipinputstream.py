@@ -36,14 +36,18 @@ class GzipInputStream(object):
     Python 2.x gzip.GZipFile relies on .seek() and .tell(), so it
     doesn't support this (@see: http://bo4.me/YKWSsL).
 
-    The first block decides how the stream is read, before any byte is served:
+    The leading bytes decide how the stream is read, before any byte is served:
     the gzip magic means decompress; a JSON document (after optional whitespace)
     is passed through unchanged, because some storage backends (e.g. Google
     Cloud Storage) decompress objects stored with Content-Encoding: gzip on the
-    way out; anything else raises UnrecognizedStreamError. `passthrough` tells
-    the caller which of the first two applied. A stream that starts with the
-    gzip magic but is corrupt still raises zlib.error while being read, and a
-    truncated gzip stream still yields the partial payload without error.
+    way out; anything else raises UnrecognizedStreamError. A short first read
+    (e.g. a single leading byte) is not enough to decide, so reads of up to
+    BLOCK_SIZE are accumulated until the case is decided, the stream ends, or
+    the prefix reaches BLOCK_SIZE (so at most just under 2 * BLOCK_SIZE).
+    `passthrough` tells the caller which of the first two applied. A stream
+    that starts with the gzip magic but is corrupt still raises zlib.error
+    while being read, and a truncated gzip stream still yields the partial
+    payload without error.
 
     Adapted from: https://gist.github.com/beaufour/4205533
     """
@@ -59,6 +63,19 @@ class GzipInputStream(object):
         self._offset = 0  # position in unzipped stream
 
         first = self._file.read(BLOCK_SIZE)
+        while True:
+            if first.startswith(GZIP_MAGIC):
+                break
+            still_could_be_magic = len(first) < len(GZIP_MAGIC) and GZIP_MAGIC.startswith(first)
+            if not still_could_be_magic and first.lstrip():
+                break
+            if len(first) >= BLOCK_SIZE:
+                break
+            chunk = self._file.read(BLOCK_SIZE)
+            if not chunk:
+                break
+            first += chunk
+
         if first.startswith(GZIP_MAGIC):
             self.passthrough = False
             self._data = self._zip.decompress(first)
