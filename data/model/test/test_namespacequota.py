@@ -7,6 +7,7 @@ from data.model.namespacequota import (
     create_namespace_quota,
     delete_namespace_quota,
     get_namespace_quota_list,
+    get_quota_for_view,
     notify_organization_admins,
 )
 from data.model.notification import (
@@ -254,3 +255,7 @@ class TestDeleteNamespaceQuotaNotificationFilter:
             list_namespace_notifications(self.user.username, event_name="quota_warning")
         )
         assert not list(list_namespace_notifications(self.user.username, event_name="quota_error"))
+
+
+def test_get_quota_for_view_missing_namespace(initialized_db):
+    assert get_quota_for_view("nonexistent-namespace-13384") is None
