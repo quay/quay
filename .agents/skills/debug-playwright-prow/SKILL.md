@@ -1,12 +1,18 @@
 ---
 name: debug-playwright-prow
 description: >
-  Debug Playwright E2E test failures from Prow/OpenShift CI runs.
-  Downloads artifacts from GCS, categorizes failures (flaky/real/infra),
-  correlates with build logs and container logs, and offers fixes.
+  Deep-dive diagnosis of a Playwright test failure already isolated to one
+  Quay Prow/OpenShift CI run: downloads its GCS artifacts (results.json,
+  JUnit, build/pod logs, Jaeger traces), classifies real vs flaky failures,
+  and correlates each real failure with backend evidence. Use when: a
+  specific Prow run's Playwright failure needs root-causing — not for a Prow
+  job before the failing step is known (use quay-prow-triage) or a Sippy
+  flake-history question across runs (use triage-flaky-test). Not for GitHub
+  Actions; use debug-playwright.
 argument-hint: PROW_URL
 allowed-tools:
   - Bash(bash .agents/skills/debug-playwright-prow/scripts/playwright-debug-prow.sh *)
+  - Bash(bash .agents/skills/debug-playwright-prow/scripts/jaeger-extract.sh *)
   - Bash(curl *)
   - Read
   - Grep
@@ -69,40 +75,50 @@ rm -f "$PW_JSON_FILE"
 Any other scratch file (stderr capture, etc.) also goes under `tmp/`, never
 `/tmp` or outside the workspace.
 
-The collector normalizes either `.../<e2e-step>/artifacts` or
-`.../<e2e-step>` before deriving the sibling `gather-extra` and
-`quay-gather-jaeger-traces` locations. It enumerates those derived prefixes:
-legacy `traces.json`, chunked `traces-*.json`, and supported Jaeger metadata
-files are downloaded only after JSON validation. Pod-qualified Quay app logs
-are selected from `gather-extra/artifacts/pods/`. Empty pod logs are ignored;
-redacted pod-log filenames are reported separately and are not treated as
-usable container logs.
+If exit code is 2, the run is still in progress — tell the user to wait.
 
-All fields are derived from Playwright's JSON reporter output (`results.json`).
-
-Key fields:
-- `artifacts_dir` — temp directory with downloaded artifacts
-- `failed` — tests that failed (real failures). Each has `title`, `file`, `line`, `project`, `error_message` (ANSI-stripped), and `attempts` — one entry per retry with `retry`, `status`, `duration`, `errors`, and `attachments` (each carrying a browsable `url`, e.g. the trace zip)
-- `flaky` — tests that failed then passed on retry. Each has `title`, `file`, `line`, `retries`, `first_error`
+Core fields (from Playwright's JSON reporter, `results.json`):
+- `artifacts_dir` — scratch directory under the repo's `tmp/`. The collector
+  removes it itself on any nonzero exit; on success it persists until this
+  skill's Cleanup step removes it. Every invocation downloads to a fresh
+  directory, so a stale one is never reused.
+- `failed` — tests that failed (real failures). Each has `title`, `file`, `line`, `project`, `error_message` (ANSI-stripped), and `attempts` — one entry per retry with `retry`, `status`, `duration`, `errors`, and `attachments` (each with a `url` and a validated `status`/`reason` — see below)
+- `flaky` — tests that failed then passed on retry. Each has `title`, `file`, `line`, `retries`, `first_error`, and `attempts` (same shape as `failed`)
 - `skipped` — tests that were skipped. Each has `title`, `file`, `line`, `reason` (the skip annotation description)
 - `interrupted` — tests where a worker crashed
 - `stats` — overall run statistics
-- `html_report_url` — link to the HTML report on GCSWeb (if available)
-- `has_build_log` / `has_container_logs` — what extra data is available
-- `has_jaeger_traces` — whether `quay-gather-jaeger-traces` uploaded Jaeger
-  artifacts for the discovered workflow; downloaded files are under
-  `$ARTIFACTS_DIR/jaeger-traces/`
-- `container_log_files` — usable pod-qualified Quay app log filenames collected
-  under `$ARTIFACTS_DIR/container-logs/` (also concatenated to `quay.log`)
-- `redacted_container_log_files` — discovered pod logs replaced by the
-  sensitive-content placeholder and therefore unavailable for analysis
-- `jaeger_trace_files` — valid discovered `traces.json` or `traces-*.json`
-  filenames under `$ARTIFACTS_DIR/jaeger-traces/`
-- `global_setup_failure` — if true, no tests ran at all (check `setup_errors` field)
-- `prow_url` — link to the Prow job view
-- `gcsweb_url` — link to browse all artifacts on GCSWeb
+- `global_setup_failure` — if true, no tests ran at all (check `setup_errors`)
+- `prow_url` / `gcsweb_url` / `html_report_url` — links to the job, its artifact browser, and (when present and not the CI redaction placeholder) the HTML report
 
-If exit code is 2, the run is still in progress — tell the user to wait.
+The collector also reports its own routing, provenance, evidence-gap, and
+build-diagnostics data — the full field-by-field JSON shape is in
+[references/collector-fields.md](references/collector-fields.md). In brief:
+- **Routing records** (`prowjob`, `clone_records`, `finished`,
+  `top_level_build_log`, `step_build_log`, `junit`) — each a
+  `{source_url, local_path, status}` record (`junit` is an array, one per
+  discovered JUnit file) showing how the collector navigated from the Prow
+  build down to the e2e step's artifacts.
+- **`provenance`** — ten `{value, reason}` pairs (`source_image_digest`,
+  `release_config_revision`, `auth_mode`, `actual_workers`, `retries`,
+  `tracing_configuration`, `source_clone_sha`, `source_clone_ref`,
+  `playwright_sha`, `job_result`). `reason` is always set when `value` is
+  null and names the absent upstream field; a few fields (`auth_mode`,
+  `actual_workers`'s root-config fallback) also carry a non-null `value`
+  with a `reason` explaining how it was derived — never guess a value the
+  reason field says is missing or derived.
+- **Per-attachment status** — every `attempts[].attachments[]` entry carries
+  `status` (`usable`, `redacted`, `missing`, or `inline`) and `reason`. A
+  trace zip is only `usable` once both its magic bytes and `unzip -t` pass.
+  `inline` means the attachment has no download path — its body is embedded
+  directly in `results.json` instead.
+- **`evidence_gaps`** — run-level (not per-attachment) redacted or missing
+  artifacts: the `must-gather.tar` tarball and the HTML report's `data/`
+  blobs. An artifact that never ran for this job is not a gap and does not
+  appear here.
+- **`builder_diagnostics`** — files discovered under the e2e step's
+  `builder-diagnostics/` prefix, each `{name, source_url, local_path, status,
+  first_lines}` (`first_lines`: at most 40 ANSI-stripped lines, capped at 500
+  characters each).
 
 ## Step 2: Report Overview
 
@@ -120,73 +136,16 @@ If there are no real failures, report "all failures were flaky" with the list an
 
 ## Step 3: Diagnose Each Real Failure
 
-For each entry in `failed`, perform root cause analysis:
+For each entry in `failed`: read the test source at its reported `file`/`line`
+(paths are relative to `web/playwright/e2e/`, resolved against the quay/quay
+repo root), then correlate the failure against the build log, container logs,
+and Jaeger traces, and determine the auth phase. The full per-failure
+workflow — including the redacted-vs-missing pod-log distinction, the
+`jaeger-extract.sh` invocation, and the failure classification list (selector
+change, backend error, timing/race, auth/config, test isolation, infra) — is
+in [references/root-cause-analysis.md](references/root-cause-analysis.md).
 
-### 3a: Read the test source
-
-Read the failing spec file at the reported line number. The `file` and `line`
-both come from `results.json`. The file path is relative to `web/playwright/e2e/`
-— resolve it against the quay/quay repo root (e.g., `auth/signin.spec.ts` ->
-`web/playwright/e2e/auth/signin.spec.ts`).
-
-Understand what the test does — what page it navigates to, what selectors it uses,
-what API calls it makes.
-
-Check each entry's `attempts` for the failing result's `errors` and its trace
-`attachments` (the trace `url` opens in the Playwright trace viewer).
-
-### 3b: Correlate with build log
-
-If `has_build_log` is true, search for errors around the test failure:
-
-```bash
-grep -n "Traceback\|Error\|FATAL\|FAIL\|panic:" \
-  "$ARTIFACTS_DIR/build-log.txt" | head -30
-```
-
-Look for Python tracebacks, 500 responses, or infrastructure errors that coincide
-with the test failure.
-
-### 3c: Correlate with container logs
-
-If `has_container_logs` is true, search for backend errors:
-
-```bash
-grep -n "Traceback\|Internal Server Error\|FATAL" \
-  "$ARTIFACTS_DIR/container-logs/quay.log" | head -30
-```
-
-Container logs in Prow are collected via the `gather-extra` step rather than
-a dedicated artifact. The collector reports the discovered usable and redacted
-pod-log filenames so an unavailable log can be distinguished from a missing
-prefix. They may contain Quay pod logs, operator logs, or must-gather output.
-
-### 3d: Inspect Jaeger traces when present
-
-If `has_jaeger_traces` is true, inspect the valid discovered files named in
-`jaeger_trace_files` under `$ARTIFACTS_DIR/jaeger-traces/` and correlate only
-matching request/trace IDs. Otherwise, state that no valid Jaeger trace files
-were found; do not invent trace findings.
-
-### 3e: Determine auth phase
-
-Check the test's `tags` for `auth:OIDC` or `auth:LDAP`. Tests without auth-specific
-tags run in the DB auth phase (the first phase).
-
-## Step 4: Classify and Explain
-
-For each failure, classify the root cause and explain conversationally:
-- **Selector change** — element not found but backend responded fine
-- **Backend error** — 500/traceback in container logs or build log errors
-- **Timing/race** — intermittent, slow responses, or missing `waitFor`
-- **Auth/config** — failure only in one auth phase, related to auth swap
-- **Test isolation** — leftover state from prior tests causing interference
-- **Infra** — browser crash, connection refused, worker timeout, pod scheduling
-
-For each one, state what the test was trying to do, what went wrong, what the
-build/container logs show, and what a fix would look like.
-
-## Step 5: Offer Fixes
+## Step 4: Offer Fixes
 
 Ask: "Want me to apply fixes for any of these?"
 
@@ -194,6 +153,20 @@ If yes, edit the spec files under `web/playwright/e2e/`. Show what you're changi
 and why. Only edit backend code if the user explicitly asks.
 
 Do NOT auto-commit — let the user review the changes.
+
+## Tests
+
+```bash
+bash .agents/skills/debug-playwright-prow/tests/run-tests.sh
+bash .agents/skills/debug-playwright-prow/tests/test-collector-fixtures.sh
+bash .agents/skills/debug-playwright-prow/tests/test-jaeger-extract.sh
+```
+
+Each is self-contained bash + jq, no test framework, matching the collector
+itself. `test-collector-fixtures.sh` and `test-jaeger-extract.sh` run the real
+scripts against synthetic fixtures rather than mirroring their jq logic in
+test code. Run all three before trusting a change to `collector-lib.sh`,
+`playwright-debug-prow.sh`, or `jaeger-extract.sh`.
 
 ## Cleanup
 
