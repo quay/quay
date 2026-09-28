@@ -38,6 +38,8 @@
 #   1 -- usage error, missing/unreadable --dir, or no chunk files found
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 usage() {
   cat >&2 <<'EOF'
 Usage: jaeger-extract.sh --dir DIR --endpoint PATTERN [--since EPOCH_SECONDS] [--until EPOCH_SECONDS] [--max-files N] [--max-records N]
@@ -155,11 +157,11 @@ if [ "$TOTAL_FILES" -gt "$MAX_FILES" ]; then
 fi
 
 # --- Scratch storage: repo tmp/, never system /tmp ---
-if REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
+if REPO_ROOT=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null); then
   :
 else
-  REPO_ROOT="$PWD"
-  echo "WARNING: not inside a git work tree; using \$PWD ($REPO_ROOT) as the repo root for scratch storage" >&2
+  REPO_ROOT="$SCRIPT_DIR"
+  echo "WARNING: not inside a git work tree; using the script directory ($REPO_ROOT) as the repo root for scratch storage" >&2
 fi
 mkdir -p "$REPO_ROOT/tmp"
 RECORDS_FILE=$(mktemp "$REPO_ROOT/tmp/jaeger-extract.XXXXXX")

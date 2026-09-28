@@ -284,6 +284,39 @@ test_invalid_endpoint_regex_rejected() {
     esac
 }
 
+# --- REPO_ROOT resolution: scratch storage must resolve from the script's
+# own directory, not the caller's cwd -- a run from a cwd outside any git
+# tree must still land scratch files under <repo>/tmp, not the cwd ---
+test_scratch_root_resolves_from_script_dir_not_cwd() {
+  local outside_dir dir outside_created
+  outside_dir="$(mktemp -d)"
+  dir="$TMP_ROOT/outsiderun"
+  mkdir -p "$dir"
+  make_chunk "$dir/traces.json" \
+    "$(make_span t1 s1 server 'GET /api/v1/x' '/api/v1/x' 200 10 1000000000000000)"
+
+  set +e
+  (cd "$outside_dir" && bash "$EXTRACTOR" --dir "$dir" --endpoint '/api/v1/x') \
+    >"$TMP_ROOT/outside-stdout" 2>"$TMP_ROOT/outside-stderr"
+  JAEGER_RC=$?
+  set -e
+
+  outside_created=$(find "$outside_dir" -mindepth 1 2>/dev/null | wc -l)
+  rm -rf "$outside_dir"
+  JAEGER_STDERR="$(cat "$TMP_ROOT/outside-stderr")"
+
+  assert_eq "0" "$JAEGER_RC" "exit code" &&
+    assert_eq "1" "$(jq 'length' <"$TMP_ROOT/outside-stdout")" "match still emitted" &&
+    assert_eq "0" "$outside_created" "nothing created in the caller cwd (no tmp/ under it)" &&
+    case "$JAEGER_STDERR" in
+      *"not inside a git work tree"*)
+        echo "  REPO_ROOT fell back to cwd instead of resolving from the script's own directory" >&2
+        return 1
+        ;;
+      *) : ;;
+    esac
+}
+
 for t in $(declare -F | awk '{print $3}' | grep '^test_'); do
   run_test "$t"
 done
