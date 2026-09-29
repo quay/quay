@@ -428,9 +428,9 @@ pyyaml==6.0.2 \
     --hash=sha256:f753120cb8181e736c57ef7636e83f31b9c0d1722c516f7e86cf15b7aa57ff12 \
     --hash=sha256:ff3824dc5261f50c9b0dfb3be22b4567a6f938ccce4587b38952d85fd9e9afe4
     # via ua-parser
-scikit-build-core==1.0.3 \
-    --hash=sha256:a4d7a05978ee37975c37743510c8991e2debce7ef83afb0a07c0c576fd4f16e8 \
-    --hash=sha256:ae95427b7d3c14a6cf8bbfd4d901f6138ab64c99e20cbe8ea7d75cd26093f085
+scikit-build-core==1.1.0 \
+    --hash=sha256:d421f837a0f645e51b99fc0d8b00c976917845d954d609ce6b06b11b2c94621b \
+    --hash=sha256:ef439fc8b352913ef6e76257e3115a7910c9f294a2cf27781b6f571cf6cd0033
     # via pybind11
 semantic-version==2.10.0 \
     --hash=sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c \
