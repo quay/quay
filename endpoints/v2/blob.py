@@ -6,7 +6,7 @@ from flask import abort as flask_abort
 from flask import redirect, request, url_for
 
 import features
-from app import app, get_app_url, model_cache, storage, usermanager
+from app import app, get_app_url, model_cache, storage, upstream_proxy, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
@@ -98,30 +98,15 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     # try returning blob from cache
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        # if there is no blob then stream from upstream
-        try:
-            tee_result = registry_model.get_streaming_proxy_blob(namespace_name, repo_name, digest)
-            if tee_result is None:
-                raise BlobUnknown()
-        except BlobTooLargeException as ble:
-            raise LayerTooLarge(uploaded=ble.uploaded, max_allowed=ble.max_allowed, proxy=True)
-
-        tee_generator, content_length = tee_result
-        logger.debug("Streaming blob content directly from upstream for blob digest %s.", digest)
-
-        headers = {
-            "Docker-Content-Digest": digest,
-            "Content-type": BLOB_CONTENT_TYPE,
-        }
-
-        if content_length >= 0:
-            headers["Content-Length"] = content_length
-
-        image_pulled_bytes.labels("v2").inc(max(content_length, 0))
-
-        logger.debug("Closing database connection before streaming layer data")
-        with database.CloseForLongOperation(app.config):
-            return Response(tee_generator, headers=headers)
+        # we don't have a blob locally so we'll proxy content from upstream directly
+        # while simultaneously queueing the blob for download
+        redirect_url = registry_model.get_upstream_blob_proxy_url(
+            namespace_name, repo_name, digest, upstream_proxy
+        )
+        if redirect_url is None:
+            raise BlobUnknown()
+        logger.debug("Proxying upstream blob %s through the upstream proxy interface", digest)
+        return redirect(redirect_url)
 
     # Build the response headers.
     headers = {"Docker-Content-Digest": digest}
