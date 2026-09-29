@@ -168,15 +168,13 @@ def resolve_proxy_config_for_ssrf(
     A no_proxy-only explicit mapping overlays its bypass rule on the environment
     proxy mapping (or is returned as-is when no ambient proxy is set).
     """
-    has_explicit_proxy_url = bool(
-        explicit_proxy
-        and (
-            explicit_proxy.get("http_proxy")
-            or explicit_proxy.get("https_proxy")
-            or explicit_proxy.get("all_proxy")
-        )
-    )
-    if has_explicit_proxy_url:
+    # Keep the truthiness check on ``explicit_proxy`` in this ``if`` so mypy
+    # narrows it away from Optional before ``.get`` / ``in`` below.
+    if explicit_proxy and (
+        explicit_proxy.get("http_proxy")
+        or explicit_proxy.get("https_proxy")
+        or explicit_proxy.get("all_proxy")
+    ):
         # all_proxy alone covers both schemes for routing; both scheme-specific
         # keys already set means nothing to inherit from the environment.
         if explicit_proxy.get("all_proxy") and not (
