@@ -107,7 +107,19 @@ test.describe(
           blobSize = body.layers[0].size;
         }
 
-        // issue a blob fetch request
+        // verify that a cache miss returns a 302 redirect to the upstream proxy endpoint
+        const blobRedirectRequest = await request.get(
+          `${blobPath}/${blobDigest}`,
+          {
+            headers,
+            maxRedirects: 0,
+          },
+        );
+        expect(blobRedirectRequest.status()).toBe(302);
+        const location = blobRedirectRequest.headers()['location'] ?? '';
+        expect(location).toContain('/_upstream_proxy/');
+
+        // issue a blob fetch request (follows redirects) and verify the full blob is returned
         const blobRequest = await request.get(`${blobPath}/${blobDigest}`, {
           headers,
         });
