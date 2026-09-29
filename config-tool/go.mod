@@ -12,7 +12,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
 	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.95
@@ -20,7 +20,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -35,7 +35,7 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 )
 
 require (
