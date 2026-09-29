@@ -48,6 +48,7 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from storage import Storage
+from storage.upstreamproxy import UpstreamProxy
 from util import get_app_url
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
@@ -335,6 +336,12 @@ all_queues = [
     repository_gc_queue,
     namespace_gc_queue,
 ]
+
+# initialize upstream proxy downloader instance
+upstream_proxy = None
+if app.config.get("FEATURE_PROXY_CACHE", False) and instance_keys is not None:
+    logger.debug("Initializing upstream proxy downloader")
+    upstream_proxy = UpstreamProxy(app, instance_keys)
 
 url_scheme_and_hostname = URLSchemeAndHostname(
     app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]

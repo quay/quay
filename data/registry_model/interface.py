@@ -430,12 +430,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_streaming_proxy_blob(self, namespace_name, repo_name, blob_digest):
-        """
-        Returns a (generator, content_length) tuple for tee-streaming, or None.
-        """
-
-    @abstractmethod
     def convert_manifest(
         self,
         manifest,
@@ -487,4 +481,11 @@ class RegistryDataInterface(object):
         """
         Updates any expired tags in the time machine window referencing the given manifest
         with an expiry outside the time machine window.
+        """
+
+    @abstractmethod
+    def get_upstream_blob_proxy_url(self, namespace, repo, digest, upstream_proxy):
+        """
+        Constructs an upstream blob URL address based on the namespace/repo and blob digest
+        and returns it to the caller.
         """
