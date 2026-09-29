@@ -141,7 +141,7 @@ class TooManyTagsRequested(V2RegistryException):
 
 
 class LayerTooLarge(V2RegistryException):
-    def __init__(self, uploaded=None, max_allowed=None, proxy=False):
+    def __init__(self, uploaded=None, max_allowed=None):
         detail = {}
         message = "Uploaded blob is larger than allowed by this registry"
 
@@ -154,16 +154,11 @@ class LayerTooLarge(V2RegistryException):
 
             up_str = bitmath.Byte(uploaded).best_prefix().format("{value:.2f} {unit}")
             max_str = bitmath.Byte(max_allowed).best_prefix().format("{value:.2f} {unit}")
-            if proxy:
-                message = "Proxied blob size %s is larger than %s allowed by this registry" % (
-                    up_str,
-                    max_str,
-                )
-            else:
-                message = "Uploaded blob of %s is larger than %s allowed by this registry" % (
-                    up_str,
-                    max_str,
-                )
+
+            message = "Uploaded blob of %s is larger than %s allowed by this registry" % (
+                up_str,
+                max_str,
+            )
 
         super(LayerTooLarge, self).__init__("BLOB_TOO_LARGE", message, detail, 400)
 
