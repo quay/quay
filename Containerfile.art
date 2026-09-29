@@ -40,16 +40,6 @@ RUN set -ex\
 	; chown -R 1001:0 /opt/app-root /app \
 	; chmod -R g=u /opt/app-root /app
 
-# Config-editor builds the javascript for the configtool.
-FROM registry.redhat.io/ubi8/nodejs-22:latest AS config-editor
-WORKDIR /opt/app-root/src
-COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
-RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines \
-	; npm run --quiet build\
-	; rm -Rf .cache .npm* node_modules\
-	;
-
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -145,14 +135,11 @@ RUN set -ex\
 FROM registry.redhat.io/ubi8/go-toolset:latest as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
-COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
 FROM registry.redhat.io/ubi9/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
-# Config app: editor JS from the config-editor stage.
-COPY --from=config-editor /opt/app-root/src /quaydir/config_app
 # Static assets: built JS from webpack, then built React/PatternFly UI.
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
