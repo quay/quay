@@ -1,3 +1,4 @@
+// Package dal implements repository permission checks against Quay permission tables.
 package dal
 
 import (
@@ -22,8 +23,6 @@ type Authorizer struct {
 	superUsers map[string]struct{}
 }
 
-var _ repository.Authorizer = (*Authorizer)(nil)
-
 // NewAuthorizer returns a DB-backed repository authorizer.
 func NewAuthorizer(db *sql.DB, cfg AuthorizerConfig) *Authorizer {
 	superUsers := map[string]struct{}{}
@@ -37,29 +36,6 @@ func NewAuthorizer(db *sql.DB, cfg AuthorizerConfig) *Authorizer {
 		}
 	}
 	return &Authorizer{queries: daldb.New(db), superUsers: superUsers}
-}
-
-// CanAdminRepository reports whether principal can administer repo.
-func (a *Authorizer) CanAdminRepository(ctx context.Context, principal *auth.Principal, repo *repository.Repository) (bool, error) {
-	if repo == nil {
-		return false, nil
-	}
-	if principal.IsAnonymous() {
-		return false, nil
-	}
-	if _, ok := a.superUsers[principal.Username]; ok {
-		return true, nil
-	}
-
-	allowed, err := a.queries.UserCanAdminRepository(ctx, daldb.UserCanAdminRepositoryParams{
-		RepositoryID: repo.ID,
-		Username:     principal.Username,
-		UserID:       sql.NullInt64{Int64: principal.ID, Valid: true},
-	})
-	if err != nil {
-		return false, err
-	}
-	return allowed, nil
 }
 
 // CanPullRepository reports whether principal can pull repo contents.
