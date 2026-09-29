@@ -76,7 +76,27 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 
 ### Proxy-route SSRF deployment tests
 
-Some org-mirror and proxy-cache specs are gated on `PLAYWRIGHT_PROXY_SSRF_E2E=1` and require a Quay deployment with real `HTTP_PROXY`/`HTTPS_PROXY`, SSRF allowlist entries, and (for positive cases) DNS-isolated upstream hostnames. Do not simulate proxy or DNS with `page.route()`; routing proof belongs in Python tests.
+Some org-mirror, repo-mirror, and proxy-cache specs are gated on
+`PLAYWRIGHT_PROXY_SSRF_E2E=1` and require a Quay deployment with real
+`HTTP_PROXY`/`HTTPS_PROXY` (or `ALL_PROXY`), `SSRF_ALLOWED_HOSTS` entries, and
+(for positive cases) DNS-isolated upstream hostnames.
+
+- **Explicit UI proxy:** fill mirror http/https proxy fields (org-mirror suite).
+- **Ambient env fallback (PROJQUAY-12833):** leave mirror proxy fields empty so
+  SSRF validation uses the Quay process proxy env. Set
+  `PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE` (repo API) and/or
+  `PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL` (org UI verify).
+
+Do not simulate proxy or DNS with `page.route()`; routing proof belongs in
+Python tests.
+
+```bash
+# Run ambient-env mirror SSRF acceptance (gated)
+PLAYWRIGHT_PROXY_SSRF_E2E=1 \
+PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE=allowlisted-host.example/ns/repo \
+PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL=https://allowlisted-host.example \
+npx playwright test --grep ambient
+```
 
 ### Running Tagged Tests
 
@@ -124,7 +144,7 @@ Playwright's `getByTestId()` only works with the standard `data-testid` attribut
 
 ```tsx
 // Wrong - requires manual locator
-<Button test-id="my-button">Click</Button>
+<Button test-id="my-button">Click</Button>;
 await page.locator('[test-id="my-button"]').click();
 
 // Correct - works with getByTestId()

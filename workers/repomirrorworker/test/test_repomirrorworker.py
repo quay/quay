@@ -240,6 +240,45 @@ def test_allowlisted_private_mirror_source_invokes_skopeo(run_skopeo_mock, initi
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_allowlisted_unresolved_uses_environment_proxy(
+    run_skopeo_mock, initialized_db, app, _mock_dns_for_ssrf_validation
+):
+    """Empty mirror proxy + ambient HTTPS_PROXY skips pod DNS for allowlisted hosts."""
+    from socket import gaierror
+
+    from workers.repomirrorworker import app as worker_app
+
+    _HOST = "isolated-worker-registry.example.com"
+    mirror, _ = create_mirror_repo_robot(
+        ["latest"],
+        repo_name="env_proxy_source",
+        external_registry_config={"verify_tls": True},
+    )
+    mirror.external_reference = f"{_HOST}/team/repository"
+    mirror.save()
+    run_skopeo_mock.return_value = SkopeoResults(True, [], '{"Tags": []}', "")
+    env_proxy = {
+        "http_proxy": "http://corp-proxy:8080",
+        "https_proxy": "http://corp-proxy:8080",
+    }
+
+    _mock_dns_for_ssrf_validation.side_effect = gaierror("fail")
+    with patch.dict(worker_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+        with patch(
+            "util.security.ssrf.get_environment_proxy_config",
+            return_value=env_proxy,
+        ):
+            result = perform_mirror(SkopeoMirror(), mirror)
+
+    assert result is None
+    run_skopeo_mock.assert_called_once()
+    _mock_dns_for_ssrf_validation.assert_not_called()
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.SUCCESS
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_mirror_unsigned_images(run_skopeo_mock, initialized_db, app):
     """
     Test whether the insecure-policy option is added when a repository is passed with unsigned_images.
