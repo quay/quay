@@ -97,3 +97,23 @@ class TestRegistryAdapterSSRFProxy:
             assert (
                 proxy_route_for_url("https://quay.io", kwargs["proxy_config"]) is ProxyRoute.PROXY
             )
+
+    def test_allowlisted_unresolved_host_uses_environment_proxy_when_config_empty(self):
+        env_proxy = {
+            "http_proxy": "http://corp-proxy:8080",
+            "https_proxy": "http://corp-proxy:8080",
+        }
+        with patch(
+            "util.security.ssrf.get_environment_proxy_config",
+            return_value=env_proxy,
+        ):
+            with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+                mock_dns.side_effect = AssertionError("DNS should not be queried")
+                adapter = _StubRegistryAdapter(
+                    url="https://unresolved-mirror.example.com",
+                    namespace="testorg",
+                    config={},
+                    allowed_hosts=["unresolved-mirror.example.com"],
+                )
+                assert adapter.proxy == {}
+                mock_dns.assert_not_called()

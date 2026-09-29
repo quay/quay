@@ -271,12 +271,24 @@ class SkopeoMirror(object):
         env = os.environ.copy()
         proxy = proxy or {}
 
-        has_explicit_proxy = bool(proxy.get("http_proxy") or proxy.get("https_proxy"))
+        # Treat all_proxy as an explicit proxy URL so SSRF PROXY routing (which
+        # honours all_proxy) matches the Skopeo child process environment.
+        has_explicit_proxy = bool(
+            proxy.get("http_proxy") or proxy.get("https_proxy") or proxy.get("all_proxy")
+        )
         if has_explicit_proxy:
+            # Scheme-specific wins; otherwise materialize all_proxy into the
+            # scheme vars so ambient HTTP(S)_PROXY cannot override it.
             if proxy.get("http_proxy"):
                 env["HTTP_PROXY"] = proxy.get("http_proxy")
+            elif proxy.get("all_proxy"):
+                env["HTTP_PROXY"] = proxy.get("all_proxy")
             if proxy.get("https_proxy"):
                 env["HTTPS_PROXY"] = proxy.get("https_proxy")
+            elif proxy.get("all_proxy"):
+                env["HTTPS_PROXY"] = proxy.get("all_proxy")
+            if proxy.get("all_proxy"):
+                env["ALL_PROXY"] = proxy.get("all_proxy")
             # Explicit proxies without no_proxy must not inherit ambient NO_PROXY,
             # or Skopeo can route DIRECT while SSRF classified the request as PROXY.
             if "no_proxy" in proxy:
@@ -290,6 +302,16 @@ class SkopeoMirror(object):
                 env.pop("no_proxy", None)
         elif proxy.get("no_proxy"):
             env["NO_PROXY"] = proxy.get("no_proxy")
+
+        # Go's http.ProxyFromEnvironment ignores ALL_PROXY. When the child would
+        # otherwise inherit ambient ALL_PROXY without HTTP(S)_PROXY, materialize
+        # it so sync routing matches SSRF validation (which honours all_proxy).
+        all_proxy = env.get("ALL_PROXY") or env.get("all_proxy")
+        if all_proxy:
+            if not (env.get("HTTP_PROXY") or env.get("http_proxy")):
+                env["HTTP_PROXY"] = all_proxy
+            if not (env.get("HTTPS_PROXY") or env.get("https_proxy")):
+                env["HTTPS_PROXY"] = all_proxy
 
         return env
 
