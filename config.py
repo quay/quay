@@ -793,10 +793,6 @@ class DefaultConfig(ImmutableConfig):
     # Set to None to disable the cap.
     API_TOKEN_MAXIMUM_TOKEN_COUNT: Optional[int] = 20
 
-    # Maximum federated robot token exchanges per source IP and robot in a fixed window.
-    FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT = 30
-    FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS = 60
-
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 

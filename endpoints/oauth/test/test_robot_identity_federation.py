@@ -19,16 +19,11 @@ from endpoints.oauth.robot_identity_federation import (
     sts_bp,
 )
 from test.fixtures import *
-from util.security.federated_rate_limit import TokenExchangeRateLimitExceeded
 from util.security.registry_jwt import decode_bearer_token
 
 
 @pytest.fixture()
-def sts_app(app, monkeypatch):
-    monkeypatch.setattr(
-        "endpoints.oauth.robot_identity_federation.check_token_exchange_rate_limit",
-        lambda *_args: None,
-    )
+def sts_app(app):
     app.register_blueprint(sts_bp)
     return app
 
@@ -186,27 +181,6 @@ def test_sts_token_exchange_rejects_audience_outside_binding(sts_app):
 
     assert response.status_code == 400
     assert response.json == {"error": "invalid_grant"}
-
-
-def test_sts_token_exchange_is_rate_limited(sts_app, monkeypatch):
-    monkeypatch.setattr(
-        "endpoints.oauth.robot_identity_federation.check_token_exchange_rate_limit",
-        lambda *_args: (_ for _ in ()).throw(TokenExchangeRateLimitExceeded(42)),
-    )
-    response = sts_app.test_client().post(
-        "/sts/token",
-        data={
-            "grant_type": TOKEN_EXCHANGE_GRANT_TYPE,
-            "subject_token": "token",
-            "subject_token_type": JWT_TOKEN_TYPE,
-            "resource": "urn:quay:robot:devtable+robot",
-        },
-        content_type="application/x-www-form-urlencoded",
-    )
-
-    assert response.status_code == 429
-    assert response.json == {"error": "slow_down"}
-    assert response.headers["Retry-After"] == "42"
 
 
 def test_sts_token_exchange_rejects_oversized_subject_token(sts_app):

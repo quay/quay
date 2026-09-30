@@ -248,8 +248,6 @@ var knownUnmapped = map[string]bool{
 	"NAMESPACE_GC_GRACE_PERIOD_SECONDS":                        true,
 	"NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST":                      true,
 	"FRESH_LOGIN_TIMEOUT":                                      true,
-	"FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT":                true,
-	"FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS": true,
 	"GLOBAL_READONLY_SUPER_USERS":                              true,
 	"IGNORE_UNKNOWN_MEDIATYPES":                                true,
 	"MANIFESTS_ENDPOINT_READ_TIMEOUT":                          true,
