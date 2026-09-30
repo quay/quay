@@ -516,6 +516,71 @@ def test_blob_upload_offset(client, app):
     )
 
 
+def test_blob_upload_too_large(client, app):
+    user = model.user.get_user("devtable")
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+
+    # Create a blob upload request.
+    params = {
+        "repository": "devtable/simple",
+    }
+    response = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+
+    upload_uuid = response.headers["Docker-Upload-UUID"]
+
+    # PATCH more bytes than allowed by MAXIMUM_LAYER_SIZE.
+    params = {
+        "repository": "devtable/simple",
+        "upload_uuid": upload_uuid,
+    }
+
+    # Upload 2 KiB against a 1 KiB limit.
+    body = b"x" * 2048
+    headers = {
+        "Authorization": "Bearer %s" % token,
+        "Content-Range": "0-%d" % (len(body) - 1),
+    }
+
+    with patch.dict(realapp.config, {"MAXIMUM_LAYER_SIZE": "1K"}):
+        response = conduct_call(
+            client,
+            "v2.upload_chunk",
+            url_for,
+            "PATCH",
+            params,
+            expected_code=413,
+            headers=headers,
+            raw_body=body,
+        )
+
+    response_data = json.loads(response.data)
+    assert "errors" in response_data
+    assert len(response_data["errors"]) == 1
+
+    error = response_data["errors"][0]
+    assert error["code"] == "BLOB_UPLOAD_INVALID"
+    assert "larger than" in error["message"]
+    assert error["detail"]["uploaded"] > error["detail"]["max_allowed"]
+    assert "greater than maximum allowed size" in error["detail"]["reason"]
+
+
 def test_blob_upload_when_pushes_disabled(client, app):
     user = model.user.get_user("devtable")
     access = [
