@@ -50,6 +50,7 @@ from data.model.user import (
     delete_namespace_via_marker,
     delete_robot,
     delete_user,
+    generate_federated_robot_jwt_token,
     get_active_namespaces,
     get_active_users,
     get_estimated_robot_count,
@@ -72,6 +73,21 @@ from test.helpers import check_transitive_modifications
 from util.security.instancekeys import InstanceKeys
 from util.security.token import encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
+
+
+def test_federated_robot_jwt_includes_binding_without_api_scopes():
+    binding = {"id": "binding-id", "version": 3}
+
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        generate_federated_robot_jwt_token("keys", Mock(), None, binding)
+
+    assert generate_bearer_token.call_args.args[-1] == {
+        "federation_binding_id": "binding-id",
+        "federation_binding_version": 3,
+    }
 
 
 def test_create_user_with_expiration(initialized_db):

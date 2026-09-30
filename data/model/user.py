@@ -636,6 +636,7 @@ def generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federat
     additional_claims = {}
     if api_scopes:
         additional_claims["api_scopes"] = api_scopes
+    if federation_binding:
         additional_claims["federation_binding_id"] = federation_binding["id"]
         additional_claims["federation_binding_version"] = federation_binding["version"]
     return generate_bearer_token(
