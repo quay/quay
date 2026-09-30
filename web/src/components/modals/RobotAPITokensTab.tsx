@@ -106,7 +106,17 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     {onSuccess: () => queryClient.invalidateQueries(queryKey)},
   );
 
+  const clearCreateError = (): void => {
+    if (!createMutation.isLoading) {
+      createMutation.reset();
+    }
+  };
+  const openCreate = (): void => {
+    clearCreateError();
+    setCreateOpen(true);
+  };
   const toggleScope = (scope: string, checked: boolean): void => {
+    clearCreateError();
     setSelectedScopes((current) =>
       checked
         ? [...current, scope]
@@ -136,7 +146,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
           </Content>
         </StackItem>
         <StackItem>
-          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+          <Button variant="primary" onClick={openCreate}>
             Create API token
           </Button>
         </StackItem>
@@ -206,7 +216,10 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
               <TextInput
                 id="robot-api-token-name"
                 value={name}
-                onChange={(_event, value) => setName(value)}
+                onChange={(_event, value) => {
+                  clearCreateError();
+                  setName(value);
+                }}
               />
             </FormGroup>
             <FormGroup
@@ -217,7 +230,10 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
               <FormSelect
                 id="robot-api-token-expiration"
                 value={expiration}
-                onChange={(_event, value) => setExpiration(value)}
+                onChange={(_event, value) => {
+                  clearCreateError();
+                  setExpiration(value);
+                }}
               >
                 {EXPIRATIONS.map((option) => (
                   <FormSelectOption
