@@ -487,20 +487,6 @@ CONFIG_SCHEMA = {
             "default": 20,
             "x-example": 20,
         },
-        "FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Maximum federated robot token exchanges per source IP and robot within the configured window. Defaults to 30.",
-            "default": 30,
-            "x-example": 30,
-        },
-        "FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Fixed window in seconds for federated robot token exchange rate limiting. Defaults to 60.",
-            "default": 60,
-            "x-example": 60,
-        },
         # Redis.
         "BUILDLOGS_REDIS": {
             "type": "object",

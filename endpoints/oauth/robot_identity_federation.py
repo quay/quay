@@ -2,18 +2,13 @@ import logging
 
 from flask import Blueprint, request
 
-from app import app, instance_keys
+from app import instance_keys
 from auth.decorators import process_federated_auth
 from data.model import InvalidRobotCredentialException, InvalidRobotException
 from data.model.user import (
     TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
     generate_federated_robot_jwt_token,
     generate_temp_robot_jwt_token,
-)
-from util.security.federated_rate_limit import (
-    TokenExchangeRateLimitExceeded,
-    TokenExchangeRateLimitUnavailable,
-    check_token_exchange_rate_limit,
 )
 from util.security.federated_robot_auth import (
     parse_federated_robot_resource,
@@ -87,19 +82,6 @@ def exchange_federated_robot_subject_token():
         robot_username = parse_federated_robot_resource(form["resource"])
     except InvalidRobotCredentialException:
         return _oauth_error("invalid_target")
-
-    try:
-        check_token_exchange_rate_limit(
-            app.config["USER_EVENTS_REDIS"],
-            request.remote_addr,
-            robot_username,
-            app.config["FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT"],
-            app.config["FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS"],
-        )
-    except TokenExchangeRateLimitExceeded as error:
-        return {"error": "slow_down"}, 429, {"Retry-After": str(error.retry_after)}
-    except TokenExchangeRateLimitUnavailable:
-        return {"error": "temporarily_unavailable"}, 503
 
     try:
         robot, binding = validate_federated_robot_subject_token(
