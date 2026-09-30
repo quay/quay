@@ -109,6 +109,47 @@ describe('RobotAPITokensTab', () => {
     expect(screen.getByRole('button', {name: 'Create'})).toBeDisabled();
   });
 
+  it('shows revocation progress only for the selected token', async () => {
+    const user = userEvent.setup();
+    resourceMocks.fetch.mockResolvedValue([
+      {
+        uuid: 'first-token',
+        name: 'First token',
+        scope: 'repo:read',
+        expires_at: '2026-10-01T00:00:00Z',
+      },
+      {
+        uuid: 'second-token',
+        name: 'Second token',
+        scope: 'repo:read',
+        expires_at: '2026-10-01T00:00:00Z',
+      },
+    ]);
+    let finishRevocation: () => void = () => undefined;
+    resourceMocks.revoke.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishRevocation = resolve;
+      }),
+    );
+    render(<RobotAPITokensTab {...props} />);
+
+    const revokeButtons = await screen.findAllByRole('button', {
+      name: 'Revoke',
+    });
+    await user.click(revokeButtons[0]);
+
+    await waitFor(() => expect(revokeButtons[0]).toBeDisabled());
+    expect(
+      revokeButtons[0].querySelector('.pf-v6-c-spinner'),
+    ).toBeInTheDocument();
+    expect(revokeButtons[1]).toBeDisabled();
+    expect(
+      revokeButtons[1].querySelector('.pf-v6-c-spinner'),
+    ).not.toBeInTheDocument();
+
+    finishRevocation();
+  });
+
   it('reports a failed token revocation', async () => {
     const user = userEvent.setup();
     resourceMocks.fetch.mockResolvedValue([

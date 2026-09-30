@@ -172,7 +172,11 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
               icon={<TrashIcon />}
               isDanger
               onClick={() => revokeMutation.mutate(token.uuid)}
-              isLoading={revokeMutation.isLoading}
+              isLoading={
+                revokeMutation.isLoading &&
+                revokeMutation.variables === token.uuid
+              }
+              isDisabled={revokeMutation.isLoading}
             >
               Revoke
             </Button>
