@@ -129,6 +129,35 @@ def test_robot_token_listing_supports_pagination(app, resource, params):
     assert "next_page" not in second_page
 
 
+@pytest.mark.parametrize(
+    "request_body,expected_message",
+    [
+        ({**TOKEN_REQUEST, "name": "   "}, "'name' cannot be empty"),
+        ({**TOKEN_REQUEST, "scope": "direct_user_login"}, "Invalid scope"),
+    ],
+)
+def test_organization_robot_token_rejects_invalid_requests(app, request_body, expected_message):
+    params = {"orgname": "buynlarge", "robot_shortname": "coolrobot"}
+
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl, OrganizationRobotTokens, "POST", params, request_body, 400
+        ).json
+
+    assert expected_message in response["message"]
+
+
+def test_revoke_missing_robot_token_returns_not_found(app):
+    params = {
+        "orgname": "buynlarge",
+        "robot_shortname": "coolrobot",
+        "token_uuid": "missing-token",
+    }
+
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(cl, OrganizationRobotToken, "DELETE", params, None, 404)
+
+
 def test_organization_robot_token_lifecycle(app):
     params = {"orgname": "buynlarge", "robot_shortname": "coolrobot"}
 
