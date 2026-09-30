@@ -10,17 +10,6 @@ import (
 	"database/sql"
 )
 
-const countRepositories = `-- name: CountRepositories :one
-SELECT COUNT(*) FROM repository
-`
-
-func (q *Queries) CountRepositories(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepositories)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const getOrCreateRepository = `-- name: GetOrCreateRepository :one
 INSERT INTO repository (namespace_user_id, name, visibility_id, kind_id, badge_token, state)
 VALUES (?, ?, ?, ?, ?, 0)
@@ -87,40 +76,6 @@ func (q *Queries) GetRepositoryAccessByNamespaceName(ctx context.Context, arg Ge
 		&i.State,
 		&i.KindID,
 		&i.NamespaceEnabled,
-	)
-	return i, err
-}
-
-const getRepositoryByName = `-- name: GetRepositoryByName :one
-SELECT id, namespace_user_id, name, visibility_id, kind_id, state
-FROM repository
-WHERE namespace_user_id = ? AND name = ?
-`
-
-type GetRepositoryByNameParams struct {
-	NamespaceUserID sql.NullInt64 `json:"namespace_user_id"`
-	Name            string        `json:"name"`
-}
-
-type GetRepositoryByNameRow struct {
-	ID              int64         `json:"id"`
-	NamespaceUserID sql.NullInt64 `json:"namespace_user_id"`
-	Name            string        `json:"name"`
-	VisibilityID    int64         `json:"visibility_id"`
-	KindID          int64         `json:"kind_id"`
-	State           int64         `json:"state"`
-}
-
-func (q *Queries) GetRepositoryByName(ctx context.Context, arg GetRepositoryByNameParams) (GetRepositoryByNameRow, error) {
-	row := q.db.QueryRowContext(ctx, getRepositoryByName, arg.NamespaceUserID, arg.Name)
-	var i GetRepositoryByNameRow
-	err := row.Scan(
-		&i.ID,
-		&i.NamespaceUserID,
-		&i.Name,
-		&i.VisibilityID,
-		&i.KindID,
-		&i.State,
 	)
 	return i, err
 }
