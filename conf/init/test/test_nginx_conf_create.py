@@ -25,6 +25,13 @@ def render_server_base_conf(**kwargs):
     return template.render(**defaults)
 
 
+def test_sts_token_is_routed_to_web_app():
+    rendered = render_server_base_conf()
+    assert "/sts/token" in re.search(
+        r"# Capture traffic that needs to go to web_app.*?\n\}\n", rendered, re.DOTALL
+    ).group(0)
+
+
 class TestErrorPageDirective:
     def test_error_page_502_uses_uri_not_absolute_path(self):
         rendered = render_server_base_conf()

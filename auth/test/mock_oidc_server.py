@@ -92,6 +92,7 @@ def generate_mock_oidc_token(
     audience="mock-client-id",
     expiry_seconds=3600,
     issued_at=None,
+    not_before=None,
     azp=None,
 ):
     now = datetime.datetime.now()
@@ -107,7 +108,7 @@ def generate_mock_oidc_token(
         "aud": audience,
         "exp": int(exp.timestamp()),
         "iat": int(iat.timestamp()),
-        "nbf": int(iat.timestamp()),
+        "nbf": int((not_before or iat).timestamp()),
         "nonce": str(uuid.uuid4()),
         "name": "Mock User",
         "preferred_username": "mockuser",
