@@ -132,8 +132,14 @@ def test_robot_token_listing_supports_pagination(app, resource, params):
 @pytest.mark.parametrize(
     "request_body,expected_message",
     [
-        ({**TOKEN_REQUEST, "name": "   "}, "'name' cannot be empty"),
-        ({**TOKEN_REQUEST, "scope": "direct_user_login"}, "Invalid scope"),
+        (
+            {"name": "   ", "scope": "repo:read", "expiration": 3600},
+            "'name' cannot be empty",
+        ),
+        (
+            {"name": "CI robot token", "scope": "direct_user_login", "expiration": 3600},
+            "Invalid scope",
+        ),
     ],
 )
 def test_organization_robot_token_rejects_invalid_requests(app, request_body, expected_message):
