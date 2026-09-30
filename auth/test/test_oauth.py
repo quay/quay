@@ -1,6 +1,8 @@
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
+from peewee import PeeweeException
 
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
@@ -69,6 +71,36 @@ def test_robot_api_token_authenticates_as_its_robot(app):
     assert revoked_result.error_message == "API token is invalid, revoked or expired"
 
 
+@pytest.mark.parametrize("allow_without_strict_logging", [True, False])
+def test_robot_api_token_last_accessed_write_failure_respects_strict_logging(
+    app, allow_without_strict_logging
+):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("last-accessed-token", creator)
+    token, _ = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+
+    with (
+        patch.dict(
+            api_token.config.app_config,
+            {
+                "ALLOW_WITHOUT_STRICT_LOGGING": allow_without_strict_logging,
+                "ALLOW_PULLS_WITHOUT_STRICT_LOGGING": False,
+                "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": 0,
+            },
+        ),
+        patch.object(
+            api_token.APIToken,
+            "update",
+            side_effect=PeeweeException("last_accessed update failed"),
+        ),
+    ):
+        if allow_without_strict_logging:
+            api_token._update_last_accessed(token)
+        else:
+            with pytest.raises(PeeweeException, match="last_accessed update failed"):
+                api_token._update_last_accessed(token)
+
+
 @pytest.mark.parametrize("scope", ["", "   ", "direct_user_login"])
 def test_robot_api_token_requires_a_non_direct_api_scope(app, scope):
     creator = model.user.get_user("devtable")
@@ -76,6 +108,27 @@ def test_robot_api_token_requires_a_non_direct_api_scope(app, scope):
 
     with pytest.raises(ValueError, match="must include at least one API scope"):
         api_token.create_token_under_limit(robot, creator, scope, 3600, "Invalid token")
+
+
+def test_robot_api_token_creation_validates_expiration(app):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("expiring-api-token", creator)
+
+    with pytest.raises(ValueError, match="positive number of seconds"):
+        api_token.create_token_under_limit(robot, creator, "repo:read", 0, "Invalid token")
+
+    token, _ = api_token.create_token_under_limit(
+        robot,
+        creator,
+        "repo:read",
+        api_token.API_TOKEN_MAX_EXPIRATION_SECONDS + 3600,
+        "Capped token",
+    )
+    assert (
+        0
+        < (token.expires_at - datetime.utcnow()).total_seconds()
+        <= (api_token.API_TOKEN_MAX_EXPIRATION_SECONDS)
+    )
 
 
 def test_robot_api_token_with_persisted_empty_scope_is_rejected(app):
