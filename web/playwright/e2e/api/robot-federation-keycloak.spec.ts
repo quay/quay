@@ -191,7 +191,7 @@ test.describe(
       );
       expect(exchangeResponse.status()).toBe(400);
       await expect(exchangeResponse.json()).resolves.toEqual({
-        error: 'Requested scope is not allowed for this federation binding',
+        error: 'invalid_grant',
       });
     });
 
