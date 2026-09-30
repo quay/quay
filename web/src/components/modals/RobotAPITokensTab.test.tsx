@@ -75,6 +75,39 @@ describe('RobotAPITokensTab', () => {
     expect(screen.queryByText('signed-token')).not.toBeInTheDocument();
   });
 
+  it('clears creation errors after editing or reopening the form', async () => {
+    const user = userEvent.setup();
+    resourceMocks.create.mockRejectedValue(new Error('Failed'));
+    render(<RobotAPITokensTab {...props} />);
+
+    await user.click(
+      await screen.findByRole('button', {name: 'Create API token'}),
+    );
+    await user.type(screen.getByRole('textbox'), 'CI token');
+    await user.click(
+      screen.getByRole('checkbox', {name: 'View all visible repositories'}),
+    );
+    await user.click(screen.getByRole('button', {name: 'Create'}));
+    expect(
+      await screen.findByText('Unable to create API token'),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox'), ' updated');
+    expect(
+      screen.queryByText('Unable to create API token'),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', {name: 'Create'}));
+    expect(
+      await screen.findByText('Unable to create API token'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', {name: 'Cancel'}));
+    await user.click(screen.getByRole('button', {name: 'Create API token'}));
+    expect(
+      screen.queryByText('Unable to create API token'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows only scopes the current editor can mint', async () => {
     const user = userEvent.setup();
     resourceMocks.fetchMintableScopes.mockResolvedValue(['repo:read']);
