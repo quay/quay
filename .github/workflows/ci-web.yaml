@@ -209,6 +209,8 @@ jobs:
               - host.containers.internal
             FEATURE_QUOTA_NOTIFICATIONS: true
             FEATURE_SUPERUSER_CONFIGDUMP: true
+            FEATURE_ROBOT_API_TOKENS: true
+            FEATURE_ROBOT_API_TOKEN_EXCHANGE: true
             FOOTER_LINKS:
               TERMS_OF_SERVICE_URL: https://quay.acme.org/terms
               PRIVACY_POLICY_URL: https://quay.acme.org/privacy
@@ -312,6 +314,27 @@ jobs:
       - name: Swap to OIDC authentication
         if: always()
         run: |
+          # Keycloak normally advertises localhost, which is unreachable from
+          # Quay's container. Apply this override only for the OIDC test phase;
+          # the default local-dev compose topology remains unchanged.
+          # The host alias also becomes the browser's OIDC redirect target, so
+          # map it back to the runner's published Keycloak port.
+          echo '127.0.0.1 host.containers.internal' | sudo tee -a /etc/hosts
+          getent hosts host.containers.internal
+          cat > /tmp/keycloak-oidc-issuer.yaml <<'EOF'
+          services:
+            keycloak:
+              environment:
+                KC_HOSTNAME: "http://host.containers.internal:8081"
+          EOF
+          docker compose \
+            -f docker-compose.yaml \
+            -f /tmp/keycloak-oidc-issuer.yaml \
+            up -d --force-recreate --no-deps keycloak
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8081/realms/quay/.well-known/openid-configuration \
+            | grep -q 'host.containers.internal:8081/realms/quay'
+
           pip install pyyaml -q
           # Merge Keycloak OIDC login config
           python3 .github/actions/setup-quay/merge-yaml.py \
