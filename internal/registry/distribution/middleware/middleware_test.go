@@ -39,9 +39,10 @@ type mockStore struct {
 	putBlobRec  oci.BlobRecord
 	putBlobHook func(repoID int64, b oci.BlobRecord)
 
-	putTagID  int64
-	putTagErr error
-	putTagRec oci.TagRecord
+	putTagID    int64
+	putTagErr   error
+	putTagRec   oci.TagRecord
+	putTagCalls int
 
 	deleteTagErr  error
 	deleteTagName string
@@ -78,6 +79,7 @@ func (m *mockStore) PutBlob(_ context.Context, b oci.BlobRecord) (int64, error) 
 }
 
 func (m *mockStore) PutTag(_ context.Context, repoID int64, t oci.TagRecord) (int64, error) {
+	m.putTagCalls++
 	m.lastRepoID = repoID
 	m.putTagRec = t
 	return m.putTagID, m.putTagErr
@@ -985,6 +987,89 @@ func TestTagService_Tag(t *testing.T) {
 	}
 	if store.lastRepoID != 1 {
 		t.Errorf("repoID = %d, want 1", store.lastRepoID)
+	}
+}
+
+// One tagged manifest PUT reaches the store twice: PutManifest with the tag,
+// then the tag service. Within one request the second write is skipped.
+func TestTagService_Tag_SkipsTagStoredByManifestPutInSameRequest(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("tagged-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ctx := WithSubjectHolder(context.Background())
+
+	ms, err := repo.Manifests(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte("tagged-manifest"),
+	}
+	got, err := ms.Put(ctx, manifest, distribution.WithTag("latest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.putManifestRec.Tag != "latest" {
+		t.Fatalf("manifest stored with tag %q, want latest", store.putManifestRec.Tag)
+	}
+
+	if err := repo.Tags(ctx).Tag(ctx, "latest", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 0 {
+		t.Errorf("tag stored again in the same request: PutTag calls = %d, want 0", store.putTagCalls)
+	}
+
+	// A different tag, or the same tag for another digest, is a real write.
+	if err := repo.Tags(ctx).Tag(ctx, "stable", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Tags(ctx).Tag(ctx, "latest", v1.Descriptor{Digest: digest.FromString("other")}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 2 {
+		t.Errorf("PutTag calls = %d, want 2", store.putTagCalls)
+	}
+}
+
+// A later request carries a fresh context, so re-tagging the same digest is
+// stored and recorded in tag history.
+func TestTagService_Tag_StoresTagInLaterRequest(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("tagged-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+
+	first := WithSubjectHolder(context.Background())
+	ms, err := repo.Manifests(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte("tagged-manifest"),
+	}
+	got, err := ms.Put(first, manifest, distribution.WithTag("latest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	second := WithSubjectHolder(context.Background())
+	if err := repo.Tags(second).Tag(second, "latest", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 1 {
+		t.Errorf("PutTag calls = %d, want 1", store.putTagCalls)
 	}
 }
 

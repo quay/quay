@@ -37,6 +37,15 @@ func (ts *tagService) Tag(ctx context.Context, tag string, desc v1.Descriptor) (
 		return err
 	}
 
+	// A tagged manifest PUT stores the tag with the manifest and distribution
+	// then calls Tag for it within the same request. Storing it again would
+	// expire the row just written and leave one dead tag row per push. A
+	// later request for the same tag and digest is a new push and is stored
+	// as usual, which keeps tag history the way Quay's retarget_tag records it.
+	if tagStoredByManifestPut(ctx, tag, desc.Digest) {
+		return nil
+	}
+
 	repoID, err := ts.repo.ensureRepo(ctx)
 	if err != nil {
 		return err
