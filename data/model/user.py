@@ -138,7 +138,7 @@ def create_user_noverify(
         # ID to ensure that the database consistency check remains intact.
         email = email or str(uuid.uuid4())
 
-    (username_valid, username_issue) = validate_username(username)
+    username_valid, username_issue = validate_username(username)
     if not username_valid:
         raise InvalidUsernameException("Invalid namespace %s: %s" % (username, username_issue))
 
@@ -278,7 +278,7 @@ def get_user_prompts(user):
 
 
 def change_username(user_id, new_username):
-    (username_valid, username_issue) = validate_username(new_username)
+    username_valid, username_issue = validate_username(new_username)
     if not username_valid:
         raise InvalidUsernameException("Invalid username %s: %s" % (new_username, username_issue))
 
@@ -353,7 +353,7 @@ def update_enabled(user, set_enabled):
 
 
 def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
-    (username_valid, username_issue) = validate_username(robot_shortname)
+    username_valid, username_issue = validate_username(robot_shortname)
     if config.app_config.get("ROBOTS_DISALLOW", False):
         msg = "Robot accounts have been disabled. Please contact your administrator."
         raise InvalidRobotException(msg)
@@ -410,21 +410,51 @@ def get_robot_federation_config(robot):
 
 
 def create_robot_federation_config(robot, fed_config):
-    federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
-    assert federated_robot
-
-    metadata = {}
+    """Persist federation bindings, assigning a stable id and version to each."""
     try:
-        metadata = json.loads(federated_robot.metadata_json)
-    except Exception as e:
-        logger.debug("Error parsing metadata: %s", e)
+        with db_transaction():
+            # Serialize the read-modify-write cycle so every policy change receives a
+            # unique version and invalidates JWTs minted under the previous policy.
+            federated_robot = db_for_update(
+                FederatedLogin.select().where(FederatedLogin.user == robot)
+            ).get()
+            assert federated_robot
 
-    try:
-        metadata["federation_config"] = fed_config
-        federated_robot.metadata_json = json.dumps(metadata)
-        federated_robot.save()
+            metadata = {}
+            try:
+                metadata = json.loads(federated_robot.metadata_json)
+            except Exception as e:
+                logger.debug("Error parsing metadata: %s", e)
+
+            previous = {entry.get("id"): entry for entry in metadata.get("federation_config", [])}
+            normalized = []
+            for entry in fed_config:
+                entry = dict(entry)
+                requested_id = entry.get("id")
+                binding_id = requested_id if requested_id in previous else str(uuid4())
+                old = previous.get(binding_id)
+                entry["id"] = binding_id
+                if old:
+                    old_policy = {key: value for key, value in old.items() if key != "version"}
+                    new_policy = {key: value for key, value in entry.items() if key != "version"}
+                    entry["version"] = old.get("version", 1) + (old_policy != new_policy)
+                else:
+                    entry["version"] = 1
+                normalized.append(entry)
+            metadata["federation_config"] = normalized
+            federated_robot.metadata_json = json.dumps(metadata)
+            federated_robot.save()
+            return normalized
     except Exception as e:
         raise DataModelException(e)
+
+
+def get_robot_federation_binding(robot, binding_id, version):
+    """Return the active binding matching a JWT's immutable id/version."""
+    for binding in get_robot_federation_config(robot):
+        if binding.get("id") == binding_id and binding.get("version") == version:
+            return binding
+    return None
 
 
 def delete_robot_federation_config(robot):
@@ -597,13 +627,33 @@ def regenerate_robot_token(robot_shortname, parent):
     return robot, password, metadata
 
 
-def generate_temp_robot_jwt_token(instance_keys):
-    context, subject = build_context_and_subject(get_authenticated_context())
+def generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federation_binding):
+    """Mints a short-lived Quay JWT for a validated federated robot."""
+    from auth.auth_context_type import ValidatedAuthContext
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(robot=robot))
     audience_param = config.app_config["SERVER_HOSTNAME"]
-    token = generate_bearer_token(
-        audience_param, subject, context, {}, TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S, instance_keys
+    additional_claims = {}
+    if api_scopes:
+        additional_claims["api_scopes"] = api_scopes
+        additional_claims["federation_binding_id"] = federation_binding["id"]
+        additional_claims["federation_binding_version"] = federation_binding["version"]
+    return generate_bearer_token(
+        audience_param,
+        subject,
+        context,
+        {},
+        TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
+        instance_keys,
+        additional_claims,
     )
-    return token
+
+
+def generate_temp_robot_jwt_token(instance_keys, api_scopes=None, federation_binding=None):
+    """Mints a short-lived JWT for the robot authenticated in the current request."""
+    robot = get_authenticated_context().robot
+    assert robot
+    return generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federation_binding)
 
 
 def delete_robot(robot_username):

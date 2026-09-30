@@ -214,6 +214,7 @@ def _request_start():
 DEFAULT_FILTER = lambda x: "[FILTERED]"
 FILTERED_VALUES = [
     {"key": ["password"], "fn": DEFAULT_FILTER},
+    {"key": ["subject_token"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_password"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_username"], "fn": DEFAULT_FILTER},
     {"key": ["user", "password"], "fn": DEFAULT_FILTER},

@@ -33,6 +33,41 @@ def test_oauth_application_maximum_token_count_is_optional_positive_integer():
             validate(value, schema)
 
 
+def test_robot_api_token_exchange_requires_robot_api_tokens():
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKENS is False
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKEN_EXCHANGE is False
+
+    schema = {
+        "type": "object",
+        "allOf": CONFIG_SCHEMA["allOf"],
+        "properties": {
+            "FEATURE_ROBOT_API_TOKENS": CONFIG_SCHEMA["properties"]["FEATURE_ROBOT_API_TOKENS"],
+            "FEATURE_ROBOT_API_TOKEN_EXCHANGE": CONFIG_SCHEMA["properties"][
+                "FEATURE_ROBOT_API_TOKEN_EXCHANGE"
+            ],
+        },
+    }
+
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+        schema,
+    )
+
+    with pytest.raises(ValidationError):
+        validate(
+            {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+            schema,
+        )
+
+
 def test_bootstrap_token_owner_required_when_programmatic_bootstrap_enabled():
     schema = {
         "type": "object",
