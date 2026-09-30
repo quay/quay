@@ -105,10 +105,10 @@ def exchange_federated_robot_subject_token():
         robot, binding = validate_federated_robot_subject_token(
             robot_username, form["subject_token"]
         )
-    except InvalidRobotException:
-        return _oauth_error("invalid_target")
     except InvalidRobotCredentialException:
         return _oauth_error("invalid_grant")
+    except InvalidRobotException:
+        return _oauth_error("invalid_target")
 
     try:
         effective_scope = resolve_federation_scope(binding, form.get("scope"))

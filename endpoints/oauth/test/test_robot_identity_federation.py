@@ -166,6 +166,28 @@ def test_sts_token_exchange_rejects_scope_outside_binding(sts_app):
     assert response.json == {"error": "invalid_grant"}
 
 
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_sts_token_exchange_rejects_audience_outside_binding(sts_app):
+    robot = _federated_robot()
+    response = sts_app.test_client().post(
+        "/sts/token",
+        data={
+            "grant_type": TOKEN_EXCHANGE_GRANT_TYPE,
+            "subject_token": generate_mock_oidc_token(
+                subject=robot.username, audience="other-audience"
+            ),
+            "subject_token_type": JWT_TOKEN_TYPE,
+            "resource": "urn:quay:robot:" + robot.username,
+            "scope": "repo:read",
+        },
+        content_type="application/x-www-form-urlencoded",
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "invalid_grant"}
+
+
 def test_sts_token_exchange_is_rate_limited(sts_app, monkeypatch):
     monkeypatch.setattr(
         "endpoints.oauth.robot_identity_federation.check_token_exchange_rate_limit",
