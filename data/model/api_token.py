@@ -1,8 +1,11 @@
 """Lifecycle and JWT helpers for Quay-issued API tokens."""
 
+import logging
 from contextlib import nullcontext
 from datetime import datetime, timedelta
 from math import isfinite
+
+from peewee import PeeweeException
 
 from auth import scopes
 from data.database import APIToken, User, db_for_update, random_string_generator
@@ -10,6 +13,8 @@ from data.fields import Credential
 from data.model import config, db_transaction
 from data.readreplica import ReadOnlyModeException
 from util.security.registry_jwt import generate_bearer_token
+
+logger = logging.getLogger(__name__)
 
 API_TOKEN_DEFAULT_EXPIRATION_SECONDS = 60 * 60 * 24 * 30
 API_TOKEN_MAX_EXPIRATION_SECONDS = 60 * 60 * 24 * 90
@@ -72,6 +77,7 @@ def create_token_under_limit(subject_user, creator, scope, expiration_seconds, d
     scope = normalize_scope(scope)
     if not validate_api_scope_string(scope):
         raise ValueError("'scope' must include at least one API scope")
+    expiration_seconds = validate_expiration(expiration_seconds)
 
     max_active_tokens = (config.app_config or {}).get("API_TOKEN_MAXIMUM_TOKEN_COUNT")
     transaction = db_transaction() if max_active_tokens is not None else nullcontext()
@@ -140,6 +146,14 @@ def _update_last_accessed(token):
         token.last_accessed = now
     except ReadOnlyModeException:
         pass
+    except PeeweeException:
+        strict_logging_disabled = config.app_config.get(
+            "ALLOW_WITHOUT_STRICT_LOGGING"
+        ) or config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+        if strict_logging_disabled:
+            logger.exception("update last_accessed for API token failed")
+        else:
+            raise
 
 
 def validate_token(token_string):

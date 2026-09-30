@@ -124,7 +124,9 @@ def decode_bearer_token(bearer_token, instance_keys, config):
     return payload
 
 
-def generate_bearer_token(audience, subject, context, access, lifetime_s, instance_keys):
+def generate_bearer_token(
+    audience, subject, context, access, lifetime_s, instance_keys, extra_fields=None
+):
     """
     Generates a registry bearer token (without the 'Bearer ' portion) based on the given
     information.
@@ -138,11 +140,20 @@ def generate_bearer_token(audience, subject, context, access, lifetime_s, instan
         instance_keys.service_name,
         instance_keys.local_key_id,
         instance_keys.local_private_key,
+        extra_fields,
     )
 
 
 def _generate_jwt_object(
-    audience, subject, context, access, lifetime_s, issuer, key_id, private_key
+    audience,
+    subject,
+    context,
+    access,
+    lifetime_s,
+    issuer,
+    key_id,
+    private_key,
+    extra_fields=None,
 ):
     """
     Generates a compact encoded JWT with the values specified.
@@ -157,6 +168,9 @@ def _generate_jwt_object(
         "access": access,
         "context": context,
     }
+
+    if extra_fields:
+        token_data.update(extra_fields)
 
     token_headers = {
         "kid": key_id,
