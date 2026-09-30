@@ -170,6 +170,9 @@ def _generate_jwt_object(
     }
 
     if extra_fields:
+        reserved_fields = set(token_data).intersection(extra_fields)
+        if reserved_fields:
+            raise ValueError("extra_fields cannot override JWT fields")
         token_data.update(extra_fields)
 
     token_headers = {
