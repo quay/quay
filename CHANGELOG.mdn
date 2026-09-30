@@ -3,20 +3,43 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.23"></a>
+## [v3.12.23] - 2026-09-21
+### PROJQUAY-12876: Fix(Cve)
+- [238487116](https://github.com/quay/quay/commit/2384871164885a301a4c6274f8e24f70b4658df1): bump lxml to 6.1.3 for CVE-2026-49825 ([#7284](https://github.com/quay/quay/issues/7284))
+### [Redhat-3.12] NO-ISSUE: Fix(Ci)
+- [26b764584](https://github.com/quay/quay/commit/26b7645842614f2235d0ba5625eddf33bf3ff770): pin Buildx to v0.37.1 ([#7242](https://github.com/quay/quay/issues/7242))
+### [Redhat-3.12] PROJQUAY-12853: Fix(Cve)
+- [e02f3c524](https://github.com/quay/quay/commit/e02f3c524e0aeac7e98f314bc41e41b91b38c602): CVE-2026-54770 - bump WebOb ([#7094](https://github.com/quay/quay/issues/7094))
+### [Redhat-3.12] PROJQUAY-12893: Fix(Cve): CVE-2026-59879
+- [77faeda4d](https://github.com/quay/quay/commit/77faeda4da04dd65d6c0a0a8e9aa309dfe73f0a2): Bump immutable to 5.1.9 ([#7118](https://github.com/quay/quay/issues/7118))
+### [Redhat-3.12] PROJQUAY-12992: Fix(Cve): CVE-2026-82417
+- [812d08747](https://github.com/quay/quay/commit/812d087472d3836a6abccf0682b67042af97741e): Bump qs to 6.16.0 ([#7182](https://github.com/quay/quay/issues/7182))
+### [Redhat-3.12] PROJQUAY-13196: Fix(Cve)
+- [07b4ca8a7](https://github.com/quay/quay/commit/07b4ca8a77e3d58c2139fcf3457830400f21e451): bump compression to 1.8.2 ([#7315](https://github.com/quay/quay/issues/7315))
+
 <a name="v3.12.22"></a>
-## [v3.12.22] - 2026-08-20
+## [v3.12.22] - 2026-09-04
 ### [Redhat-3.12] NO-ISSUE: Fix(Ci)
 - [7676d121e](https://github.com/quay/quay/commit/7676d121e8a95ce71e4401e98ff90aeff91a3f2c): pin s390x buildkit to v0.30.0 to avoid runc masking regression ([#6786](https://github.com/quay/quay/issues/6786))
 ### [Redhat-3.12] PROJQUAY-12429: Fix(Api)
 - [1354b197c](https://github.com/quay/quay/commit/1354b197c556445493e3942d91aa3376bb3a0858): hide robot account tokens from global readonly superusers ([#6862](https://github.com/quay/quay/issues/6862))
+### [Redhat-3.12] PROJQUAY-12465: Fix(Cve)
+- [33a51bc66](https://github.com/quay/quay/commit/33a51bc666c2e1fa6466876c212280905e2f8225): CVE-2026-69153 - postcss ([#6941](https://github.com/quay/quay/issues/6941))
 ### [Redhat-3.12] PROJQUAY-12471: Fix(Cve)
 - [018e6a797](https://github.com/quay/quay/commit/018e6a7978bed3a1469610a46cebc81b6623c142): CVE-2026-69152 - brace-expansion ([#6840](https://github.com/quay/quay/issues/6840))
 ### [Redhat-3.12] PROJQUAY-12475: Fix(Cve)
 - [384e15d92](https://github.com/quay/quay/commit/384e15d92b76a03684ee80fb4a8452a6dac56e83): CVE-2026-44705 - tmp ([#6868](https://github.com/quay/quay/issues/6868))
 ### [Redhat-3.12] PROJQUAY-12518: Deps
 - [51917a2a7](https://github.com/quay/quay/commit/51917a2a77cce25a6cbd548684bdabd2d3ad7c49): Bump soupsieve to 2.8.4 ([#6882](https://github.com/quay/quay/issues/6882))
+### [Redhat-3.12] PROJQUAY-12583: Fix(Cve)
+- [fd49d6981](https://github.com/quay/quay/commit/fd49d6981a8784ba12b9e1fe2c568ff51d42fd72): CVE-2026-73089 - bump browserslist ([#6968](https://github.com/quay/quay/issues/6968))
 ### [Redhat-3.12] PROJQUAY-12587: Fix(Cve)
 - [870b2ec83](https://github.com/quay/quay/commit/870b2ec83ca0e4561234680caa6e16aa9b9166eb): CVE-2026-56852 - x/text bump ([#6851](https://github.com/quay/quay/issues/6851))
+### [Redhat-3.12] PROJQUAY-12735: Fix(Cve)
+- [95008f4cf](https://github.com/quay/quay/commit/95008f4cf5559962ff848e2e5f1bc7dd4b4c7b5a): CVE-2026-67320 - bump axios to 1.19.0 ([#6925](https://github.com/quay/quay/issues/6925))
+### [Redhat-3.12] PROJQUAY-12918: Fix(Cve)
+- [01ca4f8ae](https://github.com/quay/quay/commit/01ca4f8ae08904ffd7404e6ebe7cf31f606c1d9e): CVE-2026-84375 - Bump js-yaml to 3.15.2/4.3.2 ([#7068](https://github.com/quay/quay/issues/7068))
 
 <a name="v3.12.21"></a>
 ## [v3.12.21] - 2026-08-05
@@ -816,6 +839,29 @@
 - [5286c33f8](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd0](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.26"></a>
+## [v3.10.26] - 2026-09-04
+### [Redhat-3.10] NO-ISSUE: Fix(Ci)
+- [bac17259b](https://github.com/quay/quay/commit/bac17259b0e382d21d111e409c02ca379f7fd865): pin s390x buildkit to v0.30.0 to avoid runc masking regression ([#6787](https://github.com/quay/quay/issues/6787))
+### [Redhat-3.10] PROJQUAY-12428: Fix(Api)
+- [e50c7810e](https://github.com/quay/quay/commit/e50c7810e717550f692891e64d0b207a8785638c): hide robot account tokens from global readonly superusers ([#6863](https://github.com/quay/quay/issues/6863))
+### [Redhat-3.10] PROJQUAY-12464: Fix(Cve)
+- [23a3cbfed](https://github.com/quay/quay/commit/23a3cbfedad19271cb858161d1141ea8b88334f2): CVE-2026-69153 - postcss ([#6942](https://github.com/quay/quay/issues/6942))
+### [Redhat-3.10] PROJQUAY-12470: Fix(Cve)
+- [3c7393423](https://github.com/quay/quay/commit/3c7393423b0a0e58a10804cd50907416c676e6bc): CVE-2026-69152 - brace-expansion ([#6838](https://github.com/quay/quay/issues/6838))
+### [Redhat-3.10] PROJQUAY-12477: Fix(Cve)
+- [ccfb488e4](https://github.com/quay/quay/commit/ccfb488e430392a50b1df1eb983f55f59c4f0e48): CVE-2026-44705 - tmp ([#6869](https://github.com/quay/quay/issues/6869))
+### [Redhat-3.10] PROJQUAY-12519: Deps
+- [66a9cd792](https://github.com/quay/quay/commit/66a9cd792dc0dbc37a5db85576b4291b2be6c06f): Bump soupsieve to 2.8.4 ([#6883](https://github.com/quay/quay/issues/6883))
+### [Redhat-3.10] PROJQUAY-12582: Fix(Cve)
+- [55e39189d](https://github.com/quay/quay/commit/55e39189d866c4f4d7cb1b44761748e3b22d0e30): CVE-2026-73089 - bump browserslist ([#6963](https://github.com/quay/quay/issues/6963))
+### [Redhat-3.10] PROJQUAY-12589: Fix(Cve)
+- [4f3dc0dd0](https://github.com/quay/quay/commit/4f3dc0dd04dfb0ac5555fb91e05a2ec0349a69d4): CVE-2026-56852 - x/text bump ([#6852](https://github.com/quay/quay/issues/6852))
+### [Redhat-3.10] PROJQUAY-12733: Fix(Cve)
+- [846472842](https://github.com/quay/quay/commit/8464728427ff144a1d722ec52ac4416339f6181f): CVE-2026-67320 - bump axios to 1.19.0 ([#6926](https://github.com/quay/quay/issues/6926))
+### [Redhat-3.10] PROJQUAY-12917: Fix(Cve)
+- [01fa17b17](https://github.com/quay/quay/commit/01fa17b1775a7569e1871fb3371ace5f2fe3ade9): CVE-2026-84375 - Bump js-yaml to 3.15.2/4.3.2 ([#7066](https://github.com/quay/quay/issues/7066))
+
 <a name="v3.10.25"></a>
 ## [v3.10.25] - 2026-08-05
 ### PROJQUAY-12120: Chore(Deps)
@@ -1474,6 +1520,31 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.26"></a>
+## [v3.9.26] - 2026-09-04
+### PROJQUAY-12750: Fix(Deps)
+- [ff6800956](https://github.com/quay/quay/commit/ff6800956dad0f8c1bcbd12dfa9762562aabc3a4): update fast-uri to >=3.19 for CVE-2026-16221 ([#7032](https://github.com/quay/quay/issues/7032))
+### [Redhat-3.9] NO-ISSUE: Fix(Ci)
+- [5665b3215](https://github.com/quay/quay/commit/5665b3215cffa9242aea7010059f034e8915d6c1): pin s390x buildkit to v0.30.0 to avoid runc masking regression ([#6753](https://github.com/quay/quay/issues/6753))
+### [Redhat-3.9] PROJQUAY-12427: Fix(Api)
+- [09cad921f](https://github.com/quay/quay/commit/09cad921fda2e2c2dfa19df8b0607360c844ec72): hide robot account tokens from global readonly superusers ([#6864](https://github.com/quay/quay/issues/6864))
+### [Redhat-3.9] PROJQUAY-12466: Fix(Cve)
+- [809f3a587](https://github.com/quay/quay/commit/809f3a5879f23077443d6b6213c9fbe0942b1fc4): CVE-2026-69153 - postcss ([#6944](https://github.com/quay/quay/issues/6944))
+### [Redhat-3.9] PROJQUAY-12468: Fix(Cve)
+- [073c25b3e](https://github.com/quay/quay/commit/073c25b3e793be18951cba243b4ad88bf33cf015): CVE-2026-69152 - brace-expansion ([#6839](https://github.com/quay/quay/issues/6839))
+### [Redhat-3.9] PROJQUAY-12481: Fix(Cve)
+- [4e04b70c8](https://github.com/quay/quay/commit/4e04b70c8a96704d98a5e982502b89c2ba79a188): CVE-2026-44705 - tmp ([#6870](https://github.com/quay/quay/issues/6870))
+### [Redhat-3.9] PROJQUAY-12517: Deps
+- [e52b45b35](https://github.com/quay/quay/commit/e52b45b3578b34d4d97000339f254b3fa4c2e1df): Bump soupsieve to 2.8.4 ([#6884](https://github.com/quay/quay/issues/6884))
+### [Redhat-3.9] PROJQUAY-12581: Fix(Cve)
+- [fc67b7084](https://github.com/quay/quay/commit/fc67b7084c444e07978d6de8eeb6c8f2a4fb1913): CVE-2026-73089 - bump browserslist ([#6959](https://github.com/quay/quay/issues/6959))
+### [Redhat-3.9] PROJQUAY-12586: Fix(Cve)
+- [2fd64919d](https://github.com/quay/quay/commit/2fd64919db65a91637467b13188286f2b2bc7a22): CVE-2026-56852 - x/text bump ([#6853](https://github.com/quay/quay/issues/6853))
+### [Redhat-3.9] PROJQUAY-12740: Fix(Cve)
+- [7d398a798](https://github.com/quay/quay/commit/7d398a7983585291ee27590d8f0ef14c62905b9b): CVE-2026-67320 - bump axios to 1.19.0 ([#6927](https://github.com/quay/quay/issues/6927))
+### [Redhat-3.9] PROJQUAY-12920: Fix(Cve)
+- [42d6ea503](https://github.com/quay/quay/commit/42d6ea503ec825f3c75baac8b27caa7aec7ebd6d): CVE-2026-84375 - Bump js-yaml to 3.15.2/4.3.2 ([#7070](https://github.com/quay/quay/issues/7070))
 
 <a name="v3.9.25"></a>
 ## [v3.9.25] - 2026-08-05
@@ -3227,7 +3298,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.22...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.23...HEAD
+[v3.12.23]: https://github.com/quay/quay/compare/v3.12.22...v3.12.23
 [v3.12.22]: https://github.com/quay/quay/compare/v3.12.21...v3.12.22
 [v3.12.21]: https://github.com/quay/quay/compare/v3.12.20...v3.12.21
 [v3.12.20]: https://github.com/quay/quay/compare/v3.12.19...v3.12.20
@@ -3264,7 +3336,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.25...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.26...v3.11.0
+[v3.10.26]: https://github.com/quay/quay/compare/v3.10.25...v3.10.26
 [v3.10.25]: https://github.com/quay/quay/compare/v3.10.24...v3.10.25
 [v3.10.24]: https://github.com/quay/quay/compare/v3.10.23...v3.10.24
 [v3.10.23]: https://github.com/quay/quay/compare/v3.10.22...v3.10.23
@@ -3290,7 +3363,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.25...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.26...v3.10.0
+[v3.9.26]: https://github.com/quay/quay/compare/v3.9.25...v3.9.26
 [v3.9.25]: https://github.com/quay/quay/compare/v3.9.24...v3.9.25
 [v3.9.24]: https://github.com/quay/quay/compare/v3.9.23...v3.9.24
 [v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
