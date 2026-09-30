@@ -392,8 +392,8 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     unreadCount === 0
       ? 'Notifications'
       : additional
-      ? `Notifications, more than ${unreadCount}`
-      : `Notifications, ${unreadCount}`;
+        ? `Notifications, more than ${unreadCount}`
+        : `Notifications, ${unreadCount}`;
 
   return (
     <>
