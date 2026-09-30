@@ -45,8 +45,10 @@ FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE=1
 RUN set -ex\
 	; microdnf -y --setopt=tsflags=nodocs install \
+		cmake \
 		gcc-c++ \
 		git \
+		ninja-build \
 		openldap-devel \
 		python3.12-devel \
 		libffi-devel \
