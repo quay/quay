@@ -133,7 +133,17 @@ CONFIG_SCHEMA = {
                 "required": ["BOOTSTRAP_TOKEN_OWNER"],
                 "properties": {"BOOTSTRAP_TOKEN_OWNER": {"type": "string", "minLength": 1}},
             },
-        }
+        },
+        {
+            "if": {
+                "properties": {"FEATURE_ROBOT_API_TOKEN_EXCHANGE": {"const": True}},
+                "required": ["FEATURE_ROBOT_API_TOKEN_EXCHANGE"],
+            },
+            "then": {
+                "required": ["FEATURE_ROBOT_API_TOKENS"],
+                "properties": {"FEATURE_ROBOT_API_TOKENS": {"const": True}},
+            },
+        },
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -469,6 +479,27 @@ CONFIG_SCHEMA = {
             "minimum": 1,
             "description": "Optional maximum number of non-expired OAuth access tokens allowed per OAuth application. If omitted or null, no cap is enforced.",
             "x-example": 1000,
+        },
+        "API_TOKEN_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Maximum number of active Quay-issued API tokens allowed per user or robot. Defaults to 20; set null to disable the cap.",
+            "default": 20,
+            "x-example": 20,
+        },
+        "FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum federated robot token exchanges per source IP and robot within the configured window. Defaults to 30.",
+            "default": 30,
+            "x-example": 30,
+        },
+        "FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Fixed window in seconds for federated robot token exchange rate limiting. Defaults to 60.",
+            "default": 60,
+            "x-example": 60,
         },
         # Redis.
         "BUILDLOGS_REDIS": {
@@ -1573,6 +1604,16 @@ CONFIG_SCHEMA = {
         "FEATURE_PROGRAMMATIC_BOOTSTRAP": {
             "type": "boolean",
             "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
+            "x-example": False,
+        },
+        "FEATURE_ROBOT_API_TOKENS": {
+            "type": "boolean",
+            "description": "Feature flag for scoped robot Management API tokens. Defaults to False.",
+            "x-example": False,
+        },
+        "FEATURE_ROBOT_API_TOKEN_EXCHANGE": {
+            "type": "boolean",
+            "description": "Feature flag for federated robot API token exchange. Requires FEATURE_ROBOT_API_TOKENS. Defaults to False.",
             "x-example": False,
         },
         "BOOTSTRAP_TOKEN_OWNER": {

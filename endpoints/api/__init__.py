@@ -215,7 +215,7 @@ def page_support(page_token_kwarg="page_token", parsed_args_kwarg="parsed_args")
             page_token = decrypt_page_token(kwargs[parsed_args_kwarg]["next_page"])
             kwargs[page_token_kwarg] = page_token
 
-            (result, next_page_token) = func(self, *args, **kwargs)
+            result, next_page_token = func(self, *args, **kwargs)
             if next_page_token is not None:
                 result["next_page"] = encrypt_page_token(next_page_token)
 
@@ -248,7 +248,7 @@ def parse_args(kwarg_name="parsed_args"):
 def parse_repository_name(func):
     @wraps(func)
     def wrapper(repository, *args, **kwargs):
-        (namespace, repository) = parse_namespace_repository(
+        namespace, repository = parse_namespace_repository(
             repository, app.config["LIBRARY_NAMESPACE"]
         )
         return func(namespace, repository, *args, **kwargs)
@@ -748,6 +748,17 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
         metadata["oauth_token_application_id"] = oauth_token.application.client_id
         metadata["oauth_token_application"] = oauth_token.application.name
 
+    auth_context = get_authenticated_context()
+    if auth_context:
+        api_token = getattr(auth_context, "api_token", None)
+        if api_token:
+            metadata["api_token_uuid"] = api_token.uuid
+            metadata["api_token_name"] = api_token.display_name
+        federation_binding = getattr(auth_context, "federation_binding", None)
+        if federation_binding:
+            metadata["federation_binding_id"] = federation_binding["id"]
+            metadata["federation_binding_version"] = federation_binding["version"]
+
     if performer is None:
         performer = get_authenticated_user()
 
@@ -759,7 +770,7 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     if app.config.get("FEATURE_EXTENDED_ACTION_LOGGING", False):
         # Use shared helper for consistent auth detection across all logging paths
         auth_type, performer_kind = determine_auth_type_and_performer_kind(
-            auth_context=get_authenticated_context(),
+            auth_context=auth_context,
             oauth_token=oauth_token,
         )
 
@@ -825,7 +836,7 @@ def deprecated():
     def wrapper(func):
         @wraps(func)
         def wrapped(self, *args, **kwargs):
-            (data, code, headers) = unpack(func(self, *args, **kwargs))
+            data, code, headers = unpack(func(self, *args, **kwargs))
             headers["Deprecation"] = "true"
 
             return (data, code, headers)

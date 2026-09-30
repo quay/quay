@@ -786,6 +786,14 @@ class DefaultConfig(ImmutableConfig):
     # None disables the cap.
     OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT: Optional[int] = None
 
+    # Maximum number of active Quay-issued API tokens per user or robot.
+    # Set to None to disable the cap.
+    API_TOKEN_MAXIMUM_TOKEN_COUNT: Optional[int] = 20
+
+    # Maximum federated robot token exchanges per source IP and robot in a fixed window.
+    FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT = 30
+    FEDERATED_ROBOT_TOKEN_EXCHANGE_RATE_LIMIT_WINDOW_SECONDS = 60
+
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 
@@ -911,6 +919,10 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Controls programmatic bootstrap token provisioning.
     FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+
+    # Feature Flags: Control robot Management API tokens and federated token exchange.
+    FEATURE_ROBOT_API_TOKENS = False
+    FEATURE_ROBOT_API_TOKEN_EXCHANGE = False
     BOOTSTRAP_TOKEN_OWNER: Optional[str] = None
     BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
     PROGRAMMATIC_TOKEN_K8S_SECRET: Optional[str] = None
