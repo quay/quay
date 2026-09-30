@@ -872,6 +872,7 @@ import endpoints.api.repository
 import endpoints.api.repositorynotification
 import endpoints.api.repotoken
 import endpoints.api.robot
+import endpoints.api.robot_application_tokens
 import endpoints.api.search
 import endpoints.api.secscan
 import endpoints.api.signing
