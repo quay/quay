@@ -531,6 +531,57 @@ export function orasAttach(
 }
 
 /**
+ * Discover the OCI referrers attached to a manifest using oras, returning the
+ * `artifactType` of every referrer found.
+ *
+ * Walks the `oras discover --format json` output defensively so it tolerates
+ * oras output-shape differences across versions.
+ *
+ * @returns Array of artifactType strings for the referrers of the given ref
+ */
+export async function orasDiscover(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  await requireTool('oras');
+
+  const ref = targetImage(namespace, repo, tag);
+  const {stdout} = await withRegistryAuthFile(username, password, (authFile) =>
+    execFileAsync('oras', [
+      'discover',
+      ref,
+      '--format',
+      'json',
+      '--insecure',
+      '--registry-config',
+      authFile,
+    ]),
+  );
+
+  const artifactTypes: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'artifactType' && typeof value === 'string') {
+          artifactTypes.push(value);
+        } else {
+          walk(value);
+        }
+      }
+    }
+  };
+  walk(JSON.parse(stdout));
+  return artifactTypes;
+}
+
+/**
  * Push an image in OCI manifest format to the registry using skopeo.
  *
  * Uses `--format=oci` to guarantee the manifest uses the OCI content type,

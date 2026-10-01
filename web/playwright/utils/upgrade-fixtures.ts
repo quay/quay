@@ -20,4 +20,14 @@ export const UPGRADE = {
     email: 'upgradeuser@example.com',
   },
   imageTag: 'v1-pre-upgrade',
+  // A second tag pointing at the SAME single-arch manifest, to prove multiple
+  // tag->manifest rows survive the upgrade.
+  imageTagAlias: 'v1-pre-upgrade-alias',
+  // A multi-arch manifest list, to prove the manifest-list -> child-manifest
+  // join (ManifestChild) survives the upgrade.
+  multiArchTag: 'v1-multiarch',
+  // An OCI referrer (SBOM) attached to the single-arch image via oras, to prove
+  // the referrers index survives the upgrade. The fixture file shipped at
+  // web/playwright/fixtures/oras/referrer.spdx.json is attached with this type.
+  sbomArtifactType: 'application/spdx+json',
 } as const;
