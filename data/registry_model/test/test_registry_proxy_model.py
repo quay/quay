@@ -394,8 +394,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                 "username": username,
                 "namespace": orgname,
             }
-            # available_after should be 5
-            assert kwargs["available_after"] == 5
+            # available_after should be 0
+            assert kwargs["available_after"] == 0
 
     @patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put")
     @patch.object(ProxyModel, "_create_blob")
@@ -446,8 +446,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                 "username": None,  # This should be None for public repositories
                 "namespace": orgname,
             }
-            # available_after should be 5
-            assert kwargs["available_after"] == 5
+            # available_after should be 0
+            assert kwargs["available_after"] == 0
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_create_placeholder_blobs_for_new_manifest(self, create_repo):
@@ -2220,7 +2220,10 @@ class TestGetUpstreamBlobProxyUrl:
             "https://quay.test/_upstream_proxy/token/..."
         )
 
-        with patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue:
+        with (
+            patch.object(self.proxy_model, "_lookup_blob_by_digest", return_value=MagicMock()),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue,
+        ):
             mock_queue.alive.return_value = False
             self.proxy_model.get_upstream_blob_proxy_url(
                 self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
@@ -2258,10 +2261,46 @@ class TestGetUpstreamBlobProxyUrl:
         mock_upstream_proxy = MagicMock()
         mock_upstream_proxy.create_upstream_proxy_url.return_value = expected_url
 
-        with patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue:
+        with (
+            patch.object(self.proxy_model, "_lookup_blob_by_digest", return_value=MagicMock()),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue,
+        ):
             mock_queue.alive.return_value = False
             result = self.proxy_model.get_upstream_blob_proxy_url(
                 self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
             )
 
         assert result == expected_url
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_None_on_unknown_blobs(self):
+        """
+        Verifies that we get a None on blobs that do not exist and are not placeholder blobs.
+        """
+        mock_upstream_proxy = MagicMock()
+
+        result = self.proxy_model.get_upstream_blob_proxy_url(
+            self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+        )
+
+        assert result is None
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_do_not_enqueue_blobs_for_download_if_cache_worker_is_turned_off(self, app):
+        """
+        Verifies that we don't enqueue blobs for subsequent download unless
+        FEATURE_PROXY_CACHE_BLOB_DOWNLOAD is explicitly set to false.
+
+        to do: remove or refactor once FEATURE_PROXY_CACHE_BLOB_DOWNLOAD is removed as a flag.
+        """
+        mock_upstream_proxy = MagicMock()
+        mock_upstream_proxy.create_upstream_proxy_url.return_value = (
+            "https://quay.test/_upstream_proxy/token/..."
+        )
+
+        with patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue:
+            with patch.dict(app.config, {"FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": False}):
+                self.proxy_model.get_upstream_blob_proxy_url(
+                    self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+                )
+                mock_queue.put.assert_not_called()

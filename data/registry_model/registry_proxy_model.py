@@ -977,13 +977,19 @@ class ProxyModel(OCIModel):
         if repo_ref is None:
             return None
 
+        # only redirect for known placeholder blobs
+        # if the blob legitimately doesn't exist, return None
+        blob = self._lookup_blob_by_digest(repo_ref, digest)
+        if blob is None:
+            return None
+
         # check if the blob is already in download
         if features.PROXY_CACHE_BLOB_DOWNLOAD:
             if not proxy_cache_blob_queue.alive([namespace, str(repo_ref.id), digest]):
                 logger.debug(
                     "Enqueueing blob %s for subsequent download via caching worker", digest
                 )
-                self._queue_blob_for_download(repo_ref, digest)
+                self._queue_blob_for_download(repo_ref, digest, available_after=0)
             else:
                 logger.debug("Skipping enqueueing of blob %s, blob already in queue", digest)
         else:
@@ -1022,5 +1028,6 @@ class ProxyModel(OCIModel):
         repo = self.lookup_repository(namespace, repository)
         if repo is None:
             return None
+
         blob = self._lookup_blob_by_digest(repo, digest)
         return blob.image_size if blob is not None else None
