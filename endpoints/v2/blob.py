@@ -69,7 +69,16 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
     # Find the blob.
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # try returning the blob size from the imagestorage row directly
+        proxy_size = registry_model.get_proxy_blob_size(namespace_name, repo_name, digest)
+        if proxy_size is None:
+            raise BlobUnknown()
+        headers = {
+            "Docker-Content-Digest": digest,
+            "Content-Length": proxy_size,
+            "Content-type": BLOB_CONTENT_TYPE,
+        }
+        return Response(headers=headers)
 
     # Build the response headers.
     headers = {
