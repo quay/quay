@@ -250,7 +250,7 @@ class UpstreamProxy(object):
         if granted_access["upstream_repository"] != repository:
             logger.exception(
                 "Mismatch in repository. %s expected, %s found",
-                granted_access["repository"],
+                granted_access["upstream_repository"],
                 repository,
             )
             abort(401)

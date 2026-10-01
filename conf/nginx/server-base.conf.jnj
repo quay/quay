@@ -136,6 +136,8 @@ location ~ ^/_upstream_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     # make sure we send the proper registry hostname in our request
     proxy_ssl_name $3;
     proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
 
     # set buffers
     proxy_buffering off;
@@ -169,6 +171,8 @@ location @upstream_proxy_redirect {
     proxy_set_header Authorization "";
     proxy_set_header Host $proxy_host;
     proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
 
     # turn on proxy buffering but explicitly stop nginx
     # from writing anything to disk, force it to use memory
@@ -185,6 +189,10 @@ location @upstream_proxy_redirect {
 
 # handles upstream proxy request auth
 location = /_upstream_proxy_auth {
+    # make the endpoint internal so it cannot be accessed
+    # from outside
+    internal;
+
     proxy_pass http://registry_app_server;
     proxy_pass_request_body off;
     proxy_set_header Content-Length "";

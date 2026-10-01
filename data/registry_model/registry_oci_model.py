@@ -1495,5 +1495,12 @@ class OCIModel(RegistryDataInterface):
         """
         return None
 
+    def get_proxy_blob_size(self, namespace, repository, digest):
+        """
+        Returns the proxied blob size directly from the ImageStorage table. Returns None
+        if the method is unsupported. Returns BlobUnknown() if the blob cannot be found.
+        """
+        return None
+
 
 oci_model = OCIModel()

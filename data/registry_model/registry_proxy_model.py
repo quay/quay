@@ -874,18 +874,26 @@ class ProxyModel(OCIModel):
                 created_blobs.append((blob.id, blob.image_size))
 
             username = self._user.username if self._user else None
-            queue_id = proxy_cache_blob_queue.put(
-                [self._namespace_name, str(repo_id), str(layer.digest)],
-                json.dumps(
-                    {
-                        "digest": str(layer.digest),
-                        "repo_id": repo_id,
-                        "username": username,
-                        "namespace": self._namespace_name,
-                    }
-                ),
-                available_after=5,
-            )
+
+            # add the blobs to queue only if proxy blob cache worker is available
+            # and only if we already don't have a blob enqueued there
+            if features.PROXY_CACHE_BLOB_DOWNLOAD:
+                if not proxy_cache_blob_queue.alive(
+                    [self._namespace_name, str(repo_id), str(layer.digest)]
+                ):
+                    proxy_cache_blob_queue.put(
+                        [self._namespace_name, str(repo_id), str(layer.digest)],
+                        json.dumps(
+                            {
+                                "digest": str(layer.digest),
+                                "repo_id": repo_id,
+                                "username": username,
+                                "namespace": self._namespace_name,
+                            }
+                        ),
+                        # make job available immediately
+                        available_after=0,
+                    )
 
         return created_blobs
 
@@ -963,8 +971,16 @@ class ProxyModel(OCIModel):
             return None
 
         # check if the blob is already in download
-        if not proxy_cache_blob_queue.alive([namespace, str(repo_ref.id), digest]):
-            self._queue_blob_for_download(repo_ref, digest)
+        if features.PROXY_CACHE_BLOB_DOWNLOAD:
+            if not proxy_cache_blob_queue.alive([namespace, str(repo_ref.id), digest]):
+                logger.debug(
+                    "Enqueueing blob %s for subsequent download via caching worker", digest
+                )
+                self._queue_blob_for_download(repo_ref, digest)
+            else:
+                logger.debug("Skipping enqueueing of blob %s, blob already in queue", digest)
+        else:
+            logger.debug("Skipping enqueueing of blob %s for caching, worker offline", digest)
 
         # determine routing
         if self._config.insecure:
@@ -989,3 +1005,15 @@ class ProxyModel(OCIModel):
             scheme, hostname, namespace, url_namespace, url_repo, digest
         )
         return url
+
+    def get_proxy_blob_size(self, namespace, repository, digest):
+        """
+        Returns the proxied blob size directly from the ImageStorage table. Returns None
+        if the method is unsupported. Returns BlobUnknown() if the blob cannot be found.
+        """
+
+        repo = self.lookup_repository(namespace, repository)
+        if repo is None:
+            return None
+        blob = self._lookup_blob_by_digest(repo, digest)
+        return blob.image_size if blob is not None else None
