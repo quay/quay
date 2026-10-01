@@ -2,9 +2,9 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "redhat-3.*" ]
+    branches: [ "master", "redhat-*" ]
   pull_request:
-    branches: [ "master", "redhat-3.*" ]
+    branches: [ "master", "redhat-*" ]
   schedule:
     - cron: '44 18 * * 0'
 
