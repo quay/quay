@@ -122,18 +122,10 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.redhat.io/ubi8/ubi:latest AS pushgateway
-ENV OS=linux
-ARG PUSHGATEWAY_VERSION=1.11.1
-RUN set -ex\
-	; ARCH=$(uname -m) ; echo $ARCH \
-	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
-	; TARBALL="pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" \
-	; URL="https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/${TARBALL}" \
-	; curl -sSL ${URL} | tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" \
-	|| tar -xzf /cachi2/output/deps/generic/${TARBALL} "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
-	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
-	;
+FROM registry.redhat.io/ubi9/go-toolset:latest as pushgateway
+COPY --chown=1001:0 pushgateway /pushgateway
+WORKDIR /pushgateway
+RUN go mod vendor && GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime
 
 # Config-tool builds the go binary in the configtool.
 FROM registry.redhat.io/ubi8/go-toolset:latest as config-tool
@@ -221,7 +213,7 @@ RUN set -ex\
 
 WORKDIR $QUAYDIR
 # Ordered from least changing to most changing.
-COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
+COPY --from=pushgateway /pushgateway/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
 COPY --from=build-python /opt/app-root/lib64/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages
 COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
