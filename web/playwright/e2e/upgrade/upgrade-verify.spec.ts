@@ -7,9 +7,17 @@
  * Playwright invocation: it shares state with the seed ONLY through the Quay server
  * (Postgres rows + S3 blobs), never through memory, env, or files.
  *
- * Like the seed, this diverges from the suite's auto-cleanup convention (see
- * AGENTS.md): it reads fixed names via the raw adminClient and does NOT clean up.
- * Each CI run is a fresh cluster, so leaving data never collides and aids debugging.
+ * Like the seed, this reads fixed names via the raw adminClient (not the suite's
+ * auto-cleanup `api` fixture). The verify assertions themselves do NOT clean up; a
+ * final, opt-out cleanup step (see below) removes the seed data once verification
+ * passes, so a shared or local Quay instance can be reused by other suites without
+ * the fixed-name fixtures colliding. On the real CI upgrade lane each run is a fresh
+ * cluster, so cleanup is harmless there either way.
+ *
+ * This describe runs SERIAL so the final cleanup test runs strictly after all verify
+ * assertions on one worker (fullyParallel would otherwise let cleanup race ahead and
+ * delete the org mid-pull). Serial mode also means a failed verify assertion skips
+ * cleanup, preserving the server state for debugging — only a clean pass tears down.
  *
  * Only version-tolerant, lowest-common-denominator behavior is used so the file is
  * cherry-picked byte-identical across master (3.19) and redhat-3.18/3.17/3.16.
@@ -20,10 +28,20 @@ import {test, expect} from '../../fixtures';
 import {UPGRADE} from '../../utils/upgrade-fixtures';
 import {pullImage, orasDiscover, isOrasAvailable} from '../../utils/container';
 
+// Post-verify cleanup is opt-out: it runs by default so other suites can reuse the
+// instance. Set UPGRADE_CLEAN=0 (also false/no) to keep the seed data in place —
+// e.g. to inspect server state after a run.
+const cleanupEnabled = !['0', 'false', 'no'].includes(
+  (process.env.UPGRADE_CLEAN ?? '').toLowerCase(),
+);
+
 test.describe(
   'Upgrade verify',
   {tag: ['@api', '@upgrade-verify', '@auth:Database']},
   () => {
+    // Serial so the trailing cleanup test runs last, after every verify assertion.
+    test.describe.configure({mode: 'serial'});
+
     test('org, repo, robot, team, user survived the upgrade', async ({
       adminClient,
     }) => {
@@ -182,5 +200,36 @@ test.describe(
         expect(types).toContain(UPGRADE.sbomArtifactType);
       },
     );
+
+    // Final step: tear down everything @upgrade-seed created so other suites can
+    // reuse this instance. Runs last (serial describe) and only after the verify
+    // assertions above have passed. Opt out with UPGRADE_CLEAN=0.
+    test('cleans up seed data after verify (set UPGRADE_CLEAN=0 to skip)', async ({
+      adminClient,
+    }) => {
+      test.skip(!cleanupEnabled, 'UPGRADE_CLEAN disables post-verify cleanup');
+
+      // 204 = deleted; 404 = already gone (idempotent re-run); 400 = a mark-for-
+      // deletion already in flight. All three mean the object is gone.
+      const removed = (r: {status(): number}) =>
+        expect([204, 404, 400]).toContain(r.status());
+
+      // Deleting the org marks its namespace for deletion, cascading the repository
+      // (tags, manifests, referrers), robots, teams, and the team->repo permission,
+      // and frees the fixed org/repo names immediately.
+      removed(await adminClient.delete(`/api/v1/organization/${UPGRADE.org}`));
+
+      // The standalone DB user lives outside the org namespace; remove it via the
+      // superuser API.
+      removed(
+        await adminClient.delete(
+          `/api/v1/superuser/users/${UPGRADE.user.username}`,
+        ),
+      );
+
+      // The org name must be freed so a later seed (or other suite) can reuse it.
+      const org = await adminClient.get(`/api/v1/organization/${UPGRADE.org}`);
+      expect(org.status()).toBe(404);
+    });
   },
 );
