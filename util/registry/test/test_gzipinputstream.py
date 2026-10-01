@@ -5,7 +5,12 @@ from io import BytesIO
 
 import pytest
 
-from util.registry.gzipinputstream import GzipInputStream, UnrecognizedStreamError
+from util.registry.gzipinputstream import (
+    BLOCK_SIZE,
+    MAX_PEEK_SIZE,
+    GzipInputStream,
+    UnrecognizedStreamError,
+)
 
 LOG_ENTRIES = {"logs": [{"message": "Step 1/2 : FROM scratch"}, {"message": "Done"}]}
 PAYLOAD = json.dumps(LOG_ENTRIES).encode("utf-8")
@@ -110,6 +115,23 @@ def test_json_lead_split_across_short_reads():
     stream = GzipInputStream(ShortReadFile(payload, chunk_size=1))
     assert stream.passthrough
     assert stream.read() == payload
+
+
+def test_json_lead_past_block_size_still_recognized():
+    # Whitespace longer than a single BLOCK_SIZE read, but still under
+    # MAX_PEEK_SIZE, must keep accumulating until the JSON lead is found.
+    payload = b" " * 20000 + PAYLOAD
+    stream = GzipInputStream(BytesIO(payload))
+    assert stream.passthrough
+    assert stream.read() == payload
+
+
+def test_json_lead_past_max_peek_size_raises():
+    # Whitespace past MAX_PEEK_SIZE is never resolved to JSON and the stream
+    # is rejected as unrecognized.
+    payload = b" " * (MAX_PEEK_SIZE + BLOCK_SIZE) + b"{}"
+    with pytest.raises(UnrecognizedStreamError):
+        GzipInputStream(BytesIO(payload))
 
 
 def test_truncated_gzip_yields_partial_payload():

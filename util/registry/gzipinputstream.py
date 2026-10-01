@@ -4,6 +4,9 @@ import zlib
 BLOCK_SIZE = 16384
 """Read block size"""
 
+MAX_PEEK_SIZE = 65536
+"""Most bytes read to decide the stream format"""
+
 WINDOW_BUFFER_SIZE = 16 + zlib.MAX_WBITS
 """zlib window buffer size, set to gzip's format"""
 
@@ -43,7 +46,7 @@ class GzipInputStream(object):
     way out; anything else raises UnrecognizedStreamError. A short first read
     (e.g. a single leading byte) is not enough to decide, so reads of up to
     BLOCK_SIZE are accumulated until the case is decided, the stream ends, or
-    the prefix reaches BLOCK_SIZE (so at most just under 2 * BLOCK_SIZE).
+    the prefix reaches MAX_PEEK_SIZE (so at most just under MAX_PEEK_SIZE + BLOCK_SIZE).
     `passthrough` tells the caller which of the first two applied. A stream
     that starts with the gzip magic but is corrupt still raises zlib.error
     while being read, and a truncated gzip stream still yields the partial
@@ -69,7 +72,7 @@ class GzipInputStream(object):
             still_could_be_magic = len(first) < len(GZIP_MAGIC) and GZIP_MAGIC.startswith(first)
             if not still_could_be_magic and first.lstrip():
                 break
-            if len(first) >= BLOCK_SIZE:
+            if len(first) >= MAX_PEEK_SIZE:
                 break
             chunk = self._file.read(BLOCK_SIZE)
             if not chunk:
