@@ -63,16 +63,39 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 
 ### Tag Categories
 
-| Category     | Format                 | Example                | Purpose                                                                |
-| ------------ | ---------------------- | ---------------------- | ---------------------------------------------------------------------- |
-| JIRA         | `@PROJQUAY-####`       | `@PROJQUAY-1234`       | Link to JIRA ticket                                                    |
-| Priority     | `@critical`, `@smoke`  | `@critical`            | Test importance                                                        |
-| Feature      | `@repository`          | `@repository`          | Feature area                                                           |
-| Config       | `@config:BILLING`      | `@config:OIDC`         | Required config                                                        |
-| Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature                                                       |
-| Container    | `@container`           | `@container`           | Requires registry image tooling (auto-skip)                            |
-| Superuser    | `@superuser`           | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them |
-| Webhook      | `@webhook`             | `@webhook`             | Uses the webhook receiver fixture or helper                            |
+| Category     | Format                             | Example                | Purpose                                                                   |
+| ------------ | ---------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| JIRA         | `@PROJQUAY-####`                   | `@PROJQUAY-1234`       | Link to JIRA ticket                                                       |
+| Priority     | `@critical`, `@smoke`              | `@critical`            | Test importance                                                           |
+| Feature      | `@repository`                      | `@repository`          | Feature area                                                              |
+| Config       | `@config:BILLING`                  | `@config:OIDC`         | Required config                                                           |
+| Feature Flag | `@feature:PROXY_CACHE`             | `@feature:REPO_MIRROR` | Required feature                                                          |
+| Container    | `@container`                       | `@container`           | Requires registry image tooling (auto-skip)                               |
+| Superuser    | `@superuser`                       | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
+| Webhook      | `@webhook`                         | `@webhook`             | Uses the webhook receiver fixture or helper                               |
+| Upgrade      | `@upgrade-seed`, `@upgrade-verify` | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
+
+#### Operator-upgrade specs (`@upgrade-seed` / `@upgrade-verify`)
+
+`e2e/upgrade/` holds two specs that prove a Quay operator upgrade (n-1 → n, e.g.
+3.17 → 3.18) preserved user data. They run as **two independent Playwright
+invocations against the same server** with an OLM upgrade in between: CI runs
+`--grep @upgrade-seed` on the n-1 server, upgrades, then `--grep @upgrade-verify`
+on the n server. The invocations share NO memory/env/files — only persisted Quay
+state (Postgres + S3).
+
+These two specs **deliberately diverge** from the "NO DATABASE SEEDING /
+auto-cleanup" convention: they use **fixed, deterministic names** (from
+`utils/upgrade-fixtures.ts`, never `uniqueName()`) and the raw `adminClient` (never
+the auto-cleanup `api` fixture), and they **do not clean up** — the seeded data
+must survive to the verify invocation. Each CI run is a fresh cluster, so fixed
+names never collide across runs.
+
+The `@upgrade-seed` / `@upgrade-verify` tags are **reserved** for this lane. Do not
+add them to ordinary specs: the daily functional e2e job grep-inverts them so these
+specs never run standalone (verify would fail with nothing seeded). Keep both files
+version-tolerant and byte-identical across `master`, `redhat-3.18`, and
+`redhat-3.17` so backport cherry-picks apply cleanly.
 
 ### Proxy-route SSRF deployment tests
 
@@ -148,7 +171,7 @@ Playwright's `getByTestId()` only works with the standard `data-testid` attribut
 await page.locator('[test-id="my-button"]').click();
 
 // Correct - works with getByTestId()
-<Button data-testid="my-button">Click</Button>
+<Button data-testid="my-button">Click</Button>;
 await page.getByTestId('my-button').click();
 ```
 
@@ -507,13 +530,13 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 
 ## Common Gotchas
 
-| Issue | What to Know |
-| ----- | ------------ |
-| **Async/Await** | Every Playwright interaction must be `await`ed - no implicit chaining |
-| **Auto-waiting** | Locators auto-wait for elements; explicit waits are rarely needed |
-| **Timeouts** | Configure via `timeout` in `playwright.config.ts`, not per-command |
-| **Screenshots** | Configure capture-on-failure in `playwright.config.ts` |
-| **Selectors** | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors |
-| **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
+| Issue               | What to Know                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Async/Await**     | Every Playwright interaction must be `await`ed - no implicit chaining                                                                                                                                                                                                                                                                                  |
+| **Auto-waiting**    | Locators auto-wait for elements; explicit waits are rarely needed                                                                                                                                                                                                                                                                                      |
+| **Timeouts**        | Configure via `timeout` in `playwright.config.ts`, not per-command                                                                                                                                                                                                                                                                                     |
+| **Screenshots**     | Configure capture-on-failure in `playwright.config.ts`                                                                                                                                                                                                                                                                                                 |
+| **Selectors**       | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors                                                                                                                                                                                                                                                                                |
+| **Network waits**   | Usually unnecessary - Playwright auto-waits for navigation and network idle                                                                                                                                                                                                                                                                            |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
-| **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
+| **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup                                                                                                                                                                                                                                                     |
