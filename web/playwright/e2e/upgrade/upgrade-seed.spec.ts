@@ -162,8 +162,9 @@ test.describe(
         // multiple tag->manifest rows, not just one. Match by name rather than
         // tags[0]: on a re-seed the alias tag may also be present and the response
         // order is not guaranteed.
-        const digest = tags.find((t) => t.name === UPGRADE.imageTag)
-          ?.manifest_digest;
+        const digest = tags.find(
+          (t) => t.name === UPGRADE.imageTag,
+        )?.manifest_digest;
         expect(digest).toBeTruthy();
         const alias = await adminClient.put(
           `/api/v1/repository/${UPGRADE.org}/${UPGRADE.repo}/tag/${UPGRADE.imageTagAlias}`,
