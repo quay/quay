@@ -23,14 +23,11 @@ from workers.repomirrorworker import (
     push_sparse_manifest_list,
 )
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
-from workers.repomirrorworker.test.conftest import (
-    SKOPEO_BIN,
-)
-from workers.repomirrorworker.test.conftest import (
+from workers.repomirrorworker.test.mirror_test_utils import (
     assert_skopeo_args as _assert_skopeo_args,
 )
-from workers.repomirrorworker.test.conftest import create_tag as _create_tag
-from workers.repomirrorworker.test.conftest import disable_existing_mirrors
+from workers.repomirrorworker.test.mirror_test_utils import create_tag as _create_tag
+from workers.repomirrorworker.test.mirror_test_utils import disable_existing_mirrors
 
 
 @disable_existing_mirrors
