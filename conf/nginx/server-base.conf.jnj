@@ -163,6 +163,13 @@ location @upstream_proxy_redirect {
 
     set $redirect_location $upstream_http_location;
 
+    # Block non-https redirect targets to prevent SSRF via plain HTTP to internal addresses.
+    # Legitimate CDN/S3 presigned URLs are always https. Combined with proxy_ssl_verify on,
+    # this also prevents redirects to internal hosts that lack valid TLS certificates.
+    if ($redirect_location !~ "^https://") {
+        return 400;
+    }
+
     proxy_pass $redirect_location;
     proxy_http_version 1.1;
 
