@@ -304,7 +304,7 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
+        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP|@upgrade-seed|@upgrade-verify" --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()

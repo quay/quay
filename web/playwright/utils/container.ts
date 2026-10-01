@@ -427,6 +427,12 @@ export async function pullImage(
         `docker://${image}`,
         `oci:${tmpDir}:${tag}`,
         '--src-tls-verify=false',
+        // The oci: transport cannot store signatures, and skopeo's manifest-list
+        // copy path attempts a signature copy even when none exist, failing with
+        // "Pushing signatures for OCI images is not supported". Our test images
+        // never carry real signatures, so stripping them on pull is a no-op for
+        // single-arch and unblocks multi-arch (manifest list) pulls.
+        '--remove-signatures',
         '--src-authfile',
         authFile,
       ]),
@@ -528,6 +534,57 @@ export function orasAttach(
       {stdio: 'pipe', timeout: 60_000},
     ),
   );
+}
+
+/**
+ * Discover the OCI referrers attached to a manifest using oras, returning the
+ * `artifactType` of every referrer found.
+ *
+ * Walks the `oras discover --format json` output defensively so it tolerates
+ * oras output-shape differences across versions.
+ *
+ * @returns Array of artifactType strings for the referrers of the given ref
+ */
+export async function orasDiscover(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  await requireTool('oras');
+
+  const ref = targetImage(namespace, repo, tag);
+  const {stdout} = await withRegistryAuthFile(username, password, (authFile) =>
+    execFileAsync('oras', [
+      'discover',
+      ref,
+      '--format',
+      'json',
+      '--insecure',
+      '--registry-config',
+      authFile,
+    ]),
+  );
+
+  const artifactTypes: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'artifactType' && typeof value === 'string') {
+          artifactTypes.push(value);
+        } else {
+          walk(value);
+        }
+      }
+    }
+  };
+  walk(JSON.parse(stdout));
+  return artifactTypes;
 }
 
 /**
