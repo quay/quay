@@ -29,7 +29,7 @@ import (
 
 // DefaultImage is the default container image for the registry.
 // Overridden at build time via ldflags for release builds.
-var DefaultImage = "quay.io/quay/quay-mirror:latest"
+var DefaultImage = "quay.io/projectquay/quay-mirror:latest"
 
 const (
 	defaultPort         = "8443"
