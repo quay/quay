@@ -1,5 +1,4 @@
 import hashlib
-from test.fixtures import *
 
 import pytest
 
@@ -7,6 +6,7 @@ from data import database, model
 from storage.basestorage import StoragePaths
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
+from test.fixtures import *
 from workers.storagereplication import (
     JobException,
     StorageReplicationWorker,

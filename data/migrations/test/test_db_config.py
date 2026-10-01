@@ -1,10 +1,9 @@
-from test.fixtures import *
-
 import pytest
 from alembic.script import ScriptDirectory
 from mock import patch
 
 from data.runmigration import run_alembic_migration
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

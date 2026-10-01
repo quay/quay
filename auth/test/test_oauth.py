@@ -1,10 +1,9 @@
-from test.fixtures import *
-
 import pytest
 
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

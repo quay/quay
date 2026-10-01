@@ -2,8 +2,6 @@ import json as py_json
 import time
 import unittest
 import urllib.parse
-from test.test_endpoints import EndpointTestCase
-from test.test_ldap import mock_ldap
 
 import jwt
 from authlib.jose import JsonWebKey
@@ -14,6 +12,8 @@ from app import app, authentication
 from auth.oauth import validate_bearer_auth
 from data import model
 from endpoints.oauth.login import oauthlogin as oauthlogin_bp
+from test.test_endpoints import EndpointTestCase
+from test.test_ldap import mock_ldap
 
 
 class AuthForTesting(object):

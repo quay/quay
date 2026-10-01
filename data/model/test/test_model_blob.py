@@ -1,7 +1,6 @@
-from test.fixtures import *
-
 from app import storage
 from data import database, model
+from test.fixtures import *
 
 ADMIN_ACCESS_USER = "devtable"
 REPO = "simple"

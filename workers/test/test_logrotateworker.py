@@ -1,6 +1,5 @@
 import os.path
 from datetime import datetime, timedelta
-from test.fixtures import *
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +15,7 @@ from data.logs_model.elastic_logs import INDEX_DATE_FORMAT, INDEX_NAME_PREFIX
 from data.logs_model.inmemory_model import InMemoryModel
 from data.logs_model.table_logs_model import TableLogsModel
 from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
+from test.fixtures import *
 from util.timedeltastring import convert_to_timedelta
 from workers.logrotateworker import SAVE_LOCATION, SAVE_PATH, LogRotateWorker
 

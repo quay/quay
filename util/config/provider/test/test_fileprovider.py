@@ -1,8 +1,8 @@
 import os
-from test.fixtures import *
 
 import pytest
 
+from test.fixtures import *
 from util.config.provider import FileConfigProvider
 
 

@@ -1,10 +1,9 @@
-from test.fixtures import *
-
 import pytest
 from mock import patch
 
 from data import model
 from data.users.shared import can_create_user
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

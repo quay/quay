@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -14,6 +13,7 @@ from data.model.appspecifictoken import (
     get_full_token_string,
     revoke_token,
 )
+from test.fixtures import *
 from util.timedeltastring import convert_to_timedelta
 
 

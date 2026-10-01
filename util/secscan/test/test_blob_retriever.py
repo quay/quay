@@ -1,10 +1,9 @@
-from test.fixtures import *
-
 from app import app as application
 from app import instance_keys, storage
 from auth.registry_jwt_auth import identity_from_bearer_token
 from data.registry_model import registry_model
 from endpoints.v2 import v2_bp
+from test.fixtures import *
 from util.secscan.blob import BlobURLRetriever
 
 

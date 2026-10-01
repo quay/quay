@@ -1,8 +1,7 @@
-from test.fixtures import *
-
 from mock import Mock, patch
 
 from app import storage
+from test.fixtures import *
 from workers.buildlogsarchiver.buildlogsarchiver import ArchiveBuildLogsWorker
 from workers.buildlogsarchiver.models_pre_oci import pre_oci_model as model
 

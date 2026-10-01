@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -15,6 +13,7 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
 from workers.notificationworker.models_pre_oci import pre_oci_model as model
 from workers.notificationworker.notificationworker import NotificationWorker
 

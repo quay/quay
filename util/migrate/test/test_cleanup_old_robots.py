@@ -1,8 +1,7 @@
-from test.fixtures import *
-
 import pytest
 
 from data.database import User
+from test.fixtures import *
 from util.migrate.cleanup_old_robots import cleanup_old_robots
 
 

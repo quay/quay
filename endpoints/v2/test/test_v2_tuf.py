@@ -1,5 +1,3 @@
-from test import testconfig
-
 import flask
 import pytest
 from flask_principal import Identity, Principal
@@ -7,6 +5,7 @@ from mock import Mock
 
 from auth import permissions
 from endpoints.v2.v2auth import _get_tuf_root
+from test import testconfig
 from util.security.registry_jwt import DISABLED_TUF_ROOT, QUAY_TUF_ROOT, SIGNER_TUF_ROOT
 
 

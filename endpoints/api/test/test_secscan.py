@@ -1,5 +1,4 @@
 import base64
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -8,6 +7,7 @@ from data.registry_model import registry_model
 from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import gen_basic_auth
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

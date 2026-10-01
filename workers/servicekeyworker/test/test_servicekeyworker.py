@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 from mock import patch
 
+from test.fixtures import *
 from util.morecollections import AttrDict
 from workers.servicekeyworker.models_pre_oci import pre_oci_model as model
 from workers.servicekeyworker.servicekeyworker import ServiceKeyWorker

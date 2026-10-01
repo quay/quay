@@ -1,11 +1,10 @@
-from test.fixtures import *
-
 import pytest
 
 from auth.auth_context import get_authenticated_context
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import AppSpecificAuthToken
+from test.fixtures import *
 
 
 def get_user():

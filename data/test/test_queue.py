@@ -3,7 +3,6 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
-from test.fixtures import *
 
 import pytest
 
@@ -15,6 +14,7 @@ from data.queue import (
     queue_items_available_unlocked,
     queue_items_locked,
 )
+from test.fixtures import *
 
 QUEUE_NAME = "testqueuename"
 
