@@ -1,6 +1,5 @@
-from test.fixtures import *
-
 from data import database, model
+from test.fixtures import *
 from workers.repositoryactioncounter import RepositoryActionCountWorker
 
 

@@ -1,4 +1,3 @@
-from test.fixtures import *
 from typing import Dict
 
 import pytest
@@ -8,6 +7,7 @@ from app import app as real_app
 from auth import permissions
 from data import model
 from endpoints.api.trigger_analyzer import TriggerAnalyzer
+from test.fixtures import *
 from util import dockerfileparse
 
 BAD_PATH = '"server_hostname/" is not a valid Quay repository path'

@@ -1,7 +1,6 @@
 import hashlib
 import json
 from io import BytesIO
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -15,6 +14,7 @@ from data.registry_model.manifestbuilder import (
 from data.registry_model.registry_oci_model import OCIModel
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
+from test.fixtures import *
 
 
 @pytest.fixture(params=[OCIModel])

@@ -1,5 +1,4 @@
 from test.fixtures import *
-
 from workers.gc.gcworker import GarbageCollectionWorker
 
 

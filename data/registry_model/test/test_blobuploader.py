@@ -3,7 +3,6 @@ import os
 import tarfile
 from contextlib import closing
 from io import BytesIO
-from test.fixtures import *
 
 import pytest
 
@@ -18,6 +17,7 @@ from data.registry_model.blobuploader import (
 from data.registry_model.registry_oci_model import OCIModel
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
+from test.fixtures import *
 
 
 @pytest.fixture()

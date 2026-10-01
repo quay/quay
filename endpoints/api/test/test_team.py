@@ -1,6 +1,4 @@
 import json
-from test.fixtures import *
-from test.test_ldap import mock_ldap
 
 from mock import patch
 
@@ -10,6 +8,8 @@ from endpoints.api.organization import Organization
 from endpoints.api.team import OrganizationTeamSyncing, TeamMemberList
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
+from test.test_ldap import mock_ldap
 
 SYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "synced"}
 UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}

@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from mock import patch
 
@@ -11,6 +9,7 @@ from data.model.build import (
     update_phase_then_close,
     update_trigger_disable_status,
 )
+from test.fixtures import *
 
 TEST_FAIL_THRESHOLD = 5
 TEST_INTERNAL_ERROR_THRESHOLD = 2

@@ -1,9 +1,8 @@
-from test.fixtures import *
-
 import pytest
 
 from data import database, model
 from image.shared.schemas import ManifestException, parse_manifest_from_bytes
+from test.fixtures import *
 from util.bytes import Bytes
 from workers.manifestbackfillworker import ManifestBackfillWorker
 

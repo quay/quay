@@ -1,6 +1,5 @@
-from data import model
-
 from .globalmessages_models_interface import GlobalMessage, GlobalMessageDataInterface
+from data import model
 
 
 class GlobalMessagePreOCI(GlobalMessageDataInterface):

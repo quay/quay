@@ -1,9 +1,8 @@
-from test.fixtures import *
-
 import pytest
 
 from data.database import Repository
 from data.text import match_like, match_mysql
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

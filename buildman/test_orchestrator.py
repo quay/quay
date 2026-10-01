@@ -1,6 +1,5 @@
 import time
 from random import randrange
-from test.fixtures import *
 from unittest.mock import Mock, patch
 
 import fakeredis
@@ -15,6 +14,7 @@ from buildman.orchestrator import (
     MemoryOrchestrator,
     RedisOrchestrator,
 )
+from test.fixtures import *
 from util import slash_join
 
 

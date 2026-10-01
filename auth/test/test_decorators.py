@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import session
 from flask_login import login_user
@@ -13,6 +11,7 @@ from auth.decorators import (
     require_session_login,
 )
 from data import model
+from test.fixtures import *
 
 
 def test_extract_namespace_repo_from_session_missing(app):

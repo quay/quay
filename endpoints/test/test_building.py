@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from buildtrigger.triggerutil import SkipRequestException, raise_if_skipped_build
@@ -10,6 +8,7 @@ from endpoints.building import (
     PreparedBuild,
     start_build,
 )
+from test.fixtures import *
 
 
 def test_maximum_builds(app):
