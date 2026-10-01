@@ -349,6 +349,93 @@ class TestBlobProxyCacheMiss:
             assert "_upstream_proxy" in resp.headers.get("Location")
             mock_queue.put.assert_not_called()
 
+    def test_head_blob_returns_proper_http_status_back(self, client, app):
+        """
+        Verifies that HEAD returns a proper response back to the client when blob information
+        is requested.
+        """
+        from data.database import Manifest, MediaType
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        config_layer = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [{}],
+            }
+        )
+        config_digest = str(sha256_digest(config_layer.encode("utf-8")))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(config_layer),
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=self.repo_ref.id,
+            digest=sha256_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        assert manifest
+
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.image_name,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(
+            parsed_manifest, manifest.id, self.repo_ref.id
+        )
+        assert created_blobs
+
+        params = {
+            "repository": self.repository,
+            "digest": digest,
+        }
+
+        # verify that HEAD returns proper values back
+        with (patch("endpoints.v2.blob.model_cache", NoopDataModelCache(TEST_CACHE_CONFIG)),):
+            resp = conduct_call(
+                self.client,
+                "v2.check_blob_exists",
+                url_for,
+                "HEAD",
+                params,
+                expected_code=200,
+                headers=self.headers,
+            )
+
+            assert resp.headers.get("Docker-Content-Digest", "") == digest
+            assert resp.headers.get("Content-Length", "") == str(len(content))
+            assert resp.headers.get("Content-Type", "") == "application/octet-stream"
+
 
 @pytest.mark.e2e
 class TestBlobPullThroughProxy(unittest.TestCase):
@@ -425,15 +512,18 @@ class TestBlobPullThroughProxy(unittest.TestCase):
             "repository": self.repository,
             "digest": self.blob_digest,
         }
-        conduct_call(
+        resp = conduct_call(
             self.client,
             "v2.check_blob_exists",
             url_for,
             "HEAD",
             params,
-            expected_code=404,
+            expected_code=200,
             headers=self.headers,
         )
+
+        assert resp.headers.get("Docker-Content-Digest", "") == self.blob_digest
+        assert resp.headers.get("Content-Type", "") == "application/octet-stream"
 
 
 @pytest.mark.parametrize(
