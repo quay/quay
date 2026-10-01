@@ -159,8 +159,12 @@ test.describe(
         expect(tags.map((t) => t.name)).toContain(UPGRADE.imageTag);
 
         // Point a second tag at the same manifest so the upgrade must preserve
-        // multiple tag->manifest rows, not just one.
-        const digest = tags[0].manifest_digest;
+        // multiple tag->manifest rows, not just one. Match by name rather than
+        // tags[0]: on a re-seed the alias tag may also be present and the response
+        // order is not guaranteed.
+        const digest = tags.find((t) => t.name === UPGRADE.imageTag)
+          ?.manifest_digest;
+        expect(digest).toBeTruthy();
         const alias = await adminClient.put(
           `/api/v1/repository/${UPGRADE.org}/${UPGRADE.repo}/tag/${UPGRADE.imageTagAlias}`,
           {manifest_digest: digest},

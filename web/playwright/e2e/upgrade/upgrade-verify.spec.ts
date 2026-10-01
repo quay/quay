@@ -38,6 +38,17 @@ const cleanupEnabled = !['0', 'false', 'no'].includes(
   (process.env.UPGRADE_CLEAN ?? '').toLowerCase(),
 );
 
+// The @container tests below self-skip when the seeded image/referrer is absent,
+// which locally means "the seed phase lacked skopeo/oras and never pushed". But in
+// the real two-phase upgrade lane those tools are present on BOTH the seed (n-1) and
+// verify (n) phases, so a missing seeded artifact there means the upgrade LOST it —
+// the exact data loss these tests exist to catch. A lenient skip would hide it.
+// Set UPGRADE_REQUIRE_IMAGES=1 (the lane does) to turn those skips into hard
+// failures. Left unset for local/partial runs where the seed may have had no skopeo.
+const requireSeededImages = ['1', 'true', 'yes'].includes(
+  (process.env.UPGRADE_REQUIRE_IMAGES ?? '').toLowerCase(),
+);
+
 test.describe(
   'Upgrade verify',
   {tag: ['@api', '@upgrade-verify', '@auth:Database']},
@@ -110,12 +121,14 @@ test.describe(
           (t) => t.name,
         );
         test.skip(
-          !names.includes(UPGRADE.imageTag),
+          !requireSeededImages && !names.includes(UPGRADE.imageTag),
           'Seed did not push an image (skopeo unavailable on the n-1 phase)',
         );
 
         // Both the primary tag and the alias pointing at the same manifest must
-        // survive — proves multiple tag->manifest rows persisted.
+        // survive — proves multiple tag->manifest rows persisted. When
+        // UPGRADE_REQUIRE_IMAGES is set we do not skip above, so a missing tag here
+        // fails (= the upgrade lost a seeded tag) instead of passing silently.
         expect(names).toContain(UPGRADE.imageTag);
         expect(names).toContain(UPGRADE.imageTagAlias);
 
@@ -146,9 +159,12 @@ test.describe(
           }>
         ).find((t) => t.name === UPGRADE.multiArchTag)?.manifest_digest;
         test.skip(
-          !manifestDigest,
+          !requireSeededImages && !manifestDigest,
           'Seed did not push a multi-arch image (skopeo unavailable on the n-1 phase)',
         );
+        // With UPGRADE_REQUIRE_IMAGES set the skip above is bypassed, so a missing
+        // digest here fails loudly (= the upgrade lost the multi-arch tag).
+        expect(manifestDigest).toBeTruthy();
 
         const manifest = await adminClient.get(
           `/api/v1/repository/${UPGRADE.org}/${UPGRADE.repo}/manifest/${manifestDigest}`,
@@ -189,9 +205,12 @@ test.describe(
           (t) => t.name === UPGRADE.imageTag,
         );
         test.skip(
-          !seeded,
+          !requireSeededImages && !seeded,
           'Seed did not push the subject image (skopeo unavailable on the n-1 phase)',
         );
+        // With UPGRADE_REQUIRE_IMAGES set the skip above is bypassed, so a missing
+        // subject image here fails loudly (= the upgrade lost the seeded tag).
+        expect(seeded).toBe(true);
 
         const types = await orasDiscover(
           UPGRADE.org,
