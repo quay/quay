@@ -11,8 +11,11 @@
  * auto-cleanup `api` fixture). The verify assertions themselves do NOT clean up; a
  * final, opt-out cleanup step (see below) removes the seed data once verification
  * passes, so a shared or local Quay instance can be reused by other suites without
- * the fixed-name fixtures colliding. On the real CI upgrade lane each run is a fresh
- * cluster, so cleanup is harmless there either way.
+ * the fixed-name fixtures colliding. Because Quay's namespace deletion is async and
+ * reserves the freed name until a GC worker purges it, that step BLOCKS until the
+ * fixed org/user names are reusable again, so `clean -> re-seed` works immediately.
+ * On the real CI upgrade lane each run is a fresh cluster, so cleanup is harmless
+ * there either way.
  *
  * This describe runs SERIAL so the final cleanup test runs strictly after all verify
  * assertions on one worker (fullyParallel would otherwise let cleanup race ahead and
@@ -209,14 +212,19 @@ test.describe(
     }) => {
       test.skip(!cleanupEnabled, 'UPGRADE_CLEAN disables post-verify cleanup');
 
+      // Blocking until the names are reusable can take a full namespace-GC poll
+      // cycle (namespacegcworker POLL_PERIOD_SECONDS=60) plus the purge, for the org
+      // and then the user in turn, so this step needs well beyond the 60s default
+      // test timeout (each blockUntilReusable below allows up to 150s).
+      test.setTimeout(360_000);
+
       // 204 = deleted; 404 = already gone (idempotent re-run); 400 = a mark-for-
       // deletion already in flight. All three mean the object is gone.
       const removed = (r: {status(): number}) =>
         expect([204, 404, 400]).toContain(r.status());
 
       // Deleting the org marks its namespace for deletion, cascading the repository
-      // (tags, manifests, referrers), robots, teams, and the team->repo permission,
-      // and frees the fixed org/repo names immediately.
+      // (tags, manifests, referrers), robots, teams, and the team->repo permission.
       removed(await adminClient.delete(`/api/v1/organization/${UPGRADE.org}`));
 
       // The standalone DB user lives outside the org namespace; remove it via the
@@ -227,9 +235,61 @@ test.describe(
         ),
       );
 
-      // The org name must be freed so a later seed (or other suite) can reuse it.
-      const org = await adminClient.get(`/api/v1/organization/${UPGRADE.org}`);
-      expect(org.status()).toBe(404);
+      // Both deletions are ASYNC: Quay renames each namespace and keeps a
+      // DeletedNamespace marker that RESERVES the name ("Username is not available")
+      // until the namespacegcworker purges it. GET returns 404 the whole time, so it
+      // cannot tell "reserved" from "free". To keep `clean -> re-seed` reliable we
+      // block here until each name is genuinely reusable, probing the only way that
+      // reflects the reservation: re-create the name and read it back. A re-create
+      // succeeds (leaving a harmless empty shell) exactly once the marker is purged,
+      // at which point GET returns 200. The seed data itself (repos, tags,
+      // referrers, members, permissions) was already torn down above.
+      //
+      // Each name gets its OWN deadline (not a shared one): purging the org cascades
+      // its repo/images and can eat most of one budget, which must not starve the
+      // user probe. The user is created via the SUPERUSER endpoint, never POST
+      // /api/v1/user/ — the latter calls common_login and would hijack adminClient's
+      // admin session (shared cookie jar), after which the superuser GET probe would
+      // return 403 forever. The superuser endpoint has no login side effect.
+      const blockUntilReusable = async (
+        label: string,
+        recreate: () => Promise<unknown>,
+        exists: () => Promise<{status(): number}>,
+      ) => {
+        const deadline = Date.now() + 150_000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          await recreate(); // no-op (400) while reserved; creates the shell once free
+          if ((await exists()).status() === 200) return;
+          if (Date.now() >= deadline) {
+            throw new Error(
+              `${label} was not reusable within the GC wait window`,
+            );
+          }
+          await new Promise((r) => setTimeout(r, 5_000));
+        }
+      };
+
+      await blockUntilReusable(
+        `org ${UPGRADE.org}`,
+        () =>
+          adminClient.post('/api/v1/organization/', {
+            name: UPGRADE.org,
+            email: `${UPGRADE.org}@example.com`,
+          }),
+        () => adminClient.get(`/api/v1/organization/${UPGRADE.org}`),
+      );
+
+      await blockUntilReusable(
+        `user ${UPGRADE.user.username}`,
+        () =>
+          adminClient.post('/api/v1/superuser/users/', {
+            username: UPGRADE.user.username,
+            email: UPGRADE.user.email,
+          }),
+        () =>
+          adminClient.get(`/api/v1/superuser/users/${UPGRADE.user.username}`),
+      );
     });
   },
 );

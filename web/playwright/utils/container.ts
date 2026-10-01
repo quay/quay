@@ -427,6 +427,12 @@ export async function pullImage(
         `docker://${image}`,
         `oci:${tmpDir}:${tag}`,
         '--src-tls-verify=false',
+        // The oci: transport cannot store signatures, and skopeo's manifest-list
+        // copy path attempts a signature copy even when none exist, failing with
+        // "Pushing signatures for OCI images is not supported". Our test images
+        // never carry real signatures, so stripping them on pull is a no-op for
+        // single-arch and unblocks multi-arch (manifest list) pulls.
+        '--remove-signatures',
         '--src-authfile',
         authFile,
       ]),

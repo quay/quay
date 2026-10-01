@@ -35,26 +35,32 @@ test.describe(
   'Upgrade seed',
   {tag: ['@api', '@upgrade-seed', '@auth:Database']},
   () => {
-    // 201 = created; 400/409 = already exists on a retry — both acceptable.
-    const created = (r: {status(): number}) =>
-      expect([201, 400, 409]).toContain(r.status());
+    // Serial: every seed test targets the SAME fixed-name org/repo (the names must
+    // stay fixed so @upgrade-verify can find them, so unique-name isolation is not
+    // an option). Running them in parallel races on first creation — concurrent
+    // POSTs of the same repo return 500 and concurrent skopeo pushes fail blob
+    // reuse with "authentication required". Serial execution creates the shared
+    // org/repo once, then each subsequent test re-ensures it idempotently.
+    test.describe.configure({mode: 'serial'});
 
-    // Relationship/linkage writes (team membership, repo permission) return 200
-    // on first write and stay idempotent on retry; 400/409 covers races.
-    const linked = (r: {status(): number}) =>
+    // Each seed write must either succeed (200 or 201 — the exact code varies by
+    // endpoint: POST org/repo and PUT robot return 201, while PUT team and the
+    // superuser user-create return 200) or be a harmless "already exists" on a
+    // retry (400/409).
+    const ok = (r: {status(): number}) =>
       expect([200, 201, 400, 409]).toContain(r.status());
 
     test('seeds org, repo, robot, team, user that must survive upgrade', async ({
       adminClient,
     }) => {
-      created(
+      ok(
         await adminClient.post('/api/v1/organization/', {
           name: UPGRADE.org,
           email: `${UPGRADE.org}@example.com`,
         }),
       );
 
-      created(
+      ok(
         await adminClient.post('/api/v1/repository', {
           namespace: UPGRADE.org,
           repository: UPGRADE.repo,
@@ -64,37 +70,43 @@ test.describe(
         }),
       );
 
-      created(
+      ok(
         await adminClient.put(
           `/api/v1/organization/${UPGRADE.org}/robots/${UPGRADE.robotShortname}`,
           {},
         ),
       );
 
-      created(
+      ok(
         await adminClient.put(
           `/api/v1/organization/${UPGRADE.org}/team/${UPGRADE.team}`,
           {role: 'member'},
         ),
       );
 
-      created(
-        await adminClient.post('/api/v1/user/', {
+      // Create the standalone user via the SUPERUSER endpoint, not POST
+      // /api/v1/user/. The public user-create path calls common_login and returns a
+      // session cookie for the NEW user, which would hijack adminClient's admin
+      // session (it shares one cookie jar) and make the team/permission writes below
+      // run as the non-admin new user. The superuser endpoint creates the user with
+      // no login side effect, so the admin session is preserved. (The generated
+      // password is irrelevant here — verify never authenticates as this user.)
+      ok(
+        await adminClient.post('/api/v1/superuser/users/', {
           username: UPGRADE.user.username,
-          password: UPGRADE.user.password,
           email: UPGRADE.user.email,
         }),
       );
 
       // Relationship data — the rows most likely to be disturbed by a schema
       // migration. Add the seeded user to the team (user<->team join) ...
-      linked(
+      ok(
         await adminClient.put(
           `/api/v1/organization/${UPGRADE.org}/team/${UPGRADE.team}/members/${UPGRADE.user.username}`,
         ),
       );
       // ... and grant the team write on the repo (team<->repo permission join).
-      linked(
+      ok(
         await adminClient.put(
           `/api/v1/repository/${UPGRADE.org}/${UPGRADE.repo}/permissions/team/${UPGRADE.team}`,
           {role: 'write'},
