@@ -881,6 +881,55 @@ def test_export_log_cleanup_correctly_identifies_root_path(storage_engine):
     assert final_key in remaining_keys
 
 
+def test_export_cleanup_does_not_grab_similar_paths(storage_engine):
+    """
+    Verifies that the cleanup only occurs on the main path defined by
+    log_path and not on log_path+suffix. Eg. if log_path is "exportedactionlogs"
+    then only files under "exportedactionlogs" should be cleaned, while files under
+    "exportedactionlogs-somesuffix" should remain.
+    """
+    client = boto3.client("s3", region_name=_TEST_REGION)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._root_path = "datastorage/registry"
+
+    # create a list of files
+    keys = [
+        f"datastorage/registry/{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+        for i in range(5)
+    ]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            resp = client.put_object(Bucket=_TEST_BUCKET, Key=k, Body=payload)
+            assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # upload a new key under a different directory with a suffix
+    payload = os.urandom(1024)
+    filename = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    final_key = f"datastorage/registry/exportedactionlogs-somesuffix/{filename}"
+
+    # upload the key
+    with freeze_time(now):
+        resp = client.put_object(Bucket=_TEST_BUCKET, Key=final_key, Body=payload)
+        assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # verify all files are uploaded properly and are visible
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 6
+
+    # attempt to clean up expired logs
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), "exportedactionlogs")
+
+    # only one file should remain
+    resp = client.list_objects_v2(Bucket=_TEST_BUCKET, Prefix=storage_engine._root_path)
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert len(resp.get("Contents", [])) == 1
+    remaining_keys = [obj["Key"] for obj in resp.get("Contents", [])]
+    assert final_key in remaining_keys
+
+
 def test_export_log_cleanup_does_not_return_error_on_empty_directory(storage_engine):
     """
     Verifies that cleanup does not error when nothing is cleaned. Simple regression test.
@@ -919,8 +968,8 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(storage_engine, mock_
     Asserts that the NoSuchUpload exception is caught by the code and not raised.
     """
     err = botocore.exceptions.ClientError(
-        {"Error": {"Code": "404", "Message": "Not Found"}},
-        "HeadObject",
+        {"Error": {"Code": "500", "Message": "Internal Server Error"}},
+        "DeleteObject",
     )
 
     # reference to the original API call
@@ -934,9 +983,9 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(storage_engine, mock_
 
     def mock_make_api_call(self, operation_name, kwargs):
         """
-        Helper function to simulate the 404.
+        Helper function to simulate a deletion error that should be caught and not re-raised.
         """
-        if operation_name == "HeadObject" and kwargs.get("Key", "") == keys[2]:
+        if operation_name == "DeleteObject" and kwargs.get("Key", "") == keys[2]:
             raise err
 
         return orig_make_api_call(self, operation_name, kwargs)

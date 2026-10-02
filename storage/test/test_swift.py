@@ -78,7 +78,7 @@ class FakeSwift(object):
         _, content = self.get_object(container, path)
         self.put_object(pieces[1], pieces[2], content)
 
-    def get_container(self, container, prefix=None, full_listing=None):
+    def get_container(self, container, marker=None, limit=None, prefix=None, full_listing=None):
         container_entries = self.containers[container]
         objs = []
         for path, data in list(container_entries.items()):
@@ -607,6 +607,46 @@ def test_export_log_cleanup_correctly_identifies_storage_path():
     logging.debug(remaining_keys)
     assert len(remaining_keys) == 1
     assert remaining_keys[0]["name"].endswith(final_key)
+
+
+def test_export_cleanup_does_not_grab_similar_paths():
+    """
+    Verifies that the cleanup only occurs on the main path defined by
+    log_path and not on log_path+suffix. Eg. if log_path is "exportedactionlogs"
+    then only files under "exportedactionlogs" should be cleaned, while files under
+    "exportedactionlogs-somesuffix" should remain.
+    """
+    storage_engine = FakeSwiftStorage(**base_args)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    storage_engine._storage_path = "datastorage/registry"
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for i, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(now):
+            storage_engine.put_content(path=k, content=payload)
+
+    # upload a new key under a different directory with a suffix
+    payload = os.urandom(1024)
+    filename = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+    final_key = f"exportedactionlogs-somesuffix/{filename}"
+
+    logging.debug("%s", final_key)
+
+    with freeze_time(now):
+        storage_engine.put_content(path=final_key, content=payload)
+
+    # clean up
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=0), "exportedactionlogs")
+
+    # only one file should remain
+    remaining_keys = list(storage_engine._list_content(""))
+    logging.debug(remaining_keys)
+    assert len(remaining_keys) == 1
+    assert remaining_keys[0]["name"].endswith(filename)
 
 
 def test_export_log_cleanup_does_not_return_error_on_empty_directory():
