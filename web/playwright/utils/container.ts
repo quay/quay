@@ -440,6 +440,7 @@ export function orasAttach(
         authFile,
         `--artifact-type=${artifactType}`,
         `--annotation=${annotation}`,
+        '--disable-path-validation',
         filePath,
       ],
       {stdio: 'pipe', timeout: 60_000},
