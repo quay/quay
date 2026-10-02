@@ -107,11 +107,17 @@ Examples:
 
 ### Commit Message Format
 
-```
-<subsystem>: <what changed> (PROJQUAY-####)
+Use the same conventional-commit style as the PR title (canonical format, consistent with AGENTS.md):
 
-<why this change was made>
 ```
+PROJQUAY-####: type(scope): what changed
+
+Why this change was made.
+```
+
+Example: `PROJQUAY-13363: fix(api): skip quota lookup when quota disabled`
+
+When no Jira key is assigned, use `NO-ISSUE:` as the prefix. Do **not** use `NO-ISSUE:` in commit subjects when the PR title carries a Jira key — the cherry-pick robot reads commit messages, not PR titles, so mismatched prefixes break Jira traceability on release branches.
 
 ### Branch Naming
 
@@ -168,7 +174,7 @@ All hooks are consolidated in `.claude/settings.json` — no manual setup requir
 | **UserPromptSubmit** | JIRA ticket detection | `detect-jira-ticket.sh` — detects PROJQUAY/QUAYIO refs, suggests `/jira` or `/start` |
 | **PreToolUse** (Bash) | Embargo check | `check-embargo.sh` — blocks JIRA commands on embargoed tickets |
 | **PreToolUse** (git commit) | Pre-commit guard | Ensures `pre-commit install` runs before commit |
-| **PreToolUse** (git commit) | Commit message hint | Warns if message doesn't match `<subsystem>: <what> (PROJQUAY-####)` |
+| **PreToolUse** (git commit) | Commit message hint | Warns if message doesn't match `PROJQUAY-####: type(scope): <what>` (or `NO-ISSUE:`) |
 | **PreToolUse** (gh pr create) | PR title validation | Blocks if title doesn't match CI-enforced regex |
 | **PostToolUse** (gh pr create) | Poll reminder | Suggests `/poll <PR#>` after PR creation |
 | **PostToolUse** (git push) | Target Version check | `check-target-version.sh` — warns if JIRA ticket missing Target Version |
