@@ -48,8 +48,40 @@ make integration-test
 ```bash
 # Playwright (all new E2E tests must use Playwright)
 cd web && pnpm run test:e2e
-
 ```
+
+**Playwright is required for React component changes — not optional.**
+
+The `Web / e2e test coverage check` CI gate enforces this for every PR that
+touches React frontend code. A PR that ships a component-level change without
+a Playwright spec will fail that gate.
+
+#### When Playwright is required
+
+Add or extend a Playwright spec in `web/playwright/e2e/` whenever a change
+modifies user-visible component behavior, including:
+
+- Rendering changes (new elements, removed elements, layout)
+- Event handling (click, submit, keyboard)
+- State changes (conditional UI, loading states, error states)
+- PatternFly prop renames or component replacements
+- Modal, button, form, or input changes — even seemingly narrow ones
+
+#### When Vitest-only is acceptable
+
+Use Vitest instead of Playwright **only** for pure utility functions and data
+transformers that have no UI interaction whatsoever — for example, a function
+that formats a string or transforms an API response shape. Component-level
+tests always require Playwright.
+
+#### When Playwright is genuinely infeasible
+
+If a change is entirely in a code path that cannot be reached from the real UI
+(e.g., an internal helper never invoked by any rendered component), you may omit
+a Playwright spec. However, you **must** state the reason explicitly in the PR
+description — do not silently omit Playwright. Reviewers and the CI gate both
+need to see the justification to distinguish a deliberate exception from an
+oversight.
 
 ## Test Database
 
