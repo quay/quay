@@ -37,8 +37,8 @@ jobs:
           git checkout $BRANCH_NAME
           git pull origin $BRANCH_NAME
           RELEASE_COMMIT=$(git rev-parse HEAD)
-          echo "Rebasing $BRANCH_NAME ($RELEASE_COMMIT) onto master ($MASTER_COMMIT)"
-          git rebase master
+          echo "Merging master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
+          git merge --no-edit master
           git push origin $BRANCH_NAME
 
           echo "Merged master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
