@@ -402,25 +402,25 @@
     },
     "BITBUCKET_TRIGGER_CONFIG": {
       "properties": {
-        "CONSUMER_SECRET": {
+        "CLIENT_SECRET": {
           "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
           "type": "string",
-          "description": "The registered consumer secret (client secret) for this Quay instance",
+          "description": "The OAuth2 client secret for this Quay instance",
           "ct-default": "",
           "ct-validate": ""
         },
-        "CONSUMER_KEY": {
+        "CLIENT_ID": {
           "x-example": "0e8dbe15c4c7630b6780",
           "type": "string",
-          "description": "The registered consumer key (client ID) for this Quay instance",
+          "description": "The OAuth2 client ID for this Quay instance",
           "ct-default": "",
           "ct-validate": ""
         }
       },
-      "required": ["CONSUMER_KEY", "CONSUMER_SECRET"],
+      "required": ["CLIENT_ID", "CLIENT_SECRET"],
       "type": "object",
-      "description": "Configuration for using BitBucket for build triggers",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/bitbucket-build.html",
+      "description": "Configuration for using BitBucket for build triggers (OAuth2)",
+      "x-reference": "https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/",
       "ct-default": "",
       "ct-validate": "",
       "ct-fieldgroups": ["BitbucketBuildTrigger"]
