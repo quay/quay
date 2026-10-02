@@ -39,12 +39,12 @@ func TestInitializeCreatesCustomAdminSecurely(t *testing.T) {
 		[]byte("  chosen password  "),
 	))
 
-	passwordPath := filepath.Join(dataDir, "auth", "admin-password")
-	assert.Equal(t, []byte("  chosen password  "), mustReadFile(t, passwordPath))
-	passwordInfo, err := os.Stat(passwordPath)
+	credFilePath := filepath.Join(dataDir, "auth", "admin-password")
+	assert.Equal(t, []byte("  chosen password  "), mustReadFile(t, credFilePath))
+	passwordInfo, err := os.Stat(credFilePath)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), passwordInfo.Mode().Perm())
-	authInfo, err := os.Stat(filepath.Dir(passwordPath))
+	authInfo, err := os.Stat(filepath.Dir(credFilePath))
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o700), authInfo.Mode().Perm())
 }
@@ -58,14 +58,14 @@ func TestInitializeIsIdempotentForExistingDatabase(t *testing.T) {
 		InitPasswordSet: true,
 	}
 	require.NoError(t, Initialize(t.Context(), first))
-	passwordPath := filepath.Join(dataDir, "auth", "admin-password")
-	originalCredential := mustReadFile(t, passwordPath)
+	credFilePath := filepath.Join(dataDir, "auth", "admin-password")
+	originalCredential := mustReadFile(t, credFilePath)
 
 	require.NoError(t, Initialize(t.Context(), &Config{
 		DataDir:  dataDir,
 		InitUser: "second-admin",
 	}))
-	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
+	assert.Equal(t, originalCredential, mustReadFile(t, credFilePath))
 
 	err := Initialize(t.Context(), &Config{
 		DataDir:         dataDir,
@@ -75,7 +75,7 @@ func TestInitializeIsIdempotentForExistingDatabase(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "registry is already initialized")
 	require.ErrorContains(t, err, "supplied password was not applied")
-	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
+	assert.Equal(t, originalCredential, mustReadFile(t, credFilePath))
 
 	db, err := dbcore.OpenSQLite(filepath.Join(dataDir, "quay.db"))
 	require.NoError(t, err)
@@ -420,27 +420,27 @@ func TestInitializeCredentialDestinationSafety(t *testing.T) {
 		dataDir := initializedEmptyDataDir(t)
 		authDir := filepath.Join(dataDir, "auth")
 		require.NoError(t, os.Mkdir(authDir, 0o700))
-		passwordPath := filepath.Join(authDir, "admin-password")
-		require.NoError(t, os.WriteFile(passwordPath, []byte("existing-password"), 0o644))
+		credFilePath := filepath.Join(authDir, "admin-password")
+		require.NoError(t, os.WriteFile(credFilePath, []byte("existing-password"), 0o644))
 
 		err := Initialize(t.Context(), &Config{DataDir: dataDir, InitUser: "admin"})
 		require.ErrorContains(t, err, "unsafe permissions")
-		assert.Equal(t, []byte("existing-password"), mustReadFile(t, passwordPath))
+		assert.Equal(t, []byte("existing-password"), mustReadFile(t, credFilePath))
 	})
 
 	t.Run("atomically replaces failed bootstrap password", func(t *testing.T) {
 		dataDir := initializedEmptyDataDir(t)
 		authDir := filepath.Join(dataDir, "auth")
 		require.NoError(t, os.Mkdir(authDir, 0o750))
-		passwordPath := filepath.Join(authDir, "admin-password")
-		require.NoError(t, os.WriteFile(passwordPath, []byte(string(make([]byte, 73))), 0o644))
+		credFilePath := filepath.Join(authDir, "admin-password")
+		require.NoError(t, os.WriteFile(credFilePath, []byte(string(make([]byte, 73))), 0o644))
 
 		require.NoError(t, Initialize(t.Context(), &Config{
 			DataDir: dataDir, InitUser: "admin",
 			InitPassword: "corrected-password", InitPasswordSet: true,
 		}))
-		assert.Equal(t, []byte("corrected-password"), mustReadFile(t, passwordPath))
-		info, err := os.Stat(passwordPath)
+		assert.Equal(t, []byte("corrected-password"), mustReadFile(t, credFilePath))
+		info, err := os.Stat(credFilePath)
 		require.NoError(t, err)
 		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 	})
