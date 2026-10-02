@@ -159,6 +159,8 @@ class LayerTooLarge(V2RegistryException):
                 max_str,
             )
 
+        super(LayerTooLarge, self).__init__("BLOB_UPLOAD_INVALID", message, detail, 413)
+
 
 class QuotaExceeded(V2RegistryException):
     def __init__(self):
