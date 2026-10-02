@@ -79,7 +79,7 @@ def _get_logs(
     page_token=None,
     filter_kinds=None,
 ):
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
     try:
@@ -118,7 +118,7 @@ def _get_logs(
 def _get_aggregate_logs(
     start_time, end_time, performer_name=None, repository=None, namespace=None, filter_kinds=None
 ):
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
     try:
@@ -356,7 +356,11 @@ EXPORT_LOGS_SCHEMA = {
 def _validate_callback_url(url):
     """Validate a callback URL and raise InvalidRequest on failure."""
     try:
-        validate_external_registry_url(url, allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []))
+        validate_external_registry_url(
+            url,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+            allow_only_secure=app.config.get("LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS", True),
+        )
     except SSRFBlockedError:
         raise InvalidRequest("Invalid callback URL")
     except ValueError as e:
@@ -373,7 +377,7 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
         if callback_email.find("@") < 0:
             raise InvalidRequest("Invalid callback e-mail")
 
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         raise InvalidLogsDateRangeError("Invalid time span selected")
     export_id = logs_model.queue_logs_export(

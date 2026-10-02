@@ -44,7 +44,7 @@ def test_export_logs(app):
             assert export_action_logs_queue.get() is None
             # Call to export logs.
             body = {
-                "callback_url": "http://some/url",
+                "callback_url": "https://some/url",
                 "callback_email": "a@b.com",
             }
 
@@ -69,28 +69,28 @@ class TestExportLogsSSRFProtection:
     def test_localhost_rejected(self, app):
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            body = self._export_body("http://localhost/callback")
+            body = self._export_body("https://localhost/callback")
             resp = conduct_api_call(cl, ExportOrgLogs, "POST", params, body, 400)
             assert "Invalid callback URL" in resp.json.get("error_message", "")
 
     def test_loopback_ip_rejected(self, app):
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            body = self._export_body("http://127.0.0.1/callback")
+            body = self._export_body("https://127.0.0.1/callback")
             resp = conduct_api_call(cl, ExportOrgLogs, "POST", params, body, 400)
             assert "Invalid callback URL" in resp.json.get("error_message", "")
 
     def test_private_ip_rejected(self, app):
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            body = self._export_body("http://10.0.0.1/callback")
+            body = self._export_body("https://10.0.0.1/callback")
             resp = conduct_api_call(cl, ExportOrgLogs, "POST", params, body, 400)
             assert "Invalid callback URL" in resp.json.get("error_message", "")
 
     def test_metadata_ip_rejected(self, app):
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            body = self._export_body("http://169.254.169.254/latest/meta-data")
+            body = self._export_body("https://169.254.169.254/latest/meta-data")
             resp = conduct_api_call(cl, ExportOrgLogs, "POST", params, body, 400)
             assert "Invalid callback URL" in resp.json.get("error_message", "")
 

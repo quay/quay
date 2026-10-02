@@ -28,7 +28,7 @@ QUAY_OVERRIDE_SERVICES: List[str] = _parse_csv_env("QUAY_OVERRIDE_SERVICES")
 
 def registry_services():
     return {
-        "blobuploadcleanupworker": {"autostart": "true"},
+        "storagecleanupworker": {"autostart": "true"},
         "buildlogsarchiver": {"autostart": "true"},
         "builder": {"autostart": "true"},
         "chunkcleanupworker": {"autostart": "true"},
