@@ -298,6 +298,20 @@ jobs:
       - name: Install regctl for CLI interop tests
         uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
 
+      - name: Install Helm CLI for Helm OCI artifact tests
+        run: |
+          HELM_VERSION=v3.17.0
+          HELM_TARBALL=helm-${HELM_VERSION}-linux-amd64.tar.gz
+          HELM_URL=https://get.helm.sh/${HELM_TARBALL}
+          HELM_SHA256=fb5d12662fde6eeff36ac4ccacbf3abed96b0ee2de07afdde4edb14e613aee24
+
+          curl -fsSL ${HELM_URL} -o ${HELM_TARBALL}
+          echo "${HELM_SHA256}  ${HELM_TARBALL}" | sha256sum -c -
+          tar -xzf ${HELM_TARBALL}
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64 ${HELM_TARBALL}
+          helm version
+
       - name: Install cosign for Cosign v3 referrer tests
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
