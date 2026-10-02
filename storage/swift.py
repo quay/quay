@@ -587,9 +587,13 @@ class SwiftStorage(BaseStorage):
 
         for obj in obj_list:
             filename = obj["name"].split("/")[-1]
-            last_modified = datetime.strptime(obj["last-modified"], "%Y-%m-%dT%H:%M:%S.%f").replace(
-                tzinfo=timezone.utc
-            )
+            try:
+                last_modified = datetime.fromisoformat(obj["last-modified"]).replace(
+                    tzinfo=timezone.utc
+                )
+            except (KeyError, ValueError) as e:
+                logger.debug("Skipping file %s due to unparseable time format: %s", obj["name"], e)
+                continue
             if last_modified <= cutoff and _EXPORTED_LOG_FILENAME_RE.fullmatch(filename):
                 try:
                     self._get_connection().delete_object(self._swift_container, obj["name"])
