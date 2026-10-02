@@ -16,10 +16,12 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {TrashIcon} from '@patternfly/react-icons';
 import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 const OAuthApplicationsToolbar: React.FC<OAuthApplicationsToolbarProps> = (
   props,
 ): React.ReactElement => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   return (
     <Toolbar>
       <ToolbarContent>
@@ -45,27 +47,31 @@ const OAuthApplicationsToolbar: React.FC<OAuthApplicationsToolbarProps> = (
             />
           </FlexItem>
         </Flex>
-        <Button
-          onClick={props.handleCreateModalToggle}
-          data-testid="create-oauth-application-button"
-        >
-          Create OAuth Application
-        </Button>
-        <Conditional if={props.selectedItems?.length !== 0}>
-          <ToolbarItem>
-            <Button
-              style={{paddingBottom: '0px'}}
-              icon={
-                <Icon size="lg">
-                  <TrashIcon />
-                </Icon>
-              }
-              variant="plain"
-              onClick={props.handleBulkDeleteModalToggle}
-              data-testid="default-perm-bulk-delete-icon"
-            />
-          </ToolbarItem>
-        </Conditional>
+        {!isReadOnlySuperUser && (
+          <Button
+            onClick={props.handleCreateModalToggle}
+            data-testid="create-oauth-application-button"
+          >
+            Create OAuth Application
+          </Button>
+        )}
+        {!isReadOnlySuperUser && (
+          <Conditional if={props.selectedItems?.length !== 0}>
+            <ToolbarItem>
+              <Button
+                style={{paddingBottom: '0px'}}
+                icon={
+                  <Icon size="lg">
+                    <TrashIcon />
+                  </Icon>
+                }
+                variant="plain"
+                onClick={props.handleBulkDeleteModalToggle}
+                data-testid="default-perm-bulk-delete-icon"
+              />
+            </ToolbarItem>
+          </Conditional>
+        )}
         <ToolbarPagination
           itemsList={props.allItems}
           perPage={props.perPage}
