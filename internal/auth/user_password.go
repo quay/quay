@@ -28,7 +28,9 @@ func NewUserPasswordVerifier(db *sql.DB) Verifier {
 // NewUserPasswordVerifierWithCacheTTL creates a verifier for regular Quay
 // user passwords. Successful verifications are remembered for ttl so repeat
 // logins with the same credentials skip the bcrypt comparison; a ttl of zero
-// or less disables the cache.
+// disables the cache. A negative ttl (which may result from integer overflow
+// when converting a large number of seconds to time.Duration) is clamped to
+// the maximum representable value rather than silently disabling the cache.
 func NewUserPasswordVerifierWithCacheTTL(db *sql.DB, ttl time.Duration) Verifier {
 	if db == nil {
 		return nil
