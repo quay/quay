@@ -118,6 +118,25 @@ describe('UIContext', () => {
       });
     });
 
+    it('addAlert appends a warning alert with the correct variant string', () => {
+      const {result} = renderHook(() => useUI(), {wrapper});
+
+      act(() => {
+        result.current.addAlert({
+          variant: AlertVariant.Warning,
+          title: 'Popup was blocked',
+          key: 'warn-1',
+        });
+      });
+
+      expect(result.current.alerts).toHaveLength(1);
+      expect(result.current.alerts[0]).toMatchObject({
+        variant: 'warning',
+        title: 'Popup was blocked',
+        key: 'warn-1',
+      });
+    });
+
     it('addAlert generates a key when none is provided', () => {
       const {result} = renderHook(() => useUI(), {wrapper});
 

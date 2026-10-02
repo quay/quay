@@ -11,6 +11,7 @@ import React, {
 export enum AlertVariant {
   Success = 'success',
   Failure = 'danger',
+  Warning = 'warning',
 }
 
 export interface AlertDetails {
