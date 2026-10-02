@@ -415,7 +415,7 @@ def validate_external_registry_url(
     # Check if we allow only secure traffic
     if allow_only_secure:
         if parsed.scheme != "https":
-            raise ValueError(f"Invalid URL scheme: '{parsed.scheme}: only HTTPS is allowed")
+            raise ValueError(f"Invalid URL scheme: '{parsed.scheme}': only HTTPS is allowed")
 
     # Check for userinfo in URL (e.g., http://user:pass@host/)
     if parsed.username or parsed.password:
