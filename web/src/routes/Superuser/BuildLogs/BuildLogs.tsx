@@ -17,6 +17,7 @@ import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
+import {getBuildMessage} from 'src/routes/Build/Utils';
 
 export default function BuildLogs() {
   const [buildUuid, setBuildUuid] = useState<string>('');
@@ -89,11 +90,7 @@ export default function BuildLogs() {
           <dt style={{marginTop: '0.5em'}}>
             <strong>Status:</strong>
           </dt>
-          <dd>
-            {typeof build.status === 'string'
-              ? build.status
-              : JSON.stringify(build.status)}
-          </dd>
+          <dd>{getBuildMessage(build.phase)}</dd>
 
           {build.repository && (
             <>
