@@ -243,13 +243,13 @@ def test_end_to_end_export_logs_cleanup(initialized_db, tmpdir):
     captured = {}
 
     class _FakeLock:
-        def __init__(self, name, expire=None, auto_renewal=False):
+        def __init__(self, name, expire=None, auto_renewal=False, id=None):
             self._name = name
             self._expire = expire
             self._auto_renewal = auto_renewal
             captured.update(name=name, expire=expire, auto_renewal=auto_renewal)
 
-        def acquire(self):
+        def acquire(self, timeout=None):
             return True
 
         def release(self):
