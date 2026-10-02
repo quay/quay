@@ -366,9 +366,16 @@ if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPL
 
 database.configure(app.config)
 
-# Configure global locking
-# For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
-if not app.config.get("TESTING", False):
+
+def _should_configure_global_lock(config, is_testing):
+    """GlobalLock is required for blob commit locking whenever Redis is configured, independent
+    of the TESTING config key: a standalone config.yaml that omits TESTING leaves DefaultConfig's
+    TESTING=True, which must not skip a mandatory lock. Only the process test mode (where the
+    unit suite mocks GlobalLock and does not configure USER_EVENTS_REDIS) skips it."""
+    return not is_testing and bool(config.get("USER_EVENTS_REDIS"))
+
+
+if _should_configure_global_lock(app.config, is_testing):
     GlobalLock.configure(app.config)
 
 model.config.app_config = app.config
