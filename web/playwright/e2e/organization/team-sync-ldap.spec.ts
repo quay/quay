@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName} from '../../fixtures';
 
 // Relative group DN (relative to the configured LDAP_BASE_DN dc=example,dc=org).
 // The UI shows the base DN and asks for the relative part only.
@@ -85,6 +85,33 @@ test.describe(
         await page.getByRole('button', {name: 'Confirm'}).click();
         await expect(
           page.getByText('Successfully removed team synchronization').first(),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'API-created team sync shows group DN in UI',
+      {tag: ['@superuser', '@PROJQUAY-12494']},
+      async ({superuserPage: page, superuserApi: api}) => {
+        const org = await api.organization('ldapapiteamsync');
+        const teamName = uniqueName('ldapapisync');
+
+        // Create team with LDAP sync attached in a single PUT (RFE-8184)
+        await api.raw.createTeam(org.name, teamName, 'member', {
+          group_dn: LDAP_GROUP_RELATIVE_DN,
+        });
+
+        await page.goto(
+          `/organization/${org.name}/teams/${teamName}?tab=Teamsandmembership`,
+        );
+
+        await expect(
+          page.getByText('synchronized with a group in ldap'),
+        ).toBeVisible();
+        await expect(page.getByText('Bound to group')).toBeVisible();
+        await expect(page.getByText(LDAP_GROUP_RELATIVE_DN)).toBeVisible();
+        await expect(
+          page.getByRole('button', {name: 'Remove synchronization'}),
         ).toBeVisible();
       },
     );
