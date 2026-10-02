@@ -27,8 +27,9 @@ MPU_DELETION_DATE_THRESHOLD = timedelta(seconds=MPU_CLEANUP_TTL)
 # check if there are any stale MPUs every 6 hours
 MPU_CLEANUP_FREQUENCY = 6 * 60 * 60
 
-# Sets export log deletion threshold to 1 hour
-EXPORTED_LOGS_DELETION_DATE_THRESHOLD = timedelta(seconds=60 * 60)
+EXPORTED_LOGS_DELETION_DATE_THRESHOLD = timedelta(
+    seconds=app.config.get("EXPORT_ACTION_LOGS_SECONDS", 60 * 60)
+)
 
 EXPORT_LOGS_STORAGE_PATH = app.config.get("EXPORT_ACTION_LOGS_STORAGE_PATH", "exportedactionlogs")
 

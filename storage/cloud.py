@@ -818,22 +818,18 @@ class _CloudStorage(BaseStorageV2):
         (defaults to 1 hour)
         """
         self._initialize_cloud_conn()
-        path = self._init_path(log_path)
+        path = self._init_path(log_path).rstrip("/") + "/"
+        cutoff = datetime.now(timezone.utc) - deletion_date_threshold
 
         paginator = self.get_cloud_conn().get_paginator(self._list_object_version)
         for page in paginator.paginate(Bucket=self._bucket_name, Prefix=path):
             for obj_info in page.get("Contents", []):
-                # if the file is older than 1 hour AND the file name matches our format uuid-uuid
                 filename = obj_info["Key"].split("/")[-1]
-                threshold_time = datetime.now(timezone.utc) - deletion_date_threshold
-                if obj_info["LastModified"] <= datetime.now(
-                    timezone.utc
-                ) - deletion_date_threshold and _EXPORTED_LOG_FILENAME_RE.fullmatch(
-                    obj_info["Key"].split("/")[-1]
+                if obj_info["LastModified"] <= cutoff and _EXPORTED_LOG_FILENAME_RE.fullmatch(
+                    filename
                 ):
                     obj = self.get_cloud_bucket().Object(obj_info["Key"])
                     try:
-                        obj.load()
                         obj.delete()
                         logger.debug(
                             "Expired exported log deleted from %s: %s", log_path, obj_info["Key"]
@@ -841,9 +837,9 @@ class _CloudStorage(BaseStorageV2):
                     except botocore.exceptions.ClientError as s3r:
                         if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
                             logger.exception(
-                                "Got error when attempting to clean exported log file with key in %s folder: %s",
-                                log_path,
+                                "Got error when attempting to clean exported log file with key %s in %s folder: %s",
                                 obj_info["Key"],
+                                log_path,
                                 str(s3r),
                             )
                         else:

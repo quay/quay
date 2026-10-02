@@ -2,6 +2,7 @@ import base64
 import datetime
 import email.utils
 import io
+import logging
 import os.path
 from contextlib import contextmanager
 from datetime import timedelta
@@ -527,6 +528,61 @@ def test_export_log_cleanup_correctly_identifies_storage_path():
         )
         assert len(remaining_blobs) == 1
         remaining_keys = [blob.name for blob in remaining_blobs]
+        assert final_key in remaining_keys
+
+
+def test_export_cleanup_does_not_grab_similar_paths():
+    """
+    Verifies that the cleanup only occurs on the main path defined by
+    log_path and not on log_path+suffix. Eg. if log_path is "exportedactionlogs"
+    then only files under "exportedactionlogs" should be cleaned, while files under
+    "exportedactionlogs-somesuffix" should remain.
+    """
+    with fake_azure_storage() as storage_engine:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        storage_engine._storage_path = "datastorage/registry"
+
+        # create a list of files
+        keys = [
+            f"datastorage/registry/{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+            for i in range(5)
+        ]
+        for i, k in enumerate(keys):
+            payload = os.urandom(1024)
+            with freeze_time(now):
+                storage_engine._container.upload_blob(name=k, data=payload)
+
+        # upload a new key under a different directory with a suffix
+        payload = os.urandom(1024)
+        filename = f"{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+        final_key = f"datastorage/registry/exportedactionlogs-somesuffix/{filename}"
+
+        logging.debug("%s", final_key)
+
+        with freeze_time(now):
+            storage_engine._container.upload_blob(name=final_key, data=payload)
+
+        blob_list = list(
+            storage_engine._container.list_blobs(name_starts_with=storage_engine._storage_path)
+        )
+        logging.debug("LIST OF ALL STORED BLOBS:")
+        for blob in blob_list:
+            logging.debug("%s", blob.get("name", ""))
+
+        # clean up
+        with freeze_time(now + timedelta(hours=2)):
+            storage_engine.clean_exported_action_logs(timedelta(hours=0), "exportedactionlogs")
+
+        # only one file should remain
+        remaining_blobs = list(
+            storage_engine._container.list_blobs(name_starts_with=storage_engine._storage_path)
+        )
+
+        logging.debug("%s", remaining_blobs)
+
+        assert len(remaining_blobs) == 1
+        remaining_keys = [blob.name for blob in remaining_blobs]
+        logging.debug("%s", remaining_keys)
         assert final_key in remaining_keys
 
 

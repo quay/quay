@@ -128,9 +128,11 @@ class SwiftStorage(BaseStorage):
         Lists all files under a specified path.
         """
         path = self._normalize_path(path)
+        if path:
+            path = path + "/"
         try:
             _, obj = self._get_connection().get_container(
-                self._swift_container, path, full_listing=True
+                self._swift_container, prefix=path, full_listing=True
             )
             return obj
         except ClientException as ex:
@@ -570,6 +572,10 @@ class SwiftStorage(BaseStorage):
         """
         cutoff = datetime.now(timezone.utc) - deletion_date_threshold
         obj_list = []
+
+        # add trailing slash to the end of the path
+        if not log_path.endswith("/"):
+            log_path = log_path + "/"
 
         try:
             obj_list = self._list_content(log_path)

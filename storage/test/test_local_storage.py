@@ -92,7 +92,7 @@ def test_export_log_cleanup_does_not_touch_user_files(tmpdir):
     cleanup worker.
     """
     now = datetime.now(timezone.utc)
-    store_path = os.path.join(tmpdir, "datastorage_registry")
+    store_path = os.path.join(tmpdir, "datastorage/registry")
     storage_engine = FakeLocalStorage(store_path)
 
     payload1 = b'{"logs": []}'
@@ -131,7 +131,7 @@ def test_export_log_cleanup_doesnt_touch_other_paths(tmpdir):
     cleanup worker.
     """
     now = datetime.now(timezone.utc)
-    store_path = os.path.join(tmpdir, "datastorage_registry")
+    store_path = os.path.join(tmpdir, "datastorage/registry")
     storage_engine = FakeLocalStorage(store_path)
 
     payload1 = b'{"logs": []}'
@@ -164,12 +164,71 @@ def test_export_log_cleanup_doesnt_touch_other_paths(tmpdir):
     assert files[0].endswith("hello.txt")
 
 
+def test_export_cleanup_does_not_grab_similar_paths(tmpdir):
+    """
+    Verifies that the cleanup only occurs on the main path defined by
+    log_path and not on log_path+suffix. Eg. if log_path is "exportedactionlogs"
+    then only files under "exportedactionlogs" should be cleaned, while files under
+    "exportedactionlogs-somesuffix" should remain.
+    """
+    now = datetime.now(timezone.utc)
+    store_path = os.path.join(tmpdir, "datastorage/registry")
+    storage_engine = FakeLocalStorage(store_path)
+
+    mocked_time = now - timedelta(hours=2)
+
+    # create a list of files
+    keys = [f"{_TEST_LOG_PATH}{str(uuid.uuid4())}-{str(uuid.uuid4())}" for i in range(5)]
+    for _, k in enumerate(keys):
+        payload = os.urandom(1024)
+        with freeze_time(mocked_time):
+            storage_engine.put_content(path=k, content=payload)
+            fake_epoch = mocked_time.timestamp()
+            full_file_path = os.path.join(store_path, k)
+            os.utime(full_file_path, (fake_epoch, fake_epoch))
+
+    # verify that the files are there
+    dir_path = Path(store_path)
+    logging.debug("FILE LIST:")
+    for f in dir_path.rglob("*"):
+        if f.is_file():
+            stats = f.stat()
+            logging.debug("%s", stats)
+
+    # upload a new key under a different directory with a suffix
+    with freeze_time(mocked_time):
+        final_key = f"exportedactionlogs-somesuffix/{str(uuid.uuid4())}-{str(uuid.uuid4())}"
+        payload = os.urandom(1024)
+        storage_engine.put_content(path=final_key, content=payload)
+
+        fake_epoch = mocked_time.timestamp()
+        full_file_path = os.path.join(store_path, final_key)
+        os.utime(full_file_path, (fake_epoch, fake_epoch))
+
+    # verify that the files are there
+    dir_path = Path(store_path)
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
+    logging.debug("FILE LIST: %s", files)
+    assert len(files) == 6
+
+    # clean up files
+    with freeze_time(now + timedelta(hours=2)):
+        storage_engine.clean_exported_action_logs(timedelta(hours=1), "exportedactionlogs")
+
+    # list files to make sure that only one remains
+    dir_path = Path(store_path)
+    files = [str(f) for f in dir_path.rglob("*") if f.is_file()]
+    logging.debug("FILE LIST: %s", files)
+    assert len(files) == 1
+    assert files[0].endswith(final_key)
+
+
 def test_export_log_cleanup_doesnt_pick_up_files_that_are_inside_the_timedelta(tmpdir):
     """
     Verifies that we only delete files that are older than 1 hour and not any other files that are in the same path
     """
     now = datetime.now(timezone.utc)
-    store_path = os.path.join(tmpdir, "datastorage_registry")
+    store_path = os.path.join(tmpdir, "datastorage/registry")
     storage_engine = FakeLocalStorage(store_path)
 
     # create a list of files
@@ -227,7 +286,7 @@ def test_export_log_cleanup_does_not_return_error_on_empty_directory(tmpdir):
     Verifies that cleanup does not error when nothing is cleaned. Simple regression test.
     """
     now = datetime.now(timezone.utc)
-    store_path = os.path.join(tmpdir, "datastorage_registry")
+    store_path = os.path.join(tmpdir, "datastorage/registry")
     storage_engine = FakeLocalStorage(store_path)
 
     payload = os.urandom(1024)
@@ -254,7 +313,7 @@ def test_cleanup_of_expired_logs_gracefully_handles_errors(tmpdir):
     Asserts that the OSError exception does not terminate cleanup of files.
     """
     now = datetime.now(timezone.utc)
-    store_path = os.path.join(tmpdir, "datastorage_registry")
+    store_path = os.path.join(tmpdir, "datastorage/registry")
     storage_engine = FakeLocalStorage(store_path)
 
     # create a list of files
