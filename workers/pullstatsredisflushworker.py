@@ -26,6 +26,7 @@ from data.model.pull_statistics import (
 )
 from digest.digest_tools import Digest, InvalidDigestException
 from util.log import logfile_path
+from util.redis_utils import create_redis_client, has_engine_config, is_cluster_config
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
@@ -35,6 +36,9 @@ logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("REDIS_FLUSH_INTERVAL_SECONDS", 300)  # 5 minutes
 BATCH_SIZE = app.config.get("REDIS_FLUSH_WORKER_BATCH_SIZE", 1000)
 REDIS_SCAN_COUNT = app.config.get("REDIS_FLUSH_WORKER_SCAN_COUNT", 100)
+# Maximum wall-clock seconds a single cluster scan may consume per flush cycle.
+# Prevents a large cluster from blocking the worker indefinitely.
+MAX_SCAN_SECONDS = app.config.get("REDIS_FLUSH_WORKER_MAX_SCAN_SECONDS", 30)
 
 # RENAME atomically claims the key, then we delete only after successful DB write
 # This prevents data loss if database flush fails
@@ -52,31 +56,47 @@ class RedisFlushWorker(Worker):
     """
 
     def __init__(self):
+        """Initialise the flush worker, connect to Redis and schedule the flush operation."""
         super(RedisFlushWorker, self).__init__()
         self.redis_client = None
+        self._is_cluster = False
         self._initialize_redis_client()
         self.add_operation(self._flush_pull_metrics, POLL_PERIOD)
 
     def _initialize_redis_client(self):
         """Initialize Redis client for pull metrics."""
         try:
-            redis_config = app.config.get("PULL_METRICS_REDIS", {})
-            redis_host = redis_config.get("host", "localhost")
-            redis_port = redis_config.get("port", 6379)
-            redis_db = redis_config.get("db", 1)
-            redis_password = redis_config.get("password")
+            redis_config = app.config.get("PULL_METRICS_REDIS")
+            # Fall back to USER_EVENTS_REDIS when PULL_METRICS_REDIS is the
+            # default config.py value (localhost) which is unreachable in a
+            # containerised deployment.
+            if not redis_config or redis_config.get("host") == "localhost":
+                redis_config = app.config.get("USER_EVENTS_REDIS") or {}
             redis_connection_timeout = app.config.get("REDIS_CONNECTION_TIMEOUT", 5)
 
-            # Create Redis client
-            self.redis_client = redis.StrictRedis(
-                host=redis_host,
-                port=redis_port,
-                db=redis_db,
-                password=redis_password,
-                decode_responses=True,
-                socket_connect_timeout=redis_connection_timeout,
-                socket_timeout=redis_connection_timeout,
-            )
+            self._is_cluster = is_cluster_config(redis_config)
+
+            if has_engine_config(redis_config):
+                self.redis_client = create_redis_client(
+                    redis_config,
+                    default_timeout=redis_connection_timeout,
+                    extra_kwargs={"decode_responses": True},
+                )
+            else:
+                redis_host = redis_config.get("host", "localhost")
+                redis_port = redis_config.get("port", 6379)
+                redis_db = redis_config.get("db", 0)
+                redis_password = redis_config.get("password")
+
+                self.redis_client = redis.StrictRedis(
+                    host=redis_host,
+                    port=redis_port,
+                    db=redis_db,
+                    password=redis_password,
+                    decode_responses=True,
+                    socket_connect_timeout=redis_connection_timeout,
+                    socket_timeout=redis_connection_timeout,
+                )
 
             # Test connection
             self.redis_client.ping()
@@ -95,8 +115,11 @@ class RedisFlushWorker(Worker):
     def _flush_pull_metrics(self):
         """Main method to flush pull metrics from Redis to database."""
         if not self.redis_client:
-            logger.warning("RedisFlushWorker: Redis client not initialized, skipping flush")
-            return
+            logger.info("RedisFlushWorker: Redis client not initialized, attempting reconnect")
+            self._initialize_redis_client()
+            if not self.redis_client:
+                logger.warning("RedisFlushWorker: Redis client still not available, skipping flush")
+                return
 
         try:
             logger.debug("RedisFlushWorker: Starting pull metrics flush")
@@ -160,6 +183,12 @@ class RedisFlushWorker(Worker):
         """
         Scan Redis for keys matching the pattern.
 
+        Uses ``scan_iter()`` for Redis Cluster clients (where ``scan()`` returns
+        per-node cursor dicts) and the manual cursor loop for single-node
+        clients.  Cluster scans are bounded by both *limit* and a per-cycle
+        wall-clock budget (:data:`MAX_SCAN_SECONDS`) to prevent a large cluster
+        from blocking the worker indefinitely.
+
         Args:
             pattern: Redis key pattern to match
             limit: Maximum number of keys to return
@@ -168,27 +197,40 @@ class RedisFlushWorker(Worker):
             List of matching Redis keys
         """
         try:
+            if self.redis_client is None:
+                return []
+
             keys_set: Set[str] = set()
-            cursor = 0
 
-            while len(keys_set) < limit:
-                if self.redis_client is None:
-                    break
-                cursor, batch_keys = self.redis_client.scan(
-                    cursor=cursor, match=pattern, count=REDIS_SCAN_COUNT
-                )
+            if self._is_cluster:
+                scan_deadline = time.monotonic() + MAX_SCAN_SECONDS
+                for key in self.redis_client.scan_iter(match=pattern, count=REDIS_SCAN_COUNT):
+                    keys_set.add(key)
+                    if len(keys_set) >= limit:
+                        break
+                    if time.monotonic() >= scan_deadline:
+                        logger.info(
+                            "RedisFlushWorker: Cluster scan time budget (%ds) "
+                            "exhausted after collecting %d keys",
+                            MAX_SCAN_SECONDS,
+                            len(keys_set),
+                        )
+                        break
+            else:
+                cursor = 0
+                while len(keys_set) < limit:
+                    cursor, batch_keys = self.redis_client.scan(
+                        cursor=cursor, match=pattern, count=REDIS_SCAN_COUNT
+                    )
 
-                if batch_keys:
-                    # Add keys to set to automatically deduplicate
-                    keys_set.update(batch_keys)
+                    if batch_keys:
+                        keys_set.update(batch_keys)
 
-                # Break if we've scanned through all keys
-                if cursor == 0:
-                    break
+                    if cursor == 0:
+                        break
 
-            # Convert set back to list and limit results
             keys_list = list(keys_set)
-            return keys_list[:limit]  # Ensure we don't exceed the limit
+            return keys_list[:limit]
 
         except redis.RedisError as re:
             logger.error(f"RedisFlushWorker: Redis error during key scan: {re}")
@@ -252,6 +294,33 @@ class RedisFlushWorker(Worker):
                         if "no such key" in error_msg or "no such file" in error_msg:
                             # Key doesn't exist (already processed or never created)
                             continue
+                        elif "crossslot" in error_msg:
+                            # Redis Cluster: key and processing_key hash to different
+                            # slots. This happens for legacy keys written before the
+                            # hash-tag format was introduced. Retry RENAME with a
+                            # processing key that wraps the full legacy key in a
+                            # hash tag so both keys land in the same slot — this
+                            # still isolates the data from concurrent increments.
+                            tagged_processing_key = (
+                                f"{{{key}}}:processing:"
+                                f"{int(time.time() * 1000)}:{uuid.uuid4().hex[:8]}"
+                            )
+                            try:
+                                self.redis_client.rename(key, tagged_processing_key)
+                                processing_key = tagged_processing_key
+                                logger.debug(
+                                    "RedisFlushWorker: CROSSSLOT recovered via "
+                                    "hash-tagged rename for legacy key %s",
+                                    key,
+                                )
+                            except redis.ResponseError as rename_err:
+                                logger.warning(
+                                    "RedisFlushWorker: CROSSSLOT recovery RENAME "
+                                    "failed for key %s: %s",
+                                    key,
+                                    rename_err,
+                                )
+                                continue
                         else:
                             logger.warning(f"RedisFlushWorker: RENAME failed for key {key}: {e}")
                             continue
@@ -524,8 +593,15 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     # Check if Redis is configured
-    if not app.config.get("PULL_METRICS_REDIS"):
-        logger.debug("PULL_METRICS_REDIS not configured; skipping redis flush worker")
+    pm_config = app.config.get("PULL_METRICS_REDIS")
+    ue_config = app.config.get("USER_EVENTS_REDIS")
+    has_usable_redis = (pm_config and pm_config.get("host") != "localhost") or (
+        ue_config and ue_config.get("host") != "localhost"
+    )
+    if not has_usable_redis:
+        logger.debug(
+            "No reachable Redis configured for pull metrics; " "skipping redis flush worker"
+        )
         while True:
             time.sleep(100000)
 

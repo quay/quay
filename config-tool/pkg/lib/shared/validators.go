@@ -185,6 +185,33 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 
 }
 
+// ValidateRedisClusterConnection validates that a Redis Cluster connection can successfully be established
+func ValidateRedisClusterConnection(options *redis.ClusterOptions, field, fgName string) (bool, ValidationError) {
+
+	// Start cluster client
+	rdb := redis.NewClusterClient(options)
+	defer rdb.Close()
+	log.Debugf("Cluster Addrs: %v", options.Addrs)
+	log.Debugf("Password Len: %d", len(options.Password))
+	log.Debugf("Ssl: %+v", options.TLSConfig)
+
+	// Ping cluster
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    "Could not connect to Redis Cluster with values provided in " + field + ". Error: " + err.Error(),
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+
+}
+
 // ValidateIsOneOfString validates that a string is one of a given option
 func ValidateIsOneOfString(input string, options []string, field string, fgName string) (bool, ValidationError) {
 
