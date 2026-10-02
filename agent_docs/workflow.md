@@ -155,6 +155,44 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
+### Prow CI and openshift/release
+
+Prow job definitions for `quay/quay` — including `omr-v3-disconnected-install` and related
+mirror-registry jobs — live in the `openshift/release` repository, not in `quay/quay`. These
+job definitions reference build artifact names (binaries, tarballs, and container image tags)
+by name. When an artifact name changes in `quay/quay`, any Prow job referencing the old name
+breaks silently until a companion PR to `openshift/release` is merged.
+
+**When a companion PR to openshift/release is required:**
+
+A companion PR to `openshift/release` is required whenever a PR to `quay/quay`:
+- Renames a binary, tarball, or container image tag consumed by a Prow job
+- Removes a build artifact that a Prow job references
+- Adds a new build artifact that a new or updated Prow job should consume
+
+Example: PR #7252 renamed the mirror-registry CLI binary from `quay` to `mirror-registry`.
+The `omr-v3-disconnected-install` Prow job failed because it still referenced the old name,
+and the companion `openshift/release#85607` remained open after the quay PR merged.
+
+**How to handle it:**
+
+1. Before opening a quay PR that renames or removes any build artifact, search
+   `openshift/release` for references to the old name:
+   ```
+   gh search code --repo openshift/release "<old-artifact-name>"
+   ```
+2. Open the `openshift/release` companion PR **concurrently** with the quay PR — not after
+   merge — so Prow CI feedback is available before the quay PR is reviewed.
+3. Reference the companion PR in the quay PR description:
+   `Companion PR: openshift/release#NNNNN`
+4. Do not merge the quay PR while the companion `openshift/release` PR is still open; a
+   post-merge Jira bot report is not a substitute for landing both PRs together.
+
+The `omr-v3-disconnected-install` job (and similar mirror-registry Prow jobs) is non-required
+but is a reliable leading indicator of breakage in the disconnected install path. A reviewer
+comment asking for the companion PR after the quay PR is already under review is the failure
+mode this checklist prevents.
+
 ## Session Setup
 
 All hooks are consolidated in `.claude/settings.json` — no manual setup required.
