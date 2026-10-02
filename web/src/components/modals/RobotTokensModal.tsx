@@ -9,6 +9,7 @@ import {
   MenuToggleElement,
   Select,
   SelectOption,
+  Spinner,
   Tab,
   TabTitleIcon,
   TabTitleText,
@@ -16,11 +17,22 @@ import {
   Content,
   ContentVariants,
 } from '@patternfly/react-core';
-import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
+import {
+  AngleRightIcon,
+  CodeIcon,
+  DockerIcon,
+  KeyIcon,
+} from '@patternfly/react-icons';
 import {useState} from 'react';
+import KubernetesIcon from 'src/assets/kubernetes.svg';
+import KubernetesGreyIcon from 'src/assets/kubernetes-grey.svg';
+import PodmanIcon from 'src/assets/podman.svg';
+import PodmanGreyIcon from 'src/assets/podman-grey.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import RobotAPITokensTab from 'src/components/modals/RobotAPITokensTab';
 import {IRobotToken} from 'src/resources/RobotsResource';
 import 'src/routes/RepositoriesList/css/RobotAccount.css';
 
@@ -40,6 +52,10 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   const [, setErr] = useState<string[]>();
   const config = useQuayConfig();
   const domain = config?.config.SERVER_HOSTNAME;
+  const robotAPITokensEnabled = config?.features?.ROBOT_API_TOKENS === true;
+  const {usernames, isSuperUser, isLoadingSuperUserUsers} = useOrganizations();
+  const isUserOrganization = usernames.includes(props.namespace);
+  const isNamespaceTypeLoading = isSuperUser && isLoadingSuperUserUsers;
   const [secretScopeSelected, setSecretScopeSelected] = useState<string>(
     domain + '/' + props.namespace,
   );
@@ -225,7 +241,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             </Content>
             <br />
             <Alert
-              title="Note that once you regenerate token, all existing logins of this robot account will become invalid."
+              title={
+                robotAPITokensEnabled
+                  ? "Regenerating replaces only this robot's static push/pull token. Robot API tokens remain valid and must be revoked separately. Previously issued registry sessions may remain valid until they expire."
+                  : "Regenerating replaces this robot's static push/pull token. Previously issued registry sessions may remain valid until they expire."
+              }
               variant="warning"
               isPlain
               isInline
@@ -238,19 +258,39 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             </Button>
           </>
         </Tab>
+        {robotAPITokensEnabled && (
+          <Tab
+            eventKey={1}
+            title={
+              <>
+                <TabTitleIcon>
+                  <CodeIcon />
+                </TabTitleIcon>
+                <TabTitleText>API Tokens</TabTitleText>
+              </>
+            }
+          >
+            <br />
+            {isNamespaceTypeLoading ? (
+              <Spinner />
+            ) : (
+              <RobotAPITokensTab
+                namespace={props.namespace}
+                robotName={props.name}
+                isUserOrganization={isUserOrganization}
+              />
+            )}
+          </Tab>
+        )}
         <Tab
           id="kubernetes-tab"
           data-testid="kubernetes-tab"
-          eventKey={1}
+          eventKey={2}
           title={
             <>
               <TabTitleIcon>
                 <img
-                  src={require(
-                    activeTabKey == 1
-                      ? 'src/assets/kubernetes.svg'
-                      : 'src/assets/kubernetes-grey.svg',
-                  )}
+                  src={activeTabKey == 2 ? KubernetesIcon : KubernetesGreyIcon}
                 />
               </TabTitleIcon>
               <TabTitleText>Kubernetes</TabTitleText>
@@ -359,17 +399,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           </Content>
         </Tab>
         <Tab
-          eventKey={2}
+          eventKey={3}
           title={
             <>
               <TabTitleIcon>
-                <img
-                  src={require(
-                    activeTabKey == 2
-                      ? 'src/assets/podman.svg'
-                      : 'src/assets/podman-grey.svg',
-                  )}
-                />
+                <img src={activeTabKey == 3 ? PodmanIcon : PodmanGreyIcon} />
               </TabTitleIcon>
               <TabTitleText>Podman</TabTitleText>
             </>
@@ -397,7 +431,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           </Content>
         </Tab>
         <Tab
-          eventKey={3}
+          eventKey={4}
           title={
             <>
               <TabTitleIcon>
@@ -431,7 +465,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
         <Tab
           id="docker-config-tab"
           data-testid="docker-config-tab"
-          eventKey={4}
+          eventKey={5}
           title={
             <>
               <TabTitleIcon>
