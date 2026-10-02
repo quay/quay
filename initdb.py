@@ -1570,6 +1570,7 @@ WHITELISTED_EMPTY_MODELS = [
     "QuotaRegistrySize",
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
+    "APIToken",
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",
