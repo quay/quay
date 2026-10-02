@@ -62,6 +62,15 @@ location / {
     }
 }
 
+location = /sts/token {
+    proxy_pass http://web_app_server;
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=5 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;
+    {% endif %}
+}
+
 # Capture traffic that needs to go to web_app, see /web.py
 location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/recovery|/userfiles/(.*)|/health(/.*)?|/status|/_internal_ping|/buildlogs|/logarchive) {
     proxy_pass   http://web_app_server;

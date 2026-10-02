@@ -3042,7 +3042,12 @@ export class ApiClient {
   async createRobotFederation(
     orgName: string,
     robotShortname: string,
-    federations: {issuer: string; subject: string}[],
+    federations: {
+      issuer: string;
+      subject: string;
+      api_scopes?: string;
+      audiences?: string[];
+    }[],
   ): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.post(

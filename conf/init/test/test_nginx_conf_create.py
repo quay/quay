@@ -25,6 +25,26 @@ def render_server_base_conf(**kwargs):
     return template.render(**defaults)
 
 
+def _sts_token_location(rendered):
+    return re.search(r"location = /sts/token \{([^}]*)\}", rendered, re.DOTALL).group(1)
+
+
+def test_sts_token_is_routed_to_web_app():
+    location = _sts_token_location(render_server_base_conf())
+    assert "proxy_pass http://web_app_server;" in location
+
+
+def test_sts_token_uses_nginx_rate_limits_when_enabled():
+    location = _sts_token_location(render_server_base_conf(enable_rate_limits=True))
+    assert "limit_req zone=dynamicauth_heavy_http1 burst=5 nodelay;" in location
+    assert "limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;" in location
+
+
+def test_sts_token_omits_nginx_rate_limits_when_disabled():
+    location = _sts_token_location(render_server_base_conf(enable_rate_limits=False))
+    assert "limit_req" not in location
+
+
 class TestErrorPageDirective:
     def test_error_page_502_uses_uri_not_absolute_path(self):
         rendered = render_server_base_conf()
