@@ -40,6 +40,7 @@ interface FormTextInputProps<T extends FieldValues> {
   'aria-label'?: string;
   showNoneWhenEmpty?: boolean;
   disabled?: boolean;
+  autoComplete?: string;
 }
 
 export function FormTextInput<T extends FieldValues>({
@@ -60,7 +61,8 @@ export function FormTextInput<T extends FieldValues>({
   'aria-label': ariaLabel,
   showNoneWhenEmpty = false,
   disabled = false,
-}: FormTextInputProps<T>) {
+  autoComplete,
+}: FormTextInputProps<T>): JSX.Element {
   const rules = {
     ...(required && {
       required: 'This field is required',
@@ -112,6 +114,7 @@ export function FormTextInput<T extends FieldValues>({
                 inputMode={inputMode}
                 aria-label={ariaLabel}
                 isDisabled={disabled}
+                autoComplete={autoComplete}
               />
               {fieldError && (
                 <FormHelperText>
