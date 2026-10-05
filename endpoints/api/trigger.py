@@ -293,7 +293,7 @@ class BuildTriggerActivate(RepositoryParamResource):
                     raise NotFound()
 
                 # Make sure the user has administer permissions for the robot's namespace.
-                (robot_namespace, _) = parse_robot_username(pull_robot_name)
+                robot_namespace, _ = parse_robot_username(pull_robot_name)
                 if not AdministerOrganizationPermission(robot_namespace).can():
                     raise Unauthorized()
 
