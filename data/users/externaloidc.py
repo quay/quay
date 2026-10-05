@@ -125,10 +125,16 @@ class OIDCUsers(FederatedUsers):
         """
         Adds user to quay teams that have team sync enabled with an OIDC group
         """
-        if user_groups is None:
-            logger.debug(
-                "External OIDC Group Sync: Found no oidc groups for user: %s", user_obj.username
-            )
+        if not user_groups:
+            if user_groups is None:
+                logger.debug(
+                    "External OIDC Group Sync: No group claim found for user: %s - check PREFERRED_GROUP_CLAIM_NAME",
+                    user_obj.username,
+                )
+            else:
+                logger.debug(
+                    "External OIDC Group Sync: Found no oidc groups for user: %s", user_obj.username
+                )
             return
 
         # fetch all TeamSync rows for the oidc_group synced with the login service
