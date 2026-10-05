@@ -2,11 +2,22 @@ import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {ResourceError} from './ErrorHandling';
 
+export type SubscriptionStatus =
+  | 'active'
+  | 'trialing'
+  | 'past_due'
+  | 'incomplete'
+  | 'canceled';
+
 export interface Subscription {
   hasSubscription: boolean;
   isExistingCustomer: boolean;
-  plan: string; // TODO: should probably be an enum
+  plan: string;
   usedPrivateRepos: number;
+  status: SubscriptionStatus | null;
+  trialStart: number | null;
+  trialEnd: number | null;
+  currentPeriodEnd: number | null;
 }
 
 export async function fetchSubscription(org: string = null) {
@@ -129,4 +140,27 @@ export async function setMarketplaceOrgRemoval(
     );
   }
   return;
+}
+
+export interface Invoice {
+  id: string;
+  date: number;
+  period_start: number;
+  period_end: number;
+  paid: boolean;
+  amount_due: number;
+  next_payment_attempt: number | null;
+  attempted: boolean;
+  closed: boolean;
+  total: number;
+  plan: string | null;
+}
+
+export async function fetchInvoices(org: string = null) {
+  const url =
+    org != null
+      ? `/api/v1/organization/${org}/invoices`
+      : '/api/v1/user/invoices';
+  const response: AxiosResponse<{invoices: Invoice[]}> = await axios.get(url);
+  return response.data.invoices;
 }

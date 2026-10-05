@@ -72,6 +72,9 @@ export enum NavigationPath {
   // Team Member
   teamMember = '/organization/:organizationName/teams/:teamName',
 
+  // Invoice list
+  invoiceList = '/organization/:organizationName/invoices',
+
   // Build trigger setup
   setupBuildTrigger = '/repository/:organizationName/:repositoryName/trigger/:triggerUuid',
 

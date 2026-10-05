@@ -41,6 +41,13 @@ import {LoadingPage} from 'src/components/LoadingPage';
 import {useUI} from 'src/contexts/UIContext';
 import {useExternalScripts} from 'src/hooks/UseExternalScripts';
 
+import {InvoiceList} from './OrganizationsList/Organization/Tabs/Settings/InvoiceList';
+
+function InvoiceListRoute() {
+  const {organizationName} = useParams<{organizationName: string}>();
+  return <InvoiceList organizationName={organizationName} />;
+}
+
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
   () => import('./OrganizationsList/OrganizationsList'),
@@ -153,6 +160,10 @@ function RepositoryShorthandRedirect() {
 }
 
 const NavigationRoutes = [
+  {
+    path: NavigationPath.invoiceList,
+    Component: <InvoiceListRoute />,
+  },
   {
     path: NavigationPath.teamMember,
     Component: <Organization />,

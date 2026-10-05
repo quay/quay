@@ -135,6 +135,7 @@ export function useUpgradePlan(namespace: string, isOrg: boolean) {
     currentPlan,
     currentPlanError,
     currentPlanIsLoading: currentPlanIsLoading || currentPlanIsPlaceholderData,
+    plans: plans ?? [],
     privateAllowed: privateAllowed?.privateAllowed || 0,
     privateCount: privateAllowed?.privateCount || 0,
     upgrade: upgrade,

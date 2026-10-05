@@ -52,8 +52,8 @@ export function useMarketplaceSubscriptions(
       : loadingUserSubs;
 
   return {
-    userSubscriptions: userSubscriptions ?? EMPTY_USER_SUBSCRIPTIONS,
-    orgSubscriptions: orgSubscriptions ?? EMPTY_ORG_SUBSCRIPTIONS,
+    userSubscriptions: Array.isArray(userSubscriptions) ? userSubscriptions : EMPTY_USER_SUBSCRIPTIONS,
+    orgSubscriptions: Array.isArray(orgSubscriptions) ? orgSubscriptions : EMPTY_ORG_SUBSCRIPTIONS,
     loading: loading,
     error: errorFetchingUserSubs,
   };

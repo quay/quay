@@ -71,7 +71,7 @@ export default function Settings(props: SettingsProps) {
       visible: true,
     },
     {
-      name: 'Billing information',
+      name: 'Plan information',
       id: 'billinginformation',
       content: () => (
         <BillingInformation organizationName={props.organizationName} />

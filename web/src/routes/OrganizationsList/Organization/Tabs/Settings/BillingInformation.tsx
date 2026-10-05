@@ -1,181 +1,185 @@
 import {useEffect, useState} from 'react';
 import {
+  ActionGroup,
+  Alert,
+  Button,
+  Checkbox,
   Flex,
   FlexItem,
   Form,
-  TextInput,
-  ActionGroup,
-  Button,
-  Title,
-  Checkbox,
   FormAlert,
-  Alert,
   FormGroup,
   FormHelperText,
+  TextInput,
+  Title,
 } from '@patternfly/react-core';
-import {useRepositories} from 'src/hooks/UseRepositories';
+import {useNavigate} from 'react-router-dom';
+import {AxiosError} from 'axios';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
-import {AxiosError} from 'axios';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
+import {useRepositories} from 'src/hooks/UseRepositories';
+import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
+import {useCard} from 'src/hooks/UseCard';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {NavigationPath} from 'src/routes/NavigationPath';
 import Alerts from 'src/routes/Alerts';
+import {CurrentPlanSection} from './CurrentPlanSection';
+import {UsageSection} from './UsageSection';
+import {PaymentMethodSection} from './PaymentMethodSection';
 import MarketplaceDetails from './MarketplaceDetails';
 
 type BillingInformationProps = {
   organizationName: string;
 };
 
-export const BillingInformation = (props: BillingInformationProps) => {
-  const organizationName = props.organizationName;
+const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+
+export const BillingInformation = ({organizationName}: BillingInformationProps) => {
+  const navigate = useNavigate();
   const {user} = useCurrentUser();
   const {addAlert} = useUI();
+
+  const {organization, isUserOrganization, loading} = useOrganization(organizationName);
+
   const {
-    updateUser,
-    loading: userUpdateLoading,
-    error: userUpdateError,
-  } = useUpdateUser({
-    onSuccess: () => {
-      addAlert({
-        title: 'Successfully updated settings',
-        variant: AlertVariant.Success,
-        key: 'alert',
-      });
-    },
-    onError: (err) => {
-      addAlert({
-        title: err.response.data.error_message,
-        variant: AlertVariant.Failure,
-        key: 'alert',
-      });
-    },
-  });
+    currentPlan,
+    currentPlanIsLoading,
+    currentPlanError,
+    plans,
+    privateAllowed,
+    privateCount,
+  } = useUpgradePlan(organizationName, !isUserOrganization);
 
-  const maxPrivate = BigInt(Number.MAX_SAFE_INTEGER);
-
-  const [touched, setTouched] = useState(false);
-  const [invoiceEmail, setInvoiceEmail] = useState(false);
-  const [invoiceEmailAddress, setInvoiceEmailAddress] = useState('');
-
-  type validate = 'success' | 'warning' | 'error' | 'default';
-  const [validated, setValidated] = useState<validate>('success');
-
-  const {organization, isUserOrganization, loading} =
-    useOrganization(organizationName);
-
-  const {updateOrgSettings} = useOrganizationSettings({
-    name: organizationName,
-    onSuccess: () => {
-      addAlert({
-        title: 'Successfully updated settings',
-        variant: AlertVariant.Success,
-        key: 'alert',
-      });
-    },
-    onError: (err) => {
-      addAlert({
-        title: err.response.data.error_message,
-        variant: AlertVariant.Failure,
-        key: 'alert',
-      });
-    },
-  });
-
-  const {currentPlan, privateAllowed, privateCount, upgrade} = useUpgradePlan(
+  const {card, isLoading: cardLoading, isError: cardError} = useCard(
     organizationName,
     !isUserOrganization,
   );
 
-  // total number of private repos allowed (stripe subscription + RH subscription watch)
-  const [totalPrivate, setTotalPrivate] = useState(
-    currentPlan?.usedPrivateRepos || 0,
-  );
+  const {totalResults: publicCount} = useRepositories(organizationName, false);
 
-  const addMarketplacePrivate = (marketplacePrivate: number) => {
-    const sum = marketplacePrivate + (currentPlan?.usedPrivateRepos || 0);
-    setTotalPrivate(sum);
-  };
+  const usedPrivate = currentPlan?.usedPrivateRepos ?? 0;
+  const [totalPrivate, setTotalPrivate] = useState(privateCount ?? 0);
 
-  const error = userUpdateError;
+  useEffect(() => {
+    setTotalPrivate(privateCount ?? 0);
+  }, [privateCount]);
 
-  const updateLoading = userUpdateLoading;
+  const {updateOrgSettings} = useOrganizationSettings({
+    name: organizationName,
+    onSuccess: () =>
+      addAlert({title: 'Successfully updated settings', variant: AlertVariant.Success, key: 'alert'}),
+    onError: (err) =>
+      addAlert({title: err.response.data.error_message, variant: AlertVariant.Failure, key: 'alert'}),
+  });
+
+  const {updateUser, loading: userUpdateLoading, error: userUpdateError} = useUpdateUser({
+    onSuccess: () =>
+      addAlert({title: 'Successfully updated settings', variant: AlertVariant.Success, key: 'alert'}),
+    onError: (err) =>
+      addAlert({title: err.response.data.error_message, variant: AlertVariant.Failure, key: 'alert'}),
+  });
+
+  type validate = 'success' | 'warning' | 'error' | 'default';
+  const [touched, setTouched] = useState(false);
+  const [invoiceEmail, setInvoiceEmail] = useState(false);
+  const [invoiceEmailAddress, setInvoiceEmailAddress] = useState('');
+  const [validated, setValidated] = useState<validate>('success');
+
   useEffect(() => {
     resetFields();
   }, [loading]);
 
   const resetFields = () => {
     if (!loading && organization) {
-      setInvoiceEmail(organization.invoice_email || false);
-      setInvoiceEmailAddress(organization.invoice_email_address || '');
-      if (organization.invoice_email_address) {
-        setValidated('success');
-      } else {
-        setValidated('default');
-      }
+      setInvoiceEmail(organization.invoice_email ?? false);
+      setInvoiceEmailAddress(organization.invoice_email_address ?? '');
+      setValidated(organization.invoice_email_address ? 'success' : 'default');
     } else if (isUserOrganization && user) {
-      setInvoiceEmail(user.invoice_email || false);
-      setInvoiceEmailAddress(user.invoice_email_address || '');
-      if (user.invoice_email_address) {
-        setValidated('success');
-      } else {
-        setValidated('default');
-      }
+      setInvoiceEmail(user.invoice_email ?? false);
+      setInvoiceEmailAddress(user.invoice_email_address ?? '');
+      setValidated(user.invoice_email_address ? 'success' : 'default');
     }
     setTouched(false);
   };
 
-  // don't read quota information for now when fetching repos, since the only thing we care
-  // about is the number of private/public repos
-  const {totalResults} = useRepositories(organizationName, false);
+  // Look up full plan detail from the plans list for price and deprecated flag
+  const planDetail = plans?.find((p) => p.stripeId === currentPlan?.plan) ?? null;
+
+  const isPaymentFailed = currentPlan?.status === 'past_due';
+
+  const totalPrivateDisplay =
+    BigInt(totalPrivate) >= MAX_SAFE ? Number.MAX_SAFE_INTEGER : totalPrivate;
 
   return (
-    <Form id="form-form" width="70%">
-      {error && (
+    <Form id="billing-form" style={{maxWidth: '600px'}}>
+      <Alerts />
+
+      {isPaymentFailed && (
+        <FormAlert>
+          <Alert variant="danger" title="Payment failed" isInline>
+            Your last payment failed. Please update your payment method to avoid service
+            interruption.
+          </Alert>
+        </FormAlert>
+      )}
+
+      {userUpdateError && (
         <FormAlert>
           <Alert
             variant="danger"
             title={
               (
-                error as AxiosError & {
+                userUpdateError as AxiosError & {
                   response?: {data?: {error_message?: string}};
                 }
-              )?.response?.data?.error_message || 'An error occurred'
+              )?.response?.data?.error_message ?? 'An error occurred'
             }
-            aria-live="polite"
             isInline
+            aria-live="polite"
           />
         </FormAlert>
       )}
-      <Flex
-        spaceItems={{default: 'spaceItemsSm'}}
-        direction={{default: 'column'}}
-      >
+
+      <Title headingLevel="h3">Current Plan</Title>
+      <CurrentPlanSection
+        currentPlan={currentPlan ?? null}
+        planDetail={planDetail}
+        isLoading={currentPlanIsLoading}
+        isError={!!currentPlanError}
+      />
+
+      <Title headingLevel="h3">Usage</Title>
+      <UsageSection
+        privateCount={usedPrivate}
+        totalPrivate={totalPrivateDisplay}
+        publicCount={publicCount}
+        isLoading={currentPlanIsLoading}
+        isError={!!currentPlanError}
+      />
+
+      <Title headingLevel="h3">Payment Method</Title>
+      <PaymentMethodSection card={card} isLoading={cardLoading} isError={cardError} />
+
+      <Flex>
         <FlexItem>
-          <Title headingLevel="h3">
-            {currentPlan?.plan.toUpperCase()} organization&apos;s plan
-          </Title>
+          <Button
+            variant="secondary"
+            onClick={() => navigate(NavigationPath.overviewList)}
+          >
+            Change Plan
+          </Button>
         </FlexItem>
-        {privateAllowed ? (
-          <FlexItem>{`${privateCount} of ${
-            totalPrivate >= maxPrivate ? 'unlimited' : totalPrivate
-          } private repositories used`}</FlexItem>
-        ) : null}
-        <FlexItem>{`${totalResults} of unlimited public repositories used`}</FlexItem>
       </Flex>
 
-      <Flex width={'70%'}>
-        <Button
-          variant="secondary"
-          isDisabled={true} // TODO: Enable when we have a payment processor
-          onClick={async () => {
-            await upgrade();
-          }}
-        >
-          Change Plan
-        </Button>
-      </Flex>
+      <MarketplaceDetails
+        organizationName={organizationName}
+        updateTotalPrivate={(mp) =>
+          setTotalPrivate(mp + (privateCount ?? 0))
+        }
+      />
 
+      <Title headingLevel="h3">Invoice Settings</Title>
       <FormGroup fieldId="checkbox">
         <Checkbox
           id="checkbox"
@@ -185,7 +189,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
           isChecked={invoiceEmail}
           onChange={() => {
             setTouched(true);
-            setInvoiceEmail(!invoiceEmail);
+            setInvoiceEmail((v) => !v);
           }}
         />
       </FormGroup>
@@ -207,35 +211,25 @@ export const BillingInformation = (props: BillingInformationProps) => {
             }
           }}
         />
-        <FormHelperText>
-          Invoices will be sent to this e-mail address.
-        </FormHelperText>
+        <FormHelperText>Invoices will be sent to this e-mail address.</FormHelperText>
       </FormGroup>
 
       <Button
         variant="link"
         isInline
-        isDisabled={true} // TODO: Enable when we have a payment processor
+        onClick={() => navigate(`/organization/${organizationName}/invoices`)}
       >
         View Invoices
       </Button>
 
-      <MarketplaceDetails
-        organizationName={props.organizationName}
-        updateTotalPrivate={addMarketplacePrivate}
-      />
-
       <ActionGroup>
-        <Flex
-          justifyContent={{default: 'justifyContentFlexEnd'}}
-          width={'100%'}
-        >
+        <Flex justifyContent={{default: 'justifyContentFlexEnd'}} width="100%">
           <Button
             variant="primary"
             id="save-billing-settings"
             data-testid="billing-save-button"
-            isLoading={updateLoading}
-            isDisabled={!touched || validated == 'error'}
+            isLoading={userUpdateLoading}
+            isDisabled={!touched || validated === 'error'}
             onClick={async (e) => {
               e.preventDefault();
               if (!isUserOrganization) {
@@ -253,16 +247,11 @@ export const BillingInformation = (props: BillingInformationProps) => {
           >
             Save
           </Button>
-          <Button
-            variant="link"
-            onClick={() => resetFields()}
-            isDisabled={!touched}
-          >
+          <Button variant="link" onClick={() => resetFields()} isDisabled={!touched}>
             Cancel
           </Button>
         </Flex>
       </ActionGroup>
-      <Alerts />
     </Form>
   );
 };
