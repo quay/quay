@@ -331,7 +331,9 @@ class RepoMirrorResource(RepositoryParamResource):
             "mirror_type": mirror.mirror_type.name,
             "external_reference": mirror.external_reference,
             "external_registry_username": None if is_readonly else username,
-            "external_registry_config": {} if is_readonly else (mirror.external_registry_config or {}),
+            "external_registry_config": (
+                {} if is_readonly else (mirror.external_registry_config or {})
+            ),
             "sync_interval": mirror.sync_interval,
             "sync_start_date": sync_start_date,
             "sync_expiration_date": sync_expiration_date,
