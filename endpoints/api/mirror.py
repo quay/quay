@@ -13,6 +13,7 @@ from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     define_json_response,
     format_date,
     nickname,
@@ -323,12 +324,14 @@ class RepoMirrorResource(RepositoryParamResource):
         robot = mirror.internal_robot.username if mirror.internal_robot is not None else None
         timeout = mirror.skopeo_timeout
 
+        is_readonly = allow_if_global_readonly_superuser()
+
         return {
             "is_enabled": mirror.is_enabled,
             "mirror_type": mirror.mirror_type.name,
             "external_reference": mirror.external_reference,
-            "external_registry_username": username,
-            "external_registry_config": mirror.external_registry_config or {},
+            "external_registry_username": None if is_readonly else username,
+            "external_registry_config": {} if is_readonly else (mirror.external_registry_config or {}),
             "sync_interval": mirror.sync_interval,
             "sync_start_date": sync_start_date,
             "sync_expiration_date": sync_expiration_date,
