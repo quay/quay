@@ -121,7 +121,19 @@ test.describe(
       }
     });
 
-    test('check that on 2nd pull blob is served from storage', async ({
+    // Known limitation: it's currently difficult to verify that the 2nd pull is not coming from upstream
+    // as blobs are shared across multiple tests and may already be saved in the backend (storage is content
+    // addressable and there's only one blob and one ImageStorage entry per blob). Therefore, we just verify
+    // that the blob can be pulled properly the 2nd time, with no errors raised.
+    //
+    // An improvement would be to add a full lifecycle:
+    // 1. clean up the entire registry so that no blobs are stored locally
+    // 2. create a completely new organization and proxy configuration
+    // 3. pull the image from upstream to verify it contains _upstream_proxy in the Location header
+    // 4. verify blob content (blob SHA and size)
+    // 5. repeat the process verifying that there is no _upstream_proxy in the Location header
+    // 6. verify blob content (blob SHA and size)
+    test('second pull returns 200 with the correct content', async ({
       playwright,
       userContext,
     }) => {
