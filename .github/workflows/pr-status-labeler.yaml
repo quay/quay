@@ -101,12 +101,12 @@ jobs:
               }
             }
 
-            // Handle backport labels for redhat-3.x branches
+            // Handle backport labels for redhat-X.Y branches
             const baseBranch = pr.baseRefName;
-            const backportMatch = baseBranch.match(/^redhat-3\.\d+$/);
+            const backportMatch = baseBranch.match(/^redhat-\d+\.\d+$/);
 
             if (backportMatch) {
-              // PR targets a redhat-3.x branch
+              // PR targets a redhat-X.Y branch
               const expectedBackportLabel = `backport/${baseBranch}`;
 
               // Add the correct backport label if missing
