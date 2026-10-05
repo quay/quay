@@ -51,7 +51,7 @@ def validate_team_name(teamname):
 
 
 def create_team(name, org_obj, team_role_name, description=""):
-    (teamname_valid, teamname_issue) = validate_team_name(name)
+    teamname_valid, teamname_issue = validate_team_name(name)
     if not teamname_valid:
         raise InvalidTeamException("Invalid team name %s: %s" % (name, teamname_issue))
 
@@ -371,11 +371,8 @@ def find_matching_team_invite(code, user_obj):
 
     # If the invite is for a specific user, we have to confirm that here.
     if found.user is not None and found.user != user_obj:
-        message = (
-            """This invite is intended for user "%s".
-                 Please login to that account and try again."""
-            % found.user.username
-        )
+        message = """This invite is intended for user "%s".
+                 Please login to that account and try again.""" % found.user.username
         raise DataModelException(message)
 
     return found
@@ -422,18 +419,12 @@ def confirm_team_invite(code, user_obj):
 
     if not code_found:
         if found.user:
-            message = (
-                """This invite is intended for user "%s".
-                   Please login to that account and try again."""
-                % found.user.username
-            )
+            message = """This invite is intended for user "%s".
+                   Please login to that account and try again.""" % found.user.username
             raise DataModelException(message)
         else:
-            message = (
-                """This invite is intended for email "%s".
-                   Please login to that account and try again."""
-                % found.email
-            )
+            message = """This invite is intended for email "%s".
+                   Please login to that account and try again.""" % found.email
             raise DataModelException(message)
 
     team = found.team
@@ -603,19 +594,25 @@ def delete_all_team_members(team):
     return 0
 
 
-def get_oidc_team_from_groupname(group_name, login_service_name):
+def get_oidc_teams_from_groupname(group_names, login_service_name):
     """
-    Fetch TeamSync row synced with login_service_name from `group_name` in TeamSync.config
+    Fetches all TeamSync rows for all groups at once, doing one query per lookup, for the provided
+    login service. Returns a list of all synced teams.
     """
     response = []
+    group_names_set = set(group_names)
+
     query_result = (
-        TeamSync.select()
+        TeamSync.select(TeamSync, Team)
         .join(LoginService)
-        .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
+        .switch(TeamSync)
+        .join(Team)
+        .where(LoginService.name == login_service_name)
     )
 
     for row in query_result:
-        if json.loads(row.config).get("group_name", None) == group_name:
+        group_name = json.loads(row.config).get("group_name")
+        if group_name and group_name in group_names_set:
             response.append(row)
 
     return response

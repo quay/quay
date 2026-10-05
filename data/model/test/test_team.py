@@ -1,8 +1,9 @@
 import json
+from unittest.mock import patch
 
 import pytest
 
-from data.database import TeamMember
+from data.database import TeamMember, db
 from data.model import DataModelException, UserAlreadyInTeam
 from data.model.organization import create_organization
 from data.model.team import (
@@ -13,7 +14,7 @@ from data.model.team import (
     create_team,
     delete_all_team_members,
     get_federated_user_teams,
-    get_oidc_team_from_groupname,
+    get_oidc_teams_from_groupname,
     list_team_users,
     remove_team,
     remove_user_from_team,
@@ -188,20 +189,42 @@ def test_user_exists_in_team(initialized_db):
     assert user_exists_in_team(dev_user, team_2) is False
 
 
-def test_get_oidc_team_from_groupname(initialized_db):
+def test_get_oidc_teams_from_groupname(initialized_db):
     dev_user = get_user("devtable")
     new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
 
     team_1 = create_team("team_1", new_org, "member")
     assert add_user_to_team(dev_user, team_1)
     assert set_team_syncing(team_1, "oidc", {"group_name": "grp1"})
-    response = get_oidc_team_from_groupname(group_name="grp1", login_service_name="oidc")
+    response = get_oidc_teams_from_groupname(["grp1"], "oidc")
     assert len(response) == 1
     assert response[0].team.name == "team_1"
     assert json.loads(response[0].config).get("group_name") == "grp1"
 
-    response = get_oidc_team_from_groupname(group_name="team_1", login_service_name="ldap")
+    response = get_oidc_teams_from_groupname(["team_1"], "ldap")
     assert len(response) == 0
 
-    response = get_oidc_team_from_groupname(group_name="team_1", login_service_name="ldap")
+    response = get_oidc_teams_from_groupname(["team_1"], "ldap")
     assert len(response) == 0
+
+
+def test_get_oidc_teams_from_groupname_single_query(initialized_db):
+    """
+    Verifies that the call produces exactly one query during team syncing.
+    """
+    dev_user = get_user("devtable")
+    new_org = create_organization("querytestorg", "query" + "@test.org", dev_user)
+    team_1 = create_team("team-1", new_org, "member")
+
+    set_team_syncing(team_1, "oidc", {"group_name": "target_group"})
+
+    # create a large group list (500 + 1) members
+    large_group_list = [f"group_{i}" for i in range(500)] + ["target_group"]
+
+    # perform check
+    with patch.object(db.obj, "execute_sql", wraps=db.obj.execute_sql) as mock_sql:
+        result = get_oidc_teams_from_groupname(large_group_list, "oidc")
+
+    assert len(result) == 1
+    assert result[0].team.name == "team-1"
+    assert mock_sql.call_count == 1
