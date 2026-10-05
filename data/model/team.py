@@ -602,11 +602,14 @@ def get_oidc_teams_from_groupname(group_names, login_service_name):
     response = []
     group_names_set = set(group_names)
 
+    Org = User.alias()
+
     query_result = (
-        TeamSync.select(TeamSync, Team)
+        TeamSync.select(TeamSync, Team, Org)
         .join(LoginService)
         .switch(TeamSync)
         .join(Team)
+        .join(Org, on=(Org.id == Team.organization))
         .where(LoginService.name == login_service_name)
     )
 
