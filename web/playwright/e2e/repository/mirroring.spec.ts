@@ -623,3 +623,122 @@ test.describe(
     });
   },
 );
+
+/**
+ * Ambient process-proxy SSRF fallback for repository mirrors.
+ *
+ * Requires a Quay deployment where the Quay process already has HTTP_PROXY/
+ * HTTPS_PROXY (or ALL_PROXY) and SSRF_ALLOWED_HOSTS includes the upstream
+ * hostname. Mirror UI/API proxy fields stay empty so validation must fall
+ * back to process env (resolve_proxy_config_for_ssrf).
+ *
+ * Run with:
+ *   PLAYWRIGHT_PROXY_SSRF_E2E=1 \
+ *   PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE=<allowlisted-host/ns/repo> \
+ *   npx playwright test web/playwright/e2e/repository/mirroring.spec.ts \
+ *     --grep ambient
+ */
+const repoMirrorAmbientProxySsrfE2E =
+  process.env.PLAYWRIGHT_PROXY_SSRF_E2E === '1';
+
+test.describe(
+  'Repository mirror ambient env proxy SSRF deployment',
+  {tag: ['@repository', '@feature:REPO_MIRROR', '@PROJQUAY-12833']},
+  () => {
+    test.skip(
+      !repoMirrorAmbientProxySsrfE2E,
+      'requires Quay process proxy + allowlist (PLAYWRIGHT_PROXY_SSRF_E2E=1)',
+    );
+
+    test('creates mirror config with empty proxy when Quay has ambient proxy', async ({
+      api,
+    }) => {
+      const externalReference =
+        process.env.PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE;
+      test.skip(
+        !externalReference,
+        'PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE not set',
+      );
+
+      const org = await api.organization('mirrorenvproxy');
+      const repo = await api.repository(org.name, 'envproxyrepo');
+      const robot = await api.robot(org.name, 'envproxybot');
+      await api.setMirrorState(org.name, repo.name);
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: externalReference,
+        sync_interval: 86400,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {
+          rule_kind: 'tag_glob_csv',
+          rule_value: ['latest'],
+        },
+        robot_username: robot.fullName,
+        is_enabled: false,
+        external_registry_config: {
+          verify_tls: true,
+          unsigned_images: false,
+          proxy: {
+            http_proxy: null,
+            https_proxy: null,
+            no_proxy: null,
+          },
+        },
+      });
+
+      const mirrorConfig = await api.raw.getMirrorConfig(org.name, repo.name);
+      expect(mirrorConfig).not.toBeNull();
+      expect(mirrorConfig?.external_reference).toBe(externalReference);
+      expect(
+        mirrorConfig?.external_registry_config?.proxy?.http_proxy,
+      ).toBeFalsy();
+      expect(
+        mirrorConfig?.external_registry_config?.proxy?.https_proxy,
+      ).toBeFalsy();
+    });
+
+    test('rejects non-allowlisted unresolved upstream with empty proxy', async ({
+      api,
+    }) => {
+      const externalReference =
+        process.env.PLAYWRIGHT_REPO_MIRROR_NON_ALLOWLISTED_EXTERNAL_REFERENCE ??
+        'non-allowlisted-isolated.example.com/team/repo';
+
+      const org = await api.organization('mirrorenvfail');
+      const repo = await api.repository(org.name, 'envfailrepo');
+      const robot = await api.robot(org.name, 'envfailbot');
+      await api.setMirrorState(org.name, repo.name);
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await expect(
+        api.raw.createMirrorConfig(org.name, repo.name, {
+          external_reference: externalReference,
+          sync_interval: 86400,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+          root_rule: {
+            rule_kind: 'tag_glob_csv',
+            rule_value: ['latest'],
+          },
+          robot_username: robot.fullName,
+          is_enabled: false,
+          external_registry_config: {
+            verify_tls: true,
+            proxy: {
+              http_proxy: null,
+              https_proxy: null,
+              no_proxy: null,
+            },
+          },
+        }),
+      ).rejects.toThrow(/400|not allowed/i);
+
+      const mirrorConfig = await api.raw.getMirrorConfig(org.name, repo.name);
+      expect(mirrorConfig).toBeNull();
+    });
+  },
+);

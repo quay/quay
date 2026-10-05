@@ -27,7 +27,10 @@ from data.registry_model import registry_model
 from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
-from util.security.ssrf import validate_external_registry_reference
+from util.security.ssrf import (
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_reference,
+)
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
 logger = logging.getLogger(__name__)
@@ -114,6 +117,9 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             mirror.external_reference,
             resolve_dns=True,
             allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+            proxy_config=resolve_proxy_config_for_ssrf(
+                (mirror.external_registry_config or {}).get("proxy")
+            ),
         )
     except ValueError:
         logger.warning(
