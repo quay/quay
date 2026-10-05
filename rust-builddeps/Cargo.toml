@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 asn1 = { version = "0.21.3", default-features = false }
+maturin = { version = "=1.12.6", default-features = false }
 pyo3 = { version = "0.27", features = ["abi3"] }
 pyo3-build-config = { version = "0.25" }
 openssl = "0.10.72"
