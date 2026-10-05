@@ -594,19 +594,25 @@ def delete_all_team_members(team):
     return 0
 
 
-def get_oidc_team_from_groupname(group_name, login_service_name):
+def get_oidc_teams_from_groupname(group_names, login_service_name):
     """
-    Fetch TeamSync row synced with login_service_name from `group_name` in TeamSync.config
+    Fetches all TeamSync rows for all groups at once, doing one query per lookup, for the provided
+    login service. Returns a list of all synced teams.
     """
     response = []
+    group_names_set = set(group_names)
+
     query_result = (
-        TeamSync.select()
+        TeamSync.select(TeamSync, Team)
         .join(LoginService)
-        .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
+        .switch(TeamSync)
+        .join(Team)
+        .where(LoginService.name == login_service_name)
     )
 
     for row in query_result:
-        if json.loads(row.config).get("group_name", None) == group_name:
+        group_name = json.loads(row.config).get("group_name")
+        if group_name and group_name in group_names_set:
             response.append(row)
 
     return response
