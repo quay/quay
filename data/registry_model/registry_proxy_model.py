@@ -40,7 +40,12 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
-from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
+from data.model.storage import (
+    get_image_location_for_id,
+    get_layer_path,
+    get_or_create_blob_with_lock,
+    with_blob_lock_or_fallback,
+)
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -717,7 +722,9 @@ class ProxyModel(OCIModel):
         Returns true if a provided blob needs downloading, or false otherwise.
         """
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
         except ImageStoragePlacement.DoesNotExist:
             return True
 
