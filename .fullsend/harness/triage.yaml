@@ -1,0 +1,29 @@
+# Quay Jira-aware triage harness with the Quay communication skill.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/883141b9508c657c3c4235c8cd7c86577f0b47a9/harness/triage.yaml#sha256=3aa32e9f66ad6a9b60a75f50d3adc6ae39ebfb425c3928381e019436498bf2aa
+model: claude-sonnet-4-6
+
+trigger: >
+  event.entity.kind == "work_item"
+    && (
+      event.transition.kind == "opened"
+      ||
+      (event.transition.kind == "comment_added"
+        && has(event.transition.comment.command)
+        && event.transition.comment.command == "/fs-triage")
+    )
+
+overlays:
+  - when: 'runtime.forge == "jira"'
+    env:
+      runner:
+        JIRA_DUPLICATE_TRANSITION: Closed
+        JIRA_NOT_PLANNED_TRANSITION: Closed
+        JIRA_SPLIT_TRANSITION: Closed
+
+skills:
+  - https://github.com/quay/ai-helpers/tree/eddcd18a9a667c2e90bd6eda822ef6b999259cbe/plugins/dev/skills/caveman#sha256=6430b571b0df04d92be7f95515632ee9865d39dfe8fb4dd0ccf647be3b991322
+
+allowed_remote_resources:
+  - https://raw.githubusercontent.com/fullsend-ai/agents/
+  - https://github.com/quay/ai-helpers/
+allow_runtime_fetch: true
