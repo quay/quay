@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Merge YAML files (later files override earlier ones)."""
+
 import sys
 
 import yaml

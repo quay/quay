@@ -24,7 +24,7 @@ def greenlet_callback(event, args):
     """
     if event in ("switch", "throw"):
         # It's only safe to unpack args under these two events.
-        (origin, _target) = args
+        origin, _target = args
 
         if origin is get_hub():
             # This greenlet is the one that manages the loop itself, thus noop.

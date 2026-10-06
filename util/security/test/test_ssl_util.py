@@ -49,7 +49,7 @@ def test_load_certificate():
         load_certificate("someinvalidcontents")
 
     # Load a valid certificate.
-    (public_key_data, _) = generate_test_cert()
+    public_key_data, _ = generate_test_cert()
 
     cert = load_certificate(public_key_data)
     assert not cert.expired
@@ -58,14 +58,14 @@ def test_load_certificate():
 
 
 def test_expired_certificate():
-    (public_key_data, _) = generate_test_cert(expires=-100)
+    public_key_data, _ = generate_test_cert(expires=-100)
 
     cert = load_certificate(public_key_data)
     assert cert.expired
 
 
 def test_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"DNS:bar", b"DNS:baz"])
+    public_key_data, _ = generate_test_cert(hostname="foo", san_list=[b"DNS:bar", b"DNS:baz"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo", "bar", "baz"])
 
@@ -74,7 +74,7 @@ def test_hostnames():
 
 
 def test_wildcard_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"DNS:*.bar"])
+    public_key_data, _ = generate_test_cert(hostname="foo", san_list=[b"DNS:*.bar"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo", "*.bar"])
 
@@ -88,13 +88,13 @@ def test_wildcard_hostnames():
 
 
 def test_nondns_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"URI:yarg"])
+    public_key_data, _ = generate_test_cert(hostname="foo", san_list=[b"URI:yarg"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo"])
 
 
 def test_validate_private_key():
-    (public_key_data, private_key_data) = generate_test_cert()
+    public_key_data, private_key_data = generate_test_cert()
 
     private_key = NamedTemporaryFile(delete=True)
     private_key.write(private_key_data)
@@ -105,7 +105,7 @@ def test_validate_private_key():
 
 
 def test_invalid_private_key():
-    (public_key_data, _) = generate_test_cert()
+    public_key_data, _ = generate_test_cert()
 
     private_key = NamedTemporaryFile(delete=True)
     private_key.write(b"somerandomdata")
@@ -117,8 +117,8 @@ def test_invalid_private_key():
 
 
 def test_mismatch_private_key():
-    (public_key_data, _) = generate_test_cert()
-    (_, private_key_data) = generate_test_cert()
+    public_key_data, _ = generate_test_cert()
+    _, private_key_data = generate_test_cert()
 
     private_key = NamedTemporaryFile(delete=True)
     private_key.write(private_key_data)

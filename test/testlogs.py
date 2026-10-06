@@ -72,12 +72,12 @@ class TestBuildLogs(RedisBuildLogs):
         self._last_status = {}
 
     def advance_script(self, is_get_status):
-        (_, log, status_wrapper) = self.remaining_script.pop(0)
+        _, log, status_wrapper = self.remaining_script.pop(0)
         if log is not None:
             self._logs.append(log)
 
         if status_wrapper is not None:
-            (phase, status) = status_wrapper
+            phase, status = status_wrapper
 
             if not is_get_status:
                 from data import model

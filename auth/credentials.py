@@ -217,7 +217,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             )
 
     # Otherwise, treat as a standard user.
-    (authenticated, err) = authentication.verify_and_link_user(
+    authenticated, err = authentication.verify_and_link_user(
         auth_username, auth_password_or_token, basic_auth=True
     )
     if authenticated:

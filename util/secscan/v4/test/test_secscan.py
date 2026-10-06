@@ -53,7 +53,7 @@ def test_index_report(api, initialized_db):
         assert manifest.digest not in security_scanner.index_reports.keys()
         assert api.index_report(manifest.digest) is None
 
-        (report, state) = api.index(manifest, layers)
+        report, state = api.index(manifest, layers)
 
         assert report is not None
         assert manifest.digest in security_scanner.index_reports.keys()

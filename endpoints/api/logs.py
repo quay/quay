@@ -79,7 +79,7 @@ def _get_logs(
     page_token=None,
     filter_kinds=None,
 ):
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
     try:
@@ -118,7 +118,7 @@ def _get_logs(
 def _get_aggregate_logs(
     start_time, end_time, performer_name=None, repository=None, namespace=None, filter_kinds=None
 ):
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
     try:
@@ -373,7 +373,7 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
         if callback_email.find("@") < 0:
             raise InvalidRequest("Invalid callback e-mail")
 
-    (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    start_time, end_time = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         raise InvalidLogsDateRangeError("Invalid time span selected")
     export_id = logs_model.queue_logs_export(

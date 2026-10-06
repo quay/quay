@@ -47,7 +47,7 @@ def login_fips_safe(self, user, password, *, initial_response_ok=True):
     for authmethod in authlist:
         method_name = "auth_" + authmethod.lower().replace("-", "_")
         try:
-            (code, resp) = self.auth(
+            code, resp = self.auth(
                 authmethod, getattr(self, method_name), initial_response_ok=initial_response_ok
             )
             # 235 == 'Authentication successful'

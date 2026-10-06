@@ -322,23 +322,23 @@ class KeystoneAuthTestsMixin:
 
     def test_invalid_user(self):
         with self.fake_keystone() as keystone:
-            (user, _) = keystone.verify_credentials("unknownuser", "password")
+            user, _ = keystone.verify_credentials("unknownuser", "password")
             self.assertIsNone(user)
 
     def test_invalid_password(self):
         with self.fake_keystone() as keystone:
-            (user, _) = keystone.verify_credentials("cool.user", "notpassword")
+            user, _ = keystone.verify_credentials("cool.user", "notpassword")
             self.assertIsNone(user)
 
     def test_cooluser(self):
         with self.fake_keystone() as keystone:
-            (user, _) = keystone.verify_credentials("cool.user", "password")
+            user, _ = keystone.verify_credentials("cool.user", "password")
             self.assertEqual(user.username, "cool.user")
             self.assertEqual(user.email, "cool.user@example.com" if self.emails else None)
 
     def test_neatuser(self):
         with self.fake_keystone() as keystone:
-            (user, _) = keystone.verify_credentials("some.neat.user", "foobar")
+            user, _ = keystone.verify_credentials("some.neat.user", "foobar")
             self.assertEqual(user.username, "some.neat.user")
             self.assertEqual(user.email, "some.neat.user@example.com" if self.emails else None)
 
@@ -380,7 +380,7 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
     def test_query(self):
         with self.fake_keystone() as keystone:
             # Lookup cool.
-            (response, federated_id, error_message) = keystone.query_users("cool")
+            response, federated_id, error_message = keystone.query_users("cool")
             self.assertIsNone(error_message)
             self.assertEqual(1, len(response))
             self.assertEqual("keystone", federated_id)
@@ -389,7 +389,7 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             self.assertEqual("cool.user", user_info.username)
 
             # Lookup unknown.
-            (response, federated_id, error_message) = keystone.query_users("unknown")
+            response, federated_id, error_message = keystone.query_users("unknown")
             self.assertIsNone(error_message)
             self.assertEqual(0, len(response))
             self.assertEqual("keystone", federated_id)
@@ -414,21 +414,21 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
 
     def test_check_group_lookup_args(self):
         with self.fake_keystone() as keystone:
-            (status, err) = keystone.check_group_lookup_args({})
+            status, err = keystone.check_group_lookup_args({})
             self.assertFalse(status)
             self.assertEqual("Missing group_id", err)
 
-            (status, err) = keystone.check_group_lookup_args({"group_id": "unknownid"})
+            status, err = keystone.check_group_lookup_args({"group_id": "unknownid"})
             self.assertFalse(status)
             self.assertEqual("Group not found", err)
 
-            (status, err) = keystone.check_group_lookup_args({"group_id": "somegroupid"})
+            status, err = keystone.check_group_lookup_args({"group_id": "somegroupid"})
             self.assertTrue(status)
             self.assertIsNone(err)
 
     def test_iterate_group_members(self):
         with self.fake_keystone() as keystone:
-            (itt, err) = keystone.iterate_group_members({"group_id": "somegroupid"})
+            itt, err = keystone.iterate_group_members({"group_id": "somegroupid"})
             self.assertIsNone(err)
 
             results = list(itt)
@@ -450,7 +450,7 @@ class KeystoneRestrictedUsers(KeystoneAuthTestsMixin, unittest.TestCase):
         with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
             with self.fake_keystone() as keystone:
                 # Lookup cool.
-                (response, federated_id, error_message) = keystone.query_users("cool")
+                response, federated_id, error_message = keystone.query_users("cool")
                 self.assertIsNone(error_message)
                 self.assertEqual(1, len(response))
                 self.assertEqual("keystone", federated_id)

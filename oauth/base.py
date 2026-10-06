@@ -39,7 +39,7 @@ class OAuthEndpoint(object):
         return OAuthEndpoint(self.base_url, params_copy)
 
     def to_url(self):
-        (scheme, netloc, path, _, fragment) = urllib.parse.urlsplit(self.base_url)
+        scheme, netloc, path, _, fragment = urllib.parse.urlsplit(self.base_url)
         updated_query = urllib.parse.urlencode(self.params)
         return urllib.parse.urlunsplit((scheme, netloc, path, updated_query, fragment))
 

@@ -14,7 +14,7 @@ def generate_key(service, name, expiration_date=None, notes=None):
     }
 
     # Generate a key with a private key that we *never save*.
-    (private_key, key) = model.service_keys.generate_service_key(
+    private_key, key = model.service_keys.generate_service_key(
         service, expiration_date, metadata=metadata, name=name
     )
     # Auto-approve the service key.

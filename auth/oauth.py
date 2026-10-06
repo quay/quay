@@ -34,7 +34,7 @@ def validate_bearer_auth(auth_header):
         logger.debug("Got invalid bearer token format: %s", auth_header)
         return ValidateResult(AuthKind.oauth, missing=True)
 
-    (_, oauth_token) = normalized
+    _, oauth_token = normalized
     return validate_oauth_token(oauth_token)
 
 

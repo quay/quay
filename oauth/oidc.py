@@ -111,7 +111,7 @@ class OIDCLoginService(OAuthService):
         if not endpoint:
             return None
 
-        (scheme, netloc, path, query, fragment) = urllib.parse.urlsplit(endpoint)
+        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(endpoint)
 
         # Add the query parameters from the kwargs and the config.
         custom_parameters = self.config.get("OIDC_ENDPOINT_CUSTOM_PARAMS", {}).get(endpoint_key, {})

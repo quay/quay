@@ -98,7 +98,7 @@ class TriggerAnalyzer(object):
             msg = '"%s" is not a valid Quay repository path' % base_image
             return self.analyze_view(self.namespace_name, None, "warning", message=msg)
 
-        (base_namespace, base_repository) = result
+        base_namespace, base_repository = result
         found_repository = model.repository.get_repository(base_namespace, base_repository)
         if not found_repository:
             return self.analyze_view(

@@ -51,7 +51,7 @@ def validate_team_name(teamname):
 
 
 def create_team(name, org_obj, team_role_name, description=""):
-    (teamname_valid, teamname_issue) = validate_team_name(name)
+    teamname_valid, teamname_issue = validate_team_name(name)
     if not teamname_valid:
         raise InvalidTeamException("Invalid team name %s: %s" % (name, teamname_issue))
 
@@ -371,11 +371,8 @@ def find_matching_team_invite(code, user_obj):
 
     # If the invite is for a specific user, we have to confirm that here.
     if found.user is not None and found.user != user_obj:
-        message = (
-            """This invite is intended for user "%s".
-                 Please login to that account and try again."""
-            % found.user.username
-        )
+        message = """This invite is intended for user "%s".
+                 Please login to that account and try again.""" % found.user.username
         raise DataModelException(message)
 
     return found
@@ -422,18 +419,12 @@ def confirm_team_invite(code, user_obj):
 
     if not code_found:
         if found.user:
-            message = (
-                """This invite is intended for user "%s".
-                   Please login to that account and try again."""
-                % found.user.username
-            )
+            message = """This invite is intended for user "%s".
+                   Please login to that account and try again.""" % found.user.username
             raise DataModelException(message)
         else:
-            message = (
-                """This invite is intended for email "%s".
-                   Please login to that account and try again."""
-                % found.email
-            )
+            message = """This invite is intended for email "%s".
+                   Please login to that account and try again.""" % found.email
             raise DataModelException(message)
 
     team = found.team

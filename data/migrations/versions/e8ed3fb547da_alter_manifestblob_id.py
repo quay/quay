@@ -26,36 +26,24 @@ def upgrade(op, tables, tester):
                 if str(col["type"]).lower() == "bigint":
                     return
 
-        op.execute(
-            """
+        op.execute("""
             ALTER TABLE manifestblob ALTER COLUMN id TYPE BIGINT;
-        """
-        )
-        op.execute(
-            """
+        """)
+        op.execute("""
             ALTER SEQUENCE manifestblob_id_seq AS BIGINT;
-        """
-        )
-        op.execute(
-            """
+        """)
+        op.execute("""
             ALTER SEQUENCE manifestblob_id_seq MAXVALUE 9223372036854775807;
-        """
-        )
+        """)
 
 
 def downgrade(op, tables, tester):
-    op.execute(
-        """
+    op.execute("""
         ALTER TABLE manifestblob ALTER COLUMN id TYPE INTEGER;
-    """
-    )
-    op.execute(
-        """
+    """)
+    op.execute("""
         ALTER SEQUENCE manifestblob_id_seq AS INTEGER;
-    """
-    )
-    op.execute(
-        """
+    """)
+    op.execute("""
         ALTER SEQUENCE manifestblob_id_seq MAXVALUE 2147483647;
-    """
-    )
+    """)

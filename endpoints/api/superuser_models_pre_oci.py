@@ -161,7 +161,7 @@ class PreOCIModel(SuperuserDataInterface):
     def generate_service_key(
         self, service, expiration_date, kid=None, name="", metadata=None, rotation_duration=None
     ):
-        (private_key, key) = model.service_keys.generate_service_key(
+        private_key, key = model.service_keys.generate_service_key(
             service, expiration_date, metadata=metadata, name=name
         )
 
