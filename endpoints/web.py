@@ -77,7 +77,7 @@ from health.healthcheck import get_healthchecker
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
-from util.registry.gzipinputstream import GzipInputStream
+from util.registry.gzipinputstream import GzipInputStream, UnrecognizedStreamError
 from util.request import crossorigin, get_request_ip
 from util.useremails import send_email_changed
 
@@ -300,7 +300,7 @@ def privacy():
 @no_cache
 def instance_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_instance()
+    data, status_code = checker.check_instance()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -312,7 +312,7 @@ def instance_health():
 @no_cache
 def endtoend_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_endtoend()
+    data, status_code = checker.check_endtoend()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -323,7 +323,7 @@ def endtoend_health():
 @no_cache
 def warning_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_warning()
+    data, status_code = checker.check_warning()
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
@@ -462,10 +462,25 @@ def logarchive(file_id):
     try:
         path = log_archive.get_file_id_path(file_id)
         data_stream = log_archive._storage.stream_read_file(log_archive._locations, path)
-        return send_file(GzipInputStream(data_stream), mimetype=JSON_MIMETYPE)
     except IOError:
         logger.exception("Could not read archived logs")
         abort(403)
+
+    try:
+        stream = GzipInputStream(data_stream)
+    except UnrecognizedStreamError as e:
+        logger.error(
+            "Archived build logs for %s are neither gzip nor JSON; first bytes: %s",
+            file_id,
+            e.head.hex(),
+        )
+        response = jsonify({"error": "Archived logs are unreadable"})
+        response.status_code = 500
+        return response
+
+    if stream.passthrough:
+        logger.warning("Archived build logs for %s arrived already decoded", file_id)
+    return send_file(stream, mimetype=JSON_MIMETYPE)
 
 
 @web.route("/receipt", methods=["GET"])
