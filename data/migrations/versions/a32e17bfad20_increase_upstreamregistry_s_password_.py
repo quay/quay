@@ -20,12 +20,10 @@ def upgrade(op, tables, tester):
         )
 
     # Copyy data from the old column to the new column
-    op.execute(
-        """
+    op.execute("""
         UPDATE repomirrorconfig
         SET external_registry_password_new = external_registry_password
-    """
-    )
+    """)
 
     with op.batch_alter_table("repomirrorconfig") as batch_op:
         batch_op.drop_column("external_registry_password")
@@ -44,12 +42,10 @@ def downgrade(op, tables, tester):
         )
 
     # Copy data from the new column to the old column
-    op.execute(
-        """
+    op.execute("""
         UPDATE repomirrorconfig
         SET external_registry_password_old = external_registry_password
-    """
-    )
+    """)
 
     with op.batch_alter_table("repomirrorconfig") as batch_op:
         batch_op.drop_column("external_registry_password")

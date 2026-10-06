@@ -199,10 +199,10 @@ def test_syncing(
 
     # Add the existing starting members to the team.
     for starting_member in starting_membership:
-        (quay_username, fakeauth_username) = starting_member
+        quay_username, fakeauth_username = starting_member
         if "+" in quay_username:
             # Add a robot.
-            (_, shortname) = parse_robot_username(quay_username)
+            _, shortname = parse_robot_username(quay_username)
             robot, _ = model.user.create_robot(shortname, org)
             model.team.add_user_to_team(robot, sync_team_info.team)
         else:

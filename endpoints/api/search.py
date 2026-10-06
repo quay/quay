@@ -60,7 +60,7 @@ class LinkExternalEntity(ApiResource):
             raise Unauthorized()
 
         # Try to link the user with the given *external* username, to an internal record.
-        (user, err_msg) = authentication.link_user(username)
+        user, err_msg = authentication.link_user(username)
         if user is None:
             raise InvalidRequest(err_msg, payload={"username": username})
 

@@ -288,7 +288,7 @@ class KeystoneV3Users(FederatedUsers):
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         group_id = group_lookup_args["group_id"]
 
-        (status, err) = self._check_group(group_id)
+        status, err = self._check_group(group_id)
         if not status:
             return (None, err)
 

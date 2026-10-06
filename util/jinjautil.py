@@ -47,8 +47,8 @@ def user_reference(username):
 
 
 def repository_tag_reference(repository_path_and_tag):
-    (repository_path, tag) = repository_path_and_tag
-    (namespace, repository) = repository_path.split("/", maxsplit=1)
+    repository_path, tag = repository_path_and_tag
+    namespace, repository = repository_path.split("/", maxsplit=1)
     owner = model.user.get_namespace_user(namespace)
     if not owner:
         return tag
@@ -64,7 +64,7 @@ def repository_tag_reference(repository_path_and_tag):
 
 def repository_reference(pair):
     if isinstance(pair, tuple):
-        (namespace, repository) = pair
+        namespace, repository = pair
     else:
         pair = pair.split("/", maxsplit=1)
         namespace = pair[0]
@@ -108,9 +108,7 @@ def admin_reference(username):
     else:
         return """
     <a href="%s/user/">account settings</a>
-    """ % (
-            get_app_url()
-        )
+    """ % (get_app_url())
 
 
 def get_template_env(searchpath):

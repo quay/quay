@@ -534,7 +534,7 @@ class GithubBuildTrigger(BuildTriggerHandler):
             return tags[tag_name].commit.sha
 
         # Find the branch or tag to build.
-        (commit_sha, ref) = determine_build_ref(
+        commit_sha, ref = determine_build_ref(
             run_parameters, get_branch_sha, get_tag_sha, default_branch
         )
 

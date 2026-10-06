@@ -264,7 +264,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         if len(token_parts) != 2:
             token_parts = ["invalid", "invalid"]
 
-        (access_token, access_token_secret) = token_parts
+        access_token, access_token_secret = token_parts
         return base_client.get_authorized_client(access_token, access_token_secret)
 
     def _get_repository_client(self):
@@ -272,7 +272,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         Returns an API client for working with this config's BB repository.
         """
         source = self.config["build_source"]
-        (namespace, name) = source.split("/")
+        namespace, name = source.split("/")
         bitbucket_client = self._get_authorized_client()
         return bitbucket_client.for_namespace(namespace).repositories().get(name)
 
@@ -280,7 +280,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         """
         Returns the default branch for the repository or the value given.
         """
-        (result, data, _) = repository.get_main_branch()
+        result, data, _ = repository.get_main_branch()
         if result:
             return data["name"]
 
@@ -291,7 +291,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         Returns the OAuth URL to authorize Bitbucket.
         """
         bitbucket_client = self._get_client()
-        (result, data, err_msg) = bitbucket_client.get_authorization_url()
+        result, data, err_msg = bitbucket_client.get_authorization_url()
         if not result:
             raise TriggerProviderException(err_msg)
 
@@ -306,9 +306,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         access_token_secret = self.auth_token
 
         # Exchange the verifier for a new access token.
-        (result, data, _) = bitbucket_client.verify_token(
-            access_token, access_token_secret, verifier
-        )
+        result, data, _ = bitbucket_client.verify_token(access_token, access_token_secret, verifier)
         if not result:
             return False
 
@@ -317,7 +315,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         # Retrieve the current authorized user's information and store the username in the config.
         authorized_client = self._get_authorized_client()
-        (result, data, _) = authorized_client.get_current_user()
+        result, data, _ = authorized_client.get_current_user()
         if not result:
             return False
 
@@ -341,7 +339,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         ]
 
         repository = self._get_repository_client()
-        (result, created_deploykey, err_msg) = repository.deploykeys().create(
+        result, created_deploykey, err_msg = repository.deploykeys().create(
             app.config["REGISTRY_TITLE"] + " webhook key", public_key.decode("ascii")
         )
 
@@ -354,7 +352,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         # Add a webhook callback.
         description = "Webhook for invoking builds on %s" % app.config["REGISTRY_TITLE_SHORT"]
         webhook_events = ["repo:push"]
-        (result, created_webhook, err_msg) = repository.webhooks().create(
+        result, created_webhook, err_msg = repository.webhooks().create(
             description, standard_webhook_url, webhook_events
         )
 
@@ -375,14 +373,14 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         # Remove the webhook.
         if webhook_id is not None:
-            (result, _, err_msg) = repository.webhooks().delete(webhook_id)
+            result, _, err_msg = repository.webhooks().delete(webhook_id)
             if not result:
                 msg = "Unable to remove webhook from repository: %s" % err_msg
                 raise TriggerDeactivationException(msg)
 
         # Remove the public key.
         if deploy_key_id is not None:
-            (result, _, err_msg) = repository.deploykeys().delete(deploy_key_id)
+            result, _, err_msg = repository.deploykeys().delete(deploy_key_id)
             if not result:
                 msg = "Unable to remove deploy key from repository: %s" % err_msg
                 raise TriggerDeactivationException(msg)
@@ -391,7 +389,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
     def list_build_source_namespaces(self):
         bitbucket_client = self._get_authorized_client()
-        (result, data, err_msg) = bitbucket_client.get_visible_repositories()
+        result, data, err_msg = bitbucket_client.get_visible_repositories()
         if not result:
             raise RepositoryReadException("Could not read repository list: " + err_msg)
 
@@ -428,7 +426,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             }
 
         bitbucket_client = self._get_authorized_client()
-        (result, data, err_msg) = bitbucket_client.get_visible_repositories()
+        result, data, err_msg = bitbucket_client.get_visible_repositories()
         if not result:
             raise RepositoryReadException("Could not read repository list: " + err_msg)
 
@@ -445,7 +443,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         if not branches:
             branches = [self._get_default_branch(repository)]
 
-        (result, data, err_msg) = repository.get_path_contents("", revision=branches[0])
+        result, data, err_msg = repository.get_path_contents("", revision=branches[0])
         if not result:
             raise RepositoryReadException(err_msg)
 
@@ -460,7 +458,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         repository = self._get_repository_client()
         path = self.get_dockerfile_path()
 
-        (result, data, err_msg) = repository.get_raw_path_contents(path, revision="master")
+        result, data, err_msg = repository.get_raw_path_contents(path, revision="master")
         if not result:
             return None
 
@@ -471,13 +469,13 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             return None
 
         source = self.config["build_source"]
-        (namespace, name) = source.split("/")
+        namespace, name = source.split("/")
 
         bitbucket_client = self._get_authorized_client()
         repository = bitbucket_client.for_namespace(namespace).repositories().get(name)
 
         if field_name == "refs":
-            (result, data, _) = repository.get_branches_and_tags()
+            result, data, _ = repository.get_branches_and_tags()
             if not result:
                 return None
 
@@ -489,7 +487,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             ]
 
         if field_name == "tag_name":
-            (result, data, _) = repository.get_tags()
+            result, data, _ = repository.get_tags()
             if not result:
                 return None
 
@@ -500,7 +498,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
             return tags
 
         if field_name == "branch_name":
-            (result, data, _) = repository.get_branches()
+            result, data, _ = repository.get_branches()
             if not result:
                 return None
 
@@ -514,7 +512,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
     def get_repository_url(self):
         source = self.config["build_source"]
-        (namespace, name) = source.split("/")
+        namespace, name = source.split("/")
         return "https://bitbucket.org/%s/%s" % (namespace, name)
 
     def handle_trigger_request(self, request):
@@ -541,7 +539,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         def get_branch_sha(branch_name):
             # Lookup the commit SHA for the branch.
-            (result, data, _) = repository.get_branch(branch_name)
+            result, data, _ = repository.get_branch(branch_name)
             if not result:
                 raise TriggerStartException("Could not find branch in repository")
 
@@ -549,24 +547,24 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         def get_tag_sha(tag_name):
             # Lookup the commit SHA for the tag.
-            (result, data, _) = repository.get_tag(tag_name)
+            result, data, _ = repository.get_tag(tag_name)
             if not result:
                 raise TriggerStartException("Could not find tag in repository")
 
             return data["target"]["hash"]
 
         def lookup_author(email_address):
-            (result, data, _) = bitbucket_client.accounts().get_profile(email_address)
+            result, data, _ = bitbucket_client.accounts().get_profile(email_address)
             return data if result else None
 
         # Find the branch or tag to build.
         default_branch = self._get_default_branch(repository)
-        (commit_sha, ref) = determine_build_ref(
+        commit_sha, ref = determine_build_ref(
             run_parameters, get_branch_sha, get_tag_sha, default_branch
         )
 
         # Lookup the commit SHA in BitBucket.
-        (result, commit_info, _) = repository.changesets().get(commit_sha)
+        result, commit_info, _ = repository.changesets().get(commit_sha)
         if not result:
             raise TriggerStartException("Could not lookup commit SHA")
 

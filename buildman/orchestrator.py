@@ -283,7 +283,7 @@ class RedisOrchestrator(Orchestrator):
         **kwargs,
     ):
         self.is_canceller_only = canceller_only
-        (cert, key) = tuple(cert_and_key) if cert_and_key is not None else (None, None)
+        cert, key = tuple(cert_and_key) if cert_and_key is not None else (None, None)
         self._client = redis.StrictRedis(
             host=host,
             port=port,
@@ -397,7 +397,7 @@ class RedisOrchestrator(Orchestrator):
         if event_result is None:
             return False
 
-        (redis_event, _pattern, matched_key, expired) = event_result
+        redis_event, _pattern, matched_key, expired = event_result
         return (
             redis_event == REDIS_EVENT_KIND_PMESSAGE
             and expired == "expired"
@@ -406,7 +406,7 @@ class RedisOrchestrator(Orchestrator):
 
     @staticmethod
     def _key_from_expiration(event_result):
-        (_redis_event, _pattern, matched_key, _expired) = event_result
+        _redis_event, _pattern, matched_key, _expired = event_result
         return REDIS_EXPIRED_KEYSPACE_REGEX.match(matched_key).groups()[1]
 
     @staticmethod

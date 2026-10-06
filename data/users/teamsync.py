@@ -73,7 +73,7 @@ def sync_team(authentication, stale_team_sync):
     )
 
     # Load all the members of the team from the authenication system.
-    (member_iterator, err) = authentication.iterate_group_members(sync_config)
+    member_iterator, err = authentication.iterate_group_members(sync_config)
     if err is not None:
         logger.error(
             "Got error when trying to iterate group members with config %s: %s", sync_config, err
@@ -108,7 +108,7 @@ def sync_team(authentication, stale_team_sync):
             continue
 
         # Retrieve the Quay user associated with the member info.
-        (quay_user, err) = authentication.get_and_link_federated_user_info(
+        quay_user, err = authentication.get_and_link_federated_user_info(
             member_info, internal_create=True
         )
         if err is not None:

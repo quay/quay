@@ -63,7 +63,7 @@ class FederatedUsers(object):
         return (None, "Not supported")
 
     def link_user(self, username_or_email):
-        (user_info, err_msg) = self.get_user(username_or_email)
+        user_info, err_msg = self.get_user(username_or_email)
         if user_info is None:
             return (None, err_msg)
 
@@ -79,7 +79,7 @@ class FederatedUsers(object):
         Verifies the given credentials and, if valid, creates/links a database user to the
         associated federated service.
         """
-        (credentials, err_msg) = self.verify_credentials(username_or_email, password)
+        credentials, err_msg = self.verify_credentials(username_or_email, password)
         if credentials is None:
             return (None, err_msg)
 
@@ -100,7 +100,7 @@ class FederatedUsers(object):
         if not federated_login:
             return (None, "Invalid username or password.")
 
-        (credentials, err_msg) = self.verify_credentials(federated_login.service_ident, password)
+        credentials, err_msg = self.verify_credentials(federated_login.service_ident, password)
         if credentials is None:
             return (None, err_msg)
 

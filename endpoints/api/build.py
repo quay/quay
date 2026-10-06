@@ -306,7 +306,7 @@ class RepositoryBuildList(RepositoryParamResource):
                     raise NotFound()
 
                 # Make sure the user has administer permissions for the robot's namespace.
-                (robot_namespace, _) = result
+                robot_namespace, _ = result
                 if (
                     not AdministerOrganizationPermission(robot_namespace).can()
                     and not allow_if_superuser_with_full_access()
@@ -561,7 +561,7 @@ class FileDropResource(ApiResource):
         Request a URL to which a file may be uploaded.
         """
         mime_type = request.get_json()["mimeType"]
-        (url, file_id) = user_files.prepare_for_drop(mime_type, requires_cors=True)
+        url, file_id = user_files.prepare_for_drop(mime_type, requires_cors=True)
         return {
             "url": url,
             "file_id": str(file_id),

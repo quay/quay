@@ -327,7 +327,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
     def _perform(self, action):
         request_start_time = time.time()
-        (method, path, body, timeout) = action.payload
+        method, path, body, timeout = action.payload
         url = urljoin(self.secscan_api_endpoint, path)
 
         headers = {}

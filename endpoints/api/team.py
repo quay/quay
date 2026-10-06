@@ -58,7 +58,7 @@ def permission_view(permission):
 
 
 def try_accept_invite(code, user):
-    (team, inviter) = model.team.confirm_team_invite(code, user)
+    team, inviter = model.team.confirm_team_invite(code, user)
 
     model.notification.delete_matching_notifications(
         user, "org_team_invite", org=team.organization.username
@@ -630,7 +630,7 @@ class TeamMemberInvite(ApiResource):
         """
         Delete an existing invitation to join a team.
         """
-        (team, inviter) = model.team.delete_team_invite(code, user_obj=get_authenticated_user())
+        team, inviter = model.team.delete_team_invite(code, user_obj=get_authenticated_user())
 
         model.notification.delete_matching_notifications(
             get_authenticated_user(), "org_team_invite", code=code

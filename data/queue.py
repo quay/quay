@@ -162,7 +162,7 @@ class WorkQueue(object):
         return (running_count, available_not_running_count, available_count)
 
     def update_metrics(self):
-        (running_count, available_not_running_count, available_count) = self.get_metrics()
+        running_count, available_not_running_count, available_count = self.get_metrics()
         queue_items_locked.labels(self._queue_name).set(running_count)
         queue_items_available.labels(self._queue_name).set(available_count)
         queue_items_available_unlocked.labels(self._queue_name).set(available_not_running_count)

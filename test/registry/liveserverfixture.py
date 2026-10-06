@@ -52,7 +52,7 @@ class liveFlaskServer(object):
 
                 # Get the port and save it into the port_value, so the parent process
                 # can read it.
-                (_, port) = self.socket.getsockname()
+                _, port = self.socket.getsockname()
                 port_value.value = port
                 socketserver.TCPServer.server_bind = original_socket_bind
                 return ret

@@ -53,14 +53,14 @@ def parse_namespace_repository(
         if not allow_library:
             raise ImplicitLibraryNamespaceNotAllowed()
     else:
-        (namespace, repository) = parts
+        namespace, repository = parts
 
     if include_tag:
         parts = repository.split(":", 1)
         if len(parts) < 2:
             tag = "latest"
         else:
-            (repository, tag) = parts
+            repository, tag = parts
 
     repository = urllib.parse.quote_plus(repository, safe="/")
     if include_tag:

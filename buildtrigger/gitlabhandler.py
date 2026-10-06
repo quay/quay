@@ -613,7 +613,7 @@ class GitLabBuildTrigger(BuildTriggerHandler):
             return branch.attributes["commit"]["id"]
 
         # Find the branch or tag to build.
-        (commit_sha, ref) = determine_build_ref(
+        commit_sha, ref = determine_build_ref(
             run_parameters, get_branch_sha, get_tag_sha, gl_project.attributes["default_branch"]
         )
 

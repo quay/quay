@@ -48,7 +48,7 @@ def test_entity_search(auth_engine, requires_email, client):
             if auth_engine.__qualname__ == "mock_ldap":
                 with mock_ldap() as ldap:
                     # Verify that the user is logged in and their username was adjusted.
-                    (response, err) = ldap.verify_and_link_user("cool.user", "somepass")
+                    response, err = ldap.verify_and_link_user("cool.user", "somepass")
                     asserttname = "cool_user"
                     asserttype = "user"
 

@@ -64,7 +64,7 @@ class ExternalJWTAuthN(FederatedUsers):
         if self.getuser_url is None:
             return (None, "No endpoint defined for retrieving user")
 
-        (payload, err_msg) = self._execute_call(
+        payload, err_msg = self._execute_call(
             self.getuser_url, "quay.io/jwtauthn/getuser", params=dict(username=username_or_email)
         )
         if err_msg is not None:
@@ -86,7 +86,7 @@ class ExternalJWTAuthN(FederatedUsers):
         if self.query_url is None:
             return (None, self.federated_service, "No endpoint defined for querying users")
 
-        (payload, err_msg) = self._execute_call(
+        payload, err_msg = self._execute_call(
             self.query_url, "quay.io/jwtauthn/query", params=dict(query=query, limit=limit)
         )
         if err_msg is not None:
@@ -102,7 +102,7 @@ class ExternalJWTAuthN(FederatedUsers):
         return (query_results, self.federated_service, None)
 
     def verify_credentials(self, username_or_email, password):
-        (payload, err_msg) = self._execute_call(
+        payload, err_msg = self._execute_call(
             self.verify_url, "quay.io/jwtauthn", auth=(username_or_email, password)
         )
         if err_msg is not None:
