@@ -1,0 +1,29 @@
+# fullsend per-repo configuration
+# https://github.com/fullsend-ai/fullsend
+#
+# This file configures fullsend for per-repo installation mode.
+# See https://fullsend.sh/docs/guides/infrastructure/layered-config-reference
+version: "1"
+roles:
+    - triage
+    - coder
+    - review
+    - fix
+    - retro
+    - prioritize
+agents:
+    - source: harness/triage.yaml
+    - source: harness/code.yaml
+    - name: review
+      enabled: false
+    - source: harness/retro.yaml
+    - source: harness/prioritize.yaml
+allowed_remote_resources:
+    - https://raw.githubusercontent.com/fullsend-ai/fullsend/
+    - https://raw.githubusercontent.com/fullsend-ai/agents/
+    - https://github.com/quay/ai-helpers/
+create_issues:
+    allow_targets:
+        repos:
+            - quay/quay
+            - fullsend-ai/fullsend
