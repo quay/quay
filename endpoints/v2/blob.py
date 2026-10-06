@@ -6,7 +6,7 @@ from flask import abort as flask_abort
 from flask import redirect, request, url_for
 
 import features
-from app import app, get_app_url, model_cache, storage, usermanager
+from app import app, get_app_url, model_cache, storage, upstream_proxy, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
@@ -69,7 +69,16 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
     # Find the blob.
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # try returning the blob size from the imagestorage row directly
+        proxy_size = registry_model.get_proxy_blob_size(namespace_name, repo_name, digest)
+        if proxy_size is None:
+            raise BlobUnknown()
+        headers = {
+            "Docker-Content-Digest": digest,
+            "Content-Length": proxy_size,
+            "Content-type": BLOB_CONTENT_TYPE,
+        }
+        return Response(headers=headers)
 
     # Build the response headers.
     headers = {
@@ -95,10 +104,18 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @cache_control(max_age=31536000)
 @inject_registry_model()
 def download_blob(namespace_name, repo_name, digest, registry_model):
-    # Find the blob.
+    # try returning blob from cache
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # we don't have a blob locally so we'll proxy content from upstream directly
+        # while simultaneously queueing the blob for download
+        redirect_url = registry_model.get_upstream_blob_proxy_url(
+            namespace_name, repo_name, digest, upstream_proxy
+        )
+        if redirect_url is None:
+            raise BlobUnknown()
+        logger.debug("Proxying upstream blob %s through the upstream proxy interface", digest)
+        return redirect(redirect_url)
 
     # Build the response headers.
     headers = {"Docker-Content-Digest": digest}

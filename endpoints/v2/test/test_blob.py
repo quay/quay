@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -191,6 +192,251 @@ class TestBlobPullThroughStorage:
         assert storage.exists(locations, path), f"blob not found in storage at path {path}"
 
 
+class TestBlobProxyCacheMiss:
+    orgname = "cache"
+    registry = "docker.io"
+    image_name = "library/hello-world"
+    repository = f"{orgname}/{image_name}"
+    tag = "14"
+    config = None
+    org = None
+    manifest = None
+    repo_ref = None
+    blob = None
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, app, proxy_manifest_response):
+        from data.database import MediaType
+
+        self.client = client
+
+        self.user = model.user.get_user("devtable")
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=self.user))
+        access = [
+            {
+                "type": "repository",
+                "name": self.repository,
+                "actions": ["pull"],
+            }
+        ]
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+        self.headers = {
+            "Authorization": f"Bearer {token}",
+        }
+
+        if self.org is None:
+            self.org = model.organization.create_organization(
+                self.orgname, f"{self.orgname}@devtable.com", self.user
+            )
+            self.org.save()
+            self.config = model.proxy_cache.create_proxy_cache_config(
+                org_name=self.orgname,
+                upstream_registry=self.registry,
+                expiration_s=3600,
+            )
+
+        if self.repo_ref is None:
+            r = model.repository.create_repository(self.orgname, self.image_name, self.user)
+            assert r is not None
+            self.repo_ref = registry_model.lookup_repository(self.orgname, self.image_name)
+            assert self.repo_ref is not None
+
+    def test_stream_blob_from_upstream_source(self, client, app):
+        """
+        Verifies that streaming of content from upstream works through Docker v2 API.
+        """
+        from data.database import Manifest, MediaType
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        config_layer = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [{}],
+            }
+        )
+        config_digest = str(sha256_digest(config_layer.encode("utf-8")))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(config_layer),
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=self.repo_ref.id,
+            digest=sha256_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        assert manifest
+
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.image_name,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(
+            parsed_manifest, manifest.id, self.repo_ref.id
+        )
+        assert created_blobs
+
+        params = {
+            "repository": self.repository,
+            "digest": digest,
+        }
+
+        # verify that on first call we enqueue the blob
+        with (
+            patch("endpoints.v2.blob.model_cache", NoopDataModelCache(TEST_CACHE_CONFIG)),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue,
+        ):
+            mock_queue.alive.return_value = False
+            resp = conduct_call(
+                self.client,
+                "v2.download_blob",
+                url_for,
+                "GET",
+                params,
+                expected_code=302,
+                headers=self.headers,
+            )
+
+            assert "_upstream_proxy" in resp.headers.get("Location")
+            assert mock_queue.put.call_count == 1
+
+            # verify that on 2nd call of the same blob we don't enqueue the blob again
+            mock_queue.alive.return_value = True
+            mock_queue.put.reset_mock()
+
+            resp = conduct_call(
+                self.client,
+                "v2.download_blob",
+                url_for,
+                "GET",
+                params,
+                expected_code=302,
+                headers=self.headers,
+            )
+
+            assert "_upstream_proxy" in resp.headers.get("Location")
+            mock_queue.put.assert_not_called()
+
+    def test_head_blob_returns_proper_http_status_back(self, client, app):
+        """
+        Verifies that HEAD returns a proper response back to the client when blob information
+        is requested.
+        """
+        from data.database import Manifest, MediaType
+        from image.docker.schema2.manifest import DockerSchema2Manifest
+
+        content = os.urandom(10 * 1024 * 1024)
+        digest = str(sha256_digest(content))
+
+        config_layer = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [{}],
+            }
+        )
+        config_digest = str(sha256_digest(config_layer.encode("utf-8")))
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(config_layer),
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "digest": digest,
+                        "size": len(content),
+                    }
+                ],
+            }
+        )
+
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+
+        manifest = Manifest.create(
+            repository=self.repo_ref.id,
+            digest=sha256_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        assert manifest
+
+        parsed_manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
+        assert parsed_manifest
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.image_name,
+            self.user,
+        )
+
+        # create placeholder blobs
+        created_blobs = proxy_model._create_placeholder_blobs(
+            parsed_manifest, manifest.id, self.repo_ref.id
+        )
+        assert created_blobs
+
+        params = {
+            "repository": self.repository,
+            "digest": digest,
+        }
+
+        # verify that HEAD returns proper values back
+        with (patch("endpoints.v2.blob.model_cache", NoopDataModelCache(TEST_CACHE_CONFIG)),):
+            resp = conduct_call(
+                self.client,
+                "v2.check_blob_exists",
+                url_for,
+                "HEAD",
+                params,
+                expected_code=200,
+                headers=self.headers,
+            )
+
+            assert resp.headers.get("Docker-Content-Digest", "") == digest
+            assert resp.headers.get("Content-Length", "") == str(len(content))
+            assert resp.headers.get("Content-Type", "") == "application/octet-stream"
+
+
 @pytest.mark.e2e
 class TestBlobPullThroughProxy(unittest.TestCase):
     org = "cache"
@@ -257,23 +503,7 @@ class TestBlobPullThroughProxy(unittest.TestCase):
             url_for,
             "GET",
             params,
-            expected_code=200,
-            headers=self.headers,
-        )
-
-    def test_pull_from_dockerhub_404(self):
-        digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
-        params = {
-            "repository": self.repository,
-            "digest": digest,
-        }
-        conduct_call(
-            self.client,
-            "v2.download_blob",
-            url_for,
-            "GET",
-            params,
-            expected_code=404,
+            expected_code=302,
             headers=self.headers,
         )
 
@@ -282,7 +512,7 @@ class TestBlobPullThroughProxy(unittest.TestCase):
             "repository": self.repository,
             "digest": self.blob_digest,
         }
-        conduct_call(
+        resp = conduct_call(
             self.client,
             "v2.check_blob_exists",
             url_for,
@@ -292,21 +522,8 @@ class TestBlobPullThroughProxy(unittest.TestCase):
             headers=self.headers,
         )
 
-    def test_check_blob_exists_from_dockerhub_404(self):
-        digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
-        params = {
-            "repository": self.repository,
-            "digest": digest,
-        }
-        conduct_call(
-            self.client,
-            "v2.check_blob_exists",
-            url_for,
-            "HEAD",
-            params,
-            expected_code=404,
-            headers=self.headers,
-        )
+        assert resp.headers.get("Docker-Content-Digest", "") == self.blob_digest
+        assert resp.headers.get("Content-Type", "") == "application/octet-stream"
 
 
 @pytest.mark.parametrize(
