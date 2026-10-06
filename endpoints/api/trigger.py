@@ -22,6 +22,7 @@ from data.model.build import update_build_trigger
 from endpoints.api import (
     RepositoryParamResource,
     abort,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     api,
@@ -78,7 +79,13 @@ class BuildTriggerList(RepositoryParamResource):
         List the triggers for the specified repository.
         """
         triggers = model.build.list_build_triggers(namespace_name, repo_name)
-        return {"triggers": [trigger_view(trigger, can_admin=True) for trigger in triggers]}
+        is_readonly = allow_if_global_readonly_superuser()
+        return {
+            "triggers": [
+                trigger_view(trigger, can_admin=not is_readonly, can_read=True)
+                for trigger in triggers
+            ]
+        }
 
 
 @resource("/v1/repository/<apirepopath:repository>/trigger/<trigger_uuid>")
@@ -111,7 +118,8 @@ class BuildTrigger(RepositoryParamResource):
         """
         Get information for the specified build trigger.
         """
-        return trigger_view(get_trigger(trigger_uuid), can_admin=True)
+        is_readonly = allow_if_global_readonly_superuser()
+        return trigger_view(get_trigger(trigger_uuid), can_admin=not is_readonly, can_read=True)
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
