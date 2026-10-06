@@ -8,7 +8,11 @@ from peewee import Select, fn
 
 import features
 from app import app, proxy_cache_blob_queue, storage
-from data.database import ImageStorage, ImageStoragePlacement
+from data import database
+from data.database import (
+    ImageStorage,
+    ImageStoragePlacement,
+)
 from data.database import Manifest as ManifestTable
 from data.database import ManifestBlob, ManifestChild
 from data.database import Tag as TagTable
@@ -36,7 +40,12 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
-from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
+from data.model.storage import (
+    get_image_location_for_id,
+    get_layer_path,
+    get_or_create_blob_with_lock,
+    with_blob_lock_or_fallback,
+)
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -61,7 +70,7 @@ from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_T
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestInterface
 from image.shared.schemas import parse_manifest_from_bytes
-from proxy import Proxy, UpstreamAuthError, UpstreamRegistryError
+from proxy import REGISTRY_URLS, Proxy, UpstreamAuthError, UpstreamRegistryError
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)
@@ -688,16 +697,9 @@ class ProxyModel(OCIModel):
                 self._rollback_created_blobs_and_quota(repository_ref, db_manifest, created_blobs)
             raise
 
-    def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
+    def _lookup_blob_by_digest(self, repository_ref, blob_digest):
         """
-        Returns the blob in the repository with the given digest.
-
-        If the blob is a placeholder, downloads it from the upstream registry.
-        Placeholder blobs are blobs that don't yet have a ImageStoragePlacement
-        associated with it.
-
-        Note that there may be multiple records in the same repository for the same blob digest, so
-        the return value of this function may change.
+        Fetches the ImageStorage row for a specified blob digest or None if the row doesn't exist
         """
         blob = self._get_shared_storage(blob_digest)
         if blob is None:
@@ -713,20 +715,72 @@ class ProxyModel(OCIModel):
                 )
             except ImageStorage.DoesNotExist:
                 return None
+        return blob
+
+    def _needs_download(self, repository_ref, blob):
+        """
+        Returns true if a provided blob needs downloading, or false otherwise.
+        """
+        try:
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
+        except ImageStoragePlacement.DoesNotExist:
+            return True
 
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
-        except ImageStoragePlacement.DoesNotExist:
-            try:
-                self._download_blob(repository_ref, blob_digest)
-            except BlobDigestMismatchException:
-                raise UpstreamRegistryError("blob digest mismatch")
-            except BlobTooLargeException as e:
-                raise UpstreamRegistryError(f"blob too large, max allowed is {e.max_allowed}")
-            except BlobRangeMismatchException:
-                raise UpstreamRegistryError("range mismatch")
-            except BlobUploadException:
-                raise UpstreamRegistryError("invalid blob upload")
+            layer_path = get_layer_path(blob)
+            location_name = get_image_location_for_id(placement.location_id).name
+            if not storage.exists([location_name], layer_path):
+                logger.warning(
+                    "Blob %s has placements in DB but is missing from storage, re-fetching from upstream",
+                    blob.content_checksum,
+                )
+                return True
+        except (IOError, OSError):
+            logger.exception(
+                "Failed to verify blob %s existence in storage, re-fetching from upstream",
+                blob.content_checksum,
+            )
+            return True
+
+        return False
+
+    def _queue_blob_for_download(self, repo_ref, blob_digest, available_after=5):
+        """
+        Enqueues the current blob for later download based on the available_after parameter
+        if streaming of blob fails.
+        """
+        username = self._user.username if self._user else None
+        try:
+            queue_id = proxy_cache_blob_queue.put(
+                [self._namespace_name, str(repo_ref.id), blob_digest],
+                json.dumps(
+                    {
+                        "digest": blob_digest,
+                        "repo_id": repo_ref.id,
+                        "username": username,
+                        "namespace": self._namespace_name,
+                    }
+                ),
+                available_after=available_after,
+            )
+        except Exception as e:
+            logger.error("Could not enqueue blob for download: %s", e)
+
+    def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
+        """
+        Returns the blob in the repository with the given digest.
+
+        Returns None for missing blobs and placeholder blobs for the blobs to be streamed directly
+        from upstream. Callers should call get_streaming_proxy_blob if blob placement is missing.
+        """
+        blob = self._lookup_blob_by_digest(repository_ref, blob_digest)
+        if blob is None:
+            return None
+
+        if self._needs_download(repository_ref, blob):
+            return None
 
         return super().get_repo_blob_by_digest(repository_ref, blob_digest, include_placements)
 
@@ -827,18 +881,26 @@ class ProxyModel(OCIModel):
                 created_blobs.append((blob.id, blob.image_size))
 
             username = self._user.username if self._user else None
-            queue_id = proxy_cache_blob_queue.put(
-                [self._namespace_name, str(repo_id), str(layer.digest)],
-                json.dumps(
-                    {
-                        "digest": str(layer.digest),
-                        "repo_id": repo_id,
-                        "username": username,
-                        "namespace": self._namespace_name,
-                    }
-                ),
-                available_after=5,
-            )
+
+            # add the blobs to queue only if proxy blob cache worker is available
+            # and only if we already don't have a blob enqueued there
+            if features.PROXY_CACHE_BLOB_DOWNLOAD:
+                if not proxy_cache_blob_queue.alive(
+                    [self._namespace_name, str(repo_id), str(layer.digest)]
+                ):
+                    proxy_cache_blob_queue.put(
+                        [self._namespace_name, str(repo_id), str(layer.digest)],
+                        json.dumps(
+                            {
+                                "digest": str(layer.digest),
+                                "repo_id": repo_id,
+                                "username": username,
+                                "namespace": self._namespace_name,
+                            }
+                        ),
+                        # make job available immediately
+                        available_after=0,
+                    )
 
         return created_blobs
 
@@ -900,3 +962,72 @@ class ProxyModel(OCIModel):
             return False
 
         return True
+
+    def get_upstream_blob_proxy_url(self, namespace, repo, digest, upstream_proxy):
+        """
+        Constructs an upstream blob URL address based on the namespace/repo and blob digest
+        and returns it to the caller.
+        """
+        # if feature is disabled, simply return
+        if upstream_proxy is None:
+            return None
+
+        # lookup repository
+        repo_ref = self.lookup_repository(namespace_name=namespace, repo_name=repo)
+        if repo_ref is None:
+            return None
+
+        # only redirect for known placeholder blobs
+        # if the blob legitimately doesn't exist, return None
+        blob = self._lookup_blob_by_digest(repo_ref, digest)
+        if blob is None:
+            return None
+
+        # check if the blob is already in download
+        if features.PROXY_CACHE_BLOB_DOWNLOAD:
+            if not proxy_cache_blob_queue.alive([namespace, str(repo_ref.id), digest]):
+                logger.debug(
+                    "Enqueueing blob %s for subsequent download via caching worker", digest
+                )
+                self._queue_blob_for_download(repo_ref, digest, available_after=0)
+            else:
+                logger.debug("Skipping enqueueing of blob %s, blob already in queue", digest)
+        else:
+            logger.debug("Skipping enqueueing of blob %s for caching, worker offline", digest)
+
+        # determine routing
+        if self._config.insecure:
+            scheme = "http"
+        else:
+            scheme = "https"
+
+        # determine which hostname we'll use
+        hostname = REGISTRY_URLS.get(
+            self._config.upstream_registry_hostname, self._config.upstream_registry_hostname
+        )
+
+        # determine upstream namespace/repository
+        target_ns = self._config.upstream_registry_namespace
+        upstream_full_repo = f"{target_ns}/{repo}" if (target_ns and target_ns != "") else repo
+        ns_parts = upstream_full_repo.split("/", 1)
+        url_namespace = ns_parts[0]
+        url_repo = ns_parts[1] if len(ns_parts) > 1 else ""
+
+        # construct URL
+        url = upstream_proxy.create_upstream_proxy_url(
+            scheme, hostname, namespace, url_namespace, url_repo, digest
+        )
+        return url
+
+    def get_proxy_blob_size(self, namespace, repository, digest):
+        """
+        Returns the proxied blob size directly from the ImageStorage table. Returns None
+        if the method is unsupported. Returns BlobUnknown() if the blob cannot be found.
+        """
+
+        repo = self.lookup_repository(namespace, repository)
+        if repo is None:
+            return None
+
+        blob = self._lookup_blob_by_digest(repo, digest)
+        return blob.image_size if blob is not None else None

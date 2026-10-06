@@ -154,10 +154,13 @@ class LayerTooLarge(V2RegistryException):
 
             up_str = bitmath.Byte(uploaded).best_prefix().format("{value:.2f} {unit}")
             max_str = bitmath.Byte(max_allowed).best_prefix().format("{value:.2f} {unit}")
+
             message = "Uploaded blob of %s is larger than %s allowed by this registry" % (
                 up_str,
                 max_str,
             )
+
+        super(LayerTooLarge, self).__init__("BLOB_TOO_LARGE", message, detail, 400)
 
 
 class QuotaExceeded(V2RegistryException):
