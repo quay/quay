@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 import logging.config
@@ -206,7 +207,11 @@ def liveserver_app(app, registry_server_executor, init_db_path, data_model):
 
     shutil.copy2(init_db_path, local_db_file.name)
     app.config["DB_URI"] = "sqlite:///{0}".format(local_db_file.name)
-    return app
+    yield app
+
+    for suffix in ("", "-wal", "-shm"):
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(local_db_file.name + suffix)
 
 
 @pytest.fixture()
