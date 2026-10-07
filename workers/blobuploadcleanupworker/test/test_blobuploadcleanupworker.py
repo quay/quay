@@ -129,13 +129,13 @@ def test_verify_that_worker_acquires_a_global_lock_with_proper_values(initialize
     captured = {}
 
     class _FakeLock:
-        def __init__(self, name, expire=None, auto_renewal=False, id=None):
+        def __init__(self, name, expire=None, auto_renewal=False):
             self._name = name
             self._expire = expire
             self._auto_renewal = auto_renewal
             captured.update(name=name, expire=expire, auto_renewal=auto_renewal)
 
-        def acquire(self, timeout=None):
+        def acquire(self):
             return True
 
         def release(self):
@@ -168,10 +168,10 @@ def test_verify_that_multipart_cleanup_does_not_run_if_lock_cannot_be_acquired(i
     from util.locking import GlobalLock, LockNotAcquiredException
 
     class _FakeLock:
-        def __init__(self, name, expire=None, auto_renewal=False, id=None):
+        def __init__(self, name, expire=None, auto_renewal=False):
             self._name = name
 
-        def acquire(self, timeout=None):
+        def acquire(self):
             return False
 
         def release(self):
