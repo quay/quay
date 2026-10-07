@@ -65,6 +65,10 @@ def test_with_blob_lock_or_fallback_timeout_does_not_create_missing_blob(
 def test_with_blob_lock_or_fallback_timeout_returns_existing_blob(
     initialized_db, monkeypatch, caplog
 ):
+    # Lock held by a non-GC worker (the default holder in _hold_lock).
+    # New behaviour: a non-GC timeout is not a blocking condition — the function
+    # proceeds and returns the existing blob.  It also logs a warning because it
+    # is running without the lock, unlike the old silent TIMED_OUT fallback.
     server = _patch_lock_factory(monkeypatch)
     digest = _digest(5)
     existing = ImageStorage.create(content_checksum=digest, image_size=1)
@@ -80,7 +84,9 @@ def test_with_blob_lock_or_fallback_timeout_returns_existing_blob(
 
     assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 2, f"took too long: {elapsed}s"
     assert result.id == existing.id
-    assert "proceeding without lock" not in caplog.text
+    # Non-GC contention is now logged as a warning rather than silently falling
+    # back — "proceeding without lock" must appear in the log.
+    assert "proceeding without lock" in caplog.text
 
 
 def test_with_blob_lock_or_fallback_redis_down_creates_without_lock(
@@ -157,9 +163,15 @@ def test_with_blob_lock_or_fallback_no_contention(initialized_db, monkeypatch, c
 def test_get_or_create_blob_with_lock_timeout_does_not_create_missing_blob(
     initialized_db, monkeypatch
 ):
+    # A recognised GC worker role holds the lock while the blob is missing from
+    # the DB.  The function must raise LockAcquireTimeout and must NOT create the
+    # ImageStorage row — blob object storage deletion may be in progress and a
+    # dangling DB record must not be left behind.
+    # Note: the holder_id must use one of the exact role names in _GC_LOCK_ROLES
+    # (e.g. "repositorygcworker", not "gc-worker" with a hyphen).
     server = _patch_lock_factory(monkeypatch)
     digest = _digest(8)
-    _hold_lock(server, digest, holder_id="gc-worker:7:aaaaaaaa")
+    _hold_lock(server, digest, holder_id="repositorygcworker:7:aaaaaaaa")
 
     with pytest.raises(LockAcquireTimeout):
         get_or_create_blob_with_lock(digest=digest, image_size=1)
@@ -168,9 +180,15 @@ def test_get_or_create_blob_with_lock_timeout_does_not_create_missing_blob(
 
 
 def test_get_or_create_blob_with_lock_timeout_returns_existing_blob(initialized_db, monkeypatch):
+    # A recognised GC worker holds the lock but the blob already exists in the DB
+    # (e.g. another writer created it before GC could delete it).  The function
+    # must not raise — it should find and return the existing row.  This exercises
+    # the may_create=False path in _get_or_create_blob_with_lock: ImageStorage.get
+    # succeeds, so the LockAcquireTimeout branch that guards missing blobs is never
+    # reached.
     server = _patch_lock_factory(monkeypatch)
     digest = _digest(9)
     existing = ImageStorage.create(content_checksum=digest, image_size=1)
-    _hold_lock(server, digest)
+    _hold_lock(server, digest, holder_id="repositorygcworker:1:aaaaaaaa")
 
     assert get_or_create_blob_with_lock(digest=digest, image_size=1).id == existing.id

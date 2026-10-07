@@ -45,6 +45,18 @@ _BLOB_LOCK_TIMED_OUT = "timed_out"
 _BLOB_LOCK_UNAVAILABLE = "unavailable"
 _blob_lock_fallback = ContextVar("blob_lock_fallback", default=None)
 
+# role lock identifiers
+_GC_LOCK_ROLES = frozenset({"gcworker", "repositorygcworker", "namespacegcworker"})
+
+
+def _is_gcworker_holder(holder_id):
+    """
+    Checks if the holder of the lock is one of the three GC workers.
+    """
+    if not holder_id:
+        return False
+    return holder_id.split(":")[0] in _GC_LOCK_ROLES
+
 
 @lru_cache(maxsize=1)
 def get_image_locations():
@@ -363,8 +375,23 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
             blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
         ):
             return func(*args, skip_lock=True, **kwargs)
-    except LockAcquireTimeout:
-        fallback = _BLOB_LOCK_TIMED_OUT
+    except LockAcquireTimeout as e:
+        if _is_gcworker_holder(e.holder):
+            # gc is holding the lock on the blob, so we must propagate a 503 back
+            logger.exception(
+                "GC worker holds BLOB_DELETE_%s, not creating blob %s until lock is released",
+                digest,
+                digest,
+            )
+            raise LockAcquireTimeout() from e
+        # holder is not a GC worker, it either cannot be identified or is another registry worker
+        # fine to continue, the integrity verification ensures that no duplicate rows are added
+        logger.warning(
+            "Timed out acquiring blob lock for %s (held by %s), proceeding without lock",
+            digest,
+            e.holder,
+        )
+        fallback = _BLOB_LOCK_UNAVAILABLE
     except LockNotAcquiredException as e:
         logger.warning("Could not acquire lock for blob %s: %s", digest, e)
         fallback = _BLOB_LOCK_UNAVAILABLE
@@ -436,17 +463,19 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
             # If multiple workers try to create a blob at the same time, we must ensure that blob creation doesn't
             # fail. Otherwise, push will fail.
             return _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs)
-    except LockAcquireTimeout:
-        # Another holder (e.g. GC) still has the lock: use an existing blob, but do not create a
-        # missing one while that holder may be removing its object from storage.
-        return _get_or_create_blob_with_lock(
-            digest, lock_acquired=False, may_create=False, **blob_attrs
-        )
+    except LockAcquireTimeout as e:
+        # Verify that the lock is being held by the gcworker. If the lock is being held by
+        # the gc worker, do not create a missing one because it might be in process of deletion
+        # from storage.
+        if _is_gcworker_holder(e.holder):
+            return _get_or_create_blob_with_lock(
+                digest, lock_acquired=False, may_create=False, **blob_attrs
+            )
     except LockNotAcquiredException:
         # If we cannot acquire a lock, check if we have the ImageStorage entries for the provided
         # digest. If that reading fails, then create new entries in the table anyway but report
-        # the lock failure in the log. If multiple workers try to create a blob at the same time, we must ensure
-        # that blob creation doesn't fail. Otherwise, push will fail.
+        # the lock failure in the log. If multiple workers try to create a blob at the same time,
+        # we must ensure that blob creation doesn't fail. Otherwise, push will fail.
         return _get_or_create_blob_with_lock(digest, lock_acquired=False, **blob_attrs)
 
 
