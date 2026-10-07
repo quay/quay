@@ -194,7 +194,6 @@ flit-core==3.12.0 \
     #   cssselect2
     #   hashids
     #   idna
-    #   pypdf
     #   tinycss2
     #   typing_extensions
     #   wheel
@@ -204,6 +203,7 @@ flit-core==4.1.0 \
     # via
     #   packaging
     #   pathspec
+    #   pypdf
 greenlet==3.1.1 \
     --hash=sha256:0153404a4bb921f0ff1abeb5ce8a5131da56b953eda6e14b88dc6bbc04d2049e \
     --hash=sha256:03a088b9de532cbfe2ba2034b2b85e82df37874681e8c470d6fb2f8c04d7e4b7 \
@@ -453,6 +453,7 @@ setuptools-scm==10.2.1 \
     #   maxminddb
     #   pluggy
     #   python-dateutil
+    #   python-ldap
     #   setuptools-rust
     #   urllib3
     #   zipp
@@ -477,7 +478,6 @@ wheel==0.46.2 \
     --hash=sha256:3d79e48fde9847618a5a181f3cc35764c349c752e2fe911e65fa17faab9809b0
     # via
     #   Authlib
-    #   Mako
     #   PyNaCl
     #   PyYAML
     #   attrs
@@ -499,9 +499,9 @@ wheel==0.46.2 \
     #   uritools
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==78.1.1 \
-    --hash=sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561 \
-    --hash=sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d
+setuptools==80.10.2 \
+    --hash=sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70 \
+    --hash=sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173
     # via
     #   Authlib
     #   Mako
@@ -539,10 +539,12 @@ setuptools==78.1.1 \
     #   pyroscope-io
     #   pyrsistent
     #   python-dateutil
+    #   python-ldap
     #   python-redis-lock
     #   pyyaml
     #   regex
     #   reportlab
+    #   requests
     #   resumablesha256
     #   setuptools-rust
     #   setuptools-scm
