@@ -1,0 +1,223 @@
+FROM registry.redhat.io/ubi8/python-312:latest AS base
+# Only set variables or install packages that need to end up in the
+# final container here.
+USER root
+
+ENV PATH=$HOME/.local/bin/:/app/bin/:$PATH \
+    PYTHON_VERSION=3.12 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    PIP_NO_CACHE_DIR=off
+
+ENV PYTHONUSERBASE=/app
+ENV TZ=UTC
+RUN set -ex\
+	; dnf -y module enable nginx:1.24 \
+	; dnf update -y \
+	; dnf -y --setopt=tsflags=nodocs install \
+		dnsmasq \
+		memcached \
+		nginx \
+		libpq-devel \
+		libjpeg-turbo \
+		openldap \
+		openssl \
+		python3-gpg \
+		python3-six \
+		skopeo \
+		findutils \
+	; dnf -y clean all && rm -rf /var/cache/yum
+
+# Build-python installs the requirements for the python code.
+FROM base AS build-python
+ENV PYTHONDONTWRITEBYTECODE=1
+RUN set -ex\
+	; dnf -y --setopt=tsflags=nodocs install \
+		gcc-c++ \
+		git \
+		cmake \
+		ninja-build \
+		openldap-devel \
+		python3.12-devel \
+		libffi-devel \
+		openssl-devel \
+		diffutils \
+		file \
+		make \
+		libjpeg-turbo \
+		libjpeg-turbo-devel \
+		wget \
+		rust-toolset \
+		libxml2-devel \
+		libxslt-devel \
+		freetype-devel \
+	; dnf -y clean all
+WORKDIR /build
+RUN python3 -m ensurepip --upgrade
+COPY requirements.txt .
+RUN sed -i '/^pyroscope-io/d' requirements.txt
+# Note that it installs into PYTHONUSERBASE because of the '--user'
+# flag.
+
+# When cross-compiling the container, cargo uncontrollably consumes memory and
+# gets killed by the OOM Killer when it fetches dependencies. The workaround is
+# to use the git executable.
+# See https://github.com/rust-lang/cargo/issues/10583 for details.
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+# grpcio has no pre-built wheels for s390x/ppc64le, so we must build from source on those.
+# gevent also needs to be built from source for compatibility.
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+
+# maturin 1.13+ bumped MSRV to rustc 1.89, but UBI8 rust-toolset provides 1.88.0.
+# Pin maturin to a version compatible with the available rustc in the build image.
+RUN echo 'maturin==1.12.6' > /build/pip-build-constraints.txt
+ENV PIP_CONSTRAINT=/build/pip-build-constraints.txt
+
+USER 1001
+
+RUN set -ex\
+	; python3 -m pip install --no-cache-dir --progress-bar off --no-binary gevent,grpcio $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --no-binary gevent,grpcio --requirement requirements.txt \
+	;
+RUN set -ex\
+# Doing this is explicitly against the purpose and use of certifi.
+	; for dir in\
+		$(find "/opt/app-root/lib/python3.12/site-packages" -type d -name certifi)\
+	; do chgrp -R 0 "$dir" && chmod -R g=u "$dir" ; done\
+	;
+
+# Build-static downloads the static javascript.
+FROM registry.redhat.io/ubi8/nodejs-22:latest AS build-static
+WORKDIR /opt/app-root/src
+COPY --chown=1001:0 package.json package-lock.json  ./
+RUN npm clean-install
+COPY --chown=1001:0 static/  ./static/
+COPY --chown=1001:0 *.json *.js  ./
+RUN npm run --quiet build
+
+# Build React UI
+FROM registry.redhat.io/ubi8/nodejs-22:latest AS build-ui
+WORKDIR /opt/app-root
+COPY --chown=1001:0 web/package.json web/package-lock.json  ./
+RUN CYPRESS_INSTALL_BINARY=0 npm clean-install --legacy-peer-deps
+COPY --chown=1001:0 web .
+RUN npm run --quiet build
+
+# Pushgateway grabs pushgateway.
+FROM registry.redhat.io/ubi8/ubi:latest AS pushgateway
+ENV OS=linux
+ARG PUSHGATEWAY_VERSION=1.6.0
+RUN set -ex\
+	; ARCH=$(uname -m) ; echo $ARCH \
+	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
+	; TARBALL="pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" \
+	; URL="https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/${TARBALL}" \
+	; curl -sSL ${URL} | tar xz  "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" \
+	|| tar -xzf /cachi2/output/deps/generic/${TARBALL} "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
+	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
+	;
+
+# Config-tool builds the go binary in the configtool.
+FROM registry.redhat.io/ubi8/go-toolset:latest AS config-tool
+WORKDIR /opt/app-root/src
+COPY config-tool/ ./
+RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
+
+FROM registry.redhat.io/ubi8/ubi-minimal:latest AS build-quaydir
+WORKDIR /quaydir
+# Static assets: built JS from webpack, then built React/PatternFly UI.
+COPY --from=build-static /opt/app-root/src/static /quaydir/static
+COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
+
+# Copy source tree. Most non-runtime files are excluded via .dockerignore.
+# Directories needed by earlier build stages (web/, config-tool/) cannot be
+# excluded from the build context, so we remove them here after copy.
+COPY --chown=0:0 . .
+RUN rm -rf web/ config-tool/ node_modules/ .git \
+    package.json package-lock.json webpack.config.js \
+    tsconfig.json tslint.json karma.conf.js \
+    requirements.txt
+
+# Final is the end container, where all the work from the other
+# containers are copied in.
+FROM base AS final
+
+LABEL com.redhat.component="quay-registry-container"
+LABEL name="quay/quay-rhel8"
+LABEL io.k8s.display-name="Red Hat Quay"
+LABEL io.k8s.description="Red Hat Quay"
+LABEL io.openshift.tags="quay"
+LABEL summary="Red Hat Quay"
+LABEL description="Red Hat Quay"
+LABEL vendor="Red Hat, Inc."
+LABEL maintainer="quay-devel@redhat.com"
+
+ENV QUAYDIR=/quay-registry
+ENV QUAYCONF=/quay-registry/conf
+ENV QUAYRUN=/quay-registry/conf
+ENV QUAYPATH=$QUAYDIR
+ENV PYTHONPATH=$QUAYPATH
+ENV RED_HAT_QUAY=true
+ENV PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
+
+# All of these chgrp+chmod commands are an Openshift-ism.
+#
+# Openshift runs a container as a random UID and GID 0, so anything
+# that's in the base image and needs to be modified at runtime needs
+# to make sure it's group-writable.
+RUN set -ex\
+	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
+	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\
+# Allow TLS certs to be created and installed as non-root user.
+# See also update-ca-trust(8).
+	; setperms /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors\
+# Allow for nginx to run unprivledged.
+	; setperms /etc/nginx\
+	; ln -sf /dev/stdout /var/log/nginx/access.log\
+	; ln -sf /dev/stdout /var/log/nginx/error.log\
+# The code doesn't agree on where the configuration lives, so create a
+# symlink.
+	; ln -s $QUAYCONF /conf\
+# Make a grip of runtime directories.
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage /var/lib/quay\
+# Another Openshift-ism: it doesn't bother picking a uid that means
+# anything to the OS inside the container, so the process needs
+# permissions to modify the user database.
+# Harden /etc/passwd - no group write.
+	; chown root:root /etc/passwd \
+	; chmod 0644      /etc/passwd \
+	; chown -R 1001:0 /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
+	; chown -R 1001:0 /etc/ssl/certs \
+	; chown -R 1001:0 /quay-registry \
+	; chmod ug+w -R /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
+	; chmod ug+w -R /etc/ssl/certs
+
+RUN python3 -m pip install --no-cache-dir --progress-bar off dumb-init
+
+WORKDIR $QUAYDIR
+# Ordered from least changing to most changing.
+COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
+COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
+COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
+COPY --from=build-quaydir /quaydir $QUAYDIR
+
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
+
+RUN set -ex \
+  ; chgrp -R 0 "$QUAYCONF" && chmod -R g=u "$QUAYCONF" \
+  ;
+
+EXPOSE 8080 8443 7443 9091 55443
+# Don't expose /var/log as a volume, because we just configured it
+# correctly above.
+# It's probably unwise to mount /tmp as a volume but if someone must,
+# make sure it's mode 1777 like /tmp should be.
+VOLUME ["/datastorage", "/tmp", "/conf/stack"]
+# In non-Openshift environments, drop privilege.
+USER 1001
+ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
+CMD ["registry"]
