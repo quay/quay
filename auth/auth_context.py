@@ -1,11 +1,15 @@
-from flask import _request_ctx_stack, request, session
+from flask import has_request_context, request, session
+from flask.globals import request_ctx
 
 
 def get_authenticated_context():
     """
     Returns the auth context for the current request context, if any.
     """
-    return getattr(_request_ctx_stack.top, "authenticated_context", None)
+    if not has_request_context():
+        return None
+
+    return getattr(request_ctx, "authenticated_context", None)
 
 
 def determine_auth_type_and_performer_kind(auth_context=None, oauth_token=None):
@@ -116,6 +120,5 @@ def set_authenticated_context(auth_context):
     """
     Sets the auth context for the current request context to that given.
     """
-    ctx = _request_ctx_stack.top
-    ctx.authenticated_context = auth_context
+    request_ctx.authenticated_context = auth_context
     return auth_context
