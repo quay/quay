@@ -223,7 +223,7 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second); err != nil {
 		inst.dumpContainerLogs(ctx)
-		if previousImage != "" && previousImage != imageRef {
+		if previousImage != "" {
 			return inst.handleFailedUpgrade(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, previousImage, imageRef, port, err)
 		}
 		return fmt.Errorf("health check: %w", err)
