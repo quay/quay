@@ -14,9 +14,14 @@ greenlets_active = Gauge(
     "quay_greenlets_active",
     "number of greenlets currently active (excludes the hub)",
 )
+greenlet_lifetime = Histogram(
+    "quay_greenlet_lifetime_seconds",
+    "wall-clock lifetime of a greenlet from creation to death",
+    buckets=(0.1, 0.5, 1, 5, 15, 30, 60, 120, 300, 1200, float("inf")),
+)
 
 _latest_switch = None
-_tracked_greenlets = set()
+_tracked_greenlets = {}
 
 
 def enable_tracing():
@@ -33,11 +38,13 @@ def greenlet_callback(event, args):
         hub = get_hub()
 
         if target is not hub and target not in _tracked_greenlets:
-            _tracked_greenlets.add(target)
+            _tracked_greenlets[target] = time()
             greenlets_active.inc()
 
         if origin is not hub and origin.dead:
-            _tracked_greenlets.discard(origin)
+            start = _tracked_greenlets.pop(origin, None)
+            if start is not None:
+                greenlet_lifetime.observe(time() - start)
             greenlets_active.dec()
 
         if origin is hub:
