@@ -386,6 +386,8 @@ func (inst *Installer) resolveImage(ctx context.Context, archive, image string) 
 	return image, nil
 }
 
+// deploy runs either an upgrade or a fresh install and returns the previous
+// image ref. On a fresh install the returned image is empty.
 func (inst *Installer) deploy(ctx context.Context, cfg *Config, imageRef, port string, upgrading bool) (previousImage string, err error) {
 	if upgrading {
 		return inst.upgrade(ctx, cfg, imageRef, port)
@@ -428,6 +430,10 @@ func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port 
 	return previousImage, nil
 }
 
+// handleFailedUpgrade attempts to restore the previous image after a failed
+// health check. It always returns a non-nil error: on successful rollback the
+// error reports both the original failure and the restored image; on failed
+// rollback it includes both image refs so the user can recover manually.
 func (inst *Installer) handleFailedUpgrade(ctx context.Context, healthURL, certPath string, skipHostname bool, previousImage, newImage, port string, healthErr error) error {
 	if rbErr := inst.rollbackUpgrade(ctx, previousImage, port); rbErr != nil {
 		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, previousImage, newImage, rbErr)
@@ -440,6 +446,8 @@ func (inst *Installer) handleFailedUpgrade(ctx context.Context, healthURL, certP
 	return fmt.Errorf("health check: %w; rolled back to previous image %s", healthErr, previousImage)
 }
 
+// rollbackUpgrade stops the service, restores the previous image ref in the
+// Quadlet file, reloads systemd, and restarts the service with the old image.
 func (inst *Installer) rollbackUpgrade(ctx context.Context, previousImage, port string) error {
 	slog.Warn("rolling back to previous image", "image", previousImage)
 
