@@ -371,21 +371,25 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
             return func(*args, skip_lock=True, **kwargs)
     except LockAcquireTimeout as e:
         if _is_gcworker_holder(e.holder):
-            # gc is holding the lock on the blob, so we must propagate a 503 back
-            logger.exception(
-                "GC worker holds BLOB_DELETE_%s, not creating blob %s until lock is released",
+            # GC is actively using the lock: allow finding an already-existing blob (safe — GC
+            # checks references before deleting), but prevent creating a missing one whose object
+            # may be mid-deletion from storage.
+            logger.warning(
+                "GC worker holds BLOB_DELETE_%s (held by %s); using existing blob only",
                 digest,
-                digest,
+                e.holder,
             )
-            raise LockAcquireTimeout() from e
-        # holder is not a GC worker, it either cannot be identified or is another registry worker
-        # fine to continue, the integrity verification ensures that no duplicate rows are added
-        logger.warning(
-            "Timed out acquiring blob lock for %s (held by %s), proceeding without lock",
-            digest,
-            e.holder,
-        )
-        fallback = _BLOB_LOCK_UNAVAILABLE
+            fallback = _BLOB_LOCK_TIMED_OUT
+        else:
+            # Holder is another registry worker or unreadable (response-mixing artifact such as
+            # "OK" or None). Registry-vs-registry races are safe: the IntegrityError guard in
+            # _get_or_create_blob_with_lock handles duplicates.
+            logger.warning(
+                "Timed out acquiring blob lock for %s (held by %s), proceeding without lock",
+                digest,
+                e.holder,
+            )
+            fallback = _BLOB_LOCK_UNAVAILABLE
     except LockNotAcquiredException as e:
         logger.warning("Could not acquire lock for blob %s: %s", digest, e)
         fallback = _BLOB_LOCK_UNAVAILABLE

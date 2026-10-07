@@ -60,9 +60,9 @@ def test_with_blob_lock_or_fallback_timeout_does_not_create_missing_blob(
     elapsed = time.time() - start
 
     assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 2, f"took too long: {elapsed}s"
-    # func is never called — with_blob_lock_or_fallback re-raises immediately
-    # when a GC worker holds the lock, without falling through to the func call.
-    assert calls == []
+    # func is called once (skip_lock=True) with _BLOB_LOCK_TIMED_OUT set, which causes
+    # _get_or_create_blob_with_lock to raise LockAcquireTimeout rather than create the row.
+    assert calls == [True]
     assert not ImageStorage.select().where(ImageStorage.content_checksum == digest).exists()
 
 

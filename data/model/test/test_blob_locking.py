@@ -5,8 +5,9 @@ Tests for the role-aware BLOB_DELETE lock logic introduced to prevent false
 
 Coverage map
 ------------
-test_is_gcworker_holder_*           -- _is_gcworker_holder() unit tests
-test_blob_lock_fallback_*            -- with_blob_lock_or_fallback() decision
+test_is_gcworker_holder_*                        -- _is_gcworker_holder() unit tests
+test_blob_lock_fallback_*                        -- with_blob_lock_or_fallback() decision
+test_blob_lock_fallback_sets_timed_out_*         -- GC holder sets TIMED_OUT (may_create=False)
 """
 
 import functools
@@ -17,6 +18,7 @@ import redis_lock
 
 import data.model.storage as storage_module
 from data.model.storage import (
+    _BLOB_LOCK_TIMED_OUT,
     _BLOB_LOCK_UNAVAILABLE,
     _GC_LOCK_ROLES,
     _blob_lock_fallback,
@@ -33,11 +35,19 @@ from util.locking import GlobalLock, LockAcquireTimeout
 @pytest.fixture
 def fake_lock_server(monkeypatch):
     """Inject a fakeredis server as the GlobalLock backend and reset the
-    process role to "registry" so tests start from a known, clean state."""
+    process role to "registry" so tests start from a known, clean state.
+
+    Also restores the real GlobalLock on data.model.storage: initialized_db
+    permanently replaces storage_module.GlobalLock with a no-op MockGlobalLock
+    the first time any test in the session calls it.  Test ordering on
+    PostgreSQL puts an initialized_db test before this file, so without this
+    restore with_blob_lock_or_fallback calls the mock (which always acquires
+    immediately) and fallback is never set, silently testing the wrong path."""
     server = fakeredis.FakeServer()
     conn = fakeredis.FakeStrictRedis(server=server)
     monkeypatch.setattr(GlobalLock, "lock_factory", functools.partial(redis_lock.Lock, conn))
     monkeypatch.setattr(GlobalLock, "_process_lock_role", "registry")
+    monkeypatch.setattr(storage_module, "GlobalLock", GlobalLock)
     return server
 
 
@@ -189,25 +199,35 @@ def test_blob_lock_fallback_proceeds_for_response_mixing_artifacts(
 
 
 @pytest.mark.parametrize("gc_role", list(_GC_LOCK_ROLES))
-def test_blob_lock_fallback_raises_when_gc_worker_holds_lock(
+def test_blob_lock_fallback_sets_timed_out_when_gc_worker_holds_lock(
     fake_lock_server, fast_timeout, gc_role
 ):
-    # The only case that must 503: a genuine GC worker holds BLOB_DELETE_<digest>
-    # while it is actively removing the blob from object storage.  Creating a DB
-    # record pointing to the (soon-to-be-missing) object would leave a dangling
-    # reference.  LockAcquireTimeout must propagate so the v2 endpoint returns 503
-    # and the client retries after GC finishes.
+    # When a GC worker holds the lock, with_blob_lock_or_fallback must call func
+    # with _BLOB_LOCK_TIMED_OUT set (may_create=False).  This allows returning an
+    # already-existing blob (GC checks references before deleting, so finding an
+    # existing row is safe), while preventing creation of a missing blob whose
+    # object may be mid-deletion from storage.
+    #
+    # In practice the caller's func (store_blob_record_and_temp_link_in_repo)
+    # calls get_or_create_blob_with_lock(skip_lock=True), which reads the
+    # _BLOB_LOCK_TIMED_OUT fallback and raises LockAcquireTimeout when the blob
+    # is missing — that is what ultimately produces the 503.  Here we verify the
+    # fallback state rather than calling into the DB layer.
     _hold_lock(
         fake_lock_server,
         "sha256:112233",
         holder_id=f"{gc_role}:gc-host:115:deadbeef",
     )
 
-    def func(*args, skip_lock=False, **kwargs):
-        pytest.fail(
-            f"func must not be called while {gc_role!r} holds the lock — "
-            "blob object may be mid-deletion"
-        )
+    fallback_seen = []
 
-    with pytest.raises(LockAcquireTimeout):
-        with_blob_lock_or_fallback("sha256:112233", func)
+    def func(*args, skip_lock=False, **kwargs):
+        # Capture the fallback ContextVar state that with_blob_lock_or_fallback set.
+        fallback_seen.append(_blob_lock_fallback.get())
+        return "ok"
+
+    with_blob_lock_or_fallback("sha256:112233", func)
+
+    assert fallback_seen == [
+        _BLOB_LOCK_TIMED_OUT
+    ], f"expected _BLOB_LOCK_TIMED_OUT for GC role {gc_role!r}, got {fallback_seen}"
