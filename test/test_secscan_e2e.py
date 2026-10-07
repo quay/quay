@@ -10,6 +10,7 @@ from unittest.mock import Mock, create_autospec
 from urllib.parse import urlparse
 
 import pytest
+from filelock import FileLock
 
 from registry import application
 
@@ -27,49 +28,77 @@ from util.secscan.v4.fake import fake_security_scanner
 
 
 @pytest.fixture()
-def set_secscan_config():
-    """Configure Clair V4 endpoint for tests."""
-    # Save original config values
-    original_endpoint = application.config.get("SECURITY_SCANNER_V4_ENDPOINT")
-    original_feature = application.config.get("FEATURE_SECURITY_SCANNER")
-    original_psk = application.config.get("SECURITY_SCANNER_V4_PSK")
-    original_server_hostname = application.config.get("SERVER_HOSTNAME")
-    original_url_scheme = application.config.get("PREFERRED_URL_SCHEME")
+def set_secscan_config(tmp_path_factory):
+    """
+    Configure Clair V4 endpoint for tests.
 
-    # Set test config
-    application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://fakesecurityscanner:6060"
-    application.config["FEATURE_SECURITY_SCANNER"] = True
-    application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
-    application.config["SERVER_HOSTNAME"] = "localhost:8080"
-    application.config["PREFERRED_URL_SCHEME"] = "http"
-    application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0  # Allow immediate re-indexing
-    yield
+    Uses file locking to prevent race conditions when tests run in parallel
+    (pytest -n auto). Multiple workers could otherwise modify and restore the
+    global application.config simultaneously, causing test failures.
+    """
+    # Get lock file path shared across all pytest-xdist workers
+    # tmp_path_factory.getbasetemp() returns a worker-specific temp dir,
+    # but .parent gets the shared root temp directory
+    try:
+        root_tmp_dir = tmp_path_factory.getbasetemp().parent
+    except AttributeError:
+        # Fallback for older pytest versions or when not using xdist
+        import tempfile
+        root_tmp_dir = tempfile.gettempdir()
 
-    # Restore original config values
-    if original_endpoint is None:
-        application.config.pop("SECURITY_SCANNER_V4_ENDPOINT", None)
-    else:
-        application.config["SECURITY_SCANNER_V4_ENDPOINT"] = original_endpoint
+    lock_file = str(root_tmp_dir / "secscan_config.lock") if hasattr(root_tmp_dir, "__truediv__") else f"{root_tmp_dir}/secscan_config.lock"
 
-    if original_feature is None:
-        application.config.pop("FEATURE_SECURITY_SCANNER", None)
-    else:
-        application.config["FEATURE_SECURITY_SCANNER"] = original_feature
+    # Acquire lock before modifying global config
+    with FileLock(lock_file, timeout=300):
+        # Save original config values
+        original_endpoint = application.config.get("SECURITY_SCANNER_V4_ENDPOINT")
+        original_feature = application.config.get("FEATURE_SECURITY_SCANNER")
+        original_psk = application.config.get("SECURITY_SCANNER_V4_PSK")
+        original_server_hostname = application.config.get("SERVER_HOSTNAME")
+        original_url_scheme = application.config.get("PREFERRED_URL_SCHEME")
+        original_reindex_threshold = application.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
 
-    if original_psk is None:
-        application.config.pop("SECURITY_SCANNER_V4_PSK", None)
-    else:
-        application.config["SECURITY_SCANNER_V4_PSK"] = original_psk
+        # Set test config
+        application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://fakesecurityscanner:6060"
+        application.config["FEATURE_SECURITY_SCANNER"] = True
+        application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
+        application.config["SERVER_HOSTNAME"] = "localhost:8080"
+        application.config["PREFERRED_URL_SCHEME"] = "http"
+        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0  # Allow immediate re-indexing
 
-    if original_server_hostname is None:
-        application.config.pop("SERVER_HOSTNAME", None)
-    else:
-        application.config["SERVER_HOSTNAME"] = original_server_hostname
+        try:
+            yield
+        finally:
+            # Restore original config values (still within the lock)
+            if original_endpoint is None:
+                application.config.pop("SECURITY_SCANNER_V4_ENDPOINT", None)
+            else:
+                application.config["SECURITY_SCANNER_V4_ENDPOINT"] = original_endpoint
 
-    if original_url_scheme is None:
-        application.config.pop("PREFERRED_URL_SCHEME", None)
-    else:
-        application.config["PREFERRED_URL_SCHEME"] = original_url_scheme
+            if original_feature is None:
+                application.config.pop("FEATURE_SECURITY_SCANNER", None)
+            else:
+                application.config["FEATURE_SECURITY_SCANNER"] = original_feature
+
+            if original_psk is None:
+                application.config.pop("SECURITY_SCANNER_V4_PSK", None)
+            else:
+                application.config["SECURITY_SCANNER_V4_PSK"] = original_psk
+
+            if original_server_hostname is None:
+                application.config.pop("SERVER_HOSTNAME", None)
+            else:
+                application.config["SERVER_HOSTNAME"] = original_server_hostname
+
+            if original_url_scheme is None:
+                application.config.pop("PREFERRED_URL_SCHEME", None)
+            else:
+                application.config["PREFERRED_URL_SCHEME"] = original_url_scheme
+
+            if original_reindex_threshold is None:
+                application.config.pop("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", None)
+            else:
+                application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = original_reindex_threshold
 
 
 def create_test_repository(namespace="devtable", repo_name="secscan-test"):
