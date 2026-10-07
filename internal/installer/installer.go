@@ -213,17 +213,9 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 		return fmt.Errorf("image resolution: %w", err)
 	}
 
-	var previousImage string
-	if upgrading {
-		var err error
-		previousImage, err = inst.upgrade(ctx, &resolvedCfg, imageRef, port)
-		if err != nil {
-			return fmt.Errorf("upgrade: %w", err)
-		}
-	} else {
-		if err := inst.freshInstall(ctx, &resolvedCfg, imageRef); err != nil {
-			return fmt.Errorf("install: %w", err)
-		}
+	previousImage, err := inst.deploy(ctx, &resolvedCfg, imageRef, port, upgrading)
+	if err != nil {
+		return err
 	}
 
 	healthURL := fmt.Sprintf("https://%s:%s/healthz", resolvedCfg.Hostname, port)
@@ -231,18 +223,10 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second); err != nil {
 		inst.dumpContainerLogs(ctx)
-		if !upgrading || previousImage == "" || previousImage == imageRef {
-			return fmt.Errorf("health check: %w", err)
+		if previousImage != "" && previousImage != imageRef {
+			return inst.handleFailedUpgrade(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, previousImage, imageRef, port, err)
 		}
-		if rbErr := inst.rollbackUpgrade(ctx, previousImage, port); rbErr != nil {
-			return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", err, previousImage, imageRef, rbErr)
-		}
-		rbHealthErr := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second)
-		if rbHealthErr != nil {
-			return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy: %w", err, previousImage, rbHealthErr)
-		}
-		slog.Info("rolled back to previous image", "image", previousImage)
-		return fmt.Errorf("health check: %w; rolled back to previous image %s", err, previousImage)
+		return fmt.Errorf("health check: %w", err)
 	}
 
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
@@ -402,6 +386,13 @@ func (inst *Installer) resolveImage(ctx context.Context, archive, image string) 
 	return image, nil
 }
 
+func (inst *Installer) deploy(ctx context.Context, cfg *Config, imageRef, port string, upgrading bool) (previousImage string, err error) {
+	if upgrading {
+		return inst.upgrade(ctx, cfg, imageRef, port)
+	}
+	return "", inst.freshInstall(ctx, cfg, imageRef)
+}
+
 func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) (previousImage string, err error) {
 	slog.Info("existing installation detected, upgrading")
 
@@ -437,11 +428,24 @@ func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port 
 	return previousImage, nil
 }
 
+func (inst *Installer) handleFailedUpgrade(ctx context.Context, healthURL, certPath string, skipHostname bool, previousImage, newImage, port string, healthErr error) error {
+	if rbErr := inst.rollbackUpgrade(ctx, previousImage, port); rbErr != nil {
+		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, previousImage, newImage, rbErr)
+	}
+	rbHealthErr := inst.waitForHealth(ctx, healthURL, certPath, skipHostname, 30*time.Second)
+	if rbHealthErr != nil {
+		return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy: %w", healthErr, previousImage, rbHealthErr)
+	}
+	slog.Info("rolled back to previous image", "image", previousImage)
+	return fmt.Errorf("health check: %w; rolled back to previous image %s", healthErr, previousImage)
+}
+
 func (inst *Installer) rollbackUpgrade(ctx context.Context, previousImage, port string) error {
 	slog.Warn("rolling back to previous image", "image", previousImage)
 
-	_ = inst.systemd.Stop(ctx, quadletServiceName)
-
+	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("stop service for rollback: %w", err)
+	}
 	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, previousImage, port); err != nil {
 		return fmt.Errorf("restore previous quadlet image: %w", err)
 	}
