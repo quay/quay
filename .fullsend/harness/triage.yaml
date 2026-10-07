@@ -1,5 +1,5 @@
 # Quay Jira-aware triage harness with the Quay communication skill.
-base: https://raw.githubusercontent.com/fullsend-ai/agents/883141b9508c657c3c4235c8cd7c86577f0b47a9/harness/triage.yaml#sha256=3aa32e9f66ad6a9b60a75f50d3adc6ae39ebfb425c3928381e019436498bf2aa
+base: https://raw.githubusercontent.com/fullsend-ai/agents/d5c4d0d2f2c23cf3aa89e4a5bd4e40c90f003196/harness/triage.yaml#sha256=5ada8f85cee204e2fcb8ba6935b301345b3dc56ee3f306d6eafd35f7bc4312a7
 model: claude-sonnet-4-6
 
 trigger: >
