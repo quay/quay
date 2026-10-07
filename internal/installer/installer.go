@@ -213,8 +213,11 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 		return fmt.Errorf("image resolution: %w", err)
 	}
 
+	var previousImage string
 	if upgrading {
-		if err := inst.upgrade(ctx, &resolvedCfg, imageRef, port); err != nil {
+		var err error
+		previousImage, err = inst.upgrade(ctx, &resolvedCfg, imageRef, port)
+		if err != nil {
 			return fmt.Errorf("upgrade: %w", err)
 		}
 	} else {
@@ -228,7 +231,18 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second); err != nil {
 		inst.dumpContainerLogs(ctx)
-		return fmt.Errorf("health check: %w", err)
+		if !upgrading || previousImage == "" || previousImage == imageRef {
+			return fmt.Errorf("health check: %w", err)
+		}
+		if rbErr := inst.rollbackUpgrade(ctx, previousImage, port); rbErr != nil {
+			return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", err, previousImage, imageRef, rbErr)
+		}
+		rbHealthErr := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second)
+		if rbHealthErr != nil {
+			return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy: %w", err, previousImage, rbHealthErr)
+		}
+		slog.Info("rolled back to previous image", "image", previousImage)
+		return fmt.Errorf("health check: %w; rolled back to previous image %s", err, previousImage)
 	}
 
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
@@ -388,32 +402,54 @@ func (inst *Installer) resolveImage(ctx context.Context, archive, image string) 
 	return image, nil
 }
 
-func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) error {
+func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) (previousImage string, err error) {
 	slog.Info("existing installation detected, upgrading")
+
+	previousImage, err = inst.quadlet.Image(quadletServiceName)
+	if err != nil {
+		return "", fmt.Errorf("read current image: %w", err)
+	}
 
 	// Validate and install replacement TLS material before stopping the running
 	// service. The process keeps its currently loaded pair until it is restarted.
 	if cfg.SSLCert != "" {
 		if err := inst.copyUserTLS(cfg); err != nil {
-			return fmt.Errorf("TLS certificate setup: %w", err)
+			return "", fmt.Errorf("TLS certificate setup: %w", err)
 		}
 	}
 
 	slog.Info("stopping registry")
 	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
-		return fmt.Errorf("stop service: %w", err)
+		return "", fmt.Errorf("stop service: %w", err)
 	}
 
 	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, imageRef, port); err != nil {
-		return fmt.Errorf("update quadlet: %w", err)
+		return "", fmt.Errorf("update quadlet: %w", err)
 	}
 	slog.Info("updated quadlet", "path", inst.env.QuadletPath(quadletServiceName))
 
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
-		return fmt.Errorf("reload systemd: %w", err)
+		return "", fmt.Errorf("reload systemd: %w", err)
 	}
 	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
-		return fmt.Errorf("start service: %w", err)
+		return "", fmt.Errorf("start service: %w", err)
+	}
+	return previousImage, nil
+}
+
+func (inst *Installer) rollbackUpgrade(ctx context.Context, previousImage, port string) error {
+	slog.Warn("rolling back to previous image", "image", previousImage)
+
+	_ = inst.systemd.Stop(ctx, quadletServiceName)
+
+	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, previousImage, port); err != nil {
+		return fmt.Errorf("restore previous quadlet image: %w", err)
+	}
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		return fmt.Errorf("reload systemd after rollback: %w", err)
+	}
+	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("start service after rollback: %w", err)
 	}
 	return nil
 }

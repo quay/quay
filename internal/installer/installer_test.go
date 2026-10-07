@@ -105,12 +105,64 @@ func TestUpgradePreservesConfigBasedServeCommand(t *testing.T) {
 		fs:      system.OSFS{},
 	}
 
-	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", "9443"))
+	prevImage, err := inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", "9443")
+	require.NoError(t, err)
+	assert.Equal(t, "localhost/quay:old", prevImage)
 
 	content := string(mustReadFile(t, env.QuadletPath(quadletServiceName)))
 	assert.Contains(t, content, "Exec=serve --config /data/config.yaml --hostname registry.example.com")
 	assert.Contains(t, content, "Image=localhost/quay:new")
 	assert.Contains(t, content, "PublishPort=9443:8443")
+}
+
+func TestUpgradeReturnsPreviousImage(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: "/var/lib/quay", Hostname: "registry.example.com", Port: "8443",
+	}))
+	inst := &Installer{
+		systemd: &recordingServiceManager{},
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	prevImage, err := inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "8443")
+	require.NoError(t, err)
+	assert.Equal(t, "localhost/quay:v3.0.0", prevImage)
+
+	image, err := quadlet.Image(quadletServiceName)
+	require.NoError(t, err)
+	assert.Equal(t, "localhost/quay:v3.0.1", image)
+}
+
+func TestRollbackUpgradeRestoresPreviousImage(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: "/var/lib/quay", Hostname: "registry.example.com", Port: "8443",
+	}))
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	// Simulate upgrade
+	_, err := inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "8443")
+	require.NoError(t, err)
+	services.calls = nil
+
+	// Rollback
+	require.NoError(t, inst.rollbackUpgrade(t.Context(), "localhost/quay:v3.0.0", "8443"))
+
+	image, err := quadlet.Image(quadletServiceName)
+	require.NoError(t, err)
+	assert.Equal(t, "localhost/quay:v3.0.0", image)
+	assert.Equal(t, []string{"stop:quay", "daemon-reload", "start:quay"}, services.calls)
 }
 
 func TestRemoveFailedInstallation(t *testing.T) {
@@ -548,7 +600,8 @@ func TestUpgradeUsesEffectivePort(t *testing.T) {
 			port, err := inst.resolvePort(tt.requestedPort, true)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantPort, port)
-			require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", port))
+			_, upgradeErr := inst.upgrade(t.Context(), &Config{}, "localhost/quay:new", port)
+			require.NoError(t, upgradeErr)
 
 			content, err := os.ReadFile(env.QuadletPath(quadletServiceName))
 			require.NoError(t, err)
@@ -607,7 +660,7 @@ func TestUpgradeInstallsReplacementTLS(t *testing.T) {
 		fs:      system.OSFS{},
 	}
 
-	err = inst.upgrade(t.Context(), &Config{
+	_, err = inst.upgrade(t.Context(), &Config{
 		Hostname: "registry.example.com",
 		DataDir:  dataDir,
 		SSLCert:  newCert,
