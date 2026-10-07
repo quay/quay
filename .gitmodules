@@ -1,3 +1,6 @@
 [submodule "web/build-tools"]
 	path = web/build-tools
 	url = https://github.com/RedHatInsights/insights-frontend-builder-common.git
+[submodule "pushgateway"]
+	path = pushgateway
+	url = https://github.com/prometheus/pushgateway.git
