@@ -45,6 +45,7 @@ from image.shared.schemas import parse_manifest_from_bytes
 from test.fixtures import *
 from test.helpers import check_transitive_modifications
 from util.bytes import Bytes
+from util.locking import GlobalLock
 
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"
@@ -1760,3 +1761,78 @@ def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialize
 
     # child_only2 must survive
     assert Manifest.select().where(Manifest.id == child_only2.id).exists()
+
+
+def test_garbage_collect_storage_acquires_blob_delete_lock_with_gc_role(
+    default_tag_policy, initialized_db, monkeypatch
+):
+    # End-to-end integration test for the lock-role feature.
+    #
+    # When repositorygcworker calls GlobalLock.configure(config, lock_role=
+    # "repositorygcworker") at startup, _process_lock_role is set on the class.
+    # Every subsequent GlobalLock("BLOB_DELETE_<digest>") instance must embed
+    # that role as the first segment of _holder_id so that waiting registry
+    # workers can distinguish a GC holder (must 503) from a registry holder
+    # (safe to proceed).
+    #
+    # This test verifies the full path:
+    #   configure(lock_role=...) → GlobalLock.__init__ → _holder_id prefix →
+    #   observed by a spy before the lock is released.
+    import functools
+
+    import fakeredis
+    import redis_lock
+
+    # initialized_db permanently replaces data.model.storage.GlobalLock with a
+    # no-op MockGlobalLock (see test/fixtures.py) the first time any test uses
+    # it.  Restore the real GlobalLock on the storage module so that
+    # garbage_collect_storage actually calls GlobalLock.__init__ and our spy
+    # fires.  We also give it a fakeredis backend so the lock acquisition
+    # succeeds (without real Redis the LockNotAcquiredException path fires and
+    # GC silently skips deletion, giving a false-negative).
+    server = fakeredis.FakeServer()
+    conn = fakeredis.FakeStrictRedis(server=server)
+    monkeypatch.setattr(GlobalLock, "lock_factory", functools.partial(redis_lock.Lock, conn))
+    monkeypatch.setattr(storage_model, "GlobalLock", GlobalLock)
+
+    # Simulate repositorygcworker startup: configure sets the process role.
+    monkeypatch.setattr(GlobalLock, "_process_lock_role", "repositorygcworker")
+
+    # Spy on GlobalLock.__init__ to capture _holder_id for every BLOB_DELETE
+    # lock that GC creates during garbage_collect_storage.
+    holder_ids_seen = []
+    original_init = GlobalLock.__init__
+
+    def spy_init(self, name, *args, **kwargs):
+        original_init(self, name, *args, **kwargs)
+        if name.startswith("BLOB_DELETE_"):
+            holder_ids_seen.append(self._holder_id)
+
+    monkeypatch.setattr(GlobalLock, "__init__", spy_init)
+
+    # Create an orphaned blob with placement — the same pattern used by
+    # test_gc_collects_orphaned_blobs_with_placement.  No ManifestBlob or
+    # UploadedBlob rows reference it, so _is_storage_orphaned returns True and
+    # garbage_collect_storage will attempt to acquire the BLOB_DELETE lock.
+    location = ImageStorageLocation.get(name="local_us")
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    storage_model.garbage_collect_storage([orphan.id])
+
+    assert holder_ids_seen, (
+        "No BLOB_DELETE lock was acquired — either the blob was not recognised as "
+        "orphaned or GlobalLock.lock_factory was not properly patched."
+    )
+    assert all(h.startswith("repositorygcworker:") for h in holder_ids_seen), (
+        f"Expected every BLOB_DELETE holder to start with 'repositorygcworker:', "
+        f"got: {holder_ids_seen}"
+    )
