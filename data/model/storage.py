@@ -471,6 +471,7 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
             return _get_or_create_blob_with_lock(
                 digest, lock_acquired=False, may_create=False, **blob_attrs
             )
+        return _get_or_create_blob_with_lock(digest, lock_acquired=False, **blob_attrs)
     except LockNotAcquiredException:
         # If we cannot acquire a lock, check if we have the ImageStorage entries for the provided
         # digest. If that reading fails, then create new entries in the table anyway but report

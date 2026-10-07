@@ -42,9 +42,11 @@ def _patch_lock_factory(monkeypatch):
 def test_with_blob_lock_or_fallback_timeout_does_not_create_missing_blob(
     initialized_db, monkeypatch
 ):
+    # holder_id must use an exact name from _GC_LOCK_ROLES — "gc-worker" (with
+    # hyphen) is not recognised and would be treated as a non-GC holder.
     server = _patch_lock_factory(monkeypatch)
     digest = _digest(1)
-    _hold_lock(server, digest, holder_id="gc-worker:7:aaaaaaaa")
+    _hold_lock(server, digest, holder_id="repositorygcworker:7:aaaaaaaa")
 
     calls = []
 
@@ -58,7 +60,9 @@ def test_with_blob_lock_or_fallback_timeout_does_not_create_missing_blob(
     elapsed = time.time() - start
 
     assert elapsed < BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT + 2, f"took too long: {elapsed}s"
-    assert calls == [True]
+    # func is never called — with_blob_lock_or_fallback re-raises immediately
+    # when a GC worker holds the lock, without falling through to the func call.
+    assert calls == []
     assert not ImageStorage.select().where(ImageStorage.content_checksum == digest).exists()
 
 
@@ -123,8 +127,10 @@ def test_with_blob_lock_or_fallback_acquires_lock_once_on_fallback(initialized_d
     def func(**kwargs):
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
-    with pytest.raises(LockAcquireTimeout):
-        with_blob_lock_or_fallback(digest, func)
+    # Non-GC holder: with_blob_lock_or_fallback now proceeds rather than raising.
+    # The key invariant — GlobalLock.acquire is called exactly once for the outer
+    # lock and never again inside the fallback func call — still holds.
+    with_blob_lock_or_fallback(digest, func)
 
     assert acquire_attempts == [f"BLOB_DELETE_{digest}"], acquire_attempts
 
@@ -137,9 +143,11 @@ def test_with_blob_lock_or_fallback_logs_holder_on_timeout(initialized_db, monke
     def func(**kwargs):
         return get_or_create_blob_with_lock(digest=digest, image_size=1, **kwargs)
 
+    # Non-GC holder: with_blob_lock_or_fallback now proceeds (no exception) but
+    # still logs a warning containing the lock name and the holder ID before
+    # doing so, giving operators visibility into what was contending.
     with caplog.at_level(logging.WARNING):
-        with pytest.raises(LockAcquireTimeout):
-            with_blob_lock_or_fallback(digest, func)
+        with_blob_lock_or_fallback(digest, func)
 
     messages = [record.getMessage() for record in caplog.records]
     assert any(
@@ -192,3 +200,49 @@ def test_get_or_create_blob_with_lock_timeout_returns_existing_blob(initialized_
     _hold_lock(server, digest, holder_id="repositorygcworker:1:aaaaaaaa")
 
     assert get_or_create_blob_with_lock(digest=digest, image_size=1).id == existing.id
+
+
+def test_get_or_create_blob_with_lock_timeout_with_non_gc_holder_creates_blob(
+    initialized_db, monkeypatch
+):
+    """
+    Verifies that blobs will indeed be created if a non-GC worker is holding the lock. Unlike the case
+    of GC workers, this operation must **not** raise a 503, it must fall through and create the
+    ImageStorage blob entry.
+
+    Guards from regression where the non-GC branch has no fallback return.
+    """
+    server = _patch_lock_factory(monkeypatch)
+    digest = _digest(10)
+    _hold_lock(server, digest, holder_id="other_worker:1:abcd1234")
+
+    result = get_or_create_blob_with_lock(digest=digest, image_size=1)
+
+    assert result is not None, "most not implicitly return None when holder is not GC"
+    assert result.content_checksum == digest
+    assert ImageStorage.select().where(ImageStorage.content_checksum == digest).exists()
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    [
+        None,  # ghost holder
+        "OK",  # misinterpreted response
+    ],
+)
+def test_get_or_create_blob_with_lock_timeout_with_response_mixing_artifact_creates_blob(
+    initialized_db, monkeypatch, artifact
+):
+    """
+    Same regression test as above, but this time tests against responses instead of the worker name.
+    """
+    server = _patch_lock_factory(monkeypatch)
+    digest = _digest(11)
+
+    _hold_lock(server, digest, holder_id="placeholder:0:0:00000000")
+    monkeypatch.setattr(GlobalLock, "_current_holder", lambda self: artifact)
+
+    result = get_or_create_blob_with_lock(digest=digest, image_size=1)
+
+    assert result is not None, f"must not implicitly return none for artifact={artifact!r}"
+    assert result.content_checksum == digest
