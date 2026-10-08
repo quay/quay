@@ -1867,24 +1867,24 @@ class TestFlushWorkerEngineConfig:
 
 
 class TestFlushWorkerClusterScan:
-    """Tests covering the cluster scan_iter path in _scan_redis_keys."""
+    """Tests covering the cursor-based cluster scan path in _scan_redis_keys."""
 
-    def test_scan_cluster_uses_scan_iter(self):
-        """Verify cluster mode uses scan_iter() instead of scan()."""
+    def test_scan_cluster_uses_cursor_scan(self):
+        """Verify cluster mode uses cursor-based scan() across nodes."""
         with patch("workers.pullstatsredisflushworker.app") as mock_app:
             mock_app.config.get.return_value = 300
 
             worker = RedisFlushWorker()
             worker._is_cluster = True
             mock_client = MagicMock()
-            mock_client.scan_iter.return_value = iter(["key1", "key2", "key3"])
+            mock_client.scan.return_value = ({}, ["key1", "key2", "key3"])
             worker.redis_client = mock_client
 
             result = worker._scan_redis_keys("pull_events:*", 10)
 
             assert set(result) == {"key1", "key2", "key3"}
-            mock_client.scan_iter.assert_called_once_with(match="pull_events:*", count=100)
-            mock_client.scan.assert_not_called()
+            mock_client.scan.assert_called_once_with(match="pull_events:*", count=100)
+            mock_client.scan_iter.assert_not_called()
 
     def test_scan_cluster_respects_limit(self):
         """Verify cluster scan stops at key limit."""
@@ -1894,12 +1894,18 @@ class TestFlushWorkerClusterScan:
             worker = RedisFlushWorker()
             worker._is_cluster = True
             mock_client = MagicMock()
-            mock_client.scan_iter.return_value = iter([f"key{i}" for i in range(100)])
+            mock_node = MagicMock()
+            mock_client.get_node.return_value = mock_node
+            mock_client.scan.side_effect = [
+                ({"node-a": 1}, [f"key{i}" for i in range(3)]),
+                ({"node-a": 2}, [f"key{i}" for i in range(3, 8)]),
+            ]
             worker.redis_client = mock_client
 
             result = worker._scan_redis_keys("pull_events:*", 5)
 
             assert len(result) == 5
+            assert mock_client.scan.call_count == 2
 
     def test_scan_cluster_respects_time_budget(self):
         """Verify cluster scan stops when time budget is exhausted."""
@@ -1909,22 +1915,53 @@ class TestFlushWorkerClusterScan:
             worker = RedisFlushWorker()
             worker._is_cluster = True
             mock_client = MagicMock()
-
-            def slow_scan_iter(**kwargs):
-                for i in range(1000):
-                    yield f"key{i}"
-
-            mock_client.scan_iter.side_effect = slow_scan_iter
+            mock_node = MagicMock()
+            mock_client.get_node.return_value = mock_node
+            mock_client.scan.side_effect = [
+                ({"node-a": 1}, ["key0"]),
+                ({"node-a": 2}, ["key1"]),
+                ({"node-a": 3}, ["key2"]),
+            ]
             worker.redis_client = mock_client
 
             with patch("workers.pullstatsredisflushworker.time") as mock_time:
                 mock_time.time = time.time
-                times = iter([0.0, 0.0, 0.0, 999.0])
+                # deadline set; after first follow-up SCAN the budget is exhausted.
+                times = iter([0.0, 1.0, 999.0])
                 mock_time.monotonic = lambda: next(times, 999.0)
 
                 result = worker._scan_redis_keys("pull_events:*", 10000)
 
-            assert len(result) < 1000
+            assert set(result) == {"key0", "key1"}
+            assert mock_client.scan.call_count == 2
+
+    def test_scan_cluster_checks_deadline_on_empty_batches(self):
+        """Empty SCAN batches still honor the time budget between calls."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            worker._is_cluster = True
+            mock_client = MagicMock()
+            mock_node = MagicMock()
+            mock_client.get_node.return_value = mock_node
+            mock_client.scan.side_effect = [
+                ({"node-a": 1}, []),
+                ({"node-a": 2}, []),
+                ({"node-a": 0}, []),
+            ]
+            worker.redis_client = mock_client
+
+            with patch("workers.pullstatsredisflushworker.time") as mock_time:
+                mock_time.time = time.time
+                # deadline set; after first follow-up empty SCAN the budget expires.
+                times = iter([0.0, 1.0, 999.0])
+                mock_time.monotonic = lambda: next(times, 999.0)
+
+                result = worker._scan_redis_keys("pull_events:*", 10000)
+
+            assert result == []
+            assert mock_client.scan.call_count == 2
 
 
 class TestFlushWorkerCrossslotFallback:
@@ -2026,13 +2063,52 @@ class TestHasUsablePullMetricsRedis:
             is True
         )
 
-    def test_localhost_pull_metrics_falls_back_to_user_events(self):
-        """Localhost pull-metrics config is usable when USER_EVENTS has a real host."""
+    def test_explicit_localhost_pull_metrics_not_overridden_by_user_events(self):
+        """Explicit localhost PULL_METRICS_REDIS is judged on that selected config."""
         assert (
             has_usable_pull_metrics_redis(
                 {
                     "PULL_METRICS_REDIS": {"host": "localhost", "db": 1},
                     "USER_EVENTS_REDIS": {"host": "user-events.example.com"},
+                }
+            )
+            is False
+        )
+
+    def test_missing_pull_metrics_uses_user_events_host(self):
+        """When PULL_METRICS_REDIS is absent, a real USER_EVENTS host is usable."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {"USER_EVENTS_REDIS": {"host": "user-events.example.com"}}
+            )
+            is True
+        )
+
+    def test_engine_rediscluster_startup_nodes_are_usable(self):
+        """engine:rediscluster configs with startup_nodes are usable."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {
+                    "PULL_METRICS_REDIS": {
+                        "engine": "rediscluster",
+                        "redis_config": {
+                            "startup_nodes": [{"host": "node1.example.com", "port": 6379}],
+                        },
+                    }
+                }
+            )
+            is True
+        )
+
+    def test_engine_redis_nested_host_is_usable(self):
+        """engine:redis configs with redis_config.host are usable."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {
+                    "PULL_METRICS_REDIS": {
+                        "engine": "redis",
+                        "redis_config": {"host": "redis.example.com", "port": 6379},
+                    }
                 }
             )
             is True

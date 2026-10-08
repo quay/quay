@@ -185,11 +185,12 @@ class RedisFlushWorker(Worker):
         """
         Scan Redis for keys matching the pattern.
 
-        Uses ``scan_iter()`` for Redis Cluster clients (where ``scan()`` returns
-        per-node cursor dicts) and the manual cursor loop for single-node
-        clients.  Cluster scans are bounded by both *limit* and a per-cycle
-        wall-clock budget (:data:`MAX_SCAN_SECONDS`) to prevent a large cluster
-        from blocking the worker indefinitely.
+        Uses cursor-based ``scan()`` for Redis Cluster clients (checking the
+        deadline after every SCAN response, including empty batches) and the
+        manual cursor loop for single-node clients.  Cluster scans are bounded
+        by both *limit* and a per-cycle wall-clock budget
+        (:data:`MAX_SCAN_SECONDS`) to prevent a large cluster from blocking
+        the worker indefinitely.
 
         Args:
             pattern: Redis key pattern to match
@@ -205,19 +206,51 @@ class RedisFlushWorker(Worker):
             keys_set: Set[str] = set()
 
             if self._is_cluster:
+                # Cursor-based SCAN so the deadline is checked after every
+                # response — including empty batches when few keys match.
                 scan_deadline = time.monotonic() + MAX_SCAN_SECONDS
-                for key in self.redis_client.scan_iter(match=pattern, count=REDIS_SCAN_COUNT):
-                    keys_set.add(key)
-                    if len(keys_set) >= limit:
-                        break
-                    if time.monotonic() >= scan_deadline:
-                        logger.info(
-                            "RedisFlushWorker: Cluster scan time budget (%ds) "
-                            "exhausted after collecting %d keys",
-                            MAX_SCAN_SECONDS,
-                            len(keys_set),
+                cursors, batch_keys = self.redis_client.scan(match=pattern, count=REDIS_SCAN_COUNT)
+                if batch_keys:
+                    keys_set.update(batch_keys)
+
+                budget_exhausted = time.monotonic() >= scan_deadline
+                if budget_exhausted:
+                    logger.info(
+                        "RedisFlushWorker: Cluster scan time budget (%ds) "
+                        "exhausted after collecting %d keys",
+                        MAX_SCAN_SECONDS,
+                        len(keys_set),
+                    )
+
+                cursors = {name: cursor for name, cursor in (cursors or {}).items() if cursor != 0}
+                nodes = {name: self.redis_client.get_node(node_name=name) for name in cursors}
+
+                while cursors and len(keys_set) < limit and not budget_exhausted:
+                    for name, cursor in list(cursors.items()):
+                        if len(keys_set) >= limit:
+                            break
+                        cur, batch = self.redis_client.scan(
+                            cursor=cursor,
+                            match=pattern,
+                            count=REDIS_SCAN_COUNT,
+                            target_nodes=nodes[name],
                         )
-                        break
+                        if batch:
+                            keys_set.update(batch)
+                        cursors[name] = cur[name]
+
+                        # Check after every SCAN response, including empty batches.
+                        if time.monotonic() >= scan_deadline:
+                            logger.info(
+                                "RedisFlushWorker: Cluster scan time budget (%ds) "
+                                "exhausted after collecting %d keys",
+                                MAX_SCAN_SECONDS,
+                                len(keys_set),
+                            )
+                            budget_exhausted = True
+                            break
+
+                    cursors = {name: cursor for name, cursor in cursors.items() if cursor != 0}
             else:
                 cursor = 0
                 while len(keys_set) < limit:
@@ -585,19 +618,33 @@ def create_gunicorn_worker():
     return worker
 
 
-def has_usable_pull_metrics_redis(app_config):
-    """Return True when pull metrics can use a non-localhost Redis endpoint.
+def _redis_endpoint_is_usable(host):
+    """Return True when *host* is a non-empty, non-localhost Redis endpoint."""
+    return host not in (None, "", "localhost")
 
-    Prefers ``PULL_METRICS_REDIS``; ``USER_EVENTS_REDIS`` is accepted as a
-    fallback host when the dedicated pull-metrics config is missing or still
-    points at localhost (the ``config.py`` default).
+
+def has_usable_pull_metrics_redis(app_config):
+    """Return True when the resolved pull-metrics Redis config is usable.
+
+    Uses the same resolution as the flush worker
+    (:func:`resolve_pull_metrics_redis_config`), then validates that selected
+    config — including ``engine: redis`` / ``engine: rediscluster`` shapes
+    whose hosts live under ``redis_config``.
     """
-    pm_config = app_config.get("PULL_METRICS_REDIS")
-    ue_config = app_config.get("USER_EVENTS_REDIS")
-    return bool(
-        (pm_config and pm_config.get("host") not in (None, "localhost"))
-        or (ue_config and ue_config.get("host") not in (None, "localhost"))
-    )
+    redis_config = resolve_pull_metrics_redis_config(app_config)
+    if not redis_config:
+        return False
+
+    if has_engine_config(redis_config):
+        inner = redis_config.get("redis_config") or {}
+        if is_cluster_config(redis_config):
+            nodes = inner.get("startup_nodes") or []
+            if any(_redis_endpoint_is_usable(node.get("host")) for node in nodes):
+                return True
+            return _redis_endpoint_is_usable(inner.get("host"))
+        return _redis_endpoint_is_usable(inner.get("host"))
+
+    return _redis_endpoint_is_usable(redis_config.get("host"))
 
 
 def main():
