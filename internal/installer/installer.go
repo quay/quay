@@ -56,13 +56,14 @@ type Config struct {
 // Installer orchestrates fresh installs and upgrades of the registry
 // as a Quadlet systemd service.
 type Installer struct {
-	images   system.ImageLoader
-	runner   system.CommandRunner
-	systemd  system.ServiceManager
-	quadlet  *system.QuadletManager
-	env      *system.Env
-	fs       system.FileSystem
-	hostname func(context.Context) (string, error)
+	images     system.ImageLoader
+	runner     system.CommandRunner
+	systemd    system.ServiceManager
+	quadlet    *system.QuadletManager
+	env        *system.Env
+	fs         system.FileSystem
+	hostname   func(context.Context) (string, error)
+	healthWait func(ctx context.Context, url, certPath string, skipHostname bool, timeout time.Duration) error
 }
 
 // New detects the runtime environment and creates an Installer with the
@@ -208,25 +209,31 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 		return fmt.Errorf("initialize registry: %w", err)
 	}
 
+	var snapshot *upgradeSnapshot
+	if upgrading {
+		snapshot, err = inst.snapshotUpgrade(ctx, &resolvedCfg)
+		if err != nil {
+			return fmt.Errorf("upgrade snapshot: %w", err)
+		}
+	}
+
 	imageRef, err := inst.resolveImage(ctx, resolvedCfg.ImageArchive, resolvedCfg.Image)
 	if err != nil {
 		return fmt.Errorf("image resolution: %w", err)
 	}
 
-	previousImage, err := inst.deploy(ctx, &resolvedCfg, imageRef, port, upgrading)
-	if err != nil {
-		return err
+	snapshot, deployErr := inst.deploy(ctx, &resolvedCfg, imageRef, port, upgrading, snapshot)
+	if deployErr != nil {
+		if snapshot != nil {
+			return inst.recoverFromFailedDeploy(ctx, snapshot, imageRef, deployErr)
+		}
+		return deployErr
 	}
 
 	healthURL := fmt.Sprintf("https://%s:%s/healthz", resolvedCfg.Hostname, port)
 	certPath := filepath.Join(resolvedCfg.DataDir, "ssl.cert")
-	slog.Info("waiting for registry to start")
-	if err := inst.waitForHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, 30*time.Second); err != nil {
-		inst.dumpContainerLogs(ctx)
-		if previousImage != "" {
-			return inst.handleFailedUpgrade(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, previousImage, imageRef, port, err)
-		}
-		return fmt.Errorf("health check: %w", err)
+	if err := inst.verifyHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, snapshot, imageRef); err != nil {
+		return err
 	}
 
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
@@ -386,77 +393,192 @@ func (inst *Installer) resolveImage(ctx context.Context, archive, image string) 
 	return image, nil
 }
 
-// deploy runs either an upgrade or a fresh install and returns the previous
-// image ref. On a fresh install the returned image is empty.
-func (inst *Installer) deploy(ctx context.Context, cfg *Config, imageRef, port string, upgrading bool) (previousImage string, err error) {
-	if upgrading {
-		return inst.upgrade(ctx, cfg, imageRef, port)
+// verifyHealth waits for the registry to pass its health check. On failure
+// during an upgrade it attempts rollback via the snapshot; on context
+// cancellation it returns immediately without rollback.
+func (inst *Installer) verifyHealth(ctx context.Context, healthURL, certPath string, skipHostname bool, snapshot *upgradeSnapshot, imageRef string) error {
+	slog.Info("waiting for registry to start")
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
 	}
-	return "", inst.freshInstall(ctx, cfg, imageRef)
+	if err := healthWait(ctx, healthURL, certPath, skipHostname, 30*time.Second); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("health check: %w", err)
+		}
+		inst.dumpContainerLogs(ctx)
+		if snapshot != nil {
+			return inst.handleFailedUpgrade(ctx, snapshot, imageRef, err)
+		}
+		return fmt.Errorf("health check: %w", err)
+	}
+	return nil
 }
 
-func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) (previousImage string, err error) {
-	slog.Info("existing installation detected, upgrading")
+// upgradeSnapshot captures the pre-upgrade state so that rollback can fully
+// restore the previous Quadlet unit, TLS material, and image identity.
+type upgradeSnapshot struct {
+	quadletPath string
+	quadletData []byte
+	imageID     string
+	port        string
+	hostname    string
+	healthURL   string
+	certPath    string
+	skipTLSHost bool
+	tlsCert     []byte
+	tlsKey      []byte
+}
 
-	previousImage, err = inst.quadlet.Image(quadletServiceName)
+// snapshotUpgrade captures the current installation state before any
+// modifications. The imageID field is best-effort: if the image cannot be
+// inspected (e.g. no local image yet), it is left empty and rollback restores
+// the Quadlet verbatim without pinning to a digest.
+func (inst *Installer) snapshotUpgrade(ctx context.Context, cfg *Config) (*upgradeSnapshot, error) {
+	quadletPath := inst.env.QuadletPath(quadletServiceName)
+	quadletData, err := inst.fs.ReadFile(quadletPath)
 	if err != nil {
-		return "", fmt.Errorf("read current image: %w", err)
+		return nil, fmt.Errorf("read quadlet: %w", err)
 	}
 
-	// Validate and install replacement TLS material before stopping the running
-	// service. The process keeps its currently loaded pair until it is restarted.
+	oldPort, err := inst.quadlet.HostPort(quadletServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("read port: %w", err)
+	}
+
+	oldHostname, err := inst.quadlet.Hostname(quadletServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("read hostname: %w", err)
+	}
+
+	oldImage, _ := inst.quadlet.Image(quadletServiceName)
+	var imageID string
+	if oldImage != "" && inst.images != nil {
+		imageID, _ = inst.images.ImageID(ctx, oldImage)
+	}
+
+	snap := &upgradeSnapshot{
+		quadletPath: quadletPath,
+		quadletData: quadletData,
+		imageID:     imageID,
+		port:        oldPort,
+		hostname:    oldHostname,
+		healthURL:   fmt.Sprintf("https://%s:%s/healthz", oldHostname, oldPort),
+		certPath:    filepath.Join(cfg.DataDir, "ssl.cert"),
+		skipTLSHost: cfg.SSLSkipHostnameVerification,
+	}
+
+	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
+	keyPath := filepath.Join(cfg.DataDir, "ssl.key")
+	if cfg.SSLCert != "" {
+		snap.tlsCert, _ = inst.fs.ReadFile(certPath)
+		snap.tlsKey, _ = inst.fs.ReadFile(keyPath)
+	}
+
+	return snap, nil
+}
+
+// deploy runs either an upgrade or a fresh install. On upgrade it returns the
+// pre-upgrade snapshot; on fresh install the snapshot is nil.
+func (inst *Installer) deploy(ctx context.Context, cfg *Config, imageRef, port string, upgrading bool, snapshot *upgradeSnapshot) (*upgradeSnapshot, error) {
+	if upgrading {
+		return snapshot, inst.upgrade(ctx, cfg, imageRef, port)
+	}
+	return nil, inst.freshInstall(ctx, cfg, imageRef)
+}
+
+func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) error {
+	slog.Info("existing installation detected, upgrading")
+
 	if cfg.SSLCert != "" {
 		if err := inst.copyUserTLS(cfg); err != nil {
-			return "", fmt.Errorf("TLS certificate setup: %w", err)
+			return fmt.Errorf("TLS certificate setup: %w", err)
 		}
 	}
 
 	slog.Info("stopping registry")
 	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
-		return "", fmt.Errorf("stop service: %w", err)
+		return fmt.Errorf("stop service: %w", err)
 	}
 
 	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, imageRef, port); err != nil {
-		return "", fmt.Errorf("update quadlet: %w", err)
+		return fmt.Errorf("update quadlet: %w", err)
 	}
 	slog.Info("updated quadlet", "path", inst.env.QuadletPath(quadletServiceName))
 
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
-		return "", fmt.Errorf("reload systemd: %w", err)
+		return fmt.Errorf("reload systemd: %w", err)
 	}
 	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
-		return "", fmt.Errorf("start service: %w", err)
+		return fmt.Errorf("start service: %w", err)
 	}
-	return previousImage, nil
+	return nil
 }
 
-// handleFailedUpgrade attempts to restore the previous image after a failed
+// recoverFromFailedDeploy attempts rollback when upgrade() itself fails
+// (e.g. start or daemon-reload failure after the Quadlet was overwritten).
+func (inst *Installer) recoverFromFailedDeploy(ctx context.Context, snapshot *upgradeSnapshot, newImage string, deployErr error) error {
+	oldImage, _ := snapshotImage(snapshot.quadletData)
+	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
+		return fmt.Errorf("upgrade: %w; rollback failed (previous image %s, new image %s): %w", deployErr, oldImage, newImage, rbErr)
+	}
+	slog.Info("rolled back to previous state after deploy failure", "image", oldImage)
+	return fmt.Errorf("upgrade: %w; rolled back to previous image %s", deployErr, oldImage)
+}
+
+// handleFailedUpgrade attempts to restore the previous state after a failed
 // health check. It always returns a non-nil error: on successful rollback the
 // error reports both the original failure and the restored image; on failed
-// rollback it includes both image refs so the user can recover manually.
-func (inst *Installer) handleFailedUpgrade(ctx context.Context, healthURL, certPath string, skipHostname bool, previousImage, newImage, port string, healthErr error) error {
-	if rbErr := inst.rollbackUpgrade(ctx, previousImage, port); rbErr != nil {
-		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, previousImage, newImage, rbErr)
+// rollback it includes both image refs so the user can recover manually; when
+// the old image is also unhealthy it stops the service and reports both refs.
+func (inst *Installer) handleFailedUpgrade(ctx context.Context, snapshot *upgradeSnapshot, newImage string, healthErr error) error {
+	oldImage, _ := snapshotImage(snapshot.quadletData)
+	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, oldImage, newImage, rbErr)
 	}
-	rbHealthErr := inst.waitForHealth(ctx, healthURL, certPath, skipHostname, 30*time.Second)
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
+	}
+	rbHealthErr := healthWait(ctx, snapshot.healthURL, snapshot.certPath, snapshot.skipTLSHost, 30*time.Second)
 	if rbHealthErr != nil {
-		return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy: %w", healthErr, previousImage, rbHealthErr)
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy (new image %s): %w", healthErr, oldImage, newImage, rbHealthErr)
 	}
-	slog.Info("rolled back to previous image", "image", previousImage)
-	return fmt.Errorf("health check: %w; rolled back to previous image %s", healthErr, previousImage)
+	slog.Info("rolled back to previous image", "image", oldImage)
+	return fmt.Errorf("health check: %w; rolled back to previous image %s", healthErr, oldImage)
 }
 
-// rollbackUpgrade stops the service, restores the previous image ref in the
-// Quadlet file, reloads systemd, and restarts the service with the old image.
-func (inst *Installer) rollbackUpgrade(ctx context.Context, previousImage, port string) error {
-	slog.Warn("rolling back to previous image", "image", previousImage)
+// rollbackUpgrade restores the pre-upgrade Quadlet file and TLS material,
+// reloads systemd, and restarts the service with the old configuration.
+//
+// Note: database schema changes applied by dbcore.Setup during initialize()
+// are not reverted. Z-stream upgrades share the same schema version, so the
+// old image accepts the current schema. If a future migration changes the
+// schema, the backup created by ensureSchema (quay.db.backup-*) must be
+// restored manually.
+func (inst *Installer) rollbackUpgrade(ctx context.Context, snapshot *upgradeSnapshot) error {
+	slog.Warn("rolling back to previous state")
 
 	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
 		return fmt.Errorf("stop service for rollback: %w", err)
 	}
-	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, previousImage, port); err != nil {
-		return fmt.Errorf("restore previous quadlet image: %w", err)
+
+	restored := snapshot.quadletData
+	if snapshot.imageID != "" {
+		restored = pinQuadletImage(restored, snapshot.imageID)
 	}
+	if err := inst.fs.WriteFile(snapshot.quadletPath, restored, 0o600); err != nil {
+		return fmt.Errorf("restore quadlet: %w", err)
+	}
+
+	if snapshot.tlsCert != nil {
+		dataDir := filepath.Dir(snapshot.certPath)
+		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.cert"), snapshot.tlsCert, 0o600)
+		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.key"), snapshot.tlsKey, 0o600)
+	}
+
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
 		return fmt.Errorf("reload systemd after rollback: %w", err)
 	}
@@ -464,6 +586,28 @@ func (inst *Installer) rollbackUpgrade(ctx context.Context, previousImage, port 
 		return fmt.Errorf("start service after rollback: %w", err)
 	}
 	return nil
+}
+
+// snapshotImage extracts the Image= value from saved Quadlet data.
+func snapshotImage(quadletData []byte) (string, bool) {
+	for _, line := range strings.Split(string(quadletData), "\n") {
+		if image, found := strings.CutPrefix(line, "Image="); found {
+			return image, true
+		}
+	}
+	return "", false
+}
+
+// pinQuadletImage replaces the Image= line in Quadlet data with the given ID.
+func pinQuadletImage(quadletData []byte, imageID string) []byte {
+	lines := strings.Split(string(quadletData), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "Image=") {
+			lines[i] = "Image=" + imageID
+			break
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }
 
 func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef string) error {
