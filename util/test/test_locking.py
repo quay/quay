@@ -11,7 +11,7 @@ import fakeredis
 import pytest
 import redis_lock
 
-from util.locking import GlobalLock
+from util.locking import GlobalLock, LockAcquireTimeout
 
 
 @pytest.fixture
@@ -236,3 +236,91 @@ def test_bounded_waiter_deadline_is_total_across_lost_wakeups(gevent_scenarios):
 
     assert acquired is False
     assert deadline <= elapsed < deadline + 0.5, elapsed
+
+
+# ---------------------------------------------------------------------------
+# Tests for the lock-role feature introduced to distinguish GC workers from
+# registry workers in BLOB_DELETE lock holder IDs.
+# ---------------------------------------------------------------------------
+
+
+def test_holder_id_includes_process_role(monkeypatch, fake_lock_server):
+    # When _process_lock_role is set on the class (done by GlobalLock.configure at
+    # worker startup), every new GlobalLock instance must embed the role as the
+    # first colon-delimited segment of _holder_id so that other waiters can inspect
+    # who holds the lock without a separate Redis round-trip.
+    monkeypatch.setattr(GlobalLock, "_process_lock_role", "repositorygcworker")
+    lock = GlobalLock("any-lock", lock_ttl=30)
+
+    assert lock._holder_id.startswith("repositorygcworker:"), lock._holder_id
+    # Full format: role:hostname:pid:uuid — exactly 4 segments.
+    assert len(lock._holder_id.split(":")) == 4, lock._holder_id
+
+
+def test_holder_id_has_no_role_prefix_when_role_is_unset(monkeypatch, fake_lock_server):
+    # Without a configured role the format is ":hostname:pid:uuid" — the first
+    # colon-segment is empty.  _holder_is_gc_worker splits on ":" and checks
+    # segment 0 against _GC_LOCK_ROLES; an empty string is not a member, so the
+    # guard correctly does NOT fire for unrecognised holders.
+    monkeypatch.setattr(GlobalLock, "_process_lock_role", None)
+    lock = GlobalLock("any-lock", lock_ttl=30)
+
+    assert lock._holder_id.startswith(
+        ":"
+    ), f"expected empty role segment (leading colon), got: {lock._holder_id!r}"
+
+
+def test_configure_sets_process_lock_role_and_second_call_without_role_preserves_it(
+    monkeypatch, fake_lock_server
+):
+    # Worker startup calls GlobalLock.configure twice in practice: once from
+    # app.py (no role) and once from the worker's own startup code (with role).
+    # The second configure must set the role; a subsequent configure without a
+    # role argument (e.g. from a shared library) must not clear it.
+    monkeypatch.setattr(GlobalLock, "_process_lock_role", None)
+
+    # First call: worker sets its specific role.
+    GlobalLock.configure({}, lock_role="namespacegcworker")
+    assert GlobalLock._process_lock_role == "namespacegcworker"
+
+    # Second call: no lock_role supplied (e.g. app.py path or shared init code).
+    GlobalLock.configure({})
+    assert (
+        GlobalLock._process_lock_role == "namespacegcworker"
+    ), "configure() without lock_role must not overwrite a previously set role"
+
+
+def test_lock_acquire_timeout_exception_carries_holder_id(fake_lock_server):
+    # When _acquire_before_deadline exhausts the blocking_timeout, the resulting
+    # LockAcquireTimeout exception must expose the holder's ID in its .holder
+    # attribute.  This is what with_blob_lock_or_fallback reads to decide whether
+    # to 503 (GC role) or proceed (registry role / response-mixing artifact).
+    holder_id = "repositorygcworker:gc-host:115:deadbeef"
+    _hold_lock(fake_lock_server, "BLOB_DELETE_sha256:zzz", holder_id=holder_id)
+
+    with pytest.raises(LockAcquireTimeout) as exc_info:
+        with GlobalLock("BLOB_DELETE_sha256:zzz", lock_ttl=30, blocking_timeout=0.2):
+            pass
+
+    assert (
+        exc_info.value.holder == holder_id
+    ), f"Expected holder={holder_id!r}, got {exc_info.value.holder!r}"
+
+
+def test_lock_acquire_timeout_holder_is_none_when_lock_released_before_check(
+    fake_lock_server, monkeypatch
+):
+    # "currently held by None" appears in logs when the lock key expires or is
+    # released between the _acquire_before_deadline timeout and the subsequent
+    # _current_holder() GET call.  We keep the lock held throughout (so the
+    # acquire genuinely times out) but mock _current_holder to return None,
+    # simulating that race.  The exception must carry holder=None so that
+    # downstream code treats it as a non-GC holder and proceeds safely.
+    _hold_lock(fake_lock_server, "BLOB_DELETE_sha256:yyy", holder_id="repositorygcworker:h:99:aabb")
+    monkeypatch.setattr(GlobalLock, "_current_holder", lambda self: None)
+
+    with pytest.raises(LockAcquireTimeout) as exc_info:
+        with GlobalLock("BLOB_DELETE_sha256:yyy", lock_ttl=30, blocking_timeout=0.2):
+            pass
+
+    assert exc_info.value.holder is None
