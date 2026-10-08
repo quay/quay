@@ -137,12 +137,14 @@ Examples:
 - `NO-ISSUE: docs: fix typo in contributing guide`
 - `NO-ISSUE: chore: update dependencies`
 - `[redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination`
+- `[mirror-registry-3.0] PROJQUAY-1234: fix(omr): backport upgrade health check`
 
 The title must match this CI-enforced pattern — a `PROJQUAY-` or `QUAYIO-`
-ticket reference, or `NO-ISSUE:`, followed by a lowercase conventional commit
-type and description:
+ticket reference, or `NO-ISSUE:`, optionally prefixed by a `redhat-X.Y` or
+`mirror-registry-X.Y` backport marker, followed by a lowercase conventional
+commit type and description:
 ```
-^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
+^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
 ```
 
 ### Commit Messages
