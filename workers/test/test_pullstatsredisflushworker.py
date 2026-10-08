@@ -11,7 +11,12 @@ from unittest.mock import MagicMock, patch
 
 import redis
 
-from workers.pullstatsredisflushworker import RedisFlushWorker, create_gunicorn_worker
+from workers.pullstatsredisflushworker import (
+    RedisFlushWorker,
+    create_gunicorn_worker,
+    has_usable_pull_metrics_redis,
+    main as flush_worker_main,
+)
 
 
 def test_redis_flush_worker_init():
@@ -1985,3 +1990,88 @@ class TestFlushWorkerCrossslotFallback:
             assert len(tag_updates) == 0
             assert len(manifest_updates) == 0
             assert len(db_dependent) == 0
+
+    def test_crossslot_recovery_rename_failure_skips_key(self):
+        """Verify a failed CROSSSLOT recovery RENAME skips the key."""
+        with patch("workers.pullstatsredisflushworker.app") as mock_app:
+            mock_app.config.get.return_value = 300
+
+            worker = RedisFlushWorker()
+            mock_client = MagicMock()
+            worker.redis_client = mock_client
+
+            mock_client.rename.side_effect = [
+                redis.ResponseError("CROSSSLOT Keys in request don't hash to the same slot"),
+                redis.ResponseError("CROSSSLOT Keys in request don't hash to the same slot"),
+            ]
+
+            keys = ["pull_events:repo:123:digest:sha256:abc123"]
+            tag_updates, manifest_updates, db_dependent = worker._process_redis_events(keys)
+
+            assert mock_client.rename.call_count == 2
+            assert tag_updates == []
+            assert manifest_updates == []
+            assert db_dependent == set()
+
+
+class TestHasUsablePullMetricsRedis:
+    """Tests for has_usable_pull_metrics_redis() used by the worker entrypoint."""
+
+    def test_dedicated_non_localhost_pull_metrics(self):
+        """Non-localhost PULL_METRICS_REDIS is usable."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {"PULL_METRICS_REDIS": {"host": "redis.example.com", "db": 1}}
+            )
+            is True
+        )
+
+    def test_localhost_pull_metrics_falls_back_to_user_events(self):
+        """Localhost pull-metrics config is usable when USER_EVENTS has a real host."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {
+                    "PULL_METRICS_REDIS": {"host": "localhost", "db": 1},
+                    "USER_EVENTS_REDIS": {"host": "user-events.example.com"},
+                }
+            )
+            is True
+        )
+
+    def test_both_localhost_or_missing_is_unusable(self):
+        """Default localhost-only configs are not usable for the entrypoint."""
+        assert (
+            has_usable_pull_metrics_redis(
+                {
+                    "PULL_METRICS_REDIS": {"host": "localhost", "db": 1},
+                    "USER_EVENTS_REDIS": {"host": "localhost"},
+                }
+            )
+            is False
+        )
+        assert has_usable_pull_metrics_redis({}) is False
+
+    def test_main_idles_when_no_usable_redis(self):
+        """main() sleeps forever when only localhost Redis is configured."""
+        with (
+            patch("workers.pullstatsredisflushworker.app") as mock_app,
+            patch("workers.pullstatsredisflushworker.features") as mock_features,
+            patch("workers.pullstatsredisflushworker.time.sleep") as mock_sleep,
+        ):
+            mock_features.IMAGE_PULL_STATS = True
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "ACCOUNT_RECOVERY_MODE": False,
+                "TESTING": False,
+                "PULL_METRICS_REDIS": {"host": "localhost", "db": 1},
+                "USER_EVENTS_REDIS": {"host": "localhost"},
+            }.get(key, default)
+            mock_sleep.side_effect = RuntimeError("idle-loop")
+
+            try:
+                flush_worker_main()
+            except RuntimeError as exc:
+                assert str(exc) == "idle-loop"
+            else:
+                raise AssertionError("main() should have entered the idle sleep loop")
+
+            mock_sleep.assert_called_with(100000)

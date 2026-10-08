@@ -585,7 +585,23 @@ def create_gunicorn_worker():
     return worker
 
 
-if __name__ == "__main__":
+def has_usable_pull_metrics_redis(app_config):
+    """Return True when pull metrics can use a non-localhost Redis endpoint.
+
+    Prefers ``PULL_METRICS_REDIS``; ``USER_EVENTS_REDIS`` is accepted as a
+    fallback host when the dedicated pull-metrics config is missing or still
+    points at localhost (the ``config.py`` default).
+    """
+    pm_config = app_config.get("PULL_METRICS_REDIS")
+    ue_config = app_config.get("USER_EVENTS_REDIS")
+    return bool(
+        (pm_config and pm_config.get("host") not in (None, "localhost"))
+        or (ue_config and ue_config.get("host") not in (None, "localhost"))
+    )
+
+
+def main():
+    """Entrypoint for running the pull-stats Redis flush worker as a process."""
     if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
@@ -598,15 +614,8 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     # Check if Redis is configured
-    pm_config = app.config.get("PULL_METRICS_REDIS")
-    ue_config = app.config.get("USER_EVENTS_REDIS")
-    has_usable_redis = (pm_config and pm_config.get("host") != "localhost") or (
-        ue_config and ue_config.get("host") != "localhost"
-    )
-    if not has_usable_redis:
-        logger.debug(
-            "No reachable Redis configured for pull metrics; " "skipping redis flush worker"
-        )
+    if not has_usable_pull_metrics_redis(app.config):
+        logger.debug("No reachable Redis configured for pull metrics; skipping redis flush worker")
         while True:
             time.sleep(100000)
 
@@ -618,3 +627,7 @@ if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     worker = RedisFlushWorker()
     worker.start()
+
+
+if __name__ == "__main__":
+    main()
