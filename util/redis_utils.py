@@ -130,7 +130,7 @@ def _create_cluster_client(redis_config, default_timeout, extra_kwargs):
 
     if "startup_nodes" in redis_config:
         redis_config["startup_nodes"] = [
-            ClusterNode(host=node["host"], port=int(node["port"]))
+            ClusterNode(host=node["host"], port=int(node.get("port", 6379)))
             for node in redis_config["startup_nodes"]
         ]
         # Avoid conflicting kwargs when both startup_nodes and host/port are set.
@@ -152,6 +152,25 @@ def _create_cluster_client(redis_config, default_timeout, extra_kwargs):
         )
 
     return RedisCluster(**redis_config)
+
+
+def resolve_pull_metrics_redis_config(app_config):
+    """Resolve Redis config for pull-metrics write and flush paths.
+
+    Prefer an explicit ``PULL_METRICS_REDIS``. When it is absent, fall back to
+    ``PULL_METRICS_REDIS_HOSTNAME`` and then ``USER_EVENTS_REDIS``. Explicit
+    configs — including ``host: localhost`` with a dedicated ``db`` — are kept
+    as-is so the writer and flush worker stay aligned.
+    """
+    redis_config = app_config.get("PULL_METRICS_REDIS")
+    if redis_config:
+        return redis_config
+
+    hostname = app_config.get("PULL_METRICS_REDIS_HOSTNAME")
+    if hostname:
+        return {"host": hostname}
+
+    return app_config.get("USER_EVENTS_REDIS") or {}
 
 
 def is_cluster_config(redis_config):

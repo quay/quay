@@ -26,7 +26,12 @@ from data.model.pull_statistics import (
 )
 from digest.digest_tools import Digest, InvalidDigestException
 from util.log import logfile_path
-from util.redis_utils import create_redis_client, has_engine_config, is_cluster_config
+from util.redis_utils import (
+    create_redis_client,
+    has_engine_config,
+    is_cluster_config,
+    resolve_pull_metrics_redis_config,
+)
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
@@ -66,12 +71,9 @@ class RedisFlushWorker(Worker):
     def _initialize_redis_client(self):
         """Initialize Redis client for pull metrics."""
         try:
-            redis_config = app.config.get("PULL_METRICS_REDIS")
-            # Fall back to USER_EVENTS_REDIS when PULL_METRICS_REDIS is the
-            # default config.py value (localhost) which is unreachable in a
-            # containerised deployment.
-            if not redis_config or redis_config.get("host") == "localhost":
-                redis_config = app.config.get("USER_EVENTS_REDIS") or {}
+            # Match PullMetricsBuilderModule so writer and flush worker share
+            # the same Redis store (including dedicated db when configured).
+            redis_config = resolve_pull_metrics_redis_config(app.config)
             redis_connection_timeout = app.config.get("REDIS_CONNECTION_TIMEOUT", 5)
 
             self._is_cluster = is_cluster_config(redis_config)
@@ -85,7 +87,7 @@ class RedisFlushWorker(Worker):
             else:
                 redis_host = redis_config.get("host", "localhost")
                 redis_port = redis_config.get("port", 6379)
-                redis_db = redis_config.get("db", 0)
+                redis_db = redis_config.get("db", 1)
                 redis_password = redis_config.get("password")
 
                 self.redis_client = redis.StrictRedis(
@@ -301,8 +303,11 @@ class RedisFlushWorker(Worker):
                             # processing key that wraps the full legacy key in a
                             # hash tag so both keys land in the same slot — this
                             # still isolates the data from concurrent increments.
+                            # Keep the pull_events: prefix so orphan recovery
+                            # scans still match; hash-tag the full legacy key
+                            # so RENAME stays same-slot on Redis Cluster.
                             tagged_processing_key = (
-                                f"{{{key}}}:processing:"
+                                f"pull_events:{{{key}}}:processing:"
                                 f"{int(time.time() * 1000)}:{uuid.uuid4().hex[:8]}"
                             )
                             try:

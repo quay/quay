@@ -97,8 +97,7 @@ def test_acquire_succeeds_when_lock_is_free(fake_lock_server):
 
 # Production shape: gevent-patched workers sharing GlobalLock's single_connection_client. Run in a
 # subprocess so monkey-patching cannot leak into the rest of the test session.
-_GEVENT_SCENARIOS = textwrap.dedent(
-    """
+_GEVENT_SCENARIOS = textwrap.dedent("""
     from gevent import monkey
 
     monkey.patch_all()
@@ -197,8 +196,7 @@ _GEVENT_SCENARIOS = textwrap.dedent(
             }
         )
     )
-    """
-)
+    """)
 
 
 @pytest.fixture(scope="module")

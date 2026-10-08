@@ -15,7 +15,7 @@ Run cluster tests::
     docker compose -f docker-compose.redis-cluster.yaml up -d \\
         redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5
     # Wait ~5s for healthy, then form cluster (see compose file header):
-    #   podman exec redis-node-0 redis-cli --cluster create \\
+    #   docker exec redis-node-0 redis-cli --cluster create \\
     #       127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \\
     #       127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 \\
     #       --cluster-replicas 1 --cluster-yes

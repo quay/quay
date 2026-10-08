@@ -20,6 +20,7 @@ from util.redis_utils import (
     create_redis_client,
     has_engine_config,
     is_cluster_config,
+    resolve_pull_metrics_redis_config,
 )
 
 
@@ -453,3 +454,55 @@ class TestClusterValidation:
         }
         with pytest.raises(ValueError, match="does not support the 'db' option"):
             create_redis_client(config)
+
+    @patch("util.redis_utils.RedisCluster")
+    @patch("util.redis_utils.ClusterNode")
+    def test_cluster_startup_node_defaults_missing_port(
+        self, mock_cluster_node, mock_redis_cluster
+    ):
+        """startup_nodes entries without port should default to 6379."""
+        mock_redis_cluster.return_value = MagicMock()
+        mock_cluster_node.return_value = MagicMock()
+
+        config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "startup_nodes": [{"host": "node1"}],
+            },
+        }
+
+        create_redis_client(config)
+
+        mock_cluster_node.assert_called_once_with(host="node1", port=6379)
+
+
+class TestResolvePullMetricsRedisConfig:
+    """Tests for resolve_pull_metrics_redis_config()."""
+
+    def test_uses_explicit_pull_metrics_config(self):
+        """Explicit PULL_METRICS_REDIS — including localhost + db — is kept."""
+        cfg = {
+            "PULL_METRICS_REDIS": {"host": "localhost", "db": 1},
+            "USER_EVENTS_REDIS": {"host": "user-events.example.com"},
+        }
+        assert resolve_pull_metrics_redis_config(cfg) == {"host": "localhost", "db": 1}
+
+    def test_falls_back_to_hostname(self):
+        """Missing PULL_METRICS_REDIS uses PULL_METRICS_REDIS_HOSTNAME."""
+        cfg = {
+            "PULL_METRICS_REDIS_HOSTNAME": "metrics.example.com",
+            "USER_EVENTS_REDIS": {"host": "user-events.example.com"},
+        }
+        assert resolve_pull_metrics_redis_config(cfg) == {"host": "metrics.example.com"}
+
+    def test_falls_back_to_user_events(self):
+        """Missing pull-metrics keys fall back to USER_EVENTS_REDIS."""
+        cfg = {"USER_EVENTS_REDIS": {"host": "user-events.example.com", "port": 6379}}
+        assert resolve_pull_metrics_redis_config(cfg) == {
+            "host": "user-events.example.com",
+            "port": 6379,
+        }
+
+    def test_empty_when_nothing_configured(self):
+        """No redis keys yields an empty dict."""
+        assert resolve_pull_metrics_redis_config({}) == {}

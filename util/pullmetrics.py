@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 
 import redis
 
-from util.redis_utils import create_redis_client, has_engine_config, is_cluster_config
+from util.redis_utils import (
+    create_redis_client,
+    has_engine_config,
+    is_cluster_config,
+    resolve_pull_metrics_redis_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,21 +60,7 @@ class PullMetricsBuilderModule(object):
             self.state = None
 
     def init_app(self, app):
-        redis_config = app.config.get("PULL_METRICS_REDIS")
-
-        # Fall back to USER_EVENTS_REDIS when no dedicated pull-metrics Redis
-        # is explicitly configured (the default config.py value points at
-        # localhost which is unreachable in a containerised deployment).
-        if not redis_config or redis_config.get("host") == "localhost":
-            hostname = app.config.get("PULL_METRICS_REDIS_HOSTNAME")
-            if hostname:
-                redis_config = {"host": hostname}
-            else:
-                ue_config = app.config.get("USER_EVENTS_REDIS")
-                if ue_config and ue_config.get("host") != "localhost":
-                    redis_config = ue_config
-                elif not redis_config:
-                    redis_config = {}
+        redis_config = resolve_pull_metrics_redis_config(app.config)
 
         # Add testing flag to redis config to disable thread pool during tests
         if app.config.get("TESTING", False):

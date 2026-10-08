@@ -1945,7 +1945,7 @@ class TestFlushWorkerCrossslotFallback:
                     )
                 # Second attempt uses a hash-tagged destination and succeeds.
                 assert src == legacy_key
-                assert dst.startswith(f"{{{legacy_key}}}:processing:")
+                assert dst.startswith(f"pull_events:{{{legacy_key}}}:processing:")
                 return True
 
             mock_client.rename.side_effect = rename_side_effect
@@ -1966,7 +1966,7 @@ class TestFlushWorkerCrossslotFallback:
             assert manifest_updates[0]["pull_count"] == 5
             assert len(db_dependent) == 1
             processing_keys = list(db_dependent)
-            assert processing_keys[0].startswith(f"{{{legacy_key}}}:processing:")
+            assert processing_keys[0].startswith(f"pull_events:{{{legacy_key}}}:processing:")
 
     def test_rename_nosuchkey_skips_key(self):
         """Verify 'no such key' on RENAME is handled gracefully."""

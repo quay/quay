@@ -3,11 +3,15 @@
 # Usage (podman-compose or docker compose):
 #   podman-compose -f docker-compose.yaml -f docker-compose.redis-cluster.yaml \
 #       up -d redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5
-#   # Wait ~5s for healthy, then form cluster:
+#   # Wait ~5s for healthy, then form cluster (podman or docker):
 #   podman exec redis-node-0 redis-cli --cluster create \
 #       127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \
 #       127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 \
 #       --cluster-replicas 1 --cluster-yes
+#   # docker exec redis-node-0 redis-cli --cluster create \
+#   #     127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \
+#   #     127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 \
+#   #     --cluster-replicas 1 --cluster-yes
 #   # Run integration tests:
 #   TEST=true PYTHONPATH=. REDIS_CLUSTER_URL=127.0.0.1 \
 #       pytest -m redis_cluster util/test/ -v
@@ -28,7 +32,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7000", "ping"]
@@ -47,7 +51,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7001", "ping"]
@@ -66,7 +70,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7002", "ping"]
@@ -85,7 +89,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7003", "ping"]
@@ -104,7 +108,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7004", "ping"]
@@ -123,7 +127,7 @@ services:
       --cluster-config-file nodes.conf
       --cluster-node-timeout 5000
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "7005", "ping"]

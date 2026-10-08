@@ -87,10 +87,12 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 
 	// Validate USER_EVENTS_REDIS connection
 	if fg.UserEventsRedis.Engine == "rediscluster" {
-		clusterOpts := buildClusterOptions(fg.UserEventsRedis.Host, fg.UserEventsRedis.Port,
-			fg.UserEventsRedis.Password, fg.UserEventsRedis.Ssl, fg.UserEventsRedis.RedisConfig)
-		if ok, err := shared.ValidateRedisClusterConnection(clusterOpts, "USER_EVENTS_REDIS", "Redis"); !ok {
-			errors = append(errors, err)
+		if opts.Mode != "testing" {
+			clusterOpts := buildClusterOptions(fg.UserEventsRedis.Host, fg.UserEventsRedis.Port,
+				fg.UserEventsRedis.Password, fg.UserEventsRedis.Ssl, fg.UserEventsRedis.RedisConfig)
+			if ok, err := shared.ValidateRedisClusterConnection(clusterOpts, "USER_EVENTS_REDIS", "Redis"); !ok {
+				errors = append(errors, err)
+			}
 		}
 	} else {
 		addr = fg.UserEventsRedis.Host
@@ -186,10 +188,11 @@ func buildClusterOptions(host string, port int, password string, ssl bool, redis
 		useSsl = true
 	}
 
+	// Match DATA_MODEL_CACHE rediscluster validation: verify TLS certificates.
 	var tlsConfig *tls.Config = nil
 	if useSsl {
 		tlsConfig = &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: false,
 		}
 	}
 
