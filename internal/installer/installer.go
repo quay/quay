@@ -517,10 +517,21 @@ func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port 
 
 // recoverFromFailedDeploy attempts rollback when upgrade() itself fails
 // (e.g. start or daemon-reload failure after the Quadlet was overwritten).
+// After restoring the Quadlet it verifies the old image is healthy; if not,
+// the service is stopped and the error reports both image refs.
 func (inst *Installer) recoverFromFailedDeploy(ctx context.Context, snapshot *upgradeSnapshot, newImage string, deployErr error) error {
 	oldImage := snapshotImage(snapshot.quadletData)
 	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
 		return fmt.Errorf("upgrade: %w; rollback failed (previous image %s, new image %s): %w", deployErr, oldImage, newImage, rbErr)
+	}
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
+	}
+	if rbHealthErr := healthWait(ctx, snapshot.healthURL, snapshot.certPath, snapshot.skipTLSHost, 30*time.Second); rbHealthErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("upgrade: %w; rolled back to %s but it is also unhealthy (new image %s): %w", deployErr, oldImage, newImage, rbHealthErr)
 	}
 	slog.Info("rolled back to previous state after deploy failure", "image", oldImage)
 	return fmt.Errorf("upgrade: %w; rolled back to previous image %s", deployErr, oldImage)
