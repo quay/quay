@@ -101,16 +101,57 @@ jobs:
               }
             }
 
-            // Handle backport labels for redhat-X.Y branches
+            // Handle backport labels for supported release branches.
             const baseBranch = pr.baseRefName;
-            const backportMatch = baseBranch.match(/^redhat-\d+\.\d+$/);
+            const backportMatch = baseBranch.match(/^(redhat|mirror-registry)-\d+\.\d+$/);
 
             if (backportMatch) {
-              // PR targets a redhat-X.Y branch
+              // PR targets a supported release branch.
               const expectedBackportLabel = `backport/${baseBranch}`;
+              const isMirrorRegistryBackport = baseBranch.startsWith('mirror-registry-');
 
               // Add the correct backport label if missing
               if (!currentLabels.includes(expectedBackportLabel)) {
+                // Mirror Registry backport labels are provisioned on demand.
+                if (isMirrorRegistryBackport) {
+                  try {
+                    await github.rest.issues.getLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: expectedBackportLabel,
+                    });
+                  } catch (error) {
+                    if (error.status !== 404) {
+                      throw error;
+                    }
+                    try {
+                      await github.rest.issues.createLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                        color: '0E8A16', // Green to indicate successful backport
+                        description: `Backported to ${baseBranch}`,
+                      });
+                    } catch (createError) {
+                      const errors = createError.response?.data?.errors;
+                      const labelAlreadyExists =
+                        createError.status === 422 &&
+                        Array.isArray(errors) &&
+                        errors.length === 1 &&
+                        errors[0].resource === 'Label' &&
+                        errors[0].field === 'name' &&
+                        errors[0].code === 'already_exists';
+                      if (!labelAlreadyExists) {
+                        throw createError;
+                      }
+                      await github.rest.issues.getLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                      });
+                    }
+                  }
+                }
                 labelsToAdd.push(expectedBackportLabel);
               }
 

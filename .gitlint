@@ -16,6 +16,7 @@
 #   QUAYIO-12345: feat: description
 #   NO-ISSUE: docs(agents): add contributing guide
 #   [redhat-3.12] PROJQUAY-12345: fix(api): backport pagination fix
+#   [mirror-registry-3.0] PROJQUAY-12345: fix(omr): backport upgrade fix
 
 [general]
 # Ignore merge commits and reverts — they have auto-generated subjects.
@@ -27,8 +28,8 @@ regex-style-search=true
 line-length=120
 
 [title-match-regex]
-# Must match the CI regex in .github/workflows/ci-lint.yaml exactly.
-regex=^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$
+# Must match the CI regex in .github/scripts/check-pr-title.sh exactly.
+regex=^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$
 
 [body-max-line-length]
 line-length=120

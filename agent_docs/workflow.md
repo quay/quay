@@ -97,13 +97,14 @@ trusting the snapshot below.
 ### Title Format (CI-enforced)
 
 ```
-^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
+^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
 ```
 
 Examples:
 - `PROJQUAY-1234: fix(api): add pagination to tag listing`
 - `NO-ISSUE: chore: update dependencies`
 - `[redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination`
+- `[mirror-registry-3.0] PROJQUAY-1234: fix(omr): backport upgrade health check`
 
 ### Commit Message Format
 
