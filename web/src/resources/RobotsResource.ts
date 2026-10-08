@@ -332,12 +332,26 @@ export async function fetchRobotAPITokens(
   namespace: string,
   robot: string,
   isUser = false,
+  nextPageToken?: string,
 ): Promise<IRobotAPIToken[]> {
-  const response: AxiosResponse = await axios.get(
-    robotTokensPath(namespace, robot, isUser),
-  );
+  const baseUrl = robotTokensPath(namespace, robot, isUser);
+  const url = nextPageToken
+    ? `${baseUrl}?next_page=${encodeURIComponent(nextPageToken)}`
+    : baseUrl;
+  const response: AxiosResponse = await axios.get(url);
   assertHttpCode(response.status, 200);
-  return response.data.tokens;
+
+  const tokens = response.data.tokens || [];
+  if (response.data.next_page) {
+    const nextTokens = await fetchRobotAPITokens(
+      namespace,
+      robot,
+      isUser,
+      response.data.next_page,
+    );
+    return tokens.concat(nextTokens);
+  }
+  return tokens;
 }
 
 export async function createRobotAPIToken(
@@ -397,9 +411,10 @@ export async function fetchRobotFederationConfig(
   orgName: string,
   robotName: string,
   signal: AbortSignal,
+  isUser = false,
 ) {
   const robot = robotName.replace(orgName + '+', '');
-  const userOrOrgPath = `organization/${orgName}`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
   const getRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
   const response: AxiosResponse = await axios.get(getRobotFederationConfigUrl, {
     signal,
@@ -412,9 +427,10 @@ export async function createRobotFederationConfig(
   orgName: string,
   robotName: string,
   federationConfig: IRobotFederationConfig[],
+  isUser = false,
 ) {
   const robot = robotName.replace(orgName + '+', '');
-  const userOrOrgPath = `organization/${orgName}`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
   const createRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
   const response: AxiosResponse = await axios.post(
     createRobotFederationConfigUrl,

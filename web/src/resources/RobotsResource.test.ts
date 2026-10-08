@@ -42,6 +42,7 @@ function mockResponse(data: unknown, status = 200): AxiosResponse {
 describe('RobotsResource', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
   });
 
   describe('fetchRobotsForNamespace', () => {
@@ -120,6 +121,25 @@ describe('RobotsResource', () => {
       await fetchRobotAPITokens('user', 'robot', true);
       expect(axios.get).toHaveBeenCalledWith(
         '/api/v1/user/robots/robot/tokens',
+      );
+    });
+
+    it('fetches every page of robot API tokens', async () => {
+      const firstPage = [{uuid: 'token-1'}];
+      const secondPage = [{uuid: 'token-2'}];
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(
+          mockResponse({tokens: firstPage, next_page: 'next/page'}),
+        )
+        .mockResolvedValueOnce(mockResponse({tokens: secondPage}));
+
+      await expect(fetchRobotAPITokens('org', 'robot')).resolves.toEqual([
+        ...firstPage,
+        ...secondPage,
+      ]);
+      expect(axios.get).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/organization/org/robots/robot/tokens?next_page=next%2Fpage',
       );
     });
   });
@@ -265,6 +285,23 @@ describe('RobotsResource', () => {
       );
       expect(result).toEqual(config);
     });
+
+    it('fetches personal robot federation config from the user path', async () => {
+      const controller = new AbortController();
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse([]));
+
+      await fetchRobotFederationConfig(
+        'user1',
+        'user1+bot1',
+        controller.signal,
+        true,
+      );
+
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/v1/user/robots/bot1/federation',
+        {signal: controller.signal},
+      );
+    });
   });
 
   describe('createRobotFederationConfig', () => {
@@ -283,6 +320,20 @@ describe('RobotsResource', () => {
         '/robots/bot1/federation',
       );
       expect(vi.mocked(axios.post).mock.calls[0][1]).toEqual(config);
+    });
+
+    it('saves personal robot federation config to the user path', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
+      const config = [
+        {issuer: 'https://example.com', subject: 'sub1', audiences: ['quay']},
+      ];
+
+      await createRobotFederationConfig('user1', 'user1+bot1', config, true);
+
+      expect(axios.post).toHaveBeenCalledWith(
+        '/api/v1/user/robots/bot1/federation',
+        config,
+      );
     });
   });
 
