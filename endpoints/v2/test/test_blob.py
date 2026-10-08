@@ -191,6 +191,46 @@ class TestBlobPullThroughStorage:
         locations = [placements.get().location.name]
         assert storage.exists(locations, path), f"blob not found in storage at path {path}"
 
+    def test_download_blob_sets_content_length_when_streaming(self, proxy_manifest_response):
+        """Verify GET /blobs/<digest> includes Content-Length when Quay streams the blob.
+
+        When the storage backend does not provide a direct download URL (e.g. local
+        storage or FakeStorage in unit tests), download_blob streams the content
+        through Quay and must include a Content-Length header so clients can verify
+        delivery completeness.
+
+        When the storage backend does provide a direct download URL (e.g. real S3 in
+        Prow aws-s3 runs), Quay redirects to storage and the Content-Length in the
+        final response depends on the storage backend.  That path is exercised by the
+        Playwright test in web/playwright/e2e/api/api-v2-proxy-content.spec.ts.
+        """
+        content = b"test"  # matches self.digest = sha256("test")
+        proxy_mock = proxy_manifest_response(
+            self.tag, HELLO_WORLD_SCHEMA2_MANIFEST_JSON, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+        params = {
+            "repository": self.repository,
+            "digest": self.digest,
+        }
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            with patch("endpoints.v2.blob.model_cache", NoopDataModelCache(TEST_CACHE_CONFIG)):
+                resp = conduct_call(
+                    self.client,
+                    "v2.download_blob",
+                    url_for,
+                    "GET",
+                    params,
+                    expected_code=200,
+                    headers=self.headers,
+                )
+
+        assert resp.headers.get("Content-Length", "") == str(len(content))
+        assert resp.headers.get("Docker-Content-Digest", "") == self.digest
+        assert resp.headers.get("Content-Type", "") == "application/octet-stream"
+
 
 class TestBlobProxyCacheMiss:
     orgname = "cache"
