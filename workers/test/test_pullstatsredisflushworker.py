@@ -15,8 +15,8 @@ from workers.pullstatsredisflushworker import (
     RedisFlushWorker,
     create_gunicorn_worker,
     has_usable_pull_metrics_redis,
-    main as flush_worker_main,
 )
+from workers.pullstatsredisflushworker import main as flush_worker_main
 
 
 def test_redis_flush_worker_init():
