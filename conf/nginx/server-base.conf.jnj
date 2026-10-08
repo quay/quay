@@ -108,6 +108,9 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_buffers 4 32k;
 
     proxy_read_timeout 60s;
+
+    # Blobs must keep Content-Length; http-base gzips application/octet-stream with gzip_proxied any.
+    gzip off;
 }
 
 location = /_storage_proxy_auth {
