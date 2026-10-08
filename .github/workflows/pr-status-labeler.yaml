@@ -124,13 +124,32 @@ jobs:
                     if (error.status !== 404) {
                       throw error;
                     }
-                    await github.rest.issues.createLabel({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      name: expectedBackportLabel,
-                      color: '0E8A16', // Green to indicate successful backport
-                      description: `Backported to ${baseBranch}`,
-                    });
+                    try {
+                      await github.rest.issues.createLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                        color: '0E8A16', // Green to indicate successful backport
+                        description: `Backported to ${baseBranch}`,
+                      });
+                    } catch (createError) {
+                      const errors = createError.response?.data?.errors;
+                      const labelAlreadyExists =
+                        createError.status === 422 &&
+                        Array.isArray(errors) &&
+                        errors.length === 1 &&
+                        errors[0].resource === 'Label' &&
+                        errors[0].field === 'name' &&
+                        errors[0].code === 'already_exists';
+                      if (!labelAlreadyExists) {
+                        throw createError;
+                      }
+                      await github.rest.issues.getLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                      });
+                    }
                   }
                 }
                 labelsToAdd.push(expectedBackportLabel);

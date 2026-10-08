@@ -61,10 +61,23 @@ function triggerMatches(branch, patterns) {
   return patterns.some((pattern) => new RegExp('^' + pattern.replace(/\*/g, '.*') + '$').test(branch));
 }
 
-function errorWithStatus(status) {
+function errorWithStatus(status, responseErrors, topLevelErrors) {
   const error = new Error('mock GitHub API error');
   error.status = status;
+  if (responseErrors !== undefined) {
+    error.response = { data: { errors: responseErrors } };
+  }
+  if (topLevelErrors !== undefined) {
+    error.errors = topLevelErrors;
+  }
   return error;
+}
+
+function errorFromOption(option) {
+  if (typeof option === 'number') {
+    return errorWithStatus(option);
+  }
+  return errorWithStatus(option.status, option.responseErrors, option.topLevelErrors);
 }
 
 async function runStatusLabeler(script, options) {
@@ -73,6 +86,7 @@ async function runStatusLabeler(script, options) {
   const removed = [];
   const created = [];
   const calls = [];
+  let getLabelCalls = 0;
   const github = {
     graphql: async () => ({
       repository: {
@@ -89,8 +103,12 @@ async function runStatusLabeler(script, options) {
       issues: {
         getLabel: async ({ name }) => {
           calls.push({ type: 'getLabel', name });
+          getLabelCalls += 1;
           if (options.getLabelError) {
-            throw errorWithStatus(options.getLabelError);
+            throw errorFromOption(options.getLabelError);
+          }
+          if (getLabelCalls > 1 && options.reReadLabelError) {
+            throw errorFromOption(options.reReadLabelError);
           }
           const label = repositoryLabels.get(name);
           if (!label) {
@@ -100,10 +118,18 @@ async function runStatusLabeler(script, options) {
         },
         createLabel: async ({ name, color, description }) => {
           calls.push({ type: 'createLabel', name, color, description });
-          if (options.createLabelError) {
-            throw errorWithStatus(options.createLabelError);
-          }
           const label = { name, color, description };
+          if (options.createLabelAlreadyExists) {
+            repositoryLabels.set(name, label);
+            throw errorWithStatus(422, [{
+              resource: 'Label',
+              field: 'name',
+              code: 'already_exists',
+            }]);
+          }
+          if (options.createLabelError) {
+            throw errorFromOption(options.createLabelError);
+          }
           repositoryLabels.set(name, label);
           created.push(label);
           return label;
@@ -169,6 +195,22 @@ async function main() {
       calls: [
         { type: 'getLabel', name: mirrorRegistryLabel.name },
         { type: 'createLabel', ...mirrorRegistryLabel },
+        { type: 'addLabels', labels: [mirrorRegistryLabel.name] },
+        { type: 'removeLabel', name: 'backport/redhat-3.17' },
+      ],
+      trigger: true,
+    },
+    {
+      branch: 'mirror-registry-3.0',
+      currentLabels: ['backport/redhat-3.17'],
+      createLabelAlreadyExists: true,
+      added: ['backport/mirror-registry-3.0'],
+      removed: ['backport/redhat-3.17'],
+      created: [],
+      calls: [
+        { type: 'getLabel', name: mirrorRegistryLabel.name },
+        { type: 'createLabel', ...mirrorRegistryLabel },
+        { type: 'getLabel', name: mirrorRegistryLabel.name },
         { type: 'addLabels', labels: [mirrorRegistryLabel.name] },
         { type: 'removeLabel', name: 'backport/redhat-3.17' },
       ],
@@ -260,7 +302,94 @@ async function main() {
   await assert.rejects(
     runStatusLabeler(script, { branch: 'mirror-registry-3.0', createLabelError: 422 }),
     (error) => error.status === 422,
-    'label creation failures must fail'
+    'generic 422 label creation failures must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 422,
+        responseErrors: [{ resource: 'Label', field: 'name', code: 'invalid' }],
+      },
+    }),
+    (error) => error.status === 422,
+    'invalid 422 diagnostics must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 422,
+        responseErrors: [{ resource: 'Repository', field: 'name', code: 'already_exists' }],
+      },
+    }),
+    (error) => error.status === 422,
+    'other-resource 422 diagnostics must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 422,
+        responseErrors: [
+          { resource: 'Label', field: 'name', code: 'already_exists' },
+          { resource: 'Label', field: 'name', code: 'invalid' },
+        ],
+      },
+    }),
+    (error) => error.status === 422,
+    'mixed 422 diagnostics must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 422,
+        responseErrors: { resource: 'Label', field: 'name', code: 'already_exists' },
+      },
+    }),
+    (error) => error.status === 422,
+    'malformed 422 diagnostics must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 500,
+        responseErrors: [{ resource: 'Label', field: 'name', code: 'already_exists' }],
+      },
+    }),
+    (error) => error.status === 500,
+    'non-422 creation failures must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelError: {
+        status: 422,
+        topLevelErrors: [{ resource: 'Label', field: 'name', code: 'already_exists' }],
+      },
+    }),
+    (error) => error.status === 422,
+    'top-level-only diagnostics must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelAlreadyExists: true,
+      reReadLabelError: 404,
+    }),
+    (error) => error.status === 404,
+    '404 rereads after a competing creation must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, {
+      branch: 'mirror-registry-3.0',
+      createLabelAlreadyExists: true,
+      reReadLabelError: 500,
+    }),
+    (error) => error.status === 500,
+    '500 rereads after a competing creation must fail'
   );
 
   console.log('all workflow branch labeling cases passed');
