@@ -108,9 +108,31 @@ jobs:
             if (backportMatch) {
               // PR targets a supported release branch.
               const expectedBackportLabel = `backport/${baseBranch}`;
+              const isMirrorRegistryBackport = baseBranch.startsWith('mirror-registry-');
 
               // Add the correct backport label if missing
               if (!currentLabels.includes(expectedBackportLabel)) {
+                // Mirror Registry backport labels are provisioned on demand.
+                if (isMirrorRegistryBackport) {
+                  try {
+                    await github.rest.issues.getLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: expectedBackportLabel,
+                    });
+                  } catch (error) {
+                    if (error.status !== 404) {
+                      throw error;
+                    }
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: expectedBackportLabel,
+                      color: '0E8A16', // Green to indicate successful backport
+                      description: `Backported to ${baseBranch}`,
+                    });
+                  }
+                }
                 labelsToAdd.push(expectedBackportLabel);
               }
 

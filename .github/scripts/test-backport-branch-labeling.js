@@ -61,25 +61,61 @@ function triggerMatches(branch, patterns) {
   return patterns.some((pattern) => new RegExp('^' + pattern.replace(/\*/g, '.*') + '$').test(branch));
 }
 
-async function runStatusLabeler(script, baseRefName, currentLabels) {
+function errorWithStatus(status) {
+  const error = new Error('mock GitHub API error');
+  error.status = status;
+  return error;
+}
+
+async function runStatusLabeler(script, options) {
+  const repositoryLabels = new Map((options.repositoryLabels || []).map((label) => [label.name, label]));
   const added = [];
   const removed = [];
+  const created = [];
+  const calls = [];
   const github = {
     graphql: async () => ({
       repository: {
         pullRequest: {
-          reviewDecision: null,
-          mergeable: true,
-          mergeStateStatus: 'CLEAN',
-          baseRefName,
-          labels: { nodes: currentLabels.map((name) => ({ name })) },
+          reviewDecision: options.reviewDecision || null,
+          mergeable: options.mergeable === undefined ? true : options.mergeable,
+          mergeStateStatus: options.mergeStateStatus || 'CLEAN',
+          baseRefName: options.branch,
+          labels: { nodes: (options.currentLabels || []).map((name) => ({ name })) },
         },
       },
     }),
     rest: {
       issues: {
-        addLabels: async ({ labels }) => added.push(...labels),
-        removeLabel: async ({ name }) => removed.push(name),
+        getLabel: async ({ name }) => {
+          calls.push({ type: 'getLabel', name });
+          if (options.getLabelError) {
+            throw errorWithStatus(options.getLabelError);
+          }
+          const label = repositoryLabels.get(name);
+          if (!label) {
+            throw errorWithStatus(404);
+          }
+          return label;
+        },
+        createLabel: async ({ name, color, description }) => {
+          calls.push({ type: 'createLabel', name, color, description });
+          if (options.createLabelError) {
+            throw errorWithStatus(options.createLabelError);
+          }
+          const label = { name, color, description };
+          repositoryLabels.set(name, label);
+          created.push(label);
+          return label;
+        },
+        addLabels: async ({ labels }) => {
+          calls.push({ type: 'addLabels', labels });
+          added.push(...labels);
+        },
+        removeLabel: async ({ name }) => {
+          calls.push({ type: 'removeLabel', name });
+          removed.push(name);
+        },
       },
     },
   };
@@ -98,59 +134,134 @@ async function runStatusLabeler(script, baseRefName, currentLabels) {
       process.env.PR_NUMBER = previousPrNumber;
     }
   }
-  return { added, removed };
+  return { added, removed, created, calls };
 }
 
 async function main() {
   const script = extractGithubScript(statusWorkflow);
   const triggerBranches = extractTriggerBranches(backportWorkflow);
   assert.deepEqual(triggerBranches, ['redhat-*', 'mirror-registry-*']);
+  const mirrorRegistryLabel = {
+    name: 'backport/mirror-registry-3.0',
+    color: '0E8A16',
+    description: 'Backported to mirror-registry-3.0',
+  };
 
   const cases = [
     {
       branch: 'redhat-3.17',
-      labels: ['backport/redhat-3.16'],
+      currentLabels: ['backport/redhat-3.16'],
       added: ['backport/redhat-3.17'],
       removed: ['backport/redhat-3.16'],
+      created: [],
+      calls: [
+        { type: 'addLabels', labels: ['backport/redhat-3.17'] },
+        { type: 'removeLabel', name: 'backport/redhat-3.16' },
+      ],
       trigger: true,
     },
     {
       branch: 'mirror-registry-3.0',
-      labels: ['backport/redhat-3.17'],
+      currentLabels: ['backport/redhat-3.17'],
       added: ['backport/mirror-registry-3.0'],
       removed: ['backport/redhat-3.17'],
+      created: [mirrorRegistryLabel],
+      calls: [
+        { type: 'getLabel', name: mirrorRegistryLabel.name },
+        { type: 'createLabel', ...mirrorRegistryLabel },
+        { type: 'addLabels', labels: [mirrorRegistryLabel.name] },
+        { type: 'removeLabel', name: 'backport/redhat-3.17' },
+      ],
+      trigger: true,
+    },
+    {
+      branch: 'mirror-registry-3.0',
+      repositoryLabels: [mirrorRegistryLabel],
+      added: [mirrorRegistryLabel.name],
+      removed: [],
+      created: [],
+      calls: [
+        { type: 'getLabel', name: mirrorRegistryLabel.name },
+        { type: 'addLabels', labels: [mirrorRegistryLabel.name] },
+      ],
+      trigger: true,
+    },
+    {
+      branch: 'mirror-registry-3.0',
+      currentLabels: [mirrorRegistryLabel.name],
+      added: [],
+      removed: [],
+      created: [],
+      calls: [],
       trigger: true,
     },
     {
       branch: 'master',
-      labels: ['backport/redhat-3.17', 'backport/mirror-registry-3.0'],
+      currentLabels: ['backport/redhat-3.17', mirrorRegistryLabel.name],
       added: [],
-      removed: ['backport/redhat-3.17', 'backport/mirror-registry-3.0'],
+      removed: ['backport/redhat-3.17', mirrorRegistryLabel.name],
+      created: [],
+      calls: [
+        { type: 'removeLabel', name: 'backport/redhat-3.17' },
+        { type: 'removeLabel', name: mirrorRegistryLabel.name },
+      ],
       trigger: false,
     },
     {
       branch: 'unknown-3.0',
-      labels: ['backport/redhat-3.17'],
+      currentLabels: ['backport/redhat-3.17'],
       added: [],
       removed: ['backport/redhat-3.17'],
+      created: [],
+      calls: [{ type: 'removeLabel', name: 'backport/redhat-3.17' }],
       trigger: false,
     },
     {
       branch: 'mirror-registry-3',
-      labels: ['backport/mirror-registry-3.0'],
+      currentLabels: [mirrorRegistryLabel.name],
       added: [],
-      removed: ['backport/mirror-registry-3.0'],
+      removed: [mirrorRegistryLabel.name],
+      created: [],
+      calls: [{ type: 'removeLabel', name: mirrorRegistryLabel.name }],
+      trigger: true,
+    },
+    {
+      branch: 'mirror-registry-3.0',
+      repositoryLabels: [mirrorRegistryLabel],
+      reviewDecision: 'APPROVED',
+      mergeable: false,
+      mergeStateStatus: 'DIRTY',
+      added: ['approved', 'needs-rebase', mirrorRegistryLabel.name],
+      removed: [],
+      created: [],
+      calls: [
+        { type: 'getLabel', name: mirrorRegistryLabel.name },
+        { type: 'addLabels', labels: ['approved', 'needs-rebase', mirrorRegistryLabel.name] },
+      ],
       trigger: true,
     },
   ];
 
   for (const testCase of cases) {
-    const result = await runStatusLabeler(script, testCase.branch, testCase.labels);
+    const result = await runStatusLabeler(script, testCase);
     assert.deepEqual(result.added, testCase.added, testCase.branch + ' added labels');
-    assert.deepEqual(result.removed.sort(), testCase.removed.sort(), testCase.branch + ' removed labels');
+    assert.deepEqual(result.removed, testCase.removed, testCase.branch + ' removed labels');
+    assert.deepEqual(result.created, testCase.created, testCase.branch + ' created labels');
+    assert.deepEqual(result.calls, testCase.calls, testCase.branch + ' GitHub API calls');
     assert.equal(triggerMatches(testCase.branch, triggerBranches), testCase.trigger,
       testCase.branch + ' trigger match');
   }
+
+  await assert.rejects(
+    runStatusLabeler(script, { branch: 'mirror-registry-3.0', getLabelError: 500 }),
+    (error) => error.status === 500,
+    'non-404 label lookups must fail'
+  );
+  await assert.rejects(
+    runStatusLabeler(script, { branch: 'mirror-registry-3.0', createLabelError: 422 }),
+    (error) => error.status === 422,
+    'label creation failures must fail'
+  );
 
   console.log('all workflow branch labeling cases passed');
 }
