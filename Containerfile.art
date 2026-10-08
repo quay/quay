@@ -103,8 +103,6 @@ RUN python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/ap
 # Build-static downloads the static javascript.
 FROM registry.redhat.io/ubi8/nodejs-22 AS build-static
 WORKDIR /opt/app-root/src
-# This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
-ENV NODE_OPTIONS=--openssl-legacy-provider
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
