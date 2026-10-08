@@ -135,41 +135,41 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       expect(body).toContain('exported logs information can be found at');
     });
 
-    test('delivers callback for repository logs export', async ({
-      authenticatedPage,
-      api,
-      webhook,
-    }) => {
-      test.setTimeout(180_000);
-      const repo = await api.repository();
+    test(
+      'delivers callback for repository logs export',
+      {tag: '@webhook'},
+      async ({authenticatedPage, api, webhook}) => {
+        test.setTimeout(180_000);
+        const repo = await api.repository();
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
 
-      await authenticatedPage.getByTestId('usage-logs-export-button').click();
-      await authenticatedPage
-        .getByTestId('usage-logs-export-email-input')
-        .fill(webhook.getUrl('/export-callback'));
-      await authenticatedPage
-        .getByTestId('usage-logs-export-confirm-button')
-        .click();
+        await authenticatedPage.getByTestId('usage-logs-export-button').click();
+        await authenticatedPage
+          .getByTestId('usage-logs-export-email-input')
+          .fill(webhook.getUrl('/export-callback'));
+        await authenticatedPage
+          .getByTestId('usage-logs-export-confirm-button')
+          .click();
 
-      await expect(
-        authenticatedPage.getByText('Logs exported with id').first(),
-      ).toBeVisible();
+        await expect(
+          authenticatedPage.getByText('Logs exported with id').first(),
+        ).toBeVisible();
 
-      const received = await webhook.waitForWebhook(
-        (req) => req.url === '/export-callback',
-        120_000,
-      );
-      expect(received).not.toBeNull();
+        const received = await webhook.waitForWebhook(
+          (req) => req.url === '/export-callback',
+          120_000,
+        );
+        expect(received).not.toBeNull();
 
-      const body = received!.body;
-      expect(body).toHaveProperty('export_id');
-      expect(body).toHaveProperty('status', 'success');
-      expect(body).toHaveProperty('exported_data_url');
-      expect(body).toHaveProperty('namespace');
-      expect(body).toHaveProperty('repository');
-    });
+        const body = received!.body;
+        expect(body).toHaveProperty('export_id');
+        expect(body).toHaveProperty('status', 'success');
+        expect(body).toHaveProperty('exported_data_url');
+        expect(body).toHaveProperty('namespace');
+        expect(body).toHaveProperty('repository');
+      },
+    );
   });
 
   test('filters logs by text input', async ({authenticatedPage, api}) => {
