@@ -235,6 +235,10 @@ Release branches follow the `redhat-X.Y` naming pattern. The highest
 `redhat-X.Y` branch is synced with master — do not cherry-pick to it. Target
 only the older maintained branches.
 
+Mirror Registry release branches use the `mirror-registry-X.Y` naming pattern.
+Their release and synchronization policy is separate from Quay's `redhat-X.Y`
+branch model.
+
 ## Community
 
 - Mailing list: [quay-sig@googlegroups.com](https://groups.google.com/forum/#!forum/quay-sig)

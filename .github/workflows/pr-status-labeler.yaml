@@ -101,12 +101,12 @@ jobs:
               }
             }
 
-            // Handle backport labels for redhat-X.Y branches
+            // Handle backport labels for supported release branches.
             const baseBranch = pr.baseRefName;
-            const backportMatch = baseBranch.match(/^redhat-\d+\.\d+$/);
+            const backportMatch = baseBranch.match(/^(redhat|mirror-registry)-\d+\.\d+$/);
 
             if (backportMatch) {
-              // PR targets a redhat-X.Y branch
+              // PR targets a supported release branch.
               const expectedBackportLabel = `backport/${baseBranch}`;
 
               // Add the correct backport label if missing
