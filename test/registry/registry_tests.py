@@ -3589,3 +3589,69 @@ def test_push_new_blob_while_blob_delete_lock_held(
         expected_status=200,
         headers=headers,
     )
+
+
+def test_push_new_blob_while_registry_lock_held(
+    v22_protocol, liveserver_session, liveserver, registry_server_executor, app_reloader
+):
+    """Test: Committing a new blob while a non-GC holder has its BLOB_DELETE lock succeeds with
+    201.  A registry worker (or an unreadable response-mixing artifact such as "OK" or None) as
+    the lock holder is not a GC deletion in progress, so the push proceeds and relies on the
+    IntegrityError guard for any duplicate-creation race between concurrent registry workers."""
+    credentials = ("devtable", "password")
+    blob_bytes = layer_bytes_for_contents(b"registry lock holder contents")
+    digest = "sha256:" + hashlib.sha256(blob_bytes).hexdigest()
+    repo_name = v22_protocol.repo_name("devtable", "newrepo")
+
+    token, _ = v22_protocol.auth(
+        liveserver_session,
+        credentials,
+        "devtable",
+        "newrepo",
+        scopes=["repository:%s:push,pull" % repo_name],
+    )
+    headers = {"Authorization": "Bearer " + token}
+
+    def upload_blob(expected_status):
+        response = v22_protocol.conduct(
+            liveserver_session,
+            "POST",
+            "/v2/%s/blobs/uploads/" % repo_name,
+            expected_status=202,
+            headers=headers,
+        )
+        location = response.headers["Location"][len("http://localhost:5000") :]
+        v22_protocol.conduct(
+            liveserver_session,
+            "PATCH",
+            location,
+            data=blob_bytes,
+            expected_status=202,
+            headers=headers,
+        )
+        return v22_protocol.conduct(
+            liveserver_session,
+            "PUT",
+            location,
+            params=dict(digest=digest),
+            expected_status=expected_status,
+            headers=headers,
+        )
+
+    executor = registry_server_executor.on(liveserver)
+    # Hold the lock as a registry worker — not a GC role, simulating response mixing
+    # where the "owner" is another registry worker or an unreadable artifact.
+    assert executor.hold_blob_lock(digest, 60, "registry:7:test").status_code == 200
+
+    # Must succeed: non-GC holders do not block blob creation.
+    start = time.time()
+    upload_blob(201)
+    assert time.time() - start < 20
+
+    v22_protocol.conduct(
+        liveserver_session,
+        "HEAD",
+        "/v2/%s/blobs/%s" % (repo_name, digest),
+        expected_status=200,
+        headers=headers,
+    )

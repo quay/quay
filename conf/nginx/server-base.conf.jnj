@@ -116,6 +116,100 @@ location = /_storage_proxy_auth {
     proxy_read_timeout 10;
 }
 
+# handles blob upstream proxy requests
+location ~ ^/_upstream_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
+    include resolver.conf;
+
+    # set up auth request and auth request header
+    auth_request /_upstream_proxy_auth;
+    auth_request_set $upstream_auth $upstream_http_x_upstream_auth;
+
+    proxy_pass $2://$3/$4$is_args$args;
+    proxy_http_version 1.1;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $3;
+    proxy_set_header Authorization $upstream_auth;
+    proxy_set_header x-forwarded-host "";
+    proxy_set_header forwarded "for=$remote_addr";
+
+    # make sure we send the proper registry hostname in our request
+    proxy_ssl_name $3;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
+
+    # set buffers
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_buffer_size 32k;
+    proxy_buffers 4 32k;
+
+    # Intercept upstream redirects: upstream registries can either serve blobs directly
+    # or return a 302/307/308 to the requester. If blobs are served directly, we just stream
+    # content. If a redirect is returned, we need to handle it so we follow whatever redirect
+    # URL is returned by upstream registry.
+    proxy_intercept_errors on;
+    error_page 301 302 307 308 = @upstream_proxy_redirect;
+
+    # make sure we give enough time to nginx to communicate with upstream
+    proxy_read_timeout 300s;
+}
+
+# handles blob upstream proxy request redirects
+location @upstream_proxy_redirect {
+    include resolver.conf;
+
+    set $redirect_location $upstream_http_location;
+
+    # Block non-https redirect targets to prevent SSRF via plain HTTP to internal addresses.
+    # Legitimate CDN/S3 presigned URLs are always https. Combined with proxy_ssl_verify on,
+    # this also prevents redirects to internal hosts that lack valid TLS certificates.
+    if ($redirect_location !~ "^https://") {
+        return 400;
+    }
+
+    proxy_pass $redirect_location;
+    proxy_http_version 1.1;
+
+    # S3 presigned URLs contain access credentials as parameters, we need to
+    # explicitly clear any auth headers before sending the request, otherwise
+    # we might get a 401
+    proxy_set_header Authorization "";
+    proxy_set_header Host $proxy_host;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
+
+    # turn on proxy buffering but explicitly stop nginx
+    # from writing anything to disk, force it to use memory
+    proxy_buffering on;
+    proxy_max_temp_file_size 0;
+
+    # use relatively large buffer sizes
+    proxy_buffer_size 128k;
+    proxy_buffers 16 1m;
+    proxy_busy_buffers_size 4m;
+
+    proxy_read_timeout 300s;
+}
+
+# handles upstream proxy request auth
+location = /_upstream_proxy_auth {
+    # make the endpoint internal so it cannot be accessed
+    # from outside
+    internal;
+
+    proxy_pass http://registry_app_server;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+
+    proxy_set_header X-Original-URI $request_uri;
+
+    proxy_read_timeout 10;
+}
+
 location ~ ^/v2/_catalog(.*)$ {
     proxy_pass http://registry_app_server;
     proxy_read_timeout 10;

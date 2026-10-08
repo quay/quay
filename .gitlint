@@ -1,6 +1,6 @@
 # Commit-message lint rules for Project Quay
 #
-# CI enforces a PR-title regex via the conventional-commit-checker action
+# CI enforces a PR-title regex via .github/scripts/check-pr-title.sh
 # (see .github/workflows/ci-lint.yaml).  Because the PR title is derived
 # from the commit subject, validating the subject here catches format
 # errors before they reach CI.

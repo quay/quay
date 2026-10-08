@@ -67,6 +67,7 @@ from endpoints.api.manifest import (
     ManageRepositoryManifestLabel,
     RepositoryManifestLabels,
 )
+from endpoints.api.mirror import RepoMirrorResource
 from endpoints.api.organization import (
     ApplicationInformation,
     Organization,
@@ -4667,6 +4668,54 @@ class TestBuildTriggers(ApiTestCase):
         assert "id" in start_json
         self.assertEqual("build-name", start_json["display_name"])
         self.assertEqual(["bar"], start_json["tags"])
+
+    def test_list_build_triggers_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            BuildTriggerList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/building"),
+        )
+        self.assertEqual(1, len(json["triggers"]))
+
+        trigger = json["triggers"][0]
+        assert trigger["config"] == {}
+        assert trigger["can_invoke"] is False
+        assert trigger["build_source"] is not None
+
+    def test_get_build_trigger_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            BuildTriggerList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/building"),
+        )
+        trigger = json["triggers"][0]
+
+        trigger_json = self.getJsonResponse(
+            BuildTrigger,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/building",
+                trigger_uuid=trigger["id"],
+            ),
+        )
+        assert trigger_json["config"] == {}
+        assert trigger_json["can_invoke"] is False
+        assert trigger_json["build_source"] is not None
+
+
+class TestRepoMirror(ApiTestCase):
+    def test_get_mirror_config_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            RepoMirrorResource,
+            params=dict(repository=ADMIN_ACCESS_USER + "/mirrored"),
+        )
+        assert json["external_registry_username"] is None
+        assert json["external_registry_config"] == {}
+        assert json["external_reference"] is not None
+        assert json["is_enabled"] is True
 
 
 class TestUserAuthorizations(ApiTestCase):

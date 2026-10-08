@@ -41,6 +41,10 @@ class LockAcquireTimeout(LockNotAcquiredException):
     when the timeout ran out, as opposed to Redis being unavailable.
     """
 
+    def __init__(self, *args, holder=None):
+        super().__init__(*args)
+        self.holder = holder
+
 
 def _redis_lock_factory(config):
     """Create a ``functools.partial`` that yields Redis-backed locks.
@@ -75,13 +79,18 @@ class GlobalLock(object):
     """
 
     lock_factory = None
+    _process_lock_role = None
 
     @classmethod
-    def configure(cls, config):
+    def configure(cls, config, lock_role=None):
         if cls.lock_factory is None:
             cls.lock_factory = _redis_lock_factory(config)
+        if lock_role is not None:
+            cls._process_lock_role = lock_role
 
-    def __init__(self, name, lock_ttl=600, auto_renewal=False, blocking_timeout=None):
+    def __init__(
+        self, name, lock_ttl=600, auto_renewal=False, blocking_timeout=None, lock_role=None
+    ):
         """
         :param blocking_timeout:
             Maximum number of seconds, measured across all retries, to wait for the lock.
@@ -96,15 +105,27 @@ class GlobalLock(object):
         self._blocking_timeout = blocking_timeout
         self._lock = None
         self._timed_out = False
+
         # Identifies the current process to other waiters if this instance acquires the lock;
         # the uuid suffix keeps ids unique across concurrent GlobalLock instances in this same
         # process, so one greenlet's held lock is never mistaken for another's acquire attempt.
-        self._holder_id = "%s:%s:%s" % (socket.gethostname(), os.getpid(), uuid.uuid4().hex[:8])
+        # When _process_lock_role is set (by configure at worker startup), the role is the
+        # first colon-delimited segment: "role:hostname:pid:uuid".  Without a role the first
+        # segment is empty: ":hostname:pid:uuid".
+        role = self.__class__._process_lock_role
+        role_prefix = role if role else ""
+        self._holder_id = "%s:%s:%s:%s" % (
+            role_prefix,
+            socket.gethostname(),
+            os.getpid(),
+            uuid.uuid4().hex[:8],
+        )
+        self._timed_out_holder = None
 
     def __enter__(self):
         if not self.acquire():
             if self._timed_out:
-                raise LockAcquireTimeout()
+                raise LockAcquireTimeout(holder=self._timed_out_holder)
             raise LockNotAcquiredException()
 
     def __exit__(self, type, value, traceback):
@@ -126,10 +147,11 @@ class GlobalLock(object):
                 acquired = self._acquire_before_deadline()
             if not acquired:
                 self._timed_out = True
+                self._timed_out_holder = self._current_holder()
                 logger.warning(
                     "Timed out acquiring lock %s (currently held by %s)",
                     self._lock_name,
-                    self._current_holder(),
+                    self._timed_out_holder,
                 )
                 return False
 

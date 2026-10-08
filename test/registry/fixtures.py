@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 import logging.config
@@ -139,10 +140,14 @@ def registry_server_executor(app):
 
     held_blob_locks = {}
 
-    def hold_blob_lock(digest, ttl):
+    def hold_blob_lock(digest, ttl, holder_id="repositorygcworker:7:test"):
         # initialized_db swaps storage.GlobalLock for a no-op mock. Put the real GlobalLock back,
         # backed by fakeredis, and take BLOB_DELETE_<digest> as another holder (e.g. GC) would.
         # The live server is forked per test, so this does not leak into other tests.
+        #
+        # holder_id must use an exact name from _GC_LOCK_ROLES to be treated as a GC holder
+        # (e.g. "repositorygcworker:7:test").  Pass a non-GC id (e.g. "registry:7:test") to
+        # simulate response-mixing or a registry worker holding the lock.
         import functools
 
         import fakeredis
@@ -157,7 +162,7 @@ def registry_server_executor(app):
             data.model.storage.GlobalLock = GlobalLock
 
         lock = redis_lock.Lock(
-            held_blob_locks["conn"], "BLOB_DELETE_%s" % digest, expire=ttl, id="gc-worker:7:test"
+            held_blob_locks["conn"], "BLOB_DELETE_%s" % digest, expire=ttl, id=holder_id
         )
         assert lock.acquire(blocking=False)
         return "OK"
@@ -206,7 +211,11 @@ def liveserver_app(app, registry_server_executor, init_db_path, data_model):
 
     shutil.copy2(init_db_path, local_db_file.name)
     app.config["DB_URI"] = "sqlite:///{0}".format(local_db_file.name)
-    return app
+    yield app
+
+    for suffix in ("", "-wal", "-shm"):
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(local_db_file.name + suffix)
 
 
 @pytest.fixture()

@@ -129,7 +129,7 @@ class OIDCLoginService(OAuthService):
         if not endpoint:
             return None
 
-        (scheme, netloc, path, query, fragment) = urllib.parse.urlsplit(endpoint)
+        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(endpoint)
 
         # Add the query parameters from the kwargs and the config.
         custom_parameters = self.config.get("OIDC_ENDPOINT_CUSTOM_PARAMS", {}).get(endpoint_key, {})
@@ -355,8 +355,9 @@ class OIDCLoginService(OAuthService):
         effective_issuer = token_issuer if token_issuer else (issuers[0] if issuers else None)
 
         logger.debug(
-            "Using key `%s`, attempting to decode token with aud `%s` and iss `%s`",
+            "Using key `%s`, attempting to decode token %s with aud `%s` and iss `%s`",
             kid,
+            token,
             effective_audience,
             effective_issuer,
         )

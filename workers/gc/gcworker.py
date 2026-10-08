@@ -113,6 +113,6 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    GlobalLock.configure(app.config)
+    GlobalLock.configure(app.config, lock_role="gcworker")
     worker = GarbageCollectionWorker()
     worker.start()
