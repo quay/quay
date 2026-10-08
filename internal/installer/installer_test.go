@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/quay/quay/internal/certs"
 	"github.com/quay/quay/internal/dal/daldb"

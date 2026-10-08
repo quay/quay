@@ -518,7 +518,7 @@ func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port 
 // recoverFromFailedDeploy attempts rollback when upgrade() itself fails
 // (e.g. start or daemon-reload failure after the Quadlet was overwritten).
 func (inst *Installer) recoverFromFailedDeploy(ctx context.Context, snapshot *upgradeSnapshot, newImage string, deployErr error) error {
-	oldImage, _ := snapshotImage(snapshot.quadletData)
+	oldImage := snapshotImage(snapshot.quadletData)
 	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
 		return fmt.Errorf("upgrade: %w; rollback failed (previous image %s, new image %s): %w", deployErr, oldImage, newImage, rbErr)
 	}
@@ -532,7 +532,7 @@ func (inst *Installer) recoverFromFailedDeploy(ctx context.Context, snapshot *up
 // rollback it includes both image refs so the user can recover manually; when
 // the old image is also unhealthy it stops the service and reports both refs.
 func (inst *Installer) handleFailedUpgrade(ctx context.Context, snapshot *upgradeSnapshot, newImage string, healthErr error) error {
-	oldImage, _ := snapshotImage(snapshot.quadletData)
+	oldImage := snapshotImage(snapshot.quadletData)
 	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
 		_ = inst.systemd.Stop(ctx, quadletServiceName)
 		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, oldImage, newImage, rbErr)
@@ -589,13 +589,13 @@ func (inst *Installer) rollbackUpgrade(ctx context.Context, snapshot *upgradeSna
 }
 
 // snapshotImage extracts the Image= value from saved Quadlet data.
-func snapshotImage(quadletData []byte) (string, bool) {
+func snapshotImage(quadletData []byte) string {
 	for _, line := range strings.Split(string(quadletData), "\n") {
 		if image, found := strings.CutPrefix(line, "Image="); found {
-			return image, true
+			return image
 		}
 	}
-	return "", false
+	return ""
 }
 
 // pinQuadletImage replaces the Image= line in Quadlet data with the given ID.
