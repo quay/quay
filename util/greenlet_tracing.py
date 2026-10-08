@@ -1,3 +1,4 @@
+import weakref
 from time import time
 
 from gevent.hub import get_hub
@@ -21,7 +22,7 @@ greenlet_lifetime = Histogram(
 )
 
 _latest_switch = None
-_tracked_greenlets = {}
+_tracked_greenlets = weakref.WeakKeyDictionary()
 
 
 def enable_tracing():
@@ -30,23 +31,43 @@ def enable_tracing():
 
 def greenlet_callback(event, args):
     """
-    This is a callback that is executed greenlet on all events.
+    Trace callback invoked on every greenlet switch or throw.
+
+    Every switch is a pair: origin -> target.
+    - origin: the greenlet that was running and is now yielding or dying
+    - target: the greenlet that is about to start running
+    - hub: gevent's event loop scheduler — always on one side of every switch
+
+    Example lifecycle of a pull request:
+      hub -> greenlet A       (new request arrives, hub dispatches)
+      greenlet A -> hub       (A yields for DB I/O)
+      hub -> greenlet A       (DB ready, hub wakes A)
+      greenlet A -> hub       (A sends response, A.dead=True — slot freed)
     """
     if event in ("switch", "throw"):
         origin, target = args
 
         hub = get_hub()
 
+        # First time seeing this greenlet — treat as "created".
+        # e.g. hub -> new greenlet A: A is not in _tracked_greenlets yet.
         if target is not hub and target not in _tracked_greenlets:
             _tracked_greenlets[target] = time()
-            greenlets_active.inc()
 
+        # Greenlet finished execution — treat as "destroyed".
+        # e.g. greenlet A -> hub with A.dead=True: A sent its response
+        # and will never run again — free the slot.
         if origin is not hub and origin.dead:
             start = _tracked_greenlets.pop(origin, None)
             if start is not None:
                 greenlet_lifetime.observe(time() - start)
-            greenlets_active.dec()
 
+        # Set gauge from dict size on every switch — avoids drift from
+        # greenlets that are GC'd without dying or created before tracing.
+        greenlets_active.set(len(_tracked_greenlets))
+
+        # Hub switches are bookkeeping — the hub dispatches to user
+        # greenlets but is not itself a request-serving greenlet.
         if origin is hub:
             if event == "switch":
                 switch_callback(args)
