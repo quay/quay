@@ -4,9 +4,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 script="$script_dir/check-pr-title.sh"
 
-# The PCRE regex this script replaces (ci-lint.yaml, pr-title-check job, before
-# this change). Equivalence with the new script's ERE is asserted per case below.
-old_pcre='^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
+# The PCRE equivalent of the CI script's ERE. Equivalence is asserted per case below.
+expected_pcre='^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
 
 failures=0
 
@@ -16,11 +15,17 @@ cases=(
   'NO-ISSUE: docs: Clarifications to the security policy|1|'
   'PROJQUAY-10983: fix(mirroring): add isRequired to robot user field|1|'
   '[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153|1|'
+  '[mirror-registry-3.0] PROJQUAY-13482: fix(omr): roll back to previous image when upgrade health check fails|1|'
   'QUAYIO-12345: feat(auth): add SSO support for quay.io|1|'
   'fix(api): no ticket|0|no ticket prefix'
+  '[unknown-3.0] PROJQUAY-1: fix: x|0|no ticket prefix'
+  '[mirror-registry-3] PROJQUAY-1: fix: x|0|no ticket prefix'
+  '[mirror-registry-3.0]PROJQUAY-1: fix: x|0|no ticket prefix'
+  '[mirror-registry-3.0] TICKET-1: fix: x|0|no ticket prefix'
   '[redhat-3.17]PROJQUAY-1: fix: x|0|no ticket prefix'
   'PROJQUAY-1: Fix: x|0|no conventional'
   'NO-ISSUE: é: x|0|no conventional'
+  'PROJQUAY-1: fix: |0|expected shape'
 )
 
 for case in "${cases[@]}"; do
@@ -52,14 +57,14 @@ for case in "${cases[@]}"; do
     fi
   fi
 
-  # Equivalence with the old PCRE regex.
-  if grep -qP "$old_pcre" <<<"$title"; then
-    old_pass=1
+  # Equivalence with the PCRE form of the CI regex.
+  if grep -qP "$expected_pcre" <<<"$title"; then
+    expected_pass=1
   else
-    old_pass=0
+    expected_pass=0
   fi
-  if [ "$old_pass" != "$expect_pass" ]; then
-    echo "FAIL (old regex disagrees, old_pass=$old_pass expect_pass=$expect_pass): $title"
+  if [ "$expected_pass" != "$expect_pass" ]; then
+    echo "FAIL (expected regex disagrees, expected_pass=$expected_pass expect_pass=$expect_pass): $title"
     failures=$((failures + 1))
     continue
   fi
