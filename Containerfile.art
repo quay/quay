@@ -19,7 +19,6 @@ RUN set -ex\
 	; microdnf -y --setopt=tsflags=nodocs install \
 		python3.12 \
 		python3.12-pip \
-		python-unversioned-command \
 		glibc-langpack-en \
 		dnsmasq \
 		memcached \
