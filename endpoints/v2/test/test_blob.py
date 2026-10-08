@@ -191,6 +191,42 @@ class TestBlobPullThroughStorage:
         locations = [placements.get().location.name]
         assert storage.exists(locations, path), f"blob not found in storage at path {path}"
 
+    def test_cache_hit_blob_response_includes_content_length(self):
+        """
+        Verifies that the streaming code path in download_blob sets Content-Length
+        when a cached blob is served from local storage (no direct-download redirect).
+
+        In environments where S3 direct-download URLs are used (e.g. Prow aws-s3),
+        the Content-Length header is provided by the object-storage response and may
+        be absent depending on network configuration. This test exercises the
+        streaming path (local storage, get_direct_download_url returns None) to
+        confirm that the explicit Content-Length header in that path is correct.
+
+        Regression test for https://github.com/quay/quay/issues/7608.
+        """
+        params = {
+            "repository": self.repository,
+            "digest": self.digest,
+        }
+        # layer2 content is "test" (4 bytes) as created in setup
+        expected_size = len(b"test")
+
+        with patch("endpoints.v2.blob.model_cache", NoopDataModelCache(TEST_CACHE_CONFIG)):
+            resp = conduct_call(
+                self.client,
+                "v2.download_blob",
+                url_for,
+                "GET",
+                params,
+                expected_code=200,
+                headers=self.headers,
+            )
+
+        assert resp.headers.get("Content-Length") == str(expected_size), (
+            f"Expected Content-Length: {expected_size}, "
+            f"got: {resp.headers.get('Content-Length')!r}"
+        )
+
 
 class TestBlobProxyCacheMiss:
     orgname = "cache"
