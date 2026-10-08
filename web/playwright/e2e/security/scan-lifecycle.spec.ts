@@ -18,7 +18,15 @@ import {TEST_USERS} from '../../global-setup';
 
 test.describe(
   'Security Scan Lifecycle',
-  {tag: ['@security', '@container', '@feature:SECURITY_SCANNER']},
+  {
+    tag: [
+      '@security',
+      '@container',
+      '@feature:SECURITY_SCANNER',
+      '@auth:Database',
+    ],
+    timeout: 180000, // 3 min: image push (~30s) + scan wait (120s) + UI assertions (~30s)
+  },
   () => {
     test('displays vulnerability results after scan completes', async ({
       authenticatedPage,
@@ -69,7 +77,7 @@ test.describe(
 
       // Verify vulnerability chart rendered
       await expect(
-        authenticatedPage.locator('[data-testid="vulnerability-chart"]'),
+        authenticatedPage.getByTestId('vulnerability-chart'),
       ).toBeVisible();
 
       // If vulnerabilities present, verify details table
@@ -79,19 +87,11 @@ test.describe(
         .catch(() => false);
 
       if (hasVulns) {
-        // Verify severity column exists
+        // Verify severity column exists when vulnerabilities are present
         const severityHeader = authenticatedPage.getByRole('columnheader', {
           name: /severity/i,
         });
-
-        // Column header might be visible
-        const isColumnVisible = await severityHeader
-          .isVisible()
-          .catch(() => false);
-
-        if (isColumnVisible) {
-          await expect(severityHeader).toBeVisible();
-        }
+        await expect(severityHeader).toBeVisible();
       }
     });
 
@@ -116,7 +116,7 @@ test.describe(
       expect(tags.tags).toBeDefined();
       expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
-      await waitForSecurityScan(
+      const result = await waitForSecurityScan(
         api.raw,
         repo.namespace,
         repo.name,
@@ -125,6 +125,9 @@ test.describe(
         5000,
       );
 
+      // Verify scan completed successfully
+      expect(result.status).toBe('scanned');
+
       // Navigate to tag detail page
       await authenticatedPage.goto(`/repository/${repo.fullName}/tag/latest`);
 
@@ -132,22 +135,22 @@ test.describe(
       const vulnBadge = authenticatedPage.getByTestId('vulnerabilities');
       await expect(vulnBadge).toBeVisible({timeout: 15000});
 
-      // Badge should show one of: Critical, High, Medium, Low, No vulnerabilities, Passed, Unsupported
+      // Badge should show one of: Critical, High, Medium, Low, No vulnerabilities, Passed
       await expect(vulnBadge).toContainText(
-        /(\d+\s+(Critical|High|Medium|Low|Unknown)|No vulnerabilities|Passed|Unsupported)/i,
+        /(\d+\s+(Critical|High|Medium|Low|Unknown)|No vulnerabilities|Passed)/i,
         {timeout: 10000},
       );
 
       // Verify badge is clickable and navigates to security report (if not unsupported)
       const badgeText = await vulnBadge.textContent();
       if (badgeText && !badgeText.includes('Unsupported')) {
-        const badgeLink = vulnBadge.locator('a, button').first();
-        const isClickable = await badgeLink.isVisible().catch(() => false);
-
-        if (isClickable) {
-          await badgeLink.click();
-          await expect(authenticatedPage).toHaveURL(/tab=securityreport/);
-        }
+        const badgeLink = vulnBadge
+          .getByRole('link')
+          .or(vulnBadge.getByRole('button'))
+          .first();
+        await expect(badgeLink).toBeVisible();
+        await badgeLink.click();
+        await expect(authenticatedPage).toHaveURL(/tab=securityreport/);
       }
     });
 
@@ -178,7 +181,7 @@ test.describe(
       await authenticatedPage.goto(`/repository/${repo.fullName}/tag/v1.0.0`);
 
       // Wait for scan to complete in background
-      await waitForSecurityScan(
+      const result = await waitForSecurityScan(
         api.raw,
         repo.namespace,
         repo.name,
@@ -186,6 +189,9 @@ test.describe(
         120000,
         5000,
       );
+
+      // Verify scan completed successfully
+      expect(result.status).toBe('scanned');
 
       // Refresh page to see updated status
       await authenticatedPage.reload();
@@ -203,7 +209,7 @@ test.describe(
       // Verify security report loaded (shows scan results)
       await expect(
         authenticatedPage.getByText(
-          /detected \d+ vulnerabilit|detected no vulnerabilit|Scan Status/,
+          /detected \d+ vulnerabilit|detected no vulnerabilit/,
         ),
       ).toBeVisible({timeout: 10000});
     });
