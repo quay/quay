@@ -48,6 +48,12 @@ def test_resolve_federation_scope_allows_only_binding_subset():
         resolve_federation_scope(binding, "super:user")
 
 
+@pytest.mark.parametrize("binding", [{}, {"api_scopes": ""}])
+def test_resolve_federation_scope_rejects_binding_without_api_scope(binding):
+    with pytest.raises(InvalidRobotCredentialException, match="no API scope"):
+        resolve_federation_scope(binding, None)
+
+
 def test_validate_federated_robot_auth_bad_header(app):
     header = "Basic bad-basic-auth-header"
     result = validate_federated_auth(header)

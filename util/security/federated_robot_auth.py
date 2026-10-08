@@ -7,7 +7,6 @@ import features
 from app import app
 from auth import scopes
 from auth.basic import _parse_basic_auth_header
-from auth.log import log_action
 from auth.validateresult import AuthKind, ValidateResult
 from data.model import InvalidRobotCredentialException
 from data.model.api_token import normalize_scope, validate_api_scope_string
@@ -100,6 +99,8 @@ def resolve_federation_scope(binding, requested_scope):
 
     requested_scope = normalize_scope(requested_scope or "")
     if not requested_scope:
+        if not allowed_scope:
+            raise InvalidRobotCredentialException("Federation binding has no API scope")
         return allowed_scope
 
     if not validate_api_scope_string(requested_scope) or not scopes.is_subset_string(
@@ -160,19 +161,5 @@ def verify_federated_robot_jwt_token(robot, token):
             "Audience-less federation is deprecated and will be removed in a future release.",
             robot.username,
         )
-
-    namespace, robot_name = parse_robot_username(robot.username)
-
-    log_action(
-        "federated_robot_token_exchange",
-        namespace,
-        {
-            "subject": decoded_token.get("sub"),
-            "issuer": decoded_token.get("iss"),
-            "robot": robot_name,
-            "federation_binding_id": binding["id"],
-            "federation_binding_version": binding["version"],
-        },
-    )
 
     return ValidateResult(AuthKind.credentials, robot=robot, federation_binding=binding)

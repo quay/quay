@@ -68,8 +68,17 @@ location = /sts/token {
     {% if enable_rate_limits %}
     limit_req zone=dynamicauth_heavy_http1 burst=5 nodelay;
     limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;
+    error_page 429 = @sts_rate_limited;
     {% endif %}
 }
+
+{% if enable_rate_limits %}
+location @sts_rate_limited {
+    default_type application/json;
+    add_header Retry-After 1 always;
+    return 429 '{"error":"slow_down"}';
+}
+{% endif %}
 
 # Capture traffic that needs to go to web_app, see /web.py
 location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/recovery|/userfiles/(.*)|/health(/.*)?|/status|/_internal_ping|/buildlogs|/logarchive) {
