@@ -175,10 +175,16 @@ async function requireTool(tool: keyof ToolAvailability): Promise<void> {
  * Registry pushes can race with repository initialization, so push-like
  * helpers retry their registry operation a few times. Each failed attempt is
  * logged so the final thrown error isn't the only one visible.
+ *
+ * @param isRetryable - Optional predicate; when provided, returning `false`
+ *   causes the error to be re-thrown immediately without further retries.
+ *   Use this to short-circuit on deterministic errors (e.g. quota exceeded)
+ *   that cannot be resolved by retrying.
  */
 async function retryOperation(
   operation: () => Promise<void>,
   maxAttempts = 5,
+  isRetryable?: (err: unknown) => boolean,
 ): Promise<void> {
   let lastErr: unknown;
   for (let i = 0; i < maxAttempts; i++) {
@@ -187,6 +193,7 @@ async function retryOperation(
       return;
     } catch (err) {
       lastErr = err;
+      if (isRetryable && !isRetryable(err)) throw err;
       console.warn(
         `retryOperation attempt ${i + 1}/${maxAttempts} failed:`,
         err,
@@ -195,6 +202,24 @@ async function retryOperation(
     }
   }
   throw lastErr;
+}
+
+/**
+ * Returns `false` when `err` is a deterministic quota-exceeded rejection from
+ * the Quay registry, signalling that `retryOperation` should not retry.
+ *
+ * Quay rejects pushes to a namespace that has exhausted its quota with:
+ *   DENIED: Quota has been exceeded on namespace
+ * Retrying such a push always produces the same denial, so all retry
+ * attempts waste time and fill the log with noise.
+ *
+ * Exported for unit testing.
+ */
+export function isPushRetryable(err: unknown): boolean {
+  if (err instanceof Error && err.message.includes('Quota has been exceeded')) {
+    return false;
+  }
+  return true;
 }
 
 async function skopeoCopy(args: string[]): Promise<void> {
@@ -250,7 +275,9 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(
+              ' ',
+            )} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
@@ -300,16 +327,19 @@ export async function pushImageFrom(
     : `docker://${sourceImage}`;
 
   await withRegistryAuthFile(username, password, (authFile) =>
-    retryOperation(() =>
-      skopeoCopy([
-        '--override-os=linux',
-        '--override-arch=amd64',
-        source,
-        `docker://${dest}`,
-        '--dest-tls-verify=false',
-        '--dest-authfile',
-        authFile,
-      ]),
+    retryOperation(
+      () =>
+        skopeoCopy([
+          '--override-os=linux',
+          '--override-arch=amd64',
+          source,
+          `docker://${dest}`,
+          '--dest-tls-verify=false',
+          '--dest-authfile',
+          authFile,
+        ]),
+      5,
+      isPushRetryable,
     ),
   );
 }
@@ -393,12 +423,15 @@ export async function pushUniqueImageWithLayerBytes(
 
     await craneLogin(REGISTRY_HOST, username, password, authDir);
 
-    await retryOperation(() =>
-      execFileAsync(
-        'crane',
-        ['append', '--insecure', '--new_layer', layerTar, '--new_tag', image],
-        {env: {...process.env, DOCKER_CONFIG: authDir}},
-      ).then(() => undefined),
+    await retryOperation(
+      () =>
+        execFileAsync(
+          'crane',
+          ['append', '--insecure', '--new_layer', layerTar, '--new_tag', image],
+          {env: {...process.env, DOCKER_CONFIG: authDir}},
+        ).then(() => undefined),
+      5,
+      isPushRetryable,
     );
   } finally {
     await rm(tmpDir, {recursive: true, force: true});
@@ -480,15 +513,18 @@ export async function pushMultiArchImage(
   const image = targetImage(namespace, repo, tag);
 
   await withRegistryAuthFile(username, password, (authFile) =>
-    retryOperation(() =>
-      skopeoCopy([
-        '--all',
-        `docker://${MULTIARCH_SOURCE_IMAGE}`,
-        `docker://${image}`,
-        '--dest-tls-verify=false',
-        '--dest-authfile',
-        authFile,
-      ]),
+    retryOperation(
+      () =>
+        skopeoCopy([
+          '--all',
+          `docker://${MULTIARCH_SOURCE_IMAGE}`,
+          `docker://${image}`,
+          '--dest-tls-verify=false',
+          '--dest-authfile',
+          authFile,
+        ]),
+      5,
+      isPushRetryable,
     ),
   );
 }
@@ -609,17 +645,20 @@ export async function pushOCIImage(
   const image = targetImage(namespace, repo, tag);
 
   await withRegistryAuthFile(username, password, (authFile) =>
-    retryOperation(() =>
-      skopeoCopy([
-        '--format=oci',
-        '--override-os=linux',
-        '--override-arch=amd64',
-        `docker://${BUSYBOX_IMAGE}`,
-        `docker://${image}`,
-        '--dest-tls-verify=false',
-        '--dest-authfile',
-        authFile,
-      ]),
+    retryOperation(
+      () =>
+        skopeoCopy([
+          '--format=oci',
+          '--override-os=linux',
+          '--override-arch=amd64',
+          `docker://${BUSYBOX_IMAGE}`,
+          `docker://${image}`,
+          '--dest-tls-verify=false',
+          '--dest-authfile',
+          authFile,
+        ]),
+      5,
+      isPushRetryable,
     ),
   );
 }
