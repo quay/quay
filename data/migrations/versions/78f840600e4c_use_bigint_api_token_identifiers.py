@@ -14,8 +14,9 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
+    bigint_type = sa.BigInteger().with_variant(sa.Integer(), "sqlite")
     with op.batch_alter_table("apitoken") as batch_op:
-        batch_op.alter_column("id", nullable=False, autoincrement=True, type_=sa.BigInteger())
+        batch_op.alter_column("id", nullable=False, autoincrement=True, type_=bigint_type)
 
     if op.get_bind().dialect.name == "postgresql":
         op.execute("ALTER SEQUENCE apitoken_id_seq AS BIGINT")
