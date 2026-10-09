@@ -62,34 +62,7 @@ func TestRunRemovesDataDirWhenPurge(t *testing.T) {
 	assert.True(t, os.IsNotExist(statErr))
 }
 
-func TestRunPreservesDataDirWhenAutoApproveWithoutPurge(t *testing.T) {
-	dataDir := t.TempDir()
-	dbPath := filepath.Join(dataDir, "quay.db")
-	require.NoError(t, os.WriteFile(dbPath, []byte("data"), 0o600))
-
-	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
-	qm := system.NewQuadletManager(system.OSFS{}, env)
-	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
-		Image: "localhost/quay:test", DataDir: dataDir,
-		Hostname: "localhost", Port: "8443",
-	}))
-
-	services := &recordingServiceManager{}
-	u := &Uninstaller{
-		systemd: services,
-		quadlet: qm,
-		env:     env,
-		fs:      system.OSFS{},
-	}
-
-	err := u.Run(t.Context(), &Config{DataDir: dataDir, AutoApprove: true})
-
-	require.NoError(t, err)
-	_, statErr := os.Stat(dbPath)
-	assert.NoError(t, statErr, "data dir should be preserved when auto-approve is set without purge")
-}
-
-func TestRunPreservesDataDirWithoutAutoApprove(t *testing.T) {
+func TestRunPreservesDataDirWithoutPurge(t *testing.T) {
 	dataDir := t.TempDir()
 	dbPath := filepath.Join(dataDir, "quay.db")
 	require.NoError(t, os.WriteFile(dbPath, []byte("data"), 0o600))
@@ -226,7 +199,7 @@ func TestRunAutoDetectsDataDirFromQuadlet(t *testing.T) {
 	assert.True(t, os.IsNotExist(statErr), "purge should delete the auto-detected data dir")
 }
 
-func TestRunFailsWhenNoDataDirAndNoQuadlet(t *testing.T) {
+func TestRunPurgeFailsWhenNoDataDirAndNoQuadlet(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	services := &recordingServiceManager{}
 	u := &Uninstaller{
@@ -236,10 +209,29 @@ func TestRunFailsWhenNoDataDirAndNoQuadlet(t *testing.T) {
 		fs:      system.OSFS{},
 	}
 
-	err := u.Run(t.Context(), &Config{})
+	err := u.Run(t.Context(), &Config{Purge: true})
 
 	require.ErrorContains(t, err, "resolve data directory")
 	require.ErrorContains(t, err, "provide -data-dir explicitly")
+	assert.Empty(t, services.calls, "must fail before touching the service")
+}
+
+func TestRunWithoutPurgeSucceedsWhenNoDataDirAndNoQuadlet(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	cfg := &Config{}
+	err := u.Run(t.Context(), cfg)
+
+	require.NoError(t, err, "a non-purge uninstall has nothing to delete and must stay idempotent")
+	assert.Empty(t, cfg.DataDir)
+	assert.Contains(t, services.calls, "daemon-reload")
 }
 
 func TestRunIsIdempotent(t *testing.T) {
