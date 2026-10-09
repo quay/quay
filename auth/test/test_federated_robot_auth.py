@@ -1,5 +1,6 @@
 import base64
 import datetime
+import json
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +10,7 @@ from jwt import DecodeError
 from auth.test.mock_oidc_server import generate_mock_oidc_token, mock_get, mock_request
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import FederatedLogin
 from data.model import InvalidRobotCredentialException, InvalidRobotException
 from test.fixtures import *
 from util.security.federated_robot_auth import validate_federated_auth
@@ -108,3 +110,45 @@ def test_validate_federated_robot_auth_valid_jwt(app):
     assert result.error_message is None
     assert not result.missing
     assert result.kind == AuthKind.federated
+
+
+def _store_legacy_federation_config(robot, bindings):
+    """Write bindings in the pre-id JSON shape (no id, no version) straight into the row."""
+    federated = FederatedLogin.get(FederatedLogin.user == robot)
+    federated.metadata_json = json.dumps({"federation_config": bindings})
+    federated.save()
+
+
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_legacy_binding_without_id(app):
+    # Guard: a binding stored before per-binding ids existed keeps authenticating on
+    # every call, and a token for another subject is denied with the controlled error.
+    robot, _ = model.user.create_robot("legacyrobot", model.user.get_user("devtable"))
+    _store_legacy_federation_config(
+        robot,
+        [
+            {
+                "issuer": "https://mock-oidc-server.com",
+                "subject": robot.username,
+                "audiences": ["quay"],
+                "api_scopes": "repo:read",
+            }
+        ],
+    )
+    token = generate_mock_oidc_token(subject=robot.username, audience="quay")
+    creds = base64.b64encode(f"{robot.username}:{token}".encode("utf-8"))
+    header = f"Basic {creds.decode('utf-8')}"
+
+    first = validate_federated_auth(header)
+    second = validate_federated_auth(header)
+
+    assert first.auth_valid and first.kind == AuthKind.federated
+    assert first.context.robot == robot
+    assert second.context.robot == robot
+
+    bad = generate_mock_oidc_token(subject="system:serviceaccount:other:sa", audience="quay")
+    creds = base64.b64encode(f"{robot.username}:{bad}".encode("utf-8"))
+    with pytest.raises(InvalidRobotCredentialException) as denied:
+        validate_federated_auth(f"Basic {creds.decode('utf-8')}")
+    assert "Token does not match robot" in str(denied.value)
