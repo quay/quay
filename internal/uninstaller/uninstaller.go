@@ -19,6 +19,7 @@ const serviceName = "quay"
 type Config struct {
 	DataDir     string
 	AutoApprove bool
+	Purge       bool
 }
 
 // Uninstaller removes the registry's Quadlet-based systemd deployment.
@@ -50,6 +51,15 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 // Run performs the uninstall sequence: stop service, remove Quadlet file,
 // reload systemd, conditionally remove data, and disable linger.
 func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
+	if cfg.DataDir == "" {
+		dir, err := u.quadlet.DataDir(serviceName)
+		if err != nil {
+			return fmt.Errorf("resolve data directory: %w; provide -data-dir explicitly", err)
+		}
+		cfg.DataDir = dir
+		slog.Info("detected data directory from installation", "data-dir", cfg.DataDir)
+	}
+
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
 		if errors.Is(err, system.ErrUnitNotFound) {
 			slog.Info("service not running, continuing")
@@ -67,11 +77,13 @@ func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("reload systemd: %w", err)
 	}
 
-	if cfg.AutoApprove {
+	if cfg.Purge {
 		if err := u.fs.RemoveAll(cfg.DataDir); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("remove data directory: %w", err)
 		}
 		slog.Info("removed data directory", "path", cfg.DataDir)
+	} else {
+		slog.Info("data directory preserved", "path", cfg.DataDir)
 	}
 
 	if u.env.Mode == system.UserMode {

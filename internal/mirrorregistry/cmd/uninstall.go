@@ -19,8 +19,9 @@ func newUninstallCmd() *Command {
 
 func newUninstallCmdWithDeps(stdin io.Reader, uninstall func(context.Context, *uninstaller.Config) int) *Command {
 	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
-	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
-	autoApprove := fs.Bool("auto-approve", false, "skip confirmation prompt and remove data directory")
+	dataDir := fs.String("data-dir", "", "directory for database, storage, and certs (auto-detected from installation)")
+	autoApprove := fs.Bool("auto-approve", false, "skip confirmation prompt")
+	purge := fs.Bool("purge", false, "remove the data directory (database, storage, and certs)")
 
 	return &Command{
 		Name:     "uninstall",
@@ -28,7 +29,7 @@ func newUninstallCmdWithDeps(stdin io.Reader, uninstall func(context.Context, *u
 		Flags:    fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {
 			if !*autoApprove {
-				if !confirmUninstall(stdin) {
+				if !confirmUninstall(stdin, *purge, *dataDir) {
 					slog.Info("uninstall canceled")
 					return 0
 				}
@@ -36,13 +37,18 @@ func newUninstallCmdWithDeps(stdin io.Reader, uninstall func(context.Context, *u
 			return uninstall(ctx, &uninstaller.Config{
 				DataDir:     *dataDir,
 				AutoApprove: *autoApprove,
+				Purge:       *purge,
 			})
 		},
 	}
 }
 
-func confirmUninstall(r io.Reader) bool {
-	fmt.Fprint(os.Stderr, "Are you sure you want to uninstall? [y/N]: ")
+func confirmUninstall(r io.Reader, purge bool, dataDir string) bool {
+	if purge {
+		fmt.Fprintf(os.Stderr, "Are you sure you want to uninstall and delete all data at %s? [y/N]: ", dataDir)
+	} else {
+		fmt.Fprint(os.Stderr, "Are you sure you want to uninstall? Data will be preserved. [y/N]: ")
+	}
 	scanner := bufio.NewScanner(r)
 	if !scanner.Scan() {
 		return false
