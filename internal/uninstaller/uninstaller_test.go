@@ -185,6 +185,60 @@ func TestRunIsIdempotent(t *testing.T) {
 	require.NoError(t, u.Run(t.Context(), &Config{DataDir: "/var/lib/quay"}))
 }
 
+func TestValidateDataDir(t *testing.T) {
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	dangerous := []struct {
+		path string
+		desc string
+	}{
+		{"/", "root filesystem"},
+		{".", "relative dot"},
+		{home, "home directory"},
+		{"///", "triple slash normalises to root"},
+		{home + "/.", "home with trailing dot normalises to home"},
+	}
+	for _, tc := range dangerous {
+		t.Run(tc.desc, func(t *testing.T) {
+			assert.Error(t, validateDataDir(tc.path),
+				"expected error for dangerous path %q", tc.path)
+		})
+	}
+
+	safe := []struct {
+		path string
+		desc string
+	}{
+		{"/var/lib/quay", "standard quay data dir"},
+		{"/opt/mirror-registry/data", "mirror-registry data dir"},
+		{home + "/mirror-registry", "subdirectory of home"},
+	}
+	for _, tc := range safe {
+		t.Run(tc.desc, func(t *testing.T) {
+			assert.NoError(t, validateDataDir(tc.path),
+				"unexpected error for safe path %q", tc.path)
+		})
+	}
+}
+
+func TestRunRejectsUnsafeDataDirBeforePurge(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: "/", AutoApprove: true})
+
+	require.ErrorContains(t, err, "unsafe data directory")
+	// No service operations must have occurred before the guard fires.
+	assert.Empty(t, services.calls)
+}
+
 type recordingServiceManager struct {
 	calls   []string
 	stopErr error
