@@ -5,7 +5,13 @@ import {
   IRobotFederationConfig,
 } from 'src/resources/RobotsResource';
 
-export function useRobotFederation({namespace, robotName, onSuccess, onError}) {
+export function useRobotFederation({
+  namespace,
+  robotName,
+  isUser = false,
+  onSuccess,
+  onError,
+}) {
   const queryClient = useQueryClient();
 
   const {
@@ -13,8 +19,9 @@ export function useRobotFederation({namespace, robotName, onSuccess, onError}) {
     isLoading,
     error,
   } = useQuery(
-    ['Namespace', namespace, 'robot', robotName, 'federation'],
-    ({signal}) => fetchRobotFederationConfig(namespace, robotName, signal),
+    ['Namespace', namespace, 'robot', robotName, 'federation', isUser],
+    ({signal}) =>
+      fetchRobotFederationConfig(namespace, robotName, signal, isUser),
   );
 
   const robotFederationMutator = useMutation(
@@ -23,6 +30,7 @@ export function useRobotFederation({namespace, robotName, onSuccess, onError}) {
         args.namespace,
         args.robotName,
         args.config,
+        isUser,
       );
     },
     {
@@ -33,6 +41,7 @@ export function useRobotFederation({namespace, robotName, onSuccess, onError}) {
           'robot',
           robotName,
           'federation',
+          isUser,
         ]);
         onSuccess(result);
       },

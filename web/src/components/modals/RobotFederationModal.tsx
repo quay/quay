@@ -28,6 +28,7 @@ function RobotFederationForm(props: RobotFederationFormProps) {
     useRobotFederation({
       namespace: props.namespace,
       robotName: props.robotAccount.name,
+      isUser: props.isUser,
       onSuccess: (result) => {
         setFederationFormState(
           result.map((config) => ({...config, isExpanded: false})),
@@ -216,6 +217,7 @@ export function RobotFederationModal(props: RobotFederationModalProps) {
         <RobotFederationForm
           robotAccount={props.robotAccount}
           namespace={props.namespace}
+          isUser={props.isUser}
           onClose={() => {
             props.setIsModalOpen(false);
           }}
@@ -235,11 +237,13 @@ interface RobotFederationModalProps {
   namespace: string;
   isModalOpen: boolean;
   setIsModalOpen: (modalState: boolean) => void;
+  isUser: boolean;
 }
 
 interface RobotFederationFormProps {
   robotAccount: IRobot;
   namespace: string;
+  isUser: boolean;
   onClose: () => void;
   onSave: () => void;
 }
