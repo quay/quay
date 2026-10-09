@@ -115,5 +115,34 @@ test.describe(
         ).toBeVisible();
       },
     );
+
+    test(
+      'enableTeamSync API attaches LDAP group DN in UI',
+      {tag: ['@superuser', '@PROJQUAY-12494']},
+      async ({superuserPage: page, superuserApi: api}) => {
+        const org = await api.organization('ldapenablesync');
+        const team = await api.team(org.name, 'ldapenablesync');
+
+        await api.raw.enableTeamSync(
+          org.name,
+          team.name,
+          LDAP_GROUP_RELATIVE_DN,
+          'ldap',
+        );
+
+        await page.goto(
+          `/organization/${org.name}/teams/${team.name}?tab=Teamsandmembership`,
+        );
+
+        await expect(
+          page.getByText('synchronized with a group in ldap'),
+        ).toBeVisible();
+        await expect(page.getByText('Bound to group')).toBeVisible();
+        await expect(page.getByText(LDAP_GROUP_RELATIVE_DN)).toBeVisible();
+        await expect(
+          page.getByRole('button', {name: 'Remove synchronization'}),
+        ).toBeVisible();
+      },
+    );
   },
 );

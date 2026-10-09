@@ -98,5 +98,30 @@ test.describe(
         ).toBeVisible();
       },
     );
+
+    test(
+      'enableTeamSync API attaches OIDC group name in UI',
+      {tag: ['@superuser', '@PROJQUAY-12494']},
+      async ({superuserPage: page, superuserApi: api}) => {
+        const groupName = 'test_oidc_group';
+        const org = await api.organization('oidcenablesync');
+        const team = await api.team(org.name, 'oidcenablesync');
+
+        await api.raw.enableTeamSync(org.name, team.name, groupName, 'oidc');
+
+        await page.goto(
+          `/organization/${org.name}/teams/${team.name}?tab=Teamsandmembership`,
+        );
+
+        await expect(
+          page.getByText('synchronized with a group in oidc'),
+        ).toBeVisible();
+        await expect(page.getByText('Bound to group')).toBeVisible();
+        await expect(page.getByText(groupName)).toBeVisible();
+        await expect(
+          page.getByRole('button', {name: 'Remove synchronization'}),
+        ).toBeVisible();
+      },
+    );
   },
 );

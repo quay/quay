@@ -17,6 +17,7 @@ UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}
 NEW_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "apisyncteam"}
 NEW_TEAM_OIDC_PARAMS = {"orgname": "sellnsmall", "teamname": "oidcsyncteam"}
 NEW_TEAM_KEYSTONE_PARAMS = {"orgname": "sellnsmall", "teamname": "keystonesyncteam"}
+KEYSTONE_SYNCING_PARAMS = {"orgname": "sellnsmall", "teamname": "keystonesyncing"}
 UPDATE_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "updatesyncteam"}
 FAILED_LOOKUP_CREATE_PARAMS = {"orgname": "sellnsmall", "teamname": "failedsyncteam"}
 
@@ -142,6 +143,32 @@ def test_create_team_with_group_id_enables_sync(app):
             keystone_auth.check_group_lookup_args.assert_called_once_with(
                 {"group_id": "keystone-group-123"}
             )
+
+
+def test_enable_team_syncing_endpoint_with_group_id(app):
+    """Cover POST .../syncing with Keystone group_id (Playwright has no Keystone auth env)."""
+    keystone_auth = _fake_auth("keystone")
+    with patch("endpoints.api.team.authentication", keystone_auth):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationTeam,
+                "PUT",
+                KEYSTONE_SYNCING_PARAMS,
+                {"role": "member", "description": "to sync via endpoint"},
+            )
+
+            config = {"group_id": "keystone-group-456"}
+            conduct_api_call(
+                cl, OrganizationTeamSyncing, "POST", KEYSTONE_SYNCING_PARAMS, config
+            )
+
+            sync_info = model.team.get_team_sync_information(
+                KEYSTONE_SYNCING_PARAMS["orgname"], KEYSTONE_SYNCING_PARAMS["teamname"]
+            )
+            assert sync_info is not None
+            assert json.loads(sync_info.config) == config
+            keystone_auth.check_group_lookup_args.assert_called_with(config)
 
 
 def test_oidc_sync_removes_existing_team_members(app):

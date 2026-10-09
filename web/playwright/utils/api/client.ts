@@ -7,6 +7,10 @@
 import {APIRequestContext, APIResponse} from '@playwright/test';
 import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
+import {
+  buildTeamSyncRequestData,
+  TeamSyncService,
+} from './team-sync-payload';
 
 export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
@@ -2802,14 +2806,9 @@ export class ApiClient {
     orgName: string,
     teamName: string,
     groupIdentifier: string,
-    service: 'ldap' | 'oidc' | 'keystone' = 'ldap',
+    service: TeamSyncService = 'ldap',
   ): Promise<void> {
-    const data =
-      service === 'oidc'
-        ? {group_name: groupIdentifier}
-        : service === 'keystone'
-          ? {group_id: groupIdentifier}
-          : {group_dn: groupIdentifier};
+    const data = buildTeamSyncRequestData(service, groupIdentifier);
 
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();
