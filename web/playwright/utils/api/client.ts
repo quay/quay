@@ -2802,6 +2802,10 @@ export class ApiClient {
 
   // Team sync methods
 
+  /**
+   * Enable directory sync for a team via POST .../team/{team}/syncing.
+   * `service` selects the payload field (group_dn / group_name / group_id).
+   */
   async enableTeamSync(
     orgName: string,
     teamName: string,
@@ -2830,6 +2834,7 @@ export class ApiClient {
     }
   }
 
+  /** Disable directory sync for a team via DELETE .../team/{team}/syncing. */
   async disableTeamSync(orgName: string, teamName: string): Promise<void> {
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();

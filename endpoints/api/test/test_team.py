@@ -1,6 +1,4 @@
 import json
-from test.fixtures import *
-from test.test_ldap import mock_ldap
 
 from mock import Mock, patch
 
@@ -11,6 +9,8 @@ from endpoints.api.organization import Organization
 from endpoints.api.team import OrganizationTeam, OrganizationTeamSyncing, TeamMemberList
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
+from test.test_ldap import mock_ldap
 
 SYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "synced"}
 UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}
@@ -23,6 +23,7 @@ FAILED_LOOKUP_CREATE_PARAMS = {"orgname": "sellnsmall", "teamname": "failedsynct
 
 
 def _fake_auth(service_name):
+    """Return a mock federated auth backend for the given service name."""
     auth = Mock()
     auth.federated_service = service_name
     auth.check_group_lookup_args.return_value = (True, None)
@@ -31,6 +32,7 @@ def _fake_auth(service_name):
 
 
 def test_team_syncing(app):
+    """Enable and disable team syncing via the dedicated /syncing endpoint."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -58,6 +60,7 @@ def test_team_syncing(app):
 
 
 def test_create_team_with_group_dn_enables_sync(app):
+    """Creating a team with group_dn enables LDAP directory sync."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -76,6 +79,7 @@ def test_create_team_with_group_dn_enables_sync(app):
 
 
 def test_update_team_with_group_dn_enables_sync(app):
+    """Updating a team with group_dn enables LDAP directory sync."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -103,6 +107,7 @@ def test_update_team_with_group_dn_enables_sync(app):
 
 
 def test_create_team_with_group_name_enables_sync(app):
+    """Creating a team with group_name enables OIDC directory sync."""
     oidc_auth = _fake_auth("oidc")
     with patch("endpoints.api.team.authentication", oidc_auth):
         with patch.dict(quay_app.config, {"AUTHENTICATION_TYPE": "OIDC"}):
@@ -125,6 +130,7 @@ def test_create_team_with_group_name_enables_sync(app):
 
 
 def test_create_team_with_group_id_enables_sync(app):
+    """Creating a team with group_id enables Keystone directory sync."""
     keystone_auth = _fake_auth("keystone")
     with patch("endpoints.api.team.authentication", keystone_auth):
         with client_with_identity("devtable", app) as cl:
@@ -159,9 +165,7 @@ def test_enable_team_syncing_endpoint_with_group_id(app):
             )
 
             config = {"group_id": "keystone-group-456"}
-            conduct_api_call(
-                cl, OrganizationTeamSyncing, "POST", KEYSTONE_SYNCING_PARAMS, config
-            )
+            conduct_api_call(cl, OrganizationTeamSyncing, "POST", KEYSTONE_SYNCING_PARAMS, config)
 
             sync_info = model.team.get_team_sync_information(
                 KEYSTONE_SYNCING_PARAMS["orgname"], KEYSTONE_SYNCING_PARAMS["teamname"]
@@ -172,6 +176,7 @@ def test_enable_team_syncing_endpoint_with_group_id(app):
 
 
 def test_oidc_sync_removes_existing_team_members(app):
+    """Enabling OIDC sync clears existing team members before sync takes over."""
     oidc_auth = _fake_auth("oidc")
     org = model.organization.get_organization("sellnsmall")
     team = model.team.create_team("oidcmemberclear", org, "member", "has members")
@@ -201,6 +206,7 @@ def test_oidc_sync_removes_existing_team_members(app):
 
 
 def test_create_team_rejects_multiple_sync_fields(app):
+    """Reject team create when more than one sync identifier is provided."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -215,6 +221,7 @@ def test_create_team_rejects_multiple_sync_fields(app):
 
 
 def test_update_already_synced_team_rejects_new_group(app):
+    """Reject attaching a new sync group when the team is already synced."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -228,6 +235,7 @@ def test_update_already_synced_team_rejects_new_group(app):
 
 
 def test_create_team_without_sync_fields_unchanged(app):
+    """Creating a team without sync fields leaves syncing disabled."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -244,6 +252,7 @@ def test_create_team_without_sync_fields_unchanged(app):
 
 
 def test_create_team_failed_group_lookup_does_not_create_team(app):
+    """Failed group lookup during create must not persist a new team."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             with client_with_identity("devtable", app) as cl:
@@ -253,7 +262,12 @@ def test_create_team_failed_group_lookup_does_not_create_team(app):
                     "group_dn": "cn=invalid",
                 }
                 conduct_api_call(
-                    cl, OrganizationTeam, "PUT", FAILED_LOOKUP_CREATE_PARAMS, body, expected_code=400
+                    cl,
+                    OrganizationTeam,
+                    "PUT",
+                    FAILED_LOOKUP_CREATE_PARAMS,
+                    body,
+                    expected_code=400,
                 )
 
                 try:
@@ -267,6 +281,7 @@ def test_create_team_failed_group_lookup_does_not_create_team(app):
 
 
 def test_update_team_failed_group_lookup_does_not_change_team(app):
+    """Failed group lookup during update must not change the existing team."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             team = model.team.get_organization_team(
@@ -297,6 +312,7 @@ def test_update_team_failed_group_lookup_does_not_change_team(app):
 
 
 def test_team_member_sync_info_unsynced_superuser(app):
+    """Superusers see can_sync for unsynced teams and no synced block."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             # Check for an unsynced team, with superuser.
@@ -308,6 +324,7 @@ def test_team_member_sync_info_unsynced_superuser(app):
 
 
 def test_team_member_sync_info_unsynced_nonsuperuser(app):
+    """Non-superusers do not see can_sync for unsynced teams."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             # Check for an unsynced team, with non-superuser.
@@ -318,6 +335,7 @@ def test_team_member_sync_info_unsynced_nonsuperuser(app):
 
 
 def test_team_member_sync_info_synced_superuser(app):
+    """Superusers see full sync config details for synced teams."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             # Check for a synced team, with superuser.
@@ -332,6 +350,7 @@ def test_team_member_sync_info_synced_superuser(app):
 
 
 def test_team_member_sync_info_synced_nonsuperuser(app):
+    """Non-superusers see sync status without config details."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             # Check for a synced team, with non-superuser.
@@ -345,6 +364,7 @@ def test_team_member_sync_info_synced_nonsuperuser(app):
 
 
 def test_organization_teams_sync_bool(app):
+    """Organization team list marks synced teams with is_synced."""
     with mock_ldap() as ldap:
         with patch("endpoints.api.organization.authentication", ldap):
             # Ensure synced teams are marked as such in the organization teams list.
