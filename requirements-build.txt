@@ -188,6 +188,7 @@ flit-core==3.12.0 \
     --hash=sha256:e7a0304069ea895172e3c7bb703292e992c5d1555dd1233ab7b5621b5b69e62c
     # via
     #   Jinja2
+    #   click
     #   cssselect2
     #   hashids
     #   idna
@@ -344,9 +345,7 @@ pluggy==1.6.0 \
 poetry-core==2.5.0 \
     --hash=sha256:81d04c9253b19d0604718268d781867c8f7b2128e5b25bbf1e84141eec6b89c4 \
     --hash=sha256:98ee465b66f7e14bb9fbe68fb5e00d0cff184f036993ec94610ae4b5612f3add
-    # via
-    #   qrcode
-    #   tomlkit
+    # via tomlkit
 pybind11==3.1.0 \
     --hash=sha256:a1cc06b524ab3edca51f8ad3895f9c4fa20b8b19283173dff4ae781449dc9639 \
     --hash=sha256:b8488090f8acffbcb6b5d6a85571a6827a0a2981ffb75e5a0b27b87c4a6b7dd0
@@ -462,7 +461,6 @@ wheel==0.46.2 \
     #   attrs
     #   bcrypt
     #   jsonschema
-    #   pyHanko
     #   pyhanko-certvalidator
     #   pyrsistent
     #   python-dateutil
