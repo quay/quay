@@ -442,7 +442,7 @@ test.describe(
           unauthenticatedPage.getByText('Info message content'),
         ).toBeVisible();
         await expect(
-          unauthenticatedPage.getByText('Warning message'),
+          unauthenticatedPage.getByText('Warning message', {exact: true}),
         ).toBeVisible();
         await expect(
           unauthenticatedPage.getByText('Error message content'),
