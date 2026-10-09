@@ -141,7 +141,7 @@ deprecation==2.1.0
 
 # Leverage wheels for faster builds
 setuptools==80.10.2
-wheel==0.46.2
+wheel==0.48.0
 
 # Indirect dependencies
 PyNaCl==1.6.2
