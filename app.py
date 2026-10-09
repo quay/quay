@@ -229,7 +229,10 @@ def _request_end(resp):
     except HTTPException:
         jsonbody = None
 
-    values = request.values.to_dict()
+    try:
+        values = request.values.to_dict()
+    except HTTPException:
+        values = None
 
     if isinstance(jsonbody, dict):
         filter_logs(jsonbody, FILTERED_VALUES)

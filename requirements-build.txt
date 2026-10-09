@@ -291,11 +291,12 @@ flit-core==3.12.0 \
     # via
     #   Flask
     #   Jinja2
-    #   Werkzeug
+    #   blinker
     #   click
     #   cssselect2
     #   hashids
     #   idna
+    #   itsdangerous
     #   tinycss2
     #   typing_extensions
     #   wheel
@@ -303,6 +304,7 @@ flit-core==4.1.0 \
     --hash=sha256:17398cdd2c38b24047a5a9c93089ec5c0bf12ec3d1469bbf69c27ed7965299db \
     --hash=sha256:62e12b63ead8335b37f59fabb977c7167fe476dafb5e41785dfa8c9aff843bc6
     # via
+    #   Werkzeug
     #   packaging
     #   pathspec
     #   pypdf
@@ -612,7 +614,6 @@ setuptools==80.10.2 \
     #   alembic
     #   attrs
     #   bcrypt
-    #   blinker
     #   cachetools
     #   calver
     #   cffi
