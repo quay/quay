@@ -25,6 +25,7 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from proxy.fixtures import *  # noqa: F401, F403
 from test.fixtures import *
 from util.bytes import Bytes
+from util.locking import LockOwnershipLost
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 HELLO_WORLD_DIGEST = "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"
@@ -767,6 +768,71 @@ def test_blob_upload_offset(client, app):
         headers=headers,
         body="something",
     )
+
+
+def test_blob_upload_lock_ownership_lost_returns_503(client, app):
+    """A commit that loses the BLOB_DELETE lock lease after finalize must surface as the
+    retryable 503 LockAcquireTimeout already gets, not an unhandled 500."""
+    user = model.user.get_user("devtable")
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+
+    blob_bytes = b"lock ownership lost test content"
+    digest = "sha256:" + hashlib.sha256(blob_bytes).hexdigest()
+
+    params = {"repository": "devtable/simple"}
+    init_response = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+    upload_uuid = init_response.headers["Docker-Upload-UUID"]
+
+    params = {"repository": "devtable/simple", "upload_uuid": upload_uuid}
+    conduct_call(
+        client,
+        "v2.upload_chunk",
+        url_for,
+        "PATCH",
+        params,
+        expected_code=202,
+        headers={
+            **headers,
+            "Content-Range": "0-%d" % (len(blob_bytes) - 1),
+            "Content-Type": "application/octet-stream",
+        },
+        raw_body=blob_bytes,
+    )
+
+    params["digest"] = digest
+    with patch(
+        "data.registry_model.blobuploader._BlobUploadManager.commit_to_blob",
+        side_effect=LockOwnershipLost("test"),
+    ):
+        rv = conduct_call(
+            client,
+            "v2.monolithic_upload_or_last_chunk",
+            url_for,
+            "PUT",
+            params,
+            expected_code=503,
+            headers={**headers, "Content-Length": "0"},
+        )
+
+    error = json.loads(rv.data)["errors"][0]
+    assert error["code"] == "UNAVAILABLE"
 
 
 def test_blob_upload_when_pushes_disabled(client, app):

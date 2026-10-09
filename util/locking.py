@@ -44,6 +44,13 @@ class LockAcquireTimeout(LockNotAcquiredException):
         self.holder = holder
 
 
+class LockOwnershipLost(LockNotAcquiredException):
+    """
+    Exception raised if a lock was acquired but lost (expired/renewal failed) before the critical
+    section finished; transient.
+    """
+
+
 def _redis_lock_factory(config):
     _redis_info = dict(config["USER_EVENTS_REDIS"])
     _redis_info.update(
@@ -168,6 +175,30 @@ class GlobalLock(object):
             return self._lock.get_owner_id()
         except RedisError:
             return None
+
+    def is_held_by_us(self):
+        """
+        Returns True only if this instance currently owns the underlying lock.
+
+        Used to detect silent auto-renewal failure: python-redis-lock's renewal thread does not
+        report a failed renewal back to the owner, so a held lock can expire (and be acquired by
+        someone else) without this object's state changing.
+        """
+        if self._lock is None:
+            return False
+        try:
+            owner_id = self._lock.get_owner_id()
+            if isinstance(owner_id, bytes):
+                owner_id = owner_id.decode("ascii", "replace")
+            return owner_id == self._lock.id
+        except RedisError as re:
+            logger.warning(
+                "Could not connect to Redis to check ownership of lock %s: %s", self._lock_name, re
+            )
+            return False
+        except:
+            logger.debug("Could not check ownership of lock %s", self._lock_name)
+            return False
 
     def release(self):
         if self._lock is not None:
