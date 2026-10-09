@@ -59,6 +59,7 @@ var knownUnmapped = map[string]bool{
 	// OAuth
 	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
 	"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": true,
+	"API_TOKEN_MAXIMUM_TOKEN_COUNT":         true,
 	"GITHUB_LOGIN_CONFIG":                   true,
 	"BITBUCKET_TRIGGER_CONFIG":              true,
 	"GITHUB_TRIGGER_CONFIG":                 true,
@@ -136,6 +137,8 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
 	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
+	"FEATURE_ROBOT_API_TOKEN_EXCHANGE":              true,
+	"FEATURE_ROBOT_API_TOKENS":                      true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
 	"FEATURE_QUOTA_NOTIFICATIONS":                   true,

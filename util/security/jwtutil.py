@@ -55,8 +55,10 @@ class _StrictJWT(PyJWT):
 
         # Do all of the other checks
         super(_StrictJWT, self)._validate_claims(
-            payload, options, audience=audience, issuer=issuer, subject=subject, leeway=leeway
+            payload, options, audience=audience, issuer=issuer, leeway=leeway
         )
+        if subject is not None and payload.get("sub") != subject:
+            raise InvalidTokenError("Invalid subject")
 
         now = timegm(datetime.utcnow().utctimetuple())
         self._reject_future_iat(payload, now, leeway)

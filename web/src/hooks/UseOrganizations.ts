@@ -53,7 +53,7 @@ export function useOrganizations() {
   );
 
   // Get super user users
-  const {data: superUserUsers} = useQuery(
+  const {data: superUserUsers, isLoading: isLoadingSuperUserUsers} = useQuery(
     ['organization', 'superuser', 'users'],
     fetchUsersAsSuperUser,
     {
@@ -241,6 +241,8 @@ export function useOrganizations() {
     // Fetching State
     loading,
     error,
+    isSuperUser,
+    isLoadingSuperUserUsers,
 
     // Search Query State
     search,

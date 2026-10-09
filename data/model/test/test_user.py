@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -23,6 +24,7 @@ from data.database import (
     Team,
     User,
     Visibility,
+    db_for_update,
 )
 from data.fields import Credential
 from data.model.notification import create_notification
@@ -49,6 +51,7 @@ from data.model.user import (
     delete_namespace_via_marker,
     delete_robot,
     delete_user,
+    generate_federated_robot_jwt_token,
     get_active_namespaces,
     get_active_users,
     get_estimated_robot_count,
@@ -73,10 +76,181 @@ from util.security.token import encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
 
 
+def test_federated_robot_jwt_includes_binding_without_api_scopes():
+    binding = {"id": "binding-id", "version": 3}
+
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        generate_federated_robot_jwt_token("keys", Mock(), None, binding)
+
+    assert generate_bearer_token.call_args.args[-1] == {
+        "federation_binding_id": "binding-id",
+        "federation_binding_version": 3,
+    }
+
+
 def test_create_user_with_expiration(initialized_db):
     with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
         user = create_user_noverify("foobar", "foo@example.com", email_required=False)
         assert user.removed_tag_expiration_s == 60 * 60
+
+
+def test_robot_federation_config_locks_binding_before_versioning(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = create_robot("federated-lock", creator)
+    binding = {"issuer": "https://issuer.example", "subject": "original-subject"}
+    model.user.create_robot_federation_config(robot, [binding])
+    binding_id = model.user.get_robot_federation_config(robot)[0]["id"]
+
+    with patch("data.model.user.db_for_update", wraps=db_for_update) as locked_query:
+        updated = model.user.create_robot_federation_config(
+            robot,
+            [
+                {
+                    "id": binding_id,
+                    "issuer": "https://issuer.example",
+                    "subject": "updated-subject",
+                }
+            ],
+        )
+
+    assert locked_query.called
+    assert updated[0]["version"] == 2
+
+
+LEGACY_FEDERATION_BINDINGS = [
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-a",
+        "audiences": ["quay"],
+        "api_scopes": "repo:read",
+    },
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-b",
+        "audiences": ["quay"],
+    },
+]
+
+
+def _store_legacy_federation_config(robot, bindings):
+    """Write bindings in the pre-id JSON shape (no id, no version) straight into the row."""
+    federated = FederatedLogin.get(FederatedLogin.user == robot)
+    federated.metadata_json = json.dumps({"federation_config": bindings})
+    federated.save()
+
+
+def _legacy_federated_robot(name):
+    robot, _ = create_robot(name, model.user.get_user("devtable"))
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+    return robot
+
+
+def test_robot_federation_config_reads_legacy_bindings_with_stable_ids(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-read")
+
+    first_read = model.user.get_robot_federation_config(robot)
+    second_read = model.user.get_robot_federation_config(robot)
+
+    assert [entry.get("version") for entry in first_read] == [1, 1]
+    assert all(entry.get("id") for entry in first_read)
+    assert first_read[0]["id"] != first_read[1]["id"]
+    assert first_read == second_read
+    assert first_read[0]["id"] == model.user.legacy_federation_binding_id(first_read[0])
+    # Reading never rewrites the stored JSON.
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == LEGACY_FEDERATION_BINDINGS
+
+
+def test_robot_federation_config_save_assigns_unique_ids_to_legacy_bindings(initialized_db):
+    # PROJQUAY-13549: two stored legacy bindings must not collapse under one null id.
+    robot = _legacy_federated_robot("legacy-fed-save")
+
+    saved = model.user.create_robot_federation_config(
+        robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS]
+    )
+
+    assert [entry["subject"] for entry in saved] == [
+        binding["subject"] for binding in LEGACY_FEDERATION_BINDINGS
+    ]
+    assert all(entry["id"] for entry in saved)
+    assert len({entry["id"] for entry in saved}) == 2
+    assert [entry["version"] for entry in saved] == [1, 1]
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == saved
+
+
+def test_robot_federation_config_resave_keeps_legacy_binding_ids(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-resave")
+    before = model.user.get_robot_federation_config(robot)
+
+    # The UI resaves exactly what it read: the derived ids persist and nothing is versioned up.
+    resaved = model.user.create_robot_federation_config(robot, before)
+    assert [(entry["id"], entry["version"]) for entry in resaved] == [
+        (before[0]["id"], 1),
+        (before[1]["id"], 1),
+    ]
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == resaved
+
+    # Removing one binding by id keeps the other with its id.
+    retained = model.user.create_robot_federation_config(robot, [resaved[1]])
+    assert retained == [resaved[1]]
+    assert model.user.get_robot_federation_config(robot) == [resaved[1]]
+    assert model.user.get_robot_federation_binding(robot, before[0]["id"], 1) is None
+    assert model.user.get_robot_federation_binding(robot, before[1]["id"], 1) == resaved[1]
+
+
+def test_robot_federation_binding_lookup_rejects_null_identity(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-null")
+
+    # A claim pair without a binding identity must never resolve to a stored binding.
+    assert model.user.get_robot_federation_binding(robot, None, None) is None
+    assert model.user.get_robot_federation_binding(robot, None, 1) is None
+
+    binding_id = model.user.get_robot_federation_config(robot)[0]["id"]
+    assert model.user.get_robot_federation_binding(robot, binding_id, None) is None
+    assert model.user.get_robot_federation_binding(robot, binding_id, 1) is not None
+
+
+@pytest.mark.parametrize(
+    "binding",
+    [
+        {"issuer": "https://issuer.example", "subject": "sa"},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": None, "version": None},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "", "version": 1},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "binding-id", "version": 0},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "binding-id", "version": "1"},
+    ],
+)
+def test_federated_robot_jwt_refuses_binding_without_identity(binding):
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        with pytest.raises(model.InvalidRobotCredentialException):
+            generate_federated_robot_jwt_token("keys", Mock(), "repo:read", binding)
+
+    assert not generate_bearer_token.called
+
+
+def test_federated_robot_jwt_carries_normalized_legacy_binding_identity():
+    legacy = dict(LEGACY_FEDERATION_BINDINGS[0])
+    binding = model.user.normalize_robot_federation_bindings([legacy])[0]
+
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        generate_federated_robot_jwt_token("keys", Mock(), "repo:read", binding)
+
+    assert generate_bearer_token.call_args.args[-1] == {
+        "api_scopes": "repo:read",
+        "federation_binding_id": model.user.legacy_federation_binding_id(legacy),
+        "federation_binding_version": 1,
+    }
 
 
 @pytest.mark.parametrize(

@@ -49,8 +49,29 @@ export interface IRobotToken {
 }
 
 export interface IRobotFederationConfig {
+  id?: string;
+  version?: number;
   issuer: string;
   subject: string;
+  audiences?: string[];
+  api_scopes?: string;
+}
+
+export interface IRobotAPIToken {
+  uuid: string;
+  name: string | null;
+  scope: string;
+  expires_at: string;
+  created: string | null;
+  created_by: string | null;
+  last_accessed: string | null;
+  token?: string;
+}
+
+export interface CreateRobotAPITokenParams {
+  name: string;
+  scope: string;
+  expiration: number;
 }
 
 export async function fetchAllRobots(orgnames: string[], signal: AbortSignal) {
@@ -284,6 +305,81 @@ export async function fetchRobotPermissionsForNamespace(
   return response.data?.permissions;
 }
 
+function robotTokensPath(
+  namespace: string,
+  robot: string,
+  isUser: boolean,
+): string {
+  const path = isUser ? 'user' : `organization/${namespace}`;
+  return `/api/v1/${path}/robots/${robot}/tokens`;
+}
+
+export async function fetchRobotMintableScopes(
+  namespace: string,
+  robotName: string,
+  isUser = false,
+): Promise<string[]> {
+  const robot = robotName.replace(namespace + '+', '');
+  const path = isUser ? 'user' : `organization/${namespace}`;
+  const response: AxiosResponse = await axios.get(
+    `/api/v1/${path}/robots/${robot}/mintable-scopes`,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data.scopes;
+}
+
+export async function fetchRobotAPITokens(
+  namespace: string,
+  robot: string,
+  isUser = false,
+  nextPageToken?: string,
+): Promise<IRobotAPIToken[]> {
+  const baseUrl = robotTokensPath(namespace, robot, isUser);
+  const url = nextPageToken
+    ? `${baseUrl}?next_page=${encodeURIComponent(nextPageToken)}`
+    : baseUrl;
+  const response: AxiosResponse = await axios.get(url);
+  assertHttpCode(response.status, 200);
+
+  const tokens = response.data.tokens || [];
+  if (response.data.next_page) {
+    const nextTokens = await fetchRobotAPITokens(
+      namespace,
+      robot,
+      isUser,
+      response.data.next_page,
+    );
+    return tokens.concat(nextTokens);
+  }
+  return tokens;
+}
+
+export async function createRobotAPIToken(
+  namespace: string,
+  robot: string,
+  params: CreateRobotAPITokenParams,
+  isUser = false,
+): Promise<IRobotAPIToken> {
+  const response: AxiosResponse = await axios.post(
+    robotTokensPath(namespace, robot, isUser),
+    params,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function revokeRobotAPIToken(
+  namespace: string,
+  robot: string,
+  tokenUuid: string,
+  isUser = false,
+): Promise<void> {
+  const response: AxiosResponse = await axios.delete(
+    `${robotTokensPath(namespace, robot, isUser)}/${tokenUuid}`,
+  );
+  assertHttpCode(response.status, 204);
+}
+
 export async function fetchRobotAccountToken(
   orgName: string,
   robotName: string,
@@ -315,9 +411,10 @@ export async function fetchRobotFederationConfig(
   orgName: string,
   robotName: string,
   signal: AbortSignal,
+  isUser = false,
 ) {
   const robot = robotName.replace(orgName + '+', '');
-  const userOrOrgPath = `organization/${orgName}`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
   const getRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
   const response: AxiosResponse = await axios.get(getRobotFederationConfigUrl, {
     signal,
@@ -330,9 +427,10 @@ export async function createRobotFederationConfig(
   orgName: string,
   robotName: string,
   federationConfig: IRobotFederationConfig[],
+  isUser = false,
 ) {
   const robot = robotName.replace(orgName + '+', '');
-  const userOrOrgPath = `organization/${orgName}`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
   const createRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
   const response: AxiosResponse = await axios.post(
     createRobotFederationConfigUrl,

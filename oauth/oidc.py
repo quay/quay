@@ -523,7 +523,7 @@ def _load_keys_from_url(url, verify=True):
     """
 
     keys = []
-    r = request("GET", url, allow_redirects=True, verify=verify)
+    r = request("GET", url, allow_redirects=True, verify=verify, timeout=5)
     if r.status_code == 200:
         keys_dict = json.loads(r.text)
         for key_spec in keys_dict["keys"]:

@@ -188,7 +188,7 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             OAuthAccessToken.select()
             .join(OAuthApplication)
             .switch(OAuthAccessToken)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthApplication.client_id == client_id,
                 User.username == username,
@@ -818,7 +818,7 @@ def validate_access_token(access_token):
     try:
         found = (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(OAuthAccessToken.token_name == token_name)
             .get()
         )
@@ -880,7 +880,7 @@ def lookup_access_token_for_user(user_obj, token_uuid):
     try:
         return (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthAccessToken.authorized_user == user_obj, OAuthAccessToken.uuid == token_uuid
             )
@@ -895,7 +895,7 @@ def list_access_tokens_for_user(user_obj):
         OAuthAccessToken.select()
         .join(OAuthApplication)
         .switch(OAuthAccessToken)
-        .join(User)
+        .join(User, on=(OAuthAccessToken.authorized_user == User.id))
         .where(OAuthAccessToken.authorized_user == user_obj)
     )
 
