@@ -252,3 +252,33 @@ def test_validate_federated_robot_auth_rejects_unconfigured_audience(app):
 
     with pytest.raises(InvalidRobotCredentialException, match="Token audience is not allowed"):
         validate_federated_auth(header)
+
+
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_legacy_binding_gets_stable_id(app):
+    robot, _ = model.user.create_robot("legacyrobot", model.user.get_user("devtable"))
+    _store_legacy_federation_config(
+        robot,
+        [
+            {
+                "issuer": "https://mock-oidc-server.com",
+                "subject": robot.username,
+                "audiences": ["quay"],
+                "api_scopes": "repo:read",
+            }
+        ],
+    )
+    token = generate_mock_oidc_token(subject=robot.username, audience="quay")
+    creds = base64.b64encode(f"{robot.username}:{token}".encode("utf-8"))
+    header = f"Basic {creds.decode('utf-8')}"
+
+    first = validate_federated_auth(header)
+    second = validate_federated_auth(header)
+
+    assert first.auth_valid and first.kind == AuthKind.federated
+    binding = first.context.federation_binding
+    assert binding["id"] == model.user.legacy_federation_binding_id(binding)
+    assert binding["version"] == 1
+    assert second.context.federation_binding == binding
+    assert binding == model.user.get_robot_federation_config(robot)[0]
