@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/quay/quay/internal/system"
 )
@@ -47,9 +48,37 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 	}, nil
 }
 
+// validateDataDir checks that dir is safe to pass to os.RemoveAll. It rejects
+// relative paths, the root filesystem, and the user's home directory, which
+// could cause catastrophic data loss if supplied by accident.
+func validateDataDir(dir string) error {
+	if !filepath.IsAbs(dir) {
+		return fmt.Errorf("data directory must be an absolute path, got %q", dir)
+	}
+
+	abs := filepath.Clean(dir)
+
+	if abs == "/" {
+		return fmt.Errorf("refusing to remove root directory %q", abs)
+	}
+
+	home, err := os.UserHomeDir()
+	if err == nil && abs == home {
+		return fmt.Errorf("refusing to remove home directory %q", abs)
+	}
+
+	return nil
+}
+
 // Run performs the uninstall sequence: stop service, remove Quadlet file,
 // reload systemd, conditionally remove data, and disable linger.
 func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
+	if cfg.AutoApprove {
+		if err := validateDataDir(cfg.DataDir); err != nil {
+			return fmt.Errorf("unsafe data directory: %w", err)
+		}
+	}
+
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
 		if errors.Is(err, system.ErrUnitNotFound) {
 			slog.Info("service not running, continuing")
