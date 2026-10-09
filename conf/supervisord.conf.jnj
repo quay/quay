@@ -26,15 +26,15 @@ buffer_size = 1024
 events = PROCESS_LOG
 
 ;;; Run batch scripts
-[program:blobuploadcleanupworker]
+[program:storagecleanupworker]
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s
 command={% if hotreload -%}
-  gunicorn --timeout=600 -b 'unix:/tmp/blobuploadcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.blobuploadcleanupworker.blobuploadcleanupworker:create_gunicorn_worker()'
+  gunicorn --timeout=600 -b 'unix:/tmp/storagecleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.storagecleanupworker.storagecleanupworker:create_gunicorn_worker()'
 {% else -%}
-  python -m workers.blobuploadcleanupworker.blobuploadcleanupworker
+  python -m workers.storagecleanupworker.storagecleanupworker
 {% endif -%}
-autostart = {{ config['blobuploadcleanupworker']['autostart'] }}
+autostart = {{ config['storagecleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 

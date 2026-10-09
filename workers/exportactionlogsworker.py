@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import logging
 import os.path
@@ -14,6 +16,7 @@ from data.logs_model import logs_model
 from data.logs_model.interface import LogsIterationTimeout
 from endpoints.api import format_date
 from util.log import logfile_path
+from util.security.crypto import encrypt_string
 from util.security.ssrf import validate_external_registry_url
 from util.useremails import send_logs_exported_email
 from workers.gunicorn_worker import GunicornWorker
@@ -186,8 +189,24 @@ class ExportActionLogsWorker(QueueWorker):
             export_storage_path,
             expires_in=EXPORTED_LOGS_EXPIRATION_SECONDS,
         )
+
         if export_url is None:
-            export_url = "%s/exportedlogs/%s" % (get_app_url(), exported_filename)
+            # if we're running against local storage, sign the export_url with a presigned key
+            # valid for 1 hour
+            config_secret_key = app.config.get("SECRET_KEY", None)
+            if config_secret_key is None:
+                logger.error("Cannot read secret key from config.yaml file, aborting export")
+                self._report_results(job_details, ExportResult.FAILED_EXPORT)
+                return None, None
+
+            fernet_key = base64.urlsafe_b64encode(
+                hashlib.sha256(config_secret_key.encode()).digest()
+            )
+
+            # encrypt the key
+            token = encrypt_string(exported_filename, fernet_key)
+
+            export_url = "%s/exportedlogs/%s?token=%s" % (get_app_url(), exported_filename, token)
 
         self._report_results(job_details, ExportResult.SUCCESSFUL_EXPORT, export_url)
 
@@ -241,9 +260,13 @@ class ExportActionLogsWorker(QueueWorker):
         return upload_metadata, uploaded_byte_count
 
     def _report_results(self, job_details, result_status, exported_data_url=None):
-        logger.debug(
-            "Reporting result of `%s` for %s; %s", result_status, job_details, exported_data_url
-        )
+        # strip the token from the URL when logging
+        if exported_data_url is not None:
+            base_url = exported_data_url.split("?")[0]
+        else:
+            base_url = exported_data_url
+
+        logger.debug("Reporting result of `%s` for %s; %s", result_status, job_details, base_url)
 
         if job_details.get("callback_url"):
             callback_url = job_details["callback_url"]
@@ -253,6 +276,7 @@ class ExportActionLogsWorker(QueueWorker):
                     callback_url,
                     resolve_dns=True,
                     allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+                    allow_only_secure=app.config.get("LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS", True),
                 )
             except ValueError:
                 logger.warning(
