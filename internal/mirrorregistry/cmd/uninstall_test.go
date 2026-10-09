@@ -22,8 +22,9 @@ func TestUninstallCmdDefaultFlags(t *testing.T) {
 
 	require.Equal(t, 0, code)
 	require.NotNil(t, captured)
-	assert.Equal(t, "/var/lib/quay", captured.DataDir)
+	assert.Equal(t, "", captured.DataDir, "data-dir should default to empty for auto-detection")
 	assert.True(t, captured.AutoApprove)
+	assert.False(t, captured.Purge)
 }
 
 func TestUninstallCmdCustomDataDir(t *testing.T) {
@@ -84,6 +85,36 @@ func TestUninstallCmdAutoApproveSkipsPrompt(t *testing.T) {
 	assert.True(t, ran)
 }
 
+func TestUninstallCmdPurgeFlag(t *testing.T) {
+	var captured *uninstaller.Config
+	cmd := newUninstallCmdWithDeps(strings.NewReader(""), func(_ context.Context, cfg *uninstaller.Config) int {
+		captured = cfg
+		return 0
+	})
+
+	code := cmd.Execute(t.Context(), []string{"-auto-approve", "-purge"})
+
+	require.Equal(t, 0, code)
+	require.NotNil(t, captured)
+	assert.True(t, captured.Purge)
+	assert.True(t, captured.AutoApprove)
+}
+
+func TestUninstallCmdAutoApproveDoesNotSetPurge(t *testing.T) {
+	var captured *uninstaller.Config
+	cmd := newUninstallCmdWithDeps(strings.NewReader(""), func(_ context.Context, cfg *uninstaller.Config) int {
+		captured = cfg
+		return 0
+	})
+
+	code := cmd.Execute(t.Context(), []string{"-auto-approve"})
+
+	require.Equal(t, 0, code)
+	require.NotNil(t, captured)
+	assert.True(t, captured.AutoApprove)
+	assert.False(t, captured.Purge, "auto-approve alone should not set purge")
+}
+
 func TestUninstallCmdReturnsRunExitCode(t *testing.T) {
 	cmd := newUninstallCmdWithDeps(strings.NewReader(""), func(_ context.Context, _ *uninstaller.Config) int {
 		return 1
@@ -105,4 +136,5 @@ func TestUninstallCmdHelp(t *testing.T) {
 	assert.Contains(t, buf.String(), "uninstall")
 	assert.Contains(t, buf.String(), "-data-dir")
 	assert.Contains(t, buf.String(), "-auto-approve")
+	assert.Contains(t, buf.String(), "-purge")
 }
