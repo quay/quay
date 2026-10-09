@@ -1628,6 +1628,7 @@ class OAuthAccessToken(BaseModel):
 class APIToken(BaseModel):
     """Lifecycle metadata for an opaque, scoped API credential."""
 
+    id = BigAutoField()
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     subject_user = QuayUserField(allows_robots=True, index=True)
     creator = QuayUserField(allows_robots=False, null=True)
