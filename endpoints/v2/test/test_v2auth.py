@@ -277,6 +277,61 @@ def get_robot_password(username):
             "private",
             False,
         ),
+        # Proxy cache org: push should be blocked for org admin (devtable is proxyorg owner)
+        (
+            "repository:proxyorg/somerepo:push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: pull+push should only grant pull
+        (
+            "repository:proxyorg/somerepo:pull,push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:pull"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: admin scope should be blocked
+        (
+            "repository:proxyorg/somerepo:pull,push,*",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:pull"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: new repo creation via push should be blocked
+        (
+            "repository:proxyorg/newrepo:push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/newrepo:"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: member user push should also be blocked
+        (
+            "repository:proxyorg/newrepo:push",
+            "member",
+            "password",
+            200,
+            ["proxyorg/newrepo:"],
+            True,
+            "private",
+            False,
+        ),
         # Organization repository, freshuser
         (
             "repository:buynlarge/orgrepo:pull,push,*",
