@@ -36,9 +36,36 @@ func TestRunStopsServiceRemovesQuadletAndReloads(t *testing.T) {
 	assert.False(t, qm.Exists("quay"))
 }
 
-func TestRunRemovesDataDirWhenAutoApprove(t *testing.T) {
+func TestRunRemovesDataDirWhenPurge(t *testing.T) {
 	dataDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "quay.db"), []byte("data"), 0o600))
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	qm := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: dataDir,
+		Hostname: "localhost", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: qm,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: dataDir, Purge: true})
+
+	require.NoError(t, err)
+	_, statErr := os.Stat(dataDir)
+	assert.True(t, os.IsNotExist(statErr))
+}
+
+func TestRunPreservesDataDirWhenAutoApproveWithoutPurge(t *testing.T) {
+	dataDir := t.TempDir()
+	dbPath := filepath.Join(dataDir, "quay.db")
+	require.NoError(t, os.WriteFile(dbPath, []byte("data"), 0o600))
 
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	qm := system.NewQuadletManager(system.OSFS{}, env)
@@ -58,8 +85,8 @@ func TestRunRemovesDataDirWhenAutoApprove(t *testing.T) {
 	err := u.Run(t.Context(), &Config{DataDir: dataDir, AutoApprove: true})
 
 	require.NoError(t, err)
-	_, statErr := os.Stat(dataDir)
-	assert.True(t, os.IsNotExist(statErr))
+	_, statErr := os.Stat(dbPath)
+	assert.NoError(t, statErr, "data dir should be preserved when auto-approve is set without purge")
 }
 
 func TestRunPreservesDataDirWithoutAutoApprove(t *testing.T) {
@@ -162,12 +189,57 @@ func TestRunFailsOnUnexpectedStopError(t *testing.T) {
 		fs:      system.OSFS{},
 	}
 
-	err := u.Run(t.Context(), &Config{DataDir: dataDir, AutoApprove: true})
+	err := u.Run(t.Context(), &Config{DataDir: dataDir, Purge: true})
 
 	require.ErrorContains(t, err, "stop service")
 	assert.NotContains(t, services.calls, "daemon-reload")
 	_, statErr := os.Stat(filepath.Join(dataDir, "quay.db"))
-	assert.NoError(t, statErr)
+	assert.NoError(t, statErr, "data should survive when stop fails even with purge")
+}
+
+func TestRunAutoDetectsDataDirFromQuadlet(t *testing.T) {
+	dataDir := t.TempDir()
+	dbPath := filepath.Join(dataDir, "quay.db")
+	require.NoError(t, os.WriteFile(dbPath, []byte("data"), 0o600))
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	qm := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: dataDir,
+		Hostname: "localhost", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: qm,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	cfg := &Config{Purge: true}
+	err := u.Run(t.Context(), cfg)
+
+	require.NoError(t, err)
+	assert.Equal(t, dataDir, cfg.DataDir, "data dir should be resolved from quadlet")
+	_, statErr := os.Stat(dataDir)
+	assert.True(t, os.IsNotExist(statErr), "purge should delete the auto-detected data dir")
+}
+
+func TestRunFailsWhenNoDataDirAndNoQuadlet(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	err := u.Run(t.Context(), &Config{})
+
+	require.ErrorContains(t, err, "resolve data directory")
+	require.ErrorContains(t, err, "provide -data-dir explicitly")
 }
 
 func TestRunIsIdempotent(t *testing.T) {

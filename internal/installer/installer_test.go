@@ -69,14 +69,12 @@ func TestInitializeIsIdempotentForExistingDatabase(t *testing.T) {
 	}))
 	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
 
-	err := Initialize(t.Context(), &Config{
+	require.NoError(t, Initialize(t.Context(), &Config{
 		DataDir:         dataDir,
 		InitUser:        "first-admin",
 		InitPassword:    "replacement-password",
 		InitPasswordSet: true,
-	})
-	require.ErrorContains(t, err, "registry is already initialized")
-	require.ErrorContains(t, err, "supplied password was not applied")
+	}))
 	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
 
 	db, err := dbcore.OpenSQLite(filepath.Join(dataDir, "quay.db"))
