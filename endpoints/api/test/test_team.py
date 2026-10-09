@@ -20,6 +20,7 @@ NEW_TEAM_KEYSTONE_PARAMS = {"orgname": "sellnsmall", "teamname": "keystonesyncte
 KEYSTONE_SYNCING_PARAMS = {"orgname": "sellnsmall", "teamname": "keystonesyncing"}
 UPDATE_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "updatesyncteam"}
 FAILED_LOOKUP_CREATE_PARAMS = {"orgname": "sellnsmall", "teamname": "failedsyncteam"}
+EMPTY_GROUP_NAME_PARAMS = {"orgname": "sellnsmall", "teamname": "emptygroupname"}
 
 
 def _fake_auth(service_name):
@@ -218,6 +219,38 @@ def test_create_team_rejects_multiple_sync_fields(app):
                 conduct_api_call(
                     cl, OrganizationTeam, "PUT", NEW_TEAM_PARAMS, body, expected_code=400
                 )
+
+
+def test_create_team_rejects_empty_group_name(app):
+    """Empty group_name must be rejected before team mutation or group lookup."""
+    oidc_auth = _fake_auth("oidc")
+    with patch("endpoints.api.team.authentication", oidc_auth):
+        with patch.dict(quay_app.config, {"AUTHENTICATION_TYPE": "OIDC"}):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "role": "member",
+                    "description": "should not persist",
+                    "group_name": "",
+                }
+                conduct_api_call(
+                    cl,
+                    OrganizationTeam,
+                    "PUT",
+                    EMPTY_GROUP_NAME_PARAMS,
+                    body,
+                    expected_code=400,
+                )
+
+                try:
+                    model.team.get_organization_team(
+                        EMPTY_GROUP_NAME_PARAMS["orgname"],
+                        EMPTY_GROUP_NAME_PARAMS["teamname"],
+                    )
+                    assert False, "team should not have been created with empty group_name"
+                except model.InvalidTeamException:
+                    pass
+
+                oidc_auth.check_group_lookup_args.assert_not_called()
 
 
 def test_update_already_synced_team_rejects_new_group(app):

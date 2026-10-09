@@ -208,7 +208,7 @@ def _validate_team_sync_request(orgname, config, teamname=None):
 
     Call this before any team create/update mutations so a failed group lookup does not
     leave partial team changes persisted. When teamname is provided, also rejects if that
-    team is already synced.
+    team is already synced. Rejects empty group_name before auth lookup (OIDC cannot).
     """
     if not features.TEAM_SYNCING or not authentication.federated_service:
         raise InvalidRequest("Team syncing is not supported on this registry")
@@ -220,6 +220,10 @@ def _validate_team_sync_request(orgname, config, teamname=None):
         raise InvalidRequest(
             "Team is already synced; disable syncing before attaching a different group"
         )
+
+    # OIDC check_group_lookup_args always succeeds, so reject empty group_name here.
+    if "group_name" in config and not (config.get("group_name") or "").strip():
+        raise InvalidRequest("Missing group_name")
 
     status, err = authentication.check_group_lookup_args(config)
     if not status:
