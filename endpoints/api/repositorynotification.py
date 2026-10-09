@@ -20,7 +20,11 @@ from endpoints.api import (
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model as model
 from endpoints.exception import NotFound
 from notifications.models_interface import Repository
-from notifications.notificationevent import NotificationEvent
+from notifications.notificationevent import (
+    InvalidNotificationEventConfigException,
+    InvalidNotificationEventException,
+    NotificationEvent,
+)
 from notifications.notificationmethod import (
     CannotValidateNotificationMethodException,
     NotificationMethod,
@@ -82,6 +86,20 @@ class RepositoryNotificationList(RepositoryParamResource):
             method_handler.validate(namespace_name, repository_name, parsed["config"])
         except CannotValidateNotificationMethodException as ex:
             raise request_error(message=str(ex))
+
+        # Validate the event-specific config (e.g. the vulnerability tag filter) up front so an
+        # invalid value is rejected here rather than silently breaking the notification when it
+        # later fires. Unknown event names are left to the model layer, as before.
+        try:
+            event_handler = NotificationEvent.get_event(parsed["event"])
+        except InvalidNotificationEventException:
+            event_handler = None
+
+        if event_handler is not None:
+            try:
+                event_handler.validate_event_config(parsed["eventConfig"] or {})
+            except InvalidNotificationEventConfigException as ex:
+                raise request_error(message=str(ex))
 
         new_notification = model.create_repo_notification(
             namespace_name,

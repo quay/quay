@@ -33,6 +33,7 @@ import CreateQuayNotification from './NotificationsCreateNotificationQuay';
 import CreateSlackNotification from './NotificationsCreateNotificationSlack';
 import CreateWebhookNotification from './NotificationsCreateNotificationWebhook';
 import RepoEventExpiry from './RepoEventExpiry';
+import RepoEventVulnTagRegex from './RepoEventVulnTagRegex';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 
 export default function CreateNotification(props: CreateNotificationProps) {
@@ -109,6 +110,12 @@ export default function CreateNotification(props: CreateNotificationProps) {
         </FormGroup>
         <Conditional if={event?.type == NotificationEventType.imageExpiry}>
           <RepoEventExpiry
+            eventConfig={eventConfig}
+            setEventConfig={setEventConfig}
+          />
+        </Conditional>
+        <Conditional if={event?.type == NotificationEventType.vulnFound}>
+          <RepoEventVulnTagRegex
             eventConfig={eventConfig}
             setEventConfig={setEventConfig}
           />
