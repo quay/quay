@@ -5,6 +5,7 @@ import pytest
 import requests
 
 from data import model
+from data.database import FederatedLogin
 from endpoints.api import api
 from endpoints.api.robot import (
     OrgRobot,
@@ -405,6 +406,74 @@ def test_user_robot_federation_multiple_configs(app):
         )
 
         assert len(resp.json) == 2
+
+
+LEGACY_FEDERATION_BINDINGS = [
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-a",
+        "audiences": ["quay"],
+        "api_scopes": "repo:read",
+    },
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-b",
+        "audiences": ["quay"],
+    },
+]
+
+
+def _store_legacy_federation_config(robot, bindings):
+    """Write bindings in the pre-id JSON shape (no id, no version) straight into the row."""
+    federated = FederatedLogin.get(FederatedLogin.user == robot)
+    federated.metadata_json = json.dumps({"federation_config": bindings})
+    federated.save()
+
+
+def test_user_robot_federation_legacy_bindings_get_stable_ids(app):
+    # PROJQUAY-13549: legacy bindings are listed with ids, saved with them, and removed by them.
+    robot = model.user.lookup_robot("devtable+dtrobot")
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+    params = {"robot_shortname": "dtrobot"}
+
+    with client_with_identity("devtable", app) as cl:
+        loaded = conduct_api_call(cl, UserRobotFederation, "GET", params, expected_code=200).json
+        assert [binding.get("version") for binding in loaded] == [1, 1]
+        assert all(binding.get("id") for binding in loaded)
+        assert len({binding["id"] for binding in loaded}) == 2
+
+        # Saving what was loaded persists exactly those ids.
+        saved = conduct_api_call(
+            cl, UserRobotFederation, "POST", params, loaded, expected_code=200
+        ).json
+        assert saved == loaded
+        assert (
+            conduct_api_call(cl, UserRobotFederation, "GET", params, expected_code=200).json
+            == saved
+        )
+
+        # Keeping only the second binding removes the first and keeps the second's id.
+        retained = conduct_api_call(
+            cl, UserRobotFederation, "POST", params, [saved[1]], expected_code=200
+        ).json
+        assert retained == [saved[1]]
+        assert (
+            conduct_api_call(cl, UserRobotFederation, "GET", params, expected_code=200).json
+            == retained
+        )
+
+
+def test_user_robot_federation_rejects_null_binding_id(app):
+    # Guard for the strict schema: a null id is never accepted, the server assigns ids.
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"id": None, "issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=400,
+        )
 
 
 def test_user_robot_federation_invalid_issuer(app):

@@ -1,14 +1,24 @@
+import json
 from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from peewee import PeeweeException
 
+from app import instance_keys
+from auth.auth_context_type import ValidatedAuthContext
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import FederatedLogin
 from data.model import api_token
+from data.model import config as model_config
+from data.model.user import (
+    TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
+    generate_federated_robot_jwt_token,
+)
 from test.fixtures import *
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 
 @pytest.mark.parametrize(
@@ -69,6 +79,81 @@ def test_robot_api_token_authenticates_as_its_robot(app):
     revoked_result = validate_bearer_auth("Bearer " + secret)
     assert not revoked_result.auth_valid
     assert revoked_result.error_message == "API token is invalid, revoked or expired"
+
+
+LEGACY_FEDERATION_BINDINGS = [
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-a",
+        "audiences": ["quay"],
+        "api_scopes": "repo:read",
+    },
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-b",
+        "audiences": ["quay"],
+        "api_scopes": "repo:read",
+    },
+]
+
+
+def _store_legacy_federation_config(robot, bindings):
+    """Write bindings in the pre-id JSON shape (no id, no version) straight into the row."""
+    federated = FederatedLogin.get(FederatedLogin.user == robot)
+    federated.metadata_json = json.dumps({"federation_config": bindings})
+    federated.save()
+
+
+def test_removed_legacy_federation_binding_token_is_rejected(app):
+    # PROJQUAY-13549: two legacy bindings must stay independently revocable.
+    robot, _ = model.user.create_robot("federated-revoke", model.user.get_user("devtable"))
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+    saved = model.user.create_robot_federation_config(
+        robot, model.user.get_robot_federation_config(robot)
+    )
+    assert all(binding["id"] for binding in saved)
+    assert len({binding["id"] for binding in saved}) == 2
+
+    token_a = generate_federated_robot_jwt_token(instance_keys, robot, "repo:read", saved[0])
+    token_b = generate_federated_robot_jwt_token(instance_keys, robot, "repo:read", saved[1])
+    assert validate_bearer_auth("Bearer " + token_a).context.federation_binding == saved[0]
+    assert validate_bearer_auth("Bearer " + token_b).context.federation_binding == saved[1]
+
+    model.user.create_robot_federation_config(robot, [saved[1]])
+
+    revoked = validate_bearer_auth("Bearer " + token_a)
+    assert not revoked.auth_valid
+    assert revoked.error_message == "Federation binding is no longer valid"
+    retained = validate_bearer_auth("Bearer " + token_b)
+    assert retained.auth_valid
+    assert retained.context.federation_binding == saved[1]
+
+
+def test_federated_robot_jwt_with_null_binding_identity_is_rejected(app):
+    robot, _ = model.user.create_robot("federated-null", model.user.get_user("devtable"))
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+
+    # A token minted by a pre-fix build carries null binding claims; it must not resolve
+    # against a stored binding that still lacks an id.
+    context, subject = build_context_and_subject(ValidatedAuthContext(robot=robot))
+    token = generate_bearer_token(
+        model_config.app_config["SERVER_HOSTNAME"],
+        subject,
+        context,
+        {},
+        TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
+        instance_keys,
+        {
+            "api_scopes": "repo:read",
+            "federation_binding_id": None,
+            "federation_binding_version": None,
+        },
+    )
+
+    result = validate_bearer_auth("Bearer " + token)
+
+    assert not result.auth_valid
+    assert result.error_message == "Federation binding is no longer valid"
 
 
 @pytest.mark.parametrize("allow_without_strict_logging", [True, False])

@@ -756,8 +756,10 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
             metadata["api_token_name"] = api_token.display_name
         federation_binding = getattr(auth_context, "federation_binding", None)
         if federation_binding:
-            metadata["federation_binding_id"] = federation_binding["id"]
-            metadata["federation_binding_version"] = federation_binding["version"]
+            # Audit logging must never fail the request, even for a binding that
+            # somehow bypassed normalize_robot_federation_bindings.
+            metadata["federation_binding_id"] = federation_binding.get("id")
+            metadata["federation_binding_version"] = federation_binding.get("version")
 
     if performer is None:
         performer = get_authenticated_user()

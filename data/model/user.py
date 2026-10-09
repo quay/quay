@@ -396,7 +396,51 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         raise DataModelException(ex)
 
 
-def get_robot_federation_config(robot):
+# Namespace for ids derived from federation bindings stored before per-binding ids
+# existed: uuid5(NAMESPACE_URL, "https://quay.io/robot-federation-binding").
+LEGACY_FEDERATION_BINDING_NAMESPACE = uuid.UUID("9aefbd37-d08b-5bc0-b22b-7ddcad57d7c0")
+LEGACY_FEDERATION_BINDING_VERSION = 1
+
+
+def legacy_federation_binding_id(binding):
+    """
+    Return the deterministic id of a federation binding stored without one.
+
+    The id is derived from the binding's immutable identity (issuer, subject), so every
+    reader on every pod sees the same id for the same stored record without a write.
+    """
+    identity = "%s\n%s" % (binding.get("issuer") or "", binding.get("subject") or "")
+    return str(uuid.uuid5(LEGACY_FEDERATION_BINDING_NAMESPACE, identity))
+
+
+def normalize_robot_federation_bindings(fed_config):
+    """
+    Return copies of the stored bindings, each with a stable id and version.
+
+    Bindings saved before per-binding ids existed carry neither key. They get the
+    deterministic legacy id and version 1 so validation, minting, audit logging and
+    the federation API never see a binding without them. Nothing is persisted here;
+    create_robot_federation_config keeps the derived id on the next save.
+    """
+    normalized = []
+    for entry in fed_config or []:
+        entry = dict(entry)
+        if not entry.get("id"):
+            entry["id"] = legacy_federation_binding_id(entry)
+        if not entry.get("version"):
+            entry["version"] = LEGACY_FEDERATION_BINDING_VERSION
+        normalized.append(entry)
+    return normalized
+
+
+def ensure_robot_federation_ids(robot):
+    """
+    Return the robot's stored federation bindings, each with a stable id and version.
+
+    This is the single reader every consumer of stored bindings goes through (model
+    lookups, the shared JWT validator and the federation API), so a legacy record is
+    never seen without id/version. It does not write.
+    """
     federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
     assert federated_robot
 
@@ -406,7 +450,11 @@ def get_robot_federation_config(robot):
     except Exception as e:
         logger.debug("Error parsing metadata: %s", e)
 
-    return metadata.get("federation_config", [])
+    return normalize_robot_federation_bindings(metadata.get("federation_config", []))
+
+
+def get_robot_federation_config(robot):
+    return ensure_robot_federation_ids(robot)
 
 
 def create_robot_federation_config(robot, fed_config):
@@ -426,7 +474,14 @@ def create_robot_federation_config(robot, fed_config):
             except Exception as e:
                 logger.debug("Error parsing metadata: %s", e)
 
-            previous = {entry.get("id"): entry for entry in metadata.get("federation_config", [])}
+            # Legacy bindings carry no id; key them by their derived id so two legacy
+            # entries never collapse under one null key.
+            previous = {
+                entry["id"]: entry
+                for entry in normalize_robot_federation_bindings(
+                    metadata.get("federation_config", [])
+                )
+            }
             normalized = []
             for entry in fed_config:
                 entry = dict(entry)
@@ -451,10 +506,18 @@ def create_robot_federation_config(robot, fed_config):
 
 def get_robot_federation_binding(robot, binding_id, version):
     """Return the active binding matching a JWT's immutable id/version."""
-    for binding in get_robot_federation_config(robot):
+    if not _is_federation_binding_identity(binding_id, version):
+        # A claim pair without a binding identity can never resolve to a stored binding.
+        return None
+    for binding in ensure_robot_federation_ids(robot):
         if binding.get("id") == binding_id and binding.get("version") == version:
             return binding
     return None
+
+
+def _is_federation_binding_identity(binding_id, version):
+    """A binding identity is a non-empty id and an integer version of at least 1."""
+    return bool(binding_id) and type(version) is int and version >= 1
 
 
 def delete_robot_federation_config(robot):
@@ -637,8 +700,13 @@ def generate_federated_robot_jwt_token(instance_keys, robot, api_scopes, federat
     if api_scopes:
         additional_claims["api_scopes"] = api_scopes
     if federation_binding:
-        additional_claims["federation_binding_id"] = federation_binding["id"]
-        additional_claims["federation_binding_version"] = federation_binding["version"]
+        binding_id = federation_binding.get("id")
+        binding_version = federation_binding.get("version")
+        if not _is_federation_binding_identity(binding_id, binding_version):
+            # Never mint a token whose binding claims could not be revoked by id.
+            raise InvalidRobotCredentialException("Federation binding has no stable identity")
+        additional_claims["federation_binding_id"] = binding_id
+        additional_claims["federation_binding_version"] = binding_version
     return generate_bearer_token(
         audience_param,
         subject,
