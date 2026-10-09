@@ -48,6 +48,28 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 	}, nil
 }
 
+// validateDataDir checks that dir is safe to pass to os.RemoveAll. It rejects
+// relative paths, the root filesystem, and the user's home directory, which
+// could cause catastrophic data loss if supplied by accident.
+func validateDataDir(dir string) error {
+	if !filepath.IsAbs(dir) {
+		return fmt.Errorf("data directory must be an absolute path, got %q", dir)
+	}
+
+	abs := filepath.Clean(dir)
+
+	if abs == "/" {
+		return fmt.Errorf("refusing to remove root directory %q", abs)
+	}
+
+	home, err := os.UserHomeDir()
+	if err == nil && abs == home {
+		return fmt.Errorf("refusing to remove home directory %q", abs)
+	}
+
+	return nil
+}
+
 // ResolveDataDir fills cfg.DataDir from the installed Quadlet when it is
 // empty. Callers that need the resolved path before Run (e.g. for a
 // confirmation prompt) should call this first. An unresolvable directory
