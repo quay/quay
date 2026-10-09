@@ -28,7 +28,7 @@ from util.secscan.v4.fake import fake_security_scanner
 
 
 @pytest.fixture()
-def set_secscan_config(tmp_path_factory):
+def set_secscan_config(tmpdir_factory):
     """
     Configure Clair V4 endpoint for tests.
 
@@ -37,16 +37,9 @@ def set_secscan_config(tmp_path_factory):
     global application.config simultaneously, causing test failures.
     """
     # Get lock file path shared across all pytest-xdist workers
-    # tmp_path_factory.getbasetemp() returns a worker-specific temp dir,
-    # but .parent gets the shared root temp directory
-    try:
-        root_tmp_dir = tmp_path_factory.getbasetemp().parent
-    except AttributeError:
-        # Fallback for older pytest versions or when not using xdist
-        import tempfile
-        root_tmp_dir = tempfile.gettempdir()
-
-    lock_file = str(root_tmp_dir / "secscan_config.lock") if hasattr(root_tmp_dir, "__truediv__") else f"{root_tmp_dir}/secscan_config.lock"
+    # tmpdir_factory.getbasetemp() returns py.path.local.LocalPath, use dirpath() for parent
+    # This matches the pattern used in test/fixtures.py for database initialization
+    lock_file = str(tmpdir_factory.getbasetemp().dirpath("secscan_config.lock"))
 
     # Acquire lock before modifying global config
     with FileLock(lock_file, timeout=300):
@@ -64,7 +57,9 @@ def set_secscan_config(tmp_path_factory):
         application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
         application.config["SERVER_HOSTNAME"] = "localhost:8080"
         application.config["PREFERRED_URL_SCHEME"] = "http"
-        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0  # Allow immediate re-indexing
+        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = (
+            0  # Allow immediate re-indexing
+        )
 
         try:
             yield
@@ -98,7 +93,9 @@ def set_secscan_config(tmp_path_factory):
             if original_reindex_threshold is None:
                 application.config.pop("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", None)
             else:
-                application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = original_reindex_threshold
+                application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = (
+                    original_reindex_threshold
+                )
 
 
 def create_test_repository(namespace="devtable", repo_name="secscan-test"):
