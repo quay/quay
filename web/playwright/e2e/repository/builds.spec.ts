@@ -843,3 +843,81 @@ test.describe('Repository Builds Tab Visibility', {tag: '@repository'}, () => {
     await expect(authenticatedPage.getByText('Builds')).not.toBeVisible();
   });
 });
+
+test.describe(
+  'Bitbucket Trigger CRUD',
+  {tag: ['@repository', '@feature:BUILD_SUPPORT', '@feature:BITBUCKET_BUILD']},
+  () => {
+    test(
+      'bitbucket trigger lifecycle: create, list, activate, toggle, delete',
+      {tag: '@PROJQUAY-5080'},
+      async ({api}) => {
+        test.setTimeout(60_000);
+
+        const org = await api.organization('bbtrig');
+        const repo = await api.repository(org.name, 'bb-trigger');
+
+        // Create a Bitbucket trigger via setup endpoint
+        const triggerUuid = await api.raw.createBitbucketTrigger(
+          org.name,
+          repo.name,
+        );
+        expect(triggerUuid).toBeTruthy();
+
+        // Verify trigger appears in the trigger list
+        const triggers = await api.raw.listTriggers(org.name, repo.name);
+        const bbTrigger = triggers.triggers.find((t) => t.id === triggerUuid);
+        expect(bbTrigger).toBeTruthy();
+        expect(bbTrigger?.service).toBe('bitbucket');
+
+        // Activate the trigger with a build source config
+        await api.raw.activateTrigger(org.name, repo.name, triggerUuid, {
+          build_source: 'https://bitbucket.org/testuser/testrepo',
+        });
+
+        // Verify trigger is now active
+        const activatedTriggers = await api.raw.listTriggers(
+          org.name,
+          repo.name,
+        );
+        const activeTrigger = activatedTriggers.triggers.find(
+          (t) => t.id === triggerUuid,
+        );
+        expect(activeTrigger?.is_active).toBe(true);
+
+        // Disable trigger via API
+        await api.raw.toggleTrigger(org.name, repo.name, triggerUuid, false);
+
+        // Verify trigger is disabled
+        const disabledTriggers = await api.raw.listTriggers(
+          org.name,
+          repo.name,
+        );
+        const disabledTrigger = disabledTriggers.triggers.find(
+          (t) => t.id === triggerUuid,
+        );
+        expect(disabledTrigger?.enabled).toBe(false);
+
+        // Re-enable trigger
+        await api.raw.toggleTrigger(org.name, repo.name, triggerUuid, true);
+
+        // Verify trigger is enabled again
+        const enabledTriggers = await api.raw.listTriggers(org.name, repo.name);
+        const enabledTrigger = enabledTriggers.triggers.find(
+          (t) => t.id === triggerUuid,
+        );
+        expect(enabledTrigger?.enabled).toBe(true);
+
+        // Delete trigger
+        await api.raw.deleteTrigger(org.name, repo.name, triggerUuid);
+
+        // Verify trigger is removed
+        const finalTriggers = await api.raw.listTriggers(org.name, repo.name);
+        const deletedTrigger = finalTriggers.triggers.find(
+          (t) => t.id === triggerUuid,
+        );
+        expect(deletedTrigger).toBeUndefined();
+      },
+    );
+  },
+);
