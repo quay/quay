@@ -7,6 +7,10 @@
 import {APIRequestContext, APIResponse} from '@playwright/test';
 import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
+import {
+  buildTeamSyncRequestData,
+  TeamSyncService,
+} from './team-sync-payload';
 
 export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
@@ -937,6 +941,11 @@ export class ApiClient {
     orgName: string,
     teamName: string,
     role: TeamRole = 'member',
+    syncConfig?: {
+      group_dn?: string;
+      group_name?: string;
+      group_id?: string;
+    },
   ): Promise<{name: string; role: string}> {
     const token = await this.fetchToken();
     const response = await this.request.put(
@@ -948,6 +957,7 @@ export class ApiClient {
         },
         data: {
           role,
+          ...syncConfig,
         },
       },
     );
@@ -2866,11 +2876,18 @@ export class ApiClient {
 
   // Team sync methods
 
+  /**
+   * Enable directory sync for a team via POST .../team/{team}/syncing.
+   * `service` selects the payload field (group_dn / group_name / group_id).
+   */
   async enableTeamSync(
     orgName: string,
     teamName: string,
-    groupName: string,
+    groupIdentifier: string,
+    service: TeamSyncService = 'ldap',
   ): Promise<void> {
+    const data = buildTeamSyncRequestData(service, groupIdentifier);
+
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();
       return this.request.post(
@@ -2878,7 +2895,7 @@ export class ApiClient {
         {
           timeout: 5000,
           headers: {'X-CSRF-Token': token},
-          data: {group_dn: groupName},
+          data,
         },
       );
     });
@@ -2891,6 +2908,7 @@ export class ApiClient {
     }
   }
 
+  /** Disable directory sync for a team via DELETE .../team/{team}/syncing. */
   async disableTeamSync(orgName: string, teamName: string): Promise<void> {
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();
