@@ -539,7 +539,11 @@ jobs:
 
       - name: Uninstall registry
         run: |
+          # -auto-approve alone must preserve data; -purge removes it.
           sudo bin/mirror-registry uninstall -auto-approve -data-dir=/var/lib/quay
+          sudo test -d /var/lib/quay || { echo "FAIL: data directory removed without -purge"; exit 1; }
+          echo "Data directory preserved without -purge"
+          sudo bin/mirror-registry uninstall -auto-approve -purge -data-dir=/var/lib/quay
 
       - name: Verify uninstall cleanup
         run: |
@@ -755,7 +759,11 @@ jobs:
 
       - name: Uninstall registry (rootless)
         run: |
+          # -auto-approve alone must preserve data; -purge removes it.
           bin/mirror-registry uninstall -auto-approve -data-dir="$HOME/.local/share/quay"
+          test -d "$HOME/.local/share/quay" || { echo "FAIL: data directory removed without -purge"; exit 1; }
+          echo "Data directory preserved without -purge"
+          bin/mirror-registry uninstall -auto-approve -purge -data-dir="$HOME/.local/share/quay"
 
       - name: Verify uninstall cleanup
         run: |
