@@ -13,6 +13,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidateDataDir(t *testing.T) {
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	dangerous := []string{"/", ".", home, "///", filepath.Join(home, ".")}
+	for _, p := range dangerous {
+		if err := validateDataDir(p); err == nil {
+			t.Errorf("expected error for dangerous path %q, got nil", p)
+		}
+	}
+
+	safe := []string{"/var/lib/quay", "/opt/mirror-registry/data", filepath.Join(home, "mirror-registry")}
+	for _, p := range safe {
+		if err := validateDataDir(p); err != nil {
+			t.Errorf("unexpected error for safe path %q: %v", p, err)
+		}
+	}
+}
+
+func TestRunRejectsDangerousDataDirBeforeServiceOps(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: "/", AutoApprove: true})
+
+	require.ErrorContains(t, err, "data directory")
+	// No service operations should have been attempted.
+	assert.Empty(t, services.calls)
+}
+
 func TestRunStopsServiceRemovesQuadletAndReloads(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir(), Username: "testuser"}
 	qm := system.NewQuadletManager(system.OSFS{}, env)

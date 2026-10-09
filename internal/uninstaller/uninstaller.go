@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/quay/quay/internal/system"
 )
@@ -47,9 +48,50 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 	}, nil
 }
 
+// validateDataDir returns an error when path, after normalisation, is a
+// known-dangerous filesystem location.  It rejects the filesystem root "/",
+// bare current-directory references such as ".", and the current user's home
+// directory.  The check runs before any destructive step so that a bad
+// data-dir never causes a partial uninstall.
+func validateDataDir(path string) error {
+	if path == "" {
+		return fmt.Errorf("data directory path is empty")
+	}
+	// Reject bare current-directory references before resolving them.
+	if filepath.Clean(path) == "." {
+		return fmt.Errorf("data directory %q is a relative current-directory reference: refusing to remove", path)
+	}
+	// Resolve to an absolute, clean path so that "///", relative paths, and
+	// symlink-like constructs are all normalised before comparison.
+	resolved, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve data directory path: %w", err)
+	}
+	// Reject the filesystem root (covers "/", "///", etc.).
+	if resolved == "/" {
+		return fmt.Errorf("data directory %q resolves to a filesystem root: refusing to remove", path)
+	}
+	// Reject the user's home directory.
+	home, err := os.UserHomeDir()
+	if err == nil {
+		if resolved == filepath.Clean(home) {
+			return fmt.Errorf("data directory %q resolves to the user home directory: refusing to remove", path)
+		}
+	}
+	return nil
+}
+
 // Run performs the uninstall sequence: stop service, remove Quadlet file,
 // reload systemd, conditionally remove data, and disable linger.
 func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
+	// Validate the data directory before any service or filesystem operation
+	// so that a dangerous path causes a clean failure with no partial work.
+	if cfg.AutoApprove {
+		if err := validateDataDir(cfg.DataDir); err != nil {
+			return fmt.Errorf("data directory validation: %w", err)
+		}
+	}
+
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
 		if errors.Is(err, system.ErrUnitNotFound) {
 			slog.Info("service not running, continuing")
