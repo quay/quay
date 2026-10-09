@@ -1,5 +1,11 @@
+import {useEffect, useState} from 'react';
 import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   bulkSetExpiration,
   bulkSetTagImmutability,
@@ -10,20 +16,45 @@ import {
 } from 'src/resources/TagResource';
 import {getTags, restoreTag} from 'src/resources/TagResource';
 
-export function useAllTags(org: string, repo: string) {
-  // TODO: Returns the first 50 tags due to performance concerns.
-  // Need to fetch pages on demand after API redesign.
+// Tag history can hold thousands of entries, so load one page at a time
+// and filter by name on the server.
+export function useAllTags(org: string, repo: string, query = '') {
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const {
-    data: tagsResponse,
+    data,
     isLoading: loadingTags,
     isError: errorLoadingTags,
     error: errorTagsDetails,
     dataUpdatedAt,
-  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
-    getTags(org, repo, 1, 50, null, false),
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(
+    ['namespace', org, 'repo', repo, 'alltags', debouncedQuery],
+    ({pageParam = 1}) =>
+      getTags(
+        org,
+        repo,
+        pageParam,
+        50,
+        null,
+        false,
+        debouncedQuery ? `like:${debouncedQuery}` : null,
+      ),
+    {
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.has_additional ? allPages.length + 1 : undefined,
+      keepPreviousData: true,
+    },
   );
 
-  const tags = tagsResponse?.tags || [];
+  const tags = data?.pages.flatMap((page) => page.tags || []) || [];
 
   return {
     tags: tags,
@@ -31,6 +62,10 @@ export function useAllTags(org: string, repo: string) {
     errorLoadingTags: errorLoadingTags,
     errorTagsDetails: errorTagsDetails,
     lastUpdated: dataUpdatedAt,
+    hasMoreTags: hasNextPage,
+    loadMoreTags: fetchNextPage,
+    loadingMoreTags: isFetchingNextPage,
+    debouncedQuery: debouncedQuery,
   };
 }
 
