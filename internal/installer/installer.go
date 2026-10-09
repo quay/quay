@@ -772,7 +772,9 @@ func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
 	}
 	if hasUsers {
 		if cfg.InitPasswordSet || cfg.InitPassword != "" {
-			return fmt.Errorf("registry is already initialized; supplied password was not applied and existing credentials are unchanged")
+			credPath := filepath.Join(cfg.DataDir, "auth", "admin-password")
+			slog.Warn("registry already initialized; -init-password-stdin was ignored — existing credentials are unchanged",
+				"credentials", credPath)
 		}
 		slog.Info("initial administrator already provisioned")
 		slog.Info("registry initialization complete", "data-dir", cfg.DataDir, "database", dbPath)
