@@ -13,10 +13,12 @@ import {
 import {repoPermissions} from './DefaultPermissionsList';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {titleCase} from 'src/libs/utils';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function DefaultPermissionsDropDown(
   props: DefaultPermissionsDropdownProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [isOpen, setIsOpen] = useState(false);
   const {addAlert} = useUI();
 
@@ -53,6 +55,7 @@ export default function DefaultPermissionsDropDown(
           ref={toggleRef}
           onClick={() => setIsOpen(!isOpen)}
           isExpanded={isOpen}
+          isDisabled={isReadOnlySuperUser}
           data-testid={`${props.defaultPermission.createdBy}-permission-dropdown-toggle`}
         >
           {titleCase(props.defaultPermission.permission)}

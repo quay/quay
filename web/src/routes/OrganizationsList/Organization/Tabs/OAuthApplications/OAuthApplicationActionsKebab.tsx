@@ -11,10 +11,12 @@ import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useDeleteOAuthApplication} from 'src/hooks/UseOAuthApplications';
 import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 const OAuthApplicationActionsKebab: React.FC<OAuthApplicationDropdownProps> = (
   props,
 ): React.ReactElement => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const {addAlert} = useUI();
@@ -85,12 +87,14 @@ const OAuthApplicationActionsKebab: React.FC<OAuthApplicationDropdownProps> = (
           >
             Edit
           </DropdownItem>
-          <DropdownItem
-            onClick={handleDeleteClick}
-            data-testid={`${props.oauthApplication.name}-del-option`}
-          >
-            Delete
-          </DropdownItem>
+          {!isReadOnlySuperUser && (
+            <DropdownItem
+              onClick={handleDeleteClick}
+              data-testid={`${props.oauthApplication.name}-del-option`}
+            >
+              Delete
+            </DropdownItem>
+          )}
         </DropdownList>
       </Dropdown>
 
