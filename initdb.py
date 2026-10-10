@@ -1576,6 +1576,8 @@ WHITELISTED_EMPTY_MODELS = [
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",
+    "RepositoryBlobDigest",
+    "RepositoryManifestDigest",
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
     "OrganizationContactEmail",
