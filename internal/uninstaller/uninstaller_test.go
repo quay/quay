@@ -263,6 +263,46 @@ func TestRunPurgeRejectsUnsafeDataDirFromQuadlet(t *testing.T) {
 	}
 }
 
+func TestRunPurgeRejectsUnsafeExplicitDataDir(t *testing.T) {
+	for _, dataDir := range []string{"/", "//", "data"} {
+		t.Run(dataDir, func(t *testing.T) {
+			env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+			services := &recordingServiceManager{}
+			fs := &noRemoveAllFS{}
+			u := &Uninstaller{
+				systemd: services,
+				quadlet: system.NewQuadletManager(system.OSFS{}, env),
+				env:     env,
+				fs:      fs,
+			}
+
+			err := u.Run(t.Context(), &Config{DataDir: dataDir, Purge: true})
+
+			require.ErrorContains(t, err, "is not an absolute non-root path")
+			assert.Empty(t, services.calls, "must fail before touching the service")
+			assert.Empty(t, fs.removed, "nothing may be removed")
+		})
+	}
+}
+
+func TestRunWithoutPurgeAcceptsRelativeExplicitDataDir(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	fs := &noRemoveAllFS{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      fs,
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: "data"})
+
+	require.NoError(t, err)
+	assert.Contains(t, services.calls, "daemon-reload")
+	assert.Empty(t, fs.removed)
+}
+
 func TestRunWithoutPurgeIgnoresRelativeDataDirFromQuadlet(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	qm := system.NewQuadletManager(system.OSFS{}, env)

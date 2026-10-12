@@ -55,6 +55,9 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 // the uninstall can proceed without it.
 func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 	if cfg.DataDir != "" {
+		if cfg.Purge && (!filepath.IsAbs(cfg.DataDir) || filepath.Clean(cfg.DataDir) == "/") {
+			return fmt.Errorf("data directory %q is not an absolute non-root path", cfg.DataDir)
+		}
 		return nil
 	}
 	dir, err := u.quadlet.DataDir(serviceName)
