@@ -57,11 +57,18 @@ def _prepare_webhook_url(scheme, username, password, hostname, path):
     return urlunparse((scheme, auth_hostname, path, "", "", ""))
 
 
-def get_trigger(trigger_uuid):
+def get_trigger(trigger_uuid, namespace_name=None, repo_name=None):
     try:
         trigger = model.build.get_build_trigger(trigger_uuid)
     except model.InvalidBuildTriggerException:
         raise NotFound()
+
+    if namespace_name is not None and trigger.repository.namespace_user.username != namespace_name:
+        raise NotFound()
+
+    if repo_name is not None and trigger.repository.name != repo_name:
+        raise NotFound()
+
     return trigger
 
 
@@ -119,7 +126,7 @@ class BuildTrigger(RepositoryParamResource):
         Get information for the specified build trigger.
         """
         is_readonly = allow_if_global_readonly_superuser()
-        return trigger_view(get_trigger(trigger_uuid), can_admin=not is_readonly, can_read=True)
+        return trigger_view(get_trigger(trigger_uuid, namespace_name, repo_name), can_admin=not is_readonly, can_read=True)
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
@@ -130,7 +137,7 @@ class BuildTrigger(RepositoryParamResource):
         """
         Updates the specified build trigger.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         handler = BuildTriggerHandler.get_handler(trigger)
         if not handler.is_active():
@@ -160,7 +167,7 @@ class BuildTrigger(RepositoryParamResource):
         """
         Delete the specified build trigger.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         handler = BuildTriggerHandler.get_handler(trigger)
         if handler.is_active():
@@ -210,7 +217,7 @@ class BuildTriggerSubdirs(RepositoryParamResource):
         """
         List the subdirectories available for the specified build trigger and source.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
         if user_permission.can():
@@ -277,7 +284,7 @@ class BuildTriggerActivate(RepositoryParamResource):
         """
         Activate the specified build trigger.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
         handler = BuildTriggerHandler.get_handler(trigger)
         if handler.is_active():
             raise InvalidRequest("Trigger config is not sufficient for activation.")
@@ -388,13 +395,7 @@ class BuildTriggerAnalyze(RepositoryParamResource):
         """
         Analyze the specified build trigger configuration.
         """
-        trigger = get_trigger(trigger_uuid)
-
-        if trigger.repository.namespace_user.username != namespace_name:
-            raise NotFound()
-
-        if trigger.repository.name != repo_name:
-            raise NotFound()
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         new_config_dict = request.get_json()["config"]
         handler = BuildTriggerHandler.get_handler(trigger, new_config_dict)
@@ -458,7 +459,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
         """
         Manually start a build from the specified trigger.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
         if not trigger.enabled:
             raise InvalidRequest("Trigger is not enabled.")
 
@@ -536,7 +537,7 @@ class BuildTriggerFieldValues(RepositoryParamResource):
         """
         List the field values for a custom run field.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         config = request.get_json() or None
         if AdministerRepositoryPermission(namespace_name, repo_name).can():
@@ -586,7 +587,7 @@ class BuildTriggerSources(RepositoryParamResource):
         if namespace is None:
             raise InvalidRequest()
 
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
         if user_permission.can():
@@ -615,7 +616,7 @@ class BuildTriggerSourceNamespaces(RepositoryParamResource):
         """
         List the build sources for the trigger configuration thus far.
         """
-        trigger = get_trigger(trigger_uuid)
+        trigger = get_trigger(trigger_uuid, namespace_name, repo_name)
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
         if user_permission.can():
