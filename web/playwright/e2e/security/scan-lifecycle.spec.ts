@@ -16,6 +16,9 @@ import {pushImage} from '../../utils/container';
 import {waitForSecurityScan} from '../../utils/security';
 import {TEST_USERS} from '../../global-setup';
 
+// Namespace whitelisted for security scanning in local-dev/stack/config.yaml
+const SECURITY_SCAN_NAMESPACE = 'clairv4-org';
+
 test.describe(
   'Security Scan Lifecycle',
   {
@@ -28,13 +31,30 @@ test.describe(
     timeout: 180000, // 3 min: image push (~30s) + scan wait (120s) + UI assertions (~30s)
   },
   () => {
+    // Ensure the security-scan-enabled organization exists
+    test.beforeAll(async ({request}) => {
+      const {ApiClient} = await import('../../utils/api');
+      const api = new ApiClient(request);
+      try {
+        await api.createOrganization(
+          SECURITY_SCAN_NAMESPACE,
+          `${SECURITY_SCAN_NAMESPACE}@example.com`,
+        );
+      } catch (error) {
+        // Organization might already exist - ignore 400 errors
+        if (!String(error).includes('already exists')) {
+          throw error;
+        }
+      }
+    });
+
     test('displays vulnerability results after scan completes', async ({
       authenticatedPage,
       api,
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `vuln-test-${Date.now()}`;
-      const repo = await api.repository(undefined, repoName, 'public');
+      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
 
       // Push image to trigger scan
       await pushImage(
@@ -101,7 +121,7 @@ test.describe(
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `badge-test-${Date.now()}`;
-      const repo = await api.repository(undefined, repoName, 'public');
+      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
 
       await pushImage(
         repo.namespace,
@@ -160,7 +180,7 @@ test.describe(
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `status-test-${Date.now()}`;
-      const repo = await api.repository(undefined, repoName, 'public');
+      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
 
       // Push image
       await pushImage(
