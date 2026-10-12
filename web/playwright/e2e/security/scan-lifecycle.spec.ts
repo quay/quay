@@ -54,7 +54,11 @@ test.describe(
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `vuln-test-${Date.now()}`;
-      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
+      const repo = await api.repository(
+        SECURITY_SCAN_NAMESPACE,
+        repoName,
+        'public',
+      );
 
       // Push image to trigger scan
       await pushImage(
@@ -121,7 +125,11 @@ test.describe(
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `badge-test-${Date.now()}`;
-      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
+      const repo = await api.repository(
+        SECURITY_SCAN_NAMESPACE,
+        repoName,
+        'public',
+      );
 
       await pushImage(
         repo.namespace,
@@ -180,7 +188,11 @@ test.describe(
     }) => {
       // Create PUBLIC repo with unique name to avoid collisions
       const repoName = `status-test-${Date.now()}`;
-      const repo = await api.repository(SECURITY_SCAN_NAMESPACE, repoName, 'public');
+      const repo = await api.repository(
+        SECURITY_SCAN_NAMESPACE,
+        repoName,
+        'public',
+      );
 
       // Push image
       await pushImage(
