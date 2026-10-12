@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/quay/quay/internal/system"
 )
@@ -62,6 +63,15 @@ func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 			return fmt.Errorf("resolve data directory: %w; provide -data-dir explicitly", err)
 		}
 		slog.Debug("no installed data directory detected", "err", err)
+		return nil
+	}
+	// A relative or root path would make purge's RemoveAll resolve against
+	// the working directory or wipe the filesystem.
+	if !filepath.IsAbs(dir) || filepath.Clean(dir) == "/" {
+		if cfg.Purge {
+			return fmt.Errorf("installed data directory %q is not an absolute non-root path; provide -data-dir explicitly", dir)
+		}
+		slog.Debug("ignoring unsafe installed data directory", "data-dir", dir)
 		return nil
 	}
 	cfg.DataDir = dir

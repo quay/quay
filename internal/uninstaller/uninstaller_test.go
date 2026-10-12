@@ -234,6 +234,59 @@ func TestRunWithoutPurgeSucceedsWhenNoDataDirAndNoQuadlet(t *testing.T) {
 	assert.Contains(t, services.calls, "daemon-reload")
 }
 
+func TestRunPurgeRejectsUnsafeDataDirFromQuadlet(t *testing.T) {
+	for _, dataDir := range []string{"data", "/"} {
+		t.Run(dataDir, func(t *testing.T) {
+			env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+			qm := system.NewQuadletManager(system.OSFS{}, env)
+			require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+				Image: "localhost/quay:test", DataDir: dataDir,
+				Hostname: "localhost", Port: "8443",
+			}))
+
+			services := &recordingServiceManager{}
+			fs := &noRemoveAllFS{}
+			u := &Uninstaller{
+				systemd: services,
+				quadlet: qm,
+				env:     env,
+				fs:      fs,
+			}
+
+			err := u.Run(t.Context(), &Config{Purge: true})
+
+			require.ErrorContains(t, err, "provide -data-dir explicitly")
+			assert.Empty(t, services.calls, "must fail before touching the service")
+			assert.True(t, qm.Exists("quay"))
+			assert.Empty(t, fs.removed, "nothing may be removed")
+		})
+	}
+}
+
+func TestRunWithoutPurgeIgnoresRelativeDataDirFromQuadlet(t *testing.T) {
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	qm := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: "data",
+		Hostname: "localhost", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: qm,
+		env:     env,
+		fs:      system.OSFS{},
+	}
+
+	cfg := &Config{}
+	err := u.Run(t.Context(), cfg)
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.DataDir)
+	assert.Contains(t, services.calls, "daemon-reload")
+}
+
 func TestRunIsIdempotent(t *testing.T) {
 	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
 	services := &recordingServiceManager{}
@@ -280,3 +333,15 @@ func (r *recordingServiceManager) DisableLinger(context.Context) error {
 }
 
 var _ system.ServiceManager = (*recordingServiceManager)(nil)
+
+// noRemoveAllFS records RemoveAll instead of deleting, so a regressed guard
+// fails an assertion rather than removing "/" or the working directory.
+type noRemoveAllFS struct {
+	system.OSFS
+	removed []string
+}
+
+func (f *noRemoveAllFS) RemoveAll(path string) error {
+	f.removed = append(f.removed, path)
+	return errors.New("RemoveAll disabled in test")
+}
