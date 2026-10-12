@@ -165,5 +165,7 @@ class TestRepositoryAutoprune:
         assert repository_policy.uuid == self.repository_policy3.uuid
         assert repository_policy.repository_id == self.repo3.id
 
-        resp = get_repository_autoprune_policy_by_uuid("nonexistentns", "nonexistentrepo", "randome-uuid")
+        resp = get_repository_autoprune_policy_by_uuid(
+            "nonexistentns", "nonexistentrepo", "randome-uuid"
+        )
         assert resp is None
