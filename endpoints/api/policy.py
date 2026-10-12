@@ -452,7 +452,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         ):
             raise Unauthorized()
 
-        policy = model.autoprune.get_repository_autoprune_policy_by_uuid(repository, policy_uuid)
+        policy = model.autoprune.get_repository_autoprune_policy_by_uuid(namespace, repository, policy_uuid)
         if policy is None:
             raise NotFound()
 
