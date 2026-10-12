@@ -4669,6 +4669,51 @@ class TestBuildTriggers(ApiTestCase):
         self.assertEqual("build-name", start_json["display_name"])
         self.assertEqual(["bar"], start_json["tags"])
 
+    def test_get_trigger_cross_repo_returns_not_found(self):
+        self.login(ADMIN_ACCESS_USER)
+
+        # Get a trigger from the "building" repo.
+        json = self.getJsonResponse(
+            BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
+        )
+        self.assertEqual(1, len(json["triggers"]))
+        trigger_uuid = json["triggers"][0]["id"]
+
+        # Verify the trigger is accessible via the correct repo.
+        self.getJsonResponse(
+            BuildTrigger,
+            params=dict(repository=ADMIN_ACCESS_USER + "/building", trigger_uuid=trigger_uuid),
+            expected_code=200,
+        )
+
+        # Attempt to access the same trigger via a different repo should fail.
+        self.getResponse(
+            BuildTrigger,
+            params=dict(repository=ADMIN_ACCESS_USER + "/simple", trigger_uuid=trigger_uuid),
+            expected_code=404,
+        )
+
+    def test_delete_trigger_cross_repo_returns_not_found(self):
+        self.login(ADMIN_ACCESS_USER)
+
+        json = self.getJsonResponse(
+            BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
+        )
+        trigger_uuid = json["triggers"][0]["id"]
+
+        # Attempt to delete the trigger via a different repo should fail.
+        self.deleteResponse(
+            BuildTrigger,
+            params=dict(repository=ADMIN_ACCESS_USER + "/simple", trigger_uuid=trigger_uuid),
+            expected_code=404,
+        )
+
+        # Verify the trigger still exists on the correct repo.
+        json = self.getJsonResponse(
+            BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
+        )
+        self.assertEqual(1, len(json["triggers"]))
+
     def test_list_build_triggers_as_globalreadonlysuperuser(self):
         self.login("globalreadonlysuperuser")
 
