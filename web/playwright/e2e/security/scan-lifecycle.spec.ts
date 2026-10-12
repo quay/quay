@@ -32,9 +32,9 @@ test.describe(
   },
   () => {
     // Ensure the security-scan-enabled organization exists
-    test.beforeAll(async ({request}) => {
+    test.beforeAll(async ({userContext}) => {
       const {ApiClient} = await import('../../utils/api');
-      const api = new ApiClient(request);
+      const api = new ApiClient(userContext.request);
       try {
         await api.createOrganization(
           SECURITY_SCAN_NAMESPACE,
