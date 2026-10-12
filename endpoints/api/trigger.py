@@ -126,7 +126,11 @@ class BuildTrigger(RepositoryParamResource):
         Get information for the specified build trigger.
         """
         is_readonly = allow_if_global_readonly_superuser()
-        return trigger_view(get_trigger(trigger_uuid, namespace_name, repo_name), can_admin=not is_readonly, can_read=True)
+        return trigger_view(
+            get_trigger(trigger_uuid, namespace_name, repo_name),
+            can_admin=not is_readonly,
+            can_read=True,
+        )
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
