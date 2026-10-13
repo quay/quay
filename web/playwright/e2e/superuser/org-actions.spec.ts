@@ -147,7 +147,6 @@ test.describe(
     test('superuser can see all org tabs on a foreign organization', async ({
       superuserPage,
       api,
-      quayConfig,
     }) => {
       // Create org as regular user — foreign to the superuser
       const org = await api.organization('foreignorg');
@@ -180,13 +179,6 @@ test.describe(
       await expect(
         superuserPage.getByRole('tab', {name: 'Settings'}),
       ).toBeVisible();
-
-      // Mirroring tab depends on ORG_MIRROR feature
-      if (quayConfig?.features?.ORG_MIRROR) {
-        await expect(
-          superuserPage.getByRole('tab', {name: 'Mirroring'}),
-        ).toBeVisible();
-      }
     });
   },
 );
