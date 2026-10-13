@@ -81,9 +81,9 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 # gevent has wheels for all platforms, no need to build from source.
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 
-# maturin 1.13+ bumped MSRV to rustc 1.89, but UBI8 rust-toolset provides 1.88.0.
-# Pin maturin to a version compatible with the available rustc in the build image.
-RUN echo 'maturin==1.12.6' > /build/pip-build-constraints.txt
+# Pin maturin to a range compatible with the available rustc in the build image
+# and the cryptography 50.0.0 build dependency (requires maturin>=1.14.1).
+RUN echo 'maturin>=1.14.1,<2' > /build/pip-build-constraints.txt
 ENV PIP_CONSTRAINT=/build/pip-build-constraints.txt
 
 USER 1001
