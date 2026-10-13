@@ -417,4 +417,12 @@ command={% if hotreload -%}
 autostart = {{ config['pullstatsredisflushworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+
+[program:system-metrics-collector]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s
+command=python -m workers.systemmetricscollector
+autostart = {{ config['system-metrics-collector']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
 # EOF NO NEWLINE
