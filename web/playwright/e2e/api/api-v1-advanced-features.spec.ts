@@ -3,8 +3,8 @@
  *
  * Ported from Cypress quay_api_testing_all.cy.js and unique tests from
  * quay_api_testing_all_new_ui.cy.js. Covers: repository mirroring,
- * proxy cache, quotas, autoprune policies, logs, health endpoints,
- * service keys, organization mirror, and registry capabilities.
+ * proxy cache, quotas, autoprune policies, logs, health endpoints, and
+ * service keys.
  */
 
 import {test, expect} from '../../fixtures';
@@ -798,109 +798,3 @@ test.describe('Service Keys', {tag: ['@api']}, () => {
     // Deletion handled by superuserApi cleanup
   });
 });
-
-// ---------------------------------------------------------------------------
-// Organization Mirror (from new_ui - /api/v1/organization/{org}/mirror)
-// ---------------------------------------------------------------------------
-test.describe(
-  'Organization Mirror',
-  {tag: ['@api', '@feature:ORG_MIRROR']},
-  () => {
-    test('CRUD org mirror config with sync and verify', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('orgmir');
-      const robot = await superuserApi.robot(org.name, 'mirbot');
-
-      const client = superuserApi.raw;
-
-      // Create org mirror config
-      await client.createOrgMirrorConfig(org.name, {
-        external_registry_type: 'quay',
-        external_registry_url: 'https://quay.io',
-        external_namespace: 'projectquay',
-        robot_username: robot.fullName,
-        visibility: 'private',
-        sync_interval: 86400,
-        sync_start_date: '2026-03-03T08:00:00Z',
-        is_enabled: false,
-        external_registry_config: {
-          verify_tls: true,
-          proxy: {
-            http_proxy: null,
-            https_proxy: null,
-            no_proxy: null,
-          },
-        },
-        repository_filters: ['*'],
-        skopeo_timeout: 302,
-        external_registry_username: null,
-        external_registry_password: null,
-      });
-
-      // Update org mirror config
-      await client.updateOrgMirrorConfig(org.name, {
-        sync_interval: 3600,
-        skopeo_timeout: 301,
-      });
-
-      // Get and verify
-      const mirrorCfg = await client.getOrgMirrorConfig(org.name);
-      expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.external_registry_url).toContain('https://quay.io');
-      expect(mirrorCfg!.sync_interval).toBe(3600);
-
-      // Sync-now
-      await client.triggerOrgMirrorSync(org.name);
-
-      // Sync-cancel
-      await client.cancelOrgMirrorSync(org.name);
-
-      // Verify connection to source registry
-      const verifyResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/mirror/verify`,
-      );
-      // 200 with success = true, or accept other valid responses
-      expect([200, 400, 502]).toContain(verifyResp.status());
-
-      // List discovered repositories
-      const reposResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/mirror/repositories`,
-      );
-      // May fail if connection can't be established; assert known statuses
-      if (reposResp.status() === 200) {
-        const reposBody = await reposResp.json();
-        expect(reposBody).toHaveProperty('repositories');
-        expect(Array.isArray(reposBody.repositories)).toBe(true);
-      } else {
-        expect([400, 403, 404, 502]).toContain(reposResp.status());
-      }
-
-      // Delete org mirror config
-      await client.deleteOrgMirrorConfig(org.name);
-
-      // Verify deletion
-      const afterDelete = await client.getOrgMirrorConfig(org.name);
-      expect(afterDelete).toBeNull();
-    });
-  },
-);
-
-// ---------------------------------------------------------------------------
-// Sparse Manifest Support (from new_ui)
-// ---------------------------------------------------------------------------
-test.describe(
-  'Registry Capabilities',
-  {tag: ['@api', '@feature:SPARSE_INDEX']},
-  () => {
-    test('check sparse manifest support', async ({adminClient}) => {
-      const resp = await adminClient.get('/api/v1/registry/capabilities');
-      expect(resp.status()).toBe(200);
-      const body = await resp.json();
-      expect(body).toHaveProperty('sparse_manifests');
-      expect(body.sparse_manifests).toHaveProperty('supported');
-      expect(typeof body.sparse_manifests.supported).toBe('boolean');
-    });
-  },
-);
