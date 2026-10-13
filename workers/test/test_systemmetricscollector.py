@@ -78,9 +78,9 @@ class TestReadProcNetUnix:
         finally:
             os.unlink(path)
 
-    def test_unreadable_file_returns_empty(self):
-        result = _read_proc_net_unix("/nonexistent/proc/net/unix")
-        assert result == {}
+    def test_unreadable_file_raises(self):
+        with pytest.raises(OSError):
+            _read_proc_net_unix("/nonexistent/proc/net/unix")
 
     def test_header_only_returns_empty(self):
         path = _write_tmp_proc(PROC_HEADER)
@@ -197,6 +197,17 @@ class TestSample:
         ts = metrics["last_sample_timestamp"].labels(host=hostname)._value.get()
         assert before <= ts <= after
 
+    @patch("workers.systemmetricscollector._read_proc_net_unix")
+    def test_procfs_failure_increments_errors_and_skips_timestamp(self, mock_read):
+        mock_read.side_effect = OSError("permission denied")
+        _, metrics, hostname = _build_registry()
+        max_depths = {}
+
+        _sample(metrics, hostname, max_depths)
+
+        assert metrics["collector_errors"].labels(host=hostname)._value.get() == 1.0
+        assert metrics["last_sample_timestamp"].labels(host=hostname)._value.get() == 0.0
+
 
 class TestPush:
     @patch("workers.systemmetricscollector.push_to_gateway")
@@ -214,11 +225,12 @@ class TestPush:
         assert max_depths == {}
 
     @patch("workers.systemmetricscollector.push_to_gateway")
-    def test_pushgateway_failure_increments_errors(self, mock_push):
+    def test_pushgateway_failure_retains_max_depths(self, mock_push):
         mock_push.side_effect = Exception("connection refused")
         registry, metrics, hostname = _build_registry()
-        max_depths = {}
+        max_depths = {"registry": 200, "web": 10, "secscan": 0}
 
         _push(registry, metrics, hostname, max_depths)
 
         assert metrics["collector_errors"].labels(host=hostname)._value.get() == 1.0
+        assert max_depths == {"registry": 200, "web": 10, "secscan": 0}

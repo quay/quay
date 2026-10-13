@@ -10,7 +10,7 @@ readiness or request serving.
 Queue depth is measured by counting pending (not-yet-accepted) connections
 in ``/proc/net/unix``.  These appear as entries with state ``02`` (connected)
 and inode ``0``.  Active connections (accepted by gunicorn) appear as
-state ``03`` entries. 
+state ``03`` entries.
 
 Sampling happens every SAMPLE_INTERVAL_SECONDS (default 5s).  Metrics are
 pushed to the Pushgateway every PUSH_INTERVAL_SECONDS (default 30s).
@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 PUSHGATEWAY_URL = "localhost:9091"
 PUSH_JOB = "system_metrics_collector"
-SAMPLE_INTERVAL_SECONDS = int(os.getenv("SYSTEM_METRICS_SAMPLE_INTERVAL", "5"))
-PUSH_INTERVAL_SECONDS = int(os.getenv("SYSTEM_METRICS_PUSH_INTERVAL", "30"))
+SAMPLE_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_SAMPLE_INTERVAL", "5")))
+PUSH_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_PUSH_INTERVAL", "30")))
 PROC_NET_UNIX = "/proc/net/unix"
 
 SOCKET_CONFIGS = [
@@ -124,12 +124,17 @@ def _read_proc_net_unix(proc_path=PROC_NET_UNIX):
                     stats[path]["active"] += 1
     except OSError as exc:
         logger.warning("Failed to read %s: %s", proc_path, exc)
+        raise
     return stats
 
 
 def _sample(metrics, hostname, max_depths):
     """Take one sample and update current metrics and high-water marks."""
-    socket_stats = _read_proc_net_unix()
+    try:
+        socket_stats = _read_proc_net_unix()
+    except OSError:
+        metrics["collector_errors"].labels(host=hostname).inc()
+        return
 
     for sock_cfg in SOCKET_CONFIGS:
         sock_name = sock_cfg["name"]
@@ -168,11 +173,10 @@ def _push(registry, metrics, hostname, max_depths):
             grouping_key={"host": hostname},
         )
         logger.debug("Pushed socket metrics to pushgateway")
+        max_depths.clear()
     except Exception:
         logger.warning("Failed to push to pushgateway", exc_info=True)
         metrics["collector_errors"].labels(host=hostname).inc()
-
-    max_depths.clear()
 
 
 def main():
