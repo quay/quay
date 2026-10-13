@@ -75,6 +75,11 @@ export enum NavigationPath {
   // Invoice list
   invoiceList = '/organization/:organizationName/invoices',
 
+  subscriptionList = '/organization/:organizationName/subscriptions',
+
+  // Plan selection page
+  organizationPlans = '/organization/:organizationName/plans',
+
   // Build trigger setup
   setupBuildTrigger = '/repository/:organizationName/:repositoryName/trigger/:triggerUuid',
 

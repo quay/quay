@@ -1,5 +1,10 @@
 import {mock} from '../../MockAxios';
 import {AxiosRequestConfig} from 'axios';
+import {
+  loadReceiptSettings,
+  saveReceiptSettings,
+} from '../billing/receipt-settings';
+import type {ReceiptSettings} from '../billing/receipt-settings';
 
 const response = {
   name: 'projectquay',
@@ -62,7 +67,22 @@ mock.onGet(orgPathRegex).reply((config) => {
     response.name = orgNameMatch[1];
   }
 
-  return [200, response];
+  return [
+    200,
+    {...response, ...loadReceiptSettings(response.name, response.email)},
+  ];
+});
+
+mock.onPut(orgPathRegex).reply((request) => {
+  const name = request.url.match(orgPathRegex)[1];
+  const settings = JSON.parse(request.data) as ReceiptSettings;
+  if (
+    typeof settings.invoice_email !== 'boolean' ||
+    typeof settings.invoice_email_address !== 'string'
+  )
+    return [400, {error_message: 'Provide receipt settings.'}];
+  saveReceiptSettings(name, settings);
+  return [200, {...response, name, ...settings}];
 });
 
 mock.onPost('/api/v1/organization/').reply((request: AxiosRequestConfig) => {

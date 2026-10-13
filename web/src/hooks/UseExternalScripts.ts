@@ -13,13 +13,13 @@ const loadingPromises = new Map<string, Promise<void>>();
  * Uses module-level shared state to ensure scripts are loaded only once, even when multiple
  * components use this hook simultaneously.
  */
-export function useExternalScripts() {
+export function useExternalScripts(enabled = true) {
   const config = useQuayConfig();
   const [statusPageLoaded, setStatusPageLoaded] = useState(false);
 
   useEffect(() => {
     // Only load external scripts when BILLING feature is enabled (quay.io deployments)
-    if (!config?.features?.BILLING) {
+    if (!enabled || !config?.features?.BILLING) {
       return;
     }
 
@@ -100,7 +100,7 @@ export function useExternalScripts() {
     return () => {
       setStatusPageLoaded(false);
     };
-  }, [config?.features?.BILLING]);
+  }, [config?.features?.BILLING, enabled]);
 
   return {statusPageLoaded};
 }

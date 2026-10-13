@@ -1,146 +1,113 @@
 import {useEffect, useState} from 'react';
 import {
-  ActionGroup,
   Alert,
   Button,
-  Checkbox,
+  Content,
   Flex,
-  FlexItem,
-  Form,
-  FormAlert,
-  FormGroup,
-  FormHelperText,
-  TextInput,
+  Skeleton,
+  Stack,
   Title,
 } from '@patternfly/react-core';
-import {useNavigate} from 'react-router-dom';
-import {AxiosError} from 'axios';
-import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
+import {Link, useNavigate, useSearchParams} from 'react-router-dom';
+import {useQueryClient} from '@tanstack/react-query';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
 import {useCard} from 'src/hooks/UseCard';
-import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useInvoices} from 'src/hooks/UseInvoices';
+import {useMarketplaceSubscriptions} from 'src/hooks/UseMarketplaceSubscriptions';
+import {useStripeCardSetup} from 'src/hooks/UseStripeCardSetup';
 import {NavigationPath} from 'src/routes/NavigationPath';
 import Alerts from 'src/routes/Alerts';
 import {CurrentPlanSection} from './CurrentPlanSection';
 import {UsageSection} from './UsageSection';
 import {PaymentMethodSection} from './PaymentMethodSection';
 import MarketplaceDetails from './MarketplaceDetails';
+import {InvoiceSettingsModal} from './InvoiceSettingsModal';
 
-type BillingInformationProps = {
-  organizationName: string;
-};
+type BillingInformationProps = {organizationName: string};
+const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
-const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
-
-export const BillingInformation = ({organizationName}: BillingInformationProps) => {
+export const BillingInformation = ({
+  organizationName,
+}: BillingInformationProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const {user} = useCurrentUser();
-  const {addAlert} = useUI();
+  const [invoiceSettingsOpen, setInvoiceSettingsOpen] = useState(false);
+  const {organization, isUserOrganization} = useOrganization(organizationName);
+  const settings = isUserOrganization ? user : organization;
+  const stripeSetup = useStripeCardSetup(organizationName, !isUserOrganization);
+  const checkoutResult = searchParams.get('paymentMethod');
 
-  const {organization, isUserOrganization, loading} = useOrganization(organizationName);
+  useEffect(() => {
+    if (checkoutResult !== 'returned') return;
+    // Stripe's webhook may finish after Checkout redirects back to Quay.
+    let refreshes = 0;
+    const interval = window.setInterval(() => {
+      void queryClient.invalidateQueries(['card', organizationName]);
+      refreshes += 1;
+      if (refreshes >= 5) window.clearInterval(interval);
+    }, 2000);
+    return () => window.clearInterval(interval);
+  }, [checkoutResult, organizationName, queryClient]);
 
   const {
     currentPlan,
     currentPlanIsLoading,
     currentPlanError,
     plans,
-    privateAllowed,
     privateCount,
   } = useUpgradePlan(organizationName, !isUserOrganization);
-
-  const {card, isLoading: cardLoading, isError: cardError} = useCard(
-    organizationName,
-    !isUserOrganization,
-  );
-
+  const {
+    card,
+    isLoading: cardLoading,
+    isError: cardError,
+  } = useCard(organizationName, !isUserOrganization);
   const {totalResults: publicCount} = useRepositories(organizationName, false);
-
-  const usedPrivate = currentPlan?.usedPrivateRepos ?? 0;
-  const [totalPrivate, setTotalPrivate] = useState(privateCount ?? 0);
-
-  useEffect(() => {
-    setTotalPrivate(privateCount ?? 0);
-  }, [privateCount]);
-
-  const {updateOrgSettings} = useOrganizationSettings({
-    name: organizationName,
-    onSuccess: () =>
-      addAlert({title: 'Successfully updated settings', variant: AlertVariant.Success, key: 'alert'}),
-    onError: (err) =>
-      addAlert({title: err.response.data.error_message, variant: AlertVariant.Failure, key: 'alert'}),
-  });
-
-  const {updateUser, loading: userUpdateLoading, error: userUpdateError} = useUpdateUser({
-    onSuccess: () =>
-      addAlert({title: 'Successfully updated settings', variant: AlertVariant.Success, key: 'alert'}),
-    onError: (err) =>
-      addAlert({title: err.response.data.error_message, variant: AlertVariant.Failure, key: 'alert'}),
-  });
-
-  type validate = 'success' | 'warning' | 'error' | 'default';
-  const [touched, setTouched] = useState(false);
-  const [invoiceEmail, setInvoiceEmail] = useState(false);
-  const [invoiceEmailAddress, setInvoiceEmailAddress] = useState('');
-  const [validated, setValidated] = useState<validate>('success');
-
-  useEffect(() => {
-    resetFields();
-  }, [loading]);
-
-  const resetFields = () => {
-    if (!loading && organization) {
-      setInvoiceEmail(organization.invoice_email ?? false);
-      setInvoiceEmailAddress(organization.invoice_email_address ?? '');
-      setValidated(organization.invoice_email_address ? 'success' : 'default');
-    } else if (isUserOrganization && user) {
-      setInvoiceEmail(user.invoice_email ?? false);
-      setInvoiceEmailAddress(user.invoice_email_address ?? '');
-      setValidated(user.invoice_email_address ? 'success' : 'default');
-    }
-    setTouched(false);
-  };
-
-  // Look up full plan detail from the plans list for price and deprecated flag
-  const planDetail = plans?.find((p) => p.stripeId === currentPlan?.plan) ?? null;
-
-  const isPaymentFailed = currentPlan?.status === 'past_due';
-
-  const totalPrivateDisplay =
-    BigInt(totalPrivate) >= MAX_SAFE ? Number.MAX_SAFE_INTEGER : totalPrivate;
+  const {
+    invoices,
+    isLoading: invoicesLoading,
+    isError: invoicesError,
+  } = useInvoices(organizationName, !isUserOrganization);
+  const {
+    userSubscriptions,
+    orgSubscriptions,
+    loading: portalLoading,
+    error: portalError,
+  } = useMarketplaceSubscriptions(organizationName, user?.username);
+  const portalSubscriptions = isUserOrganization
+    ? userSubscriptions.filter(
+        (subscription) => subscription.assigned_to_org == null,
+      )
+    : orgSubscriptions;
+  const portalAllowance =
+    portalLoading || portalError
+      ? 0
+      : portalSubscriptions.reduce(
+          (total, subscription) =>
+            total +
+            subscription.quantity * (subscription.metadata?.privateRepos ?? 0),
+          0,
+        );
+  const totalPrivate = Math.min(
+    (privateCount ?? 0) + portalAllowance,
+    MAX_SAFE,
+  );
+  const planDetail =
+    plans?.find((plan) => plan.stripeId === currentPlan?.plan) ?? null;
 
   return (
-    <Form id="billing-form" style={{maxWidth: '600px'}}>
+    <Stack hasGutter style={{maxWidth: '600px'}} data-testid="plan-information">
       <Alerts />
-
-      {isPaymentFailed && (
-        <FormAlert>
-          <Alert variant="danger" title="Payment failed" isInline>
-            Your last payment failed. Please update your payment method to avoid service
-            interruption.
-          </Alert>
-        </FormAlert>
+      {currentPlan?.status === 'past_due' && (
+        <Alert variant="danger" title="Payment failed" isInline>
+          Your last payment failed. Please update your payment method to avoid
+          service interruption.
+        </Alert>
       )}
-
-      {userUpdateError && (
-        <FormAlert>
-          <Alert
-            variant="danger"
-            title={
-              (
-                userUpdateError as AxiosError & {
-                  response?: {data?: {error_message?: string}};
-                }
-              )?.response?.data?.error_message ?? 'An error occurred'
-            }
-            isInline
-            aria-live="polite"
-          />
-        </FormAlert>
-      )}
-
       <Title headingLevel="h3">Current Plan</Title>
       <CurrentPlanSection
         currentPlan={currentPlan ?? null}
@@ -148,110 +115,103 @@ export const BillingInformation = ({organizationName}: BillingInformationProps) 
         isLoading={currentPlanIsLoading}
         isError={!!currentPlanError}
       />
-
       <Title headingLevel="h3">Usage</Title>
       <UsageSection
-        privateCount={usedPrivate}
-        totalPrivate={totalPrivateDisplay}
+        privateCount={currentPlan?.usedPrivateRepos ?? 0}
+        totalPrivate={totalPrivate}
         publicCount={publicCount}
         isLoading={currentPlanIsLoading}
         isError={!!currentPlanError}
       />
-
       <Title headingLevel="h3">Payment Method</Title>
-      <PaymentMethodSection card={card} isLoading={cardLoading} isError={cardError} />
-
-      <Flex>
-        <FlexItem>
-          <Button
-            variant="secondary"
-            onClick={() => navigate(NavigationPath.overviewList)}
-          >
-            Change Plan
-          </Button>
-        </FlexItem>
-      </Flex>
-
-      <MarketplaceDetails
-        organizationName={organizationName}
-        updateTotalPrivate={(mp) =>
-          setTotalPrivate(mp + (privateCount ?? 0))
+      {stripeSetup.isError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to open Stripe Checkout. Please try again."
+        />
+      )}
+      <PaymentMethodSection
+        card={card}
+        isLoading={cardLoading}
+        isError={cardError}
+        isUpdating={stripeSetup.isLoading}
+        onChange={
+          process.env.MOCK_API === 'true' || currentPlan?.hasSubscription
+            ? () => stripeSetup.mutate()
+            : undefined
         }
       />
-
-      <Title headingLevel="h3">Invoice Settings</Title>
-      <FormGroup fieldId="checkbox">
-        <Checkbox
-          id="checkbox"
-          data-testid="billing-receipts-checkbox"
-          label="Send receipts via email"
-          aria-label="Send receipts via email"
-          isChecked={invoiceEmail}
-          onChange={() => {
-            setTouched(true);
-            setInvoiceEmail((v) => !v);
-          }}
-        />
-      </FormGroup>
-      <FormGroup isInline label="Invoice Email" fieldId="form-email">
-        <TextInput
-          type="email"
-          id="billing-settings-invoice-email"
-          data-testid="billing-invoice-email"
-          value={invoiceEmailAddress}
-          onChange={(_, val) => {
-            setTouched(true);
-            setInvoiceEmailAddress(val);
-            if (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(val)) {
-              setValidated('success');
-            } else if (!val) {
-              setValidated('default');
-            } else {
-              setValidated('error');
-            }
-          }}
-        />
-        <FormHelperText>Invoices will be sent to this e-mail address.</FormHelperText>
-      </FormGroup>
-
-      <Button
-        variant="link"
-        isInline
-        onClick={() => navigate(`/organization/${organizationName}/invoices`)}
-      >
-        View Invoices
-      </Button>
-
-      <ActionGroup>
-        <Flex justifyContent={{default: 'justifyContentFlexEnd'}} width="100%">
-          <Button
-            variant="primary"
-            id="save-billing-settings"
-            data-testid="billing-save-button"
-            isLoading={userUpdateLoading}
-            isDisabled={!touched || validated === 'error'}
-            onClick={async (e) => {
-              e.preventDefault();
-              if (!isUserOrganization) {
-                await updateOrgSettings({
-                  invoice_email: invoiceEmail,
-                  invoice_email_address: invoiceEmailAddress,
-                });
-              } else {
-                await updateUser({
-                  invoice_email: invoiceEmail,
-                  invoice_email_address: invoiceEmailAddress,
-                });
-              }
-            }}
+      <div>
+        <Button
+          variant="secondary"
+          onClick={() =>
+            navigate(
+              NavigationPath.organizationPlans.replace(
+                ':organizationName',
+                encodeURIComponent(organizationName),
+              ),
+            )
+          }
+        >
+          Change Plan
+        </Button>
+      </div>
+      <MarketplaceDetails organizationName={organizationName} />
+      <section aria-labelledby="billing-invoices-heading">
+        <Title
+          headingLevel="h3"
+          id="billing-invoices-heading"
+          className="pf-v6-u-mb-md"
+        >
+          Invoices
+        </Title>
+        <Flex
+          alignItems={{default: 'alignItemsCenter'}}
+          spaceItems={{default: 'spaceItemsSm'}}
+          className="pf-v6-u-mb-md"
+        >
+          {invoicesLoading ? (
+            <Skeleton
+              width="100px"
+              screenreaderText="Loading invoice summary"
+            />
+          ) : (
+            <Content data-testid="invoice-summary">
+              {invoicesError
+                ? 'Unable to load invoices.'
+                : `${invoices.length} ${
+                    invoices.length === 1 ? 'invoice' : 'invoices'
+                  }`}
+            </Content>
+          )}
+          <Link
+            to={NavigationPath.invoiceList.replace(
+              ':organizationName',
+              encodeURIComponent(organizationName),
+            )}
           >
-            Save
-          </Button>
-          <Button variant="link" onClick={() => resetFields()} isDisabled={!touched}>
-            Cancel
-          </Button>
+            View invoices
+          </Link>
         </Flex>
-      </ActionGroup>
-    </Form>
+        <Button
+          variant="secondary"
+          data-testid="invoice-settings-button"
+          isDisabled={!settings}
+          onClick={() => setInvoiceSettingsOpen(true)}
+        >
+          Invoice settings
+        </Button>
+      </section>
+      {invoiceSettingsOpen && (
+        <InvoiceSettingsModal
+          organizationName={organizationName}
+          isUserOrganization={isUserOrganization}
+          enabled={settings?.invoice_email ?? false}
+          email={settings?.invoice_email_address ?? settings?.email ?? ''}
+          onClose={() => setInvoiceSettingsOpen(false)}
+        />
+      )}
+    </Stack>
   );
 };

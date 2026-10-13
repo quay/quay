@@ -1,4 +1,11 @@
-import {Content, Flex, FlexItem, Skeleton} from '@patternfly/react-core';
+import {
+  Button,
+  Content,
+  Flex,
+  FlexItem,
+  Label,
+  Skeleton,
+} from '@patternfly/react-core';
 import {CreditCardIcon} from '@patternfly/react-icons';
 import {BillingCard} from 'src/resources/BillingResource';
 
@@ -6,12 +13,23 @@ type Props = {
   card: BillingCard | null;
   isLoading: boolean;
   isError: boolean;
+  onChange?: () => void;
+  isUpdating?: boolean;
 };
 
-export function PaymentMethodSection({card, isLoading, isError}: Props) {
+export function PaymentMethodSection({
+  card,
+  isLoading,
+  isError,
+  onChange,
+  isUpdating = false,
+}: Props) {
   if (isLoading) {
     return (
-      <Flex direction={{default: 'column'}} spaceItems={{default: 'spaceItemsSm'}}>
+      <Flex
+        direction={{default: 'column'}}
+        spaceItems={{default: 'spaceItemsSm'}}
+      >
         <Skeleton data-testid="payment-method-skeleton" width="30%" />
         <Skeleton width="20%" />
       </Flex>
@@ -23,29 +41,76 @@ export function PaymentMethodSection({card, isLoading, isError}: Props) {
   }
 
   if (!card?.last4) {
-    return <Content>No payment method on file.</Content>;
+    return (
+      <Flex direction={{default: 'column'}}>
+        <FlexItem>
+          <Content>No payment method on file.</Content>
+        </FlexItem>
+        {onChange && (
+          <FlexItem>
+            <Button
+              variant="secondary"
+              onClick={onChange}
+              isLoading={isUpdating}
+              isDisabled={isUpdating}
+            >
+              Add payment method
+            </Button>
+          </FlexItem>
+        )}
+      </Flex>
+    );
   }
 
   return (
-    <Flex spaceItems={{default: 'spaceItemsMd'}} alignItems={{default: 'alignItemsCenter'}}>
+    <Flex
+      spaceItems={{default: 'spaceItemsMd'}}
+      alignItems={{default: 'alignItemsCenter'}}
+      data-testid="stored-payment-method"
+    >
       <FlexItem>
         <CreditCardIcon />
       </FlexItem>
       <FlexItem>
-        <Flex direction={{default: 'column'}} spaceItems={{default: 'spaceItemsNone'}}>
+        <Flex
+          direction={{default: 'column'}}
+          spaceItems={{default: 'spaceItemsNone'}}
+        >
           <FlexItem>
-            <Content>{card.type}</Content>
+            <Flex alignItems={{default: 'alignItemsCenter'}}>
+              <FlexItem>
+                <Content>{card.type}</Content>
+              </FlexItem>
+              <FlexItem>
+                <Label>Default</Label>
+              </FlexItem>
+            </Flex>
           </FlexItem>
           <FlexItem>
-            <Content>••••{card.last4}</Content>
+            <Content>•••• {card.last4}</Content>
+          </FlexItem>
+          <FlexItem>
+            <Content>{card.owner}</Content>
           </FlexItem>
           <FlexItem>
             <Content>
-              {card.exp_month}/{card.exp_year}
+              Expires {String(card.exp_month).padStart(2, '0')}/{card.exp_year}
             </Content>
           </FlexItem>
         </Flex>
       </FlexItem>
+      {onChange && (
+        <FlexItem>
+          <Button
+            variant="secondary"
+            onClick={onChange}
+            isLoading={isUpdating}
+            isDisabled={isUpdating}
+          >
+            Change payment method
+          </Button>
+        </FlexItem>
+      )}
     </Flex>
   );
 }

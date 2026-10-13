@@ -42,10 +42,23 @@ import {useUI} from 'src/contexts/UIContext';
 import {useExternalScripts} from 'src/hooks/UseExternalScripts';
 
 import {InvoiceList} from './OrganizationsList/Organization/Tabs/Settings/InvoiceList';
+import {SubscriptionList} from './OrganizationsList/Organization/Tabs/Settings/SubscriptionList';
+import {ChangePlan} from './OrganizationsList/Organization/Tabs/Settings/ChangePlan';
+import {StripeCheckoutPreview} from './OrganizationsList/Organization/Tabs/Settings/StripeCheckoutPreview';
 
 function InvoiceListRoute() {
   const {organizationName} = useParams<{organizationName: string}>();
   return <InvoiceList organizationName={organizationName} />;
+}
+
+function SubscriptionListRoute() {
+  const {organizationName} = useParams<{organizationName: string}>();
+  return <SubscriptionList organizationName={organizationName} />;
+}
+
+function ChangePlanRoute() {
+  const {organizationName} = useParams<{organizationName: string}>();
+  return <ChangePlan organizationName={organizationName} />;
 }
 
 // Lazy load route components for better performance
@@ -161,8 +174,16 @@ function RepositoryShorthandRedirect() {
 
 const NavigationRoutes = [
   {
+    path: NavigationPath.subscriptionList,
+    Component: <SubscriptionListRoute />,
+  },
+  {
     path: NavigationPath.invoiceList,
     Component: <InvoiceListRoute />,
+  },
+  {
+    path: NavigationPath.organizationPlans,
+    Component: <ChangePlanRoute />,
   },
   {
     path: NavigationPath.teamMember,
@@ -242,9 +263,12 @@ export function StandaloneMain() {
   const {user, loading: userLoading, error: userError} = useCurrentUser();
   const location = useLocation();
   const {clearAllAlerts, setIsMobileView} = useUI();
+  const isPrototypeCheckout =
+    process.env.MOCK_API === 'true' &&
+    new URLSearchParams(location.search).get('prototypeCheckout') === '1';
 
   // Load external scripts (Stripe, StatusPage) only when BILLING feature is enabled (PROJQUAY-9803)
-  useExternalScripts();
+  useExternalScripts(!isPrototypeCheckout);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -287,6 +311,18 @@ export function StandaloneMain() {
 
   // Surface config or user fetch errors via the ErrorBoundary
   const hasError = !!configError || !!userError;
+  if (isPrototypeCheckout) {
+    const namespace = location.pathname.match(/^\/organization\/([^/]+)$/)?.[1];
+    if (namespace) {
+      return (
+        <ErrorBoundary hasError={hasError} fallback={<SiteUnavailableError />}>
+          <StripeCheckoutPreview
+            organizationName={decodeURIComponent(namespace)}
+          />
+        </ErrorBoundary>
+      );
+    }
+  }
   return (
     <ErrorBoundary hasError={hasError} fallback={<SiteUnavailableError />}>
       <Page

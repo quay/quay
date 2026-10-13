@@ -97,12 +97,58 @@ export async function fetchCard(org: string = null) {
   return response.data.card;
 }
 
-export async function fetchMarketplaceSubscriptions(org: string = null) {
+export interface CardSetupReturnUrls {
+  success_url: string;
+  cancel_url: string;
+}
+
+export async function createCardSetupSession(
+  returnUrls: CardSetupReturnUrls,
+  org: string = null,
+): Promise<{url: string}> {
+  const path =
+    org != null
+      ? `/api/v1/organization/${encodeURIComponent(org)}/card`
+      : '/api/v1/user/card';
+  const response = await axios.post<{url: string}>(path, returnUrls);
+  if (!response.data?.url) {
+    throw new Error('Stripe did not return a checkout URL. Please try again.');
+  }
+  return response.data;
+}
+
+export async function createSubscriptionCheckoutSession(
+  plan: string,
+  returnUrls: CardSetupReturnUrls,
+  org: string = null,
+): Promise<{url: string}> {
+  const path =
+    org != null
+      ? `/api/v1/organization/${encodeURIComponent(org)}/plan`
+      : '/api/v1/user/plan';
+  const response = await axios.post<{url: string}>(path, {plan, ...returnUrls});
+  if (!response.data?.url)
+    throw new Error('Stripe did not return a checkout URL. Please try again.');
+  return response.data;
+}
+
+export interface MarketplaceSubscription {
+  id: string;
+  subscription_id?: string;
+  sku: string;
+  quantity: number;
+  assigned_to_org?: string | null;
+  metadata: {privateRepos: number};
+}
+
+export async function fetchMarketplaceSubscriptions(
+  org: string = null,
+): Promise<MarketplaceSubscription[]> {
   const url: string =
     org != null
       ? `/api/v1/organization/${org}/marketplace`
       : '/api/v1/user/marketplace';
-  const response: AxiosResponse = await axios.get(url);
+  const response = await axios.get<MarketplaceSubscription[]>(url);
   return response.data;
 }
 
@@ -144,6 +190,7 @@ export async function setMarketplaceOrgRemoval(
 
 export interface Invoice {
   id: string;
+  download_url?: string;
   date: number;
   period_start: number;
   period_end: number;

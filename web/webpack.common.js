@@ -149,7 +149,17 @@ module.exports = (env) => {
         template: path.resolve(__dirname, 'src', 'index.html'),
       }),
       new CopyPlugin({
-        patterns: [{from: './src/assets/favicon.png', to: 'images'}],
+        patterns: [
+          {from: './src/assets/favicon.png', to: 'images'},
+          ...(process.env.MOCK_API === 'true'
+            ? [
+                {
+                  from: './src/tests/fake-db/data/billing/invoices/*.{pdf,zip}',
+                  to: 'invoices/[name][ext]',
+                },
+              ]
+            : []),
+        ],
       }),
     ],
     resolve: {
