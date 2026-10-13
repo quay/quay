@@ -452,7 +452,14 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Part B: Regex search
       // Open advanced search panel
+      await expect(
+        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+      ).not.toBeVisible();
       await authenticatedPage.getByLabel('Open advanced search').click();
+      // Wait for the advanced search panel to open before interacting
+      await expect(
+        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+      ).toBeVisible();
 
       // Enable regex mode
       await authenticatedPage.locator('#filter-input-regex-checker').click();
