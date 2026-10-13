@@ -13,7 +13,12 @@ from flask_principal import AnonymousIdentity, identity_changed
 from peewee import IntegrityError
 
 import features
-from app import all_queues, app, authentication, avatar
+from app import (
+    all_queues,
+    app,
+    authentication,
+    avatar,
+)
 from app import billing as stripe
 from app import (
     ip_resolver,
@@ -419,6 +424,10 @@ class User(ApiResource):
         """
         Update a users details such as password or email.
         """
+        # A robot API token with user:admin passes the decorators; this is a human-account action.
+        if get_authenticated_user().robot:
+            raise Unauthorized()
+
         user = get_authenticated_user()
         user_data = request.get_json()
         previous_username = None
@@ -622,6 +631,9 @@ class User(ApiResource):
         """
         Deletes the current user.
         """
+        if get_authenticated_user().robot:
+            raise Unauthorized()
+
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
 

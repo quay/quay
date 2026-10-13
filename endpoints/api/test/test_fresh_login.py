@@ -10,7 +10,12 @@ import datetime
 
 import pytest
 
-from endpoints.api import FRESH_LOGIN_TIMEOUT, api
+from app import instance_keys
+from auth.validateresult import AuthKind, ValidateResult
+from data import model
+from data.model import api_token
+from endpoints.api import FRESH_LOGIN_TIMEOUT, api, require_fresh_login
+from endpoints.api.appspecifictokens import AppToken, AppTokens
 from endpoints.api.billing import (
     OrganizationCard,
     OrganizationPlan,
@@ -45,6 +50,7 @@ from endpoints.api.user import (
     User,
     UserAuthorization,
 )
+from endpoints.exception import Unauthorized
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
@@ -352,3 +358,83 @@ def test_mirror_mutation_requires_fresh_login(endpoint, method, params, body, ap
         _stale_session(cl)
         result = conduct_api_call(cl, endpoint, method, params, body, expected_code=401)
         _assert_fresh_login_required(result)
+
+
+# ---------------------------------------------------------------------------
+# Robot credentials
+# ---------------------------------------------------------------------------
+def _put_repo_permission_as_robot(app, bearer, expected_code):
+    with client_with_identity(None, app) as cl:
+        conduct_api_call(
+            cl,
+            RepositoryUserPermission,
+            "PUT",
+            {"repository": "devtable/simple", "username": "public"},
+            {"role": "read"},
+            expected_code,
+            headers={"Authorization": "Bearer " + bearer},
+        )
+
+
+# repo:read pins scope enforcement after the exemption: require_repo_admin refuses it before
+# require_fresh_login runs, so it does not exercise the exemption itself.
+@pytest.mark.parametrize("scope, expected_code", [("repo:admin", 200), ("repo:read", 403)])
+def test_robot_api_token_skips_fresh_login(scope, expected_code, app):
+    robot = model.user.lookup_robot("devtable+dtrobot")
+    model.permission.set_user_repo_permission(robot.username, "devtable", "simple", "admin")
+    _, secret = api_token.create_token_under_limit(
+        robot, model.user.get_user("devtable"), scope, 3600, "CI token"
+    )
+
+    _put_repo_permission_as_robot(app, secret, expected_code)
+
+
+def test_federated_robot_jwt_skips_fresh_login(app):
+    robot, _ = model.user.create_robot("freshfed", model.user.get_user("devtable"))
+    model.permission.set_user_repo_permission(robot.username, "devtable", "simple", "admin")
+    binding = model.user.create_robot_federation_config(
+        robot,
+        [
+            {
+                "issuer": "https://issuer.example",
+                "subject": "system:serviceaccount:ci:builder",
+                "audiences": ["quay"],
+                "api_scopes": "repo:admin",
+            }
+        ],
+    )[0]
+    token = model.user.generate_federated_robot_jwt_token(
+        instance_keys, robot, "repo:admin", binding
+    )
+
+    _put_repo_permission_as_robot(app, token, 200)
+
+
+def test_plain_robot_credentials_require_fresh_login_refused(app):
+    robot = model.user.lookup_robot("devtable+dtrobot")
+    with app.test_request_context():
+        ValidateResult(AuthKind.credentials, robot=robot).apply_to_context()
+        with pytest.raises(Unauthorized):
+            require_fresh_login(lambda: None)()
+
+
+@pytest.mark.parametrize(
+    "endpoint, method, params, body",
+    [
+        (AppTokens, "POST", None, {"title": "ci"}),
+        (AppToken, "GET", {"token_uuid": "someuuid"}, None),
+        (AppToken, "DELETE", {"token_uuid": "someuuid"}, None),
+        (User, "PUT", None, {"password": "newpassword123"}),
+        (User, "DELETE", None, None),
+    ],
+)
+def test_robot_api_token_refused_on_user_account_endpoints(endpoint, method, params, body, app):
+    robot = model.user.lookup_robot("devtable+dtrobot")
+    _, secret = api_token.create_token_under_limit(
+        robot, model.user.get_user("devtable"), "user:admin", 3600, "CI token"
+    )
+
+    with client_with_identity(None, app) as cl:
+        conduct_api_call(
+            cl, endpoint, method, params, body, 403, headers={"Authorization": "Bearer " + secret}
+        )
