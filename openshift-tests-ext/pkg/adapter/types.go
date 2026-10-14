@@ -1,6 +1,6 @@
-// Package adapter provides the generic Quay exec adapter for the Quay OTE extension.
+// Package adapter provides a generic exec adapter for OTE extensions.
 //
-// The adapter is scenario-agnostic: every Quay scenario is a JSON ScenarioSpec.
+// The adapter is scenario-agnostic: every scenario is a JSON ScenarioSpec.
 package adapter
 
 // ScenarioSpec is the only per-scenario input the adapter understands.

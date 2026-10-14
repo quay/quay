@@ -21,6 +21,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// Use local framework during development
-// TODO: Update to published version once framework changes are merged
-replace github.com/openshift-eng/openshift-tests-extension => /home/amiskin/openshift-tests-extension
+// TODO: Replace with published version once openshift-eng/openshift-tests-extension is available upstream
+// For PoC/testing: clone https://github.com/openshift-eng/openshift-tests-extension to parent directory
+replace github.com/openshift-eng/openshift-tests-extension => ../../openshift-tests-extension

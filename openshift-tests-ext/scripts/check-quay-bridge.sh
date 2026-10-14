@@ -23,4 +23,3 @@ fi
 
 echo "PASS: Quay Bridge operator is installed (${csvName})"
 exit 0
-true

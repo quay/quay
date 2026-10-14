@@ -34,4 +34,3 @@ fi
 
 echo "PASS: Quay registry is operational in ${namespace}"
 exit 0
-true

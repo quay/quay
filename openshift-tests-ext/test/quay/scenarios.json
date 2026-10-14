@@ -13,7 +13,7 @@
     "name": "[sig-quay] Quay Bridge operator is installed",
     "entrypoint": "/bin/bash",
     "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-bridge.sh"],
-    "tags": ["quay"],
+    "tags": ["SMOKE", "quay"],
     "timeout": "5m"
   }
 ]
