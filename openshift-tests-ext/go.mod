@@ -3,7 +3,7 @@ module github.com/quay/quay/openshift-tests-ext
 go 1.23.0
 
 require (
-	github.com/openshift-eng/openshift-tests-extension v0.0.0-20260831105930-c81d84cb88a7
+	github.com/openshift-eng/openshift-tests-extension v0.0.0-20261005190041-64972ccf1568
 	github.com/spf13/cobra v1.8.1
 )
 
@@ -18,9 +18,4 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// TODO: Replace with published version once openshift-eng/openshift-tests-extension is available upstream
-// For PoC/testing: clone https://github.com/openshift-eng/openshift-tests-extension to parent directory
-replace github.com/openshift-eng/openshift-tests-extension => ../../openshift-tests-extension
