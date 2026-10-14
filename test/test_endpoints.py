@@ -250,6 +250,16 @@ class WebhookEndpointTestCase(EndpointTestCase):
             "webhooks.build_trigger_webhook", trigger_uuid="invalidtrigger", expected_code=404
         )
 
+    def test_oversized_multipart_field_does_not_break_request_logging(self):
+        # A multipart text field over MAX_FORM_MEMORY_SIZE must not raise from the
+        # after_request logging hook.
+        rv = self.app.post(
+            url_for("webhooks.build_trigger_webhook", trigger_uuid="invalidtrigger"),
+            data={"field": "a" * 600_000, "file": (BytesIO(b"x"), "f.txt")},
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(rv.status_code, 404)
+
     def test_valid_build_trigger_webhook_invalid_auth(self):
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]
         self.postResponse(
