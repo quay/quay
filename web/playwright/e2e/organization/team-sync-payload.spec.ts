@@ -23,11 +23,11 @@ test.describe(
     });
 
     test('maps keystone to group_id', () => {
-      expect(buildTeamSyncRequestData('keystone', 'keystone-group-123')).toEqual(
-        {
-          group_id: 'keystone-group-123',
-        },
-      );
+      expect(
+        buildTeamSyncRequestData('keystone', 'keystone-group-123'),
+      ).toEqual({
+        group_id: 'keystone-group-123',
+      });
     });
   },
 );

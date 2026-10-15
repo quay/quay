@@ -7,10 +7,7 @@
 import {APIRequestContext, APIResponse} from '@playwright/test';
 import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
-import {
-  buildTeamSyncRequestData,
-  TeamSyncService,
-} from './team-sync-payload';
+import {buildTeamSyncRequestData, TeamSyncService} from './team-sync-payload';
 
 export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
