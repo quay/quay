@@ -4,20 +4,13 @@
  * Tests the complete scan-on-push workflow from image push to vulnerability
  * results display in UI, including security badges and scan status transitions.
  *
- * IMPORTANT: These tests require:
- * - Real Clair service running (no mocking available)
- * - Container runtime (podman/docker) available
- * - PUBLIC repositories (Clair cannot scan private repos)
- * - SECURITY_SCANNER feature enabled
+ * Requires a running Clair and a container runtime to push images.
  */
 
 import {test, expect} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 import {waitForSecurityScan} from '../../utils/security';
 import {TEST_USERS} from '../../global-setup';
-
-// Namespace whitelisted for security scanning in local-dev/stack/config.yaml
-const SECURITY_SCAN_NAMESPACE = 'clairv4-org';
 
 test.describe(
   'Security Scan Lifecycle',
@@ -28,37 +21,16 @@ test.describe(
       '@feature:SECURITY_SCANNER',
       '@auth:Database',
     ],
-    timeout: 180000, // 3 min: image push (~30s) + scan wait (120s) + UI assertions (~30s)
   },
   () => {
-    // Ensure the security-scan-enabled organization exists
-    test.beforeAll(async ({userContext}) => {
-      const {ApiClient} = await import('../../utils/api');
-      const api = new ApiClient(userContext.request);
-      try {
-        await api.createOrganization(
-          SECURITY_SCAN_NAMESPACE,
-          `${SECURITY_SCAN_NAMESPACE}@example.com`,
-        );
-      } catch (error) {
-        // Organization might already exist - ignore 400 errors
-        if (!String(error).includes('already exists')) {
-          throw error;
-        }
-      }
-    });
+    // 3 min: image push (~30s) + scan wait (120s) + UI assertions (~30s)
+    test.describe.configure({timeout: 180_000});
 
     test('displays vulnerability results after scan completes', async ({
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo with unique name to avoid collisions
-      const repoName = `vuln-test-${Date.now()}`;
-      const repo = await api.repository(
-        SECURITY_SCAN_NAMESPACE,
-        repoName,
-        'public',
-      );
+      const repo = await api.repository(undefined, 'vuln-test', 'public');
 
       // Push image to trigger scan
       await pushImage(
@@ -84,8 +56,8 @@ test.describe(
         5000, // 5 sec poll interval
       );
 
-      // Verify scan completed (not queued)
-      expect(result.status).not.toBe('queued');
+      // Verify scan completed successfully
+      expect(result.status).toBe('scanned');
 
       // Navigate to security report tab
       await authenticatedPage.goto(
@@ -123,13 +95,7 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo with unique name to avoid collisions
-      const repoName = `badge-test-${Date.now()}`;
-      const repo = await api.repository(
-        SECURITY_SCAN_NAMESPACE,
-        repoName,
-        'public',
-      );
+      const repo = await api.repository(undefined, 'badge-test', 'public');
 
       await pushImage(
         repo.namespace,
@@ -182,17 +148,11 @@ test.describe(
       }
     });
 
-    test('scan status transitions from queued to scanned', async ({
+    test('tag page shows security report after scan completes', async ({
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo with unique name to avoid collisions
-      const repoName = `status-test-${Date.now()}`;
-      const repo = await api.repository(
-        SECURITY_SCAN_NAMESPACE,
-        repoName,
-        'public',
-      );
+      const repo = await api.repository(undefined, 'status-test', 'public');
 
       // Push image
       await pushImage(
