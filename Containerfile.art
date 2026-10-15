@@ -65,6 +65,10 @@ RUN set -ex\
 WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
+
+# Drop pyroscope dependency — no s390x support
+RUN sed -i '/^pyroscope-io/d' requirements.txt
+
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -83,8 +87,7 @@ USER 1001
 
 # TARGETARCH is provided by BuildKit (amd64, arm64, ppc64le, s390x)
 ARG TARGETARCH
-# Drop pyroscope dependency — no s390x support
-RUN sed -i '/^pyroscope-io/d' requirements.txt
+
 
 RUN set -ex \
 	; NO_BINARY_OPTS="" \
