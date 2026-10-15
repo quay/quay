@@ -1,13 +1,7 @@
 import time
 from unittest.mock import MagicMock, patch
 
-from data.database import (
-    QuotaNamespaceSize,
-    QuotaRepositorySize,
-    QuotaTypes,
-    Tag,
-    User,
-)
+from data.database import QuotaTypes, Tag, UploadedBlob, User
 from data.model.namespacequota import (
     check_limits,
     create_namespace_quota,
@@ -17,21 +11,17 @@ from data.model.namespacequota import (
 from data.model.oci.tag import find_repository_with_garbage, get_tag, retarget_tag
 from data.model.quota import get_namespace_size as get_namespace_size_row
 from data.model.quota import get_repository_size as get_repository_size_row
-from data.model.test.test_quota import (
-    CONFIG_LAYER_JSON,
-    _populate_blob,
-    create_manifest_for_testing,
-)
+from data.model.quota import reset_namespace_backfill
+from data.model.test.test_quota import CONFIG_LAYER_JSON
 from workers.gc.gcworker import GarbageCollectionWorker
 from workers.quotatotalworker import QuotaTotalWorker
 
 
-def create_tag_for_manifest(repository, manifest, tag_name):
+def create_tag_for_manifest(manifest, tag_name):
     """
     Create a tag pointing to a manifest.
 
     Args:
-        repository: Repository object
         manifest: Manifest object to tag
         tag_name: Name of the tag
 
@@ -70,16 +60,20 @@ def run_gc_worker(skip_lock=True):
     return worker
 
 
-def run_quota_worker():
+def run_quota_worker(*namespace_ids):
     """
-    Execute the quota total worker to recalculate quotas.
+    Reset the given namespaces' backfill markers and run the quota total worker.
 
-    Returns:
-        QuotaTotalWorker instance
+    reset_namespace_backfill zeroes size_bytes, so a test expecting 0 would pass
+    even if the worker never ran; asserting backfill_complete proves it did.
     """
-    worker = QuotaTotalWorker()
-    worker.backfill()
-    return worker
+    for namespace_id in namespace_ids:
+        reset_namespace_backfill(namespace_id)
+    QuotaTotalWorker().backfill()
+    for namespace_id in namespace_ids:
+        assert get_namespace_size_row(
+            namespace_id
+        ).backfill_complete, f"Quota worker did not recalculate namespace {namespace_id}"
 
 
 def get_namespace_quota(org_or_user):
@@ -178,31 +172,37 @@ def expire_tag(repository, tag_name):
     Returns:
         True if the tag was found and expired, False otherwise
     """
-    try:
-        past_time = int((time.time() - 3600) * 1000)  # 1 hour ago
+    past_time = int((time.time() - 3600) * 1000)  # 1 hour ago
 
-        # Resolve the *live* tag by name: after retarget_tag the repository can
-        # hold an expired historical row alongside the live row with the same
-        # name, and an unordered select could pick the historical one and expire
-        # the wrong manifest. get_tag applies the alive-only filter.
-        target = get_tag(repository.id, tag_name)
-        if target is None:
-            return False
-
-        # Expire the named tag along with any temporary/hidden tag protecting
-        # the same manifest.
-        Tag.update(lifetime_end_ms=past_time).where(
-            Tag.repository == repository, Tag.manifest == target.manifest_id
-        ).execute()
-
-        # Collapse the namespace's expiration window so the just-expired tags
-        # are past it and can be collected immediately.
-        User.update(removed_tag_expiration_s=0).where(
-            User.id == repository.namespace_user_id
-        ).execute()
-        return True
-    except Tag.DoesNotExist:
+    # Resolve the *live* tag by name: after retarget_tag the repository can
+    # hold an expired historical row alongside the live row with the same
+    # name, and an unordered select could pick the historical one and expire
+    # the wrong manifest. get_tag applies the alive-only filter.
+    target = get_tag(repository.id, tag_name)
+    if target is None:
         return False
+
+    # Expire the named tag along with any temporary/hidden tag protecting
+    # the same manifest.
+    Tag.update(lifetime_end_ms=past_time).where(
+        Tag.repository == repository, Tag.manifest == target.manifest_id
+    ).execute()
+
+    # Collapse the namespace's expiration window so the just-expired tags
+    # are past it and can be collected immediately.
+    User.update(removed_tag_expiration_s=0).where(User.id == repository.namespace_user_id).execute()
+    return True
+
+
+def delete_upload_links(repository):
+    """
+    Delete the repository's temporary UploadedBlob links, as GC does once they expire.
+
+    create_manifest_for_testing links every blob for 120 s, and
+    _is_storage_orphaned keeps any blob with an UploadedBlob row, expired or
+    not, so without this GC never deletes an ImageStorage row within a test.
+    """
+    UploadedBlob.delete().where(UploadedBlob.repository == repository).execute()
 
 
 def calculate_expected_size(*blobs):
