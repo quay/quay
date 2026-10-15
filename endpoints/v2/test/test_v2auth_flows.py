@@ -24,7 +24,7 @@ from app import instance_keys
 from auth.credential_consts import APP_SPECIFIC_TOKEN_USERNAME, OAUTH_TOKEN_USERNAME
 from auth.test.mock_oidc_server import MOCK_PRIVATE_KEY, mock_get, mock_request
 from data import model
-from data.database import RepositoryState
+from data.database import RepositoryState, db
 from data.model.appspecifictoken import (
     create_token,
     get_full_token_string,
@@ -118,8 +118,9 @@ def oidc_provider(app):
         patch("auth.oauth.oauth_login", manager),
         patch("oauth.oidc.request", side_effect=partial(mock_request, None)),
         # auth.oauth disables JWT verification under TESTING. Exercise the
-        # production validation options while retaining the Flask test client.
-        patch.dict(original_app.config, {"TESTING": False}),
+        # production validation options only in that module: blob operations
+        # need TESTING=True to preserve the database fixture's open transaction.
+        patch("auth.oauth.app", Mock(config={**original_app.config, "TESTING": False})),
     ):
         yield manager.get_service("testoidc")
 
@@ -259,7 +260,10 @@ class TestOIDCAuthIntegration:
         token = _bearer(
             client, repository, (OAUTH_TOKEN_USERNAME, id_token), "devtable", ["pull", "push", "*"]
         )
-        _push_pull_image(client, repository, token, auth_image)
+        # PostgreSQL fixtures hold a transaction open for test isolation. Exercise
+        # the same constraint on SQLite so blob operations cannot close it.
+        with db.atomic():
+            _push_pull_image(client, repository, token, auth_image)
 
     def test_oidc_org_membership_grants_repository_access(
         self, app, client, oidc_provider, auth_image
