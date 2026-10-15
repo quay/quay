@@ -413,16 +413,17 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       <ErrorModal error={err} setError={setErr} />
       <Toolbar id="toolbar" isFullHeight isStatic>
         <ToolbarContent>
-          {searchingAllowed && (
-            <ToolbarItem data-testid="header-search-item">
-              <HeaderSearchBar />
-            </ToolbarItem>
-          )}
           <ToolbarGroup
             variant="action-group-plain"
             align={{default: 'alignEnd'}}
             gap={{default: 'gapNone', md: 'gapMd'}}
+            data-testid="header-action-group"
           >
+            {searchingAllowed && (
+              <ToolbarItem data-testid="header-search-item">
+                <HeaderSearchBar />
+              </ToolbarItem>
+            )}
             {isAuthenticated && (
               <ToolbarItem
                 gap={{
