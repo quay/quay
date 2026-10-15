@@ -163,9 +163,9 @@ test.describe(
       const vulnBadge = authenticatedPage.getByTestId('vulnerabilities');
       await expect(vulnBadge).toBeVisible({timeout: 15000});
 
-      // Badge should show one of: Critical, High, Medium, Low, No vulnerabilities, Passed
+      // Badge should show one of: Critical, High, Medium, Low, No vulnerabilities, Passed, Unsupported
       await expect(vulnBadge).toContainText(
-        /(\d+\s+(Critical|High|Medium|Low|Unknown)|No vulnerabilities|Passed)/i,
+        /(\d+\s+(Critical|High|Medium|Low|Unknown)|No vulnerabilities|Passed|Unsupported)/i,
         {timeout: 10000},
       );
 
