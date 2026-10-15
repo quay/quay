@@ -425,7 +425,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
 
     test(
       'audits robot API token and federation lifecycle events',
-      {tag: '@PROJQUAY-11090'},
+      {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
       async ({authenticatedRequest, api}) => {
         const org = await api.organization('auditrobot');
         const robot = await api.robot(org.name, 'auditbot');
