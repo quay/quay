@@ -64,6 +64,7 @@ appVersion: "1.0"
                 "version": "1.0.0",
                 "mediaType": "application/vnd.cncf.helm.config.v1+json",
             },
+            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
         ),
     ]
 
@@ -111,6 +112,7 @@ dependencies:
                 "version": "2.0.0",
                 "mediaType": "application/vnd.cncf.helm.config.v1+json",
             },
+            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
         ),
     ]
 
@@ -163,6 +165,7 @@ appVersion: "3.0"
                 "version": "3.0.0",
                 "mediaType": "application/vnd.cncf.helm.config.v1+json",
             },
+            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
         ),
         Image(
             id="provenance-layer",
@@ -174,6 +177,7 @@ appVersion: "3.0"
                 "version": "3.0.0",
                 "mediaType": "application/vnd.cncf.helm.config.v1+json",
             },
+            layer_mediatype="application/vnd.cncf.helm.chart.provenance.v1.prov",
         ),
     ]
 
@@ -218,6 +222,7 @@ appVersion: "1.5"
                     "org.opencontainers.image.created": "2026-05-07T00:00:00Z",
                 },
             },
+            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
         ),
     ]
 

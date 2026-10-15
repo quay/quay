@@ -352,7 +352,9 @@ class V2Protocol(RegistryProtocol):
                 checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             if not image.is_empty:
-                builder.add_layer(checksum, len(image.bytes), urls=image.urls)
+                builder.add_layer(
+                    checksum, len(image.bytes), urls=image.urls, mediatype=image.layer_mediatype
+                )
 
         def history_for_image(image):
             history = {
@@ -629,9 +631,9 @@ class V2Protocol(RegistryProtocol):
                     # status at every point.
                     for chunk_data in options.chunks_for_upload:
                         if len(chunk_data) == 3:
-                            (start_byte, end_byte, expected_code) = chunk_data
+                            start_byte, end_byte, expected_code = chunk_data
                         else:
-                            (start_byte, end_byte) = chunk_data
+                            start_byte, end_byte = chunk_data
                             expected_code = 202
 
                         patch_headers = {"Content-Range": "%s-%s" % (start_byte, end_byte)}

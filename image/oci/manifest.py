@@ -597,8 +597,8 @@ class OCIManifestBuilder(object):
                 compressed_size=size,
                 urls=urls,
                 is_remote=bool(urls),
-                annotations=None,
-                mediatype=None,
+                annotations=annotations,
+                mediatype=mediatype,
             )
         )
 
@@ -610,19 +610,24 @@ class OCIManifestBuilder(object):
         assert self.config
 
         def _build_layer(layer):
-            if layer.urls:
-                return {
-                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
-                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
-                    OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
-                    OCI_MANIFEST_URLS_KEY: layer.urls,
-                }
+            # Use explicit media type if provided, otherwise fall back to OCI image defaults
+            if layer.mediatype:
+                mediatype = layer.mediatype
+            elif layer.urls:
+                mediatype = OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE
+            else:
+                mediatype = OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE
 
-            return {
-                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+            layer_dict = {
+                OCI_MANIFEST_MEDIATYPE_KEY: mediatype,
                 OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
                 OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
             }
+
+            if layer.urls:
+                layer_dict[OCI_MANIFEST_URLS_KEY] = layer.urls
+
+            return layer_dict
 
         manifest_dict = {
             OCI_MANIFEST_VERSION_KEY: 2,

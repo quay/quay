@@ -11,9 +11,20 @@ from six import add_metaclass
 from image.docker.schema2 import EMPTY_LAYER_BYTES
 
 Image = namedtuple(
-    "Image", ["id", "parent_id", "bytes", "size", "config", "created", "urls", "is_empty"]
+    "Image",
+    [
+        "id",
+        "parent_id",
+        "bytes",
+        "size",
+        "config",
+        "created",
+        "urls",
+        "is_empty",
+        "layer_mediatype",
+    ],
 )
-Image.__new__.__defaults__ = (None, None, None, None, False)
+Image.__new__.__defaults__ = (None, None, None, None, False, None)
 
 PushResult = namedtuple("PushResult", ["manifests", "headers"])
 PullResult = namedtuple("PullResult", ["manifests", "image_ids"])
