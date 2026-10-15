@@ -10,7 +10,6 @@ from unittest.mock import Mock, create_autospec
 from urllib.parse import urlparse
 
 import pytest
-from filelock import FileLock
 
 from registry import application
 
@@ -28,74 +27,21 @@ from util.secscan.v4.fake import fake_security_scanner
 
 
 @pytest.fixture()
-def set_secscan_config(tmpdir_factory):
+def set_secscan_config(monkeypatch):
     """
     Configure Clair V4 endpoint for tests.
-
-    Uses file locking to prevent race conditions when tests run in parallel
-    (pytest -n auto). Multiple workers could otherwise modify and restore the
-    global application.config simultaneously, causing test failures.
     """
-    # Get lock file path shared across all pytest-xdist workers
-    # tmpdir_factory.getbasetemp() returns py.path.local.LocalPath, use dirpath() for parent
-    # This matches the pattern used in test/fixtures.py for database initialization
-    lock_file = str(tmpdir_factory.getbasetemp().dirpath("secscan_config.lock"))
-
-    # Acquire lock before modifying global config
-    with FileLock(lock_file, timeout=300):
-        # Save original config values
-        original_endpoint = application.config.get("SECURITY_SCANNER_V4_ENDPOINT")
-        original_feature = application.config.get("FEATURE_SECURITY_SCANNER")
-        original_psk = application.config.get("SECURITY_SCANNER_V4_PSK")
-        original_server_hostname = application.config.get("SERVER_HOSTNAME")
-        original_url_scheme = application.config.get("PREFERRED_URL_SCHEME")
-        original_reindex_threshold = application.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
-
-        # Set test config
-        application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://fakesecurityscanner:6060"
-        application.config["FEATURE_SECURITY_SCANNER"] = True
-        application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
-        application.config["SERVER_HOSTNAME"] = "localhost:8080"
-        application.config["PREFERRED_URL_SCHEME"] = "http"
-        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = (
-            0  # Allow immediate re-indexing
-        )
-
-        try:
-            yield
-        finally:
-            # Restore original config values (still within the lock)
-            if original_endpoint is None:
-                application.config.pop("SECURITY_SCANNER_V4_ENDPOINT", None)
-            else:
-                application.config["SECURITY_SCANNER_V4_ENDPOINT"] = original_endpoint
-
-            if original_feature is None:
-                application.config.pop("FEATURE_SECURITY_SCANNER", None)
-            else:
-                application.config["FEATURE_SECURITY_SCANNER"] = original_feature
-
-            if original_psk is None:
-                application.config.pop("SECURITY_SCANNER_V4_PSK", None)
-            else:
-                application.config["SECURITY_SCANNER_V4_PSK"] = original_psk
-
-            if original_server_hostname is None:
-                application.config.pop("SERVER_HOSTNAME", None)
-            else:
-                application.config["SERVER_HOSTNAME"] = original_server_hostname
-
-            if original_url_scheme is None:
-                application.config.pop("PREFERRED_URL_SCHEME", None)
-            else:
-                application.config["PREFERRED_URL_SCHEME"] = original_url_scheme
-
-            if original_reindex_threshold is None:
-                application.config.pop("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", None)
-            else:
-                application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = (
-                    original_reindex_threshold
-                )
+    monkeypatch.setitem(
+        application.config, "SECURITY_SCANNER_V4_ENDPOINT", "http://fakesecurityscanner:6060"
+    )
+    monkeypatch.setitem(application.config, "FEATURE_SECURITY_SCANNER", True)
+    monkeypatch.setitem(
+        application.config, "SECURITY_SCANNER_V4_PSK", base64.b64encode(b"test-psk").decode()
+    )
+    monkeypatch.setitem(application.config, "SERVER_HOSTNAME", "localhost:8080")
+    monkeypatch.setitem(application.config, "PREFERRED_URL_SCHEME", "http")
+    # Allow immediate re-indexing
+    monkeypatch.setitem(application.config, "SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 0)
 
 
 def create_test_repository(namespace="devtable", repo_name="secscan-test"):
@@ -158,7 +104,7 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
     with fake_security_scanner(hostname=hostname) as fake:
         # Trigger security worker indexing
         secscan = V4SecurityScanner(application, instance_keys, storage)
-        next_token = secscan.perform_indexing(batch_size=1000)
+        secscan.perform_indexing(batch_size=1000)
 
         # Verify status updated to COMPLETED
         mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
@@ -288,7 +234,7 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
     1. Manifest can be created even when Clair is unavailable
     2. Security worker handles connection errors gracefully
     3. Scan status is marked as FAILED (not stuck in IN_PROGRESS)
-    4. Error details are recorded in error_json field
+    4. The failure is recorded as an API failure
 
     Run with:
         TEST=true PYTHONPATH="." pytest test/test_secscan_e2e.py::test_scanner_unavailability -v
@@ -319,30 +265,20 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
         mss.index_status == IndexStatus.FAILED
     ), f"Expected IndexStatus.FAILED for scanner unavailability, got {mss.index_status}"
 
-    # Verify error_json contains error information
-    assert mss.error_json is not None, "Expected error_json to be populated for failed scan"
-    error_str = str(mss.error_json).lower()
-    assert (
-        "error" in error_str
-        or "failed" in error_str
-        or "exception" in error_str
-        or "request" in error_str
-    ), f"Expected error information in error_json, got: {mss.error_json}"
+    assert mss.indexer_hash == "api_failure"
 
 
-def test_rescan_on_cve_update(initialized_db, set_secscan_config):
+def test_reindex_on_indexer_state_change(initialized_db, set_secscan_config):
     """
-    Test re-scan when CVE database updates.
+    Test re-indexing when the Clair indexer state changes.
 
     This test verifies:
     1. Initial scan returns no vulnerabilities
-    2. Simulated CVE database update adds new vulnerabilities to Clair
-    3. Indexer state change triggers re-indexing
-    4. Re-scan detects newly added vulnerabilities
-    5. New CVE data is correctly queryable
+    2. Indexer state change triggers re-indexing
+    3. Vulnerabilities reported after re-indexing are correctly queryable
 
     Run with:
-        TEST=true PYTHONPATH="." pytest test/test_secscan_e2e.py::test_rescan_on_cve_update -v
+        TEST=true PYTHONPATH="." pytest test/test_secscan_e2e.py::test_reindex_on_indexer_state_change -v
     """
     # Setup: Create repository and manifest
     repo = create_test_repository(repo_name="secscan-rescan")
