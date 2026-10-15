@@ -2,7 +2,7 @@
  * E2E tests for security scan lifecycle.
  *
  * Tests the complete scan-on-push workflow from image push to vulnerability
- * results display in UI, including security badges and scan status transitions.
+ * results display in UI, including security badges.
  *
  * Requires a running Clair and a container runtime to push images.
  */

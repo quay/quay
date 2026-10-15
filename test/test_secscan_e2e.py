@@ -2,7 +2,7 @@
 E2E tests for security scanning lifecycle.
 
 Tests the complete scan-on-push workflow from image push to vulnerability results,
-scanner unavailability handling, and re-scan on CVE database updates.
+scanner unavailability handling, and re-indexing on indexer state change.
 """
 
 import base64
