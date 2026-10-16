@@ -1290,7 +1290,7 @@ export class ApiClient {
 
   // User notification methods
 
-  async getUserNotifications(): Promise<{
+  async getUserNotifications(limit = 5): Promise<{
     notifications: Array<{
       id: string;
       kind: string;
@@ -1300,7 +1300,7 @@ export class ApiClient {
     additional: boolean;
   }> {
     const response = await this.request.get(
-      `${API_URL}/api/v1/user/notifications`,
+      `${API_URL}/api/v1/user/notifications?limit=${limit}`,
       {
         timeout: 5000,
       },
@@ -1314,6 +1314,27 @@ export class ApiClient {
     }
 
     return response.json();
+  }
+
+  async dismissUserNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/user/notifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {dismissed: true},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to dismiss user notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
   }
 
   // Team member methods (for test setup)
