@@ -16,6 +16,10 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       const emailInput = authenticatedPage.locator('#org-settings-email');
       await expect(emailInput).toBeVisible();
 
+      // Check save button is disabled before any edits (form is not dirty)
+      const saveButton = authenticatedPage.locator('#save-org-settings');
+      await expect(saveButton).toBeDisabled();
+
       // Type a bad email
       await emailInput.clear();
       await emailInput.fill('this is not a good e-mail');
@@ -23,14 +27,8 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         authenticatedPage.getByText('Please enter a valid email address'),
       ).toBeVisible();
 
-      // Leave empty (email field is not required, so no error should appear)
-      await emailInput.clear();
-
-      // Check save button is disabled when form is not dirty or invalid
-      const saveButton = authenticatedPage.locator('#save-org-settings');
-      await expect(saveButton).toBeDisabled();
-
       // Type a good email and save
+      await emailInput.clear();
       await emailInput.fill('good-email@redhat.com');
       await expect(saveButton).toBeEnabled();
       await saveButton.click();
