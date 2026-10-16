@@ -36,7 +36,7 @@ repos:
         stages: [pre-commit]
     -   id: npm-lockfile-sync
         name: Sync npm lockfile with pnpm changes
-        entry: bash -c 'if git diff --cached --name-only | grep -qE "^web/(pnpm-lock\.yaml|package\.json)$"; then cd web && npm install --package-lock-only --legacy-peer-deps --silent 2>/dev/null && git add package-lock.json; fi'
+        entry: bash -c 'if git diff --cached --name-only | grep -qE "^web/(pnpm-lock\.yaml|package\.json)$"; then npm --prefix web install --package-lock-only --legacy-peer-deps --no-workspaces --silent 2>/dev/null && git add web/package-lock.json; fi'
         language: system
         pass_filenames: false
         stages: [pre-commit]
