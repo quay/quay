@@ -138,3 +138,10 @@ class TestBlobUploadClientBodyTimeout:
         rendered = render_server_base_conf(blob_upload_client_body_timeout="3600")
         blob_block = _blob_location(rendered)
         assert "proxy_read_timeout 2000;" in blob_block
+
+    def test_lingering_close_always_set(self):
+        rendered = render_server_base_conf()
+        blob_block = _blob_location(rendered)
+        assert "lingering_close always;" in blob_block
+        assert "lingering_time 60s;" in blob_block
+        assert "lingering_timeout 30s;" in blob_block
