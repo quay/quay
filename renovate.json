@@ -5,17 +5,36 @@
   },
   "osvVulnerabilityAlerts": false,
   "dependencyDashboard": false,
-  "extends": [
-    "github>konflux-ci/mintmaker-presets:cve-automerge-all"
-  ],
+  "automerge": false,
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "description": "Disable major version bumps for non-tekton managers",
+      "description": "Disable all managers on release branches",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "enabled": false
+    },
+    {
+      "description": "Re-enable manifest managers on release branches",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "matchManagers": ["pip_requirements", "npm", "gomod"],
+      "enabled": true
+    },
+    {
+      "description": "Disable major version bumps for manifest managers",
       "matchUpdateTypes": ["major"],
       "matchManagers": ["npm", "pip_requirements", "gomod"],
       "enabled": false
+    },
+    {
+      "description": "Use release branch title prefix",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "commitMessagePrefix": "[{{baseBranch}}] NO-ISSUE: chore(deps):"
+    },
+    {
+      "description": "Automerge vulnerability alert updates only",
+      "matchJsonata": ["$exists(isVulnerabilityAlert) and isVulnerabilityAlert = true"],
+      "automerge": true
     }
   ],
   "semanticCommits": "disabled",
