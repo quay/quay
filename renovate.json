@@ -5,7 +5,9 @@
   },
   "osvVulnerabilityAlerts": false,
   "dependencyDashboard": false,
-  "automerge": false,
+  "extends": [
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all"
+  ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
@@ -30,11 +32,6 @@
       "description": "Use release branch title prefix",
       "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
       "commitMessagePrefix": "[{{baseBranch}}] NO-ISSUE: chore(deps):"
-    },
-    {
-      "description": "Automerge vulnerability alert updates only",
-      "matchJsonata": ["$exists(isVulnerabilityAlert) and isVulnerabilityAlert = true"],
-      "automerge": true
     }
   ],
   "semanticCommits": "disabled",
