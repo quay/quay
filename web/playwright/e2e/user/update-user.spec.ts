@@ -19,7 +19,7 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
 
   test.describe(
     'Profile metadata form',
-    {tag: '@feature:USER_METADATA'},
+    {tag: ['@feature:USER_METADATA', '@auth:Database']},
     () => {
       test(
         'displays and submits profile form',
