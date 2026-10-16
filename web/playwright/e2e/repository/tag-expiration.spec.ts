@@ -2,6 +2,9 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {pushImage} from '../../utils/container';
 
+// PatternFly TimePicker labels 1 AM "1:00 AM" in a 12h locale and "01:00" in 24h.
+const ONE_AM_OPTION = /^0?1:00( AM)?$/;
+
 /**
  * Safely adds months to a date without JavaScript date rollover issues.
  */
@@ -81,17 +84,10 @@ test.describe(
         .click();
 
       // Set time
-      nextMonth.setHours(1);
-      nextMonth.setMinutes(0);
-      const formattedTime = nextMonth.toLocaleTimeString(
-        undefined, // Use default locale
-        {hour: 'numeric', minute: '2-digit'},
-      );
-
       await authenticatedPage.locator('#expiration-time-picker').click();
       await authenticatedPage
-        .getByText(formattedTime.replace(/ AM| PM/, ''), {exact: false})
-        .first()
+        .getByRole('menu', {name: 'Time picker'})
+        .getByRole('menuitem', {name: ONE_AM_OPTION})
         .click();
 
       await authenticatedPage.getByText('Change Expiration').click();
@@ -166,17 +162,10 @@ test.describe(
         .click();
 
       // Set time
-      nextMonth.setHours(1);
-      nextMonth.setMinutes(0);
-      const formattedTime = nextMonth.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-
       await authenticatedPage.locator('#expiration-time-picker').click();
       await authenticatedPage
-        .getByText(formattedTime.replace(/ AM| PM/, ''), {exact: false})
-        .first()
+        .getByRole('menu', {name: 'Time picker'})
+        .getByRole('menuitem', {name: ONE_AM_OPTION})
         .click();
 
       await authenticatedPage.getByText('Change Expiration').click();
@@ -241,17 +230,10 @@ test.describe(
         .locator(`[aria-label="${sameDateNextMonthGB}"]`)
         .click();
 
-      nextMonth.setHours(1);
-      nextMonth.setMinutes(0);
-      const formattedTime = nextMonth.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-
       await authenticatedPage.locator('#expiration-time-picker').click();
       await authenticatedPage
-        .getByText(formattedTime.replace(/ AM| PM/, ''), {exact: false})
-        .first()
+        .getByRole('menu', {name: 'Time picker'})
+        .getByRole('menuitem', {name: ONE_AM_OPTION})
         .click();
 
       await authenticatedPage.getByText('Change Expiration').click();
@@ -330,17 +312,10 @@ test.describe(
         .locator(`[aria-label="${sameDateNextMonthGB}"]`)
         .click();
 
-      nextMonth.setHours(1);
-      nextMonth.setMinutes(0);
-      const formattedTime = nextMonth.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-
       await authenticatedPage.locator('#expiration-time-picker').click();
       await authenticatedPage
-        .getByText(formattedTime.replace(/ AM| PM/, ''), {exact: false})
-        .first()
+        .getByRole('menu', {name: 'Time picker'})
+        .getByRole('menuitem', {name: ONE_AM_OPTION})
         .click();
 
       await authenticatedPage.getByText('Change Expiration').click();
