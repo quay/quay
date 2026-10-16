@@ -227,6 +227,9 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       // Select PRIVATE visibility
       await authenticatedPage.getByTestId('visibility-private-radio').click();
 
+      await expect(
+        authenticatedPage.getByTestId('repository-name-input'),
+      ).toHaveValue(orgRepoName);
       await authenticatedPage
         .getByTestId('create-repository-submit-btn')
         .click();
