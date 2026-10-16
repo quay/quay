@@ -100,40 +100,41 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
   });
 
   test.describe('export delivery', {tag: ['@feature:LOG_EXPORT']}, () => {
-    test('delivers export email for organization logs', async ({
-      authenticatedPage,
-      api,
-    }) => {
-      test.setTimeout(180_000);
-      const org = await api.organization('exportemail');
-      const recipient = `export-${org.name}@example.com`;
+    test(
+      'delivers export email for organization logs',
+      {tag: '@feature:MAILING'},
+      async ({authenticatedPage, api}) => {
+        test.setTimeout(180_000);
+        const org = await api.organization('exportemail');
+        const recipient = `export-${org.name}@example.com`;
 
-      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
-      await authenticatedPage.getByTestId('usage-logs-export-button').click();
-      await authenticatedPage
-        .getByTestId('usage-logs-export-email-input')
-        .fill(recipient);
-      await authenticatedPage
-        .getByTestId('usage-logs-export-confirm-button')
-        .click();
+        await authenticatedPage.getByTestId('usage-logs-export-button').click();
+        await authenticatedPage
+          .getByTestId('usage-logs-export-email-input')
+          .fill(recipient);
+        await authenticatedPage
+          .getByTestId('usage-logs-export-confirm-button')
+          .click();
 
-      await expect(
-        authenticatedPage.getByText('Logs exported with id').first(),
-      ).toBeVisible();
+        await expect(
+          authenticatedPage.getByText('Logs exported with id').first(),
+        ).toBeVisible();
 
-      const email = await mailpit.waitForEmail(
-        (msg) =>
-          msg.Subject.includes('Export Action Logs Complete') &&
-          msg.To.some((to) => to.Address === recipient),
-        120_000,
-      );
-      expect(email).not.toBeNull();
+        const email = await mailpit.waitForEmail(
+          (msg) =>
+            msg.Subject.includes('Export Action Logs Complete') &&
+            msg.To.some((to) => to.Address === recipient),
+          120_000,
+        );
+        expect(email).not.toBeNull();
 
-      const body = await mailpit.getEmailBody(email!.ID);
-      expect(body).toContain('Usage Logs Export has completed');
-      expect(body).toContain('exported logs information can be found at');
-    });
+        const body = await mailpit.getEmailBody(email!.ID);
+        expect(body).toContain('Usage Logs Export has completed');
+        expect(body).toContain('exported logs information can be found at');
+      },
+    );
 
     test(
       'delivers callback for repository logs export',
