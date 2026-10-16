@@ -128,13 +128,13 @@ class TestBlobUploadClientBodyTimeout:
         blob_block = _blob_location(rendered)
         assert "client_body_timeout" not in blob_block
 
-    @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s"])
+    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000"])
     def test_renders_client_body_timeout_when_set(self, value):
         rendered = render_server_base_conf(blob_upload_client_body_timeout=value)
         blob_block = _blob_location(rendered)
         assert f"client_body_timeout {value};" in blob_block
 
     def test_proxy_read_timeout_remains_hardcoded(self):
-        rendered = render_server_base_conf(blob_upload_client_body_timeout="3600s")
+        rendered = render_server_base_conf(blob_upload_client_body_timeout="3600")
         blob_block = _blob_location(rendered)
         assert "proxy_read_timeout 2000;" in blob_block

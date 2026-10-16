@@ -266,13 +266,14 @@ class TestGunicornTimeoutSchema:
 
 
 class TestNginxTimeoutSchema:
-    @pytest.mark.parametrize(
-        "field",
-        ["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", "MANIFESTS_ENDPOINT_READ_TIMEOUT"],
-    )
     @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s", "5m"])
-    def test_accepts_valid_nginx_time_strings(self, field, value):
-        schema = CONFIG_SCHEMA["properties"][field]
+    def test_manifests_timeout_accepts_valid_nginx_time_strings(self, value):
+        schema = CONFIG_SCHEMA["properties"]["MANIFESTS_ENDPOINT_READ_TIMEOUT"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000"])
+    def test_blob_upload_timeout_accepts_valid_seconds(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
         validate(value, schema)
 
     @pytest.mark.parametrize(
@@ -285,7 +286,7 @@ class TestNginxTimeoutSchema:
         with pytest.raises(ValidationError):
             validate(value, schema)
 
-    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "10x", "1.5s", ""])
+    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "3600s", "1h", "1.5", ""])
     def test_blob_upload_timeout_rejects_invalid_format(self, value):
         schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
         with pytest.raises(ValidationError):

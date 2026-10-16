@@ -2012,9 +2012,9 @@ CONFIG_SCHEMA = {
         },
         "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
             "type": "string",
-            "pattern": "^[0-9]+(ms|s|m|h|d)?$",
-            "description": "Nginx client body timeout for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
-            "x-example": "3600s",
+            "pattern": "^[0-9]+$",
+            "description": "Nginx client body timeout in seconds for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
+            "x-example": "3600",
         },
         "FEATURE_SUPERUSER_CONFIGDUMP": {
             "type": "boolean",
