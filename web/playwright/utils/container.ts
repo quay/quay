@@ -171,12 +171,15 @@ async function requireTool(tool: keyof ToolAvailability): Promise<void> {
 
 // HTTP status phrasing from skopeo/crane/oras/regctl errors. A bare 5\d\d
 // would also match digests and ports, so a code outside "status" must be
-// followed by a capitalized reason phrase ("501 Not Implemented"), which
-// "500 bytes" is not. A source-registry 5xx (e.g. quay.io for BUSYBOX_IMAGE)
-// also fails at once: the error text carries the whole command line, source
-// and destination, so the two cannot be told apart by host.
-const REGISTRY_5XX =
-  /[Ss]tatus(?: [Cc]ode)?:? ?5\d\d\b|\b5\d\d:? [A-Z][A-Za-z]+\b/;
+// followed by a known reason phrase in any case, or by any capitalized one
+// ("501 Not Implemented"); "500 bytes" is neither. A source-registry 5xx
+// (e.g. quay.io for BUSYBOX_IMAGE) also fails at once: the error text carries
+// the whole command line, source and destination, so the two cannot be told
+// apart by host.
+const REGISTRY_5XX = [
+  /status(?: code)?:? ?5\d\d\b|\b5\d\d:? (?:internal server error|bad gateway|service unavailable|gateway timeout)\b/i,
+  /\b5\d\d:? [A-Z][A-Za-z]+\b/,
+];
 
 /**
  * Execute an async operation, retrying with fixed 1s delays on failure.
@@ -196,7 +199,7 @@ export async function retryOperation(
       return;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (REGISTRY_5XX.test(message)) {
+      if (REGISTRY_5XX.some((re) => re.test(message))) {
         throw new Error(`registry returned HTTP 5xx: ${message}`);
       }
       lastErr = err;

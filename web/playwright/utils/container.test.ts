@@ -43,12 +43,26 @@ describe('retryOperation', () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
-  it('retries a transient EOF whose port and digest contain 5xx', async () => {
+  it('throws a lowercase 5xx reason phrase after one attempt', async () => {
+    const message =
+      'PUT https://quay.example.com/v2/org/repo/manifests/latest: 503 service unavailable';
+    const operation = vi.fn().mockRejectedValue(new Error(message));
+
+    const result = expect(retryOperation(operation)).rejects.toThrow(
+      `registry returned HTTP 5xx: ${message}`,
+    );
+    await vi.runAllTimersAsync();
+    await result;
+
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a transient EOF whose port, digest and byte count contain 5xx', async () => {
     const operation = vi
       .fn()
       .mockRejectedValueOnce(
         new Error(
-          'Get "https://quay.example.com:5000/v2/org/repo/blobs/sha256:5003a1c0ffee503": EOF',
+          'Get "https://quay.example.com:5000/v2/org/repo/blobs/sha256:5003a1c0ffee503": copied 500 bytes: EOF',
         ),
       )
       .mockResolvedValueOnce(undefined);
