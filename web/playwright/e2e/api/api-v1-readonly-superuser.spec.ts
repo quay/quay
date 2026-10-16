@@ -12,8 +12,8 @@
  * Ported from Cypress: quay_api_testing_gobal_readonly_supuer_user.cy.js
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS, TEST_USERS_OIDC} from '../../global-setup';
+import {test, expect, uniqueName, skipUnlessAuthType} from '../../fixtures';
+import {TEST_USERS} from '../../global-setup';
 
 test.describe(
   'Readonly Superuser API',
@@ -22,12 +22,11 @@ test.describe(
     let normalUsername: string;
 
     test.beforeAll(async ({cachedQuayConfig}) => {
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
-
-      normalUsername = users.user.username;
+      // Nested beforeAll hooks grant permissions to the Database-auth user;
+      // the @auth:Database auto-skip fixture is test-scoped and does not
+      // stop them.
+      test.skip(...skipUnlessAuthType(cachedQuayConfig, 'Database'));
+      normalUsername = TEST_USERS.user.username;
     });
 
     // ========================================================================

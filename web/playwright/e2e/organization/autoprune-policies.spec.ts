@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
@@ -130,8 +129,9 @@ test.describe(
 
     test('creates multiple policies for user namespace', async ({
       authenticatedPage,
+      quayConfig,
     }) => {
-      const username = TEST_USERS.user.username;
+      const username = getTestUsers(quayConfig).user.username;
 
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Auto-Prune Policies').click();
@@ -202,7 +202,11 @@ test.describe(
   'Organization Auto-Prune Functional Verification',
   {tag: ['@organization', '@feature:AUTO_PRUNE', '@container']},
   () => {
-    const user = TEST_USERS.user;
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
 
     test('tag-count org-level pruning removes excess tags', async ({api}) => {
       test.slow();
@@ -275,7 +279,7 @@ test.describe(
 
     test(
       'user namespace tag-count pruning removes excess tags',
-      {tag: '@superuser'},
+      {tag: ['@superuser', '@auth:Database']},
       async ({freshUser}) => {
         test.slow();
         const {user, api} = freshUser;
@@ -308,7 +312,7 @@ test.describe(
 
     test(
       'user namespace time-based pruning removes old tags',
-      {tag: '@superuser'},
+      {tag: ['@superuser', '@auth:Database']},
       async ({freshUser}) => {
         test.slow();
         const {user, api} = freshUser;
@@ -358,7 +362,7 @@ test.describe(
 
     test(
       'multiple user-namespace policies both take effect',
-      {tag: '@superuser'},
+      {tag: ['@superuser', '@auth:Database']},
       async ({freshUser}) => {
         test.slow();
         const {user, api} = freshUser;
