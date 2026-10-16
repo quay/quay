@@ -2010,6 +2010,11 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx client body timeout for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
+            "x-example": "3600s",
+        },
         "FEATURE_SUPERUSER_CONFIGDUMP": {
             "type": "boolean",
             "description": "Enables a full config dump of the running Framework, environment and schema for validation",

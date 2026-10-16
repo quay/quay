@@ -20,6 +20,7 @@ def render_server_base_conf(**kwargs):
         maximum_layer_size="20G",
         enable_rate_limits=False,
         manifests_endpoint_read_timeout=None,
+        blob_upload_client_body_timeout=None,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -104,3 +105,36 @@ class TestErrorPageDirective:
         assert "patternfly" not in re.search(
             r"location = /502\.html \{([^}]*)}", rendered, re.DOTALL
         ).group(1)
+
+
+def _blob_location(rendered):
+    match = re.search(
+        r"location ~ /v2/\(\[.*?\]\+\)\(/\[.*?\]\+\)\+/blobs/ \{(.*?)\n\}",
+        rendered,
+        re.DOTALL,
+    )
+    assert match is not None, "blob location block not found in rendered config"
+    return match.group(1)
+
+
+class TestBlobUploadClientBodyTimeout:
+    def test_omits_client_body_timeout_when_unset(self):
+        rendered = render_server_base_conf()
+        blob_block = _blob_location(rendered)
+        assert "client_body_timeout" not in blob_block
+
+    def test_omits_client_body_timeout_when_none(self):
+        rendered = render_server_base_conf(blob_upload_client_body_timeout=None)
+        blob_block = _blob_location(rendered)
+        assert "client_body_timeout" not in blob_block
+
+    @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s"])
+    def test_renders_client_body_timeout_when_set(self, value):
+        rendered = render_server_base_conf(blob_upload_client_body_timeout=value)
+        blob_block = _blob_location(rendered)
+        assert f"client_body_timeout {value};" in blob_block
+
+    def test_proxy_read_timeout_remains_hardcoded(self):
+        rendered = render_server_base_conf(blob_upload_client_body_timeout="3600s")
+        blob_block = _blob_location(rendered)
+        assert "proxy_read_timeout 2000;" in blob_block

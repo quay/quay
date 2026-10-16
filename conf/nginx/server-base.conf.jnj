@@ -314,10 +314,13 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     proxy_buffering off;
     proxy_request_buffering off;
     proxy_buffer_size 32k;
-    proxy_buffers 4 32k;
     proxy_read_timeout 2000;
     proxy_send_timeout 2000;
     proxy_temp_path /tmp 1 2;
+
+    {% if blob_upload_client_body_timeout %}
+    client_body_timeout {{ blob_upload_client_body_timeout }};
+    {% endif %}
 
     client_max_body_size {{ maximum_layer_size }};
     http2_chunk_size 32k;

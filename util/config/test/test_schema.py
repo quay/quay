@@ -263,3 +263,24 @@ class TestGunicornTimeoutSchema:
 
     def test_default_web_timeout(self):
         assert DefaultConfig.GUNICORN_WEB_TIMEOUT == 30
+
+
+class TestNginxTimeoutSchema:
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", "MANIFESTS_ENDPOINT_READ_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s", "5m"])
+    def test_accepts_valid_nginx_time_strings(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", "MANIFESTS_ENDPOINT_READ_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", [0, -1, 3600, True])
+    def test_rejects_non_string_values(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
