@@ -2010,6 +2010,30 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Nginx client body timeout in seconds for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
+            "x-example": "3600",
+        },
+        "BLOB_UPLOAD_LINGERING_CLOSE": {
+            "type": "string",
+            "enum": ["on", "off", "always"],
+            "description": "Nginx lingering_close mode for blob upload endpoints. Set to 'always' to ensure clean connection close after timeouts, allowing load balancers to receive error responses instead of returning 502. Defaults to nginx's 'on' when not set.",
+            "x-example": "always",
+        },
+        "BLOB_UPLOAD_LINGERING_TIME": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum time in seconds nginx will drain remaining request body after closing a blob upload. Defaults to nginx's 30s when not set.",
+            "x-example": "60",
+        },
+        "BLOB_UPLOAD_LINGERING_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum wait time in seconds between successive reads while draining a blob upload request body. Defaults to nginx's 5s when not set.",
+            "x-example": "30",
+        },
         "FEATURE_SUPERUSER_CONFIGDUMP": {
             "type": "boolean",
             "description": "Enables a full config dump of the running Framework, environment and schema for validation",
