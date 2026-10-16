@@ -169,14 +169,21 @@ async function requireTool(tool: keyof ToolAvailability): Promise<void> {
   }
 }
 
+// HTTP status phrasing from skopeo/crane/oras/regctl errors. A bare 5\d\d
+// would also match digests and ports. A source-registry 5xx (e.g. quay.io for
+// BUSYBOX_IMAGE) also fails at once: the error text carries the whole command
+// line, source and destination, so the two cannot be told apart by host.
+const REGISTRY_5XX =
+  /status(?: code)?:? ?5\d\d\b|\b5\d\d:? (?:internal server error|bad gateway|service unavailable|gateway timeout)\b/i;
+
 /**
  * Execute an async operation, retrying with fixed 1s delays on failure.
  *
- * Registry pushes can race with repository initialization, so push-like
- * helpers retry their registry operation a few times. Each failed attempt is
- * logged so the final thrown error isn't the only one visible.
+ * Transient failures (connection errors, 4xx) are retried and each failed
+ * attempt is logged. A registry 5xx is thrown at once so server errors fail
+ * the test instead of being hidden by a later successful attempt.
  */
-async function retryOperation(
+export async function retryOperation(
   operation: () => Promise<void>,
   maxAttempts = 5,
 ): Promise<void> {
@@ -186,6 +193,10 @@ async function retryOperation(
       await operation();
       return;
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (REGISTRY_5XX.test(message)) {
+        throw new Error(`registry returned HTTP 5xx: ${message}`);
+      }
       lastErr = err;
       console.warn(
         `retryOperation attempt ${i + 1}/${maxAttempts} failed:`,
@@ -250,7 +261,9 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(
+              ' ',
+            )} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
