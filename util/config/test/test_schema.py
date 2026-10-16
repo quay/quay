@@ -284,3 +284,9 @@ class TestNginxTimeoutSchema:
         schema = CONFIG_SCHEMA["properties"][field]
         with pytest.raises(ValidationError):
             validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "10x", "1.5s", ""])
+    def test_blob_upload_timeout_rejects_invalid_format(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
