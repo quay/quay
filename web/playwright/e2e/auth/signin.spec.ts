@@ -166,7 +166,7 @@ test.describe('Signin error handling', {tag: ['@auth', '@signin']}, () => {
 
   test(
     'handles unverified email',
-    {tag: ['@feature:MAILING', '@superuser']},
+    {tag: ['@feature:MAILING', '@superuser', '@auth:Database']},
     async ({browser, superuserApi}) => {
       // Create user but don't verify email
       const username = uniqueName('unverified');

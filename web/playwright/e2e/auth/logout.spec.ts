@@ -73,27 +73,31 @@ const test = base.extend<LogoutTestFixtures>({
 });
 
 test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
-  test('logs out successfully', {tag: '@superuser'}, async ({logoutPage}) => {
-    // Navigate to organization page (where a logged-in user would be)
-    await logoutPage.goto('/organization');
-    await expect(logoutPage).toHaveURL(/\/organization/);
+  test(
+    'logs out successfully',
+    {tag: ['@superuser', '@auth:Database']},
+    async ({logoutPage}) => {
+      // Navigate to organization page (where a logged-in user would be)
+      await logoutPage.goto('/organization');
+      await expect(logoutPage).toHaveURL(/\/organization/);
 
-    // Verify user menu is visible (confirms we're logged in)
-    await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
+      // Verify user menu is visible (confirms we're logged in)
+      await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
 
-    // Click user menu
-    await logoutPage.getByTestId('user-menu-toggle').click();
+      // Click user menu
+      await logoutPage.getByTestId('user-menu-toggle').click();
 
-    // Click logout
-    await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
+      // Click logout
+      await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
 
-    // Should redirect to signin page
-    await expect(logoutPage).toHaveURL(/\/signin/);
-  });
+      // Should redirect to signin page
+      await expect(logoutPage).toHaveURL(/\/signin/);
+    },
+  );
 
   test(
     'redirects to signin even when logout API fails',
-    {tag: '@superuser'},
+    {tag: ['@superuser', '@auth:Database']},
     async ({logoutPage}) => {
       // Mock API to return 500 error - this is an acceptable mock for error scenarios
       await logoutPage.route('**/api/v1/signout', (route) =>
@@ -125,7 +129,7 @@ test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
 
   test(
     'clears session and prevents access to protected pages',
-    {tag: '@superuser'},
+    {tag: ['@superuser', '@auth:Database']},
     async ({logoutPage, logoutUsername, quayConfig}) => {
       const anonymousAccessEnabled =
         quayConfig?.features?.ANONYMOUS_ACCESS === true;

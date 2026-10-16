@@ -1,6 +1,5 @@
-import {test, expect} from '@playwright/test';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
   test.beforeEach(async ({page}) => {
@@ -19,7 +18,12 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     });
   });
 
-  test('repository list page loads after login', async ({page, request}) => {
+  test('repository list page loads after login', async ({
+    page,
+    request,
+    quayConfig,
+  }) => {
+    const users = getTestUsers(quayConfig);
     // Log in via API to get session cookies
     const csrfResponse = await request.get(`${API_URL}/csrf_token`);
     expect(csrfResponse.ok()).toBeTruthy();
@@ -28,8 +32,8 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     const signinResponse = await request.post(`${API_URL}/api/v1/signin`, {
       headers: {'X-CSRF-Token': csrfData.csrf_token},
       data: {
-        username: TEST_USERS.admin.username,
-        password: TEST_USERS.admin.password,
+        username: users.admin.username,
+        password: users.admin.password,
       },
     });
     expect(signinResponse.ok()).toBeTruthy();

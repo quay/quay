@@ -7,8 +7,7 @@
  * service keys, organization mirror, and registry capabilities.
  */
 
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {RawApiClient} from '../../utils/api/raw-client';
 import {API_URL} from '../../utils/config';
 
@@ -269,7 +268,7 @@ test.describe(
   () => {
     test(
       'admin can get user quota by ID and list its limits',
-      {tag: '@superuser'},
+      {tag: ['@superuser', '@auth:Database']},
       async ({superuserApi, adminClient, request}) => {
         const user = await superuserApi.user('quotauser');
 
@@ -549,14 +548,15 @@ test.describe(
     test(
       'invalid payload returns 400',
       {tag: '@superuser'},
-      async ({superuserApi, adminClient}) => {
+      async ({superuserApi, adminClient, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const repo = await superuserApi.repository(
-          TEST_USERS.admin.username,
+          users.admin.username,
           'apuserrepo',
         );
 
         const resp = await adminClient.post(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/`,
           {method: 'number_of_times', value: 10},
         );
         expect(resp.status()).toBe(400);
@@ -568,15 +568,16 @@ test.describe(
     test(
       'CRUD autoprune policy for user namespace repo',
       {tag: '@superuser'},
-      async ({superuserApi, adminClient}) => {
+      async ({superuserApi, adminClient, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const repo = await superuserApi.repository(
-          TEST_USERS.admin.username,
+          users.admin.username,
           'apuserrepo',
         );
 
         // Create
         const createResp = await adminClient.post(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/`,
           {method: 'number_of_tags', value: 6},
         );
         expect(createResp.status()).toBe(201);
@@ -586,14 +587,14 @@ test.describe(
 
         // Update
         const updateResp = await adminClient.put(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
           {method: 'number_of_tags', uuid, value: 30},
         );
         expect(updateResp.status()).toBe(204);
 
         // Get
         const getResp = await adminClient.get(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
         );
         expect(getResp.status()).toBe(200);
         const fetched = await getResp.json();
@@ -601,7 +602,7 @@ test.describe(
 
         // Delete
         const deleteResp = await adminClient.delete(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
         );
         expect(deleteResp.status()).toBe(200);
       },

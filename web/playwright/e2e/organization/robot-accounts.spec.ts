@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage, pullImage} from '../../utils/container';
 
@@ -761,6 +760,7 @@ test.describe(
     test('robot wizard: org has 5 steps, user namespace has 3 steps', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
       // Part A: Verify org wizard has 5 steps
       const org = await api.organization('wizardorg');
@@ -802,7 +802,7 @@ test.describe(
       await authenticatedPage.getByTestId('create-robot-cancel').click();
 
       // Part B: Verify user namespace wizard has 3 steps
-      const userNamespace = TEST_USERS.user.username;
+      const userNamespace = getTestUsers(quayConfig).user.username;
       await authenticatedPage.goto(
         `/organization/${userNamespace}?tab=Robotaccounts`,
       );

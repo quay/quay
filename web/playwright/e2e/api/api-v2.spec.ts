@@ -16,7 +16,7 @@
 
 import {createHash} from 'crypto';
 import path from 'path';
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect, uniqueName, skipUnlessAuthType} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {getV2Token} from '../../utils/api/auth';
@@ -42,6 +42,12 @@ test.describe(
     let orgName: string;
     let repoName: string;
     let manifestDigest: string;
+
+    // The @auth:Database auto-skip fixture is test-scoped; skip here so the
+    // DB-user push in the next hook does not run under LDAP/OIDC.
+    test.beforeAll(({cachedQuayConfig}) => {
+      test.skip(...skipUnlessAuthType(cachedQuayConfig, 'Database'));
+    });
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
       // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
