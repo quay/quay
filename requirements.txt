@@ -149,7 +149,7 @@ asn1crypto==1.5.1
 oscrypto==1.3.0
 pyHanko==0.29.0
 pyhanko-certvalidator==0.27.0
-pypdf==6.19.0
+pypdf==6.20.1
 uritools==6.0.1
 arabic-reshaper==3.0.0
 cffi==2.0.0
