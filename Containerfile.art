@@ -248,3 +248,4 @@ VOLUME ["/datastorage", "/tmp", "/conf/stack"]
 USER 1001
 ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
+
