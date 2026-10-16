@@ -352,17 +352,22 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         raise NameUnknown("repository not found")
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
-    manifest = registry_model.create_manifest_with_temp_tag(
-        repository_ref,
-        parsed,
-        expiration_sec,
-        storage,
-        model_cache=model_cache,
-    )
+    try:
+        manifest = registry_model.create_manifest_with_temp_tag(
+            repository_ref,
+            parsed,
+            expiration_sec,
+            storage,
+            raise_on_error=True,
+            model_cache=model_cache,
+        )
+    except CreateManifestException as cme:
+        image_pushes.labels("v2", 400, "").inc()
+        raise ManifestInvalid(detail={"message": str(cme)})
 
     if manifest is None:
         image_pushes.labels("v2", 400, "").inc()
-        raise ManifestInvalid()
+        raise ManifestInvalid(detail={"message": "manifest could not be created"})
 
     image_pushes.labels("v2", 201, manifest.media_type).inc()
 
