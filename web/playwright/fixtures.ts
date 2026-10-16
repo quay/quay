@@ -1119,7 +1119,8 @@ async function loginUser(
       // Wait for redirect back to Quay (exclude Keycloak realm paths)
       await page.waitForURL(
         (url) =>
-          url.hostname === 'localhost' && !url.pathname.includes('/realms/'),
+          url.origin === new URL(BASE_URL).origin &&
+          !url.pathname.includes('/realms/'),
         {timeout: 15000},
       );
     } finally {
