@@ -50,6 +50,7 @@ test.describe(
       const row = superuserPage.locator('tr', {
         has: superuserPage.getByText(messageContent),
       });
+      await expect(row).toBeVisible();
       await row.locator('[data-testid$="-actions-toggle"]').click();
       await superuserPage.getByRole('menuitem', {name: 'Delete'}).click();
 
@@ -145,6 +146,7 @@ test.describe(
       const row = readonlyPage.locator('tr', {
         has: readonlyPage.getByText(msg.content),
       });
+      await expect(row).toBeVisible();
       await row.locator('[data-testid$="-actions-toggle"]').click();
       await expect(
         readonlyPage.getByRole('menuitem', {name: 'Delete'}),
