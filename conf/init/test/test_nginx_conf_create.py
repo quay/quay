@@ -21,6 +21,9 @@ def render_server_base_conf(**kwargs):
         enable_rate_limits=False,
         manifests_endpoint_read_timeout=None,
         blob_upload_client_body_timeout=None,
+        blob_upload_lingering_close=None,
+        blob_upload_lingering_time=None,
+        blob_upload_lingering_timeout=None,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -139,9 +142,24 @@ class TestBlobUploadClientBodyTimeout:
         blob_block = _blob_location(rendered)
         assert "proxy_read_timeout 2000;" in blob_block
 
-    def test_lingering_close_always_set(self):
+    def test_omits_lingering_directives_when_unset(self):
         rendered = render_server_base_conf()
         blob_block = _blob_location(rendered)
+        assert "lingering_close" not in blob_block
+        assert "lingering_time" not in blob_block
+        assert "lingering_timeout" not in blob_block
+
+    def test_renders_lingering_close_when_set(self):
+        rendered = render_server_base_conf(blob_upload_lingering_close="always")
+        blob_block = _blob_location(rendered)
         assert "lingering_close always;" in blob_block
-        assert "lingering_time 60s;" in blob_block
-        assert "lingering_timeout 30s;" in blob_block
+
+    def test_renders_lingering_time_when_set(self):
+        rendered = render_server_base_conf(blob_upload_lingering_time="60")
+        blob_block = _blob_location(rendered)
+        assert "lingering_time 60;" in blob_block
+
+    def test_renders_lingering_timeout_when_set(self):
+        rendered = render_server_base_conf(blob_upload_lingering_timeout="30")
+        blob_block = _blob_location(rendered)
+        assert "lingering_timeout 30;" in blob_block

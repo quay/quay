@@ -322,9 +322,15 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     client_body_timeout {{ blob_upload_client_body_timeout }};
     {% endif %}
 
-    lingering_close always;
-    lingering_time 60s;
-    lingering_timeout 30s;
+    {% if blob_upload_lingering_close %}
+    lingering_close {{ blob_upload_lingering_close }};
+    {% endif %}
+    {% if blob_upload_lingering_time %}
+    lingering_time {{ blob_upload_lingering_time }};
+    {% endif %}
+    {% if blob_upload_lingering_timeout %}
+    lingering_timeout {{ blob_upload_lingering_timeout }};
+    {% endif %}
 
     client_max_body_size {{ maximum_layer_size }};
     http2_chunk_size 32k;
