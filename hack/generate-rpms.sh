@@ -9,6 +9,9 @@ $DOCKER run -it $BASE_IMAGE cat /etc/yum.repos.d/ubi.repo > ubi.repo
 sed -i '' 's/ubi-9-codeready-builder/codeready-builder-for-ubi-9-$basearch/' ubi.repo
 sed -i '' 's/\[ubi-9/[ubi-9-for-$basearch/' ubi.repo
 
+sed -i '' 's/ubi-8-codeready-builder/codeready-builder-for-ubi-8-$basearch/' ubi.repo
+sed -i '' 's/\[ubi-8/[ubi-8-for-$basearch/' ubi.repo
+
 curl https://raw.githubusercontent.com/konflux-ci/rpm-lockfile-prototype/refs/heads/main/Containerfile \
   | $DOCKER build -t localhost/rpm-lockfile-prototype -
 
