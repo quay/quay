@@ -41,6 +41,7 @@ import {getCookie, setPermanentCookie} from 'src/libs/cookieUtils';
 import {useDeleteAccount} from 'src/hooks/UseDeleteAccount';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 // Form data interface for react-hook-form
 interface GeneralSettingsFormData {
@@ -57,6 +58,7 @@ type GeneralSettingsProps = {
 };
 
 export const GeneralSettings = (props: GeneralSettingsProps) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const quayConfig = useQuayConfig();
   const [timeMachineOptions, setTimeMachineOptions] = useState<{
     [key: string]: string;
@@ -613,12 +615,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           variant="primary"
           type="submit"
           onClick={handleSubmit(onSubmit)}
-          isDisabled={!isDirty || !isValid}
+          isDisabled={!isDirty || !isValid || isReadOnlySuperUser}
         >
           Save
         </Button>
 
-        {canShowDelete && (
+        {canShowDelete && !isReadOnlySuperUser && (
           <>
             {hasActiveBilling ? (
               <Flex alignItems={{default: 'alignItemsCenter'}}>
