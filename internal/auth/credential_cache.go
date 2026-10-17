@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"math"
 	"sync"
 	"time"
 )
@@ -49,9 +50,22 @@ type credentialCacheEntry struct {
 	expiresAt    time.Time
 }
 
+// maxCacheTTL is the largest duration that can result from a safe
+// time.Duration(seconds)*time.Second multiplication without int64 overflow.
+// It is used to clamp a negative TTL that was likely produced by overflow
+// so the cache is not silently disabled.
+const maxCacheTTL = time.Duration(math.MaxInt64/int64(time.Second)) * time.Second
+
 func newCredentialCache(ttl time.Duration) *credentialCache {
-	if ttl <= 0 {
+	if ttl == 0 {
 		return nil
+	}
+	if ttl < 0 {
+		// A negative TTL most likely results from integer overflow when the
+		// caller converted a large number of seconds to time.Duration; clamp
+		// to the maximum representable value rather than silently disabling
+		// the cache.
+		ttl = maxCacheTTL
 	}
 	key := make([]byte, sha256.Size)
 	if _, err := rand.Read(key); err != nil {
