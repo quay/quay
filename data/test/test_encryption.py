@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from data.encryption import _VERSIONS, DecryptionFailureException, FieldEncrypter
+from data.encryption import (
+    _VERSIONS,
+    DecryptionFailureException,
+    FieldEncrypter,
+    aes256_encrypt,
+)
 
 
 @pytest.mark.parametrize(
@@ -78,3 +86,46 @@ def test_encryption_value(secret_key, encrypted_value, expected_decrypted_value)
     decrypted = encrypter.decrypt_value(encrypted_value)
 
     assert decrypted == expected_decrypted_value
+
+
+@pytest.mark.parametrize(
+    "value, secret_key, iv",
+    # secret_key generated as os.urandom(16).hex()
+    [
+        (
+            "hello_world",
+            "b430fbcf015adcf6db6d968f702710c0",
+            b"!\x9e\xc06\xd3\x9d\x89\xa3\x90\x93\x85\xba\xae\x84Z\xc4",
+        ),
+        (
+            "test1234",
+            "47d3c98a36adf7199d56d722371cd0c6",
+            b"\x0e\x95BE\x91?\xb5!\xee0(\xb0\x12{\xb6\xdf",
+        ),
+        (
+            "string with special chars @#%^&!",
+            "de6e0e75026e4dbbe4bcdee6cc69da68",
+            b"\xa1]\xa9g\xb5u;E\xfc\xcfD&\xeb9M%",
+        ),
+        (
+            "hello_world",
+            "403d44e8eba659d57bfdd3360f79069c",
+            b'\x97\x83\x93\xcc\x15:\xa7c-"L\xc4\x933\x97\x98',
+        ),
+    ],
+)
+def test_aes256_encrypt(value, secret_key, iv):
+    encrypted = aes256_encrypt(value, secret_key, iv)
+
+    cipher = Cipher(
+        algorithms.AES256(secret_key.encode("utf-8")),
+        modes.CBC(iv),
+        backend=default_backend(),
+    )
+    decryptor = cipher.decryptor()
+    decrypted_padded = decryptor.update(encrypted) + decryptor.finalize()
+
+    unpadder = padding.PKCS7(algorithms.AES256.block_size).unpadder()
+    decrypted = unpadder.update(decrypted_padded) + unpadder.finalize()
+
+    assert decrypted.decode("utf-8") == value
