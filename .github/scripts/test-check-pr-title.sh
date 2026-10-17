@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 script="$script_dir/check-pr-title.sh"
 
 # The PCRE equivalent of the CI script's ERE. Equivalence is asserted per case below.
-expected_pcre='^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
+expected_pcre='^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+)(?:,\s*(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+))*|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
 
 failures=0
 
@@ -26,6 +26,13 @@ cases=(
   'PROJQUAY-1: Fix: x|0|no conventional'
   'NO-ISSUE: é: x|0|no conventional'
   'PROJQUAY-1: fix: |0|expected shape'
+  # Multiple comma-separated Jira keys
+  'PROJQUAY-10656, PROJQUAY-10788: fix(conf): preserve site-packages in PYTHONPATH|1|'
+  'PROJQUAY-10656,PROJQUAY-10788: fix(conf): preserve site-packages in PYTHONPATH|1|'
+  '[redhat-3.16] PROJQUAY-10656, PROJQUAY-10788: fix(conf): preserve site-packages in PYTHONPATH|1|'
+  'QUAYIO-111, QUAYIO-222: feat(auth): add SSO support|1|'
+  'PROJQUAY-10656 PROJQUAY-10788: fix(conf): no comma separator|0|no ticket prefix'
+  'PROJQUAY-10656,NO-ISSUE: fix(conf): mixing key types invalid|0|no ticket prefix'
 )
 
 for case in "${cases[@]}"; do
