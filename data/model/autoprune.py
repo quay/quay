@@ -246,7 +246,7 @@ def get_namespace_autoprune_policy(orgname, uuid):
         return None
 
 
-def get_repository_autoprune_policy_by_uuid(repo_name, uuid):
+def get_repository_autoprune_policy_by_uuid(namespace, repo_name, uuid):
     """
     Get the specific autopruning policy for the specified repository by uuid.
     """
@@ -254,7 +254,12 @@ def get_repository_autoprune_policy_by_uuid(repo_name, uuid):
         row = (
             RepositoryAutoPrunePolicyTable.select(RepositoryAutoPrunePolicyTable)
             .join(Repository)
-            .where(Repository.name == repo_name, RepositoryAutoPrunePolicyTable.uuid == uuid)
+            .join(User)
+            .where(
+                User.username == namespace,
+                Repository.name == repo_name,
+                RepositoryAutoPrunePolicyTable.uuid == uuid,
+            )
             .get()
         )
         return RepositoryAutoPrunePolicy(row)
@@ -362,7 +367,7 @@ def update_repository_autoprune_policy(orgname, repo_name, uuid, policy_config):
     if repo is None:
         raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
-    policy = get_repository_autoprune_policy_by_uuid(repo_name, uuid)
+    policy = get_repository_autoprune_policy_by_uuid(orgname, repo_name, uuid)
     if policy is None:
         raise RepositoryAutoPrunePolicyDoesNotExist(
             f"Policy not found for repository: {repo_name} with uuid: {uuid}"
@@ -429,7 +434,7 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         if repo is None:
             raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
-        policy = get_repository_autoprune_policy_by_uuid(repo_name, uuid)
+        policy = get_repository_autoprune_policy_by_uuid(orgname, repo_name, uuid)
         if policy is None:
             raise RepositoryAutoPrunePolicyDoesNotExist(
                 f"Policy not found for repository: {repo_name} with uuid: {uuid}"

@@ -491,7 +491,7 @@ def test_create_repo_policy(policy, initialized_db, app):
         assert response["uuid"] is not None
         assert (
             model.autoprune.get_repository_autoprune_policy_by_uuid(
-                "autoprunerepo", response["uuid"]
+                "testorgforautoprune", "autoprunerepo", response["uuid"]
             )
             is not None
         )
