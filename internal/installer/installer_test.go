@@ -1095,7 +1095,7 @@ func TestVerifyCertHostname(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1123,7 +1123,7 @@ func TestVerifyCertHostnameIP(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1151,7 +1151,7 @@ func TestParseCertPEM(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1318,6 +1318,21 @@ func TestCopyUserTLSRollsBackPairWhenKeyReplacementFails(t *testing.T) {
 	assert.Len(t, entries, 2)
 }
 
+func TestGeneratedCAPath(t *testing.T) {
+	dataDir := t.TempDir()
+	inst := &Installer{fs: system.OSFS{}}
+	cfg := &Config{DataDir: dataDir}
+
+	assert.Empty(t, inst.generatedCAPath(cfg), "no rootCA.pem")
+
+	caPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(caPath, []byte("ca"), 0o644))
+	assert.Equal(t, caPath, inst.generatedCAPath(cfg))
+
+	cfg.SSLCert = "/user/ssl.cert"
+	assert.Empty(t, inst.generatedCAPath(cfg), "user-supplied ssl.cert leaves rootCA.pem stale")
+}
+
 type failKeyRenameFS struct {
 	system.OSFS
 	keyDestination string
@@ -1334,7 +1349,7 @@ func generateTLSFiles(t *testing.T, dir string) (certPath, keyPath string) {
 	t.Helper()
 	certPath = filepath.Join(dir, "ssl.cert")
 	keyPath = filepath.Join(dir, "ssl.key")
-	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath))
+	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath, filepath.Join(t.TempDir(), "rootCA.pem")))
 	return certPath, keyPath
 }
 
