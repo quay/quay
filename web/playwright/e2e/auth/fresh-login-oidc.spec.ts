@@ -1,15 +1,3 @@
-/**
- * Fresh Login - OIDC vs Database behavior tests
- *
- * Uses page.route() to intercept GET /api/v1/superuser/logs* and return a
- * 401 fresh_login_required response. This is an approved exemption from the
- * no-mock policy: the fresh_login_required error requires the user's session
- * to be older than FRESH_LOGIN_TIMEOUT (default 10 minutes), which cannot be
- * triggered on demand via the real API. Additionally, the OIDC redirect path
- * under test requires an external IdP that is not available in standard CI
- * environments. The mock simulates valid Quay error responses to verify that
- * OIDC users are redirected to /signin rather than shown the password modal.
- */
 import {test, expect} from '../../fixtures';
 
 test.describe(

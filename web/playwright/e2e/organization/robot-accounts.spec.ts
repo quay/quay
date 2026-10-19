@@ -126,9 +126,22 @@ test.describe(
             .getByRole('tab', {name: 'API Tokens'})
             .click();
 
+          // Token endpoints carry @require_fresh_login (10 min timeout).
+          // Handle the re-auth modal if the worker session has expired.
           const tokensTable = authenticatedPage.getByTestId(
             'robot-api-tokens-table',
           );
+          const freshPasswordInput =
+            authenticatedPage.locator('#fresh-password');
+          await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+            timeout: 15_000,
+          });
+          if (await freshPasswordInput.isVisible()) {
+            await freshPasswordInput.fill(TEST_USERS.user.password);
+            await authenticatedPage
+              .getByRole('button', {name: 'Verify'})
+              .click();
+          }
           await expect(tokensTable).toBeVisible();
           // Ten rows per page plus the header row.
           await expect(tokensTable.getByRole('row')).toHaveCount(11);
@@ -185,7 +198,7 @@ test.describe(
 
           await expect(bulkModal).toBeHidden();
           // After revoking 2 tokens, 10 remain.
-          await expect(pagination).toContainText('10');
+          await expect(pagination).toContainText('of 10');
         } finally {
           await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
         }

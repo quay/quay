@@ -4,13 +4,8 @@
  * Tests the read-only mode and account recovery mode banners
  * that appear when the registry is in a special state.
  *
- * Uses page.route() to intercept GET /config and overlay registry_state and
- * account_recovery_mode fields — approved exemption from the no-mock policy.
- * registry_state: 'readonly' and account_recovery_mode: true are global server
- * states set in Quay's config file, not changeable per-request via the API.
- * Applying them against the running instance would break all other parallel
- * tests. The route only modifies the JSON fields relevant to banner rendering;
- * all other config fields pass through to the real response.
+ * Uses page.route() to mock the /config endpoint since changing
+ * registry state would affect all parallel tests.
  */
 
 import {test as base, expect} from '../../fixtures';
