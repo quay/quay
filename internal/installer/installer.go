@@ -237,8 +237,25 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 	}
 
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
-	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath)
+	attrs := []any{"url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath}
+	if caPath := inst.generatedCAPath(&resolvedCfg); caPath != "" {
+		attrs = append(attrs, "trust", caPath)
+	}
+	slog.Info("registry running", attrs...)
 	return nil
+}
+
+// generatedCAPath returns the CA certificate clients trust for a generated
+// ssl.cert, or "" when the certificate is user-supplied or rootCA.pem is absent.
+func (inst *Installer) generatedCAPath(cfg *Config) string {
+	if cfg.SSLCert != "" {
+		return ""
+	}
+	caPath := filepath.Join(cfg.DataDir, "rootCA.pem")
+	if _, err := inst.fs.Stat(caPath); err != nil {
+		return ""
+	}
+	return caPath
 }
 
 func (inst *Installer) resolveHostname(ctx context.Context, requestedHostname string, upgrading bool) (string, error) {
@@ -428,6 +445,7 @@ type upgradeSnapshot struct {
 	skipTLSHost bool
 	tlsCert     []byte
 	tlsKey      []byte
+	rootCA      []byte
 }
 
 // snapshotUpgrade captures the current installation state before any
@@ -473,6 +491,7 @@ func (inst *Installer) snapshotUpgrade(ctx context.Context, cfg *Config) (*upgra
 	if cfg.SSLCert != "" {
 		snap.tlsCert, _ = inst.fs.ReadFile(certPath)
 		snap.tlsKey, _ = inst.fs.ReadFile(keyPath)
+		snap.rootCA, _ = inst.fs.ReadFile(filepath.Join(cfg.DataDir, "rootCA.pem"))
 	}
 
 	return snap, nil
@@ -588,6 +607,9 @@ func (inst *Installer) rollbackUpgrade(ctx context.Context, snapshot *upgradeSna
 		dataDir := filepath.Dir(snapshot.certPath)
 		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.cert"), snapshot.tlsCert, 0o600)
 		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.key"), snapshot.tlsKey, 0o600)
+	}
+	if snapshot.rootCA != nil {
+		_ = inst.fs.WriteFile(filepath.Join(filepath.Dir(snapshot.certPath), "rootCA.pem"), snapshot.rootCA, 0o644)
 	}
 
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
@@ -977,6 +999,10 @@ func (inst *Installer) copyUserTLS(cfg *Config) error {
 
 	if err := inst.replaceTLSFiles(cfg.DataDir, certData, keyData); err != nil {
 		return err
+	}
+	// rootCA.pem only describes a generated ssl.cert.
+	if err := inst.fs.Remove(filepath.Join(cfg.DataDir, "rootCA.pem")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove generated CA: %w", err)
 	}
 
 	certDst := filepath.Join(cfg.DataDir, "ssl.cert")
