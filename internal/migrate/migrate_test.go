@@ -2,12 +2,15 @@ package migrate
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/installer"
 )
 
 func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T) {
@@ -194,5 +197,196 @@ func TestMigrator_Run_DryRunRejectsUnsupportedAuthentication(t *testing.T) {
 	}
 	if len(runner.runCalls) != 0 {
 		t.Fatalf("dry-run stopped source services: %v", runner.runCalls)
+	}
+}
+
+func TestMigrator_RunSQLiteCopyFailureRestartsSourceServices(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	runner := &recordingRunner{}
+	m.Runner = runner
+	// A dangling link passes storage validation but fails the copy.
+	if err := os.Symlink(filepath.Join(t.TempDir(), "missing"), filepath.Join(m.Source.StoragePath, "sha256", "ab", "blob")); err != nil {
+		t.Fatal(err)
+	}
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "copy storage") {
+		t.Fatalf("Run error = %v, want copy storage failure", err)
+	}
+	want := []string{
+		"systemctl stop quay-app.service",
+		"systemctl stop quay-redis.service",
+		"systemctl stop quay-pod.service",
+		"systemctl start quay-pod.service",
+		"systemctl start quay-redis.service",
+		"systemctl start quay-app.service",
+	}
+	if strings.Join(runner.runCalls, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("calls = %v, want %v", runner.runCalls, want)
+	}
+}
+
+func TestMigrator_RunSQLiteRetryAfterInjectedFailureResumes(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
+	m.Runner = &recordingRunner{}
+	t.Setenv(failAtEnv, "after-copy")
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "injected failure at after-copy") || !strings.Contains(err.Error(), "old OMR services restarted") {
+		t.Fatalf("Run error = %v, want injected failure with restart", err)
+	}
+	if _, err := os.Stat(filepath.Join(m.DataDir, markerFile)); err != nil {
+		t.Fatalf("failed copy lost its migration marker: %v", err)
+	}
+
+	// With -cleanup, a marked target must resume the migration, not skip to cleanup.
+	t.Setenv(failAtEnv, "")
+	m.Cleanup = true
+	runner := &recordingRunner{}
+	m.Runner = runner
+	if err := m.Run(t.Context()); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if len(runner.runCalls) == 0 || runner.runCalls[0] != "systemctl stop quay-app.service" {
+		t.Fatalf("retry did not rerun the migration: %v", runner.runCalls)
+	}
+	db, err := dbcore.OpenSQLiteReadOnly(filepath.Join(m.DataDir, "quay.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	revision, err := dbcore.SchemaVersion(t.Context(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revision != dbcore.TargetVersion {
+		t.Errorf("target revision = %q, want %q", revision, dbcore.TargetVersion)
+	}
+}
+
+func TestMigrator_RunSQLiteRollbackReportsFailedRestart(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	runner := &recordingRunner{runErrs: map[string]error{"quay-redis.service": errors.New("unit failed")}}
+	m.Runner = runner
+	t.Setenv(failAtEnv, "after-schema")
+
+	err := m.Run(t.Context())
+	if err == nil {
+		t.Fatal("Run succeeded, want injected failure")
+	}
+	for _, want := range []string{"injected failure at after-schema", "rollback old OMR", "start quay-redis.service: unit failed"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Run error = %v, want %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "restarted") {
+		t.Errorf("Run error = %v, claims a restart that failed", err)
+	}
+	starts := runner.runCalls[len(runner.runCalls)-3:]
+	want := []string{"systemctl start quay-pod.service", "systemctl start quay-redis.service", "systemctl start quay-app.service"}
+	if strings.Join(starts, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("rollback calls = %v, want %v", starts, want)
+	}
+}
+
+func TestMigrator_RunSQLiteCleanupAfterSkipInstallDoesNotRecopy(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
+	m.Runner = &recordingRunner{}
+	if err := m.Run(t.Context()); err != nil {
+		t.Fatalf("skip-install run: %v", err)
+	}
+
+	// The user installs by hand between the two runs; cleanup must keep that database.
+	dbPath := filepath.Join(m.DataDir, "quay.db")
+	if err := os.WriteFile(dbPath, []byte("installed by hand"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.SkipInstall = false
+	m.Cleanup = true
+	runner := &recordingRunner{}
+	m.Runner = runner
+	err := m.Run(t.Context())
+	for _, call := range runner.runCalls {
+		if strings.Contains(call, " stop ") {
+			t.Errorf("cleanup reran the migration: %v", runner.runCalls)
+			break
+		}
+	}
+	if got, readErr := os.ReadFile(dbPath); readErr != nil || string(got) != "installed by hand" {
+		t.Errorf("cleanup replaced the installed quay.db (read error %v)", readErr)
+	}
+	if err != nil {
+		t.Fatalf("cleanup run: %v", err)
+	}
+}
+
+func TestMigrator_RunSQLiteValidateFailureDoesNotRestart(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.DBPath = filepath.Join(t.TempDir(), "missing.db")
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	runner := &recordingRunner{}
+	m.Runner = runner
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "validate") {
+		t.Fatalf("Run error = %v, want validate failure", err)
+	}
+	if strings.Contains(err.Error(), "restarted") {
+		t.Errorf("Run error = %v, claims a restart before the stop", err)
+	}
+	for _, call := range runner.runCalls {
+		if strings.Contains(call, " start ") {
+			t.Fatalf("failure before the stop started old OMR services: %v", runner.runCalls)
+		}
+	}
+}
+
+func TestMigrator_RunSQLiteInstallFailureRemovesOnlyOwnedInstall(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		existed     bool
+		wantRemoved bool
+	}{
+		{name: "pre-existing install is kept", existed: true, wantRemoved: false},
+		{name: "install created by this run is removed", existed: false, wantRemoved: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			m := validInstallMigrator(t)
+			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+			runner := &recordingRunner{}
+			m.Runner = runner
+			m.checkTargetInstallation = func() (bool, error) { return tc.existed, nil }
+			removed := false
+			m.removeTargetInstall = func(context.Context) error {
+				removed = true
+				return nil
+			}
+			m.runInstall = func(context.Context, *installer.Config) error {
+				return errors.New("injected install failure")
+			}
+
+			err := m.Run(t.Context())
+			if err == nil || !strings.Contains(err.Error(), "install: ") || !strings.Contains(err.Error(), "old OMR services restarted") {
+				t.Fatalf("Run error = %v, want install failure with restart", err)
+			}
+			if removed != tc.wantRemoved {
+				t.Errorf("target install removed = %v, want %v", removed, tc.wantRemoved)
+			}
+			starts := runner.runCalls[len(runner.runCalls)-3:]
+			want := []string{"systemctl start quay-pod.service", "systemctl start quay-redis.service", "systemctl start quay-app.service"}
+			if strings.Join(starts, "\n") != strings.Join(want, "\n") {
+				t.Fatalf("rollback calls = %v, want %v", starts, want)
+			}
+		})
 	}
 }

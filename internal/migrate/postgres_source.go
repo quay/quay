@@ -38,9 +38,7 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 		if cleanupErr := m.removePostgresMigrationArtifacts(retrySafe); cleanupErr != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("remove failed migration artifacts: %w", cleanupErr))
 		}
-		if rollbackErr := m.rollbackPostgresSource(rollbackCtx); rollbackErr != nil {
-			retErr = errors.Join(retErr, fmt.Errorf("rollback old OMR: %w", rollbackErr))
-		}
+		retErr = withSourceRollback(retErr, m.rollbackPostgresSource(rollbackCtx))
 	}()
 	if err := m.stopPostgresApp(ctx); err != nil {
 		return fmt.Errorf("stop old OMR app: %w", err)
@@ -59,14 +57,14 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 	if err := m.validateSourceDatabase(ctx); err != nil {
 		return fmt.Errorf("validate converted source: %w", err)
 	}
+	if err := failAt("after-convert"); err != nil {
+		return err
+	}
 	// Once broad target publication begins, retain the marker so a later failure
 	// remains fail-closed rather than being mistaken for a clean retry.
 	retrySafe = false
-	if err := m.copyData(ctx); err != nil {
-		return fmt.Errorf("copy: %w", err)
-	}
-	if err := m.upgradeSchema(ctx); err != nil {
-		return fmt.Errorf("schema upgrade: %w", err)
+	if err := m.copyAndUpgrade(ctx); err != nil {
+		return err
 	}
 	if err := m.stopPostgresRemainingServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR at cutover: %w", err)

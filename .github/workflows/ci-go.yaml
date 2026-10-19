@@ -1168,6 +1168,44 @@ jobs:
             > /tmp/e2e-migrate-state/source-services.txt || true
           sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
 
+      - name: Verify rollback after injected migrate failures
+        run: |
+          set -euo pipefail
+
+          SOURCE_DB=$(cat /tmp/e2e-migrate-state/source-db-path.txt)
+          . /tmp/e2e-migrate-state/digests.env
+          # Every SQLite phase runs after the target copy began, so each keeps
+          # the marker and the real migration below resumes over it.
+          for phase in after-copy after-schema at-install; do
+            echo "Injecting migrate failure at ${phase}"
+            log="/tmp/e2e-migrate-state/migrate-${phase}.log"
+            if sudo env QUAY_MIGRATE_FAIL_AT="$phase" bin/mirror-registry migrate 2>&1 | tee "$log"; then
+              echo "FAIL: migrate succeeded with an injected failure at ${phase}"
+              exit 1
+            fi
+            grep -F "injected failure at ${phase}" "$log"
+
+            curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+              -o /dev/null https://localhost:8443/health/instance
+            test "$(sudo systemctl is-active quay-app.service)" = active
+            sudo podman pull --tls-verify=false "localhost:8443/init/test-image@${TEST_IMAGE_DIGEST}"
+
+            # The restarted OMR writes its database (pull logs, workers), so
+            # compare the recorded content rather than a file hash.
+            : > /tmp/e2e-migrate-state/rollback-counts.env
+            for table in repository tag manifest manifestblob imagestorage; do
+              count=$(sudo sqlite3 "$SOURCE_DB" "SELECT COUNT(*) FROM ${table};")
+              echo "${table}=${count}" >> /tmp/e2e-migrate-state/rollback-counts.env
+            done
+            version=$(sudo sqlite3 "$SOURCE_DB" "SELECT version_num FROM alembic_version;")
+            echo "alembic_version=${version}" >> /tmp/e2e-migrate-state/rollback-counts.env
+            diff -u /tmp/e2e-migrate-state/source-counts.env /tmp/e2e-migrate-state/rollback-counts.env
+
+            sudo test ! -e /var/lib/quay/quay.db.partial
+            sudo test ! -e /etc/containers/systemd/quay.container
+            sudo test -e /var/lib/quay/.migration-in-progress
+          done
+
       - name: Run quay migrate
         run: sudo bin/mirror-registry migrate
 
@@ -1641,6 +1679,69 @@ jobs:
               -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
               -c "SELECT COUNT(*) FROM ${table};")
             printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
+          done
+
+      - name: Verify rollback after injected migrate failures
+        run: |
+          set -euo pipefail
+
+          state_dir="$RUNNER_TEMP/e2e-migrate-postgres"
+          target_dir="$RUNNER_TEMP/quay-v3"
+          # after-convert is retry-safe and runs last, so the real migration
+          # below retries over its rollback with no manual cleanup.
+          for phase in after-copy after-schema at-install after-convert; do
+            echo "Injecting migrate failure at ${phase}"
+            log="$state_dir/migrate-${phase}.log"
+            if sudo env QUAY_MIGRATE_FAIL_AT="$phase" bin/mirror-registry migrate \
+              -data-dir="$target_dir" \
+              -image-archive="$PWD/bin/quay-mirror.tar" 2>&1 | tee "$log"; then
+              echo "FAIL: migrate succeeded with an injected failure at ${phase}"
+              exit 1
+            fi
+            grep -F "injected failure at ${phase}" "$log"
+
+            curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+              -o /dev/null https://localhost:8443/health/instance
+            for unit in quay-pod quay-postgres quay-redis quay-app; do
+              test "$(sudo systemctl is-active "${unit}.service")" = active
+            done
+            sudo podman pull --tls-verify=false localhost:8443/init/postgres-source:v1
+
+            test "$(sudo podman exec quay-postgres psql -At \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c 'SELECT version_num FROM alembic_version;')" = 3f8d7acdf7f9
+            sudo podman exec quay-postgres psql -At -F '|' \
+              -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "SELECT u.username || '/' || r.name, t.name, m.digest
+                  FROM tag AS t
+                  JOIN repository AS r ON r.id = t.repository_id
+                  JOIN \"user\" AS u ON u.id = r.namespace_user_id
+                  JOIN manifest AS m ON m.id = t.manifest_id
+                  WHERE u.username = 'init'
+                    AND r.name IN ('postgres-source', 'postgres-shared')
+                    AND t.lifetime_end_ms IS NULL
+                  ORDER BY r.name, t.name" \
+              > "$state_dir/rollback-manifests.txt"
+            diff -u "$state_dir/source-manifests.txt" "$state_dir/rollback-manifests.txt"
+            : > "$state_dir/rollback-counts.env"
+            for table in repository tag manifest manifestblob imagestorage; do
+              count=$(sudo podman exec quay-postgres psql -At \
+                -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+                -c "SELECT COUNT(*) FROM ${table};")
+              printf '%s=%s\n' "$table" "$count" >> "$state_dir/rollback-counts.env"
+            done
+            diff -u "$state_dir/source-counts.env" "$state_dir/rollback-counts.env"
+
+            sudo test ! -e "$target_dir/quay.db.partial"
+            sudo test ! -e /etc/containers/systemd/quay.container
+            if [ "$phase" = after-convert ]; then
+              sudo test ! -e "$target_dir/.migration-in-progress"
+            else
+              sudo test -e "$target_dir/.migration-in-progress"
+              # Post-publication failures are fail-closed: clear the target as
+              # the PostgreSQL resume error instructs.
+              sudo rm -rf "$target_dir"
+            fi
           done
 
       - name: Migrate PostgreSQL OMR to v3

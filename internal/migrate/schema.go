@@ -117,6 +117,7 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 		slog.Info("discovered running OMR services via probe", "scope", discovered)
 	}
 
+	m.sourceStopped = true
 	for _, svc := range omrServiceNames {
 		slog.Info("stopping service", "service", svc)
 		if err := m.runSourceService(ctx, "stop", svc+".service"); err != nil {
@@ -161,19 +162,51 @@ func (m *Migrator) stopPostgresRemainingServices(ctx context.Context) error {
 }
 
 func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
+	return errors.Join(
+		m.removeFailedTargetInstall(ctx),
+		m.startSourceServices(ctx, quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit),
+	)
+}
+
+func (m *Migrator) rollbackSQLiteSource(ctx context.Context) error {
 	var errs []error
+	if m.ownsTargetInstall {
+		errs = append(errs, m.removeFailedTargetInstall(ctx))
+	}
+	errs = append(errs, m.startSourceServices(ctx, quayPodUnit, quayRedisUnit, quayAppUnit))
+	return errors.Join(errs...)
+}
+
+func (m *Migrator) removeFailedTargetInstall(ctx context.Context) error {
+	if m.removeTargetInstall != nil {
+		return m.removeTargetInstall(ctx)
+	}
 	inst, err := installer.New(m.Out)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("create installer for rollback: %w", err))
-	} else if err := inst.RemoveFailedInstallation(ctx); err != nil {
-		errs = append(errs, fmt.Errorf("remove failed target install: %w", err))
+		return fmt.Errorf("create installer for rollback: %w", err)
 	}
-	for _, service := range []string{quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit} {
+	if err := inst.RemoveFailedInstallation(ctx); err != nil {
+		return fmt.Errorf("remove failed target install: %w", err)
+	}
+	return nil
+}
+
+func (m *Migrator) startSourceServices(ctx context.Context, services ...string) error {
+	var errs []error
+	for _, service := range services {
 		if err := m.runSourceService(ctx, "start", service); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// withSourceRollback tells the user whether the old OMR is running again.
+func withSourceRollback(err, rollbackErr error) error {
+	if rollbackErr != nil {
+		return errors.Join(err, fmt.Errorf("rollback old OMR: %w", rollbackErr))
+	}
+	return fmt.Errorf("%w (old OMR services restarted)", err)
 }
 
 func (m *Migrator) runSourceService(ctx context.Context, action, service string) error {
@@ -222,9 +255,22 @@ func (m *Migrator) install(ctx context.Context) error {
 		Port:         port,
 	}
 
+	// Rollback removes only an installation this run created.
+	exists, err := m.hasTargetInstallation()
+	if err != nil {
+		return fmt.Errorf("check target installation: %w", err)
+	}
+	m.ownsTargetInstall = !exists
 	slog.Info("installing new registry", "hostname", cfg.Hostname, "data-dir", cfg.DataDir)
-	if err := inst.Run(ctx, cfg); err != nil {
+	run := inst.Run
+	if m.runInstall != nil {
+		run = m.runInstall
+	}
+	if err := run(ctx, cfg); err != nil {
 		return fmt.Errorf("install: %w", err)
+	}
+	if err := failAt("at-install"); err != nil {
+		return err
 	}
 
 	removeMarker(m.DataDir)

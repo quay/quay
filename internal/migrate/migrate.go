@@ -9,7 +9,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/quay/quay/internal/installer"
 	"github.com/quay/quay/internal/system"
 )
 
@@ -20,6 +22,10 @@ const (
 
 	databaseSQLite   = "sqlite"
 	databasePostgres = "postgres"
+
+	// failAtEnv names a phase at which the migration fails on purpose. It
+	// exists for tests that exercise rollback against a real OMR.
+	failAtEnv = "QUAY_MIGRATE_FAIL_AT"
 )
 
 // OMRSource describes a detected OMR v2.0.x installation.
@@ -70,6 +76,10 @@ type Migrator struct {
 	sourceRegistryJWTKey    *rsa.PrivateKey
 	sourceRegistryJWTKID    string
 	checkTargetInstallation func() (bool, error)
+	removeTargetInstall     func(context.Context) error
+	runInstall              func(context.Context, *installer.Config) error
+	sourceStopped           bool
+	ownsTargetInstall       bool
 }
 
 // Run executes the migration phases in order.
@@ -114,14 +124,8 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 		return nil
 	}
 
-	if err := m.migrateData(ctx); err != nil {
+	if err := m.migrateAndInstall(ctx); err != nil {
 		return err
-	}
-
-	if !m.SkipInstall {
-		if err := m.install(ctx); err != nil {
-			return fmt.Errorf("install: %w", err)
-		}
 	}
 
 	if m.Cleanup {
@@ -134,9 +138,47 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	return nil
 }
 
+// migrateAndInstall restarts the old OMR when a step fails after it was
+// stopped. The failed target keeps its marker, so a rerun resumes the copy.
+func (m *Migrator) migrateAndInstall(ctx context.Context) (retErr error) {
+	defer func() {
+		if retErr == nil || !m.sourceStopped {
+			return
+		}
+		rollbackCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		retErr = withSourceRollback(retErr, m.rollbackSQLiteSource(rollbackCtx))
+	}()
+	if err := m.migrateData(ctx); err != nil {
+		return err
+	}
+	if m.SkipInstall {
+		// The copy is complete, so a later -cleanup must not resume it over
+		// a database the user may have installed by hand.
+		removeMarker(m.DataDir)
+		return nil
+	}
+	if err := m.install(ctx); err != nil {
+		return fmt.Errorf("install: %w", err)
+	}
+	return nil
+}
+
+// targetDirPopulated reports a finished migration. A marker means the target
+// is an interrupted copy, which must be resumed rather than cleaned up after.
 func targetDirPopulated(dir string) bool {
+	if _, err := os.Stat(filepath.Join(dir, markerFile)); err == nil {
+		return false
+	}
 	_, err := os.Stat(filepath.Join(dir, "quay.db"))
 	return err == nil
+}
+
+func failAt(phase string) error {
+	if os.Getenv(failAtEnv) == phase {
+		return fmt.Errorf("injected failure at %s", phase)
+	}
+	return nil
 }
 
 func (m *Migrator) migrateData(ctx context.Context) error {
@@ -146,13 +188,20 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	if err := m.stopSourceServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR: %w", err)
 	}
+	return m.copyAndUpgrade(ctx)
+}
+
+func (m *Migrator) copyAndUpgrade(ctx context.Context) error {
 	if err := m.copyData(ctx); err != nil {
 		return fmt.Errorf("copy: %w", err)
+	}
+	if err := failAt("after-copy"); err != nil {
+		return err
 	}
 	if err := m.upgradeSchema(ctx); err != nil {
 		return fmt.Errorf("schema upgrade: %w", err)
 	}
-	return nil
+	return failAt("after-schema")
 }
 
 func (m *Migrator) detectAndOverride(ctx context.Context) error {
