@@ -83,6 +83,8 @@ def validate_robot_api_token(token):
     if not model.user.get_username(robot_owner).enabled:
         return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
 
+    # The robot authenticated: mark the robot used, not only the token (PROJQUAY-13785).
+    model.user.update_robot_last_accessed(robot)
     return ValidateResult(
         AuthKind.oauth, robot=robot, api_scopes=persisted.scope, api_token=persisted
     )
@@ -145,6 +147,7 @@ def validate_robot_api_jwt(token, decoded=None):
                 AuthKind.oauth, error_message="Federation binding is no longer valid"
             )
 
+    model.user.update_robot_last_accessed(robot)
     return ValidateResult(AuthKind.oauth, robot=robot, api_scopes=scope, federation_binding=binding)
 
 
