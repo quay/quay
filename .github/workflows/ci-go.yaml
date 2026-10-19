@@ -1206,6 +1206,23 @@ jobs:
             sudo test -e /var/lib/quay/.migration-in-progress
           done
 
+          # The old OMR regenerates its signing key when restarted, so measure
+          # continuity from the source state the real migration starts from.
+          if ! source_key_fingerprint=$(sudo podman exec quay-app \
+            cat /quay-registry/conf/quay.pem \
+            | openssl pkey -pubout -outform DER \
+            | sha256sum \
+            | awk '{print $1}'); then
+            echo "FAIL: source registry JWT key could not be read or parsed"
+            exit 1
+          fi
+          if [ -z "$source_key_fingerprint" ]; then
+            echo "FAIL: source registry JWT key fingerprint was not captured"
+            exit 1
+          fi
+          printf '%s\n' "$source_key_fingerprint" \
+            | tee /tmp/e2e-migrate-state/source-jwt-key-fingerprint.txt
+
       - name: Run quay migrate
         run: sudo bin/mirror-registry migrate
 
