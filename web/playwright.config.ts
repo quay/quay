@@ -1,4 +1,16 @@
 import {defineConfig, devices} from '@playwright/test';
+import {
+  applyChromiumLoopbackBypass,
+  proxyOptionFromEnv,
+} from './playwright/utils/proxy';
+
+// When Quay is only reachable through a proxy (bare-metal OpenShift CI), route
+// the browser and all APIRequestContext traffic through it. Playwright does not
+// pick up HTTP(S)_PROXY env vars for live traffic on its own. This module is
+// re-evaluated in each worker process, so setting the loopback-bypass env here
+// covers every Chromium launch.
+applyChromiumLoopbackBypass();
+const proxy = proxyOptionFromEnv();
 
 /**
  * Playwright configuration for Quay E2E tests
@@ -38,6 +50,14 @@ export default defineConfig({
 
     // Accept self-signed certificates (needed for OpenShift CI clusters)
     ignoreHTTPSErrors: true,
+
+    // Route browser + request traffic through the proxy when configured.
+    // `proxy` covers the context/page fixtures and APIRequestContext; setting
+    // it on `launchOptions` too launches the Chromium process itself with
+    // --proxy-server, so manually created `browser.newContext()` contexts
+    // inherit the proxy instead of attempting direct (failing) DNS.
+    proxy,
+    launchOptions: {proxy},
 
     // Action timeout
     actionTimeout: 30 * 1000,
