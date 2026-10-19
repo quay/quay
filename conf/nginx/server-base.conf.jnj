@@ -319,6 +319,20 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     proxy_send_timeout 2000;
     proxy_temp_path /tmp 1 2;
 
+    {% if blob_upload_client_body_timeout %}
+    client_body_timeout {{ blob_upload_client_body_timeout }};
+    {% endif %}
+
+    {% if blob_upload_lingering_close %}
+    lingering_close {{ blob_upload_lingering_close }};
+    {% endif %}
+    {% if blob_upload_lingering_time %}
+    lingering_time {{ blob_upload_lingering_time }};
+    {% endif %}
+    {% if blob_upload_lingering_timeout %}
+    lingering_timeout {{ blob_upload_lingering_timeout }};
+    {% endif %}
+
     client_max_body_size {{ maximum_layer_size }};
     http2_chunk_size 32k;
 
