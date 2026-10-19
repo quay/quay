@@ -55,6 +55,154 @@ test.describe(
           await expect(
             authenticatedPage.getByText('Robot API token created'),
           ).toBeVisible();
+          await authenticatedPage.getByRole('button', {name: 'Done'}).click();
+
+          const tokensTable = authenticatedPage.getByTestId(
+            'robot-api-tokens-table',
+          );
+          await expect(tokensTable).toBeVisible();
+          const tokenRow = tokensTable.getByRole('row', {name: /CI token/});
+          await expect(tokenRow).toBeVisible();
+          await expect(tokenRow).toContainText('repo:read');
+          await expect(tokenRow).toContainText('Never');
+          await expect(tokenRow).not.toContainText('T00:00:00');
+
+          await authenticatedPage
+            .getByTestId('robot-api-token-search')
+            .fill('no-such-token');
+          await expect(
+            authenticatedPage.getByText('No API tokens match the search.'),
+          ).toBeVisible();
+        } finally {
+          await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
+        }
+      },
+    );
+
+    test(
+      'robot API token list paginates, filters and bulk revokes',
+      {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, userClient}) => {
+        const robotShortname = uniqueName('api-token-list').replace(/-/g, '_');
+        const dayMs = 24 * 60 * 60 * 1000;
+        const tokens = Array.from({length: 12}, (_, index) => ({
+          uuid: `token-${index + 1}`,
+          name:
+            index === 0
+              ? `ci-${'x'.repeat(80)}-token`
+              : `Token ${String(index + 1).padStart(2, '0')}`,
+          scope: 'repo:read',
+          expires_at: new Date(Date.now() + (index + 1) * dayMs).toISOString(),
+          created: new Date(Date.now() - dayMs).toISOString(),
+          created_by: 'devtable',
+          last_accessed:
+            index === 1 ? new Date(Date.now() - 2 * dayMs).toISOString() : null,
+        }));
+        const revoked: string[] = [];
+
+        try {
+          const createResponse = await userClient.put(
+            `/api/v1/user/robots/${robotShortname}`,
+            {description: 'Personal robot API token list test'},
+          );
+          expect(createResponse.status()).toBe(201);
+          const robot = await createResponse.json();
+
+          await authenticatedPage.route(
+            `**/api/v1/user/robots/${robotShortname}/tokens**`,
+            async (route): Promise<void> => {
+              const request = route.request();
+              if (request.method() === 'DELETE') {
+                revoked.push(request.url().split('/').pop() as string);
+                await route.fulfill({status: 204, body: ''});
+                return;
+              }
+              if (request.method() === 'GET') {
+                await route.fulfill({
+                  status: 200,
+                  contentType: 'application/json',
+                  body: JSON.stringify({
+                    tokens: tokens.filter(
+                      (token) => !revoked.includes(token.uuid),
+                    ),
+                  }),
+                });
+                return;
+              }
+              await route.continue();
+            },
+          );
+
+          await authenticatedPage.goto(
+            `/organization/${robot.name.split('+')[0]}?tab=Robotaccounts`,
+          );
+          await authenticatedPage.getByText(robot.name).click();
+          await authenticatedPage
+            .getByRole('tab', {name: 'API Tokens'})
+            .click();
+
+          const tokensTable = authenticatedPage.getByTestId(
+            'robot-api-tokens-table',
+          );
+          await expect(tokensTable).toBeVisible();
+          // Ten rows per page plus the header row.
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+          const pagination = authenticatedPage.locator(
+            '#robot-api-tokens-pagination',
+          );
+          await expect(pagination).toContainText('12');
+          await expect(tokensTable).toContainText('Token 10');
+          await expect(tokensTable).not.toContainText('Token 11');
+          await expect(
+            tokensTable.getByRole('row', {name: /Token 02/}),
+          ).toContainText('2 days ago');
+
+          await pagination
+            .getByRole('button', {name: 'Go to next page'})
+            .click();
+          await expect(tokensTable).toContainText('Token 11');
+          await expect(tokensTable).not.toContainText('Token 10');
+
+          const search = authenticatedPage.getByTestId(
+            'robot-api-token-search',
+          );
+          await search.fill('Token 1');
+          await expect(tokensTable.getByRole('row')).toHaveCount(4);
+          await search.fill('');
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+
+          await tokensTable
+            .getByRole('checkbox', {name: 'Select row 0'})
+            .check();
+          await tokensTable
+            .getByRole('checkbox', {name: 'Select row 1'})
+            .check();
+          await authenticatedPage
+            .getByRole('button', {name: 'Revoke selected'})
+            .click();
+          const bulkModal = authenticatedPage.getByTestId('bulk-delete-modal');
+          await expect(bulkModal).toBeVisible();
+          await expect(bulkModal).toContainText('Revoke 2 robot API tokens?');
+          await expect(bulkModal).toContainText(
+            'Only the selected tokens are revoked.',
+          );
+          await expect(bulkModal).not.toContainText('Permanently delete');
+          await expect(bulkModal).toContainText('Token 02');
+          await bulkModal
+            .getByTestId('delete-confirmation-input')
+            .fill('confirm');
+          const confirmButton = bulkModal.getByTestId(
+            'bulk-delete-confirm-btn',
+          );
+          await expect(confirmButton).toHaveText('Revoke');
+          await confirmButton.click();
+
+          await expect(bulkModal).toBeHidden();
+          await expect
+            .poll(() => revoked.sort())
+            .toEqual(['token-1', 'token-2']);
+          await expect(pagination).toContainText('10');
+          await expect(tokensTable).not.toContainText('Token 02');
         } finally {
           await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
         }
