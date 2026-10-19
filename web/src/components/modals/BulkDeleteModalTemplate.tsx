@@ -47,11 +47,10 @@ export const BulkDeleteModalTemplate = <T,>(
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.selectedItems.filter(
-        (item) =>
-          item[props.mapOfColNamesToTableData[colNames[0]].label]
-            ?.toLowerCase()
-            .includes(value.toLowerCase()),
+      const filteredTableRow = props.selectedItems.filter((item) =>
+        item[props.mapOfColNamesToTableData[colNames[0]].label]
+          ?.toLowerCase()
+          .includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }
@@ -74,23 +73,26 @@ export const BulkDeleteModalTemplate = <T,>(
       ? props.mapOfColNamesToTableData[name].transformFunc(item)
       : item[props.mapOfColNamesToTableData[name].label];
 
+  const title = props.title ?? `Permanently delete ${props.resourceName}?`;
+  const description =
+    props.description ??
+    `This action deletes all ${props.resourceName} and cannot be recovered.`;
+  const confirmationLabel =
+    props.confirmationLabel ?? 'Confirm deletion by typing';
+  const actionLabel = props.actionLabel ?? 'Delete';
+
   return (
     <Modal
       id="bulk-delete-modal"
       data-testid="bulk-delete-modal"
-      aria-label={`Permanently delete ${props.resourceName}?`}
+      aria-label={title}
       variant={ModalVariant.medium}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
     >
-      <ModalHeader
-        title={`Permanently delete ${props.resourceName}?`}
-        titleIconVariant="warning"
-      />
+      <ModalHeader title={title} titleIconVariant="warning" />
       <ModalBody>
-        <span>
-          This action deletes all {props.resourceName} and cannot be recovered.
-        </span>
+        <span>{description}</span>
         <PageSection hasBodyWrapper={false}>
           <Toolbar>
             <ToolbarContent className="pf-v6-u-pl-0">
@@ -148,7 +150,7 @@ export const BulkDeleteModalTemplate = <T,>(
             />
           </Toolbar>
           <p className="pf-v6-u-pt-md">
-            Confirm deletion by typing <b>&quot;confirm&quot;</b> below:
+            {confirmationLabel} <b>&quot;confirm&quot;</b> below:
           </p>
           <TextInput
             id="delete-confirmation-input"
@@ -169,7 +171,7 @@ export const BulkDeleteModalTemplate = <T,>(
           isDisabled={confirmDeletionInput !== 'confirm'}
           data-testid="bulk-delete-confirm-btn"
         >
-          Delete
+          {actionLabel}
         </Button>
         <Button
           key="cancel"
@@ -193,4 +195,9 @@ type BulkDeleteModalTemplateProps<T> = {
   handleBulkDeletion: (items: T[]) => void;
   selectedItems: T[];
   resourceName: string;
+  // Optional wording overrides; the defaults keep the delete wording.
+  title?: string;
+  description?: React.ReactNode;
+  confirmationLabel?: string;
+  actionLabel?: string;
 };
