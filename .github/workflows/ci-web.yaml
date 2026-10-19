@@ -400,6 +400,12 @@ jobs:
           docker restart quay-quay
           curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
             http://localhost:8080/health/instance > /dev/null
+          # Clair and repomirror share quay's network namespace and are left
+          # in the old one by the restart above, so rejoin them.
+          docker restart quay-clair quay-repomirror
+          docker exec quay-quay curl -sf --retry 30 --retry-delay 2 \
+            --retry-all-errors \
+            http://localhost:6000/indexer/api/v1/index_state > /dev/null
           echo "Quay is ready with LDAP auth"
 
       - name: Run full suite under LDAP auth
