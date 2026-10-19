@@ -12,6 +12,7 @@ from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import FederatedLogin
 from data.model import InvalidRobotCredentialException, InvalidRobotException
+from data.model import config as model_config
 from test.fixtures import *
 from util.security.federated_robot_auth import (
     _oidc_service_for_federation_issuer,
@@ -166,6 +167,43 @@ def test_validate_federated_robot_auth_valid_jwt(app):
     assert result.error_message is None
     assert not result.missing
     assert result.kind == AuthKind.federated
+
+
+@pytest.mark.parametrize(
+    "whitelist, expected_valid",
+    [
+        ([], False),
+        (lambda robot: [robot.username], True),
+        (lambda robot: [robot.username + "-suffix"], False),
+    ],
+)
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_respects_robot_access_policy(app, whitelist, expected_valid):
+    robot, _ = model.user.create_robot("policy-federated", model.user.get_user("devtable"))
+    model.user.create_robot_federation_config(
+        robot,
+        [
+            {
+                "issuer": "https://mock-oidc-server.com",
+                "subject": robot.username,
+                "audiences": ["quay"],
+            }
+        ],
+    )
+    token = generate_mock_oidc_token(subject=robot.username, audience="quay")
+    header = f"Basic {base64.b64encode(f'{robot.username}:{token}'.encode()).decode()}"
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        if expected_valid:
+            assert validate_federated_auth(header).auth_valid
+        else:
+            with pytest.raises(InvalidRobotCredentialException, match="Token does not match robot"):
+                validate_federated_auth(header)
 
 
 def _store_legacy_federation_config(robot, bindings):

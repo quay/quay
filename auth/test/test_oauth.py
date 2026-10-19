@@ -81,6 +81,41 @@ def test_robot_api_token_authenticates_as_its_robot(app):
     assert revoked_result.error_message == "API token is invalid, revoked or expired"
 
 
+@pytest.mark.parametrize(
+    "whitelist, expected_valid",
+    [
+        ([], False),
+        (lambda robot: [robot.username], True),
+        (lambda robot: [robot.username + "-suffix"], False),
+    ],
+)
+def test_robot_api_credentials_respect_robot_access_policy(app, whitelist, expected_valid):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("policy-api-token", creator)
+    _, opaque_token = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "Policy token"
+    )
+    binding = model.user.create_robot_federation_config(
+        robot,
+        [
+            {
+                "issuer": "https://issuer.example",
+                "subject": robot.username,
+                "api_scopes": "repo:read",
+            }
+        ],
+    )[0]
+    jwt_token = generate_federated_robot_jwt_token(instance_keys, robot, "repo:read", binding)
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        for token in (opaque_token, jwt_token):
+            assert validate_bearer_auth("Bearer " + token).auth_valid is expected_valid
+
+
 LEGACY_FEDERATION_BINDINGS = [
     {
         "issuer": "https://issuer.example",

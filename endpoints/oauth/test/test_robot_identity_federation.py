@@ -108,6 +108,41 @@ def test_sts_token_exchange_returns_quay_robot_jwt(sts_app):
     assert revoked_result.error_message == "Federation binding is no longer valid"
 
 
+@pytest.mark.parametrize(
+    "whitelist, expected_code",
+    [
+        ([], 400),
+        (lambda robot: [robot.username], 200),
+        (lambda robot: [robot.username + "-suffix"], 400),
+    ],
+)
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_sts_token_exchange_respects_robot_access_policy(sts_app, whitelist, expected_code):
+    robot = _federated_robot()
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        response = sts_app.test_client().post(
+            "/sts/token",
+            data={
+                "grant_type": TOKEN_EXCHANGE_GRANT_TYPE,
+                "subject_token": generate_mock_oidc_token(subject=robot.username, audience="quay"),
+                "subject_token_type": JWT_TOKEN_TYPE,
+                "resource": "urn:quay:robot:" + robot.username,
+                "scope": "repo:read",
+            },
+            content_type="application/x-www-form-urlencoded",
+        )
+
+    assert response.status_code == expected_code
+    if expected_code == 400:
+        assert response.json == {"error": "invalid_grant"}
+
+
 def test_legacy_federation_endpoint_issues_registry_only_token(app):
     robot = _federated_robot()
     binding = model.user.get_robot_federation_config(robot)[0]
