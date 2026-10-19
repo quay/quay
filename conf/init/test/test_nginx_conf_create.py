@@ -163,3 +163,24 @@ class TestBlobUploadClientBodyTimeout:
         rendered = render_server_base_conf(blob_upload_lingering_timeout="30")
         blob_block = _blob_location(rendered)
         assert "lingering_timeout 30;" in blob_block
+
+    def test_lingering_close_renders_in_location_block_not_server_scope(self):
+        """Regression guard: lingering_close is location-scoped and must not appear
+        outside of a location block. nginx 1.19.1+ documents that location-scoped
+        lingering_close has no effect on HTTP/2 connection draining — moving it to
+        server scope would be a separate deliberate change, not an accidental one."""
+        rendered = render_server_base_conf(blob_upload_lingering_close="always")
+        blob_block = _blob_location(rendered)
+        # The directive must appear inside the blob upload location block.
+        assert "lingering_close always;" in blob_block
+        # Strip the blob upload location block from the rendered output and confirm
+        # lingering_close does not appear elsewhere (i.e. not at server scope).
+        blob_block_pattern = re.compile(
+            r"location ~ /v2/\(\[.*?\]\+\)\(/\[.*?\]\+\)\+/blobs/ \{.*?\n\}",
+            re.DOTALL,
+        )
+        rendered_without_blob_location = blob_block_pattern.sub("", rendered)
+        assert "lingering_close" not in rendered_without_blob_location, (
+            "lingering_close must not appear at server scope; it is location-scoped "
+            "and does not affect HTTP/2 connections (nginx 1.19.1+)"
+        )

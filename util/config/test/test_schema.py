@@ -292,6 +292,13 @@ class TestNginxTimeoutSchema:
         with pytest.raises(ValidationError):
             validate(value, schema)
 
+    def test_lingering_close_description_mentions_http2_limitation(self):
+        desc = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]["description"]
+        assert "HTTP/2" in desc, (
+            "BLOB_UPLOAD_LINGERING_CLOSE description must document that "
+            "location-scoped lingering_close has no effect on HTTP/2 connections"
+        )
+
     @pytest.mark.parametrize("value", ["on", "off", "always"])
     def test_lingering_close_accepts_valid_values(self, value):
         schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]

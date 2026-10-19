@@ -2019,7 +2019,7 @@ CONFIG_SCHEMA = {
         "BLOB_UPLOAD_LINGERING_CLOSE": {
             "type": "string",
             "enum": ["on", "off", "always"],
-            "description": "Nginx lingering_close mode for blob upload endpoints. Set to 'always' to ensure clean connection close after timeouts, allowing load balancers to receive error responses instead of returning 502. Defaults to nginx's 'on' when not set.",
+            "description": "Nginx lingering_close mode for blob upload endpoints. Set to 'always' to ensure clean connection close after timeouts, allowing load balancers to receive error responses instead of returning 502. Note: location-scoped lingering_close does not apply to HTTP/2 connections (nginx 1.19.1+); for HTTP/2 upload draining, a server-level directive is required. Defaults to nginx's 'on' when not set.",
             "x-example": "always",
         },
         "BLOB_UPLOAD_LINGERING_TIME": {
