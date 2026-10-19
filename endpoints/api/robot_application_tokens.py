@@ -17,7 +17,7 @@ from data.model.api_token import (
     validate_expiration,
     validate_token_display_name,
 )
-from data.model.user import lookup_robot
+from data.model.user import lookup_robot, robot_access_allowed
 from endpoints.api import (
     ApiResource,
     allow_if_superuser_with_full_access,
@@ -65,6 +65,9 @@ def _token_view(token, secret=None):
 
 
 def _create_token(robot, namespace):
+    if not robot_access_allowed(robot.username):
+        raise Unauthorized()
+
     body = request.get_json()
     try:
         name = validate_token_display_name(body["name"])

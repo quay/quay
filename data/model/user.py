@@ -352,9 +352,20 @@ def update_enabled(user, set_enabled):
     user.save()
 
 
+def robots_disallowed():
+    return config.app_config.get("ROBOTS_DISALLOW", False)
+
+
+def robot_access_allowed(robot_username):
+    """Return whether an existing robot may be used under the configured robot policy."""
+    return not robots_disallowed() or robot_username in config.app_config.get(
+        "ROBOTS_WHITELIST", []
+    )
+
+
 def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
     username_valid, username_issue = validate_username(robot_shortname)
-    if config.app_config.get("ROBOTS_DISALLOW", False):
+    if robots_disallowed():
         msg = "Robot accounts have been disabled. Please contact your administrator."
         raise InvalidRobotException(msg)
 
@@ -615,10 +626,9 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 
 def verify_robot(robot_username, password, instance_keys):
-    if config.app_config.get("ROBOTS_DISALLOW", False):
-        if not robot_username in config.app_config.get("ROBOTS_WHITELIST", []):
-            msg = "Robot account have been disabled. Please contact your administrator."
-            raise InvalidRobotException(msg)
+    if not robot_access_allowed(robot_username):
+        msg = "Robot account have been disabled. Please contact your administrator."
+        raise InvalidRobotException(msg)
 
     try:
         password.encode("ascii")

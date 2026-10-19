@@ -75,6 +75,10 @@ def validate_robot_api_token(token):
         return ValidateResult(AuthKind.oauth, error_message="API token has invalid scopes")
 
     robot = persisted.subject_user
+    if not model.user.robot_access_allowed(robot.username):
+        return ValidateResult(
+            AuthKind.oauth, error_message="API token is invalid, revoked or expired"
+        )
     robot_owner, _ = parse_robot_username(robot.username)
     if not model.user.get_username(robot_owner).enabled:
         return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
@@ -116,6 +120,10 @@ def validate_robot_api_jwt(token, decoded=None):
     subject = decoded.get("sub")
     try:
         robot = model.user.lookup_robot(subject)
+        if not model.user.robot_access_allowed(robot.username):
+            return ValidateResult(
+                AuthKind.oauth, error_message="API token is invalid, revoked or expired"
+            )
         robot_owner, _ = parse_robot_username(subject)
         if not model.user.get_username(robot_owner).enabled:
             return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")

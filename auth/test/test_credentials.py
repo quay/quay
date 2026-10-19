@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from unittest.mock import patch
+
 import auth.credentials
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
@@ -11,6 +13,7 @@ from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import RobotAccountToken
 from data.model import api_token
+from data.model import config as model_config
 from test.fixtures import *
 
 
@@ -102,6 +105,25 @@ def test_robot_api_token_authenticates_as_basic_robot_credential(app):
     assert kind == CredentialKind.robot
     assert result.context.robot == robot
     assert result.context.api_scopes == "repo:read"
+
+
+def test_robot_api_token_cannot_be_presented_as_another_robot(app):
+    creator = model.user.get_user("devtable")
+    allowed_robot, _ = model.user.create_robot("policy-token", creator)
+    other_robot, _ = model.user.create_robot("other-policy-token", creator)
+    _, secret = api_token.create_token_under_limit(
+        allowed_robot, creator, "repo:read", 3600, "Policy token"
+    )
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": [allowed_robot.username]},
+    ):
+        result, kind = validate_credentials(other_robot.username, secret)
+
+    assert kind == CredentialKind.robot
+    assert not result.auth_valid
+    assert result.error_message == "API token subject does not match the supplied username"
 
 
 def test_invalid_password(app):
