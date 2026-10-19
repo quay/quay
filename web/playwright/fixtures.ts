@@ -187,9 +187,9 @@ export class TestApi {
   private cleanupStack: CleanupAction[] = [];
   private defaultNamespace: string;
 
-  constructor(client: ApiClient, defaultNamespace?: string) {
+  constructor(client: ApiClient, defaultNamespace: string) {
     this.client = client;
-    this.defaultNamespace = defaultNamespace ?? TEST_USERS.user.username;
+    this.defaultNamespace = defaultNamespace;
   }
 
   /**
@@ -1063,6 +1063,49 @@ export function getTestUsers(config?: QuayConfig | null) {
   return TEST_USERS;
 }
 
+export type IsolatedUserSlot =
+  | 'quota'
+  | 'prune-count'
+  | 'prune-age'
+  | 'prune-both'
+  | 'logout-success'
+  | 'logout-error'
+  | 'logout-access'
+  | 'metadata-submit'
+  | 'metadata-skip';
+
+// Seeded in local-dev/ldap/base.ldif. LDAP accounts cannot be created through
+// the API, so each slot gets its own pre-seeded identity.
+const LDAP_ISOLATED_USERS: Record<IsolatedUserSlot, string> = {
+  quota: 'quota_ldap',
+  'prune-count': 'prune_count_ldap',
+  'prune-age': 'prune_age_ldap',
+  'prune-both': 'prune_both_ldap',
+  'logout-success': 'logout_success_ldap',
+  'logout-error': 'logout_error_ldap',
+  'logout-access': 'logout_access_ldap',
+  'metadata-submit': 'metadata_submit_ldap',
+  'metadata-skip': 'metadata_skip_ldap',
+};
+
+async function createDatabaseUser(superuserApi: TestApi): Promise<CreatedUser> {
+  const created = await superuserApi.user('iso');
+  await superuserApi.raw.updateUserAsSuperuser(created.username, {
+    email: created.email,
+  });
+  return created;
+}
+
+async function signedInApi(
+  request: APIRequestContext,
+  user: CreatedUser,
+): Promise<TestApi> {
+  const client = new ApiClient(request);
+  await client.signIn(user.username, user.password);
+  client.setCredentials(user.username, user.password);
+  return new TestApi(client, user.username);
+}
+
 async function setReactUICookie(context: BrowserContext): Promise<void> {
   const domain = new URL(BASE_URL).hostname;
   await context.addCookies([
@@ -1195,6 +1238,13 @@ type TestFixtures = {
 
   // Isolated user with its own API client (no shared namespace state)
   freshUser: {user: CreatedUser; api: TestApi};
+
+  // User with its own API client that works under Database and LDAP auth.
+  // Database creates (and deletes) a unique user; LDAP signs in the slot's
+  // seeded identity, which is never deleted. Not supported under OIDC.
+  isolatedUser: (
+    slot: IsolatedUserSlot,
+  ) => Promise<{user: CreatedUser; api: TestApi}>;
 
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
@@ -1455,7 +1505,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const client = new ApiClient(superuserRequest);
     const users = getTestUsers(cachedQuayConfig);
     client.setCredentials(users.admin.username, users.admin.password);
-    const testApi = new TestApi(client);
+    const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
@@ -1470,24 +1520,57 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   freshUser: async ({superuserApi, playwright, traceparent}, use) => {
-    const created = await superuserApi.user('iso');
-    await superuserApi.raw.updateUserAsSuperuser(created.username, {
-      email: created.email,
-    });
+    const created = await createDatabaseUser(superuserApi);
     const request = await playwright.request.newContext({
       ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
-    const client = new ApiClient(request);
-    await client.signIn(created.username, created.password);
-    client.setCredentials(created.username, created.password);
-    const testApi = new TestApi(client, created.username);
+    const testApi = await signedInApi(request, created);
 
     await use({user: created, api: testApi});
 
     await testApi.cleanup();
     await request.dispose();
+  },
+
+  isolatedUser: async (
+    {superuserApi, playwright, traceparent, cachedQuayConfig},
+    use,
+  ) => {
+    const authType = cachedQuayConfig?.config?.AUTHENTICATION_TYPE;
+    const opened: {api: TestApi; request: APIRequestContext}[] = [];
+
+    await use(async (slot) => {
+      if (authType === 'OIDC') {
+        throw new Error(`isolatedUser('${slot}') is not supported under OIDC`);
+      }
+      let user: CreatedUser;
+      if (authType === 'LDAP') {
+        const username = LDAP_ISOLATED_USERS[slot];
+        user = {
+          username,
+          email: `${username}@example.com`,
+          password: 'password',
+        };
+      } else {
+        user = await createDatabaseUser(superuserApi);
+      }
+      const request = await playwright.request.newContext({
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+        ignoreHTTPSErrors: true,
+        extraHTTPHeaders: {traceparent: traceparent.traceparent},
+      });
+      // Under LDAP this first sign-in is what creates the Quay account.
+      const api = await signedInApi(request, user);
+      opened.push({api, request});
+      return {user, api};
+    });
+
+    for (const {api, request} of opened.reverse()) {
+      await api.cleanup();
+      await request.dispose();
+    }
   },
 
   // =========================================================================

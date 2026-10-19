@@ -156,6 +156,39 @@ async function globalSetup(config: FullConfig) {
     const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
     process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
 
+    // LDAP users exist in Quay only after their first login, so sign each
+    // role user in before any test references them (team members, quotas).
+    if (authType === 'LDAP') {
+      for (const [role, user] of Object.entries(TEST_USERS_LDAP)) {
+        const requestContext = await request.newContext({
+          ignoreHTTPSErrors: true,
+          ...(proxy ? {proxy} : {}),
+        });
+        try {
+          await new ApiClient(requestContext).signIn(
+            user.username,
+            user.password,
+          );
+          console.log(
+            `[Global Setup] Signed in ${role} user: ${user.username}`,
+          );
+        } catch (error) {
+          failures.push(`${role} (${user.username}): ${error}`);
+        } finally {
+          await requestContext.dispose();
+        }
+      }
+      if (failures.length > 0) {
+        throw new Error(
+          `Global setup failed: Could not sign in LDAP test users:\n  - ${failures.join(
+            '\n  - ',
+          )}`,
+        );
+      }
+      console.log('[Global Setup] Complete');
+      return;
+    }
+
     // For OIDC auth, skip user creation — users are created on first login
     // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
     if (authType !== 'Database') {
