@@ -364,9 +364,10 @@ runs:
 
     - name: Start Quay container
       shell: bash
-      env:
-        QUAY_OVERRIDE_SERVICES: ${{ inputs.with-system-metrics == 'true' && 'system-metrics-collector=true' || '' }}
       run: |
+        if [ "${{ inputs.with-system-metrics }}" = "true" ]; then
+          export QUAY_OVERRIDE_SERVICES="${QUAY_OVERRIDE_SERVICES:+${QUAY_OVERRIDE_SERVICES},}system-metrics-collector=true"
+        fi
         DOCKER_USER="1001:0" docker compose up -d --no-build quay
 
     - name: Wait for Quay to be ready
