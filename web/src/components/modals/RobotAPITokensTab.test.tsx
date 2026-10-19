@@ -398,6 +398,22 @@ describe('RobotAPITokensTab', () => {
     await user.click(screen.getByRole('button', {name: 'Revoke selected'}));
 
     const modal = await screen.findByTestId('bulk-delete-modal');
+    expect(
+      within(modal).getByRole('heading', {
+        name: /Revoke 2 robot API tokens\?/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByText(
+        'Only the selected tokens are revoked. A revoked token stops working at once and cannot be restored.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByText(/Confirm revocation by typing/),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).queryByText(/Permanently delete/),
+    ).not.toBeInTheDocument();
     expect(within(modal).getByText('First token')).toBeInTheDocument();
     expect(within(modal).getByText('Second token')).toBeInTheDocument();
     expect(within(modal).queryByText('Third token')).not.toBeInTheDocument();
@@ -405,7 +421,9 @@ describe('RobotAPITokensTab', () => {
       within(modal).getByTestId('delete-confirmation-input'),
       'confirm',
     );
-    await user.click(within(modal).getByTestId('bulk-delete-confirm-btn'));
+    const confirmButton = within(modal).getByTestId('bulk-delete-confirm-btn');
+    expect(confirmButton).toHaveTextContent('Revoke');
+    await user.click(confirmButton);
 
     await waitFor(() => expect(resourceMocks.revoke).toHaveBeenCalledTimes(2));
     expect(resourceMocks.revoke).toHaveBeenCalledWith(
@@ -423,6 +441,23 @@ describe('RobotAPITokensTab', () => {
     await waitFor(() =>
       expect(screen.queryByTestId('bulk-delete-modal')).not.toBeInTheDocument(),
     );
+  });
+
+  it('names a single selected token in the revoke confirmation', async () => {
+    const user = userEvent.setup();
+    resourceMocks.fetch.mockResolvedValue([
+      makeToken({uuid: 'only-token', name: 'Only token'}),
+    ]);
+    render(<RobotAPITokensTab {...props} />);
+
+    await screen.findByText('Only token');
+    await user.click(screen.getByRole('checkbox', {name: 'Select row 0'}));
+    await user.click(screen.getByRole('button', {name: 'Revoke selected'}));
+
+    const modal = await screen.findByTestId('bulk-delete-modal');
+    expect(
+      within(modal).getByRole('heading', {name: /Revoke 1 robot API token\?/}),
+    ).toBeInTheDocument();
   });
 
   it('reports which tokens failed to revoke in bulk', async () => {
