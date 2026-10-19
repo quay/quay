@@ -134,7 +134,7 @@ test.describe(
           exact: true,
         }),
       });
-      await latestRow.locator('td[data-label="Pull"] svg').hover();
+      await latestRow.locator('td[data-label="Pull"] svg').first().hover();
 
       const popover = authenticatedPage.getByTestId('pull-popover');
       await expect(popover).toBeVisible({timeout: 10000});
