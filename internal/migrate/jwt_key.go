@@ -155,19 +155,22 @@ func readSourceConfigMaterial(
 		return nil, hostPath, err
 	}
 	output, execErr := runner.Output(ctx, "podman", "exec", sourceContainerName, "cat", containerPath)
+	// Record before writing: a write or cp that creates hostPath and then fails
+	// must still be undone on rollback. hostPath was absent above, so this never
+	// marks a pre-existing file for removal.
 	if execErr == nil {
+		recordPersisted(persisted, hostPath)
 		if writeErr := os.WriteFile(hostPath, []byte(output), 0o600); writeErr != nil {
 			slog.Warn("could not persist config material to host", "path", hostPath, "err", writeErr)
 		} else {
-			recordPersisted(persisted, hostPath)
 			slog.Info("persisted config material from container to host", "path", hostPath)
 		}
 		return []byte(output), containerPath, nil
 	}
 
+	recordPersisted(persisted, hostPath)
 	cpErr := podmanCpToHost(ctx, runner, sourceContainerName, containerPath, hostPath)
 	if cpErr == nil {
-		recordPersisted(persisted, hostPath)
 		if chmodErr := os.Chmod(hostPath, 0o600); chmodErr != nil {
 			return nil, hostPath, fmt.Errorf("restrict permissions on extracted file %s: %w", hostPath, chmodErr)
 		}

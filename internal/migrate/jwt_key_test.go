@@ -473,6 +473,32 @@ func TestRollbackRemovesOnlyPersistedConfigMaterial(t *testing.T) {
 	}
 }
 
+func TestRollbackRemovesConfigMaterialFromFailedPersist(t *testing.T) {
+	configDir := t.TempDir()
+	pemPath := filepath.Join(configDir, legacyPrivateKeyName)
+	unwritablePath := filepath.Join(configDir, "missing", legacyKeyIDName)
+	m := &Migrator{
+		Source: OMRSource{ConfigDir: configDir},
+		Runner: &recordingRunner{},
+	}
+
+	_, _, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName,
+		&cpFallbackRunner{cpContent: "partial", cpFailAfterWrite: true}, &m.persistedConfigFiles,
+	)
+	require.Error(t, err)
+	require.FileExists(t, pemPath, "a failed cp can still leave a file behind")
+	_, _, err = readSourceConfigMaterial(
+		t.Context(), configDir, unwritablePath, legacyKeyIDName,
+		&sourceMaterialRunner{outputs: map[string]string{unwritablePath: "kid"}}, &m.persistedConfigFiles,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []string{pemPath, unwritablePath}, m.persistedConfigFiles)
+
+	require.NoError(t, m.rollbackSQLiteSource(t.Context()), "a recorded path that was never written must not fail rollback")
+	assert.NoFileExists(t, pemPath)
+}
+
 // startHookRunner calls onStart before each systemctl start.
 type startHookRunner struct {
 	recordingRunner
@@ -544,6 +570,8 @@ type cpFallbackRunner struct {
 	cpContent string
 	cpKID     string
 	cpFail    bool
+	// cpFailAfterWrite writes the destination and then reports failure.
+	cpFailAfterWrite bool
 }
 
 func (r *cpFallbackRunner) Run(_ context.Context, name string, args ...string) error {
@@ -562,7 +590,13 @@ func (r *cpFallbackRunner) Run(_ context.Context, name string, args ...string) e
 	if r.cpKID != "" && strings.HasSuffix(src, legacyKeyIDName) {
 		content = r.cpKID
 	}
-	return os.WriteFile(dst, []byte(content), 0o644)
+	if err := os.WriteFile(dst, []byte(content), 0o644); err != nil {
+		return err
+	}
+	if r.cpFailAfterWrite {
+		return fmt.Errorf("simulated cp failure after partial write")
+	}
+	return nil
 }
 
 func (r *cpFallbackRunner) Output(_ context.Context, _ string, _ ...string) (string, error) {
