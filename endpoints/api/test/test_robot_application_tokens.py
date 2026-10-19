@@ -4,6 +4,7 @@ import pytest
 
 from data import model
 from data.model import api_token
+from data.model import config as model_config
 from endpoints.api.robot_application_tokens import (
     OrganizationRobotMintableScopes,
     OrganizationRobotToken,
@@ -207,3 +208,41 @@ def test_user_robot_token_lifecycle(app):
             None,
             204,
         )
+
+
+@pytest.mark.parametrize(
+    "resource, params, robot_username",
+    [
+        (UserRobotTokens, {"robot_shortname": "dtrobot"}, "devtable+dtrobot"),
+        (
+            OrganizationRobotTokens,
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            "buynlarge+coolrobot",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "whitelist, expected_code",
+    [
+        ([], 403),
+        (lambda robot: [robot.username], 200),
+        (lambda robot: [robot.username + "-suffix"], 403),
+    ],
+)
+def test_robot_token_creation_respects_robot_access_policy(
+    app, resource, params, robot_username, whitelist, expected_code
+):
+    robot = model.user.lookup_robot(robot_username)
+    token_count_before = api_token.count_active_tokens(robot)
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        with client_with_identity("devtable", app) as cl:
+            response = conduct_api_call(cl, resource, "POST", params, TOKEN_REQUEST, expected_code)
+
+    if expected_code == 200:
+        assert response.json["token"].startswith(api_token.API_TOKEN_PREFIX)
+    assert api_token.count_active_tokens(robot) == token_count_before + (expected_code == 200)
