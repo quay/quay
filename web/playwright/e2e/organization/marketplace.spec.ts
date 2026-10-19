@@ -1,3 +1,18 @@
+/**
+ * Marketplace Subscriptions tests
+ *
+ * Uses page.route() — approved exemptions from the no-mock policy:
+ *
+ * - Mocking GET /config to enable BILLING and RH_MARKETPLACE features:
+ *   these are global server-side flags. Enabling them via the real API
+ *   would affect all parallel tests running concurrently.
+ *
+ * - Mocking /api/v1/user/marketplace, /api/v1/user/private, /api/v1/user/plan,
+ *   and related org endpoints: the RH_MARKETPLACE integration communicates with
+ *   Red Hat's external subscription service. Real subscription data is not
+ *   available in standard CI environments, and the external service cannot be
+ *   provisioned as part of the test setup.
+ */
 import {type Page} from '@playwright/test';
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';

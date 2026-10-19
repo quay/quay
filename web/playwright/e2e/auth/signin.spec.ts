@@ -1,3 +1,20 @@
+/**
+ * Signin page tests
+ *
+ * Some tests in this file use page.route() — each has an approved exemption:
+ *
+ * - Mocking GET /api/v1/messages to return 401: simulates the server-side
+ *   ANONYMOUS_ACCESS: false configuration. Enabling that flag via the real API
+ *   is a global registry change that would break all other parallel tests.
+ *
+ * - Mocking POST /api/v1/signin to return 403 (CSRF token expired): a CSRF
+ *   token is valid for the lifetime of the session and cannot be expired on
+ *   demand via any real API call.
+ *
+ * - Mocking POST /api/v1/signin to return 500 (server error): internal server
+ *   errors cannot be reliably triggered via the real API without modifying
+ *   server state that would affect all parallel tests.
+ */
 import {test as base, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';

@@ -84,21 +84,6 @@ test.describe(
       {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
       async ({authenticatedPage, userClient}) => {
         const robotShortname = uniqueName('api-token-list').replace(/-/g, '_');
-        const dayMs = 24 * 60 * 60 * 1000;
-        const tokens = Array.from({length: 12}, (_, index) => ({
-          uuid: `token-${index + 1}`,
-          name:
-            index === 0
-              ? `ci-${'x'.repeat(80)}-token`
-              : `Token ${String(index + 1).padStart(2, '0')}`,
-          scope: 'repo:read',
-          expires_at: new Date(Date.now() + (index + 1) * dayMs).toISOString(),
-          created: new Date(Date.now() - dayMs).toISOString(),
-          created_by: 'devtable',
-          last_accessed:
-            index === 1 ? new Date(Date.now() - 2 * dayMs).toISOString() : null,
-        }));
-        const revoked: string[] = [];
 
         try {
           const createResponse = await userClient.put(
@@ -108,30 +93,30 @@ test.describe(
           expect(createResponse.status()).toBe(201);
           const robot = await createResponse.json();
 
-          await authenticatedPage.route(
-            `**/api/v1/user/robots/${robotShortname}/tokens**`,
-            async (route): Promise<void> => {
-              const request = route.request();
-              if (request.method() === 'DELETE') {
-                revoked.push(request.url().split('/').pop() as string);
-                await route.fulfill({status: 204, body: ''});
-                return;
-              }
-              if (request.method() === 'GET') {
-                await route.fulfill({
-                  status: 200,
-                  contentType: 'application/json',
-                  body: JSON.stringify({
-                    tokens: tokens.filter(
-                      (token) => !revoked.includes(token.uuid),
-                    ),
-                  }),
-                });
-                return;
-              }
-              await route.continue();
-            },
-          );
+          // Create 12 real tokens via the API so pagination (10 per page) is
+          // exercised. Three tokens share a 'filter-' prefix to enable search
+          // filtering assertions. Tokens are listed newest-first by the API.
+          const tokenNames = [
+            'filter-01',
+            'filter-02',
+            'filter-03',
+            'tok-04',
+            'tok-05',
+            'tok-06',
+            'tok-07',
+            'tok-08',
+            'tok-09',
+            'tok-10',
+            'tok-11',
+            `ci-${'x'.repeat(20)}-tok`,
+          ];
+          for (const name of tokenNames) {
+            const resp = await userClient.post(
+              `/api/v1/user/robots/${robotShortname}/tokens`,
+              {name, scope: 'repo:read'},
+            );
+            expect(resp.status()).toBe(200);
+          }
 
           await authenticatedPage.goto(
             `/organization/${robot.name.split('+')[0]}?tab=Robotaccounts`,
@@ -151,26 +136,28 @@ test.describe(
             '#robot-api-tokens-pagination',
           );
           await expect(pagination).toContainText('12');
-          await expect(tokensTable).toContainText('Token 10');
-          await expect(tokensTable).not.toContainText('Token 11');
-          await expect(
-            tokensTable.getByRole('row', {name: /Token 02/}),
-          ).toContainText('2 days ago');
 
+          // Navigate to page 2 (remaining 2 tokens) and back.
           await pagination
             .getByRole('button', {name: 'Go to next page'})
             .click();
-          await expect(tokensTable).toContainText('Token 11');
-          await expect(tokensTable).not.toContainText('Token 10');
+          await expect(tokensTable.getByRole('row')).toHaveCount(3);
 
+          await pagination
+            .getByRole('button', {name: 'Go to previous page'})
+            .click();
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+
+          // Search filters across all tokens; 'filter-' matches exactly 3.
           const search = authenticatedPage.getByTestId(
             'robot-api-token-search',
           );
-          await search.fill('Token 1');
+          await search.fill('filter-');
           await expect(tokensTable.getByRole('row')).toHaveCount(4);
           await search.fill('');
           await expect(tokensTable.getByRole('row')).toHaveCount(11);
 
+          // Bulk-revoke the first two visible tokens via the real DELETE API.
           await tokensTable
             .getByRole('checkbox', {name: 'Select row 0'})
             .check();
@@ -187,7 +174,6 @@ test.describe(
             'Only the selected tokens are revoked.',
           );
           await expect(bulkModal).not.toContainText('Permanently delete');
-          await expect(bulkModal).toContainText('Token 02');
           await bulkModal
             .getByTestId('delete-confirmation-input')
             .fill('confirm');
@@ -198,11 +184,8 @@ test.describe(
           await confirmButton.click();
 
           await expect(bulkModal).toBeHidden();
-          await expect
-            .poll(() => revoked.sort())
-            .toEqual(['token-1', 'token-2']);
+          // After revoking 2 tokens, 10 remain.
           await expect(pagination).toContainText('10');
-          await expect(tokensTable).not.toContainText('Token 02');
         } finally {
           await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
         }

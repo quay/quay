@@ -1,3 +1,14 @@
+/**
+ * Fresh Login - Database auth password modal tests
+ *
+ * Uses page.route() to intercept GET /api/v1/superuser/logs* and return a
+ * 401 fresh_login_required response. This is an approved exemption from the
+ * no-mock policy: the fresh_login_required error requires the user's session
+ * to be older than FRESH_LOGIN_TIMEOUT (default 10 minutes), which cannot be
+ * triggered on demand via the real API. The mock simulates a valid Quay error
+ * response to verify that the UI renders the correct password-verification
+ * modal rather than redirecting to /signin.
+ */
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 
