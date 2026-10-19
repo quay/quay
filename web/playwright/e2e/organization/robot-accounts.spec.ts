@@ -182,11 +182,20 @@ test.describe(
             .click();
           const bulkModal = authenticatedPage.getByTestId('bulk-delete-modal');
           await expect(bulkModal).toBeVisible();
+          await expect(bulkModal).toContainText('Revoke 2 robot API tokens?');
+          await expect(bulkModal).toContainText(
+            'Only the selected tokens are revoked.',
+          );
+          await expect(bulkModal).not.toContainText('Permanently delete');
           await expect(bulkModal).toContainText('Token 02');
           await bulkModal
             .getByTestId('delete-confirmation-input')
             .fill('confirm');
-          await bulkModal.getByTestId('bulk-delete-confirm-btn').click();
+          const confirmButton = bulkModal.getByTestId(
+            'bulk-delete-confirm-btn',
+          );
+          await expect(confirmButton).toHaveText('Revoke');
+          await confirmButton.click();
 
           await expect(bulkModal).toBeHidden();
           await expect

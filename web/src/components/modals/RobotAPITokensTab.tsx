@@ -434,6 +434,12 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
           isModalOpen={isBulkRevokeOpen}
           selectedItems={tokensForBulkRevoke}
           resourceName="robot API tokens"
+          title={`Revoke ${tokensForBulkRevoke.length} robot API token${
+            tokensForBulkRevoke.length === 1 ? '' : 's'
+          }?`}
+          description="Only the selected tokens are revoked. A revoked token stops working at once and cannot be restored."
+          confirmationLabel="Confirm revocation by typing"
+          actionLabel="Revoke"
         />
       )}
       <Modal
