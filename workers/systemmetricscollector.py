@@ -14,8 +14,8 @@ state ``03`` entries.
 
 Sampling happens every SAMPLE_INTERVAL_SECONDS (default 5s).  Metrics are
 pushed to the Pushgateway every PUSH_INTERVAL_SECONDS (default 30s).
-Between pushes the collector tracks the maximum queue depth observed, so
-short saturation spikes are not missed.
+A Prometheus histogram records queue depth distribution across samples,
+enabling percentile queries and alerting on sustained saturation.
 """
 
 import logging
@@ -23,7 +23,13 @@ import os
 import socket
 import time
 
-from prometheus_client import CollectorRegistry, Counter, Gauge, push_to_gateway
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    push_to_gateway,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +38,7 @@ PUSH_JOB = "system_metrics_collector"
 SAMPLE_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_SAMPLE_INTERVAL", "5")))
 PUSH_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_PUSH_INTERVAL", "30")))
 PROC_NET_UNIX = "/proc/net/unix"
+QUEUE_DEPTH_BUCKETS = (0, 10, 50, 100, 250, 500, 1000, 1500, 2000, 2048)
 
 SOCKET_CONFIGS = [
     {"path": "/tmp/gunicorn_registry.sock", "name": "registry"},
@@ -51,10 +58,11 @@ def _build_registry():
             labelnames=["host", "socket"],
             registry=registry,
         ),
-        "queue_depth_max": Gauge(
-            "gunicorn_socket_queue_depth_max",
-            "Maximum queue depth observed since the last push",
+        "queue_depth_hist": Histogram(
+            "gunicorn_socket_queue_depth_samples",
+            "Distribution of queue depth observations across sample intervals",
             labelnames=["host", "socket"],
+            buckets=QUEUE_DEPTH_BUCKETS,
             registry=registry,
         ),
         "active_connections": Gauge(
@@ -128,8 +136,8 @@ def _read_proc_net_unix(proc_path=PROC_NET_UNIX):
     return stats
 
 
-def _sample(metrics, hostname, max_depths):
-    """Take one sample and update current metrics and high-water marks."""
+def _sample(metrics, hostname):
+    """Take one sample, update gauges, and record a histogram observation."""
     try:
         socket_stats = _read_proc_net_unix()
     except OSError:
@@ -147,24 +155,14 @@ def _sample(metrics, hostname, max_depths):
         active = socket_stats.get(sock_path, {}).get("active", 0)
 
         metrics["queue_depth"].labels(host=hostname, socket=sock_name).set(pending)
+        metrics["queue_depth_hist"].labels(host=hostname, socket=sock_name).observe(pending)
         metrics["active_connections"].labels(host=hostname, socket=sock_name).set(active)
-
-        # Track the highest queue depth between pushes so short saturation
-        # spikes are not lost when the push happens after the spike clears.
-        if pending > max_depths.get(sock_name, 0):
-            max_depths[sock_name] = pending
 
     metrics["last_sample_timestamp"].labels(host=hostname).set(time.time())
 
 
-def _push(registry, metrics, hostname, max_depths):
-    """Push metrics to the Pushgateway and reset high-water marks."""
-    for sock_cfg in SOCKET_CONFIGS:
-        sock_name = sock_cfg["name"]
-        metrics["queue_depth_max"].labels(host=hostname, socket=sock_name).set(
-            max_depths.get(sock_name, 0)
-        )
-
+def _push(registry, metrics, hostname):
+    """Push metrics to the Pushgateway."""
     try:
         push_to_gateway(
             PUSHGATEWAY_URL,
@@ -173,7 +171,6 @@ def _push(registry, metrics, hostname, max_depths):
             grouping_key={"host": hostname},
         )
         logger.debug("Pushed socket metrics to pushgateway")
-        max_depths.clear()
     except Exception:
         logger.warning("Failed to push to pushgateway", exc_info=True)
         metrics["collector_errors"].labels(host=hostname).inc()
@@ -193,15 +190,14 @@ def main():
     )
 
     registry, metrics, hostname = _build_registry()
-    max_depths = {}
     last_push = time.monotonic()
 
     while True:
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
 
         elapsed = time.monotonic() - last_push
         if elapsed >= PUSH_INTERVAL_SECONDS:
-            _push(registry, metrics, hostname, max_depths)
+            _push(registry, metrics, hostname)
             last_push = time.monotonic()
 
         time.sleep(SAMPLE_INTERVAL_SECONDS)

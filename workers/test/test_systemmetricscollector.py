@@ -96,7 +96,7 @@ class TestBuildRegistry:
         registry, metrics, hostname = _build_registry()
         expected = [
             "queue_depth",
-            "queue_depth_max",
+            "queue_depth_hist",
             "active_connections",
             "socket_present",
             "collector_errors",
@@ -120,12 +120,26 @@ class TestSample:
             "/tmp/gunicorn_web.sock": {"pending": 0, "active": 1},
         }
         _, metrics, hostname = _build_registry()
-        max_depths = {}
 
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
 
         assert metrics["queue_depth"].labels(host=hostname, socket="registry")._value.get() == 5.0
         assert metrics["queue_depth"].labels(host=hostname, socket="web")._value.get() == 0.0
+
+    @patch("workers.systemmetricscollector._read_proc_net_unix")
+    @patch("workers.systemmetricscollector.os.path.exists")
+    def test_records_histogram_observation(self, mock_exists, mock_read):
+        mock_exists.return_value = True
+        mock_read.return_value = {
+            "/tmp/gunicorn_registry.sock": {"pending": 75, "active": 0},
+        }
+        _, metrics, hostname = _build_registry()
+
+        _sample(metrics, hostname)
+        _sample(metrics, hostname)
+
+        hist = metrics["queue_depth_hist"].labels(host=hostname, socket="registry")
+        assert hist._sum.get() == 150.0  # 75 + 75
 
     @patch("workers.systemmetricscollector._read_proc_net_unix")
     @patch("workers.systemmetricscollector.os.path.exists")
@@ -135,9 +149,8 @@ class TestSample:
             "/tmp/gunicorn_registry.sock": {"pending": 0, "active": 10},
         }
         _, metrics, hostname = _build_registry()
-        max_depths = {}
 
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
 
         assert (
             metrics["active_connections"].labels(host=hostname, socket="registry")._value.get()
@@ -146,38 +159,12 @@ class TestSample:
 
     @patch("workers.systemmetricscollector._read_proc_net_unix")
     @patch("workers.systemmetricscollector.os.path.exists")
-    def test_tracks_max_depth(self, mock_exists, mock_read):
-        mock_exists.return_value = True
-        _, metrics, hostname = _build_registry()
-        max_depths = {}
-
-        mock_read.return_value = {
-            "/tmp/gunicorn_registry.sock": {"pending": 10, "active": 0},
-        }
-        _sample(metrics, hostname, max_depths)
-        assert max_depths["registry"] == 10
-
-        mock_read.return_value = {
-            "/tmp/gunicorn_registry.sock": {"pending": 50, "active": 0},
-        }
-        _sample(metrics, hostname, max_depths)
-        assert max_depths["registry"] == 50
-
-        mock_read.return_value = {
-            "/tmp/gunicorn_registry.sock": {"pending": 5, "active": 0},
-        }
-        _sample(metrics, hostname, max_depths)
-        assert max_depths["registry"] == 50  # stays at high-water mark
-
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
     def test_socket_not_present(self, mock_exists, mock_read):
         mock_exists.return_value = False
         mock_read.return_value = {}
         _, metrics, hostname = _build_registry()
-        max_depths = {}
 
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
 
         assert metrics["socket_present"].labels(host=hostname, socket="registry")._value.get() == 0
         assert metrics["queue_depth"].labels(host=hostname, socket="registry")._value.get() == 0
@@ -188,10 +175,9 @@ class TestSample:
         mock_exists.return_value = True
         mock_read.return_value = {}
         _, metrics, hostname = _build_registry()
-        max_depths = {}
 
         before = time.time()
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
         after = time.time()
 
         ts = metrics["last_sample_timestamp"].labels(host=hostname)._value.get()
@@ -201,9 +187,8 @@ class TestSample:
     def test_procfs_failure_increments_errors_and_skips_timestamp(self, mock_read):
         mock_read.side_effect = OSError("permission denied")
         _, metrics, hostname = _build_registry()
-        max_depths = {}
 
-        _sample(metrics, hostname, max_depths)
+        _sample(metrics, hostname)
 
         assert metrics["collector_errors"].labels(host=hostname)._value.get() == 1.0
         assert metrics["last_sample_timestamp"].labels(host=hostname)._value.get() == 0.0
@@ -211,26 +196,18 @@ class TestSample:
 
 class TestPush:
     @patch("workers.systemmetricscollector.push_to_gateway")
-    def test_sets_max_depth_and_clears(self, mock_push):
+    def test_successful_push(self, mock_push):
         _, metrics, hostname = _build_registry()
-        max_depths = {"registry": 100, "web": 5, "secscan": 0}
 
-        _push(None, metrics, hostname, max_depths)
+        _push(None, metrics, hostname)
 
-        assert (
-            metrics["queue_depth_max"].labels(host=hostname, socket="registry")._value.get()
-            == 100.0
-        )
-        assert metrics["queue_depth_max"].labels(host=hostname, socket="web")._value.get() == 5.0
-        assert max_depths == {}
+        mock_push.assert_called_once()
 
     @patch("workers.systemmetricscollector.push_to_gateway")
-    def test_pushgateway_failure_retains_max_depths(self, mock_push):
+    def test_pushgateway_failure_increments_errors(self, mock_push):
         mock_push.side_effect = Exception("connection refused")
         registry, metrics, hostname = _build_registry()
-        max_depths = {"registry": 200, "web": 10, "secscan": 0}
 
-        _push(registry, metrics, hostname, max_depths)
+        _push(registry, metrics, hostname)
 
         assert metrics["collector_errors"].labels(host=hostname)._value.get() == 1.0
-        assert max_depths == {"registry": 200, "web": 10, "secscan": 0}
