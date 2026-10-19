@@ -47,13 +47,25 @@ def validate_bearer_auth(auth_header):
 def validate_oauth_token(token):
     robot_result = validate_robot_api_token(token)
     if robot_result is not None:
-        return robot_result
+        return mark_robot_api_credential_used(robot_result)
     if is_jwt(token):
         robot_result = validate_robot_api_jwt(token)
         if robot_result is not None:
-            return robot_result
+            return mark_robot_api_credential_used(robot_result)
         return validate_sso_oauth_token(token)
     return validate_app_oauth_token(token)
+
+
+def mark_robot_api_credential_used(result):
+    """Record robot use once a robot API token or federated JWT result is final.
+
+    Callers invoke this only after every check on the credential has passed, so a login
+    that is rejected later (for example a token presented under another robot's name)
+    never moves the robot's last_accessed (PROJQUAY-13785).
+    """
+    if result.auth_valid and result.context.robot is not None:
+        model.user.update_robot_last_accessed(result.context.robot)
+    return result
 
 
 def validate_robot_api_token(token):
@@ -83,8 +95,6 @@ def validate_robot_api_token(token):
     if not model.user.get_username(robot_owner).enabled:
         return ValidateResult(AuthKind.oauth, error_message="Robot owner is disabled")
 
-    # The robot authenticated: mark the robot used, not only the token (PROJQUAY-13785).
-    model.user.update_robot_last_accessed(robot)
     return ValidateResult(
         AuthKind.oauth, robot=robot, api_scopes=persisted.scope, api_token=persisted
     )
@@ -147,7 +157,6 @@ def validate_robot_api_jwt(token, decoded=None):
                 AuthKind.oauth, error_message="Federation binding is no longer valid"
             )
 
-    model.user.update_robot_last_accessed(robot)
     return ValidateResult(AuthKind.oauth, robot=robot, api_scopes=scope, federation_binding=binding)
 
 
