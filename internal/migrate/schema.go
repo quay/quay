@@ -164,6 +164,7 @@ func (m *Migrator) stopPostgresRemainingServices(ctx context.Context) error {
 func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
 	return errors.Join(
 		m.removeFailedTargetInstall(ctx),
+		m.removePersistedConfigMaterial(),
 		m.startSourceServices(ctx, quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit),
 	)
 }
@@ -173,7 +174,10 @@ func (m *Migrator) rollbackSQLiteSource(ctx context.Context) error {
 	if m.ownsTargetInstall {
 		errs = append(errs, m.removeFailedTargetInstall(ctx))
 	}
-	errs = append(errs, m.startSourceServices(ctx, quayPodUnit, quayRedisUnit, quayAppUnit))
+	errs = append(errs,
+		m.removePersistedConfigMaterial(),
+		m.startSourceServices(ctx, quayPodUnit, quayRedisUnit, quayAppUnit),
+	)
 	return errors.Join(errs...)
 }
 

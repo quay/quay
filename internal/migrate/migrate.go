@@ -80,6 +80,7 @@ type Migrator struct {
 	runInstall              func(context.Context, *installer.Config) error
 	sourceStopped           bool
 	ownsTargetInstall       bool
+	persistedConfigFiles    []string
 }
 
 // Run executes the migration phases in order.
