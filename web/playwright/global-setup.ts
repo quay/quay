@@ -165,10 +165,10 @@ async function globalSetup(config: FullConfig) {
           ...(proxy ? {proxy} : {}),
         });
         try {
-          await new ApiClient(requestContext).signIn(
-            user.username,
-            user.password,
-          );
+          const api = new ApiClient(requestContext);
+          await api.signIn(user.username, user.password);
+          // Federated first login adds confirm_username and metadata prompts.
+          await api.clearUserPrompts(user.username);
           console.log(
             `[Global Setup] Signed in ${role} user: ${user.username}`,
           );
@@ -273,7 +273,7 @@ async function globalSetup(config: FullConfig) {
         // Clear user prompts (enter_name, enter_company) so tests aren't
         // redirected to /updateuser when USER_METADATA is enabled.
         await api.signIn(user.username, user.password);
-        await api.clearUserPrompts();
+        await api.clearUserPrompts(user.username);
       } catch (error) {
         console.error(`[Global Setup] Error creating ${role} user: ${error}`);
         failures.push(`${role} (${user.username}): ${error}`);
