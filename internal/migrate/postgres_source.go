@@ -110,7 +110,7 @@ func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load source config for registry JWT key capture: %w", err)
 	}
-	key, kid, err := loadRegistryJWTSigningKey(ctx, m.Source.ConfigDir, sourceCfg, m.Runner)
+	key, kid, err := loadRegistryJWTSigningKey(ctx, m.Source.ConfigDir, sourceCfg, m.Runner, &m.persistedConfigFiles)
 	if err != nil {
 		return fmt.Errorf("registry JWT key capture: %w", err)
 	}

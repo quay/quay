@@ -1456,6 +1456,7 @@ jobs:
           sudo podman logs systemd-quay > /tmp/e2e-migrate-diagnostics/new-quay.log 2>&1 || true
           sudo journalctl --no-pager -n 200 > /tmp/e2e-migrate-diagnostics/journal.log 2>&1 || true
           sudo journalctl -u quay-app.service -u quay-redis.service -u quay-pod.service -u quay.service --no-pager > /tmp/e2e-migrate-diagnostics/quay-units-journal.log 2>&1 || true
+          sudo ls -ln /root/quay-install/quay-config > /tmp/e2e-migrate-diagnostics/source-config-dir.txt 2>&1 || true
           sudo systemctl list-units 'quay*' --all --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-units.txt 2>&1 || true
           sudo systemctl list-unit-files 'quay*' --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-unit-files.txt 2>&1 || true
           sudo systemctl status quay.service > /tmp/e2e-migrate-diagnostics/service-status.txt 2>&1 || true
@@ -1868,6 +1869,7 @@ jobs:
           target_dir="$RUNNER_TEMP/quay-v3"
           mkdir -p "$diagnostics"
           sudo podman ps -a > "$diagnostics/podman-ps.txt" 2>&1 || true
+          sudo ls -ln /root/quay-install/quay-config > "$diagnostics/source-config-dir.txt" 2>&1 || true
           for unit in quay quay-app quay-postgres quay-redis quay-pod; do
             printf '%s=' "$unit"
             sudo systemctl is-active "${unit}.service" 2>/dev/null || true
