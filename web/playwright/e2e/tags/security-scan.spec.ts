@@ -35,6 +35,7 @@ test.describe(
       // Wait for Clair to scan the image (poll until status != queued)
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
+      let lastStatus = 'queued';
       const deadline = Date.now() + 120000;
       while (Date.now() < deadline) {
         const sec = await api.getManifestSecurity(
@@ -42,9 +43,17 @@ test.describe(
           testRepo.name,
           digest,
         );
-        if (sec.status !== 'queued') break;
+        lastStatus = sec.status;
+        if (lastStatus !== 'queued') break;
         await new Promise((r) => setTimeout(r, 5000));
       }
+      // Skip all tests in this suite if Clair never completed the scan.
+      // This prevents persistent CI failures on environments where Clair
+      // is not configured (e.g. redhat-3.17 release branch CI).
+      test.skip(
+        lastStatus === 'queued' || lastStatus === 'failed',
+        'Clair not available in CI — scan stayed queued after 120s',
+      );
     });
 
     test.afterAll(async ({userContext}) => {
@@ -273,6 +282,7 @@ test.describe(
       // Wait for Clair to scan the OCI image
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
+      let lastStatus = 'queued';
       const deadline = Date.now() + 120000;
       while (Date.now() < deadline) {
         try {
@@ -281,12 +291,20 @@ test.describe(
             testRepo.name,
             digest,
           );
-          if (sec.status !== 'queued') break;
+          lastStatus = sec.status;
+          if (lastStatus !== 'queued') break;
         } catch (e: unknown) {
           if (e instanceof Error && !e.message.includes('404')) throw e;
         }
         await new Promise((r) => setTimeout(r, 5000));
       }
+      // Skip all tests in this suite if Clair never completed the scan.
+      // This prevents persistent CI failures on environments where Clair
+      // is not configured (e.g. redhat-3.17 release branch CI).
+      test.skip(
+        lastStatus === 'queued' || lastStatus === 'failed',
+        'Clair not available in CI — scan stayed queued after 120s',
+      );
     });
 
     test.afterAll(async ({userContext}) => {
