@@ -210,6 +210,25 @@ def test_user_robot_token_lifecycle(app):
         )
 
 
+def test_robot_api_token_bearer_reads_permitted_repository(app):
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    creator = model.user.get_user("devtable")
+    _, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "Repository read token"
+    )
+    model.permission.set_user_repo_permission(robot.username, "buynlarge", "orgrepo", "read")
+
+    with app.test_client() as cl:
+        response = cl.get(
+            "/api/v1/repository/buynlarge/orgrepo",
+            headers={"Authorization": "Bearer " + secret},
+        )
+
+    assert response.status_code == 200
+    assert response.json["name"] == "orgrepo"
+    assert response.json["namespace"] == "buynlarge"
+
+
 @pytest.mark.parametrize(
     "resource, params, robot_username",
     [
