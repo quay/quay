@@ -387,6 +387,8 @@ func TestRollbackRestoresTLSFiles(t *testing.T) {
 	require.NoError(t, err)
 	oldKeyData, err := os.ReadFile(oldKey)
 	require.NoError(t, err)
+	rootCAPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(rootCAPath, []byte("old ca"), 0o644))
 
 	sourceDir := t.TempDir()
 	newCert, newKey := generateTLSFiles(t, sourceDir)
@@ -423,6 +425,7 @@ func TestRollbackRestoresTLSFiles(t *testing.T) {
 	restoredKey := mustReadFile(t, filepath.Join(dataDir, "ssl.key"))
 	assert.Equal(t, oldCertData, restoredCert)
 	assert.Equal(t, oldKeyData, restoredKey)
+	assert.Equal(t, []byte("old ca"), mustReadFile(t, rootCAPath))
 }
 
 func TestRemoveFailedInstallation(t *testing.T) {
@@ -1316,6 +1319,26 @@ func TestCopyUserTLSRollsBackPairWhenKeyReplacementFails(t *testing.T) {
 	entries, err := os.ReadDir(dataDir)
 	require.NoError(t, err)
 	assert.Len(t, entries, 2)
+}
+
+func TestCopyUserTLSRemovesGeneratedCA(t *testing.T) {
+	dataDir := t.TempDir()
+	generateTLSFiles(t, dataDir)
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "rootCA.pem"), []byte("ca"), 0o644))
+
+	sourceDir := t.TempDir()
+	certPath, keyPath := generateTLSFiles(t, sourceDir)
+	inst := &Installer{fs: system.OSFS{}}
+
+	require.NoError(t, inst.copyUserTLS(&Config{
+		Hostname: "registry.example.com",
+		DataDir:  dataDir,
+		SSLCert:  certPath,
+		SSLKey:   keyPath,
+	}))
+
+	assert.NoFileExists(t, filepath.Join(dataDir, "rootCA.pem"))
+	assert.Empty(t, inst.generatedCAPath(&Config{DataDir: dataDir}))
 }
 
 func TestGeneratedCAPath(t *testing.T) {
