@@ -59,6 +59,44 @@ func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T)
 	}
 }
 
+func TestMigrator_Run_DryRunTakesPrecedenceOverCleanupAndSkipInstall(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		cleanup     bool
+		skipInstall bool
+	}{
+		{name: "cleanup", cleanup: true},
+		{name: "skip-install", skipInstall: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validInstallMigrator(t)
+			m.DryRun = true
+			m.Cleanup = tc.cleanup
+			m.SkipInstall = tc.skipInstall
+			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+			runner := &recordingRunner{}
+			m.Runner = runner
+
+			if err := m.Run(t.Context()); err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if !strings.Contains(m.Out.(*bytes.Buffer).String(), "Detected OMR installation") {
+				t.Fatalf("dry-run did not print a plan: %q", m.Out.(*bytes.Buffer).String())
+			}
+			if len(runner.runCalls) != 0 {
+				t.Fatalf("dry-run ran commands: %v", runner.runCalls)
+			}
+			entries, err := os.ReadDir(m.DataDir)
+			if err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("dry-run modified target directory: %v", entries)
+			}
+		})
+	}
+}
+
 func TestMigrator_Run_DryRunRejectsForwardStampedMinimalSchema(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "quay_sqlite.db")
