@@ -134,9 +134,10 @@ test.describe(
           exact: true,
         }),
       });
-      // @patternfly/react-icons >= 6.6 nests two inner <svg>s (default and
-      // rh-ui icon sets) in the outer svg.pf-v6-svg, so a bare "svg" matches 3.
-      await latestRow.locator('td[data-label="Pull"] svg.pf-v6-svg').hover();
+      await latestRow
+        .locator('td[data-label="Pull"]')
+        .getByTestId('pull-popover-trigger')
+        .hover();
 
       const popover = authenticatedPage.getByTestId('pull-popover');
       await expect(popover).toBeVisible({timeout: 10000});
