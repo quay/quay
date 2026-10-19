@@ -238,6 +238,7 @@ func newBoundedBuffer(maxBytes int) *boundedBuffer {
 	return &boundedBuffer{maxBytes: maxBytes}
 }
 
+// Write implements io.Writer, appending data to the buffer and discarding excess from the front.
 func (b *boundedBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -253,6 +254,7 @@ func (b *boundedBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// String returns the buffered output, with a truncation notice if data was discarded.
 func (b *boundedBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
