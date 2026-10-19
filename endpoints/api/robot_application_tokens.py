@@ -223,7 +223,11 @@ def _organization_robot(orgname, robot_shortname, allow_global_readonly_superuse
 @resource("/v1/organization/<orgname>/robots/<robot_shortname>/mintable-scopes")
 @show_if(features.ROBOT_API_TOKENS)
 class OrganizationRobotMintableScopes(ApiResource):
-    """Expose the API scopes an organization administrator may mint for a robot."""
+    """Expose the API scopes an organization administrator may mint for a robot.
+
+    A caller who may view the robot's tokens but not create them, such as a global readonly
+    superuser, gets an empty list.
+    """
 
     @require_session_login
     @require_fresh_login
@@ -232,7 +236,8 @@ class OrganizationRobotMintableScopes(ApiResource):
         """List the scopes available when creating a token for an organization's robot."""
         _organization_robot(orgname, robot_shortname, allow_global_readonly_superuser=True)
         if not _can_manage_organization_robot_tokens(orgname):
-            # Global readonly superusers may view a robot's tokens but cannot create any.
+            # Global readonly superusers may view a robot's tokens but cannot create any,
+            # so no scope is mintable for them.
             return {"scopes": []}
         return _mintable_scopes(orgname)
 
