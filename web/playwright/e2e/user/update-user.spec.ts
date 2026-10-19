@@ -1,5 +1,19 @@
-import {test, expect, uniqueName, mailpit} from '../../fixtures';
+import type {Page} from '@playwright/test';
+import {test, expect} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
+
+// A federated (LDAP) first login also gets the confirm_username prompt, which
+// hides the metadata form until confirmed. Database users never get it.
+async function confirmUsernameIfPrompted(page: Page) {
+  const confirmHeading = page.getByRole('heading', {name: 'Confirm Username'});
+  const metadataHeading = page.getByRole('heading', {
+    name: /Tell us a bit more/i,
+  });
+  await expect(confirmHeading.or(metadataHeading)).toBeVisible();
+  if (await confirmHeading.isVisible()) {
+    await page.getByTestId('update-user-confirm-username-btn').click();
+  }
+}
 
 test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
   test(
@@ -19,40 +33,24 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
 
   test.describe(
     'Profile metadata form',
-    {tag: ['@feature:USER_METADATA', '@auth:Database']},
+    {tag: '@feature:USER_METADATA'},
     () => {
       test(
         'displays and submits profile form',
         {tag: '@superuser'},
-        async ({browser, superuserApi, quayConfig}) => {
-          const username = uniqueName('updatetest');
-          const password = 'testpassword123';
-          const email = `${username}@example.com`;
-          const mailingEnabled = quayConfig?.features?.MAILING === true;
-
-          // Create temp user via superuser API
-          const superApi = superuserApi.raw;
-          await superApi.createUser(username, password, email);
+        async ({browser, isolatedUser}) => {
+          const {user} = await isolatedUser('metadata-submit');
 
           // Create new context for this user
           const context = await browser.newContext();
 
-          // Verify email if mailing is enabled
-          if (mailingEnabled) {
-            const confirmLink = await mailpit.waitForConfirmationLink(email);
-            if (confirmLink) {
-              const page = await context.newPage();
-              await page.goto(confirmLink);
-              await page.close();
-            }
-          }
-
-          // Login as the new user
+          // Login as the isolated user
           const api = new ApiClient(context.request);
-          await api.signIn(username, password);
+          await api.signIn(user.username, user.password);
 
           const page = await context.newPage();
           await page.goto('/updateuser');
+          await confirmUsernameIfPrompted(page);
 
           // If user has prompts, form should be visible
           await expect(
@@ -88,48 +86,25 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
 
           await page.close();
           await context.close();
-
-          // Cleanup
-          try {
-            await superApi.deleteUser(username);
-          } catch {
-            // User may already be deleted
-          }
         },
       );
 
       test(
         'skips profile metadata with No thanks button',
         {tag: '@superuser'},
-        async ({browser, superuserApi, quayConfig}) => {
-          const username = uniqueName('skiptest');
-          const password = 'testpassword123';
-          const email = `${username}@example.com`;
-          const mailingEnabled = quayConfig?.features?.MAILING === true;
-
-          // Create temp user via superuser API
-          const superApi = superuserApi.raw;
-          await superApi.createUser(username, password, email);
+        async ({browser, isolatedUser}) => {
+          const {user} = await isolatedUser('metadata-skip');
 
           // Create new context for this user
           const context = await browser.newContext();
 
-          // Verify email if mailing is enabled
-          if (mailingEnabled) {
-            const confirmLink = await mailpit.waitForConfirmationLink(email);
-            if (confirmLink) {
-              const page = await context.newPage();
-              await page.goto(confirmLink);
-              await page.close();
-            }
-          }
-
-          // Login as the new user
+          // Login as the isolated user
           const api = new ApiClient(context.request);
-          await api.signIn(username, password);
+          await api.signIn(user.username, user.password);
 
           const page = await context.newPage();
           await page.goto('/updateuser');
+          await confirmUsernameIfPrompted(page);
 
           // If user has prompts, form should be visible
           await expect(
@@ -144,13 +119,6 @@ test.describe('UpdateUser Page', {tag: ['@user', '@auth']}, () => {
 
           await page.close();
           await context.close();
-
-          // Cleanup
-          try {
-            await superApi.deleteUser(username);
-          } catch {
-            // User may already be deleted
-          }
         },
       );
     },

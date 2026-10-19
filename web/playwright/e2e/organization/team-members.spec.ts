@@ -196,15 +196,16 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
 
   test(
     'pagination works with more than 20 members',
-    {tag: ['@superuser', '@auth:Database']},
-    async ({authenticatedPage, api, superuserApi}) => {
+    {tag: '@superuser'},
+    async ({authenticatedPage, api}) => {
       const org = await api.organization('testorg');
       const team = await api.team(org.name, 'paginationteam');
 
-      // Create 25 users (requires superuser) and add them to the team
+      // Robots count as team members and need no user accounts, so this
+      // runs under any auth type.
       for (let i = 0; i < 25; i++) {
-        const user = await superuserApi.user(`pguser${i}`);
-        await api.teamMember(org.name, team.name, user.username);
+        const robot = await api.robot(org.name, `pgbot${i}`);
+        await api.teamMember(org.name, team.name, robot.fullName);
       }
 
       await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);

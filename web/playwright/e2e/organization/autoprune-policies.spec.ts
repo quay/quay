@@ -279,10 +279,10 @@ test.describe(
 
     test(
       'user namespace tag-count pruning removes excess tags',
-      {tag: ['@superuser', '@auth:Database']},
-      async ({freshUser}) => {
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
         test.slow();
-        const {user, api} = freshUser;
+        const {user, api} = await isolatedUser('prune-count');
         const repo = await api.repository(user.username, 'prunetest');
 
         await pushImage(
@@ -312,10 +312,10 @@ test.describe(
 
     test(
       'user namespace time-based pruning removes old tags',
-      {tag: ['@superuser', '@auth:Database']},
-      async ({freshUser}) => {
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
         test.slow();
-        const {user, api} = freshUser;
+        const {user, api} = await isolatedUser('prune-age');
         const repo = await api.repository(user.username, 'prunetest');
 
         await pushImage(
@@ -362,10 +362,10 @@ test.describe(
 
     test(
       'multiple user-namespace policies both take effect',
-      {tag: ['@superuser', '@auth:Database']},
-      async ({freshUser}) => {
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
         test.slow();
-        const {user, api} = freshUser;
+        const {user, api} = await isolatedUser('prune-both');
         const repo = await api.repository(user.username, 'prunetest');
 
         await pushImage(
