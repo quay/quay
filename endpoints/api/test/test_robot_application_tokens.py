@@ -4,6 +4,7 @@ import pytest
 
 from data import model
 from data.model import api_token
+from data.model import config as model_config
 from endpoints.api.robot_application_tokens import (
     OrganizationRobotMintableScopes,
     OrganizationRobotToken,
@@ -207,3 +208,105 @@ def test_user_robot_token_lifecycle(app):
             None,
             204,
         )
+
+
+def test_robot_api_token_bearer_reads_permitted_repository(app):
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    creator = model.user.get_user("devtable")
+    _, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "Repository read token"
+    )
+    model.permission.set_user_repo_permission(robot.username, "buynlarge", "orgrepo", "read")
+
+    with app.test_client() as cl:
+        response = cl.get(
+            "/api/v1/repository/buynlarge/orgrepo",
+            headers={"Authorization": "Bearer " + secret},
+        )
+
+    assert response.status_code == 200
+    assert response.json["name"] == "orgrepo"
+    assert response.json["namespace"] == "buynlarge"
+
+
+@pytest.mark.parametrize(
+    "robot_shortname, whitelist, expected_status",
+    [
+        ("policyendpointdenied", [], 401),
+        (
+            "policyendpointnonmatching",
+            lambda robot: [robot.username + "-suffix"],
+            401,
+        ),
+        ("policyendpointallowed", lambda robot: [robot.username], 200),
+    ],
+)
+def test_robot_api_token_bearer_respects_robot_access_policy_at_repository_endpoint(
+    app, robot_shortname, whitelist, expected_status
+):
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot(robot_shortname, creator)
+    repository = model.repository.create_repository(
+        creator.username, robot_shortname, creator, visibility="private"
+    )
+    _, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "Repository read token"
+    )
+    model.permission.set_user_repo_permission(
+        robot.username, creator.username, repository.name, "read"
+    )
+    endpoint = "/api/v1/repository/{}/{}".format(creator.username, repository.name)
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with app.test_client() as cl:
+        assert cl.get(endpoint).status_code == 401
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        with app.test_client() as cl:
+            response = cl.get(endpoint, headers={"Authorization": "Bearer " + secret})
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json["name"] == repository.name
+        assert response.json["namespace"] == creator.username
+
+
+@pytest.mark.parametrize(
+    "resource, params, robot_username",
+    [
+        (UserRobotTokens, {"robot_shortname": "dtrobot"}, "devtable+dtrobot"),
+        (
+            OrganizationRobotTokens,
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            "buynlarge+coolrobot",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "whitelist, expected_code",
+    [
+        ([], 403),
+        (lambda robot: [robot.username], 200),
+        (lambda robot: [robot.username + "-suffix"], 403),
+    ],
+)
+def test_robot_token_creation_respects_robot_access_policy(
+    app, resource, params, robot_username, whitelist, expected_code
+):
+    robot = model.user.lookup_robot(robot_username)
+    token_count_before = api_token.count_active_tokens(robot)
+    whitelist = whitelist(robot) if callable(whitelist) else whitelist
+
+    with patch.dict(
+        model_config.app_config,
+        {"ROBOTS_DISALLOW": True, "ROBOTS_WHITELIST": whitelist},
+    ):
+        with client_with_identity("devtable", app) as cl:
+            response = conduct_api_call(cl, resource, "POST", params, TOKEN_REQUEST, expected_code)
+
+    if expected_code == 200:
+        assert response.json["token"].startswith(api_token.API_TOKEN_PREFIX)
+    assert api_token.count_active_tokens(robot) == token_count_before + (expected_code == 200)

@@ -10,7 +10,11 @@ from auth.basic import _parse_basic_auth_header
 from auth.validateresult import AuthKind, ValidateResult
 from data.model import InvalidRobotCredentialException
 from data.model.api_token import normalize_scope, validate_api_scope_string
-from data.model.user import ensure_robot_federation_ids, lookup_robot
+from data.model.user import (
+    ensure_robot_federation_ids,
+    lookup_robot,
+    robot_access_allowed,
+)
 from oauth.login_utils import get_jwt_issuer
 from oauth.oidc import OIDCLoginService
 from util.names import parse_robot_username
@@ -78,6 +82,8 @@ def parse_federated_robot_resource(resource):
 def validate_federated_robot_subject_token(robot_username, subject_token):
     """Validates an external subject token for the explicitly selected robot."""
     robot = lookup_robot(robot_username)
+    if not robot_access_allowed(robot.username):
+        raise InvalidRobotCredentialException("Token does not match robot")
     result = verify_federated_robot_jwt_token(robot, subject_token)
     binding = result.context.federation_binding
     if not result.auth_valid or binding is None:
