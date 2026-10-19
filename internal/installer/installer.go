@@ -237,8 +237,25 @@ func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) err
 	}
 
 	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
-	slog.Info("registry running", "url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath)
+	attrs := []any{"url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath}
+	if caPath := inst.generatedCAPath(&resolvedCfg); caPath != "" {
+		attrs = append(attrs, "trust", caPath)
+	}
+	slog.Info("registry running", attrs...)
 	return nil
+}
+
+// generatedCAPath returns the CA certificate clients trust for a generated
+// ssl.cert, or "" when the certificate is user-supplied or rootCA.pem is absent.
+func (inst *Installer) generatedCAPath(cfg *Config) string {
+	if cfg.SSLCert != "" {
+		return ""
+	}
+	caPath := filepath.Join(cfg.DataDir, "rootCA.pem")
+	if _, err := inst.fs.Stat(caPath); err != nil {
+		return ""
+	}
+	return caPath
 }
 
 func (inst *Installer) resolveHostname(ctx context.Context, requestedHostname string, upgrading bool) (string, error) {
