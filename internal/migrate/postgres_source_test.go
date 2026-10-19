@@ -473,3 +473,74 @@ func (r *sequenceRunner) Run(_ context.Context, name string, args ...string) err
 func (*sequenceRunner) Output(context.Context, string, ...string) (string, error) {
 	return "", nil
 }
+
+func TestRunPostgresMigrationInjectedFailureMarkerOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		phase      string
+		keepMarker bool
+	}{
+		{phase: "after-convert", keepMarker: false},
+		{phase: "after-copy", keepMarker: true},
+	} {
+		t.Run(tc.phase, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv(failAtEnv, tc.phase)
+			m := validInstallMigrator(t)
+			m.Source.DatabaseKind = databasePostgres
+			m.Source.SystemdScope = scopeUser
+			m.Source.PodSandboxKey = "/run/netns/quay"
+			sourceDB := m.Source.DBPath
+			runner := &sequenceRunner{namespaceHook: func() {
+				data, err := os.ReadFile(sourceDB)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(m.postgresPartialDBPath(), data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}}
+			m.Runner = runner
+
+			err := m.runPostgresMigration(t.Context())
+			if err == nil || !strings.Contains(err.Error(), "injected failure at "+tc.phase) || !strings.Contains(err.Error(), "old OMR services restarted") {
+				t.Fatalf("runPostgresMigration error = %v", err)
+			}
+			if got := runner.calls[len(runner.calls)-1]; got != "systemctl --user start quay-app.service" {
+				t.Fatalf("last call = %q, want quay-app restart; calls = %v", got, runner.calls)
+			}
+			if _, err := os.Stat(m.postgresPartialDBPath()); !os.IsNotExist(err) {
+				t.Errorf("rollback left %s: %v", partialDatabaseName, err)
+			}
+			_, err = os.Stat(filepath.Join(m.DataDir, markerFile))
+			if kept := err == nil; kept != tc.keepMarker {
+				t.Errorf("marker kept = %v, want %v (stat: %v)", kept, tc.keepMarker, err)
+			}
+		})
+	}
+}
+
+func TestPostgresRollbackReportsFailedRestart(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	m.Source.PodSandboxKey = "/run/netns/quay"
+	runner := &recordingRunner{runErrs: map[string]error{"quay-postgres.service": errors.New("unit failed")}}
+	m.Runner = runner
+
+	err := m.runPostgresMigration(t.Context())
+	if err == nil {
+		t.Fatal("runPostgresMigration succeeded, want conversion failure")
+	}
+	for _, want := range []string{"validate converted source", "rollback old OMR", "start quay-postgres.service: unit failed"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("runPostgresMigration error = %v, want %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "restarted") {
+		t.Errorf("runPostgresMigration error = %v, claims a restart that failed", err)
+	}
+	if got := runner.runCalls[len(runner.runCalls)-1]; got != "systemctl --user start quay-app.service" {
+		t.Fatalf("rollback stopped at a failed restart: %v", runner.runCalls)
+	}
+}
