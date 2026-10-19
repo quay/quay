@@ -24,9 +24,9 @@ test.describe(
   },
   () => {
     test(
-      'organization admin creates, lists, and revokes a robot API token',
+      'organization admin creates, authenticates with, lists, and revokes a robot API token',
       {tag: '@PROJQUAY-11090'},
-      async ({authenticatedRequest, api}) => {
+      async ({authenticatedRequest, api, request}) => {
         const org = await api.organization('robotapitokens');
         const robot = await api.robot(org.name, 'tokenbot');
         const csrfToken = await api.raw.getToken();
@@ -47,6 +47,19 @@ test.describe(
         expect(created.token).toMatch(/^qro_[A-Za-z0-9]{60}$/);
         expect(created.name).toBe('Playwright robot API token');
         expect(created.scope).toBe('repo:read');
+
+        // Use the opaque credential through the public bearer-auth path, rather
+        // than only asserting that token creation returned its secret. This
+        // exercises the robot API-token validator and verifies that the token
+        // authenticates as its owning robot.
+        const authenticatedAsRobot = await request.get(
+          `${API_URL}/api/v1/user/`,
+          {headers: {Authorization: `Bearer ${created.token}`}},
+        );
+        expect(authenticatedAsRobot.status()).toBe(200);
+        await expect(authenticatedAsRobot.json()).resolves.toMatchObject({
+          username: robot.fullName,
+        });
 
         const listResponse = await authenticatedRequest.get(tokensUrl);
         expect(listResponse.status()).toBe(200);
