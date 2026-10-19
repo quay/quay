@@ -387,6 +387,9 @@ jobs:
           SUPER_USERS:
             - admin
             - admin_ldap
+          GLOBAL_READONLY_SUPER_USERS:
+            - readonly_ldap
+          FEATURE_USER_INITIALIZE: false
           EOF
           python3 .github/actions/setup-quay/merge-yaml.py \
             local-dev/stack/config.yaml \
@@ -399,12 +402,12 @@ jobs:
             http://localhost:8080/health/instance > /dev/null
           echo "Quay is ready with LDAP auth"
 
-      - name: Run LDAP auth tests
+      - name: Run full suite under LDAP auth
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
+        run: cd web && npx playwright test --grep-invert "@auth:Database|@auth:OIDC" --reporter=blob
 
       - name: Merge test reports
         if: always()
