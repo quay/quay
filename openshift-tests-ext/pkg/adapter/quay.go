@@ -92,6 +92,7 @@ func BuildExtensionTestSpecsFromQuayScenarios(metadata []byte, scriptFS fs.FS) (
 	return specs, nil
 }
 
+// validateScenarioSpec checks that the scenario has required fields populated.
 func validateScenarioSpec(sc ScenarioSpec) error {
 	if sc.Name == "" {
 		return fmt.Errorf("scenario spec is missing name")
@@ -102,6 +103,7 @@ func validateScenarioSpec(sc ScenarioSpec) error {
 	return nil
 }
 
+// codeLocation builds a code location string from the scenario's workdir and entrypoint.
 func codeLocation(sc ScenarioSpec) string {
 	if sc.Entrypoint != "" {
 		if sc.WorkDir != "" {
@@ -112,6 +114,7 @@ func codeLocation(sc ScenarioSpec) string {
 	return ""
 }
 
+// getComponent extracts the component name from scenario tags, defaulting to "quay".
 func getComponent(tags []string) string {
 	// Extract component from tags
 	for _, tag := range tags {
@@ -122,6 +125,7 @@ func getComponent(tags []string) string {
 	return "quay"
 }
 
+// resolveTimeout parses a duration string and returns it, falling back to the given duration if parsing fails.
 func resolveTimeout(timeoutStr string, fallback time.Duration) time.Duration {
 	if timeoutStr == "" {
 		return fallback
@@ -133,6 +137,7 @@ func resolveTimeout(timeoutStr string, fallback time.Duration) time.Duration {
 	return d
 }
 
+// resolveTimeoutStr validates and returns the timeout string, falling back to the default if invalid.
 func resolveTimeoutStr(timeoutStr string) string {
 	if timeoutStr == "" {
 		return quayDefaultTimeoutStr
@@ -144,7 +149,8 @@ func resolveTimeoutStr(timeoutStr string) string {
 	return timeoutStr
 }
 
-// runQuayScenario execs the spec's command.
+// runQuayScenario executes a single test scenario by running its entrypoint command with a timeout.
+// It returns an ExtensionTestResult indicating pass, fail, or error with captured output.
 func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeout time.Duration) *ext.ExtensionTestResult {
 	result := &ext.ExtensionTestResult{
 		Name: sc.Name,
@@ -191,6 +197,8 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	return result
 }
 
+// waitWithGracefulCancel waits for a command to complete or terminates it gracefully on context cancellation.
+// It sends SIGTERM first, waits gracePeriod, then sends SIGKILL if the process hasn't exited.
 func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time.Duration) error {
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -210,6 +218,7 @@ func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time
 	}
 }
 
+// signalProcessGroup sends a signal to the process group of the given command.
 func signalProcessGroup(cmd *exec.Cmd, sig syscall.Signal) {
 	if cmd.Process == nil {
 		return
@@ -224,6 +233,7 @@ type boundedBuffer struct {
 	truncated bool
 }
 
+// newBoundedBuffer creates a buffer that caps output at maxBytes, discarding oldest data when full.
 func newBoundedBuffer(maxBytes int) *boundedBuffer {
 	return &boundedBuffer{maxBytes: maxBytes}
 }
@@ -253,6 +263,7 @@ func (b *boundedBuffer) String() string {
 	return b.buf.String()
 }
 
+// buildEnv constructs an environment slice by merging os.Environ, envFrom mappings, and override values.
 func buildEnv(overrides, envFrom map[string]string) []string {
 	env := make(map[string]string)
 
@@ -282,6 +293,7 @@ func buildEnv(overrides, envFrom map[string]string) []string {
 	return result
 }
 
+// splitEnv splits a KEY=VALUE environment string into its components.
 func splitEnv(kv string) (key, value string, ok bool) {
 	for i := 0; i < len(kv); i++ {
 		if kv[i] == '=' {
