@@ -20,6 +20,7 @@ from data.model.api_token import (
 from data.model.user import lookup_robot, robot_access_allowed
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser_with_full_access,
     log_action,
     page_support,
@@ -206,9 +207,14 @@ class UserRobotToken(ApiResource):
         return _delete_token(robot, parent.username, token_uuid)
 
 
-def _organization_robot(orgname, robot_shortname):
+def _can_manage_organization_robot_tokens(orgname):
+    return AdministerOrganizationPermission(orgname).can() or allow_if_superuser_with_full_access()
+
+
+def _organization_robot(orgname, robot_shortname, allow_global_readonly_superuser=False):
     if not (
-        AdministerOrganizationPermission(orgname).can() or allow_if_superuser_with_full_access()
+        _can_manage_organization_robot_tokens(orgname)
+        or (allow_global_readonly_superuser and allow_if_global_readonly_superuser())
     ):
         raise Unauthorized()
     return _lookup_robot(format_robot_username(orgname, robot_shortname))
@@ -224,7 +230,10 @@ class OrganizationRobotMintableScopes(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, robot_shortname):
         """List the scopes available when creating a token for an organization's robot."""
-        _organization_robot(orgname, robot_shortname)
+        _organization_robot(orgname, robot_shortname, allow_global_readonly_superuser=True)
+        if not _can_manage_organization_robot_tokens(orgname):
+            # Global readonly superusers may view a robot's tokens but cannot create any.
+            return {"scopes": []}
         return _mintable_scopes(orgname)
 
 
@@ -242,7 +251,7 @@ class OrganizationRobotTokens(ApiResource):
     @page_support()
     def get(self, orgname, robot_shortname, parsed_args, page_token):
         """List the non-revoked Management API tokens for an organization's robot."""
-        robot = _organization_robot(orgname, robot_shortname)
+        robot = _organization_robot(orgname, robot_shortname, allow_global_readonly_superuser=True)
         tokens, next_page_token = api_token_model.list_tokens(robot, page_token=page_token)
         return {"tokens": [_token_view(token) for token in tokens]}, next_page_token
 
