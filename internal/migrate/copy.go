@@ -356,6 +356,9 @@ func copyDirRecursive(ctx context.Context, srcDir, dstDir string) (files int, to
 	return files, totalBytes, err
 }
 
-func removeMarker(dataDir string) {
-	_ = os.Remove(filepath.Join(dataDir, markerFile))
+func removeMarker(dataDir string) error {
+	if err := os.Remove(filepath.Join(dataDir, markerFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }

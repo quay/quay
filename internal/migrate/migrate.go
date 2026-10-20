@@ -168,7 +168,9 @@ func (m *Migrator) migrateAndInstall(ctx context.Context) (retErr error) {
 	if m.SkipInstall {
 		// The copy is complete, so a later -cleanup must not resume it over
 		// a database the user may have installed by hand.
-		removeMarker(m.DataDir)
+		if err := removeMarker(m.DataDir); err != nil {
+			return fmt.Errorf("remove migration marker: %w", err)
+		}
 		return nil
 	}
 	if err := m.install(ctx); err != nil {

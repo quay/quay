@@ -291,7 +291,11 @@ func (m *Migrator) install(ctx context.Context) error {
 		return err
 	}
 
-	removeMarker(m.DataDir)
+	// The new registry is already running, so a stuck marker must not roll
+	// it back; a rerun refuses to recopy over an existing installation.
+	if err := removeMarker(m.DataDir); err != nil {
+		slog.Warn("failed to remove migration marker", "path", filepath.Join(m.DataDir, markerFile), "err", err)
+	}
 	slog.Info("new registry installed and running")
 	return nil
 }

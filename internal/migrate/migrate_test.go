@@ -330,6 +330,30 @@ func TestMigrator_RunSQLiteCleanupAfterSkipInstallDoesNotRecopy(t *testing.T) {
 	}
 }
 
+func TestMigrator_RunSQLiteSkipInstallReportsStuckMarker(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
+	m.Runner = &recordingRunner{}
+	// The checkpoint runs after the marker is written; a non-empty directory
+	// in its place makes the final removal fail.
+	m.Checkpoint = func(ctx context.Context, dbPath string) error {
+		markerPath := filepath.Join(m.DataDir, markerFile)
+		if err := os.Remove(markerPath); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Join(markerPath, "stuck"), 0o750); err != nil {
+			return err
+		}
+		return checkpointSQLite(ctx, dbPath)
+	}
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "remove migration marker") {
+		t.Fatalf("Run error = %v, want remove migration marker failure", err)
+	}
+}
+
 func TestMigrator_RunSQLiteValidateFailureDoesNotRestart(t *testing.T) {
 	m := validInstallMigrator(t)
 	m.SkipInstall = true
