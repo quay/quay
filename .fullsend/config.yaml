@@ -9,7 +9,6 @@ roles:
     - coder
     - review
     - fix
-    - retro
     - prioritize
 agents:
     - source: harness/triage.yaml
