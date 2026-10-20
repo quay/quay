@@ -13,8 +13,8 @@
 #      base image for the e2e step, which clones the version-matched suite at
 #      runtime and drives `playwright test` itself (the ENTRYPOINT is overridden).
 #      For that path this image also ships git + the registry CLIs
-#      (skopeo / crane / regctl) that the @container / cli-interop specs drive,
-#      and installs browsers to a shared /opt/playwright usable by any UID.
+#      (skopeo / crane / regctl / oras) that the @container / cli-interop specs
+#      drive, and installs browsers to a shared /opt/playwright usable by any UID.
 
 FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
 
@@ -59,10 +59,13 @@ RUN microdnf install -y --setopt=install_weak_deps=0 --nodocs \
     && microdnf clean all
 
 # Registry CLIs for the @container / cli-interop Playwright specs.
+#   oras: used by the referrer/artifact specs (incl. upgrade referrer-persistence)
 RUN curl -fsSL "https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz" \
       | tar -xzf - -C /usr/local/bin crane && \
     curl -fsSL -o /usr/local/bin/regctl "https://github.com/regclient/regclient/releases/download/v0.7.1/regctl-linux-amd64" && \
-    chmod +x /usr/local/bin/crane /usr/local/bin/regctl
+    curl -fsSL "https://github.com/oras-project/oras/releases/download/v1.2.2/oras_1.2.2_linux_amd64.tar.gz" \
+      | tar -xzf - -C /usr/local/bin oras && \
+    chmod +x /usr/local/bin/crane /usr/local/bin/regctl /usr/local/bin/oras
 
 WORKDIR /app
 
