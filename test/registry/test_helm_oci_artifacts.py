@@ -303,7 +303,11 @@ def test_helm_chart_metadata_extraction(
 
     # Fetch and verify config blob content
     token, _ = manifest_protocol.auth(
-        liveserver_session, credentials, "devtable", "helm-metadata-repo"
+        liveserver_session,
+        credentials,
+        "devtable",
+        "helm-metadata-repo",
+        scopes=["repository:devtable/helm-metadata-repo:pull"],
     )
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -562,7 +566,11 @@ def test_helm_chart_oci_annotations(
 
     # Fetch and verify config blob with annotations after push
     token, _ = manifest_protocol.auth(
-        liveserver_session, credentials, "devtable", "helm-annotated-repo"
+        liveserver_session,
+        credentials,
+        "devtable",
+        "helm-annotated-repo",
+        scopes=["repository:devtable/helm-annotated-repo:pull"],
     )
     headers = {"Authorization": f"Bearer {token}"}
 
