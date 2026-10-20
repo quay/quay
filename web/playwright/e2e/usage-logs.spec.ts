@@ -744,3 +744,56 @@ test.describe(
     });
   },
 );
+
+test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
+  const escapeRegex = (s: string): string =>
+    s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  test(
+    'superuser view keeps usage log columns visible on narrow screens',
+    {tag: ['@superuser', '@PROJQUAY-13930']},
+    async ({superuserPage, superuserApi}) => {
+      const repo = await superuserApi.repository();
+      const repoName = repo.fullName.split('/')[1];
+
+      await superuserPage.goto('/usage-logs');
+
+      const table = superuserPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+      await expect(
+        table.getByRole('columnheader', {name: 'Repository'}),
+      ).toBeVisible();
+
+      await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
+
+      const repoNameCell = table
+        .locator('td')
+        .filter({hasText: new RegExp(`^${escapeRegex(repoName)}$`)})
+        .first();
+      await expect(repoNameCell).toBeVisible();
+
+      const logRow = repoNameCell.locator('xpath=ancestor::tr');
+      const cells = logRow.locator('td');
+      const dataLabels = [
+        'Date & Time',
+        'Description',
+        'Namespace',
+        'Repository',
+        'Performed by',
+        'IP Address',
+      ];
+
+      await expect(cells).toHaveCount(dataLabels.length);
+      await expect(cells.nth(0)).toHaveText(
+        /\d{1,2}\/\d{1,2}\/\d{4},?\s+\d{1,2}:\d{2}/,
+      );
+      await expect(cells.nth(0).locator('.pf-m-truncate')).toHaveCount(0);
+
+      await superuserPage.setViewportSize({width: 600, height: 900});
+      for (const [index, dataLabel] of dataLabels.entries()) {
+        await expect(cells.nth(index)).toBeVisible();
+        await expect(cells.nth(index)).toHaveAttribute('data-label', dataLabel);
+      }
+    },
+  );
+});
