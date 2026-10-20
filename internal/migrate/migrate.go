@@ -4,6 +4,7 @@ package migrate
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -139,10 +140,20 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 }
 
 // migrateAndInstall restarts the old OMR when a step fails after it was
-// stopped. The failed target keeps its marker, so a rerun resumes the copy.
+// stopped, and removes this run's recovered key files when a step fails
+// before the stop. The failed target keeps its marker, so a rerun resumes the
+// copy.
 func (m *Migrator) migrateAndInstall(ctx context.Context) (retErr error) {
 	defer func() {
-		if retErr == nil || !m.sourceStopped {
+		if retErr == nil {
+			return
+		}
+		if !m.sourceStopped {
+			// Nothing to restart, but key material validation recovered from
+			// the running container must not stay in the source config dir.
+			if err := m.removePersistedConfigMaterial(); err != nil {
+				retErr = errors.Join(retErr, err)
+			}
 			return
 		}
 		retErr = withSourceRollback(retErr, m.rollbackSQLiteSource(context.Background()))

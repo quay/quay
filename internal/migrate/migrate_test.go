@@ -444,3 +444,56 @@ func TestMigrator_RunSQLiteRollbackGivesEachStepItsOwnTimeout(t *testing.T) {
 		t.Fatalf("quay-app restart started = %v with context error %v, want a live context", runner.appStarted, runner.appCtxErr)
 	}
 }
+
+// containerKeyRunner serves source key material from the old OMR container.
+type containerKeyRunner struct {
+	recordingRunner
+	material sourceMaterialRunner
+}
+
+func (r *containerKeyRunner) Output(ctx context.Context, name string, args ...string) (string, error) {
+	return r.material.Output(ctx, name, args...)
+}
+
+func TestMigrator_RunSQLiteValidateFailureRemovesRecoveredKeyMaterial(t *testing.T) {
+	m := validInstallMigrator(t)
+	m.SkipInstall = true
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	outputs := map[string]string{}
+	for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+		path := filepath.Join(m.Source.ConfigDir, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+		outputs[filepath.Join(sourceContainerConf, name)] = string(data)
+	}
+	runner := &containerKeyRunner{material: sourceMaterialRunner{outputs: outputs}}
+	m.Runner = runner
+	// A non-empty target fails validation after the key material is recovered.
+	if err := os.MkdirAll(m.DataDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(m.DataDir, "unrelated"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "is not empty") {
+		t.Fatalf("Run error = %v, want non-empty target rejection", err)
+	}
+	if runner.material.outputCalls == 0 {
+		t.Fatal("key material was not recovered from the source container")
+	}
+	for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+		if _, err := os.Stat(filepath.Join(m.Source.ConfigDir, name)); !os.IsNotExist(err) {
+			t.Errorf("recovered %s left in source config dir: %v", name, err)
+		}
+	}
+	if len(runner.runCalls) != 0 {
+		t.Errorf("failure before the stop ran source services: %v", runner.runCalls)
+	}
+}

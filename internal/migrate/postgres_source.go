@@ -25,7 +25,7 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 		return err
 	}
 	if err := m.validatePostgresBeforeStop(ctx); err != nil {
-		return fmt.Errorf("validate: %w", err)
+		return errors.Join(fmt.Errorf("validate: %w", err), m.removePersistedConfigMaterial())
 	}
 	retrySafe := true
 	defer func() {
