@@ -64,6 +64,14 @@ def write_config(filename, **kwargs):
         f.write(rendered)
 
 
+def listen_ip_versions(config):
+    # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
+    ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
+    use_ipv4 = True if ip_version.lower() != "ipv6" else False
+    use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
+    return use_ipv4, use_ipv6
+
+
 def generate_nginx_config(config):
     """
     Generates nginx config from the app config.
@@ -76,10 +84,7 @@ def generate_nginx_config(config):
     ssl_ciphers = config.get("SSL_CIPHERS", SSL_CIPHER_DEFAULTS)
     ssl_ciphersuites = config.get("SSL_CIPHERSUITES", [])
 
-    # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
-    ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
-    use_ipv4 = True if ip_version.lower() != "ipv6" else False
-    use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
+    use_ipv4, use_ipv6 = listen_ip_versions(config)
 
     # Set preferred URL scheme explicitly in the headers to avoid collisions and
     # infinite redirects. Use https as default value.
@@ -167,10 +172,13 @@ def generate_hosted_http_base_config(config):
     """
     config = config or {}
     feature_proxy_protocol = config.get("FEATURE_PROXY_PROTOCOL", False)
+    use_ipv4, use_ipv6 = listen_ip_versions(config)
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/hosted-http-base.conf"),
         feature_proxy_protocol=feature_proxy_protocol,
+        use_ipv4=use_ipv4,
+        use_ipv6=use_ipv6,
     )
 
 
