@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
@@ -22,6 +23,10 @@ const (
 	quayPostgresUnit = "quay-postgres.service"
 	quayRedisUnit    = "quay-redis.service"
 )
+
+// rollbackStepTimeout bounds each rollback operation on its own, so a slow
+// step cannot use up the time a later restart needs.
+var rollbackStepTimeout = 30 * time.Second
 
 // upgradeSchema opens the copied database, backs it up, and runs the bridge
 // migration to bring it to the Go binary's target schema version.
@@ -163,7 +168,7 @@ func (m *Migrator) stopPostgresRemainingServices(ctx context.Context) error {
 
 func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
 	return errors.Join(
-		m.removeFailedTargetInstall(ctx),
+		withRollbackTimeout(ctx, m.removeFailedTargetInstall),
 		m.removePersistedConfigMaterial(),
 		m.startSourceServices(ctx, quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit),
 	)
@@ -172,7 +177,7 @@ func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
 func (m *Migrator) rollbackSQLiteSource(ctx context.Context) error {
 	var errs []error
 	if m.ownsTargetInstall {
-		errs = append(errs, m.removeFailedTargetInstall(ctx))
+		errs = append(errs, withRollbackTimeout(ctx, m.removeFailedTargetInstall))
 	}
 	errs = append(errs,
 		m.removePersistedConfigMaterial(),
@@ -198,11 +203,20 @@ func (m *Migrator) removeFailedTargetInstall(ctx context.Context) error {
 func (m *Migrator) startSourceServices(ctx context.Context, services ...string) error {
 	var errs []error
 	for _, service := range services {
-		if err := m.runSourceService(ctx, "start", service); err != nil {
+		err := withRollbackTimeout(ctx, func(ctx context.Context) error {
+			return m.runSourceService(ctx, "start", service)
+		})
+		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func withRollbackTimeout(ctx context.Context, step func(context.Context) error) error {
+	stepCtx, cancel := context.WithTimeout(ctx, rollbackStepTimeout)
+	defer cancel()
+	return step(stepCtx)
 }
 
 // withSourceRollback tells the user whether the old OMR is running again.

@@ -544,3 +544,29 @@ func TestPostgresRollbackReportsFailedRestart(t *testing.T) {
 		t.Fatalf("rollback stopped at a failed restart: %v", runner.runCalls)
 	}
 }
+
+func TestPostgresRollbackGivesEachStepItsOwnTimeout(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	original := rollbackStepTimeout
+	rollbackStepTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { rollbackStepTimeout = original })
+
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	m.Source.PodSandboxKey = "/run/netns/quay"
+	runner := &slowRollbackRunner{slowStart: quayPodUnit}
+	m.Runner = runner
+	m.removeTargetInstall = func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	err := m.runPostgresMigration(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "start quay-pod.service") {
+		t.Fatalf("runPostgresMigration error = %v, want slow quay-pod restart reported", err)
+	}
+	if !runner.appStarted || runner.appCtxErr != nil {
+		t.Fatalf("quay-app restart started = %v with context error %v, want a live context", runner.appStarted, runner.appCtxErr)
+	}
+}

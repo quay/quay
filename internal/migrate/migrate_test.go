@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/installer"
@@ -388,5 +389,58 @@ func TestMigrator_RunSQLiteInstallFailureRemovesOnlyOwnedInstall(t *testing.T) {
 				t.Fatalf("rollback calls = %v, want %v", starts, want)
 			}
 		})
+	}
+}
+
+// slowRollbackRunner holds one source start until its context ends and records
+// the context state quay-app.service was started with.
+type slowRollbackRunner struct {
+	recordingRunner
+	slowStart  string
+	appStarted bool
+	appCtxErr  error
+}
+
+func (r *slowRollbackRunner) Run(ctx context.Context, name string, args ...string) error {
+	err := r.recordingRunner.Run(ctx, name, args...)
+	if len(args) < 2 || args[len(args)-2] != "start" {
+		return err
+	}
+	switch args[len(args)-1] {
+	case r.slowStart:
+		<-ctx.Done()
+		return ctx.Err()
+	case quayAppUnit:
+		r.appStarted = true
+		r.appCtxErr = ctx.Err()
+	}
+	return err
+}
+
+func TestMigrator_RunSQLiteRollbackGivesEachStepItsOwnTimeout(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	original := rollbackStepTimeout
+	rollbackStepTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { rollbackStepTimeout = original })
+
+	m := validInstallMigrator(t)
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	runner := &slowRollbackRunner{slowStart: quayPodUnit}
+	m.Runner = runner
+	m.checkTargetInstallation = func() (bool, error) { return false, nil }
+	m.removeTargetInstall = func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	m.runInstall = func(context.Context, *installer.Config) error {
+		return errors.New("injected install failure")
+	}
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "start quay-pod.service") {
+		t.Fatalf("Run error = %v, want slow quay-pod restart reported", err)
+	}
+	if !runner.appStarted || runner.appCtxErr != nil {
+		t.Fatalf("quay-app restart started = %v with context error %v, want a live context", runner.appStarted, runner.appCtxErr)
 	}
 }

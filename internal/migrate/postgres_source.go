@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -33,12 +32,10 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 		if retErr == nil {
 			return
 		}
-		rollbackCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
 		if cleanupErr := m.removePostgresMigrationArtifacts(retrySafe); cleanupErr != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("remove failed migration artifacts: %w", cleanupErr))
 		}
-		retErr = withSourceRollback(retErr, m.rollbackPostgresSource(rollbackCtx))
+		retErr = withSourceRollback(retErr, m.rollbackPostgresSource(context.Background()))
 	}()
 	if err := m.stopPostgresApp(ctx); err != nil {
 		return fmt.Errorf("stop old OMR app: %w", err)

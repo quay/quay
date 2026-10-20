@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/quay/quay/internal/installer"
 	"github.com/quay/quay/internal/system"
@@ -146,9 +145,7 @@ func (m *Migrator) migrateAndInstall(ctx context.Context) (retErr error) {
 		if retErr == nil || !m.sourceStopped {
 			return
 		}
-		rollbackCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		retErr = withSourceRollback(retErr, m.rollbackSQLiteSource(rollbackCtx))
+		retErr = withSourceRollback(retErr, m.rollbackSQLiteSource(context.Background()))
 	}()
 	if err := m.migrateData(ctx); err != nil {
 		return err
