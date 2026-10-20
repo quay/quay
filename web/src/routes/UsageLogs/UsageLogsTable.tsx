@@ -10,15 +10,7 @@ import {
   Split,
   SplitItem,
 } from '@patternfly/react-core';
-import {
-  Table,
-  TableText,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
@@ -27,6 +19,15 @@ import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {extractTextFromReactNode} from 'src/libs/utils';
 import {useState, useMemo, useEffect, useRef} from 'react';
+
+const usageLogColumnNames = {
+  dateTime: 'Date & Time',
+  description: 'Description',
+  namespace: 'Namespace',
+  repository: 'Repository',
+  performedBy: 'Performed by',
+  ipAddress: 'IP Address',
+};
 
 interface LogEntry {
   datetime: string;
@@ -250,25 +251,36 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
             >
               <Thead>
                 <Tr>
-                  <Th width={15} sort={getSortableSort(0)}>
-                    Date & Time
+                  <Th modifier="wrap" sort={getSortableSort(0)}>
+                    {usageLogColumnNames.dateTime}
                   </Th>
-                  <Th sort={getSortableSort(1)}>Description</Th>
-                  {props.isSuperuser && <Th>Namespace</Th>}
-                  {!props.repo && <Th>Repository</Th>}
-                  <Th sort={getSortableSort(2)}>Performed by</Th>
-                  <Th sort={getSortableSort(3)}>IP Address</Th>
+                  <Th modifier="wrap" sort={getSortableSort(1)}>
+                    {usageLogColumnNames.description}
+                  </Th>
+                  {props.isSuperuser && (
+                    <Th modifier="wrap">{usageLogColumnNames.namespace}</Th>
+                  )}
+                  {!props.repo && (
+                    <Th modifier="wrap">{usageLogColumnNames.repository}</Th>
+                  )}
+                  <Th modifier="wrap" sort={getSortableSort(2)}>
+                    {usageLogColumnNames.performedBy}
+                  </Th>
+                  <Th modifier="wrap" sort={getSortableSort(3)}>
+                    {usageLogColumnNames.ipAddress}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {paginatedLogs.map((log: LogEntry, index: number) => (
                   <Tr key={`${log.datetime}-${index}`}>
-                    <Td>
-                      <TableText wrapModifier="truncate">
-                        {new Date(log.datetime).toLocaleString()}
-                      </TableText>
+                    <Td dataLabel={usageLogColumnNames.dateTime}>
+                      {new Date(log.datetime).toLocaleString()}
                     </Td>
-                    <Td>
+                    <Td
+                      dataLabel={usageLogColumnNames.description}
+                      modifier="breakWord"
+                    >
                       {logDescriptions[log.kind]
                         ? (logDescriptions[log.kind](
                             log.metadata,
@@ -276,25 +288,25 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                         : 'No description available'}
                     </Td>
                     {props.isSuperuser && (
-                      <Td>
+                      <Td dataLabel={usageLogColumnNames.namespace}>
                         {log.namespace?.name || log.namespace?.username || ''}
                       </Td>
                     )}
                     {!props.repo && (
-                      <Td>
+                      <Td dataLabel={usageLogColumnNames.repository}>
                         {props.isSuperuser
                           ? log.metadata?.repo || ''
                           : log.metadata?.namespace && log.metadata?.repo
-                          ? `${log.metadata.namespace}/${log.metadata.repo}`
-                          : log.metadata?.repo || ''}
+                            ? `${log.metadata.namespace}/${log.metadata.repo}`
+                            : log.metadata?.repo || ''}
                       </Td>
                     )}
-                    <Td>
+                    <Td dataLabel={usageLogColumnNames.performedBy}>
                       {log.performer?.name
                         ? log.performer?.name
                         : (log.metadata?.performer as string) || '(anonymous)'}
                     </Td>
-                    <Td>{log.ip}</Td>
+                    <Td dataLabel={usageLogColumnNames.ipAddress}>{log.ip}</Td>
                   </Tr>
                 ))}
               </Tbody>
