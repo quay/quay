@@ -1,0 +1,62 @@
+[
+  {
+    "name": "up",
+    "expr": "up{job=\"quay-pushgateway\"}",
+    "description": "Pushgateway scrape health; 0 only if a scrape lands while quay-quay is down"
+  },
+  {
+    "name": "pushgateway_start_time",
+    "expr": "process_start_time_seconds{job=\"quay-pushgateway\"}",
+    "description": "Pushgateway start time; a change marks a quay-quay restart even when no scrape failed"
+  },
+  {
+    "name": "pushing_processes",
+    "expr": "count by (process_name) (push_time_seconds)",
+    "description": "Process groups that have pushed to the Pushgateway, by process name"
+  },
+  {
+    "name": "request_rate_by_status_class",
+    "expr": "sum by (status_class) (label_replace(rate(quay_request_duration_seconds_count[2m]), \"status_class\", \"${1}xx\", \"status\", \"([0-9]).*\"))",
+    "description": "Requests per second by HTTP status class"
+  },
+  {
+    "name": "request_rate_5xx_by_route",
+    "expr": "sum by (route, status) (rate(quay_request_duration_seconds_count{status=~\"5..\"}[2m])) > 0",
+    "description": "5xx requests per second by route and status"
+  },
+  {
+    "name": "request_latency_p95",
+    "expr": "histogram_quantile(0.95, sum by (le) (rate(quay_request_duration_seconds_bucket[2m])))",
+    "description": "p95 request latency in seconds, all routes"
+  },
+  {
+    "name": "request_latency_p95_top_routes",
+    "expr": "topk(10, histogram_quantile(0.95, sum by (route, le) (rate(quay_request_duration_seconds_bucket[2m]))))",
+    "description": "p95 request latency in seconds, ten slowest routes per step"
+  },
+  {
+    "name": "db_pool_in_use",
+    "expr": "sum by (process_name) (quay_db_pooled_connections_in_use)",
+    "description": "Pooled DB connections in use, by process name"
+  },
+  {
+    "name": "db_pool_available",
+    "expr": "sum by (process_name) (quay_db_pooled_connections_available)",
+    "description": "Pooled DB connections available, by process name"
+  },
+  {
+    "name": "db_connect_rate",
+    "expr": "sum by (process_name) (rate(quay_db_connect_calls_total[2m]))",
+    "description": "DB connect() calls per second, by process name"
+  },
+  {
+    "name": "process_memory_bytes",
+    "expr": "sum by (process_name) (process_resident_memory_bytes{process_name!=\"\"})",
+    "description": "Resident memory in bytes, by process name"
+  },
+  {
+    "name": "process_cpu_rate",
+    "expr": "sum by (process_name) (rate(process_cpu_seconds_total{process_name!=\"\"}[2m]))",
+    "description": "CPU seconds per second, by process name"
+  }
+]

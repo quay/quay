@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  # Quay processes push to the Pushgateway inside quay-quay; honor_labels keeps
+  # their job and process_name/pid grouping labels instead of this job's.
+  - job_name: quay-pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["quay-quay:9091"]
