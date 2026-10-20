@@ -756,6 +756,11 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       const repo = await superuserApi.repository();
       const repoName = repo.fullName.split('/')[1];
 
+      const logsResponse = superuserPage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/superuser/logs' &&
+          response.status() === 200,
+      );
       await superuserPage.goto('/usage-logs');
 
       const table = superuserPage.getByTestId('usage-logs-table');
@@ -772,6 +777,15 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
         .first();
       await expect(repoNameCell).toBeVisible();
 
+      const logs = (await (await logsResponse).json()).logs as Array<{
+        datetime: string;
+        metadata?: {repo?: string};
+      }>;
+      const log = logs.find((entry) => entry.metadata?.repo === repoName);
+      if (!log) {
+        throw new Error(`No usage log found for repository ${repoName}`);
+      }
+
       const logRow = repoNameCell.locator('xpath=ancestor::tr');
       const cells = logRow.locator('td');
       const dataLabels = [
@@ -784,9 +798,11 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       ];
 
       await expect(cells).toHaveCount(dataLabels.length);
-      await expect(cells.nth(0)).toHaveText(
-        /\d{1,2}\/\d{1,2}\/\d{4},?\s+\d{1,2}:\d{2}/,
+      const expectedTimestamp = await superuserPage.evaluate(
+        (datetime) => new Date(datetime).toLocaleString(),
+        log.datetime,
       );
+      await expect(cells.nth(0)).toHaveText(expectedTimestamp);
       await expect(cells.nth(0).locator('.pf-m-truncate')).toHaveCount(0);
 
       await superuserPage.setViewportSize({width: 600, height: 900});
