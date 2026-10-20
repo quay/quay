@@ -94,5 +94,62 @@ test.describe(
         );
       },
     );
+
+    test(
+      'global readonly superuser lists robot API tokens but cannot create or revoke them',
+      {tag: '@PROJQUAY-13786'},
+      async ({authenticatedRequest, api, readonlyClient}) => {
+        const org = await api.organization('robotapitokensro');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const csrfToken = await api.raw.getToken();
+        const robotPath = `/api/v1/organization/${org.name}/robots/${robot.shortname}`;
+        const tokensPath = `${robotPath}/tokens`;
+        const tokenRequest = {
+          name: 'Readonly superuser visible token',
+          scope: 'repo:read',
+          expiration: 3600,
+        };
+
+        const createResponse = await authenticatedRequest.post(
+          `${API_URL}${tokensPath}`,
+          {headers: {'X-CSRF-Token': csrfToken}, data: tokenRequest},
+        );
+        expect(createResponse.status()).toBe(200);
+        const created = (await createResponse.json()) as RobotAPIToken;
+
+        const listResponse = await readonlyClient.get(tokensPath);
+        expect(listResponse.status()).toBe(200);
+        const listed = (await listResponse.json()) as RobotAPITokensResponse;
+        const listedToken = listed.tokens.find(
+          (token) => token.uuid === created.uuid,
+        );
+        expect(listedToken).toBeDefined();
+        expect(listedToken?.token).toBeUndefined();
+
+        const scopesResponse = await readonlyClient.get(
+          `${robotPath}/mintable-scopes`,
+        );
+        expect(scopesResponse.status()).toBe(200);
+        await expect(scopesResponse.json()).resolves.toEqual({scopes: []});
+
+        const readonlyCreate = await readonlyClient.post(
+          tokensPath,
+          tokenRequest,
+        );
+        expect(readonlyCreate.status()).toBe(403);
+
+        const readonlyRevoke = await readonlyClient.delete(
+          `${tokensPath}/${created.uuid}`,
+        );
+        expect(readonlyRevoke.status()).toBe(403);
+
+        const afterResponse = await authenticatedRequest.get(
+          `${API_URL}${tokensPath}`,
+        );
+        expect(afterResponse.status()).toBe(200);
+        const after = (await afterResponse.json()) as RobotAPITokensResponse;
+        expect(after.tokens.map((token) => token.uuid)).toEqual([created.uuid]);
+      },
+    );
   },
 );

@@ -14,7 +14,7 @@ from endpoints.api.robot_application_tokens import (
     UserRobotTokens,
 )
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
 
 TOKEN_REQUEST = {"name": "CI robot token", "scope": "repo:read", "expiration": 3600}
@@ -310,3 +310,103 @@ def test_robot_token_creation_respects_robot_access_policy(
     if expected_code == 200:
         assert response.json["token"].startswith(api_token.API_TOKEN_PREFIX)
     assert api_token.count_active_tokens(robot) == token_count_before + (expected_code == 200)
+
+
+ORG_TOKEN_ROBOT_PARAMS = {"orgname": "robottokenorg", "robot_shortname": "tokenbot"}
+TOKEN_VIEW_FIELDS = {
+    "uuid",
+    "name",
+    "scope",
+    "expires_at",
+    "created",
+    "created_by",
+    "last_accessed",
+}
+
+
+def _org_robot_with_two_tokens():
+    # freshuser owns the organization; devtable is a superuser who is not a member of it.
+    owner = model.user.get_user("freshuser")
+    org = model.organization.create_organization(
+        "robottokenorg", "robottokenorg@devtable.com", owner
+    )
+    robot, _ = model.user.create_robot("tokenbot", org)
+    tokens = [
+        api_token.create_token_under_limit(robot, owner, "repo:read", 3600, name)[0]
+        for name in ("First token", "Second token")
+    ]
+    return robot, tokens
+
+
+@pytest.mark.parametrize(
+    "username, full_access, expected_codes",
+    [
+        ("freshuser", True, (200, 200, 200, 204)),
+        ("devtable", True, (200, 200, 200, 204)),
+        ("devtable", False, (403, 403, 403, 403)),
+        ("globalreadonlysuperuser", True, (200, 200, 403, 403)),
+        ("reader", True, (403, 403, 403, 403)),
+    ],
+)
+def test_organization_robot_token_endpoint_access(app, username, full_access, expected_codes):
+    _, tokens = _org_robot_with_two_tokens()
+    calls = [
+        (OrganizationRobotTokens, "GET", ORG_TOKEN_ROBOT_PARAMS, None),
+        (OrganizationRobotMintableScopes, "GET", ORG_TOKEN_ROBOT_PARAMS, None),
+        (OrganizationRobotTokens, "POST", ORG_TOKEN_ROBOT_PARAMS, TOKEN_REQUEST),
+        (
+            OrganizationRobotToken,
+            "DELETE",
+            {**ORG_TOKEN_ROBOT_PARAMS, "token_uuid": tokens[0].uuid},
+            None,
+        ),
+    ]
+
+    with toggle_feature("SUPERUSERS_FULL_ACCESS", full_access):
+        with client_with_identity(username, app) as cl:
+            for (resource, method, params, body), expected_code in zip(calls, expected_codes):
+                conduct_api_call(cl, resource, method, params, body, expected_code)
+
+
+def test_global_readonly_superuser_lists_organization_robot_tokens_without_secrets(app):
+    _, tokens = _org_robot_with_two_tokens()
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        listed = conduct_api_call(
+            cl, OrganizationRobotTokens, "GET", ORG_TOKEN_ROBOT_PARAMS, None, 200
+        ).json
+
+    assert {token["uuid"] for token in listed["tokens"]} == {token.uuid for token in tokens}
+    assert all(set(token) == TOKEN_VIEW_FIELDS for token in listed["tokens"])
+
+
+def test_global_readonly_superuser_has_no_mintable_scopes(app):
+    _org_robot_with_two_tokens()
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        response = conduct_api_call(
+            cl, OrganizationRobotMintableScopes, "GET", ORG_TOKEN_ROBOT_PARAMS, None, 200
+        ).json
+
+    assert response["scopes"] == []
+
+
+def test_global_readonly_superuser_cannot_create_or_revoke_organization_robot_tokens(app):
+    robot, tokens = _org_robot_with_two_tokens()
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        conduct_api_call(
+            cl, OrganizationRobotTokens, "POST", ORG_TOKEN_ROBOT_PARAMS, TOKEN_REQUEST, 403
+        )
+        for token in tokens:
+            conduct_api_call(
+                cl,
+                OrganizationRobotToken,
+                "DELETE",
+                {**ORG_TOKEN_ROBOT_PARAMS, "token_uuid": token.uuid},
+                None,
+                403,
+            )
+
+    remaining, _ = api_token.list_tokens(robot)
+    assert {token.uuid for token in remaining} == {token.uuid for token in tokens}
