@@ -1,29 +1,44 @@
 from datetime import datetime
 
 import pytest
-
 from mock import patch
 
 from data import model
-from data.database import EmailConfirmation, User, DeletedNamespace, FederatedLogin
-from data.model.organization import get_organization
-from data.model.notification import create_notification
-from data.model.team import create_team, add_user_to_team
-from data.model.user import create_user_noverify, validate_reset_code, get_active_users
-from data.model.user import mark_namespace_for_deletion, delete_namespace_via_marker
-from data.model.user import create_robot, lookup_robot, list_namespace_robots
-from data.model.user import get_pull_credentials, retrieve_robot_token, verify_robot
-from data.model.user import InvalidRobotException, delete_robot, get_matching_users
-from data.model.user import get_estimated_robot_count, RobotAccountToken, attach_federated_login
-from data.model.user import get_quay_user_from_federated_login_name, get_public_repo_count
-from data.model.repository import create_repository
+from data.database import DeletedNamespace, EmailConfirmation, FederatedLogin, User
 from data.fields import Credential
+from data.model.notification import create_notification
+from data.model.organization import create_organization, get_organization
+from data.model.repository import create_repository
+from data.model.team import add_user_to_team, create_team
+from data.model.user import (
+    InvalidRobotException,
+    RobotAccountToken,
+    attach_federated_login,
+    change_username,
+    create_robot,
+    create_user_noverify,
+    delete_namespace_via_marker,
+    delete_robot,
+    get_active_users,
+    get_estimated_robot_count,
+    get_matching_users,
+    get_public_repo_count,
+    get_pull_credentials,
+    get_quay_user_from_federated_login_name,
+    get_user,
+    list_entity_robot_permission_teams,
+    list_namespace_robots,
+    lookup_robot,
+    mark_namespace_for_deletion,
+    retrieve_robot_token,
+    validate_reset_code,
+    verify_robot,
+)
 from data.queue import WorkQueue
-from util.timedeltastring import convert_to_timedelta
-from util.timedeltastring import convert_to_timedelta
-from util.security.token import encode_public_private_token
-from test.helpers import check_transitive_modifications
 from test.fixtures import *
+from test.helpers import check_transitive_modifications
+from util.security.token import encode_public_private_token
+from util.timedeltastring import convert_to_timedelta
 
 
 def test_create_user_with_expiration(initialized_db):
@@ -232,6 +247,48 @@ def test_robot(initialized_db):
 
     with pytest.raises(InvalidRobotException):
         assert verify_robot("foobar+unknownbot", token)
+
+
+def test_list_namespace_robots_underscore_namespace_exact_match(initialized_db):
+    user = get_user("devtable")
+    create_robot("bot", create_organization("ab_c", "ab_c@devtable.com", user))
+    create_robot("bot", create_organization("abxc", "abxc@devtable.com", user))
+
+    assert [r.username for r in list_namespace_robots("ab_c")] == ["ab_c+bot"]
+
+    tuples = list_entity_robot_permission_teams("ab_c", include_permissions=True)
+    assert {t.get(User.username) for t in tuples} == {"ab_c+bot"}
+
+
+def test_change_username_underscore_namespace_exact_match(initialized_db):
+    user = create_user_noverify("us_r", "us_r@example.com", email_required=False)
+    other = create_user_noverify("usxr", "usxr@example.com", email_required=False)
+    create_robot("mine", user)
+    create_robot("theirs", other)
+
+    change_username(user.id, "renamed")
+
+    assert lookup_robot("renamed+mine") is not None
+    assert lookup_robot("usxr+theirs") is not None
+
+
+def test_delete_namespace_underscore_namespace_exact_match(initialized_db):
+    def create_transaction(db):
+        return db.transaction()
+
+    user = get_user("devtable")
+    org = create_organization("ab_c", "ab_c@devtable.com", user)
+    create_robot("bot", org)
+    create_robot("bot", create_organization("abxc", "abxc@devtable.com", user))
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    marker_id = mark_namespace_for_deletion(org, [], queue)
+    delete_namespace_via_marker(marker_id, [])
+
+    with pytest.raises(InvalidRobotException):
+        lookup_robot("ab_c+bot")
+
+    assert lookup_robot("abxc+bot") is not None
 
 
 def test_get_estimated_robot_count(initialized_db):

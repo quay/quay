@@ -529,10 +529,12 @@ def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
             .join(RobotAccountMetadata, JOIN.LEFT_OUTER)
             .switch(User)
             .join(RobotAccountToken)
-            .where(User.robot == True, User.username ** (entity_name + "+%"))
+            .where(User.robot == True, prefix_search(User.username, entity_name + "+"))
         )
     else:
-        query = User.select(User).where(User.robot == True, User.username ** (entity_name + "+%"))
+        query = User.select(User).where(
+            User.robot == True, prefix_search(User.username, entity_name + "+")
+        )
 
     return query
 
