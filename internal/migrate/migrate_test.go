@@ -234,6 +234,7 @@ func TestMigrator_RunSQLiteRetryAfterInjectedFailureResumes(t *testing.T) {
 	m.SkipInstall = true
 	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
 	m.Runner = &recordingRunner{}
+	m.checkTargetInstallation = func() (bool, error) { return false, nil }
 	t.Setenv(failAtEnv, "after-copy")
 
 	err := m.Run(t.Context())
@@ -495,5 +496,45 @@ func TestMigrator_RunSQLiteValidateFailureRemovesRecoveredKeyMaterial(t *testing
 	}
 	if len(runner.runCalls) != 0 {
 		t.Errorf("failure before the stop ran source services: %v", runner.runCalls)
+	}
+}
+
+func TestMigrator_RunSQLiteCleanupRefusesResumeOverCompletedInstall(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
+	m.Runner = &recordingRunner{}
+	installed := false
+	m.checkTargetInstallation = func() (bool, error) { return installed, nil }
+	m.runInstall = func(context.Context, *installer.Config) error {
+		installed = true
+		return nil
+	}
+	if err := m.Run(t.Context()); err != nil {
+		t.Fatalf("migration: %v", err)
+	}
+
+	// The install finished but its marker survived, as after a crash before
+	// the marker removal; the new registry has since written its database.
+	if err := os.WriteFile(filepath.Join(m.DataDir, markerFile), []byte("migration in progress\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(m.DataDir, "quay.db")
+	if err := os.WriteFile(dbPath, []byte("live v3 data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.Cleanup = true
+	runner := &recordingRunner{}
+	m.Runner = runner
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "refusing to resume") {
+		t.Fatalf("Run error = %v, want refusal to resume over the installed target", err)
+	}
+	if len(runner.runCalls) != 0 {
+		t.Errorf("refused resume ran source services: %v", runner.runCalls)
+	}
+	if got, readErr := os.ReadFile(dbPath); readErr != nil || string(got) != "live v3 data" {
+		t.Errorf("refused resume replaced the installed quay.db (read error %v)", readErr)
 	}
 }

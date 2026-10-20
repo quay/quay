@@ -115,6 +115,10 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 		return nil
 	}
 
+	if err := m.refuseResumeOverInstall(); err != nil {
+		return err
+	}
+
 	// If cleanup-only (target dir already populated from a previous migration),
 	// skip the migration phases and just clean up the old OMR.
 	if m.Cleanup && targetDirPopulated(m.DataDir) {
@@ -181,6 +185,28 @@ func targetDirPopulated(dir string) bool {
 	}
 	_, err := os.Stat(filepath.Join(dir, "quay.db"))
 	return err == nil
+}
+
+// refuseResumeOverInstall keeps a rerun from recopying over a finished
+// migration: install removes the marker only after the new registry is
+// running, and that removal can be interrupted or fail.
+func (m *Migrator) refuseResumeOverInstall() error {
+	markerPath := filepath.Join(m.DataDir, markerFile)
+	if _, err := os.Stat(markerPath); errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("check migration marker: %w", err)
+	}
+	installed, err := m.hasTargetInstallation()
+	if err != nil {
+		return fmt.Errorf("check target installation: %w", err)
+	}
+	if !installed {
+		return nil
+	}
+	return fmt.Errorf("target directory %s has a migration marker but a Quay installation already exists, refusing to resume and recopy over it: "+
+		"if that installation serves %s and is healthy, the migration finished, so remove %s and rerun with -cleanup; "+
+		"otherwise run 'mirror-registry uninstall' and rerun the migration", m.DataDir, m.DataDir, markerPath)
 }
 
 func failAt(phase string) error {
