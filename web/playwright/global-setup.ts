@@ -10,12 +10,44 @@
  * - readonly: User with read-only access (if applicable)
  */
 
-import {chromium, FullConfig, request} from '@playwright/test';
+import {
+  APIRequestContext,
+  chromium,
+  FullConfig,
+  request,
+} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
-import {fetchJsonWithRetry} from './utils/fetch-retry';
+import {fetchJsonWithRetry, setFetchImpl} from './utils/fetch-retry';
+import type {FetchImpl} from './utils/fetch-retry';
+import {applyChromiumLoopbackBypass, proxyOptionFromEnv} from './utils/proxy';
 import type {QuayConfig} from './fixtures';
+
+/**
+ * Build a fetch implementation backed by a Playwright APIRequestContext.
+ *
+ * Native `fetch` (undici) ignores HTTP(S)_PROXY, so when Quay is only reachable
+ * through a proxy (bare-metal CI) global-setup's config/mailpit calls fail with
+ * ENOTFOUND. Playwright's request context honors the `proxy` option and
+ * `ignoreHTTPSErrors`, so route the retry helpers through it instead.
+ */
+function requestFetchImpl(context: APIRequestContext): FetchImpl {
+  return async (url, init, timeoutMs) => {
+    const method = (init?.method ?? 'GET').toString();
+    const response = await context.fetch(url, {
+      method,
+      timeout: timeoutMs,
+      headers: init?.headers as Record<string, string> | undefined,
+      data: init?.body as string | undefined,
+    });
+    return {
+      ok: response.ok(),
+      status: response.status(),
+      json: () => response.json(),
+    };
+  };
+}
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -85,6 +117,20 @@ export const TEST_USERS_LDAP = {
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
 
+  // When Quay is reachable only through a proxy (bare-metal CI), route every
+  // global-setup network call through a Playwright request context configured
+  // with the proxy env vars. Native fetch() ignores HTTP(S)_PROXY. No-op
+  // locally where no proxy env is set.
+  // Keep localhost (mailpit, local webserver) direct when a proxy is set,
+  // before the email-confirmation Chromium launch below.
+  applyChromiumLoopbackBypass();
+  const proxy = proxyOptionFromEnv();
+  const setupRequestContext = await request.newContext({
+    ignoreHTTPSErrors: true,
+    ...(proxy ? {proxy} : {}),
+  });
+  setFetchImpl(requestFetchImpl(setupRequestContext));
+
   console.log(
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
   );
@@ -138,6 +184,7 @@ async function globalSetup(config: FullConfig) {
     for (const [role, user] of Object.entries(TEST_USERS)) {
       const requestContext = await request.newContext({
         ignoreHTTPSErrors: true,
+        ...(proxy ? {proxy} : {}),
       });
 
       try {
@@ -170,10 +217,11 @@ async function globalSetup(config: FullConfig) {
           const confirmLink = await mailpit.waitForConfirmationLink(user.email);
           if (confirmLink) {
             if (!browser) {
-              browser = await chromium.launch();
+              browser = await chromium.launch(proxy ? {proxy} : {});
             }
             const context = await browser.newContext({
               ignoreHTTPSErrors: true,
+              ...(proxy ? {proxy} : {}),
             });
             const page = await context.newPage();
             await page.goto(confirmLink);
@@ -215,6 +263,10 @@ async function globalSetup(config: FullConfig) {
     console.error('[Global Setup] Failed:', error);
     throw error;
   } finally {
+    // Restore native fetch so later Playwright phases aren't bound to the
+    // disposed setup context, then dispose it.
+    setFetchImpl();
+    await setupRequestContext.dispose();
     if (browser) {
       await browser.close();
     }

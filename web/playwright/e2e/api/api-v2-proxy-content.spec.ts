@@ -7,6 +7,11 @@ import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {getV2Token} from '../../utils/api/auth';
 import {API_URL} from '../../utils/config';
+import {proxyOptionFromEnv} from '../../utils/proxy';
+
+// Standalone APIRequestContexts don't inherit `use.proxy`; set it explicitly so
+// registry calls work when Quay is reachable only via a proxy. undefined locally.
+const REQUEST_PROXY = proxyOptionFromEnv();
 
 test.describe(
   'V2 registry tests for proxied organizations',
@@ -59,6 +64,7 @@ test.describe(
     test('Test pull through proxy cache', async ({playwright}) => {
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       });
       repoName = 'prometheus/busybox';
 
@@ -139,6 +145,7 @@ test.describe(
     }) => {
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       });
 
       try {
