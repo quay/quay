@@ -5,6 +5,7 @@ import {
   fetchJsonWithRetry,
   fetchWithRetry,
   FetchRetryExhaustedError,
+  setFetchImpl,
 } from './fetch-retry';
 import {mailpit} from './mailpit';
 
@@ -115,6 +116,45 @@ describe('fetchJsonWithRetry', () => {
 });
 
 describe('fetchWithRetry', () => {
+  it('uses an installed request-context adapter and passes its timeout', async () => {
+    const adapter = vi.fn().mockResolvedValue({ok: true, status: 200});
+    setFetchImpl(adapter);
+    try {
+      const result = await fetchWithRetry(
+        'test',
+        'http://example.com',
+        undefined,
+        1234,
+      );
+
+      expect(result.ok).toBe(true);
+      expect(adapter).toHaveBeenCalledWith(
+        'http://example.com',
+        undefined,
+        1234,
+      );
+    } finally {
+      setFetchImpl();
+    }
+  });
+
+  it('restores native fetch when the request-context adapter is cleared', async () => {
+    const adapter = vi.fn().mockResolvedValue({ok: true, status: 200});
+    const nativeFetch = vi.fn().mockResolvedValue({ok: true, status: 200});
+    vi.stubGlobal('fetch', nativeFetch);
+    setFetchImpl(adapter);
+    setFetchImpl();
+    try {
+      const result = await fetchWithRetry('test', 'http://example.com');
+
+      expect(result.ok).toBe(true);
+      expect(adapter).not.toHaveBeenCalled();
+      expect(nativeFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('retries a 500 and then succeeds', async () => {
     vi.useFakeTimers();
     try {
