@@ -1,5 +1,13 @@
-import React, {useState} from 'react';
-import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
+import React from 'react';
+import {useSearchParams} from 'react-router-dom';
+import {
+  Tabs,
+  Tab,
+  TabContent,
+  TabTitleText,
+  Flex,
+  FlexItem,
+} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
@@ -19,7 +27,8 @@ export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
   const {isUserOrganization} = useOrganization(organizationName);
 
-  const [activeTabId, setActiveTabId] = useState('generalsettings');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTabId = searchParams.get('settingsTab') || 'generalsettings';
   const quayConfig = useQuayConfig();
 
   const {isOrgMirrored, isLoading: isOrgMirrorLoading} = useOrgMirrorExists(
@@ -58,7 +67,12 @@ export default function Settings(props: SettingsProps) {
     orgMirrorResolved && proxyCacheResolved && immutabilityResolved;
 
   const handleTabClick = (event: React.MouseEvent, tabId: string | number) => {
-    setActiveTabId(String(tabId));
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set('tab', 'Settings');
+      next.set('settingsTab', String(tabId));
+      return next;
+    });
   };
 
   const tabs = [
@@ -71,7 +85,7 @@ export default function Settings(props: SettingsProps) {
       visible: true,
     },
     {
-      name: 'Billing information',
+      name: 'Plan information',
       id: 'billinginformation',
       content: () => (
         <BillingInformation organizationName={props.organizationName} />
@@ -177,19 +191,23 @@ export default function Settings(props: SettingsProps) {
   }
 
   return (
-    <Flex flexWrap={{default: 'nowrap'}}>
+    <Flex
+      flexWrap={{default: 'nowrap'}}
+      direction={{default: 'column', md: 'row'}}
+    >
       <FlexItem>
         <Tabs
           activeKey={normalizedActiveId}
           onSelect={handleTabClick}
           isVertical
-          aria-label="Tabs in the vertical example"
+          aria-label="Settings sections"
           role="region"
         >
           {visibleTabs.map((tab) => (
             <Tab
               key={tab.id}
               eventKey={tab.id}
+              tabContentId={`settings-panel-${tab.id}`}
               data-testid={tab.name}
               title={
                 <TabTitleText
@@ -205,10 +223,19 @@ export default function Settings(props: SettingsProps) {
       </FlexItem>
 
       <FlexItem
-        alignSelf={{default: 'alignSelfCenter'}}
+        alignSelf={{default: 'alignSelfStretch', md: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {activeTab?.content?.()}
+        {activeTab && (
+          <TabContent
+            id={`settings-panel-${activeTab.id}`}
+            eventKey={activeTab.id}
+            activeKey={normalizedActiveId}
+            aria-labelledby={`pf-tab-${activeTab.id}`}
+          >
+            {activeTab.content()}
+          </TabContent>
+        )}
       </FlexItem>
     </Flex>
   );

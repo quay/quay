@@ -41,9 +41,17 @@ import {LoadingPage} from 'src/components/LoadingPage';
 import {useUI} from 'src/contexts/UIContext';
 import {useExternalScripts} from 'src/hooks/UseExternalScripts';
 
+import {billingNavigationRoutes} from './BillingRoutes';
+
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
   () => import('./OrganizationsList/OrganizationsList'),
+);
+const CreateOrganization = lazy(
+  () => import('./OrganizationsList/CreateOrganization'),
+);
+const FakeCheckout = lazy(
+  () => import('./OrganizationsList/Organization/Tabs/Settings/FakeCheckout'),
 );
 const Organization = lazy(
   () => import('./OrganizationsList/Organization/Organization'),
@@ -153,6 +161,12 @@ function RepositoryShorthandRedirect() {
 }
 
 const NavigationRoutes = [
+  {path: NavigationPath.fakeCheckout, Component: <FakeCheckout />},
+  {
+    path: NavigationPath.createOrganization,
+    Component: <CreateOrganization />,
+  },
+  ...billingNavigationRoutes,
   {
     path: NavigationPath.teamMember,
     Component: <Organization />,

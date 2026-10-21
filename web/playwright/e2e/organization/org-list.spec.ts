@@ -1,3 +1,4 @@
+import {selectFreeOrganizationPlan} from '../../utils/organization-creation';
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 
@@ -219,7 +220,7 @@ test.describe(
         const orgName = `crud1-${testId}`;
         const orgName2 = `crud2-${testId}`;
 
-        // Open and cancel modal first
+        // Open and cancel the creation page first
         await authenticatedPage.locator('#create-organization-button').click();
         await expect(
           authenticatedPage.locator('#create-org-cancel'),
@@ -232,6 +233,7 @@ test.describe(
         // Create organization (email is optional, just provide name)
         await authenticatedPage.locator('#create-organization-button').click();
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
 
         // Email field is always visible and optional
         await expect(
@@ -251,7 +253,7 @@ test.describe(
           authenticatedPage.locator('#create-org-confirm').click(),
         ]);
 
-        // Wait for modal to close (indicates successful creation)
+        // Creation navigates to the organization detail page.
         await expect(
           authenticatedPage.locator('#create-org-cancel'),
         ).not.toBeVisible({timeout: 10000});
@@ -264,6 +266,7 @@ test.describe(
         ).toBeVisible();
 
         // Search for created org
+        await authenticatedPage.goto('/organization');
         await authenticatedPage.getByPlaceholder(/Search by/).fill(orgName);
         await expect(
           authenticatedPage.locator(
@@ -274,6 +277,7 @@ test.describe(
         // PROJQUAY-9948: Try to create org with same name - should show error, not success
         await authenticatedPage.locator('#create-organization-button').click();
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
         await authenticatedPage.locator('#create-org-confirm').click();
 
         // Should show error message
@@ -283,7 +287,7 @@ test.describe(
           ),
         ).toBeVisible();
 
-        // Modal should still be open
+        // The creation page retains the conflicting name.
         await expect(
           authenticatedPage.locator('#create-org-cancel'),
         ).toBeVisible();
@@ -297,6 +301,7 @@ test.describe(
         await authenticatedPage
           .locator('#create-org-name-input')
           .fill('validname');
+        await selectFreeOrganizationPlan(authenticatedPage);
         // Email is optional — button should be enabled with just a name
         await expect(
           authenticatedPage.locator('#create-org-confirm'),
@@ -309,6 +314,7 @@ test.describe(
         await authenticatedPage
           .locator('#create-org-name-input')
           .fill(orgName2);
+        await selectFreeOrganizationPlan(authenticatedPage);
         await expect(
           authenticatedPage.locator('#create-org-confirm'),
         ).toBeEnabled();
@@ -330,6 +336,7 @@ test.describe(
         ).toBeVisible();
 
         // Filter to show both test orgs using the shared test ID
+        await authenticatedPage.goto('/organization');
         await authenticatedPage.getByPlaceholder(/Search by/).fill(testId);
 
         // Verify both orgs are visible
@@ -797,7 +804,7 @@ test.describe(
       async ({authenticatedPage, api}) => {
         await authenticatedPage.goto('/organization');
 
-        // Open create organization modal
+        // Open create organization page
         await authenticatedPage.locator('#create-organization-button').click();
         await expect(
           authenticatedPage.locator('#create-org-name-input'),
@@ -816,6 +823,7 @@ test.describe(
         // Fill only name — button should be enabled (email is optional)
         const orgName = uniqueName('optmail');
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
         await expect(
           authenticatedPage.locator('#create-org-confirm'),
         ).toBeEnabled();
@@ -831,7 +839,7 @@ test.describe(
           authenticatedPage.locator('#create-org-confirm').click(),
         ]);
 
-        // Modal should close on success
+        // Should navigate to the organization on success
         await expect(
           authenticatedPage.locator('#create-org-cancel'),
         ).not.toBeVisible({timeout: 10000});

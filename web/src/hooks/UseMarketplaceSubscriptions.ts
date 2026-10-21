@@ -4,15 +4,15 @@ import {
   setMarketplaceOrgAttachment,
   setMarketplaceOrgRemoval,
 } from 'src/resources/BillingResource';
-import {useCurrentUser} from './UseCurrentUser';
 import {useQuayConfig} from './UseQuayConfig';
+import type {MarketplaceSubscription} from 'src/resources/BillingResource';
 
-const EMPTY_USER_SUBSCRIPTIONS: Array<Dict<string>> = [];
-const EMPTY_ORG_SUBSCRIPTIONS: Array<Dict<string>> = [];
+const EMPTY_SUBSCRIPTIONS: MarketplaceSubscription[] = [];
 
 type MarketplaceSubscriptionsResult = {
-  userSubscriptions: Array<Dict<string>>;
-  orgSubscriptions: Array<Dict<string>>;
+  userSubscriptions: MarketplaceSubscription[];
+  orgSubscriptions: MarketplaceSubscription[];
+  enabled: boolean;
   loading: boolean;
   error: boolean;
 };
@@ -22,62 +22,73 @@ export function useMarketplaceSubscriptions(
   userName: string = null,
 ): MarketplaceSubscriptionsResult {
   const config = useQuayConfig();
+  const enabled = !!config?.features?.RH_MARKETPLACE;
+  const isOrg = !!organizationName && organizationName !== userName;
   const {
-    isLoading: loadingUserSubs,
+    isInitialLoading: loadingUserSubs,
     isError: errorFetchingUserSubs,
     data: userSubscriptions,
   } = useQuery(
     ['subscriptions', {type: 'user'}],
     () => fetchMarketplaceSubscriptions(),
     {
-      enabled: config?.features?.RH_MARKETPLACE,
+      enabled: enabled && !!userName,
     },
   );
 
   const {
-    isLoading: loadingOrgSubs,
-    error: errorFetchingOrgSubs,
+    isInitialLoading: loadingOrgSubs,
+    isError: errorFetchingOrgSubs,
     data: orgSubscriptions,
   } = useQuery(
-    ['subscriptions', {type: 'org'}],
+    ['subscriptions', {type: 'org', organizationName}],
     () => fetchMarketplaceSubscriptions(organizationName),
     {
-      enabled: config?.features?.RH_MARKETPLACE && organizationName != userName,
+      enabled: enabled && !!userName && isOrg,
     },
   );
 
-  const loading =
-    organizationName != userName
-      ? loadingUserSubs || loadingOrgSubs
-      : loadingUserSubs;
+  const loading = isOrg ? loadingUserSubs || loadingOrgSubs : loadingUserSubs;
 
   return {
-    userSubscriptions: userSubscriptions ?? EMPTY_USER_SUBSCRIPTIONS,
-    orgSubscriptions: orgSubscriptions ?? EMPTY_ORG_SUBSCRIPTIONS,
+    userSubscriptions: Array.isArray(userSubscriptions)
+      ? userSubscriptions
+      : EMPTY_SUBSCRIPTIONS,
+    orgSubscriptions: Array.isArray(orgSubscriptions)
+      ? orgSubscriptions
+      : EMPTY_SUBSCRIPTIONS,
+    enabled,
     loading: loading,
-    error: errorFetchingUserSubs,
+    error: errorFetchingUserSubs || (isOrg && errorFetchingOrgSubs),
   };
 }
 
-export function useManageOrgSubscriptions(org: string, {onSuccess, onError}) {
+export function useManageOrgSubscriptions(
+  org: string,
+  {
+    onSuccess,
+    onError,
+  }: {onSuccess: () => void; onError?: (error: unknown) => void},
+) {
   const queryClient = useQueryClient();
 
   const {
     mutate: manageSubscription,
     isError: errorManageSubscription,
     isSuccess: successManageSubscription,
+    isLoading: loading,
   } = useMutation(
     async ({
       subscription,
       manageType,
       bindingQuantity,
     }: {
-      subscription: Dict<string>;
+      subscription: MarketplaceSubscription;
       manageType: string;
       bindingQuantity: number;
     }) => {
-      const reqBody = [];
-      const subscriptionObj = {
+      const reqBody: {subscription_id: string; quantity?: number}[] = [];
+      const subscriptionObj: {subscription_id: string; quantity?: number} = {
         subscription_id:
           manageType === 'attach'
             ? subscription['id']
@@ -88,9 +99,9 @@ export function useManageOrgSubscriptions(org: string, {onSuccess, onError}) {
       }
       reqBody.push(subscriptionObj);
       if (manageType === 'attach') {
-        setMarketplaceOrgAttachment(org, reqBody);
+        await setMarketplaceOrgAttachment(org, reqBody);
       } else {
-        setMarketplaceOrgRemoval(org, reqBody);
+        await setMarketplaceOrgRemoval(org, reqBody);
       }
     },
     {
@@ -105,5 +116,6 @@ export function useManageOrgSubscriptions(org: string, {onSuccess, onError}) {
     manageSubscription,
     errorManageSubscription,
     successManageSubscription,
+    loading,
   };
 }

@@ -127,6 +127,7 @@ export function useUpgradePlan(namespace: string, isOrg: boolean) {
     error: currentPlanError,
     isLoading: currentPlanIsLoading,
     isPlaceholderData: currentPlanIsPlaceholderData,
+    isFetchedAfterMount: currentPlanIsFetchedAfterMount,
   } = useQuery(['organization', isOrg ? namespace : null, 'plan'], () => {
     return fetchSubscription(isOrg ? namespace : null);
   });
@@ -135,6 +136,8 @@ export function useUpgradePlan(namespace: string, isOrg: boolean) {
     currentPlan,
     currentPlanError,
     currentPlanIsLoading: currentPlanIsLoading || currentPlanIsPlaceholderData,
+    currentPlanIsFetchedAfterMount,
+    plans: plans ?? [],
     privateAllowed: privateAllowed?.privateAllowed || 0,
     privateCount: privateAllowed?.privateCount || 0,
     upgrade: upgrade,
