@@ -96,10 +96,8 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard Step 2: Add to repository
-    await authenticatedPage
-      .getByTestId(`checkbox-row-${repo.name}`)
-      .locator('input')
-      .click();
+    const repoRow = authenticatedPage.getByTestId(`checkbox-row-${repo.name}`);
+    await repoRow.getByRole('checkbox').check();
     await expect(
       authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
     ).toContainText('Read');
@@ -150,12 +148,9 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('create-team-confirm').click();
 
     await expect(
-      authenticatedPage.getByText(
-        `Successfully created new team: ${teamName}`,
-        {
-          exact: true,
-        },
-      ),
+      authenticatedPage.getByRole('heading', {
+        name: `Success alert: Successfully created new team: ${teamName}`,
+      }),
     ).toBeVisible();
 
     await authenticatedPage.getByTestId('next-btn').click();
