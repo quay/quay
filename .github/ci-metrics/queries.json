@@ -7,7 +7,8 @@
   {
     "name": "pushgateway_start_time",
     "expr": "process_start_time_seconds{job=\"quay-pushgateway\"}",
-    "description": "Pushgateway start time; a change marks a quay-quay restart even when no scrape failed"
+    "description": "Pushgateway start time; a change marks a quay-quay restart even when no scrape failed",
+    "unit": "timestamp"
   },
   {
     "name": "pushing_processes",
@@ -17,22 +18,26 @@
   {
     "name": "request_rate_by_status_class",
     "expr": "sum by (status_class) (label_replace(rate(quay_request_duration_seconds_count[2m]), \"status_class\", \"${1}xx\", \"status\", \"([0-9]).*\"))",
-    "description": "Requests per second by HTTP status class"
+    "description": "Requests per second by HTTP status class",
+    "unit": "per_second"
   },
   {
     "name": "request_rate_5xx_by_route",
     "expr": "sum by (route, status) (rate(quay_request_duration_seconds_count{status=~\"5..\"}[2m])) > 0",
-    "description": "5xx requests per second by route and status"
+    "description": "5xx requests per second by route and status",
+    "unit": "per_second"
   },
   {
     "name": "request_latency_p95",
     "expr": "histogram_quantile(0.95, sum by (le) (rate(quay_request_duration_seconds_bucket[2m])))",
-    "description": "p95 request latency in seconds, all routes"
+    "description": "p95 request latency in seconds, all routes",
+    "unit": "seconds"
   },
   {
     "name": "request_latency_p95_top_routes",
     "expr": "topk(10, histogram_quantile(0.95, sum by (route, le) (rate(quay_request_duration_seconds_bucket[2m]))))",
-    "description": "p95 request latency in seconds, ten slowest routes per step"
+    "description": "p95 request latency in seconds, ten slowest routes per step",
+    "unit": "seconds"
   },
   {
     "name": "db_pool_in_use",
@@ -47,16 +52,19 @@
   {
     "name": "db_connect_rate",
     "expr": "sum by (process_name) (rate(quay_db_connect_calls_total[2m]))",
-    "description": "DB connect() calls per second, by process name"
+    "description": "DB connect() calls per second, by process name",
+    "unit": "per_second"
   },
   {
     "name": "process_memory_bytes",
     "expr": "sum by (process_name) (process_resident_memory_bytes{process_name!=\"\"})",
-    "description": "Resident memory in bytes, by process name"
+    "description": "Resident memory in bytes, by process name",
+    "unit": "bytes"
   },
   {
     "name": "process_cpu_rate",
     "expr": "sum by (process_name) (rate(process_cpu_seconds_total{process_name!=\"\"}[2m]))",
-    "description": "CPU seconds per second, by process name"
+    "description": "CPU seconds per second, by process name",
+    "unit": "cores"
   }
 ]

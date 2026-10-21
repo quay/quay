@@ -37,6 +37,8 @@ CONNECTS = _matrix(
     ({"process_name": "registry"}, ["10", "40", "3", "8", "NaN"]),
     ({"process_name": "web"}, ["5", "6", "7"]),
 )
+MEMORY = _matrix(({"process_name": "web"}, ["140000000", "1300000000", "448800000"]))
+LATENCY = _matrix(({}, ["0.00475", "1.03"]))
 
 
 class SummarizeTest(unittest.TestCase):
@@ -47,6 +49,8 @@ class SummarizeTest(unittest.TestCase):
                 ("up", UP),
                 ("pushgateway_start_time", STARTED),
                 ("db_connect_calls", CONNECTS),
+                ("memory", MEMORY),
+                ("latency", LATENCY),
             ):
                 with open(os.path.join(d, "queries", f"{name}.json"), "w") as f:
                     json.dump(body, f)
@@ -56,8 +60,10 @@ class SummarizeTest(unittest.TestCase):
                 "quay_series": 12,
                 "queries": {
                     "up": {"expr": "up", "series": 1},
-                    "pushgateway_start_time": {"expr": "s", "series": 1},
+                    "pushgateway_start_time": {"expr": "s", "unit": "timestamp", "series": 1},
                     "db_connect_calls": {"expr": "x", "series": 2},
+                    "memory": {"expr": "m", "unit": "bytes", "series": 1},
+                    "latency": {"expr": "l", "unit": "seconds", "series": 1},
                     "broken": {"expr": "y", "error": "HTTP 400: parse error"},
                 },
                 "errors": [],
@@ -72,6 +78,13 @@ class SummarizeTest(unittest.TestCase):
 
         self.assertIn("| up | 1 | 0 | 1 | 1 |", summary)
         self.assertIn("| db_connect_calls | 2 | 3 | 40 | 8 |", summary)
+        self.assertIn(
+            "| pushgateway_start_time | 1 | 2026-10-20T22:40:00Z | 2026-10-20T22:41:15Z "
+            "| 2026-10-20T22:41:15Z |",
+            summary,
+        )
+        self.assertIn("| memory | 1 | 134 MiB | 1.21 GiB | 428 MiB |", summary)
+        self.assertIn("| latency | 1 | 4.75 ms | 1.03 s | 1.03 s |", summary)
         self.assertIn("| broken | error: HTTP 400: parse error | | | |", summary)
         self.assertIn("- quay-quay:9091: 2026-10-20T22:41:00Z to 2026-10-20T22:41:30Z", summary)
         self.assertIn(
@@ -147,7 +160,13 @@ class ExportTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             queries = os.path.join(d, "queries.json")
             with open(queries, "w") as f:
-                json.dump([{"name": "broken", "expr": "nope("}, {"name": "up", "expr": "up"}], f)
+                json.dump(
+                    [
+                        {"name": "broken", "expr": "nope("},
+                        {"name": "up", "expr": "up", "unit": "x"},
+                    ],
+                    f,
+                )
             out = os.path.join(d, "out")
 
             ci_metrics.main(
@@ -174,6 +193,8 @@ class ExportTest(unittest.TestCase):
 
         self.assertEqual(meta["queries"]["broken"]["error"], "HTTP 400: bad expr")
         self.assertEqual(meta["queries"]["up"]["series"], 1)
+        self.assertEqual(meta["queries"]["up"]["unit"], "x")
+        self.assertNotIn("unit", meta["queries"]["broken"])
         self.assertEqual(meta["quay_series"], 2)
         self.assertEqual(meta["scrape_interval"], "30s")
         self.assertEqual(

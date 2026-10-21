@@ -111,16 +111,17 @@ def export(args):
 
     for q in queries:
         name = q["name"]
+        info = meta["queries"][name] = {k: q[k] for k in ("expr", "unit") if k in q}
         try:
             raw = _get(args.prom_url, "/api/v1/query_range", dict(window, query=q["expr"]))
             result = json.loads(raw)["data"]["result"]
         except Exception as e:
-            meta["queries"][name] = {"expr": q["expr"], "error": str(e)}
+            info["error"] = str(e)
             print(f"query {name} failed: {e}", file=sys.stderr)
             continue
         with open(os.path.join(args.out, "queries", f"{name}.json"), "wb") as f:
             f.write(raw)
-        meta["queries"][name] = {"expr": q["expr"], "series": len(result)}
+        info["series"] = len(result)
         if name == "up":
             meta["up_gaps"] = up_gaps(result)
         elif name == "pushgateway_start_time":
@@ -131,9 +132,26 @@ def export(args):
         f.write("\n")
 
 
-def _fmt(value):
+def _fmt(value, unit=None):
     if value is None:
         return "-"
+    if unit == "bytes":
+        # Step up at 1000, not 1024: 3 significant figures need an exponent only in [999.5, 1000).
+        for prefix in ("", "Ki", "Mi", "Gi"):
+            if value < 1000:
+                break
+            value /= 1024
+        else:
+            prefix = "Ti"
+        return f"{value:.3g} {prefix}B"
+    if unit == "seconds":
+        return f"{value * 1000:.3g} ms" if value < 1 else f"{value:.3g} s"
+    if unit == "timestamp":
+        return _utc(value)
+    if unit == "per_second":
+        return f"{value:.3g}/s"
+    if unit == "cores":
+        return f"{value:.3g} cores"
     return f"{value:.4g}"
 
 
@@ -189,9 +207,10 @@ def summarize(args):
             samples += values
             if values:
                 lasts.append(values[-1])
+        unit = info.get("unit")
         lines.append(
-            f"| {name} | {len(result)} | {_fmt(min(samples, default=None))} "
-            f"| {_fmt(max(samples, default=None))} | {_fmt(max(lasts, default=None))} |"
+            f"| {name} | {len(result)} | {_fmt(min(samples, default=None), unit)} "
+            f"| {_fmt(max(samples, default=None), unit)} | {_fmt(max(lasts, default=None), unit)} |"
         )
     lines += [
         "",
