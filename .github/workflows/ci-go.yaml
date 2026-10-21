@@ -1195,9 +1195,10 @@ jobs:
           dry_run() {
             local log="$1"
             shift
-            local before keys_before
+            local before keys_before target_before
             before=$(sudo sha256sum "$SOURCE_DB" | awk '{print $1}')
             keys_before=$(key_files)
+            target_before=$(sudo test -e /var/lib/quay && echo present || echo absent)
             if ! sudo bin/mirror-registry migrate -dry-run "$@" > "$log" 2>&1; then
               cat "$log"
               echo "FAIL: dry run exited non-zero"
@@ -1205,6 +1206,10 @@ jobs:
             fi
             cat "$log"
             test "$(sudo systemctl is-active quay-app.service)" = active
+            if [ "$(sudo test -e /var/lib/quay && echo present || echo absent)" != "$target_before" ]; then
+              echo "FAIL: dry run created or removed /var/lib/quay"
+              exit 1
+            fi
             if [ -n "$(sudo find /var/lib/quay -mindepth 1 -print -quit 2>/dev/null)" ]; then
               echo "FAIL: dry run wrote to /var/lib/quay"
               exit 1
