@@ -23,7 +23,6 @@ overrides:
   qs: ^6.16.0
   browserslist: '>=4.28.7'
   compression: 1.8.2
-  qs: '>=6.16.0'
 
 importers:
 
