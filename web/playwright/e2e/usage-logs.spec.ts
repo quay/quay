@@ -750,12 +750,16 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
     s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   test(
-    'superuser view keeps usage log columns visible on narrow screens',
+    'superuser view keeps usage log columns accessible with long descriptions',
     {tag: ['@superuser', '@PROJQUAY-13930']},
     async ({superuserPage, superuserApi}) => {
-      const repo = await superuserApi.repository();
-      const repoName = repo.fullName.split('/')[1];
+      const repo = await superuserApi.repository(
+        undefined,
+        `responsive-${'long-description-'.repeat(10)}`,
+      );
+      const repoName = repo.name;
 
+      await superuserPage.setViewportSize({width: 2366, height: 1274});
       const logsResponse = superuserPage.waitForResponse(
         (response) =>
           new URL(response.url()).pathname === '/api/v1/superuser/logs' &&
@@ -805,7 +809,37 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       await expect(cells.nth(0)).toHaveText(expectedTimestamp);
       await expect(cells.nth(0).locator('.pf-m-truncate')).toHaveCount(0);
 
+      await logRow.scrollIntoViewIfNeeded();
+      const desktopGeometry = await superuserPage.evaluate(() => {
+        const table = document.querySelector<HTMLElement>(
+          '[data-testid="usage-logs-table"]',
+        );
+        if (!table) throw new Error('Usage logs table was not rendered');
+
+        const headerWidths = Array.from(
+          table.querySelectorAll<HTMLElement>('th'),
+        ).map((header) => header.getBoundingClientRect().width);
+        const row = table.querySelector<HTMLElement>('tbody tr');
+        if (!row) throw new Error('Usage logs row was not rendered');
+
+        const rowRect = row.getBoundingClientRect();
+        return {
+          headerWidths,
+          rowLeft: rowRect.left,
+          rowRight: rowRect.right,
+          viewportWidth: window.innerWidth,
+        };
+      });
+      expect(desktopGeometry.rowLeft).toBeGreaterThanOrEqual(0);
+      expect(desktopGeometry.rowRight).toBeLessThanOrEqual(
+        desktopGeometry.viewportWidth,
+      );
+      desktopGeometry.headerWidths.forEach((width) => {
+        expect(width).toBeGreaterThan(150);
+      });
+
       await superuserPage.setViewportSize({width: 600, height: 900});
+      await logRow.scrollIntoViewIfNeeded();
       for (const [index, dataLabel] of dataLabels.entries()) {
         await expect(cells.nth(index)).toBeVisible();
         await expect(cells.nth(index)).toHaveAttribute('data-label', dataLabel);

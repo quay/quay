@@ -248,6 +248,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
               variant="compact"
               aria-label="Usage logs table"
               data-testid="usage-logs-table"
+              style={{tableLayout: 'fixed', width: '100%'}}
             >
               <Thead>
                 <Tr>
