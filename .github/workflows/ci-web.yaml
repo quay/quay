@@ -443,8 +443,8 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p quay-metrics
-          docker stop quay-prometheus || true
-          tar -czf quay-metrics/tsdb.tar.gz -C "$RUNNER_TEMP" prometheus-tsdb || true
+          docker stop quay-prometheus
+          tar -czf quay-metrics/tsdb.tar.gz -C "$RUNNER_TEMP" prometheus-tsdb
           du -ab quay-metrics || true
 
       - name: Upload Quay metrics
