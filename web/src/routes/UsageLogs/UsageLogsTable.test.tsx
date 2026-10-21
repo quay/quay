@@ -51,6 +51,7 @@ describe('UsageLogsTable', () => {
     renderTable({isSuperuser: true});
 
     const table = await screen.findByTestId('usage-logs-table');
+    expect(table).toHaveStyle({tableLayout: 'fixed', width: '100%'});
     const headers = within(table).getAllByRole('columnheader');
     expect(headers.map((header) => header.textContent)).toEqual([
       'Date & Time',
