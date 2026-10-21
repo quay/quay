@@ -71,7 +71,7 @@ func TestLoadApprovedRegistryJWTSigningKeyRejectsMismatchedMaterial(t *testing.T
 			fixture := newRegistryKeyFixture(t)
 			tt.mutate(t, fixture)
 
-			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil)
+			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil, nil)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantErr)
@@ -105,7 +105,7 @@ func TestLoadApprovedRegistryJWTSigningKeyRequiresApprovedUnexpiredKey(t *testin
 			fixture := newRegistryKeyFixture(t)
 			tt.mutate(t, fixture)
 
-			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil)
+			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil, nil)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "not approved and unexpired")
@@ -123,7 +123,7 @@ func TestLoadApprovedRegistryJWTSigningKeyUsesConfiguredLegacyPaths(t *testing.T
 	fixture.cfg.InstanceServiceKeyLocation = "/conf/stack/keys/active.pem"
 	fixture.cfg.InstanceServiceKeyKIDLocation = "/conf/stack/keys/active.kid"
 
-	key, kid, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil)
+	key, kid, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil, nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, fixture.kid, kid)
@@ -140,7 +140,7 @@ func TestLoadApprovedRegistryJWTSigningKeyMapsContainerStackPath(t *testing.T) {
 	fixture.cfg.InstanceServiceKeyLocation = "/quay-registry/conf/stack/keys/active.pem"
 	fixture.cfg.InstanceServiceKeyKIDLocation = "/quay-registry/conf/stack/keys/active.kid"
 
-	key, kid, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil)
+	key, kid, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil, nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, fixture.kid, kid)
@@ -151,7 +151,7 @@ func TestLoadRegistryJWTSigningKeyDoesNotRequireDatabase(t *testing.T) {
 	fixture := newRegistryKeyFixture(t)
 	require.NoError(t, os.Remove(fixture.dbPath))
 
-	key, kid, err := loadRegistryJWTSigningKey(t.Context(), fixture.configDir, fixture.cfg, nil)
+	key, kid, err := loadRegistryJWTSigningKey(t.Context(), fixture.configDir, fixture.cfg, nil, nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, fixture.kid, kid)
@@ -174,7 +174,7 @@ func TestLoadApprovedRegistryJWTSigningKeyReadsContainerDefaults(t *testing.T) {
 	}}
 
 	key, kid, err := loadApprovedRegistryJWTSigningKey(
-		t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, runner,
+		t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, runner, nil,
 	)
 
 	require.NoError(t, err)
@@ -219,7 +219,7 @@ func TestLoadApprovedRegistryJWTSigningKeyRejectsMissingSourceMaterial(t *testin
 				tt.mutate(t, fixture)
 			}
 
-			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil)
+			_, _, err := loadApprovedRegistryJWTSigningKey(t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, nil, nil)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantErr)
@@ -371,7 +371,7 @@ func TestReadSourceConfigMaterial_ReturnsHostFileWithoutInvokingRunner(t *testin
 	}}
 
 	data, source, err := readSourceConfigMaterial(
-		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+		t.Context(), configDir, "", legacyPrivateKeyName, runner, nil,
 	)
 
 	require.NoError(t, err)
@@ -396,7 +396,7 @@ func TestLoadApprovedRegistryJWTSigningKeySucceedsViaCpFallback(t *testing.T) {
 	}
 
 	key, kid, err := loadApprovedRegistryJWTSigningKey(
-		t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, runner,
+		t.Context(), fixture.dbPath, fixture.configDir, fixture.cfg, runner, nil,
 	)
 
 	require.NoError(t, err)
@@ -412,7 +412,7 @@ func TestReadSourceConfigMaterial_PersistsExecOutputToHost(t *testing.T) {
 	}}
 
 	data, source, err := readSourceConfigMaterial(
-		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+		t.Context(), configDir, "", legacyPrivateKeyName, runner, nil,
 	)
 
 	require.NoError(t, err)
@@ -424,6 +424,94 @@ func TestReadSourceConfigMaterial_PersistsExecOutputToHost(t *testing.T) {
 	assert.Equal(t, content, string(persisted))
 }
 
+func TestRollbackRemovesOnlyPersistedConfigMaterial(t *testing.T) {
+	for name, rollback := range map[string]func(*Migrator, context.Context) error{
+		"sqlite":   (*Migrator).rollbackSQLiteSource,
+		"postgres": (*Migrator).rollbackPostgresSource,
+	} {
+		t.Run(name, func(t *testing.T) {
+			configDir := t.TempDir()
+			pemPath := filepath.Join(configDir, legacyPrivateKeyName)
+			kidPath := filepath.Join(configDir, legacyKeyIDName)
+			certPath := filepath.Join(configDir, "ssl.cert")
+			writeCopyTestFile(t, certPath, []byte("pre-existing"), 0o600)
+			starts := 0
+			m := &Migrator{
+				Source: OMRSource{ConfigDir: configDir},
+				Runner: &startHookRunner{onStart: func() {
+					starts++
+					assert.NoFileExists(t, pemPath, "persisted files must be gone before the old OMR starts")
+					assert.NoFileExists(t, kidPath, "persisted files must be gone before the old OMR starts")
+				}},
+				removeTargetInstall: func(context.Context) error { return nil },
+			}
+			execRunner := &sourceMaterialRunner{outputs: map[string]string{
+				filepath.Join(sourceContainerConf, legacyPrivateKeyName): "persisted",
+			}}
+			_, _, err := readSourceConfigMaterial(
+				t.Context(), configDir, "", legacyPrivateKeyName, execRunner, &m.persistedConfigFiles,
+			)
+			require.NoError(t, err)
+			_, _, err = readSourceConfigMaterial(
+				t.Context(), configDir, "", legacyKeyIDName, &cpFallbackRunner{cpContent: "copied"}, &m.persistedConfigFiles,
+			)
+			require.NoError(t, err)
+			_, _, err = readSourceConfigMaterial(
+				t.Context(), configDir, "", "ssl.cert", nil, &m.persistedConfigFiles,
+			)
+			require.NoError(t, err)
+
+			require.NoError(t, rollback(m, t.Context()))
+
+			assert.Positive(t, starts)
+			assert.NoFileExists(t, pemPath)
+			assert.NoFileExists(t, kidPath)
+			cert, err := os.ReadFile(certPath) //nolint:gosec // test fixture path
+			require.NoError(t, err)
+			assert.Equal(t, "pre-existing", string(cert))
+		})
+	}
+}
+
+func TestRollbackRemovesConfigMaterialFromFailedPersist(t *testing.T) {
+	configDir := t.TempDir()
+	pemPath := filepath.Join(configDir, legacyPrivateKeyName)
+	unwritablePath := filepath.Join(configDir, "missing", legacyKeyIDName)
+	m := &Migrator{
+		Source: OMRSource{ConfigDir: configDir},
+		Runner: &recordingRunner{},
+	}
+
+	_, _, err := readSourceConfigMaterial(
+		t.Context(), configDir, "", legacyPrivateKeyName,
+		&cpFallbackRunner{cpContent: "partial", cpFailAfterWrite: true}, &m.persistedConfigFiles,
+	)
+	require.Error(t, err)
+	require.FileExists(t, pemPath, "a failed cp can still leave a file behind")
+	_, _, err = readSourceConfigMaterial(
+		t.Context(), configDir, unwritablePath, legacyKeyIDName,
+		&sourceMaterialRunner{outputs: map[string]string{unwritablePath: "kid"}}, &m.persistedConfigFiles,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []string{pemPath, unwritablePath}, m.persistedConfigFiles)
+
+	require.NoError(t, m.rollbackSQLiteSource(t.Context()), "a recorded path that was never written must not fail rollback")
+	assert.NoFileExists(t, pemPath)
+}
+
+// startHookRunner calls onStart before each systemctl start.
+type startHookRunner struct {
+	recordingRunner
+	onStart func()
+}
+
+func (r *startHookRunner) Run(ctx context.Context, name string, args ...string) error {
+	if name == "systemctl" && len(args) > 0 && args[0] == "start" {
+		r.onStart()
+	}
+	return r.recordingRunner.Run(ctx, name, args...)
+}
+
 func TestReadSourceConfigMaterial_CpFallbackWhenExecFails(t *testing.T) {
 	configDir := t.TempDir()
 	content := "cp-recovered-material"
@@ -432,7 +520,7 @@ func TestReadSourceConfigMaterial_CpFallbackWhenExecFails(t *testing.T) {
 	}
 
 	data, source, err := readSourceConfigMaterial(
-		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+		t.Context(), configDir, "", legacyPrivateKeyName, runner, nil,
 	)
 
 	require.NoError(t, err)
@@ -451,7 +539,7 @@ func TestReadSourceConfigMaterial_FailsWhenBothExecAndCpFail(t *testing.T) {
 	}
 
 	_, _, err := readSourceConfigMaterial(
-		t.Context(), configDir, "", legacyPrivateKeyName, runner,
+		t.Context(), configDir, "", legacyPrivateKeyName, runner, nil,
 	)
 
 	require.Error(t, err)
@@ -482,6 +570,8 @@ type cpFallbackRunner struct {
 	cpContent string
 	cpKID     string
 	cpFail    bool
+	// cpFailAfterWrite writes the destination and then reports failure.
+	cpFailAfterWrite bool
 }
 
 func (r *cpFallbackRunner) Run(_ context.Context, name string, args ...string) error {
@@ -500,7 +590,13 @@ func (r *cpFallbackRunner) Run(_ context.Context, name string, args ...string) e
 	if r.cpKID != "" && strings.HasSuffix(src, legacyKeyIDName) {
 		content = r.cpKID
 	}
-	return os.WriteFile(dst, []byte(content), 0o644)
+	if err := os.WriteFile(dst, []byte(content), 0o644); err != nil {
+		return err
+	}
+	if r.cpFailAfterWrite {
+		return fmt.Errorf("simulated cp failure after partial write")
+	}
+	return nil
 }
 
 func (r *cpFallbackRunner) Output(_ context.Context, _ string, _ ...string) (string, error) {

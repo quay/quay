@@ -628,6 +628,12 @@ func TestCopyData_FallbackPreservesWALData(t *testing.T) {
 	}
 }
 
+func TestRemoveMarkerMissingIsNotAnError(t *testing.T) {
+	if err := removeMarker(t.TempDir()); err != nil {
+		t.Fatalf("removeMarker() = %v, want nil", err)
+	}
+}
+
 func mkdirCopyTestDir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o750); err != nil {
