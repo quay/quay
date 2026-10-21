@@ -9,6 +9,7 @@ vi.mock('src/hooks/UseUsageLogs', () => ({
 vi.mock('src/hooks/UseLogDescriptions', () => ({
   useLogDescriptions: () => ({
     create_repo: () => 'Created repository',
+    set_repo_description: (metadata) => metadata.description,
   }),
 }));
 
@@ -27,8 +28,9 @@ const log = {
 
 function renderTable(
   props: Partial<React.ComponentProps<typeof UsageLogsTable>> = {},
+  logs = [log],
 ) {
-  vi.mocked(getLogs).mockResolvedValue({logs: [log], nextPage: undefined});
+  vi.mocked(getLogs).mockResolvedValue({logs, nextPage: undefined});
 
   return render(
     <UsageLogsTable
@@ -103,6 +105,22 @@ describe('UsageLogsTable', () => {
     expect(
       within(table).getByText('example-org/example-repository'),
     ).toBeInTheDocument();
+  });
+
+  it('wraps unbroken description values without changing the table layout', async () => {
+    const description = `symbols-${'#%&'.repeat(100)}`;
+    renderTable({isSuperuser: true}, [
+      {
+        ...log,
+        kind: 'set_repo_description',
+        metadata: {...log.metadata, description},
+      },
+    ]);
+
+    const table = await screen.findByTestId('usage-logs-table');
+    const descriptionCell = within(table).getByText(description);
+    expect(table).toHaveStyle({tableLayout: 'fixed', width: '100%'});
+    expect(descriptionCell.closest('td')).toHaveClass('pf-m-break-word');
   });
 
   it('omits the repository column for repository logs', async () => {

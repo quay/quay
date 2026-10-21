@@ -746,18 +746,18 @@ test.describe(
 );
 
 test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
-  const escapeRegex = (s: string): string =>
-    s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
   test(
     'superuser view keeps usage log columns accessible with long descriptions',
     {tag: ['@superuser', '@PROJQUAY-13930']},
-    async ({superuserPage, superuserApi}) => {
-      const repo = await superuserApi.repository(
-        undefined,
-        `responsive-${'long-description-'.repeat(10)}`,
-      );
+    async ({superuserPage, superuserApi, adminClient}) => {
+      const repo = await superuserApi.repository();
       const repoName = repo.name;
+      const longDescription = `symbols-${'#%&'.repeat(100)}`;
+      const updateResponse = await adminClient.put(
+        `/api/v1/repository/${repo.namespace}/${repoName}`,
+        {description: longDescription},
+      );
+      expect(updateResponse.status()).toBe(200);
 
       await superuserPage.setViewportSize({width: 2366, height: 1274});
       const logsResponse = superuserPage.waitForResponse(
@@ -775,22 +775,26 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
 
       await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
 
-      const repoNameCell = table
+      const descriptionCell = table
         .locator('td')
-        .filter({hasText: new RegExp(`^${escapeRegex(repoName)}$`)})
+        .filter({hasText: longDescription})
         .first();
-      await expect(repoNameCell).toBeVisible();
+      await expect(descriptionCell).toBeVisible();
 
       const logs = (await (await logsResponse).json()).logs as Array<{
         datetime: string;
         metadata?: {repo?: string};
       }>;
-      const log = logs.find((entry) => entry.metadata?.repo === repoName);
+      const log = logs.find(
+        (entry) =>
+          entry.kind === 'set_repo_description' &&
+          entry.metadata?.repo === repoName,
+      );
       if (!log) {
         throw new Error(`No usage log found for repository ${repoName}`);
       }
 
-      const logRow = repoNameCell.locator('xpath=ancestor::tr');
+      const logRow = descriptionCell.locator('xpath=ancestor::tr');
       const cells = logRow.locator('td');
       const dataLabels = [
         'Date & Time',
@@ -809,34 +813,58 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       await expect(cells.nth(0)).toHaveText(expectedTimestamp);
       await expect(cells.nth(0).locator('.pf-m-truncate')).toHaveCount(0);
 
-      await logRow.scrollIntoViewIfNeeded();
-      const desktopGeometry = await superuserPage.evaluate(() => {
-        const table = document.querySelector<HTMLElement>(
-          '[data-testid="usage-logs-table"]',
-        );
-        if (!table) throw new Error('Usage logs table was not rendered');
+      const getTableGeometry = () =>
+        logRow.evaluate((row) => {
+          const table = row.closest<HTMLElement>(
+            '[data-testid="usage-logs-table"]',
+          );
+          if (!table) throw new Error('Usage logs table was not rendered');
 
-        const headerWidths = Array.from(
-          table.querySelectorAll<HTMLElement>('th'),
-        ).map((header) => header.getBoundingClientRect().width);
-        const row = table.querySelector<HTMLElement>('tbody tr');
-        if (!row) throw new Error('Usage logs row was not rendered');
+          const headers = Array.from(table.querySelectorAll<HTMLElement>('th'));
+          const headerGeometry = headers.map((header) => {
+            const rect = header.getBoundingClientRect();
+            return {
+              left: rect.left,
+              right: rect.right,
+              width: rect.width,
+              clientWidth: header.clientWidth,
+              scrollWidth: header.scrollWidth,
+            };
+          });
+          const rowRect = row.getBoundingClientRect();
+          return {
+            headerGeometry,
+            rowLeft: rowRect.left,
+            rowRight: rowRect.right,
+            viewportWidth: window.innerWidth,
+          };
+        });
+      const assertTableGeometry = (
+        geometry: Awaited<ReturnType<typeof getTableGeometry>>,
+      ) => {
+        expect(geometry.rowLeft).toBeGreaterThanOrEqual(0);
+        expect(geometry.rowRight).toBeLessThanOrEqual(geometry.viewportWidth);
+        geometry.headerGeometry.forEach((header, index) => {
+          expect(header.scrollWidth).toBeLessThanOrEqual(
+            header.clientWidth + 1,
+          );
+          if (index > 0) {
+            expect(header.left).toBeGreaterThanOrEqual(
+              geometry.headerGeometry[index - 1].right,
+            );
+          }
+        });
+        expect(
+          Math.max(...geometry.headerGeometry.map((header) => header.width)) /
+            Math.min(...geometry.headerGeometry.map((header) => header.width)),
+        ).toBeLessThan(1.1);
+      };
 
-        const rowRect = row.getBoundingClientRect();
-        return {
-          headerWidths,
-          rowLeft: rowRect.left,
-          rowRight: rowRect.right,
-          viewportWidth: window.innerWidth,
-        };
-      });
-      expect(desktopGeometry.rowLeft).toBeGreaterThanOrEqual(0);
-      expect(desktopGeometry.rowRight).toBeLessThanOrEqual(
-        desktopGeometry.viewportWidth,
-      );
-      desktopGeometry.headerWidths.forEach((width) => {
-        expect(width).toBeGreaterThan(150);
-      });
+      for (const width of [2366, 1024]) {
+        await superuserPage.setViewportSize({width, height: 1274});
+        await logRow.scrollIntoViewIfNeeded();
+        assertTableGeometry(await getTableGeometry());
+      }
 
       await superuserPage.setViewportSize({width: 600, height: 900});
       await logRow.scrollIntoViewIfNeeded();
