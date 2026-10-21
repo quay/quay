@@ -35,6 +35,41 @@ export interface FetchRetryExhaustedError extends Error {
   receivedResponse: boolean;
 }
 
+/**
+ * Minimal response shape the retry loop relies on. Satisfied by both the native
+ * `fetch` Response and an adapter over Playwright's APIResponse.
+ */
+export interface RetryResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+/**
+ * Pluggable fetch implementation. Defaults to native `fetch` (which ignores
+ * proxy env vars). global-setup overrides this with a Playwright
+ * APIRequestContext-backed impl so calls honor the configured proxy when Quay
+ * is reachable only through one (bare-metal CI).
+ */
+export type FetchImpl = (
+  url: string,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+) => Promise<RetryResponse>;
+
+const nativeFetchImpl: FetchImpl = (url, init, timeoutMs) =>
+  fetch(url, {...init, signal: AbortSignal.timeout(timeoutMs)});
+
+let fetchImpl: FetchImpl = nativeFetchImpl;
+
+/**
+ * Override the fetch implementation used by all retry helpers. Pass no argument
+ * (or undefined) to restore the native-fetch default.
+ */
+export function setFetchImpl(impl?: FetchImpl): void {
+  fetchImpl = impl ?? nativeFetchImpl;
+}
+
 function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 429 || (status >= 500 && status <= 599);
 }
@@ -55,7 +90,7 @@ async function fetchWithRetryInternal<T>(
   url: string,
   init: RequestInit | undefined,
   timeoutMs: number,
-  handleResponse: (response: Response) => Promise<T>,
+  handleResponse: (response: RetryResponse) => Promise<T>,
   backoffMs: number[] = BACKOFF_MS,
 ): Promise<T> {
   let lastError: unknown;
@@ -65,10 +100,7 @@ async function fetchWithRetryInternal<T>(
     let nonRetryable = false;
 
     try {
-      const response = await fetch(url, {
-        ...init,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      const response = await fetchImpl(url, init, timeoutMs);
 
       if (response.ok) {
         try {
@@ -128,7 +160,7 @@ export async function fetchWithRetry(
   init?: RequestInit,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   backoffMs: number[] = BACKOFF_MS,
-): Promise<Response> {
+): Promise<RetryResponse> {
   return fetchWithRetryInternal(
     callSite,
     url,
