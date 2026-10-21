@@ -96,7 +96,13 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard Step 2: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
+    await expect(
+      authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
+    ).toContainText('Read');
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard Step 3: Add team member
@@ -144,8 +150,13 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('create-team-confirm').click();
 
     await expect(
-      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
-    ).toContainText(`Successfully created new team: ${teamName}`);
+      authenticatedPage.getByText(
+        `Successfully created new team: ${teamName}`,
+        {
+          exact: true,
+        },
+      ),
+    ).toBeVisible();
 
     await authenticatedPage.getByTestId('next-btn').click();
     await authenticatedPage.getByTestId('next-btn').click();
