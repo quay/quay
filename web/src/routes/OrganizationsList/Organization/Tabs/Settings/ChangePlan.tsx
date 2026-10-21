@@ -25,7 +25,6 @@ import {
 } from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
-import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {
   createSubscriptionCheckoutSession,
   setSubscription,
@@ -34,7 +33,7 @@ import type {Plan} from 'src/resources/BillingResource';
 import {
   formatPlanPrice,
   getAvailablePlans,
-  getPlanInformationPath,
+  getPlanChangeReturnPath,
   getPlanCheckoutReturnUrls,
   getPlanChangeAction,
   getBillingErrorMessage,
@@ -47,7 +46,6 @@ type Props = {organizationName: string};
 export function ChangePlan({organizationName}: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const {addAlert} = useUI();
   const {isUserOrganization} = useOrganization(organizationName);
   const {
     currentPlan,
@@ -68,6 +66,7 @@ export function ChangePlan({organizationName}: Props) {
   const isLoading = currentPlanIsLoading || loading;
   const isError = !!currentPlanError || !!errorFetchingPlanData;
   const checkout = useMutation({
+    retry: false,
     mutationFn: (plan: Plan) => {
       return createSubscriptionCheckoutSession(
         plan.stripeId,
@@ -82,6 +81,7 @@ export function ChangePlan({organizationName}: Props) {
     onSuccess: (session) => window.location.assign(session.url),
   });
   const changePlan = useMutation({
+    retry: false,
     mutationFn: (plan: Plan) => {
       return setSubscription(
         plan.stripeId,
@@ -100,12 +100,7 @@ export function ChangePlan({organizationName}: Props) {
         queryClient.invalidateQueries(['invoices', organizationName]),
       ]);
       setPendingPlan(null);
-      addAlert({
-        title: `Switched to ${plan.title} plan`,
-        variant: AlertVariant.Success,
-        key: 'plan-change',
-      });
-      navigate(getPlanInformationPath(organizationName));
+      navigate(getPlanChangeReturnPath(organizationName, plan.stripeId));
     },
   });
 

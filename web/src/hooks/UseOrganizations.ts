@@ -9,7 +9,6 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {IQuotaReport} from 'src/libs/quotaUtils';
 import {
   bulkDeleteOrganizations,
-  createOrg,
   fetchOrgsAsSuperUser,
   IAvatar,
 } from 'src/resources/OrganizationResource';
@@ -156,23 +155,6 @@ export function useOrganizations() {
   // Get query client for mutations
   const queryClient = useQueryClient();
 
-  const createOrganizationMutator = useMutation(
-    async ({name, email}: {name: string; email?: string}) => {
-      return createOrg(name, email);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['user']);
-        queryClient.invalidateQueries([
-          'organization',
-          'superuser',
-          'organizations',
-        ]);
-        queryClient.invalidateQueries(['organization', 'superuser', 'users']);
-      },
-    },
-  );
-
   const deleteOrganizationMutator = useMutation(
     async (names: string[]) => {
       // Use canModify instead of isSuperUser to prevent read-only superusers from deleting
@@ -257,8 +239,6 @@ export function useOrganizations() {
     totalResults: organizationsTableDetails.length,
 
     // Mutations
-    createOrganization: async (name: string, email?: string) =>
-      createOrganizationMutator.mutateAsync({name, email}),
     deleteOrganizations: async (names: string[]) =>
       deleteOrganizationMutator.mutateAsync(names),
     deleteUsers: async (usernames: string[]) =>

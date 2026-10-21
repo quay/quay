@@ -27,7 +27,8 @@ import Empty from 'src/components/empty/Empty';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import RequestError from 'src/components/errors/RequestError';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
-import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
+import {useNavigate} from 'react-router-dom';
+import {NavigationPath} from 'src/routes/NavigationPath';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
@@ -41,7 +42,6 @@ import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import {formatSize} from 'src/libs/utils';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import ColumnNames from './ColumnNames';
-import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
@@ -125,7 +125,7 @@ function OrgListHeader({
 }
 
 export default function OrganizationsList() {
-  const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
+  const navigate = useNavigate();
   const [selectedOrganization, setSelectedOrganization] =
     useRecoilState(selectedOrgsState);
   const [deletionErr, setDeletionErr] = useState<string[]>();
@@ -368,15 +368,6 @@ export default function OrganizationsList() {
     },
   };
 
-  const createOrgModal = (
-    <CreateOrganizationModal
-      isModalOpen={isOrganizationModalOpen}
-      handleModalToggle={() =>
-        setOrganizationModalOpen(!isOrganizationModalOpen)
-      }
-    />
-  );
-
   const deleteModal = (
     <BulkDeleteModalTemplate
       mapOfColNamesToTableData={mapOfColNamesToTableData}
@@ -476,13 +467,12 @@ export default function OrganizationsList() {
           }
           button={
             isAuthenticated ? (
-              <ToolbarButton
+              <Button
                 id="create-organization-button"
-                buttonValue="Create Organization"
-                Modal={createOrgModal}
-                isModalOpen={isOrganizationModalOpen}
-                setModalOpen={setOrganizationModalOpen}
-              />
+                onClick={() => navigate(NavigationPath.createOrganization)}
+              >
+                Create Organization
+              </Button>
             ) : null
           }
         />
@@ -522,9 +512,6 @@ export default function OrganizationsList() {
           search={search}
           setSearch={setSearch}
           total={totalResults}
-          createOrgModal={createOrgModal}
-          isOrganizationModalOpen={isOrganizationModalOpen}
-          setOrganizationModalOpen={setOrganizationModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
           kebabItems={kebabItems}

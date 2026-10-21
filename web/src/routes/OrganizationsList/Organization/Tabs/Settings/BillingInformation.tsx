@@ -27,7 +27,7 @@ import {UsageSection} from './UsageSection';
 import {PaymentMethodSection} from './PaymentMethodSection';
 import MarketplaceDetails from './MarketplaceDetails';
 import {InvoiceSettingsModal} from './InvoiceSettingsModal';
-import {getBillingErrorMessage} from 'src/libs/billing';
+import {getBillingErrorMessage, isPlanChangeConfirmed} from 'src/libs/billing';
 
 type BillingInformationProps = {organizationName: string};
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
@@ -45,12 +45,17 @@ export const BillingInformation = ({
   const stripeSetup = useStripeCardSetup(organizationName, !isUserOrganization);
   const checkoutResult = searchParams.get('paymentMethod');
   const planCheckoutResult = searchParams.get('planCheckout');
+  const planReturned =
+    planCheckoutResult === 'returned' ||
+    searchParams.get('planChange') === 'returned';
   const expectedPlan = searchParams.get('checkoutPlan');
   const [checkingCheckout, setCheckingCheckout] = useState(false);
 
   useEffect(() => {
-    if (checkoutResult !== 'returned' && planCheckoutResult !== 'returned')
+    if (checkoutResult !== 'returned' && !planReturned) {
+      setCheckingCheckout(false);
       return;
+    }
     // Stripe's webhook may finish after Checkout redirects back to Quay.
     setCheckingCheckout(true);
     const refresh = () => {
@@ -76,7 +81,7 @@ export const BillingInformation = ({
     return () => window.clearInterval(interval);
   }, [
     checkoutResult,
-    planCheckoutResult,
+    planReturned,
     organizationName,
     isUserOrganization,
     queryClient,
@@ -85,6 +90,7 @@ export const BillingInformation = ({
   const {
     currentPlan,
     currentPlanIsLoading,
+    currentPlanIsFetchedAfterMount,
     currentPlanError,
     plans,
     privateCount,
@@ -126,27 +132,40 @@ export const BillingInformation = ({
   );
   const planDetail =
     plans?.find((plan) => plan.stripeId === currentPlan?.plan) ?? null;
+  const planConfirmed =
+    currentPlanIsFetchedAfterMount &&
+    !currentPlanError &&
+    isPlanChangeConfirmed(currentPlan, expectedPlan);
 
   return (
     <Stack hasGutter style={{maxWidth: '600px'}} data-testid="plan-information">
       <Alerts />
       {(checkoutResult === 'canceled' || planCheckoutResult === 'canceled') && (
-        <Alert isInline variant="info" title="Stripe Checkout canceled" />
+        <Alert isInline variant="info" title="Stripe Checkout canceled">
+          {planCheckoutResult === 'canceled' && (
+            <Link
+              to={`/organization/${encodeURIComponent(organizationName)}/plans`}
+            >
+              Choose a plan
+            </Link>
+          )}
+        </Alert>
       )}
-      {planCheckoutResult === 'returned' && (
+      {planReturned && (
         <Alert
           isInline
-          variant={currentPlan?.plan === expectedPlan ? 'success' : 'info'}
+          variant={planConfirmed ? 'success' : 'info'}
+          data-testid="plan-change-result"
           title={
-            currentPlan?.plan === expectedPlan
+            planConfirmed
               ? 'Your subscription has been updated.'
               : checkingCheckout
               ? 'Checking your subscription with Quay…'
               : 'Your subscription has not been confirmed yet.'
           }
         >
-          {currentPlan?.plan !== expectedPlan &&
-            'Refresh this page to check again. Quay may still be processing your checkout.'}
+          {!planConfirmed &&
+            'Refresh this page to check again. Quay may still be processing your plan change.'}
         </Alert>
       )}
       {checkoutResult === 'returned' && (

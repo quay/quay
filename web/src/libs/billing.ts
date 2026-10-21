@@ -13,6 +13,41 @@ export function getPlanInformationPath(namespace: string): string {
   )}?tab=Settings&settingsTab=billinginformation`;
 }
 
+export function getPlanApiPath(organization: string | null = null): string {
+  return organization === null
+    ? '/api/v1/user/plan'
+    : `/api/v1/organization/${encodeURIComponent(organization)}/plan`;
+}
+
+export function getPlanChangeReturnPath(
+  namespace: string,
+  plan: string,
+): string {
+  const params = new URLSearchParams({
+    planChange: 'returned',
+    checkoutPlan: plan,
+  });
+  return `${getPlanInformationPath(namespace)}&${params}`;
+}
+
+export function isPlanChangeConfirmed(
+  subscription: Subscription | null | undefined,
+  expectedPlan: string | null,
+): boolean {
+  if (!expectedPlan || !subscription || subscription.plan !== expectedPlan) {
+    return false;
+  }
+  if (expectedPlan === 'free') return subscription.hasSubscription === false;
+
+  // Older Quay deployments omit status; still require a subscribed account.
+  return (
+    subscription.hasSubscription === true &&
+    (subscription.status == null ||
+      subscription.status === 'active' ||
+      subscription.status === 'trialing')
+  );
+}
+
 export function getCardSetupReturnUrls(
   namespace: string,
   origin: string,
@@ -48,14 +83,28 @@ export function getPlanChangeAction(
     : 'update';
 }
 
-export function getStripeCheckoutUrl(value: string, origin: string): string {
+export function getStripeCheckoutUrl(
+  value: string,
+  origin: string,
+  fake = false,
+): string {
   const url = new URL(value, origin);
   const isStripe = url.origin === 'https://checkout.stripe.com';
   const isPreview =
     process.env.MOCK_API === 'true' &&
     url.origin === origin &&
     url.searchParams.get('prototypeCheckout') === '1';
-  if ((!isStripe && !isPreview) || url.username || url.password) {
+  const isLocalFake =
+    fake &&
+    url.origin === origin &&
+    ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+    url.pathname === '/fake-checkout' &&
+    !!url.searchParams.get('session');
+  if (
+    (!isStripe && !isPreview && !isLocalFake) ||
+    url.username ||
+    url.password
+  ) {
     throw new Error('Quay did not return a valid Stripe Checkout URL.');
   }
   return url.toString();
@@ -134,6 +183,17 @@ export function getAvailablePlans(
       !plan.plans_page_hidden &&
       (!isOrg || plan.bus_features || plan.price === 0),
   );
+}
+
+export function getOrganizationCreationPlans(plans: Plan[]): Plan[] {
+  return plans
+    .filter(
+      (plan) =>
+        !plan.deprecated &&
+        !plan.plans_page_hidden &&
+        (plan.stripeId === 'free' || plan.bus_features),
+    )
+    .sort((left, right) => left.price - right.price);
 }
 
 export type SampleCardDetails = {

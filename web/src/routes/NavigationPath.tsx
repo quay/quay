@@ -41,6 +41,8 @@ export enum NavigationPath {
   home = '/',
   overviewList = '/overview',
   organizationsList = '/organization',
+  createOrganization = '/organizations/new',
+  fakeCheckout = '/fake-checkout',
   repositoriesList = '/repository',
   search = '/search',
 
@@ -162,7 +164,7 @@ function domainRoute(currentRoute, definedRoute) {
    ***/
   return (
     currentRoute.replace(
-      /\/(overview|organization|repository|signin)(?=\/|$).*/,
+      /\/(overview|organization|organizations|repository|signin)(?=\/|$).*/,
       '',
     ) + definedRoute
   );

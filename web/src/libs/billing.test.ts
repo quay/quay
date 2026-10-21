@@ -3,12 +3,16 @@ import {
   formatInvoiceDate,
   filterInvoices,
   getAvailablePlans,
+  getOrganizationCreationPlans,
   getPlanInformationPath,
   getCardSetupReturnUrls,
   getPlanCheckoutReturnUrls,
   getPlanChangeAction,
   getStripeCheckoutUrl,
   getBillingErrorMessage,
+  getPlanApiPath,
+  getPlanChangeReturnPath,
+  isPlanChangeConfirmed,
   summarizeSampleCard,
 } from './billing';
 import {AxiosError} from 'axios';
@@ -24,6 +28,126 @@ const details = {
 };
 
 describe('billing helpers', () => {
+  it('accepts an explicitly simulated checkout only on the same local origin', () => {
+    const url = 'http://localhost:9010/fake-checkout?session=signed-session';
+    expect(getStripeCheckoutUrl(url, 'http://localhost:9010', true)).toBe(url);
+    expect(() => getStripeCheckoutUrl(url, 'http://localhost:9010')).toThrow();
+    expect(() =>
+      getStripeCheckoutUrl(url, 'http://localhost:9011', true),
+    ).toThrow();
+    expect(() =>
+      getStripeCheckoutUrl(
+        'https://quay.io/fake-checkout?session=example',
+        'https://quay.io',
+        true,
+      ),
+    ).toThrow();
+    expect(() =>
+      getStripeCheckoutUrl(
+        '/other?session=example',
+        'http://localhost:9010',
+        true,
+      ),
+    ).toThrow();
+  });
+  it('offers only current organization plans, including free, ordered by price', () => {
+    const catalog = [
+      {stripeId: 'large', price: 6000, bus_features: true},
+      {stripeId: 'personal', price: 1000, bus_features: false},
+      {stripeId: 'free', price: 0, bus_features: false},
+      {
+        stripeId: 'hidden',
+        price: 1000,
+        bus_features: true,
+        plans_page_hidden: true,
+      },
+      {stripeId: 'old', price: 1000, bus_features: true, deprecated: true},
+      {stripeId: 'small', price: 3000, bus_features: true},
+    ] as Plan[];
+    expect(
+      getOrganizationCreationPlans(catalog).map((plan) => plan.stripeId),
+    ).toEqual(['free', 'small', 'large']);
+    expect(catalog[0].stripeId).toBe('large');
+    expect(getOrganizationCreationPlans([])).toEqual([]);
+  });
+  it('uses native billing endpoints for personal and organization subscriptions', () => {
+    expect(getPlanApiPath()).toBe('/api/v1/user/plan');
+    expect(getPlanApiPath(null)).toBe('/api/v1/user/plan');
+    expect(getPlanApiPath('my-org')).toBe('/api/v1/organization/my-org/plan');
+    expect(getPlanApiPath('org/name?other=1')).toBe(
+      '/api/v1/organization/org%2Fname%3Fother%3D1/plan',
+    );
+  });
+
+  it('verifies an existing subscription update on the billing page', () => {
+    const url = new URL(
+      getPlanChangeReturnPath('my-org', 'bus-micro-2018'),
+      'https://quay.io',
+    );
+    expect(url.pathname).toBe('/organization/my-org');
+    expect(url.searchParams.get('settingsTab')).toBe('billinginformation');
+    expect(url.searchParams.get('planChange')).toBe('returned');
+    expect(url.searchParams.get('checkoutPlan')).toBe('bus-micro-2018');
+  });
+
+  it.each([
+    'https://quay.io',
+    'https://stage.quay.io',
+    'http://localhost:9010',
+  ])('returns Checkout to its runtime origin: %s', (origin) => {
+    const urls = getPlanCheckoutReturnUrls('my-org', origin, 'bus-micro-2018');
+    expect(new URL(urls.success_url).origin).toBe(origin);
+    expect(new URL(urls.cancel_url).origin).toBe(origin);
+  });
+
+  it.each(['active', 'trialing', null, undefined])(
+    'confirms an authoritative paid subscription with status %s',
+    (status) => {
+      const subscription = {
+        plan: 'bus-micro-2018',
+        hasSubscription: true,
+        status,
+      } as Subscription;
+      expect(isPlanChangeConfirmed(subscription, 'bus-micro-2018')).toBe(true);
+    },
+  );
+
+  it.each([
+    'incomplete',
+    'past_due',
+    'canceled',
+    'unpaid',
+    'incomplete_expired',
+  ])('does not confirm a matching plan with payment status %s', (status) => {
+    const subscription = {
+      plan: 'bus-micro-2018',
+      hasSubscription: true,
+      status,
+    } as Subscription;
+    expect(isPlanChangeConfirmed(subscription, 'bus-micro-2018')).toBe(false);
+  });
+
+  it('requires backend subscription data rather than trusting the return URL', () => {
+    const subscription = {
+      plan: 'bus-micro-2018',
+      hasSubscription: false,
+      status: null,
+    } as Subscription;
+    expect(isPlanChangeConfirmed(null, 'bus-micro-2018')).toBe(false);
+    expect(isPlanChangeConfirmed(subscription, null)).toBe(false);
+    expect(isPlanChangeConfirmed(subscription, 'bus-small-2018')).toBe(false);
+    expect(isPlanChangeConfirmed(subscription, 'bus-micro-2018')).toBe(false);
+    expect(isPlanChangeConfirmed({...subscription, plan: 'free'}, 'free')).toBe(
+      true,
+    );
+    expect(
+      isPlanChangeConfirmed(
+        {...subscription, plan: 'free', hasSubscription: true},
+        'free',
+      ),
+    ).toBe(false);
+  });
+
   it('explains payment failures without retrying a subscription creation', () => {
     const error = new AxiosError('Payment required');
     error.response = {
