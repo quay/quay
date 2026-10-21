@@ -89,7 +89,7 @@ func (m *Migrator) validateRegistryJWTSource(ctx context.Context) error {
 		}
 		return nil
 	}
-	key, kid, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
+	key, kid, err := loadApprovedRegistryJWTSigningKey(ctx, m.Source.DBPath, m.Source.ConfigDir, sourceCfg, m.Runner, &m.persistedConfigFiles)
 	if err != nil {
 		return fmt.Errorf("registry JWT key validation: %w", err)
 	}

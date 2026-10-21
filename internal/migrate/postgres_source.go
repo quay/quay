@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -26,21 +25,17 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 		return err
 	}
 	if err := m.validatePostgresBeforeStop(ctx); err != nil {
-		return fmt.Errorf("validate: %w", err)
+		return errors.Join(fmt.Errorf("validate: %w", err), m.removePersistedConfigMaterial())
 	}
 	retrySafe := true
 	defer func() {
 		if retErr == nil {
 			return
 		}
-		rollbackCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
 		if cleanupErr := m.removePostgresMigrationArtifacts(retrySafe); cleanupErr != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("remove failed migration artifacts: %w", cleanupErr))
 		}
-		if rollbackErr := m.rollbackPostgresSource(rollbackCtx); rollbackErr != nil {
-			retErr = errors.Join(retErr, fmt.Errorf("rollback old OMR: %w", rollbackErr))
-		}
+		retErr = withSourceRollback(retErr, m.rollbackPostgresSource(context.Background()))
 	}()
 	if err := m.stopPostgresApp(ctx); err != nil {
 		return fmt.Errorf("stop old OMR app: %w", err)
@@ -59,14 +54,14 @@ func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
 	if err := m.validateSourceDatabase(ctx); err != nil {
 		return fmt.Errorf("validate converted source: %w", err)
 	}
+	if err := failAt("after-convert"); err != nil {
+		return err
+	}
 	// Once broad target publication begins, retain the marker so a later failure
 	// remains fail-closed rather than being mistaken for a clean retry.
 	retrySafe = false
-	if err := m.copyData(ctx); err != nil {
-		return fmt.Errorf("copy: %w", err)
-	}
-	if err := m.upgradeSchema(ctx); err != nil {
-		return fmt.Errorf("schema upgrade: %w", err)
+	if err := m.copyAndUpgrade(ctx); err != nil {
+		return err
 	}
 	if err := m.stopPostgresRemainingServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR at cutover: %w", err)
@@ -112,7 +107,7 @@ func (m *Migrator) validatePostgresBeforeStop(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load source config for registry JWT key capture: %w", err)
 	}
-	key, kid, err := loadRegistryJWTSigningKey(ctx, m.Source.ConfigDir, sourceCfg, m.Runner)
+	key, kid, err := loadRegistryJWTSigningKey(ctx, m.Source.ConfigDir, sourceCfg, m.Runner, &m.persistedConfigFiles)
 	if err != nil {
 		return fmt.Errorf("registry JWT key capture: %w", err)
 	}

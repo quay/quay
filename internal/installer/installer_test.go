@@ -387,6 +387,8 @@ func TestRollbackRestoresTLSFiles(t *testing.T) {
 	require.NoError(t, err)
 	oldKeyData, err := os.ReadFile(oldKey)
 	require.NoError(t, err)
+	rootCAPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(rootCAPath, []byte("old ca"), 0o644))
 
 	sourceDir := t.TempDir()
 	newCert, newKey := generateTLSFiles(t, sourceDir)
@@ -423,6 +425,7 @@ func TestRollbackRestoresTLSFiles(t *testing.T) {
 	restoredKey := mustReadFile(t, filepath.Join(dataDir, "ssl.key"))
 	assert.Equal(t, oldCertData, restoredCert)
 	assert.Equal(t, oldKeyData, restoredKey)
+	assert.Equal(t, []byte("old ca"), mustReadFile(t, rootCAPath))
 }
 
 func TestRemoveFailedInstallation(t *testing.T) {
@@ -1095,7 +1098,7 @@ func TestVerifyCertHostname(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1123,7 +1126,7 @@ func TestVerifyCertHostnameIP(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1151,7 +1154,7 @@ func TestParseCertPEM(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -1318,6 +1321,41 @@ func TestCopyUserTLSRollsBackPairWhenKeyReplacementFails(t *testing.T) {
 	assert.Len(t, entries, 2)
 }
 
+func TestCopyUserTLSRemovesGeneratedCA(t *testing.T) {
+	dataDir := t.TempDir()
+	generateTLSFiles(t, dataDir)
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "rootCA.pem"), []byte("ca"), 0o644))
+
+	sourceDir := t.TempDir()
+	certPath, keyPath := generateTLSFiles(t, sourceDir)
+	inst := &Installer{fs: system.OSFS{}}
+
+	require.NoError(t, inst.copyUserTLS(&Config{
+		Hostname: "registry.example.com",
+		DataDir:  dataDir,
+		SSLCert:  certPath,
+		SSLKey:   keyPath,
+	}))
+
+	assert.NoFileExists(t, filepath.Join(dataDir, "rootCA.pem"))
+	assert.Empty(t, inst.generatedCAPath(&Config{DataDir: dataDir}))
+}
+
+func TestGeneratedCAPath(t *testing.T) {
+	dataDir := t.TempDir()
+	inst := &Installer{fs: system.OSFS{}}
+	cfg := &Config{DataDir: dataDir}
+
+	assert.Empty(t, inst.generatedCAPath(cfg), "no rootCA.pem")
+
+	caPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(caPath, []byte("ca"), 0o644))
+	assert.Equal(t, caPath, inst.generatedCAPath(cfg))
+
+	cfg.SSLCert = "/user/ssl.cert"
+	assert.Empty(t, inst.generatedCAPath(cfg), "user-supplied ssl.cert leaves rootCA.pem stale")
+}
+
 type failKeyRenameFS struct {
 	system.OSFS
 	keyDestination string
@@ -1334,7 +1372,7 @@ func generateTLSFiles(t *testing.T, dir string) (certPath, keyPath string) {
 	t.Helper()
 	certPath = filepath.Join(dir, "ssl.cert")
 	keyPath = filepath.Join(dir, "ssl.key")
-	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath))
+	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath, filepath.Join(t.TempDir(), "rootCA.pem")))
 	return certPath, keyPath
 }
 

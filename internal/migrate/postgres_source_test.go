@@ -473,3 +473,139 @@ func (r *sequenceRunner) Run(_ context.Context, name string, args ...string) err
 func (*sequenceRunner) Output(context.Context, string, ...string) (string, error) {
 	return "", nil
 }
+
+func TestRunPostgresMigrationInjectedFailureMarkerOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		phase      string
+		keepMarker bool
+	}{
+		{phase: "after-convert", keepMarker: false},
+		{phase: "after-copy", keepMarker: true},
+	} {
+		t.Run(tc.phase, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv(failAtEnv, tc.phase)
+			m := validInstallMigrator(t)
+			m.Source.DatabaseKind = databasePostgres
+			m.Source.SystemdScope = scopeUser
+			m.Source.PodSandboxKey = "/run/netns/quay"
+			sourceDB := m.Source.DBPath
+			runner := &sequenceRunner{namespaceHook: func() {
+				data, err := os.ReadFile(sourceDB)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(m.postgresPartialDBPath(), data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}}
+			m.Runner = runner
+
+			err := m.runPostgresMigration(t.Context())
+			if err == nil || !strings.Contains(err.Error(), "injected failure at "+tc.phase) || !strings.Contains(err.Error(), "old OMR services restarted") {
+				t.Fatalf("runPostgresMigration error = %v", err)
+			}
+			if got := runner.calls[len(runner.calls)-1]; got != "systemctl --user start quay-app.service" {
+				t.Fatalf("last call = %q, want quay-app restart; calls = %v", got, runner.calls)
+			}
+			if _, err := os.Stat(m.postgresPartialDBPath()); !os.IsNotExist(err) {
+				t.Errorf("rollback left %s: %v", partialDatabaseName, err)
+			}
+			_, err = os.Stat(filepath.Join(m.DataDir, markerFile))
+			if kept := err == nil; kept != tc.keepMarker {
+				t.Errorf("marker kept = %v, want %v (stat: %v)", kept, tc.keepMarker, err)
+			}
+		})
+	}
+}
+
+func TestPostgresRollbackReportsFailedRestart(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	m.Source.PodSandboxKey = "/run/netns/quay"
+	runner := &recordingRunner{runErrs: map[string]error{"quay-postgres.service": errors.New("unit failed")}}
+	m.Runner = runner
+
+	err := m.runPostgresMigration(t.Context())
+	if err == nil {
+		t.Fatal("runPostgresMigration succeeded, want conversion failure")
+	}
+	for _, want := range []string{"validate converted source", "rollback old OMR", "start quay-postgres.service: unit failed"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("runPostgresMigration error = %v, want %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "restarted") {
+		t.Errorf("runPostgresMigration error = %v, claims a restart that failed", err)
+	}
+	if got := runner.runCalls[len(runner.runCalls)-1]; got != "systemctl --user start quay-app.service" {
+		t.Fatalf("rollback stopped at a failed restart: %v", runner.runCalls)
+	}
+}
+
+func TestPostgresRollbackGivesEachStepItsOwnTimeout(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	original := rollbackStepTimeout
+	rollbackStepTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { rollbackStepTimeout = original })
+
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	m.Source.PodSandboxKey = "/run/netns/quay"
+	runner := &slowRollbackRunner{slowStart: quayPodUnit}
+	m.Runner = runner
+	m.removeTargetInstall = func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	err := m.runPostgresMigration(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "start quay-pod.service") {
+		t.Fatalf("runPostgresMigration error = %v, want slow quay-pod restart reported", err)
+	}
+	if !runner.appStarted || runner.appCtxErr != nil {
+		t.Fatalf("quay-app restart started = %v with context error %v, want a live context", runner.appStarted, runner.appCtxErr)
+	}
+}
+
+func TestPostgresValidateFailureRemovesRecoveredKeyMaterial(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	outputs := map[string]string{}
+	for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+		path := filepath.Join(m.Source.ConfigDir, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+		outputs[filepath.Join(sourceContainerConf, name)] = string(data)
+	}
+	runner := &containerKeyRunner{material: sourceMaterialRunner{outputs: outputs}}
+	m.Runner = runner
+	// A missing image fails validation after the key material is recovered.
+	m.Source.Image = ""
+
+	err := m.runPostgresMigration(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "no image archive found") {
+		t.Fatalf("runPostgresMigration error = %v, want missing image rejection", err)
+	}
+	if runner.material.outputCalls == 0 {
+		t.Fatal("key material was not recovered from the source container")
+	}
+	for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+		if _, err := os.Stat(filepath.Join(m.Source.ConfigDir, name)); !os.IsNotExist(err) {
+			t.Errorf("recovered %s left in source config dir: %v", name, err)
+		}
+	}
+	if len(runner.runCalls) != 0 {
+		t.Errorf("failure before the stop ran source services: %v", runner.runCalls)
+	}
+}

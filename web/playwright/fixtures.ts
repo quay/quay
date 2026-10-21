@@ -50,6 +50,13 @@ import {
   shouldCollect,
   TraceContext,
 } from './utils/failure-artifacts';
+import {proxyOptionFromEnv} from './utils/proxy';
+
+// Proxy for standalone APIRequestContexts created below. These do not inherit
+// `use.proxy` from the config, so when Quay is reachable only through a proxy
+// (bare-metal CI) they must be configured explicitly. undefined (the local-dev
+// default) means no proxy.
+const REQUEST_PROXY = proxyOptionFromEnv();
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -1468,6 +1475,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       email: created.email,
     });
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1488,6 +1496,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   adminClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1503,6 +1512,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   userClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1525,6 +1535,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     testInfo,
   ) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1566,6 +1577,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   anonClient: async ({playwright, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1586,6 +1598,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   request: async ({playwright, baseURL, traceparent}, use) => {
     const request = await playwright.request.newContext({
       baseURL,
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });

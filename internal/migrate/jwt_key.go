@@ -31,7 +31,7 @@ func (m *Migrator) importRegistryJWTSigningKey(ctx context.Context, targetDBPath
 	key := m.sourceRegistryJWTKey
 	if key == nil {
 		var err error
-		key, _, err = loadApprovedRegistryJWTSigningKey(ctx, targetDBPath, m.Source.ConfigDir, sourceCfg, m.Runner)
+		key, _, err = loadApprovedRegistryJWTSigningKey(ctx, targetDBPath, m.Source.ConfigDir, sourceCfg, m.Runner, &m.persistedConfigFiles)
 		if err != nil {
 			return err
 		}
@@ -59,8 +59,8 @@ func (m *Migrator) importRegistryJWTSigningKey(ctx context.Context, targetDBPath
 	return nil
 }
 
-func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir string, cfg *config.Config, runner system.CommandRunner) (*rsa.PrivateKey, string, error) {
-	key, kid, err := loadRegistryJWTSigningKey(ctx, configDir, cfg, runner)
+func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir string, cfg *config.Config, runner system.CommandRunner, persisted *[]string) (*rsa.PrivateKey, string, error) {
+	key, kid, err := loadRegistryJWTSigningKey(ctx, configDir, cfg, runner, persisted)
 	if err != nil {
 		return nil, "", err
 	}
@@ -70,9 +70,9 @@ func loadApprovedRegistryJWTSigningKey(ctx context.Context, dbPath, configDir st
 	return key, kid, nil
 }
 
-func loadRegistryJWTSigningKey(ctx context.Context, configDir string, cfg *config.Config, runner system.CommandRunner) (*rsa.PrivateKey, string, error) {
+func loadRegistryJWTSigningKey(ctx context.Context, configDir string, cfg *config.Config, runner system.CommandRunner, persisted *[]string) (*rsa.PrivateKey, string, error) {
 	privateBytes, privateSource, err := readSourceConfigMaterial(
-		ctx, configDir, cfg.InstanceServiceKeyLocation, legacyPrivateKeyName, runner,
+		ctx, configDir, cfg.InstanceServiceKeyLocation, legacyPrivateKeyName, runner, persisted,
 	)
 	if err != nil {
 		return nil, "", fmt.Errorf("load source registry JWT private key: %w", err)
@@ -82,7 +82,7 @@ func loadRegistryJWTSigningKey(ctx context.Context, configDir string, cfg *confi
 		return nil, "", fmt.Errorf("parse source registry JWT private key from %s: %w", privateSource, err)
 	}
 	kidBytes, kidSource, err := readSourceConfigMaterial(
-		ctx, configDir, cfg.InstanceServiceKeyKIDLocation, legacyKeyIDName, runner,
+		ctx, configDir, cfg.InstanceServiceKeyKIDLocation, legacyKeyIDName, runner, persisted,
 	)
 	if err != nil {
 		return nil, "", fmt.Errorf("read source registry JWT key ID: %w", err)
@@ -135,10 +135,13 @@ func validateRegistryJWTSigningKey(ctx context.Context, dbPath string, cfg *conf
 	return nil
 }
 
+// readSourceConfigMaterial appends each file it writes into the source config
+// dir to persisted, so a rollback can return that dir to the old OMR as found.
 func readSourceConfigMaterial(
 	ctx context.Context,
 	configDir, configured, defaultName string,
 	runner system.CommandRunner,
+	persisted *[]string,
 ) (material []byte, source string, readErr error) {
 	hostPath, containerPath := sourceConfigPaths(configDir, configured, defaultName)
 	data, err := os.ReadFile(hostPath) //nolint:gosec // path comes from detected source configuration
@@ -152,7 +155,11 @@ func readSourceConfigMaterial(
 		return nil, hostPath, err
 	}
 	output, execErr := runner.Output(ctx, "podman", "exec", sourceContainerName, "cat", containerPath)
+	// Record before writing: a write or cp that creates hostPath and then fails
+	// must still be undone on rollback. hostPath was absent above, so this never
+	// marks a pre-existing file for removal.
 	if execErr == nil {
+		recordPersisted(persisted, hostPath)
 		if writeErr := os.WriteFile(hostPath, []byte(output), 0o600); writeErr != nil {
 			slog.Warn("could not persist config material to host", "path", hostPath, "err", writeErr)
 		} else {
@@ -161,6 +168,7 @@ func readSourceConfigMaterial(
 		return []byte(output), containerPath, nil
 	}
 
+	recordPersisted(persisted, hostPath)
 	cpErr := podmanCpToHost(ctx, runner, sourceContainerName, containerPath, hostPath)
 	if cpErr == nil {
 		if chmodErr := os.Chmod(hostPath, 0o600); chmodErr != nil {
@@ -181,6 +189,27 @@ func readSourceConfigMaterial(
 			fmt.Errorf("cp: %w", cpErr),
 		),
 	)
+}
+
+func recordPersisted(persisted *[]string, path string) {
+	if persisted != nil {
+		*persisted = append(*persisted, path)
+	}
+}
+
+// removePersistedConfigMaterial deletes the files this run persisted into the
+// source config dir. Quay's config validator stops loading certificates at the
+// first one it cannot read, so a root 0600 quay.pem left there makes the old
+// OMR report ssl.cert as missing and exit on restart.
+func (m *Migrator) removePersistedConfigMaterial() error {
+	var errs []error
+	for _, path := range m.persistedConfigFiles {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = append(errs, fmt.Errorf("remove persisted config material: %w", err))
+		}
+	}
+	m.persistedConfigFiles = nil
+	return errors.Join(errs...)
 }
 
 func podmanCpToHost(ctx context.Context, runner system.CommandRunner, container, containerPath, hostPath string) error {
