@@ -561,6 +561,70 @@ func TestMigrator_RunSQLiteValidateFailureRemovesRecoveredKeyMaterial(t *testing
 	}
 }
 
+func TestMigrator_Run_DryRunLeavesSourceKeyMaterialAsFound(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		recovered bool
+		failValid bool
+	}{
+		{name: "recovered key, success", recovered: true},
+		{name: "recovered key, validate failure", recovered: true, failValid: true},
+		{name: "host key, success"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validInstallMigrator(t)
+			m.DryRun = true
+			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+			outputs := map[string]string{}
+			if tc.recovered {
+				for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+					path := filepath.Join(m.Source.ConfigDir, name)
+					data, err := os.ReadFile(path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+					outputs[filepath.Join(sourceContainerConf, name)] = string(data)
+				}
+			}
+			runner := &containerKeyRunner{material: sourceMaterialRunner{outputs: outputs}}
+			m.Runner = runner
+			if tc.failValid {
+				// A non-empty target fails validation after the key material is recovered.
+				if err := os.MkdirAll(m.DataDir, 0o750); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(m.DataDir, "unrelated"), nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			err := m.Run(t.Context())
+			if tc.failValid {
+				if err == nil || !strings.Contains(err.Error(), "is not empty") {
+					t.Fatalf("Run error = %v, want non-empty target rejection", err)
+				}
+			} else if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if tc.recovered && runner.material.outputCalls == 0 {
+				t.Fatal("key material was not recovered from the source container")
+			}
+			for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+				_, err := os.Stat(filepath.Join(m.Source.ConfigDir, name))
+				if tc.recovered && !os.IsNotExist(err) {
+					t.Errorf("dry-run left recovered %s in source config dir: %v", name, err)
+				}
+				if !tc.recovered && err != nil {
+					t.Errorf("dry-run removed pre-existing %s: %v", name, err)
+				}
+			}
+		})
+	}
+}
+
 func TestMigrator_RunSQLiteCleanupRefusesResumeOverCompletedInstall(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	m := validInstallMigrator(t)
