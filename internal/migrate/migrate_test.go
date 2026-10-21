@@ -77,7 +77,11 @@ func TestMigrator_Run_DryRunTakesPrecedenceOverCleanupAndSkipInstall(t *testing.
 			m.DryRun = true
 			m.Cleanup = tc.cleanup
 			m.SkipInstall = tc.skipInstall
-			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+			unitFile := filepath.Join(t.TempDir(), "quay-app.service")
+			if err := os.WriteFile(unitFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			m.Source.UnitFiles = []string{unitFile}
 			runner := &recordingRunner{}
 			m.Runner = runner
 
@@ -89,6 +93,9 @@ func TestMigrator_Run_DryRunTakesPrecedenceOverCleanupAndSkipInstall(t *testing.
 			}
 			if len(runner.runCalls) != 0 {
 				t.Fatalf("dry-run ran commands: %v", runner.runCalls)
+			}
+			if _, err := os.Stat(unitFile); err != nil {
+				t.Fatalf("dry-run removed unit file: %v", err)
 			}
 			entries, err := os.ReadDir(m.DataDir)
 			if err != nil && !os.IsNotExist(err) {
