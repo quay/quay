@@ -278,7 +278,7 @@ func TestRunPurgeRejectsUnsafeExplicitDataDir(t *testing.T) {
 
 			err := u.Run(t.Context(), &Config{DataDir: dataDir, Purge: true})
 
-			require.ErrorContains(t, err, "is not an absolute non-root path")
+			require.Error(t, err)
 			assert.Empty(t, services.calls, "must fail before touching the service")
 			assert.Empty(t, fs.removed, "nothing may be removed")
 		})
@@ -391,9 +391,91 @@ func TestRunRejectsUnsafeDataDirBeforePurge(t *testing.T) {
 
 	err := u.Run(t.Context(), &Config{DataDir: "/", Purge: true})
 
-	require.ErrorContains(t, err, "is not an absolute non-root path")
+	require.ErrorContains(t, err, "refusing to remove root directory")
 	// No service operations must have occurred before the guard fires.
 	assert.Empty(t, services.calls)
+}
+
+func TestRunPurgeRejectsHomeAsExplicitDataDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	for _, dataDir := range []string{home, home + "/"} {
+		t.Run(dataDir, func(t *testing.T) {
+			env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+			qm := system.NewQuadletManager(system.OSFS{}, env)
+			require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+				Image: "localhost/quay:test", DataDir: t.TempDir(),
+				Hostname: "localhost", Port: "8443",
+			}))
+
+			services := &recordingServiceManager{}
+			fs := &noRemoveAllFS{}
+			u := &Uninstaller{
+				systemd: services,
+				quadlet: qm,
+				env:     env,
+				fs:      fs,
+			}
+
+			err := u.Run(t.Context(), &Config{DataDir: dataDir, Purge: true})
+
+			require.ErrorContains(t, err, "refusing to remove home directory")
+			assert.Empty(t, services.calls, "must fail before touching the service")
+			assert.True(t, qm.Exists("quay"))
+			assert.Empty(t, fs.removed, "nothing may be removed")
+		})
+	}
+}
+
+func TestRunPurgeRejectsHomeAsDataDirFromQuadlet(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	qm := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, qm.Install("quay", &system.QuadletSpec{
+		Image: "localhost/quay:test", DataDir: home,
+		Hostname: "localhost", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{}
+	fs := &noRemoveAllFS{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: qm,
+		env:     env,
+		fs:      fs,
+	}
+
+	err := u.Run(t.Context(), &Config{Purge: true})
+
+	require.ErrorContains(t, err, "refusing to remove home directory")
+	require.ErrorContains(t, err, "provide -data-dir explicitly")
+	assert.Empty(t, services.calls, "must fail before touching the service")
+	assert.True(t, qm.Exists("quay"))
+	assert.Empty(t, fs.removed, "nothing may be removed")
+}
+
+func TestRunWithoutPurgeAcceptsHomeAsExplicitDataDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	fs := &noRemoveAllFS{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      fs,
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: home})
+
+	require.NoError(t, err)
+	assert.Contains(t, services.calls, "daemon-reload")
+	assert.Empty(t, fs.removed)
 }
 
 type recordingServiceManager struct {

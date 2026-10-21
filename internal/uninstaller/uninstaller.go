@@ -77,8 +77,8 @@ func validateDataDir(dir string) error {
 // the uninstall can proceed without it.
 func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 	if cfg.DataDir != "" {
-		if cfg.Purge && (!filepath.IsAbs(cfg.DataDir) || filepath.Clean(cfg.DataDir) == "/") {
-			return fmt.Errorf("data directory %q is not an absolute non-root path", cfg.DataDir)
+		if cfg.Purge {
+			return validateDataDir(cfg.DataDir)
 		}
 		return nil
 	}
@@ -90,12 +90,11 @@ func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 		slog.Debug("no installed data directory detected", "err", err)
 		return nil
 	}
-	// A relative or root path would make purge's RemoveAll resolve against
-	// the working directory or wipe the filesystem.
-	if !filepath.IsAbs(dir) || filepath.Clean(dir) == "/" {
-		if cfg.Purge {
-			return fmt.Errorf("installed data directory %q is not an absolute non-root path; provide -data-dir explicitly", dir)
+	if cfg.Purge {
+		if err := validateDataDir(dir); err != nil {
+			return fmt.Errorf("installed data directory: %w; provide -data-dir explicitly", err)
 		}
+	} else if !filepath.IsAbs(dir) || filepath.Clean(dir) == "/" {
 		slog.Debug("ignoring unsafe installed data directory", "data-dir", dir)
 		return nil
 	}
