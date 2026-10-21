@@ -1168,6 +1168,97 @@ jobs:
             > /tmp/e2e-migrate-state/source-services.txt || true
           sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
 
+      - name: Dry run migration
+        run: |
+          set -euo pipefail
+
+          state_dir=/tmp/e2e-migrate-state
+          SOURCE_DB=$(cat "$state_dir/source-db-path.txt")
+          SOURCE_STORAGE=$(sudo podman volume inspect quay-storage --format '{{.Mountpoint}}')
+
+          expect() {
+            local log="$1"
+            shift
+            if ! grep -q "$@" "$log"; then
+              echo "FAIL: ${log} has no line matching: $*"
+              exit 1
+            fi
+          }
+
+          # The dry run may recover the JWT key from the container; it must not
+          # leave it in the source config dir.
+          key_files() {
+            sudo find /root/quay-install \( -name quay.pem -o -name quay.kid \) -print | sort
+          }
+
+          # Run a dry run and fail if it touched the source or the target.
+          dry_run() {
+            local log="$1"
+            shift
+            local before keys_before target_before
+            before=$(sudo sha256sum "$SOURCE_DB" | awk '{print $1}')
+            keys_before=$(key_files)
+            target_before=$(sudo test -e /var/lib/quay && echo present || echo absent)
+            if ! sudo bin/mirror-registry migrate -dry-run "$@" > "$log" 2>&1; then
+              cat "$log"
+              echo "FAIL: dry run exited non-zero"
+              exit 1
+            fi
+            cat "$log"
+            test "$(sudo systemctl is-active quay-app.service)" = active
+            if [ "$(sudo test -e /var/lib/quay && echo present || echo absent)" != "$target_before" ]; then
+              echo "FAIL: dry run created or removed /var/lib/quay"
+              exit 1
+            fi
+            if [ -n "$(sudo find /var/lib/quay -mindepth 1 -print -quit 2>/dev/null)" ]; then
+              echo "FAIL: dry run wrote to /var/lib/quay"
+              exit 1
+            fi
+            if sudo test -e /etc/containers/systemd/quay.container; then
+              echo "FAIL: dry run wrote the target Quadlet unit"
+              exit 1
+            fi
+            test "$(sudo sha256sum "$SOURCE_DB" | awk '{print $1}')" = "$before"
+            if [ "$(key_files)" != "$keys_before" ]; then
+              echo "FAIL: dry run changed key files in the source config dir"
+              exit 1
+            fi
+          }
+
+          auto_log="$state_dir/dry-run-auto.log"
+          dry_run "$auto_log"
+          expect "$auto_log" -xF 'Detected OMR installation (via systemd):'
+          expect "$auto_log" -E '^  Config: +/'
+          expect "$auto_log" -xF "  Database: ${SOURCE_DB}"
+          expect "$auto_log" -xF "  Storage:  ${SOURCE_STORAGE}"
+          expect "$auto_log" -xF '  Hostname: localhost (port 8443)'
+          expect "$auto_log" -xE '  Services: \[.*/etc/systemd/system/quay-app\.service.*\] \(system scope\)'
+          expect "$auto_log" -xF '  Volumes:  [sqlite-storage quay-storage]'
+          expect "$auto_log" -xF 'Target: /var/lib/quay/'
+
+          # -source-db skips detection, so the config dir and hostname must be explicit.
+          SOURCE_CERTS=$(awk '$1 == "Config:" {print $2}' "$auto_log")
+          case "$SOURCE_CERTS" in
+            /root/quay-install/*) ;;
+            *)
+              echo "FAIL: key file check does not cover config dir ${SOURCE_CERTS}"
+              exit 1
+              ;;
+          esac
+          explicit_log="$state_dir/dry-run-explicit.log"
+          dry_run "$explicit_log" \
+            -source-root "$(dirname "$SOURCE_CERTS")" \
+            -source-db "$SOURCE_DB" \
+            -source-storage "$SOURCE_STORAGE" \
+            -source-certs "$SOURCE_CERTS" \
+            -hostname localhost
+          expect "$explicit_log" -xF 'Detected OMR installation (via manual):'
+          expect "$explicit_log" -xF "  Config:   ${SOURCE_CERTS}"
+          expect "$explicit_log" -xF "  Database: ${SOURCE_DB}"
+          expect "$explicit_log" -xF "  Storage:  ${SOURCE_STORAGE}"
+          expect "$explicit_log" -xF '  Hostname: localhost'
+          expect "$explicit_log" -xF 'Target: /var/lib/quay/'
+
       - name: Verify rollback after injected migrate failures
         run: |
           set -euo pipefail
@@ -1698,6 +1789,26 @@ jobs:
               -c "SELECT COUNT(*) FROM ${table};")
             printf '%s=%s\n' "$table" "$count" >> "$state_dir/source-counts.env"
           done
+
+      - name: Dry run is rejected for PostgreSQL
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e2e-migrate-postgres"
+          log="$RUNNER_TEMP/e2e-migrate-postgres/dry-run.log"
+          if sudo bin/mirror-registry migrate -dry-run \
+            -data-dir="$RUNNER_TEMP/quay-v3" \
+            -image-archive="$PWD/bin/quay-mirror.tar" > "$log" 2>&1; then
+            cat "$log"
+            echo "FAIL: PostgreSQL dry run exited zero"
+            exit 1
+          fi
+          cat "$log"
+          grep -qF 'PostgreSQL migration does not support -dry-run' "$log"
+          test "$(sudo systemctl is-active quay-app.service)" = active
+          if sudo test -e "$RUNNER_TEMP/quay-v3"; then
+            echo "FAIL: PostgreSQL dry run created the target directory"
+            exit 1
+          fi
 
       - name: Verify rollback after injected migrate failures
         run: |

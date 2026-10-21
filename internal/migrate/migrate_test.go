@@ -63,6 +63,51 @@ func TestMigrator_Run_DryRunValidatesApprovedSourceWithoutMutation(t *testing.T)
 	}
 }
 
+func TestMigrator_Run_DryRunTakesPrecedenceOverCleanupAndSkipInstall(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		cleanup     bool
+		skipInstall bool
+	}{
+		{name: "cleanup", cleanup: true},
+		{name: "skip-install", skipInstall: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validInstallMigrator(t)
+			m.DryRun = true
+			m.Cleanup = tc.cleanup
+			m.SkipInstall = tc.skipInstall
+			unitFile := filepath.Join(t.TempDir(), "quay-app.service")
+			if err := os.WriteFile(unitFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			m.Source.UnitFiles = []string{unitFile}
+			runner := &recordingRunner{}
+			m.Runner = runner
+
+			if err := m.Run(t.Context()); err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if !strings.Contains(m.Out.(*bytes.Buffer).String(), "Detected OMR installation") {
+				t.Fatalf("dry-run did not print a plan: %q", m.Out.(*bytes.Buffer).String())
+			}
+			if len(runner.runCalls) != 0 {
+				t.Fatalf("dry-run ran commands: %v", runner.runCalls)
+			}
+			if _, err := os.Stat(unitFile); err != nil {
+				t.Fatalf("dry-run removed unit file: %v", err)
+			}
+			entries, err := os.ReadDir(m.DataDir)
+			if err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("dry-run modified target directory: %v", entries)
+			}
+		})
+	}
+}
+
 func TestMigrator_Run_DryRunRejectsForwardStampedMinimalSchema(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "quay_sqlite.db")
@@ -520,6 +565,70 @@ func TestMigrator_RunSQLiteValidateFailureRemovesRecoveredKeyMaterial(t *testing
 	}
 	if len(runner.runCalls) != 0 {
 		t.Errorf("failure before the stop ran source services: %v", runner.runCalls)
+	}
+}
+
+func TestMigrator_Run_DryRunLeavesSourceKeyMaterialAsFound(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		recovered bool
+		failValid bool
+	}{
+		{name: "recovered key, success", recovered: true},
+		{name: "recovered key, validate failure", recovered: true, failValid: true},
+		{name: "host key, success"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validInstallMigrator(t)
+			m.DryRun = true
+			m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+			outputs := map[string]string{}
+			if tc.recovered {
+				for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+					path := filepath.Join(m.Source.ConfigDir, name)
+					data, err := os.ReadFile(path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+					outputs[filepath.Join(sourceContainerConf, name)] = string(data)
+				}
+			}
+			runner := &containerKeyRunner{material: sourceMaterialRunner{outputs: outputs}}
+			m.Runner = runner
+			if tc.failValid {
+				// A non-empty target fails validation after the key material is recovered.
+				if err := os.MkdirAll(m.DataDir, 0o750); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(m.DataDir, "unrelated"), nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			err := m.Run(t.Context())
+			if tc.failValid {
+				if err == nil || !strings.Contains(err.Error(), "is not empty") {
+					t.Fatalf("Run error = %v, want non-empty target rejection", err)
+				}
+			} else if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if tc.recovered && runner.material.outputCalls == 0 {
+				t.Fatal("key material was not recovered from the source container")
+			}
+			for _, name := range []string{legacyPrivateKeyName, legacyKeyIDName} {
+				_, err := os.Stat(filepath.Join(m.Source.ConfigDir, name))
+				if tc.recovered && !os.IsNotExist(err) {
+					t.Errorf("dry-run left recovered %s in source config dir: %v", name, err)
+				}
+				if !tc.recovered && err != nil {
+					t.Errorf("dry-run removed pre-existing %s: %v", name, err)
+				}
+			}
+		})
 	}
 }
 

@@ -109,10 +109,10 @@ func (m *Migrator) Run(ctx context.Context) error {
 func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	if m.DryRun {
 		if err := m.validate(ctx); err != nil {
-			return fmt.Errorf("validate: %w", err)
+			return errors.Join(fmt.Errorf("validate: %w", err), m.removePersistedConfigMaterial())
 		}
 		m.printPlan()
-		return nil
+		return m.removePersistedConfigMaterial()
 	}
 
 	if err := m.refuseResumeOverInstall(); err != nil {
