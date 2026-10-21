@@ -1026,6 +1026,12 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable rate limits on API and registry endpoints. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: ALB health check with drain file support.
+        "FEATURE_ALB_HEALTH_CHECK": {
+            "type": "boolean",
+            "description": "Whether to enable the /health/alb endpoint for ALB health checks with drain file support. Defaults to False",
+            "x-example": True,
+        },
         # Feature Flag: Aggregated log retrieval.
         "FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL": {
             "type": "boolean",
