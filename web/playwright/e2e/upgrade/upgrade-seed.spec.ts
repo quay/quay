@@ -98,11 +98,11 @@ test.describe(
         }),
       );
 
-      // Relationship data — the rows most likely to be disturbed by a schema
-      // migration. Add the seeded user to the team (user<->team join) ...
+      // Relationship data — confirmed robot membership bypasses an invite even
+      // when FEATURE_MAILING is true.
       ok(
         await adminClient.put(
-          `/api/v1/organization/${UPGRADE.org}/team/${UPGRADE.team}/members/${UPGRADE.user.username}`,
+          `/api/v1/organization/${UPGRADE.org}/team/${UPGRADE.team}/members/${UPGRADE.org}+${UPGRADE.robotShortname}`,
         ),
       );
       // ... and grant the team write on the repo (team<->repo permission join).
