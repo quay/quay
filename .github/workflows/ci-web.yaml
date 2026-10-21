@@ -437,9 +437,15 @@ jobs:
             --queries .github/ci-metrics/queries.json --out quay-metrics
           python3 .github/scripts/ci-metrics.py summarize --in quay-metrics
           cat quay-metrics/summary.md >> "$GITHUB_STEP_SUMMARY"
-          docker stop quay-prometheus
-          tar -czf quay-metrics/tsdb.tar.gz -C "$RUNNER_TEMP" prometheus-tsdb
-          du -ab quay-metrics
+
+      - name: Stop Prometheus and archive Quay metrics
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p quay-metrics
+          docker stop quay-prometheus || true
+          tar -czf quay-metrics/tsdb.tar.gz -C "$RUNNER_TEMP" prometheus-tsdb || true
+          du -ab quay-metrics || true
 
       - name: Upload Quay metrics
         if: always()
