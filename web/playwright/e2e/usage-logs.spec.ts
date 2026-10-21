@@ -776,7 +776,7 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
 
       const descriptionCell = table
-        .locator('td')
+        .getByRole('gridcell')
         .filter({hasText: longDescription})
         .first();
       await expect(descriptionCell).toBeVisible();
@@ -831,9 +831,26 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
               scrollWidth: header.scrollWidth,
             };
           });
+          const tableRect = table.getBoundingClientRect();
+          const cellGeometry = Array.from(
+            row.querySelectorAll<HTMLTableCellElement>('td'),
+          ).map((cell) => {
+            const rect = cell.getBoundingClientRect();
+            return {
+              left: rect.left,
+              right: rect.right,
+              clientWidth: cell.clientWidth,
+              scrollWidth: cell.scrollWidth,
+              display: getComputedStyle(cell).display,
+            };
+          });
           const rowRect = row.getBoundingClientRect();
           return {
             headerGeometry,
+            tableDisplay: getComputedStyle(table).display,
+            tableLeft: tableRect.left,
+            tableRight: tableRect.right,
+            cellGeometry,
             rowLeft: rowRect.left,
             rowRight: rowRect.right,
             viewportWidth: window.innerWidth,
@@ -867,9 +884,31 @@ test.describe('Usage Logs responsive columns', {tag: '@logs'}, () => {
       }
 
       await superuserPage.setViewportSize({width: 600, height: 900});
+      await superuserPage.waitForFunction(() => {
+        const responsiveTable = document.querySelector<HTMLElement>(
+          '[data-testid="usage-logs-table"]',
+        );
+        return (
+          responsiveTable &&
+          getComputedStyle(responsiveTable).display === 'grid'
+        );
+      });
       await logRow.scrollIntoViewIfNeeded();
+      const mobileGeometry = await getTableGeometry();
+      expect(mobileGeometry.tableDisplay).toBe('grid');
+      expect(mobileGeometry.tableLeft).toBeGreaterThanOrEqual(-1);
+      expect(mobileGeometry.tableRight).toBeLessThanOrEqual(
+        mobileGeometry.viewportWidth + 1,
+      );
+      mobileGeometry.cellGeometry.forEach((cell) => {
+        expect(cell.display).toBe('grid');
+        expect(cell.left).toBeGreaterThanOrEqual(-1);
+        expect(cell.right).toBeLessThanOrEqual(
+          mobileGeometry.viewportWidth + 1,
+        );
+        expect(cell.scrollWidth).toBeLessThanOrEqual(cell.clientWidth + 1);
+      });
       for (const [index, dataLabel] of dataLabels.entries()) {
-        await expect(cells.nth(index)).toBeVisible();
         await expect(cells.nth(index)).toHaveAttribute('data-label', dataLabel);
       }
     },
