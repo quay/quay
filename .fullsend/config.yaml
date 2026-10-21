@@ -7,7 +7,6 @@ version: "1"
 roles:
     - triage
     - coder
-    - review
     - fix
     - prioritize
 agents:
