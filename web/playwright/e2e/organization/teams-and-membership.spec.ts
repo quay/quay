@@ -148,9 +148,9 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('create-team-confirm').click();
 
     await expect(
-      authenticatedPage.getByRole('heading', {
-        name: `Success alert: Successfully created new team: ${teamName}`,
-      }),
+      authenticatedPage
+        .getByText(`Successfully created new team: ${teamName}`)
+        .last(),
     ).toBeVisible();
 
     await authenticatedPage.getByTestId('next-btn').click();
@@ -166,7 +166,11 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await expect(
       authenticatedPage.getByTestId('selected-team-members-review'),
     ).toHaveValue('');
-    await authenticatedPage.getByTestId('review-and-finish-wizard-btn').click();
+    const finishButton = authenticatedPage.getByTestId(
+      'review-and-finish-wizard-btn',
+    );
+    await finishButton.click();
+    await expect(finishButton).toBeHidden();
 
     await searchForTeam(authenticatedPage, teamName);
   });
