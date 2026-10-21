@@ -343,8 +343,10 @@ func TestRunIsIdempotent(t *testing.T) {
 }
 
 func TestValidateDataDir(t *testing.T) {
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
+	root, home := homeAliasLayout(t)
+	require.NoError(t, os.Mkdir(filepath.Join(root, "opt"), 0o755))
+	link := filepath.Join(root, "opt", "data-link")
+	require.NoError(t, os.Symlink(filepath.Join(home, "data"), link))
 
 	dangerous := []struct {
 		path string
@@ -355,6 +357,11 @@ func TestValidateDataDir(t *testing.T) {
 		{home, "home directory"},
 		{"///", "triple slash normalises to root"},
 		{home + "/.", "home with trailing dot normalises to home"},
+		{home + "/", "home with trailing slash"},
+		{filepath.Join(root, "home", "u"), "home through a symlinked alias"},
+		{filepath.Join(root, "var", "home"), "parent of home"},
+		{home + "/..", "parent of home via dot-dot"},
+		{link + "/..", "symlink into home then dot-dot"},
 	}
 	for _, tc := range dangerous {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -370,6 +377,8 @@ func TestValidateDataDir(t *testing.T) {
 		{"/var/lib/quay", "standard quay data dir"},
 		{"/opt/mirror-registry/data", "mirror-registry data dir"},
 		{home + "/mirror-registry", "subdirectory of home"},
+		{home + "/data", "existing subdirectory of home"},
+		{filepath.Join(root, "srv", "quay"), "nonexistent directory"},
 	}
 	for _, tc := range safe {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -377,6 +386,30 @@ func TestValidateDataDir(t *testing.T) {
 				"unexpected error for safe path %q", tc.path)
 		})
 	}
+
+	t.Run("HOME with trailing slash", func(t *testing.T) {
+		t.Setenv("HOME", home+"/")
+		assert.Error(t, validateDataDir(home))
+	})
+
+	t.Run("parent of home whose name starts with dot-dot", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("HOME", filepath.Join(dir, "..u"))
+		assert.Error(t, validateDataDir(dir))
+	})
+}
+
+// homeAliasLayout mirrors Fedora atomic and RHEL image mode, where /home is a
+// symlink to /var/home: HOME is <root>/var/home/u and <root>/home aliases
+// <root>/var/home.
+func homeAliasLayout(t *testing.T) (root, home string) {
+	t.Helper()
+	root = t.TempDir()
+	home = filepath.Join(root, "var", "home", "u")
+	require.NoError(t, os.MkdirAll(filepath.Join(home, "data"), 0o755))
+	require.NoError(t, os.Symlink(filepath.Join(root, "var", "home"), filepath.Join(root, "home")))
+	t.Setenv("HOME", home)
+	return root, home
 }
 
 func TestRunRejectsUnsafeDataDirBeforePurge(t *testing.T) {
@@ -386,7 +419,7 @@ func TestRunRejectsUnsafeDataDirBeforePurge(t *testing.T) {
 		systemd: services,
 		quadlet: system.NewQuadletManager(system.OSFS{}, env),
 		env:     env,
-		fs:      system.OSFS{},
+		fs:      &noRemoveAllFS{},
 	}
 
 	err := u.Run(t.Context(), &Config{DataDir: "/", Purge: true})
@@ -426,6 +459,26 @@ func TestRunPurgeRejectsHomeAsExplicitDataDir(t *testing.T) {
 			assert.Empty(t, fs.removed, "nothing may be removed")
 		})
 	}
+}
+
+func TestRunPurgeRejectsHomeAliasAsExplicitDataDir(t *testing.T) {
+	root, _ := homeAliasLayout(t)
+
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	services := &recordingServiceManager{}
+	fs := &noRemoveAllFS{}
+	u := &Uninstaller{
+		systemd: services,
+		quadlet: system.NewQuadletManager(system.OSFS{}, env),
+		env:     env,
+		fs:      fs,
+	}
+
+	err := u.Run(t.Context(), &Config{DataDir: filepath.Join(root, "home", "u"), Purge: true})
+
+	require.ErrorContains(t, err, "refusing to remove home directory")
+	assert.Empty(t, services.calls, "must fail before touching the service")
+	assert.Empty(t, fs.removed, "nothing may be removed")
 }
 
 func TestRunPurgeRejectsHomeAsDataDirFromQuadlet(t *testing.T) {
