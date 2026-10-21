@@ -138,8 +138,16 @@ export function InvoiceList({organizationName}: Props) {
                     icon={<DownloadIcon />}
                     href={
                       inv.download_url ??
-                      `/receipt?id=${encodeURIComponent(inv.id)}`
+                      `${
+                        process.env.QUAY_HOSTED === 'true'
+                          ? 'https://quay.io'
+                          : ''
+                      }/receipt?id=${encodeURIComponent(inv.id)}`
                     }
+                    target={
+                      process.env.QUAY_HOSTED === 'true' ? '_blank' : undefined
+                    }
+                    rel="noopener noreferrer"
                     download={`quay-invoice-${inv.id}.pdf`}
                     aria-label={`Download invoice ${inv.id} as PDF`}
                   >

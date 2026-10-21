@@ -1,6 +1,7 @@
 import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {ResourceError} from './ErrorHandling';
+import {getStripeCheckoutUrl} from 'src/libs/billing';
 
 export type SubscriptionStatus =
   | 'active'
@@ -114,7 +115,10 @@ export async function createCardSetupSession(
   if (!response.data?.url) {
     throw new Error('Stripe did not return a checkout URL. Please try again.');
   }
-  return response.data;
+  return {
+    ...response.data,
+    url: getStripeCheckoutUrl(response.data.url, window.location.origin),
+  };
 }
 
 export async function createSubscriptionCheckoutSession(
@@ -129,7 +133,10 @@ export async function createSubscriptionCheckoutSession(
   const response = await axios.post<{url: string}>(path, {plan, ...returnUrls});
   if (!response.data?.url)
     throw new Error('Stripe did not return a checkout URL. Please try again.');
-  return response.data;
+  return {
+    ...response.data,
+    url: getStripeCheckoutUrl(response.data.url, window.location.origin),
+  };
 }
 
 export interface MarketplaceSubscription {

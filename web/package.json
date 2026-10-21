@@ -44,6 +44,10 @@
   },
   "scripts": {
     "start": "webpack serve --color --progress --config webpack.dev.js",
+    "start:hosted": "webpack serve --config webpack.hosted.js",
+    "test:hosted-proxy": "node --test hosted-quay.test.cjs",
+    "check:hosted": "node check-hosted-quay.cjs",
+    "test:hosted": "playwright test --config playwright/hosted.config.ts",
     "build": "webpack --config webpack.prod.js",
     "start-plugin": "NODE_ENV=development webpack serve --color --progress --config webpack.plugin.js",
     "build-plugin": "NODE_ENV=production webpack --config webpack.plugin.js",

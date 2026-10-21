@@ -1,4 +1,11 @@
-import type {BillingCard, Invoice, Plan} from 'src/resources/BillingResource';
+import type {
+  BillingCard,
+  Invoice,
+  Plan,
+  Subscription,
+} from 'src/resources/BillingResource';
+import {isAxiosError} from 'axios';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 export function getPlanInformationPath(namespace: string): string {
   return `/organization/${encodeURIComponent(
@@ -15,6 +22,53 @@ export function getCardSetupReturnUrls(
   const success_url = url.toString();
   url.searchParams.set('paymentMethod', 'canceled');
   return {success_url, cancel_url: url.toString()};
+}
+
+export function getPlanCheckoutReturnUrls(
+  namespace: string,
+  origin: string,
+  plan: string,
+): {success_url: string; cancel_url: string} {
+  const url = new URL(getPlanInformationPath(namespace), origin);
+  url.searchParams.set('planCheckout', 'returned');
+  url.searchParams.set('checkoutPlan', plan);
+  const success_url = url.toString();
+  url.searchParams.set('planCheckout', 'canceled');
+  return {success_url, cancel_url: url.toString()};
+}
+
+export function getPlanChangeAction(
+  current: Subscription,
+  plan: Plan,
+  isPrototype: boolean,
+): 'checkout' | 'update' {
+  // Creating checkout for a subscriber can create a second Stripe subscription.
+  return plan.price > 0 && (isPrototype || !current.hasSubscription)
+    ? 'checkout'
+    : 'update';
+}
+
+export function getStripeCheckoutUrl(value: string, origin: string): string {
+  const url = new URL(value, origin);
+  const isStripe = url.origin === 'https://checkout.stripe.com';
+  const isPreview =
+    process.env.MOCK_API === 'true' &&
+    url.origin === origin &&
+    url.searchParams.get('prototypeCheckout') === '1';
+  if ((!isStripe && !isPreview) || url.username || url.password) {
+    throw new Error('Quay did not return a valid Stripe Checkout URL.');
+  }
+  return url.toString();
+}
+
+export function getBillingErrorMessage(error: unknown): string {
+  if (
+    isAxiosError<{carderror?: string}>(error) &&
+    error.response?.status === 402
+  ) {
+    return 'Your payment could not be completed. Update your payment method and try again.';
+  }
+  return getErrorMessageFromUnknown(error);
 }
 
 export function formatPlanPrice(price: number): string {

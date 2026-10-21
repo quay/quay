@@ -1,6 +1,8 @@
 import {useEffect, useState} from 'react';
 import {
   Alert,
+  ActionList,
+  ActionListItem,
   Button,
   Content,
   Flex,
@@ -25,6 +27,7 @@ import {UsageSection} from './UsageSection';
 import {PaymentMethodSection} from './PaymentMethodSection';
 import MarketplaceDetails from './MarketplaceDetails';
 import {InvoiceSettingsModal} from './InvoiceSettingsModal';
+import {getBillingErrorMessage} from 'src/libs/billing';
 
 type BillingInformationProps = {organizationName: string};
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
@@ -41,18 +44,43 @@ export const BillingInformation = ({
   const settings = isUserOrganization ? user : organization;
   const stripeSetup = useStripeCardSetup(organizationName, !isUserOrganization);
   const checkoutResult = searchParams.get('paymentMethod');
+  const planCheckoutResult = searchParams.get('planCheckout');
+  const expectedPlan = searchParams.get('checkoutPlan');
+  const [checkingCheckout, setCheckingCheckout] = useState(false);
 
   useEffect(() => {
-    if (checkoutResult !== 'returned') return;
+    if (checkoutResult !== 'returned' && planCheckoutResult !== 'returned')
+      return;
     // Stripe's webhook may finish after Checkout redirects back to Quay.
+    setCheckingCheckout(true);
+    const refresh = () => {
+      void queryClient.invalidateQueries(['card', organizationName]);
+      void queryClient.invalidateQueries([
+        'organization',
+        isUserOrganization ? null : organizationName,
+        'plan',
+      ]);
+      void queryClient.invalidateQueries(['privateallowed', organizationName]);
+      void queryClient.invalidateQueries(['invoices', organizationName]);
+    };
+    refresh();
     let refreshes = 0;
     const interval = window.setInterval(() => {
-      void queryClient.invalidateQueries(['card', organizationName]);
+      refresh();
       refreshes += 1;
-      if (refreshes >= 5) window.clearInterval(interval);
+      if (refreshes >= 5) {
+        window.clearInterval(interval);
+        setCheckingCheckout(false);
+      }
     }, 2000);
     return () => window.clearInterval(interval);
-  }, [checkoutResult, organizationName, queryClient]);
+  }, [
+    checkoutResult,
+    planCheckoutResult,
+    organizationName,
+    isUserOrganization,
+    queryClient,
+  ]);
 
   const {
     currentPlan,
@@ -102,6 +130,36 @@ export const BillingInformation = ({
   return (
     <Stack hasGutter style={{maxWidth: '600px'}} data-testid="plan-information">
       <Alerts />
+      {(checkoutResult === 'canceled' || planCheckoutResult === 'canceled') && (
+        <Alert isInline variant="info" title="Stripe Checkout canceled" />
+      )}
+      {planCheckoutResult === 'returned' && (
+        <Alert
+          isInline
+          variant={currentPlan?.plan === expectedPlan ? 'success' : 'info'}
+          title={
+            currentPlan?.plan === expectedPlan
+              ? 'Your subscription has been updated.'
+              : checkingCheckout
+              ? 'Checking your subscription with Quay…'
+              : 'Your subscription has not been confirmed yet.'
+          }
+        >
+          {currentPlan?.plan !== expectedPlan &&
+            'Refresh this page to check again. Quay may still be processing your checkout.'}
+        </Alert>
+      )}
+      {checkoutResult === 'returned' && (
+        <Alert
+          isInline
+          variant="info"
+          title={
+            checkingCheckout
+              ? 'Refreshing your payment method from Quay…'
+              : 'Returned from Stripe. Review your payment method below.'
+          }
+        />
+      )}
       {currentPlan?.status === 'past_due' && (
         <Alert variant="danger" title="Payment failed" isInline>
           Your last payment failed. Please update your payment method to avoid
@@ -129,34 +187,46 @@ export const BillingInformation = ({
           isInline
           variant="danger"
           title="Unable to open Stripe Checkout. Please try again."
-        />
+        >
+          {getBillingErrorMessage(stripeSetup.error)}
+        </Alert>
       )}
       <PaymentMethodSection
         card={card}
         isLoading={cardLoading}
         isError={cardError}
-        isUpdating={stripeSetup.isLoading}
-        onChange={
-          process.env.MOCK_API === 'true' || currentPlan?.hasSubscription
-            ? () => stripeSetup.mutate()
-            : undefined
-        }
       />
-      <div>
-        <Button
-          variant="secondary"
-          onClick={() =>
-            navigate(
-              NavigationPath.organizationPlans.replace(
-                ':organizationName',
-                encodeURIComponent(organizationName),
-              ),
-            )
-          }
-        >
-          Change Plan
-        </Button>
-      </div>
+      <ActionList>
+        {(process.env.MOCK_API === 'true' || currentPlan?.hasSubscription) &&
+          !cardLoading &&
+          !cardError && (
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                onClick={() => stripeSetup.mutate()}
+                isLoading={stripeSetup.isLoading}
+                isDisabled={stripeSetup.isLoading}
+              >
+                {card?.last4 ? 'Change payment method' : 'Add payment method'}
+              </Button>
+            </ActionListItem>
+          )}
+        <ActionListItem>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              navigate(
+                NavigationPath.organizationPlans.replace(
+                  ':organizationName',
+                  encodeURIComponent(organizationName),
+                ),
+              )
+            }
+          >
+            Change Plan
+          </Button>
+        </ActionListItem>
+      </ActionList>
       <MarketplaceDetails organizationName={organizationName} />
       <section aria-labelledby="billing-invoices-heading">
         <Title

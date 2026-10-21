@@ -52,7 +52,7 @@ const axiosIns = axios.create({
   baseURL: axios.defaults.baseURL,
 });
 axiosIns.interceptors.request.use(async (config) => {
-  if (!GlobalAuthState.csrfToken) {
+  if (!GlobalAuthState.csrfToken && process.env.QUAY_HOSTED !== 'true') {
     const r = await getCsrfToken();
     GlobalAuthState.csrfToken = r.csrf_token;
   }
@@ -83,6 +83,8 @@ axiosIns.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
+      // The development proxy owns OAuth authentication; a browser login cannot refresh it.
+      if (process.env.QUAY_HOSTED === 'true') throw error;
       const data = error.response?.data;
       const isFreshLoginRequired =
         data?.title === 'fresh_login_required' ||

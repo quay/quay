@@ -35,7 +35,9 @@ import {
   formatPlanPrice,
   getAvailablePlans,
   getPlanInformationPath,
-  getCardSetupReturnUrls,
+  getPlanCheckoutReturnUrls,
+  getPlanChangeAction,
+  getBillingErrorMessage,
 } from 'src/libs/billing';
 import {BillingBreadcrumb} from './BillingBreadcrumb';
 import {CurrentPlanSection} from './CurrentPlanSection';
@@ -67,11 +69,13 @@ export function ChangePlan({organizationName}: Props) {
   const isError = !!currentPlanError || !!errorFetchingPlanData;
   const checkout = useMutation({
     mutationFn: (plan: Plan) => {
-      if (process.env.MOCK_API !== 'true')
-        throw new Error('Plan checkout is only enabled in the prototype.');
       return createSubscriptionCheckoutSession(
         plan.stripeId,
-        getCardSetupReturnUrls(organizationName, window.location.origin),
+        getPlanCheckoutReturnUrls(
+          organizationName,
+          window.location.origin,
+          plan.stripeId,
+        ),
         isUserOrganization ? null : organizationName,
       );
     },
@@ -79,9 +83,6 @@ export function ChangePlan({organizationName}: Props) {
   });
   const changePlan = useMutation({
     mutationFn: (plan: Plan) => {
-      if (process.env.MOCK_API !== 'true') {
-        throw new Error('Plan switching is only enabled in the prototype.');
-      }
       return setSubscription(
         plan.stripeId,
         isUserOrganization ? null : organizationName,
@@ -95,6 +96,8 @@ export function ChangePlan({organizationName}: Props) {
           'plan',
         ]),
         queryClient.invalidateQueries(['privateallowed', organizationName]),
+        queryClient.invalidateQueries(['card', organizationName]),
+        queryClient.invalidateQueries(['invoices', organizationName]),
       ]);
       setPendingPlan(null);
       addAlert({
@@ -178,7 +181,9 @@ export function ChangePlan({organizationName}: Props) {
           variant="danger"
           title="Unable to open plan checkout. Please try again."
           className="pf-v6-u-mb-md"
-        />
+        >
+          {getBillingErrorMessage(checkout.error)}
+        </Alert>
       )}
       {isLoading ? (
         <Skeleton height="240px" screenreaderText="Loading available plans" />
@@ -225,14 +230,22 @@ export function ChangePlan({organizationName}: Props) {
                   <Button
                     variant="primary"
                     isDisabled={
-                      process.env.MOCK_API !== 'true' || checkout.isLoading
+                      !currentPlan || checkout.isLoading || changePlan.isLoading
                     }
                     isLoading={
                       checkout.isLoading &&
                       checkout.variables?.stripeId === plan.stripeId
                     }
                     onClick={() => {
-                      if (plan.price > 0) checkout.mutate(plan);
+                      if (!currentPlan) return;
+                      if (
+                        getPlanChangeAction(
+                          currentPlan,
+                          plan,
+                          process.env.MOCK_API === 'true',
+                        ) === 'checkout'
+                      )
+                        checkout.mutate(plan);
                       else {
                         changePlan.reset();
                         setPendingPlan(plan);
@@ -263,7 +276,9 @@ export function ChangePlan({organizationName}: Props) {
               variant="danger"
               title="Unable to change your plan. Please try again."
               className="pf-v6-u-mb-md"
-            />
+            >
+              {getBillingErrorMessage(changePlan.error)}
+            </Alert>
           )}
           Switch from <strong>{planDetail?.title ?? currentPlan?.plan}</strong>{' '}
           to <strong>{pendingPlan?.title}</strong> for{' '}

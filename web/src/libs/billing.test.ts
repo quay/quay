@@ -5,9 +5,14 @@ import {
   getAvailablePlans,
   getPlanInformationPath,
   getCardSetupReturnUrls,
+  getPlanCheckoutReturnUrls,
+  getPlanChangeAction,
+  getStripeCheckoutUrl,
+  getBillingErrorMessage,
   summarizeSampleCard,
 } from './billing';
-import type {Plan} from 'src/resources/BillingResource';
+import {AxiosError} from 'axios';
+import type {Plan, Subscription} from 'src/resources/BillingResource';
 import invoices from 'src/tests/fake-db/data/billing/invoices.json';
 
 const now = new Date(2026, 9, 12);
@@ -19,6 +24,76 @@ const details = {
 };
 
 describe('billing helpers', () => {
+  it('explains payment failures without retrying a subscription creation', () => {
+    const error = new AxiosError('Payment required');
+    error.response = {
+      status: 402,
+      data: {carderror: 'Declined'},
+    } as AxiosError['response'];
+    expect(getBillingErrorMessage(error)).toContain(
+      'Update your payment method',
+    );
+    expect(getBillingErrorMessage(new Error('No checkout URL'))).toBe(
+      'No checkout URL',
+    );
+  });
+  it('uses checkout only for new paid subscriptions outside the prototype', () => {
+    const subscriber = {
+      hasSubscription: true,
+      plan: 'existing',
+    } as Subscription;
+    const newCustomer = {hasSubscription: false, plan: 'free'} as Subscription;
+    const paid = {price: 3000} as Plan;
+    const free = {price: 0} as Plan;
+    expect(getPlanChangeAction(subscriber, paid, false)).toBe('update');
+    expect(getPlanChangeAction(subscriber, free, false)).toBe('update');
+    expect(getPlanChangeAction(newCustomer, paid, false)).toBe('checkout');
+    expect(
+      getPlanChangeAction(
+        {...newCustomer, isExistingCustomer: true},
+        paid,
+        false,
+      ),
+    ).toBe('checkout');
+    expect(getPlanChangeAction(subscriber, paid, true)).toBe('checkout');
+  });
+
+  it('returns subscription checkout outcomes to the selected namespace with the expected plan', () => {
+    const urls = getPlanCheckoutReturnUrls(
+      'my-org',
+      'https://localhost:9010',
+      'bus-micro-2018',
+    );
+    const success = new URL(urls.success_url);
+    const cancel = new URL(urls.cancel_url);
+    expect(success.pathname).toBe('/organization/my-org');
+    expect(success.searchParams.get('planCheckout')).toBe('returned');
+    expect(success.searchParams.get('checkoutPlan')).toBe('bus-micro-2018');
+    expect(success.searchParams.get('settingsTab')).toBe('billinginformation');
+    expect(success.searchParams.has('paymentMethod')).toBe(false);
+    expect(cancel.searchParams.get('planCheckout')).toBe('canceled');
+  });
+
+  it('accepts hosted Stripe Checkout and rejects unrelated or unsafe redirect URLs', () => {
+    expect(
+      getStripeCheckoutUrl(
+        'https://checkout.stripe.com/c/pay/cs_live_example',
+        'https://localhost:9010',
+      ),
+    ).toBe('https://checkout.stripe.com/c/pay/cs_live_example');
+    for (const url of [
+      'javascript:alert(1)',
+      'https://example.com',
+      'https://checkout.stripe.com.attacker.example',
+      'http://checkout.stripe.com',
+      'https://user@checkout.stripe.com',
+    ]) {
+      expect(() =>
+        getStripeCheckoutUrl(url, 'https://localhost:9010'),
+      ).toThrow();
+    }
+  });
+
   it('matches invoice keywords across dates, IDs, prices, plans, and payment status', () => {
     const matchingIds = (query: string) =>
       filterInvoices(invoices, query, 'en-US').map((invoice) => invoice.id);

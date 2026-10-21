@@ -41,6 +41,76 @@ CORS_ORIGIN: "http://localhost:9000"
 If you are using `docker-compose` for local development, you can add this to `local-dev/stack/config.yaml`
 in the Quay repo.
 
+## Local UI with hosted Quay.io billing
+
+Run `npm run start:hosted` to serve the local UI at **https://localhost:9010**
+with hot reload and a same-origin proxy to `https://quay.io`. This profile ignores
+`.env.development`, disables the mock API and sample invoice assets, and needs no
+local Quay backend or Stripe API key. Quay.io creates the Stripe Checkout sessions.
+
+Create an OAuth application/token in Quay.io under Organization → Applications →
+Generate Token. Grant `user:read`, plus `user:admin` for personal billing and/or
+`org:admin` for organization billing; the token's user must administer the organization.
+See the [Quay OAuth documentation](https://docs.quay.io/api/).
+Configure the token only in the terminal running the development server. For zsh:
+
+```zsh
+cd web
+read -rs 'QUAY_OAUTH_TOKEN?Quay OAuth token: '
+export QUAY_OAUTH_TOKEN
+export QUAY_HOSTED_NAMESPACE=your_namespace
+npm run check:hosted
+npm run start:hosted
+```
+
+The token stays in the Node process. It is added to upstream API requests only;
+it is never a React environment variable. Do not paste tokens into source files,
+chat, URLs, or command arguments. The proxy binds to loopback, validates local
+origins and XHR headers, verifies upstream TLS, and strips browser credentials and
+upstream session cookies. Signing in to quay.io in another tab does not authenticate
+this profile. To switch accounts, stop the server, replace the token, restart, and
+reload the local page. An expired/revoked token requires the same process.
+
+Webpack supplies a development HTTPS certificate by default. For a trusted local
+certificate, set `QUAY_DEV_TLS_CERT` and `QUAY_DEV_TLS_KEY` to certificate/key files
+outside the repository before starting. Both must cover `localhost`. Set `PORT`
+to change 9010; use that same origin in checkout and Playwright.
+
+Open `/organization/your_namespace?tab=Settings&settingsTab=billinginformation`.
+Validate read access first with `npm run check:hosted` and, with the server running,
+`PLAYWRIGHT_CHANNEL=chrome npm run test:hosted`. These checks never submit payments
+or change subscriptions. Hosted browser checks do not record account traces or screenshots.
+
+The proxy starts **read-only**. To intentionally enable real billing changes for
+the designated account, restart it with:
+
+```zsh
+QUAY_BILLING_WRITES=true npm run start:hosted
+```
+
+Only plan POST/PUT and card-setup POST requests are enabled by this switch. Other
+writes, including invoice settings and Customer Portal subscription assignment,
+remain blocked in this development profile. Billing writes act on the real Quay.io
+account and can incur charges. Automated checks do not complete live Checkout.
+
+New paid subscriptions use POST `/api/v1/user/plan` or
+`/api/v1/organization/<name>/plan` and navigate to the returned Stripe URL.
+Existing subscription changes use PUT on the same route after confirmation;
+opening a new subscription Checkout for an existing subscriber could duplicate it.
+Payment changes use POST on the corresponding `/card` route, which requires an
+existing subscription. Success/cancel URLs return to this local origin. After a
+return, the UI refreshes authoritative billing data for up to ten seconds while
+the hosted Quay webhook completes. A redirect alone does not confirm a plan change.
+
+The hosted deployment's endpoint availability, OAuth permissions, and acceptance
+of local return URLs must be verified with the designated account; repository
+source alone does not establish compatibility. The mock-only bulk invoice ZIP is
+disabled outside mock mode. Individual receipts open on quay.io, whose receipt
+route requires a browser session; sign in there to download them. The development
+proxy's OAuth token does not establish that browser session.
+To return to the prototype, stop the hosted server and
+run `MOCK_API=true npm start -- --port 9010 --host 127.0.0.1 --no-open` (HTTP).
+
 ## Testing
 
 ```bash
