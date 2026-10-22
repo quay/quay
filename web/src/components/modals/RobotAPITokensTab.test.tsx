@@ -159,6 +159,7 @@ describe('RobotAPITokensTab', () => {
     const initialFetchCalls = resourceMocks.fetch.mock.calls.length;
 
     rerender(<RobotAPITokensTab {...props} canManageRobotAPITokens={false} />);
+    rerender(<RobotAPITokensTab {...props} />);
     resolveCreate({token: 'late-token'});
 
     await waitFor(() =>
@@ -168,9 +169,16 @@ describe('RobotAPITokensTab', () => {
     );
     expect(screen.queryByText('late-token')).not.toBeInTheDocument();
 
-    rerender(<RobotAPITokensTab {...props} />);
+    resourceMocks.create.mockResolvedValue({token: 'fresh-token'});
+    await user.click(screen.getByRole('button', {name: 'Create API token'}));
+    await user.type(screen.getByRole('textbox'), 'Fresh CI token');
+    await user.click(
+      screen.getByRole('checkbox', {name: 'View all visible repositories'}),
+    );
+    await user.click(screen.getByRole('button', {name: 'Create'}));
 
-    expect(screen.queryByText('late-token')).not.toBeInTheDocument();
+    expect(await screen.findByText('fresh-token')).toBeInTheDocument();
+    expect(resourceMocks.create).toHaveBeenCalledTimes(2);
   });
 
   it('closes the bulk revoke confirmation when namespace management permission is lost', async () => {
