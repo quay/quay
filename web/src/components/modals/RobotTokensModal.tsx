@@ -67,8 +67,10 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
         organization.name === props.namespace &&
         organization.is_org_admin === true,
     );
+  const canModifyAsFullAccessSuperuser =
+    canModifyAsSuperuser && config?.features?.SUPERUSERS_FULL_ACCESS === true;
   const canManageRobotAPITokens =
-    !isLoadingUser && (isNamespaceManager || canModifyAsSuperuser);
+    !isLoadingUser && (isNamespaceManager || canModifyAsFullAccessSuperuser);
   const [secretScopeSelected, setSecretScopeSelected] = useState<string>(
     domain + '/' + props.namespace,
   );
