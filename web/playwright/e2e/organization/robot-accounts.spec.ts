@@ -229,7 +229,8 @@ test.describe(
         const tokensTable = authenticatedPage.getByTestId(
           'robot-api-tokens-table',
         );
-        const freshPasswordInput = authenticatedPage.locator('#fresh-password');
+        const freshPasswordInput =
+          authenticatedPage.getByLabel('Current Password');
         await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
           timeout: 15_000,
         });
@@ -276,7 +277,7 @@ test.describe(
         await readonlyPage.getByRole('tab', {name: 'API Tokens'}).click();
 
         const tokensTable = readonlyPage.getByTestId('robot-api-tokens-table');
-        const freshPasswordInput = readonlyPage.locator('#fresh-password');
+        const freshPasswordInput = readonlyPage.getByLabel('Current Password');
         await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
           timeout: 15_000,
         });
