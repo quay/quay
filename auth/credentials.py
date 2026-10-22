@@ -13,6 +13,7 @@ from auth.credential_consts import (
 )
 from auth.log import log_action
 from auth.oauth import (
+    mark_robot_api_credential_used,
     validate_oauth_token,
     validate_robot_api_jwt,
     validate_robot_api_token,
@@ -142,7 +143,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                         ),
                         CredentialKind.robot,
                     )
-                return result, CredentialKind.robot
+                return mark_robot_api_credential_used(result), CredentialKind.robot
 
             if is_jwt(auth_password_or_token):
                 try:
@@ -161,7 +162,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                             ),
                             CredentialKind.robot,
                         )
-                    return result, CredentialKind.robot
+                    return mark_robot_api_credential_used(result), CredentialKind.robot
 
             robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
             assert robot

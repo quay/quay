@@ -6,6 +6,7 @@ interface RobotAPIToken {
   name: string;
   scope: string;
   token?: string;
+  last_accessed?: string | null;
 }
 
 interface RobotAPITokensResponse {
@@ -149,6 +150,68 @@ test.describe(
         expect(afterResponse.status()).toBe(200);
         const after = (await afterResponse.json()) as RobotAPITokensResponse;
         expect(after.tokens.map((token) => token.uuid)).toEqual([created.uuid]);
+      },
+    );
+
+    test(
+      'authenticating with a robot API token records the robot last_accessed',
+      {tag: '@PROJQUAY-13785'},
+      async ({authenticatedRequest, api, request}) => {
+        const org = await api.organization('robotlastaccess');
+        const robot = await api.robot(org.name, 'accessbot');
+        const repository = await api.repository(org.name, 'robotlastaccess');
+        await api.repositoryPermission(
+          org.name,
+          repository.name,
+          'user',
+          robot.fullName,
+          'read',
+        );
+        const csrfToken = await api.raw.getToken();
+        const robotUrl = `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`;
+
+        // A robot that has never authenticated has no last_accessed.
+        const unused = await authenticatedRequest.get(robotUrl);
+        expect(unused.status()).toBe(200);
+        expect((await unused.json()).last_accessed).toBeNull();
+
+        const createResponse = await authenticatedRequest.post(
+          `${robotUrl}/tokens`,
+          {
+            headers: {'X-CSRF-Token': csrfToken},
+            data: {
+              name: 'Playwright last_accessed token',
+              scope: 'repo:read',
+              expiration: 3600,
+            },
+          },
+        );
+        expect(createResponse.status()).toBe(200);
+        const created = (await createResponse.json()) as RobotAPIToken;
+
+        // Bearer use of the token on the API is a robot authentication.
+        const authenticatedAsRobot = await request.get(
+          `${API_URL}/api/v1/repository/${repository.fullName}`,
+          {headers: {Authorization: `Bearer ${created.token}`}},
+        );
+        expect(authenticatedAsRobot.status()).toBe(200);
+
+        const used = await authenticatedRequest.get(robotUrl);
+        expect(used.status()).toBe(200);
+        const usedRobot = await used.json();
+        expect(usedRobot.last_accessed).toEqual(expect.any(String));
+        expect(Date.parse(usedRobot.last_accessed)).not.toBeNaN();
+
+        // The token's own last_accessed keeps working as before.
+        const listResponse = await authenticatedRequest.get(
+          `${robotUrl}/tokens`,
+        );
+        expect(listResponse.status()).toBe(200);
+        const listed = (await listResponse.json()) as RobotAPITokensResponse;
+        const listedToken = listed.tokens.find(
+          (token) => token.uuid === created.uuid,
+        );
+        expect(listedToken?.last_accessed).toEqual(expect.any(String));
       },
     );
   },

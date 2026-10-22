@@ -669,8 +669,18 @@ def verify_robot(robot_username, password, instance_keys):
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotCredentialException(msg)
 
-    _basequery.update_last_accessed(robot)
+    update_robot_last_accessed(robot)
     return robot
+
+
+def update_robot_last_accessed(robot):
+    """
+    Records that the robot account authenticated, whichever credential it used (robot
+    password, robot API token or federated JWT).
+
+    Shares the throttling and read-only handling of the user last_accessed update.
+    """
+    _basequery.update_last_accessed(robot)
 
 
 def regenerate_robot_token(robot_shortname, parent):
