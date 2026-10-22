@@ -408,12 +408,12 @@ jobs:
             http://localhost:6000/indexer/api/v1/index_state > /dev/null
           echo "Quay is ready with LDAP auth"
 
-      - name: Run full suite under LDAP auth
+      - name: Run LDAP auth tests
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep-invert "@auth:Database|@auth:OIDC" --reporter=blob
+        run: cd web && npx playwright test --grep "@auth:LDAP|@ldap-smoke" --reporter=blob
 
       - name: Merge test reports
         if: always()

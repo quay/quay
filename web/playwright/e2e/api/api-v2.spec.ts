@@ -100,25 +100,29 @@ test.describe('V2 Registry API', {tag: ['@api', '@v2', '@container']}, () => {
     }
   });
 
-  test('list tags of image repository', async ({request}) => {
-    const scope = `repository:${orgName}/${repoName}:pull,push`;
-    const v2Token = await getV2Token(
-      request,
-      API_URL,
-      username,
-      password,
-      scope,
-    );
+  test(
+    'list tags of image repository',
+    {tag: '@ldap-smoke'},
+    async ({request}) => {
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
 
-    const r = await request.get(
-      `${API_URL}/v2/${orgName}/${repoName}/tags/list`,
-      {headers: {authorization: `Bearer ${v2Token}`}},
-    );
-    expect(r.status()).toBe(200);
+      const r = await request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/tags/list`,
+        {headers: {authorization: `Bearer ${v2Token}`}},
+      );
+      expect(r.status()).toBe(200);
 
-    const body = await r.json();
-    expect(body.tags).toContain('latest');
-  });
+      const body = await r.json();
+      expect(body.tags).toContain('latest');
+    },
+  );
 
   test('get manifest by tag name', async ({request}) => {
     const scope = `repository:${orgName}/${repoName}:pull,push`;
