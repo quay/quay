@@ -121,6 +121,15 @@ export interface CreateUserResponse {
   awaiting_verification?: boolean;
 }
 
+export interface CurrentUserResponse {
+  username: string;
+  organizations: Array<{
+    name: string;
+    can_create_repo?: boolean;
+    is_org_admin?: boolean;
+  }>;
+}
+
 export interface CreateRobotResponse {
   name: string;
   token: string;
@@ -1290,11 +1299,31 @@ export class ApiClient {
 
   // User notification methods
 
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    const response = await this.request.get(`${API_URL}/api/v1/user/`, {
+      timeout: 5000,
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get current user: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
   async getUserNotifications(limit = 5): Promise<{
     notifications: Array<{
       id: string;
       kind: string;
-      metadata: {name: string; repository: string};
+      metadata: {
+        name?: string;
+        repository?: string;
+        org?: string;
+        code?: string;
+      };
       dismissed: boolean;
     }>;
     additional: boolean;
@@ -1314,6 +1343,23 @@ export class ApiClient {
     }
 
     return response.json();
+  }
+
+  async acceptTeamInvite(code: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/teaminvite/${encodeURIComponent(code)}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`Failed to accept team invite: ${response.status()}`);
+    }
   }
 
   async dismissUserNotification(uuid: string): Promise<void> {
