@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   Alert,
@@ -108,10 +108,6 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
   const canManageRobotAPITokensRef = useRef(canManageRobotAPITokens);
   const permissionGenerationRef = useRef(0);
   const createPermissionGenerationRef = useRef<number | null>(null);
-  if (canManageRobotAPITokensRef.current !== canManageRobotAPITokens) {
-    canManageRobotAPITokensRef.current = canManageRobotAPITokens;
-    permissionGenerationRef.current += 1;
-  }
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -205,11 +201,16 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     selectedTokens.some((selected) => selected.uuid === token.uuid);
   const tokensForBulkRevoke = tokens.filter(isTokenSelected);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (canManageRobotAPITokensRef.current !== canManageRobotAPITokens) {
+      canManageRobotAPITokensRef.current = canManageRobotAPITokens;
+      permissionGenerationRef.current += 1;
+    }
     if (!canManageRobotAPITokens) {
       setCreateOpen(false);
       setBulkRevokeOpen(false);
       setSelectedTokens([]);
+      setBulkRevokeFailure(null);
       setGeneratedToken(null);
       createPermissionGenerationRef.current = null;
     }
@@ -235,6 +236,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     if (!canManageRobotAPITokens) {
       return;
     }
+    const bulkRevokePermissionGeneration = permissionGenerationRef.current;
     const results = await Promise.allSettled(
       items.map((token) =>
         revokeRobotAPIToken(
@@ -248,13 +250,18 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     const failed = items.filter(
       (_token, index) => results[index].status === 'rejected',
     );
-    setBulkRevokeFailure(
-      failed.length > 0
-        ? {failedNames: failed.map(tokenDisplayName), total: items.length}
-        : null,
-    );
-    setSelectedTokens(failed);
-    setBulkRevokeOpen(false);
+    if (
+      canManageRobotAPITokensRef.current &&
+      permissionGenerationRef.current === bulkRevokePermissionGeneration
+    ) {
+      setBulkRevokeFailure(
+        failed.length > 0
+          ? {failedNames: failed.map(tokenDisplayName), total: items.length}
+          : null,
+      );
+      setSelectedTokens(failed);
+      setBulkRevokeOpen(false);
+    }
     queryClient.invalidateQueries(queryKey);
   };
 

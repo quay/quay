@@ -211,7 +211,7 @@ test.describe(
       async ({authenticatedPage, api, userClient}) => {
         const org = await api.organization('robotapitokenmanager');
         const robot = await api.robot(org.name, 'tokenbot');
-        const tokenName = 'Manager visible token';
+        const tokenName = uniqueName('manager-token');
         const createResponse = await userClient.post(
           `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
           {name: tokenName, scope: 'repo:read'},
@@ -265,7 +265,7 @@ test.describe(
       async ({api, readonlyPage, userClient}) => {
         const org = await api.organization('robotapitokenreadonly');
         const robot = await api.robot(org.name, 'tokenbot');
-        const tokenName = 'Readonly visible token';
+        const tokenName = uniqueName('readonly-token');
         const createResponse = await userClient.post(
           `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
           {name: tokenName, scope: 'repo:read'},
