@@ -95,12 +95,14 @@ interface RobotAPITokensTabProps {
   namespace: string;
   robotName: string;
   isUserOrganization: boolean;
+  canManageRobotAPITokens: boolean;
 }
 
 const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
   namespace,
   robotName,
   isUserOrganization,
+  canManageRobotAPITokens,
 }): React.ReactElement => {
   const queryClient = useQueryClient();
   const [isCreateOpen, setCreateOpen] = useState(false);
@@ -268,11 +270,13 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
             token acts as this robot and is shown only once.
           </Content>
         </StackItem>
-        <StackItem>
-          <Button variant="primary" onClick={openCreate}>
-            Create API token
-          </Button>
-        </StackItem>
+        {canManageRobotAPITokens && (
+          <StackItem>
+            <Button variant="primary" onClick={openCreate}>
+              Create API token
+            </Button>
+          </StackItem>
+        )}
         {isLoading && <Spinner />}
         {isError && (
           <Alert
@@ -307,21 +311,23 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
               inset={{default: 'insetNone'}}
             >
               <ToolbarContent>
-                <DropdownCheckbox
-                  selectedItems={selectedTokens}
-                  deSelectAll={setSelectedTokens}
-                  allItemsList={filteredTokens}
-                  itemsPerPageList={paginatedTokens}
-                  onItemSelect={onSelectToken}
-                  id="robot-api-token-dropdown-checkbox"
-                />
+                {canManageRobotAPITokens && (
+                  <DropdownCheckbox
+                    selectedItems={selectedTokens}
+                    deSelectAll={setSelectedTokens}
+                    allItemsList={filteredTokens}
+                    itemsPerPageList={paginatedTokens}
+                    onItemSelect={onSelectToken}
+                    id="robot-api-token-dropdown-checkbox"
+                  />
+                )}
                 <SearchInput
                   id="robot-api-token-search"
                   searchState={search}
                   onChange={onSearchChange}
                   allowSpaces={true}
                 />
-                {selectedTokens.length > 0 && (
+                {canManageRobotAPITokens && selectedTokens.length > 0 && (
                   <ToolbarItem>
                     <Button
                       variant="danger"
@@ -352,26 +358,32 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
               >
                 <Thead>
                   <Tr>
-                    <Th screenReaderText="Row select" />
+                    {canManageRobotAPITokens && (
+                      <Th screenReaderText="Row select" />
+                    )}
                     <Th width={30}>Token name</Th>
                     <Th width={20}>Scopes</Th>
                     <Th width={15}>Expires</Th>
                     <Th width={15}>Last accessed</Th>
                     <Th width={10}>Created by</Th>
-                    <Th screenReaderText="Actions" />
+                    {canManageRobotAPITokens && (
+                      <Th screenReaderText="Actions" />
+                    )}
                   </Tr>
                 </Thead>
                 <Tbody>
                   {paginatedTokens.map((token, rowIndex) => (
                     <Tr key={token.uuid}>
-                      <Td
-                        select={{
-                          rowIndex,
-                          onSelect: (_event, isSelecting) =>
-                            onSelectToken(token, rowIndex, isSelecting),
-                          isSelected: isTokenSelected(token),
-                        }}
-                      />
+                      {canManageRobotAPITokens && (
+                        <Td
+                          select={{
+                            rowIndex,
+                            onSelect: (_event, isSelecting) =>
+                              onSelectToken(token, rowIndex, isSelecting),
+                            isSelected: isTokenSelected(token),
+                          }}
+                        />
+                      )}
                       <Td dataLabel="Token name" modifier="truncate">
                         <Tooltip content={tokenDisplayName(token)}>
                           <span
@@ -395,21 +407,23 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
                         <RelativeDate value={token.last_accessed} />
                       </Td>
                       <Td dataLabel="Created by">{token.created_by}</Td>
-                      <Td isActionCell>
-                        <Button
-                          variant="link"
-                          icon={<TrashIcon />}
-                          isDanger
-                          onClick={() => revokeMutation.mutate(token.uuid)}
-                          isLoading={
-                            revokeMutation.isLoading &&
-                            revokeMutation.variables === token.uuid
-                          }
-                          isDisabled={revokeMutation.isLoading}
-                        >
-                          Revoke
-                        </Button>
-                      </Td>
+                      {canManageRobotAPITokens && (
+                        <Td isActionCell>
+                          <Button
+                            variant="link"
+                            icon={<TrashIcon />}
+                            isDanger
+                            onClick={() => revokeMutation.mutate(token.uuid)}
+                            isLoading={
+                              revokeMutation.isLoading &&
+                              revokeMutation.variables === token.uuid
+                            }
+                            isDisabled={revokeMutation.isLoading}
+                          >
+                            Revoke
+                          </Button>
+                        </Td>
+                      )}
                     </Tr>
                   ))}
                 </Tbody>
@@ -418,7 +432,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
           </StackItem>
         )}
       </Stack>
-      {isBulkRevokeOpen && (
+      {canManageRobotAPITokens && isBulkRevokeOpen && (
         <BulkDeleteModalTemplate
           mapOfColNamesToTableData={{
             'Token name': {label: 'name', transformFunc: tokenDisplayName},
