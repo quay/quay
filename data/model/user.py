@@ -171,12 +171,9 @@ def create_user_noverify(
     except User.DoesNotExist:
         pass
 
-    try:
-        marker = DeletedNamespace.get(DeletedNamespace.original_username == username)
+    for marker in DeletedNamespace.select().where(DeletedNamespace.original_username == username):
         if _namespace_in_grace_period(marker):
             raise InvalidUsernameException("Username is not available")
-    except DeletedNamespace.DoesNotExist:
-        pass
 
     # Check email uniqueness only among non-organization users. Organizations are allowed
     # to share emails (enforced by the partial unique index on User.email).
@@ -1552,8 +1549,13 @@ def mark_namespace_for_deletion(
     for queue in queues:
         queue.delete_namespaced_items(user.username)
 
-    # When a grace period is active, defer linked data deletion so the namespace can be
-    # recovered. The GC worker (delete_user) will clean up linked data at purge time.
+    # Always delete robots eagerly while the username is still the original
+    # name, since robots are matched by name prefix and would collide with a
+    # new namespace that reuses the name.
+    _delete_namespace_robots(user.username)
+
+    # When a grace period is active, defer remaining linked data deletion so
+    # the namespace can be recovered.
     if available_after <= 0:
         _delete_user_linked_data(user)
 
@@ -1673,6 +1675,17 @@ def _resolve_namespace_name(user):
         return user.username
 
 
+def _delete_namespace_robots(namespace_name):
+    with db_transaction():
+        robots = list(list_namespace_robots(namespace_name))
+        RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
+
+    with db_transaction():
+        robots = list(list_namespace_robots(namespace_name))
+        for robot in robots:
+            robot.delete_instance(recursive=True, delete_nullable=True)
+
+
 def _delete_user_linked_data(user):
     namespace_name = _resolve_namespace_name(user)
     if user.organization:
@@ -1713,16 +1726,7 @@ def _delete_user_linked_data(user):
         if org_mirror_config is not None:
             delete_org_mirror_config(org_mirror_config)
 
-    # Delete any mirrors with robots owned by this user.
-    with db_transaction():
-        robots = list(list_namespace_robots(namespace_name))
-        RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
-
-    # Delete any robots owned by this user.
-    with db_transaction():
-        robots = list(list_namespace_robots(namespace_name))
-        for robot in robots:
-            robot.delete_instance(recursive=True, delete_nullable=True)
+    _delete_namespace_robots(namespace_name)
 
     # Null out any service key approvals. We technically lose information here, but its better than
     # falling and only occurs if a superuser is being deleted.
