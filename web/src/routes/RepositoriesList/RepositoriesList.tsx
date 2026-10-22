@@ -70,6 +70,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
   const {isReadOnlySuperUser} = useSuperuserPermissions();
+  const namespaceName = currentOrg || user?.username;
+  const canCreateInNamespace =
+    namespaceName === user?.username
+      ? user?.can_create_repo === true
+      : user?.organizations?.some(
+          (organization) =>
+            organization.name === namespaceName &&
+            organization.can_create_repo === true,
+        ) === true;
+  const canCreateRepository =
+    Boolean(user?.username) && (!isReadOnlySuperUser || canCreateInNamespace);
   const isQuotaManagementEnabled =
     quayConfig?.features?.QUOTA_MANAGEMENT === true &&
     quayConfig?.features?.EDIT_QUOTA === true;
@@ -316,7 +327,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             : 'No public repositories found. Sign in to view your private repositories.'
         }
         button={
-          isAuthenticated && !isReadOnlySuperUser ? (
+          canCreateRepository ? (
             <ToolbarButton
               id=""
               buttonValue="Create Repository"
@@ -359,10 +370,9 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={
-            isAuthenticated && !isReadOnlySuperUser ? createRepoModal : null
-          }
+          pageModal={canCreateRepository ? createRepoModal : null}
           showPageButton={isAuthenticated && !isReadOnlySuperUser}
+          showCreateButton={canCreateRepository}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
