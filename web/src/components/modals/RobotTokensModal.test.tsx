@@ -7,21 +7,24 @@ const configMocks = vi.hoisted(() => ({
 
 type MockUser = {
   username: string;
-  organizations: Array<{name: string; is_org_admin?: boolean}>;
+  organizations?: Array<{name: string; is_org_admin?: boolean}>;
+  global_readonly_super_user?: boolean;
 };
 
-const userMocks = vi.hoisted((): {
-  user: MockUser;
-  loading: boolean;
-  canModifyAsSuperuser: boolean;
-} => ({
-  user: {
-    username: 'example',
-    organizations: [],
-  },
-  loading: false,
-  canModifyAsSuperuser: false,
-}));
+const userMocks = vi.hoisted(
+  (): {
+    user: MockUser | undefined;
+    loading: boolean;
+    canModifyAsSuperuser: boolean;
+  } => ({
+    user: {
+      username: 'example',
+      organizations: [],
+    },
+    loading: false,
+    canModifyAsSuperuser: false,
+  }),
+);
 
 const robotAPITokensTab = vi.hoisted(() => vi.fn(() => <div>API tokens</div>));
 
@@ -93,28 +96,33 @@ describe('RobotTokensModal', () => {
   });
 
   it('passes management permission only to a namespace manager or full-access superuser', () => {
-    userMocks.user = {username: 'readonly', organizations: []};
+    userMocks.user = {
+      username: 'readonly',
+      organizations: [],
+      global_readonly_super_user: true,
+    };
     render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
     expect(robotAPITokensTab).toHaveBeenLastCalledWith(
       expect.objectContaining({canManageRobotAPITokens: false}),
-      undefined,
+      expect.anything(),
     );
 
     userMocks.user = {
       username: 'readonly',
       organizations: [{name: 'otherorg', is_org_admin: true}],
+      global_readonly_super_user: true,
     };
     render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
     expect(robotAPITokensTab).toHaveBeenLastCalledWith(
       expect.objectContaining({canManageRobotAPITokens: true}),
-      undefined,
+      expect.anything(),
     );
 
     userMocks.user = {username: 'example', organizations: []};
     render(<RobotTokensModal namespace="example" name="example+builder" />);
     expect(robotAPITokensTab).toHaveBeenLastCalledWith(
       expect.objectContaining({canManageRobotAPITokens: true}),
-      undefined,
+      expect.anything(),
     );
 
     userMocks.user = {username: 'superuser', organizations: []};
@@ -122,7 +130,25 @@ describe('RobotTokensModal', () => {
     render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
     expect(robotAPITokensTab).toHaveBeenLastCalledWith(
       expect.objectContaining({canManageRobotAPITokens: true}),
-      undefined,
+      expect.anything(),
+    );
+  });
+
+  it('fails closed while namespace permissions are loading or unavailable', () => {
+    userMocks.user = undefined;
+    userMocks.loading = true;
+    render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: false}),
+      expect.anything(),
+    );
+
+    userMocks.user = {username: 'readonly'};
+    userMocks.loading = false;
+    render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: false}),
+      expect.anything(),
     );
   });
 });

@@ -71,12 +71,8 @@ describe('RobotAPITokensTab', () => {
     expect(within(table).getByText('Audited token')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: 'Create API token'})).toBeNull();
     expect(screen.queryByRole('button', {name: 'Revoke'})).toBeNull();
-    expect(
-      screen.queryByRole('button', {name: 'Revoke selected'}),
-    ).toBeNull();
-    expect(
-      screen.queryByRole('checkbox', {name: 'Select row 0'}),
-    ).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Revoke selected'})).toBeNull();
+    expect(screen.queryByRole('checkbox', {name: 'Select row 0'})).toBeNull();
     expect(
       within(table).queryByRole('columnheader', {name: 'Row select'}),
     ).toBeNull();

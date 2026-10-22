@@ -62,7 +62,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   const isNamespaceTypeLoading = isSuperUser && isLoadingSuperUserUsers;
   const isNamespaceManager =
     user?.username === props.namespace ||
-    user?.organizations.some(
+    (user?.organizations ?? []).some(
       (organization) =>
         organization.name === props.namespace &&
         organization.is_org_admin === true,
