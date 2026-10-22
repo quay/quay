@@ -67,7 +67,7 @@ func validateDataDir(dir string) error {
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // no home directory, nothing further to protect
 	}
 	home = filepath.Clean(home)
 
