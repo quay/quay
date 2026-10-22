@@ -81,6 +81,64 @@ describe('RobotAPITokensTab', () => {
     ).toBeNull();
   });
 
+  it('closes the create dialog when namespace management permission is lost', async () => {
+    const user = userEvent.setup();
+    const {rerender} = render(<RobotAPITokensTab {...props} />);
+
+    await user.click(
+      await screen.findByRole('button', {name: 'Create API token'}),
+    );
+    await user.type(screen.getByRole('textbox'), 'CI token');
+    await user.click(
+      screen.getByRole('checkbox', {name: 'View all visible repositories'}),
+    );
+    expect(screen.getByText('Create robot API token')).toBeInTheDocument();
+
+    rerender(<RobotAPITokensTab {...props} canManageRobotAPITokens={false} />);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Create robot API token'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(resourceMocks.create).not.toHaveBeenCalled();
+
+    rerender(<RobotAPITokensTab {...props} />);
+
+    expect(
+      screen.queryByText('Create robot API token'),
+    ).not.toBeInTheDocument();
+    expect(resourceMocks.create).not.toHaveBeenCalled();
+  });
+
+  it('closes the bulk revoke confirmation when namespace management permission is lost', async () => {
+    const user = userEvent.setup();
+    resourceMocks.fetch.mockResolvedValue([
+      makeToken({uuid: 'token-uuid', name: 'Audited token'}),
+    ]);
+    const {rerender} = render(<RobotAPITokensTab {...props} />);
+
+    await screen.findByText('Audited token');
+    await user.click(screen.getByRole('checkbox', {name: 'Select row 0'}));
+    await user.click(screen.getByRole('button', {name: 'Revoke selected'}));
+    expect(await screen.findByTestId('bulk-delete-modal')).toBeInTheDocument();
+
+    rerender(<RobotAPITokensTab {...props} canManageRobotAPITokens={false} />);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('bulk-delete-modal')).not.toBeInTheDocument(),
+    );
+    expect(resourceMocks.revoke).not.toHaveBeenCalled();
+
+    rerender(<RobotAPITokensTab {...props} />);
+
+    expect(screen.queryByTestId('bulk-delete-modal')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {name: 'Revoke selected'}),
+    ).not.toBeInTheDocument();
+    expect(resourceMocks.revoke).not.toHaveBeenCalled();
+  });
+
   it('creates a token and displays its secret once', async () => {
     const user = userEvent.setup();
     resourceMocks.create.mockResolvedValue({token: 'signed-token'});

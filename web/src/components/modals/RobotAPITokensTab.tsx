@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   Alert,
@@ -191,6 +191,14 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     selectedTokens.some((selected) => selected.uuid === token.uuid);
   const tokensForBulkRevoke = tokens.filter(isTokenSelected);
 
+  useEffect(() => {
+    if (!canManageRobotAPITokens) {
+      setCreateOpen(false);
+      setBulkRevokeOpen(false);
+      setSelectedTokens([]);
+    }
+  }, [canManageRobotAPITokens]);
+
   const onSearchChange = (
     value: SearchState | ((current: SearchState) => SearchState),
   ): void => {
@@ -208,6 +216,9 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     });
   };
   const bulkRevoke = async (items: IRobotAPIToken[]): Promise<void> => {
+    if (!canManageRobotAPITokens) {
+      return;
+    }
     const results = await Promise.allSettled(
       items.map((token) =>
         revokeRobotAPIToken(
@@ -237,8 +248,10 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     }
   };
   const openCreate = (): void => {
-    clearCreateError();
-    setCreateOpen(true);
+    if (canManageRobotAPITokens) {
+      clearCreateError();
+      setCreateOpen(true);
+    }
   };
   const toggleScope = (scope: string, checked: boolean): void => {
     clearCreateError();
@@ -249,6 +262,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     );
   };
   const canCreate =
+    canManageRobotAPITokens &&
     name.trim().length > 0 &&
     selectedScopes.length > 0 &&
     !isLoadingMintableScopes &&
@@ -256,7 +270,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     !createMutation.isLoading;
   const submitCreate = (event?: React.FormEvent<HTMLFormElement>): void => {
     event?.preventDefault();
-    if (canCreate) {
+    if (canManageRobotAPITokens && canCreate) {
       createMutation.mutate();
     }
   };
@@ -456,107 +470,109 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
           actionLabel="Revoke"
         />
       )}
-      <Modal
-        variant={ModalVariant.medium}
-        isOpen={isCreateOpen}
-        onClose={() => setCreateOpen(false)}
-      >
-        <ModalHeader title="Create robot API token" />
-        <ModalBody>
-          <Form id="create-robot-api-token-form" onSubmit={submitCreate}>
-            {createMutation.isError && (
-              <Alert
-                variant="danger"
-                isInline
-                title="Unable to create API token"
-              />
-            )}
-            <FormGroup
-              label="Token name"
-              fieldId="robot-api-token-name"
-              isRequired
-            >
-              <TextInput
-                id="robot-api-token-name"
-                value={name}
-                onChange={(_event, value) => {
-                  clearCreateError();
-                  setName(value);
-                }}
-              />
-            </FormGroup>
-            <FormGroup
-              label="Expiration"
-              fieldId="robot-api-token-expiration"
-              isRequired
-            >
-              <FormSelect
-                id="robot-api-token-expiration"
-                value={expiration}
-                onChange={(_event, value) => {
-                  clearCreateError();
-                  setExpiration(value);
-                }}
-              >
-                {EXPIRATIONS.map((option) => (
-                  <FormSelectOption
-                    key={option.seconds}
-                    value={option.seconds}
-                    label={option.label}
-                  />
-                ))}
-              </FormSelect>
-            </FormGroup>
-            <FormGroup
-              label="Scopes"
-              fieldId="robot-api-token-scopes"
-              isRequired
-            >
-              {isLoadingMintableScopes && <Spinner />}
-              {isMintableScopesError && (
+      {canManageRobotAPITokens && (
+        <Modal
+          variant={ModalVariant.medium}
+          isOpen={isCreateOpen}
+          onClose={() => setCreateOpen(false)}
+        >
+          <ModalHeader title="Create robot API token" />
+          <ModalBody>
+            <Form id="create-robot-api-token-form" onSubmit={submitCreate}>
+              {createMutation.isError && (
                 <Alert
                   variant="danger"
                   isInline
-                  title="Unable to load scopes you can grant"
+                  title="Unable to create API token"
                 />
               )}
-              {!isLoadingMintableScopes && !isMintableScopesError && (
-                <Stack hasGutter>
-                  {Object.entries(OAUTH_SCOPES)
-                    .filter(([scope]) => mintableScopes.includes(scope))
-                    .map(([scope, details]) => (
-                      <StackItem key={scope}>
-                        <Checkbox
-                          id={`robot-api-token-scope-${scope}`}
-                          label={details.title}
-                          description={details.description}
-                          isChecked={selectedScopes.includes(scope)}
-                          onChange={(_event, checked) =>
-                            toggleScope(scope, checked)
-                          }
-                        />
-                      </StackItem>
-                    ))}
-                </Stack>
-              )}
-            </FormGroup>
-          </Form>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            variant="primary"
-            type="submit"
-            form="create-robot-api-token-form"
-            isDisabled={!canCreate}
-            isLoading={createMutation.isLoading}
-          >
-            Create
-          </Button>
-          <Button variant="link" onClick={() => setCreateOpen(false)}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </Modal>
+              <FormGroup
+                label="Token name"
+                fieldId="robot-api-token-name"
+                isRequired
+              >
+                <TextInput
+                  id="robot-api-token-name"
+                  value={name}
+                  onChange={(_event, value) => {
+                    clearCreateError();
+                    setName(value);
+                  }}
+                />
+              </FormGroup>
+              <FormGroup
+                label="Expiration"
+                fieldId="robot-api-token-expiration"
+                isRequired
+              >
+                <FormSelect
+                  id="robot-api-token-expiration"
+                  value={expiration}
+                  onChange={(_event, value) => {
+                    clearCreateError();
+                    setExpiration(value);
+                  }}
+                >
+                  {EXPIRATIONS.map((option) => (
+                    <FormSelectOption
+                      key={option.seconds}
+                      value={option.seconds}
+                      label={option.label}
+                    />
+                  ))}
+                </FormSelect>
+              </FormGroup>
+              <FormGroup
+                label="Scopes"
+                fieldId="robot-api-token-scopes"
+                isRequired
+              >
+                {isLoadingMintableScopes && <Spinner />}
+                {isMintableScopesError && (
+                  <Alert
+                    variant="danger"
+                    isInline
+                    title="Unable to load scopes you can grant"
+                  />
+                )}
+                {!isLoadingMintableScopes && !isMintableScopesError && (
+                  <Stack hasGutter>
+                    {Object.entries(OAUTH_SCOPES)
+                      .filter(([scope]) => mintableScopes.includes(scope))
+                      .map(([scope, details]) => (
+                        <StackItem key={scope}>
+                          <Checkbox
+                            id={`robot-api-token-scope-${scope}`}
+                            label={details.title}
+                            description={details.description}
+                            isChecked={selectedScopes.includes(scope)}
+                            onChange={(_event, checked) =>
+                              toggleScope(scope, checked)
+                            }
+                          />
+                        </StackItem>
+                      ))}
+                  </Stack>
+                )}
+              </FormGroup>
+            </Form>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="primary"
+              type="submit"
+              form="create-robot-api-token-form"
+              isDisabled={!canCreate}
+              isLoading={createMutation.isLoading}
+            >
+              Create
+            </Button>
+            <Button variant="link" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
       <Modal
         variant={ModalVariant.medium}
         isOpen={generatedToken !== null}
