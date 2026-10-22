@@ -21,6 +21,7 @@ from data.database import (
     NamespaceNotification,
     OAuthApplication,
     OauthAssignedToken,
+    QueueItem,
     QuotaNamespaceSize,
     QuotaNotificationState,
     RepoMirrorConfig,
@@ -127,6 +128,19 @@ def create_user(
     return created
 
 
+def _namespace_in_grace_period(marker):
+    """A namespace is in its grace period only when its queue item exists and
+    is not yet available for processing (available_after is in the future).
+    """
+    if not marker.queue_id:
+        return False
+    try:
+        qi = QueueItem.get(QueueItem.id == int(marker.queue_id))
+        return qi.available_after > datetime.utcnow()
+    except (QueueItem.DoesNotExist, ValueError):
+        return False
+
+
 def create_user_noverify(
     username, email, email_required=True, prompts=tuple(), is_possible_abuser=False
 ):
@@ -158,8 +172,9 @@ def create_user_noverify(
         pass
 
     try:
-        DeletedNamespace.get(DeletedNamespace.original_username == username)
-        raise InvalidUsernameException("Username is not available")
+        marker = DeletedNamespace.get(DeletedNamespace.original_username == username)
+        if _namespace_in_grace_period(marker):
+            raise InvalidUsernameException("Username is not available")
     except DeletedNamespace.DoesNotExist:
         pass
 
@@ -1624,6 +1639,11 @@ def delete_user(user, queues):
                 is_progressing = True
 
         if not is_progressing:
+            logger.error(
+                "Namespace GC stuck for %s: unable to purge repos %s",
+                _resolve_namespace_name(user),
+                [repo.name for repo in repositories],
+            )
             return False
 
     # Delete any autoprune tasks and policies

@@ -751,26 +751,16 @@ def test_grace_period_blocks_namespace_reregistration(initialized_db):
             create_organization("protectedorg", "new@example.com", user)
 
 
-def test_grace_period_allows_reregistration_after_deletion_completes(initialized_db):
-    """Once the GC worker fully purges the namespace, the name can be re-registered."""
+def test_no_grace_period_allows_immediate_reregistration(initialized_db):
+    """When deleted without a grace period, the name is immediately available for reuse."""
     user = get_user("devtable")
     org = create_organization("expiredorg", "expired@example.com", user)
 
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
-    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+    mark_namespace_for_deletion(org, [], queue, available_after=0)
 
     mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
 
-    # Still blocked before GC worker runs, even though grace period expired.
-    with patch("data.model.config.app_config", mock_config):
-        with pytest.raises(InvalidUsernameException, match="Username is not available"):
-            create_user_noverify("expiredorg", "new@example.com", email_required=False)
-
-    # GC worker purges the namespace (cascade-deletes the DeletedNamespace marker).
-    with check_transitive_modifications():
-        delete_namespace_via_marker(marker_id, [])
-
-    # Now the name is available.
     with patch("data.model.config.app_config", mock_config):
         new_user = create_user_noverify("expiredorg", "new@example.com", email_required=False)
         assert new_user.username == "expiredorg"
@@ -805,6 +795,45 @@ def test_reregistration_blocked_regardless_of_allowlist(initialized_db):
     ):
         new_user = create_user_noverify("unlistedorg", "new@example.com", email_required=False)
         assert new_user.username == "unlistedorg"
+
+
+def test_exhausted_retries_allows_reregistration(initialized_db):
+    """When GC exhausts retries (retries_remaining=0), the queue item is dead and the
+    namespace name should be available for reuse."""
+    user = get_user("devtable")
+    org = create_organization("stuckorg", "stuck@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    marker = DeletedNamespace.get(id=marker_id)
+    qi = QueueItem.get(id=marker.queue_id)
+    qi.retries_remaining = 0
+    qi.save()
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("stuckorg", "new@example.com", email_required=False)
+        assert new_user.username == "stuckorg"
+
+
+def test_missing_queue_item_allows_reregistration(initialized_db):
+    """When the queue item has been cleaned up but the DeletedNamespace marker
+    remains (e.g. QueueCleanupWorker ran but GC never completed), the name
+    should be available for reuse."""
+    user = get_user("devtable")
+    org = create_organization("cleanedorg", "cleaned@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    marker = DeletedNamespace.get(id=marker_id)
+    QueueItem.delete().where(QueueItem.id == int(marker.queue_id)).execute()
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("cleanedorg", "new@example.com", email_required=False)
+        assert new_user.username == "cleanedorg"
 
 
 def test_delete_robot(initialized_db):
