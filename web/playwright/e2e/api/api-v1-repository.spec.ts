@@ -10,6 +10,8 @@
 
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {RawApiClient} from '../../utils/api';
+import {API_URL} from '../../utils/config';
 import {pushImage} from '../../utils/container';
 
 // ---------------------------------------------------------------------------
@@ -178,6 +180,115 @@ test.describe('Repository CRUD', {tag: ['@api', '@auth:Database']}, () => {
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// Repository admin boundaries
+// ---------------------------------------------------------------------------
+
+test.describe(
+  'Repository admin boundaries',
+  {tag: ['@api', '@repository', '@auth:Database', '@superuser']},
+  () => {
+    test('writers and readers cannot change visibility, permissions or delete', async ({
+      api,
+      userClient,
+      freshUser,
+      request,
+    }) => {
+      const org = await api.organization('repoadmin');
+      const repo = await api.repository(org.name, 'guarded');
+      const team = await api.team(org.name, 'viewers');
+      await api.repositoryPermission(
+        org.name,
+        repo.name,
+        'team',
+        team.name,
+        'read',
+      );
+      const member = freshUser.user.username;
+      await api.repositoryPermission(
+        org.name,
+        repo.name,
+        'user',
+        member,
+        'write',
+      );
+
+      const repoPath = `/api/v1/repository/${repo.fullName}`;
+      const teamPermissionPath = `${repoPath}/permissions/team/${team.name}`;
+      const memberPermissionPath = `${repoPath}/permissions/user/${member}`;
+      const collaborator = new RawApiClient(request, API_URL);
+      await collaborator.signIn(member, freshUser.user.password);
+
+      const repoState = async () => {
+        const [repoResp, teamResp, memberResp] = await Promise.all([
+          userClient.get(repoPath),
+          userClient.get(teamPermissionPath),
+          userClient.get(memberPermissionPath),
+        ]);
+        expect(repoResp.status()).toBe(200);
+        expect(teamResp.status()).toBe(200);
+        expect(memberResp.status()).toBe(200);
+        const repoBody = await repoResp.json();
+        return {
+          isPublic: repoBody.is_public,
+          description: repoBody.description,
+          teamRole: (await teamResp.json()).role,
+          memberRole: (await memberResp.json()).role,
+        };
+      };
+
+      expect(
+        (
+          await collaborator.post(`${repoPath}/changevisibility`, {
+            visibility: 'public',
+          })
+        ).status(),
+      ).toBe(403);
+      expect(
+        (await collaborator.put(teamPermissionPath, {role: 'admin'})).status(),
+      ).toBe(403);
+      expect(
+        (
+          await collaborator.put(memberPermissionPath, {role: 'admin'})
+        ).status(),
+      ).toBe(403);
+      expect((await collaborator.delete(repoPath)).status()).toBe(403);
+      expect(
+        (
+          await collaborator.put(repoPath, {description: 'edited by a writer'})
+        ).status(),
+      ).toBe(200);
+      expect(await repoState()).toEqual({
+        isPublic: false,
+        description: 'edited by a writer',
+        teamRole: 'read',
+        memberRole: 'write',
+      });
+
+      expect(
+        (await userClient.put(memberPermissionPath, {role: 'read'})).status(),
+      ).toBe(200);
+      expect(
+        (
+          await collaborator.put(repoPath, {description: 'edited by a reader'})
+        ).status(),
+      ).toBe(403);
+
+      expect(
+        (
+          await userClient.put(teamPermissionPath, {role: 'superadmin'})
+        ).status(),
+      ).toBe(400);
+      expect(await repoState()).toEqual({
+        isPublic: false,
+        description: 'edited by a writer',
+        teamRole: 'read',
+        memberRole: 'read',
+      });
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Tags
