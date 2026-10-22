@@ -5,8 +5,28 @@ const configMocks = vi.hoisted(() => ({
   robotAPITokensEnabled: true,
 }));
 
+type MockUser = {
+  username: string;
+  organizations: Array<{name: string; is_org_admin?: boolean}>;
+};
+
+const userMocks = vi.hoisted((): {
+  user: MockUser;
+  loading: boolean;
+  canModifyAsSuperuser: boolean;
+} => ({
+  user: {
+    username: 'example',
+    organizations: [],
+  },
+  loading: false,
+  canModifyAsSuperuser: false,
+}));
+
+const robotAPITokensTab = vi.hoisted(() => vi.fn(() => <div>API tokens</div>));
+
 vi.mock('src/components/modals/RobotAPITokensTab', () => ({
-  default: () => <div>API tokens</div>,
+  default: robotAPITokensTab,
 }));
 
 vi.mock('src/hooks/UseQuayConfig', () => ({
@@ -24,6 +44,14 @@ vi.mock('src/hooks/UseOrganizations', () => ({
   }),
 }));
 
+vi.mock('src/hooks/UseCurrentUser', () => ({
+  useCurrentUser: () => ({user: userMocks.user, loading: userMocks.loading}),
+}));
+
+vi.mock('src/hooks/UseSuperuserPermissions', () => ({
+  useSuperuserPermissions: () => ({canModify: userMocks.canModifyAsSuperuser}),
+}));
+
 vi.mock('src/hooks/useRobotAccounts', () => ({
   useRobotToken: () => ({regenerateRobotToken: vi.fn()}),
 }));
@@ -31,6 +59,10 @@ vi.mock('src/hooks/useRobotAccounts', () => ({
 describe('RobotTokensModal', () => {
   beforeEach(() => {
     configMocks.robotAPITokensEnabled = true;
+    userMocks.user = {username: 'example', organizations: []};
+    userMocks.loading = false;
+    userMocks.canModifyAsSuperuser = false;
+    robotAPITokensTab.mockClear();
   });
 
   it('explains that static token rotation does not revoke API tokens', () => {
@@ -58,5 +90,39 @@ describe('RobotTokensModal', () => {
     expect(
       screen.queryByText(/robot API tokens remain valid/i),
     ).not.toBeInTheDocument();
+  });
+
+  it('passes management permission only to a namespace manager or full-access superuser', () => {
+    userMocks.user = {username: 'readonly', organizations: []};
+    render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: false}),
+      undefined,
+    );
+
+    userMocks.user = {
+      username: 'readonly',
+      organizations: [{name: 'otherorg', is_org_admin: true}],
+    };
+    render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: true}),
+      undefined,
+    );
+
+    userMocks.user = {username: 'example', organizations: []};
+    render(<RobotTokensModal namespace="example" name="example+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: true}),
+      undefined,
+    );
+
+    userMocks.user = {username: 'superuser', organizations: []};
+    userMocks.canModifyAsSuperuser = true;
+    render(<RobotTokensModal namespace="otherorg" name="otherorg+builder" />);
+    expect(robotAPITokensTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({canManageRobotAPITokens: true}),
+      undefined,
+    );
   });
 });

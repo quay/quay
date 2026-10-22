@@ -25,6 +25,7 @@ const props = {
   namespace: 'testorg',
   robotName: 'testorg+robot',
   isUserOrganization: false,
+  canManageRobotAPITokens: true,
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -58,6 +59,30 @@ describe('RobotAPITokensTab', () => {
       ),
     ).toBeInTheDocument();
     expect(resourceMocks.fetch).toHaveBeenCalledWith('testorg', 'robot', false);
+  });
+
+  it('keeps the token list read-only without namespace management permission', async () => {
+    resourceMocks.fetch.mockResolvedValue([
+      makeToken({uuid: 'token-uuid', name: 'Audited token'}),
+    ]);
+    render(<RobotAPITokensTab {...props} canManageRobotAPITokens={false} />);
+
+    const table = await screen.findByTestId('robot-api-tokens-table');
+    expect(within(table).getByText('Audited token')).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Create API token'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Revoke'})).toBeNull();
+    expect(
+      screen.queryByRole('button', {name: 'Revoke selected'}),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('checkbox', {name: 'Select row 0'}),
+    ).toBeNull();
+    expect(
+      within(table).queryByRole('columnheader', {name: 'Row select'}),
+    ).toBeNull();
+    expect(
+      within(table).queryByRole('columnheader', {name: 'Actions'}),
+    ).toBeNull();
   });
 
   it('creates a token and displays its secret once', async () => {
