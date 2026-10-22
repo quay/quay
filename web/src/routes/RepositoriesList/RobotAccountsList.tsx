@@ -692,7 +692,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                   </Td>
                   <Td dataLabel={RobotAccountColumnNames.lastAccessed}>
                     {robotAccount.last_accessed
-                      ? robotAccount.last_accessed
+                      ? formatDate(robotAccount.last_accessed)
                       : 'Never'}
                   </Td>
                   <Td dataLabel={RobotAccountColumnNames.created}>
