@@ -265,7 +265,7 @@ test.describe(
 
     test(
       'global readonly superuser can list robot API tokens without mutation controls',
-      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS', '@superuser']},
       async ({api, readonlyPage, userClient}) => {
         const org = await api.organization('robotapitokenreadonly');
         const robot = await api.robot(org.name, 'tokenbot');
