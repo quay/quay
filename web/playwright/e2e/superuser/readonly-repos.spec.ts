@@ -79,5 +79,25 @@ test.describe(
         ),
       ).toHaveCount(0);
     });
+
+    test(
+      'shows repository creation in an organization with an explicit admin role',
+      {tag: '@superuser'},
+      async ({readonlyPage, superuserApi}) => {
+        const org = await superuserApi.organization('readonly-scoped');
+        const admins = await superuserApi.team(
+          org.name,
+          'readonly-admins',
+          'admin',
+        );
+        await superuserApi.teamMember(org.name, admins.name, 'readonly');
+
+        await readonlyPage.goto(`/organization/${org.name}`);
+
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Create Repository'}),
+        ).toBeVisible();
+      },
+    );
   },
 );
