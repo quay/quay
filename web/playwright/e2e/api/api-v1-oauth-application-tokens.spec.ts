@@ -106,7 +106,7 @@ test.describe(
   'OAuth authorization boundaries',
   {tag: ['@api', '@auth:Database', '@superuser']},
   () => {
-    test('authorize keeps tokens on the registered redirect and to org admins; only the owner revokes; minting is scope-limited', async ({
+    test('authorize keeps tokens on the registered redirect and to org admins; only the owner revokes', async ({
       api,
       authenticatedRequest,
       freshUser,
@@ -231,6 +231,19 @@ test.describe(
       );
       expect(revoke.status()).toBe(204);
       expect((await asBearer()).status()).toBe(401);
+    });
+
+    test('org admin cannot mint an application token with super:user or an unknown scope', async ({
+      api,
+      authenticatedRequest,
+    }) => {
+      const org = await api.organization('oauthmint');
+      // Deleted with the org.
+      const app = await api.raw.createOAuthApplication(
+        org.name,
+        uniqueName('mint'),
+      );
+      const csrfToken = await api.raw.getToken();
 
       const mint = (scope: string) =>
         authenticatedRequest.post(
