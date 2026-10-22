@@ -89,7 +89,7 @@ test.describe(
     test(
       'shows repository creation in an organization with an explicit admin role',
       {tag: '@superuser'},
-      async ({readonlyPage, superuserApi}) => {
+      async ({readonlyPage, readonlyApi, superuserApi}) => {
         const org = await superuserApi.organization('readonly-scoped');
         const admins = await superuserApi.team(
           org.name,
@@ -97,6 +97,13 @@ test.describe(
           'admin',
         );
         await superuserApi.teamMember(org.name, admins.name, 'readonly');
+        await readonlyApi.acceptTeamInviteForOrganization(org.name);
+        const currentUser = await readonlyApi.raw.getCurrentUser();
+        expect(currentUser.organizations).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({name: org.name, can_create_repo: true}),
+          ]),
+        );
 
         await readonlyPage.goto(`/organization/${org.name}`);
 
