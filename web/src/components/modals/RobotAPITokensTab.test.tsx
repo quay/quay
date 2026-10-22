@@ -1,3 +1,4 @@
+import React from 'react';
 import {screen, render, userEvent, waitFor, within} from 'src/test-utils';
 import {formatDate, formatRelativeTime} from 'src/libs/utils';
 import {IRobotAPIToken} from 'src/resources/RobotsResource';
@@ -179,6 +180,47 @@ describe('RobotAPITokensTab', () => {
 
     expect(await screen.findByText('fresh-token')).toBeInTheDocument();
     expect(resourceMocks.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a pending create valid across an abandoned permission render', async () => {
+    const user = userEvent.setup();
+    let resolveCreate: (token: {token: string}) => void = () => undefined;
+    const suspendedRender = new Promise<never>(() => undefined);
+    const Suspender: React.FC = (): React.ReactElement => {
+      throw suspendedRender;
+    };
+    resourceMocks.create.mockReturnValue(
+      new Promise<{token: string}>((resolve) => {
+        resolveCreate = resolve;
+      }),
+    );
+    const renderTab = (canManageRobotAPITokens: boolean, suspend: boolean) => (
+      <React.Suspense fallback={<span>Loading permission update</span>}>
+        <RobotAPITokensTab
+          {...props}
+          canManageRobotAPITokens={canManageRobotAPITokens}
+        />
+        {suspend && <Suspender />}
+      </React.Suspense>
+    );
+    const {rerender} = render(renderTab(true, false));
+
+    await user.click(
+      await screen.findByRole('button', {name: 'Create API token'}),
+    );
+    await user.type(screen.getByRole('textbox'), 'CI token');
+    await user.click(
+      screen.getByRole('checkbox', {name: 'View all visible repositories'}),
+    );
+    await user.click(screen.getByRole('button', {name: 'Create'}));
+    await waitFor(() => expect(resourceMocks.create).toHaveBeenCalledTimes(1));
+
+    rerender(renderTab(false, true));
+    expect(await screen.findByText('Loading permission update')).toBeVisible();
+    rerender(renderTab(true, false));
+    resolveCreate({token: 'committed-token'});
+
+    expect(await screen.findByText('committed-token')).toBeInTheDocument();
   });
 
   it('closes the bulk revoke confirmation when namespace management permission is lost', async () => {
@@ -638,6 +680,66 @@ describe('RobotAPITokensTab', () => {
         'Unable to revoke 1 of 2 selected tokens; they remain active: Second token',
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', {name: 'Select row 1'})).toBeChecked();
+    expect(
+      screen.getByRole('button', {name: 'Revoke selected'}),
+    ).toBeInTheDocument();
+  });
+
+  it('does not restore failed bulk selections after permission is lost and restored', async () => {
+    const user = userEvent.setup();
+    resourceMocks.fetch.mockResolvedValue([
+      makeToken({uuid: 'first-token', name: 'First token'}),
+      makeToken({uuid: 'second-token', name: 'Second token'}),
+    ]);
+    let resolveFirst: () => void = () => undefined;
+    let rejectSecond: (error: Error) => void = () => undefined;
+    resourceMocks.revoke.mockImplementation(
+      (_ns, _robot, uuid: string) =>
+        new Promise<void>((resolve, reject) => {
+          if (uuid === 'first-token') {
+            resolveFirst = resolve;
+          } else {
+            rejectSecond = reject;
+          }
+        }),
+    );
+    const {rerender} = render(<RobotAPITokensTab {...props} />);
+
+    await screen.findByText('First token');
+    await user.click(screen.getByRole('checkbox', {name: 'Select row 0'}));
+    await user.click(screen.getByRole('checkbox', {name: 'Select row 1'}));
+    await user.click(screen.getByRole('button', {name: 'Revoke selected'}));
+    const modal = await screen.findByTestId('bulk-delete-modal');
+    await user.type(
+      within(modal).getByTestId('delete-confirmation-input'),
+      'confirm',
+    );
+    await user.click(within(modal).getByTestId('bulk-delete-confirm-btn'));
+    await waitFor(() => expect(resourceMocks.revoke).toHaveBeenCalledTimes(2));
+    const initialFetchCalls = resourceMocks.fetch.mock.calls.length;
+
+    rerender(<RobotAPITokensTab {...props} canManageRobotAPITokens={false} />);
+    rerender(<RobotAPITokensTab {...props} />);
+    resolveFirst();
+    rejectSecond(new Error('Failed'));
+
+    await waitFor(() =>
+      expect(resourceMocks.fetch.mock.calls.length).toBeGreaterThan(
+        initialFetchCalls,
+      ),
+    );
+    expect(
+      screen.queryByText(
+        'Unable to revoke 1 of 2 selected tokens; they remain active: Second token',
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {name: 'Revoke selected'}),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', {name: 'Select row 1'}),
+    ).not.toBeChecked();
   });
 
   it('truncates long token names and shows the full name on hover', async () => {
