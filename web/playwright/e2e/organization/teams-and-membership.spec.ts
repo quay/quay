@@ -130,7 +130,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     ).toHaveValue(repo.name);
     await expect(
       authenticatedPage.getByTestId('selected-team-members-review'),
-    ).toHaveValue(TEST_USERS.admin.username);
+    ).toHaveValue(users.admin.username);
     await authenticatedPage.getByTestId('review-and-finish-wizard-btn').click();
 
     await expect(
