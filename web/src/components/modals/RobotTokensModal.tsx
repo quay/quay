@@ -30,6 +30,8 @@ import PodmanIcon from 'src/assets/podman.svg';
 import PodmanGreyIcon from 'src/assets/podman-grey.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import RobotAPITokensTab from 'src/components/modals/RobotAPITokensTab';
@@ -54,8 +56,21 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   const domain = config?.config.SERVER_HOSTNAME;
   const robotAPITokensEnabled = config?.features?.ROBOT_API_TOKENS === true;
   const {usernames, isSuperUser, isLoadingSuperUserUsers} = useOrganizations();
+  const {user, loading: isLoadingUser} = useCurrentUser();
+  const {canModify: canModifyAsSuperuser} = useSuperuserPermissions();
   const isUserOrganization = usernames.includes(props.namespace);
   const isNamespaceTypeLoading = isSuperUser && isLoadingSuperUserUsers;
+  const isNamespaceManager =
+    user?.username === props.namespace ||
+    (user?.organizations ?? []).some(
+      (organization) =>
+        organization.name === props.namespace &&
+        organization.is_org_admin === true,
+    );
+  const canModifyAsFullAccessSuperuser =
+    canModifyAsSuperuser && config?.features?.SUPERUSERS_FULL_ACCESS === true;
+  const canManageRobotAPITokens =
+    !isLoadingUser && (isNamespaceManager || canModifyAsFullAccessSuperuser);
   const [secretScopeSelected, setSecretScopeSelected] = useState<string>(
     domain + '/' + props.namespace,
   );
@@ -278,6 +293,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 namespace={props.namespace}
                 robotName={props.name}
                 isUserOrganization={isUserOrganization}
+                canManageRobotAPITokens={canManageRobotAPITokens}
               />
             )}
           </Tab>
