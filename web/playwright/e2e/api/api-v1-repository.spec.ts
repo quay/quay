@@ -187,7 +187,7 @@ test.describe('Repository CRUD', {tag: ['@api', '@auth:Database']}, () => {
 
 test.describe(
   'Repository admin boundaries',
-  {tag: ['@api', '@auth:Database', '@superuser']},
+  {tag: ['@api', '@repository', '@auth:Database', '@superuser']},
   () => {
     test('writers and readers cannot change visibility, permissions or delete', async ({
       api,
