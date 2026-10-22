@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   Alert,
@@ -105,6 +105,13 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
   canManageRobotAPITokens,
 }): React.ReactElement => {
   const queryClient = useQueryClient();
+  const canManageRobotAPITokensRef = useRef(canManageRobotAPITokens);
+  const permissionGenerationRef = useRef(0);
+  const createPermissionGenerationRef = useRef<number | null>(null);
+  if (canManageRobotAPITokensRef.current !== canManageRobotAPITokens) {
+    canManageRobotAPITokensRef.current = canManageRobotAPITokens;
+    permissionGenerationRef.current += 1;
+  }
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -159,7 +166,14 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
     {
       onSuccess: (token) => {
         queryClient.invalidateQueries(queryKey);
-        setGeneratedToken(token.token || null);
+        const canDisplayGeneratedToken =
+          canManageRobotAPITokensRef.current &&
+          createPermissionGenerationRef.current ===
+            permissionGenerationRef.current;
+        createPermissionGenerationRef.current = null;
+        if (canDisplayGeneratedToken) {
+          setGeneratedToken(token.token || null);
+        }
         setCreateOpen(false);
         setName('');
         setSelectedScopes([]);
@@ -196,6 +210,8 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
       setCreateOpen(false);
       setBulkRevokeOpen(false);
       setSelectedTokens([]);
+      setGeneratedToken(null);
+      createPermissionGenerationRef.current = null;
     }
   }, [canManageRobotAPITokens]);
 
@@ -271,6 +287,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
   const submitCreate = (event?: React.FormEvent<HTMLFormElement>): void => {
     event?.preventDefault();
     if (canManageRobotAPITokens && canCreate) {
+      createPermissionGenerationRef.current = permissionGenerationRef.current;
       createMutation.mutate();
     }
   };
@@ -575,7 +592,7 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
       )}
       <Modal
         variant={ModalVariant.medium}
-        isOpen={generatedToken !== null}
+        isOpen={canManageRobotAPITokens && generatedToken !== null}
         onClose={() => setGeneratedToken(null)}
       >
         <ModalHeader title="Robot API token created" />
