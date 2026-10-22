@@ -205,6 +205,105 @@ test.describe(
       },
     );
 
+    test(
+      'organization manager retains robot API token mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, api, userClient}) => {
+        const org = await api.organization('robotapitokenmanager');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = 'Manager visible token';
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+        await authenticatedPage
+          .getByText(robot.fullName, {exact: true})
+          .click();
+        await authenticatedPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = authenticatedPage.getByTestId(
+          'robot-api-tokens-table',
+        );
+        const freshPasswordInput = authenticatedPage.locator('#fresh-password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(TEST_USERS.user.password);
+          await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Create API token'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('checkbox', {name: 'Select row 0'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toBeVisible();
+
+        await tokensTable.getByRole('checkbox', {name: 'Select row 0'}).check();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'global readonly superuser can list robot API tokens without mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
+      async ({api, readonlyPage, userClient}) => {
+        const org = await api.organization('robotapitokenreadonly');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = 'Readonly visible token';
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await readonlyPage.goto(`/organization/${org.name}?tab=Robotaccounts`);
+        await readonlyPage.getByText(robot.fullName, {exact: true}).click();
+        await readonlyPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = readonlyPage.getByTestId('robot-api-tokens-table');
+        const freshPasswordInput = readonlyPage.locator('#fresh-password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(TEST_USERS.readonly.password);
+          await readonlyPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Create API token'}),
+        ).toHaveCount(0);
+        await expect(
+          readonlyPage.getByTestId('robot-api-token-dropdown-checkbox'),
+        ).toHaveCount(0);
+        await expect(tokensTable.getByRole('checkbox')).toHaveCount(0);
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toHaveCount(0);
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toHaveCount(0);
+      },
+    );
+
     test('CRUD lifecycle: create, search, toolbar, and delete robot account', async ({
       authenticatedPage,
       api,
