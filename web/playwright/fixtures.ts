@@ -1567,10 +1567,21 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       return {user, api};
     });
 
+    let firstError: unknown;
     for (const {api, request} of opened.reverse()) {
-      await api.cleanup();
-      await request.dispose();
+      try {
+        await api.cleanup();
+      } catch (err) {
+        firstError ??= err;
+      } finally {
+        try {
+          await request.dispose();
+        } catch (err) {
+          firstError ??= err;
+        }
+      }
     }
+    if (firstError !== undefined) throw firstError;
   },
 
   // =========================================================================
