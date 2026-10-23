@@ -56,7 +56,7 @@ test.describe(
       api,
     }) => {
       const org = await api.organization('suvieworg');
-      await api.repository(org.name, 'viewrepo');
+      const repo = await api.repository(org.name, 'viewrepo');
 
       await superuserPage.goto(`/organization/${org.name}`);
 
@@ -64,7 +64,9 @@ test.describe(
       await expect(
         superuserPage.getByRole('tab', {name: 'Repositories'}),
       ).toBeVisible({timeout: 15000});
-      await expect(superuserPage.getByText('viewrepo')).toBeVisible();
+      await expect(
+        superuserPage.getByRole('link', {name: repo.name, exact: true}),
+      ).toBeVisible();
     });
 
     test("superuser can delete a repository in another user's organization", async ({
