@@ -69,6 +69,7 @@ EXCLUDE_PATTERNS = [
     "security scanner",
     "[otel]",
     "otel request",
+    "exception when parsing basic auth header",
 ]
 
 # Regex pattern for HTTP 4xx status codes in context
