@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 
+import gevent
 import psutil
 
 from app import authentication, build_logs, instance_keys, storage
@@ -212,12 +213,20 @@ def check_warning_services(app, skip):
     return _check_services(app, skip, _WARNING_SERVICES)
 
 
+_SERVICE_CHECK_TIMEOUT = 5
+
+
 def _check_services(app, skip, services):
     status = {}
     for name in services:
         if name in skip:
             continue
 
-        status[name] = services[name](app)
+        try:
+            with gevent.Timeout(_SERVICE_CHECK_TIMEOUT):
+                status[name] = services[name](app)
+        except (gevent.Timeout, Exception) as ex:
+            logger.error("Health check failed: service '%s': %s", name, ex)
+            status[name] = (False, "Health check failed: %s" % ex)
 
     return status
