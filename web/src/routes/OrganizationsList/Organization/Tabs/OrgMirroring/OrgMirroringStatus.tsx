@@ -22,8 +22,8 @@ interface OrgMirroringStatusProps {
   config: OrgMirrorConfig | null;
   isVerifying: boolean;
   isCancellingSync: boolean;
-  onCancelSync: () => Promise<void>;
-  onVerifyConnection: () => Promise<void>;
+  onCancelSync?: () => Promise<void>;
+  onVerifyConnection?: () => Promise<void>;
 }
 
 export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
@@ -57,7 +57,7 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
             variant="danger"
             onClick={async () => {
               setIsCancelModalOpen(false);
-              await onCancelSync();
+              await onCancelSync?.();
             }}
             data-testid="confirm-cancel-sync-button"
           >
@@ -104,6 +104,7 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
                 size="sm"
                 type="button"
                 isDisabled={
+                  !onCancelSync ||
                   isCancellingSync ||
                   !config.repo_sync_status_counts ||
                   ((config.repo_sync_status_counts['SYNCING'] ?? 0) === 0 &&
@@ -131,9 +132,9 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
                 size="sm"
                 type="button"
                 isLoading={isVerifying}
-                isDisabled={isVerifying}
+                isDisabled={!onVerifyConnection || isVerifying}
                 data-testid="verify-connection-button"
-                onClick={onVerifyConnection}
+                onClick={() => onVerifyConnection?.()}
               >
                 Verify Connection
               </Button>

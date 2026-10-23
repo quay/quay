@@ -35,6 +35,7 @@ import {
 } from 'src/resources/NamespaceNotificationResource';
 import NamespaceNotificationsCreateForm from './NamespaceNotificationsCreateForm';
 import NamespaceNotificationsKebab from './NamespaceNotificationsKebab';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 const EVENT_TITLES: Record<NamespaceNotificationEventType, string> = {
   [NamespaceNotificationEventType.quotaWarning]: 'Quota Warning',
@@ -125,6 +126,7 @@ export default function NamespaceNotifications({
   organizationName,
   isUser = false,
 }: NamespaceNotificationsProps) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const config = useQuayConfig();
   const registryTitle = config?.config?.REGISTRY_TITLE_SHORT || 'Quay';
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -173,12 +175,14 @@ export default function NamespaceNotifications({
           title="No notifications configured"
           body="Configure notifications to receive alerts when quota thresholds are crossed"
           button={
-            <Button
-              data-testid="create-ns-notification-btn"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              Create notification
-            </Button>
+            !isReadOnlySuperUser ? (
+              <Button
+                data-testid="create-ns-notification-btn"
+                onClick={() => setIsCreateOpen(true)}
+              >
+                Create notification
+              </Button>
+            ) : null
           }
         />
         <NamespaceNotificationsCreateForm
@@ -195,14 +199,16 @@ export default function NamespaceNotifications({
     <>
       <Toolbar>
         <ToolbarContent>
-          <ToolbarItem>
-            <Button
-              data-testid="create-ns-notification-btn"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              Create notification
-            </Button>
-          </ToolbarItem>
+          {!isReadOnlySuperUser && (
+            <ToolbarItem>
+              <Button
+                data-testid="create-ns-notification-btn"
+                onClick={() => setIsCreateOpen(true)}
+              >
+                Create notification
+              </Button>
+            </ToolbarItem>
+          )}
           <ToolbarPagination
             total={paginationProps.total}
             perPage={paginationProps.perPage}
@@ -270,11 +276,13 @@ export default function NamespaceNotifications({
                 )}
               </Td>
               <Td data-label="kebab">
-                <NamespaceNotificationsKebab
-                  orgname={organizationName}
-                  isUser={isUser}
-                  notification={notification}
-                />
+                {!isReadOnlySuperUser && (
+                  <NamespaceNotificationsKebab
+                    orgname={organizationName}
+                    isUser={isUser}
+                    notification={notification}
+                  />
+                )}
               </Td>
             </Tr>
             <Tr isExpanded={isExpanded(notification.uuid)}>

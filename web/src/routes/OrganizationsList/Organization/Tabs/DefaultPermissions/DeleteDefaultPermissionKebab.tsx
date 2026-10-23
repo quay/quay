@@ -12,10 +12,12 @@ import {
   IDefaultPermission,
   useDeleteDefaultPermission,
 } from 'src/hooks/UseDefaultPermissions';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function DeleteDefaultPermissionKebab(
   props: DefaultPermissionsDropdownProps,
 ) {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const [isOpen, setIsOpen] = useState(false);
   const {addAlert} = useUI();
 
@@ -42,6 +44,10 @@ export default function DeleteDefaultPermissionKebab(
       });
     }
   }, [success]);
+
+  if (isReadOnlySuperUser) {
+    return null;
+  }
 
   return (
     <Dropdown
