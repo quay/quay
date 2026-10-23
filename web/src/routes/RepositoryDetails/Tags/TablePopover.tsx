@@ -72,6 +72,7 @@ export default function TablePopover(props: TablePopoverProps) {
       }
     >
       <div
+        data-testid="pull-popover-trigger"
         onMouseEnter={() => {
           setCurrentOpenPopover(props.tag);
         }}
