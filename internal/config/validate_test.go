@@ -107,6 +107,25 @@ func TestValidatePasswordAuthCacheTTL(t *testing.T) {
 	}
 }
 
+func TestValidatePasswordAuthCacheTTLOverflow(t *testing.T) {
+	// 9223372037 exceeds math.MaxInt64/int64(time.Second) and would overflow
+	// time.Duration when multiplied by time.Second, silently disabling the cache.
+	// Validation must reject it with an error.
+	cfg, err := Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: 9223372037\n"))
+	require.NoError(t, err)
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"),
+		"expected error for PASSWORD_AUTH_CACHE_TTL_S that overflows time.Duration")
+
+	// 9223372036 is the exact maximum safe value (math.MaxInt64/int64(time.Second))
+	// and must be accepted.
+	cfg, err = Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: 9223372036\n"))
+	require.NoError(t, err)
+	errs = Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"),
+		"maximum safe value 9223372036 should be accepted")
+}
+
 func TestValidateInvalidTagExpiration(t *testing.T) {
 	yaml := strings.Replace(minimalValidYAML, "DEFAULT_TAG_EXPIRATION: 2w", "DEFAULT_TAG_EXPIRATION: forever", 1)
 	cfg, err := Parse([]byte(yaml))
