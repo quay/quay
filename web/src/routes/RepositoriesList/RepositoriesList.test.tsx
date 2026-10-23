@@ -1,3 +1,4 @@
+import {act, fireEvent} from '@testing-library/react';
 import {render, screen} from 'src/test-utils';
 import RepositoriesList from './RepositoriesList';
 
@@ -32,7 +33,7 @@ vi.mock('src/hooks/UseQuayConfig', () => ({
 }));
 
 vi.mock('src/hooks/UseCurrentUser', () => ({
-  useCurrentUser: () => ({user: {username: 'testuser'}}),
+  useCurrentUser: () => ({user: {username: 'testuser', organizations: []}}),
 }));
 
 vi.mock('src/hooks/UseSuperuserPermissions', () => ({
@@ -209,5 +210,36 @@ describe('RepositoriesList — search empty state (PROJQUAY-11217)', () => {
       'self',
       true,
     );
+  });
+});
+
+describe('RepositoriesList — create repository modal', () => {
+  beforeEach(() => {
+    mockPaginatedTable.mockReturnValue(basePaginatedReturn);
+  });
+
+  it('keeps typed input when an empty list finishes loading', () => {
+    mockUseRepositories.mockReturnValue({
+      ...baseReposHook,
+      loading: true,
+      repos: [],
+    });
+    const {rerender} = render(<RepositoriesList organizationName="testorg" />);
+    fireEvent.click(screen.getByRole('button', {name: 'Create Repository'}));
+    fireEvent.change(screen.getByTestId('repository-name-input'), {
+      target: {value: 'orgrepo'},
+    });
+
+    mockUseRepositories.mockReturnValue({
+      ...baseReposHook,
+      loading: false,
+      repos: [],
+    });
+    act(() => rerender(<RepositoriesList organizationName="testorg" />));
+
+    expect(
+      screen.getByText('There are no viewable repositories'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('repository-name-input')).toHaveValue('orgrepo');
   });
 });

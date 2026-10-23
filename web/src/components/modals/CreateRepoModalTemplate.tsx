@@ -52,8 +52,8 @@ export default function CreateRepositoryModalTemplate(
     name: props.orgName
       ? props.orgName
       : props.username
-      ? props.username
-      : null,
+        ? props.username
+        : null,
     isDropdownOpen: false,
   });
 
@@ -102,15 +102,15 @@ export default function CreateRepositoryModalTemplate(
       // Extended repostitory name regex: allows "/" in repo names
       regex = /^(?=.{0,255}$)[a-z0-9][.a-z0-9_-]*(?:\/[a-z0-9][.a-z0-9_-]*)*$/;
     }
-    setValidationState({
-      ...validationState,
+    setValidationState((prev) => ({
+      ...prev,
       repoName: regex.test(value) && value.length < 256,
-    });
-    setNewRepository({...newRepository, name: value});
+    }));
+    setNewRepository((prev) => ({...prev, name: value}));
   };
 
   const handleRepoDescriptionChange = (value) => {
-    setNewRepository({...newRepository, description: value});
+    setNewRepository((prev) => ({...prev, description: value}));
   };
 
   const validateInput = () => {

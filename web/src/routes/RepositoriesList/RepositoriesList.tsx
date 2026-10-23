@@ -307,31 +307,35 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   // If filtered results are empty but repos exist, show the table with toolbar
   if (!loading && !repos?.length) {
     return (
-      <Empty
-        icon={CubesIcon}
-        title="There are no viewable repositories"
-        body={
-          isAuthenticated
-            ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
-            : 'No public repositories found. Sign in to view your private repositories.'
-        }
-        button={
-          isAuthenticated && !isReadOnlySuperUser ? (
-            <ToolbarButton
-              id=""
-              buttonValue="Create Repository"
-              Modal={createRepoModal}
-              isModalOpen={isCreateRepoModalOpen}
-              setModalOpen={setCreateRepoModalOpen}
-            />
-          ) : null
-        }
-      />
+      <>
+        {isCreateRepoModalOpen && createRepoModal}
+        <Empty
+          icon={CubesIcon}
+          title="There are no viewable repositories"
+          body={
+            isAuthenticated
+              ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
+              : 'No public repositories found. Sign in to view your private repositories.'
+          }
+          button={
+            isAuthenticated && !isReadOnlySuperUser ? (
+              <ToolbarButton
+                id=""
+                buttonValue="Create Repository"
+                Modal={null}
+                isModalOpen={isCreateRepoModalOpen}
+                setModalOpen={setCreateRepoModalOpen}
+              />
+            ) : null
+          }
+        />
+      </>
     );
   }
 
   return (
     <>
+      {isCreateRepoModalOpen && createRepoModal}
       <RepoListHeader shouldRender={currentOrg === null} />
       <PageSection hasBodyWrapper={false}>
         <ErrorModal
@@ -359,9 +363,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={
-            isAuthenticated && !isReadOnlySuperUser ? createRepoModal : null
-          }
+          pageModal={null}
           showPageButton={isAuthenticated && !isReadOnlySuperUser}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
