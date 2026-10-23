@@ -7,6 +7,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
 
 import {NavigationPath} from './NavigationPath';
+import {billingNavigationRoutes} from './BillingRoutes';
 import {useEffect, useState, useMemo, lazy, Suspense} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import NotFound from 'src/components/errors/404';
@@ -25,6 +26,9 @@ import {UIProvider} from 'src/contexts/UIContext';
 const OrganizationsList = lazy(
   () => import('./OrganizationsList/OrganizationsList'),
 );
+const CreateOrganization = lazy(
+  () => import('./OrganizationsList/CreateOrganization'),
+);
 const Organization = lazy(
   () => import('./OrganizationsList/Organization/Organization'),
 );
@@ -34,13 +38,16 @@ const RepositoriesList = lazy(
 );
 const ManageMembersList = lazy(
   () =>
-    import(
-      './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList'
-    ),
+    import('./OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList'),
 );
 const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
 
 const NavigationRoutes = [
+  ...billingNavigationRoutes,
+  {
+    path: NavigationPath.createOrganization,
+    Component: <CreateOrganization />,
+  },
   {
     path: NavigationPath.overviewList,
     Component: <OverviewList />,

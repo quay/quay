@@ -1,5 +1,6 @@
 import {render, screen} from 'src/test-utils';
 import {BillingInformation} from './BillingInformation';
+import {MemoryRouter} from 'react-router-dom';
 import {fetchMarketplaceSubscriptions} from 'src/resources/BillingResource';
 
 vi.mock('src/hooks/UseCurrentUser', () => ({
@@ -52,6 +53,9 @@ vi.mock('src/hooks/UseQuayConfig', () => ({
 }));
 
 vi.mock('src/resources/BillingResource', () => ({
+  fetchCard: vi.fn().mockResolvedValue(null),
+  fetchInvoices: vi.fn().mockResolvedValue([]),
+  createCardSetupSession: vi.fn(),
   fetchMarketplaceSubscriptions: vi.fn(),
   setMarketplaceOrgAttachment: vi.fn(),
   setMarketplaceOrgRemoval: vi.fn(),
@@ -63,9 +67,23 @@ describe('BillingInformation', () => {
   });
 
   it('renders when billing is enabled and marketplace is disabled', () => {
-    render(<BillingInformation organizationName="testorg" />);
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/organization/testorg?tab=Settings&settingsTab=billinginformation',
+        ]}
+      >
+        <BillingInformation organizationName="testorg" />
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByTestId('billing-invoice-email')).toBeVisible();
+    expect(screen.getByRole('heading', {name: 'Invoices'})).toBeVisible();
+    expect(
+      screen.getByRole('button', {name: 'Invoice settings'}),
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('billing-invoice-email'),
+    ).not.toBeInTheDocument();
     expect(fetchMarketplaceSubscriptions).not.toHaveBeenCalled();
   });
 });

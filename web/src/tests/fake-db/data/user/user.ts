@@ -1,5 +1,10 @@
 import {AxiosRequestConfig} from 'axios';
 import {mock} from 'src/tests/fake-db/MockAxios';
+import {
+  loadReceiptSettings,
+  saveReceiptSettings,
+} from '../billing/receipt-settings';
+import type {ReceiptSettings} from '../billing/receipt-settings';
 
 const response = {
   anonymous: false,
@@ -80,7 +85,21 @@ const response = {
 };
 
 mock.onGet('/api/v1/user/').reply((request: AxiosRequestConfig) => {
-  return [200, response];
+  return [
+    200,
+    {...response, ...loadReceiptSettings(response.username, response.email)},
+  ];
+});
+
+mock.onPut(/^\/?api\/v1\/user\/$/).reply((request) => {
+  const settings = JSON.parse(request.data) as ReceiptSettings;
+  if (
+    typeof settings.invoice_email !== 'boolean' ||
+    typeof settings.invoice_email_address !== 'string'
+  )
+    return [400, {error_message: 'Provide receipt settings.'}];
+  saveReceiptSettings(response.username, settings);
+  return [200, {...response, ...settings}];
 });
 
 const superUserUsersResponse = {

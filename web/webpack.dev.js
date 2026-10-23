@@ -3,6 +3,8 @@ const {merge} = require('webpack-merge');
 const common = require('./webpack.common.js');
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || '9000';
+const QUAY_PROXY_TARGET =
+  process.env.QUAY_PROXY_TARGET || 'http://localhost:8080';
 
 module.exports = merge(common('development'), {
   mode: 'development',
@@ -17,23 +19,23 @@ module.exports = merge(common('development'), {
     open: true,
     proxy: {
       '/api/v1': {
-        target: 'http://localhost:8080',
+        target: QUAY_PROXY_TARGET,
         logLevel: 'debug',
       },
       '/csrf_token': {
-        target: 'http://localhost:8080',
+        target: QUAY_PROXY_TARGET,
         logLevel: 'debug',
       },
       '/config': {
-        target: 'http://localhost:8080',
+        target: QUAY_PROXY_TARGET,
         logLevel: 'debug',
       },
       '/static': {
-        target: 'http://localhost:8080',
+        target: QUAY_PROXY_TARGET,
         logLevel: 'debug',
       },
       '/oauth': {
-        target: 'http://localhost:8080',
+        target: QUAY_PROXY_TARGET,
         logLevel: 'debug',
       },
     },
