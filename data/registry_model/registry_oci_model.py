@@ -918,12 +918,14 @@ class OCIModel(RegistryDataInterface):
         manifest_interface_instance,
         expiration_sec,
         storage,
+        raise_on_error=False,
         model_cache=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
-        Returns the manifest object created or None on error.
+        Returns the manifest object created or None on error, unless raise_on_error is set to
+        True, in which case a CreateManifestException may also be raised.
 
         If model_cache is provided and the manifest has a subject, the referrers
         cache for the subject digest is invalidated so that subsequent queries
@@ -937,6 +939,7 @@ class OCIModel(RegistryDataInterface):
                 manifest_interface_instance,
                 storage,
                 temp_tag_expiration_sec=expiration_sec,
+                raise_on_error=raise_on_error,
             )
             if created_manifest is None:
                 return None
@@ -1281,9 +1284,14 @@ class OCIModel(RegistryDataInterface):
             if upload_record is not None:
                 upload_record.delete_instance()
 
-    def commit_blob_upload(self, blob_upload, blob_digest_str, blob_expiration_seconds):
+    def commit_blob_upload(
+        self, blob_upload, blob_digest_str, blob_expiration_seconds, already_locked=False
+    ):
         """
         Commits the blob upload into a blob and sets an expiration before that blob will be GCed.
+
+        If already_locked is True, the caller already holds the BLOB_DELETE_<digest> GlobalLock, so
+        the underlying blob record creation skips its own nested acquisition of that lock.
         """
         with db_disallow_replica_use():
             upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
@@ -1301,6 +1309,7 @@ class OCIModel(RegistryDataInterface):
                 blob_upload.byte_count,
                 blob_expiration_seconds,
                 blob_upload.uncompressed_byte_count,
+                already_locked=already_locked,
             )
 
             # Delete the blob upload.
