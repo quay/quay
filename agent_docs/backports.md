@@ -104,6 +104,19 @@ Report the ordered chain before the first hop command. What to do about a
 missing predecessor is the maintainer's call; never absorb it silently into
 another change's backport.
 
+**If the predecessor scan finds master-only commits on your modified test
+files,** a 3-way conflict is likely when the bot runs. Verify read-only first:
+
+```bash
+git merge-tree --write-tree \
+  --merge-base=$(git merge-base HEAD upstream/<branch>) \
+  HEAD upstream/<branch>
+```
+
+If the output contains `CONFLICT` on your test file, skip §3 and go directly
+to §4 (hand-port). Opening a manual backport PR from the start is faster than
+waiting for the bot to hard-fail and leave no PR behind.
+
 ## 3. Bot first, as a cascade
 
 The cascade runs newest branch to oldest, each step picked from the previous
