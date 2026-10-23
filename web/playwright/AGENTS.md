@@ -31,13 +31,21 @@ web/playwright/
 │   │   ├── client.ts             # TestApi client (auto-cleanup)
 │   │   ├── csrf.ts               # getCsrfToken
 │   │   └── raw-client.ts         # ApiClient (raw, no auto-cleanup)
-│   ├── config.ts                 # API_URL, BASE_URL
-│   ├── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
-│   ├── mailpit.ts                # Email testing utilities
-│   ├── s3.ts                     # S3 storage utilities
-│   ├── security.ts               # Security scanning utilities
-│   ├── test-utils.ts             # General test helpers
-│   └── webhook.ts                # Webhook receiver utilities
+│   ├── config.ts                      # API_URL, BASE_URL
+│   ├── container.ts                   # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
+│   ├── failure-artifacts.ts           # W3C trace context generation; on-failure Jaeger span attachments
+│   ├── failure-artifacts.test.ts      # Tests for failure-artifacts
+│   ├── fetch-retry.ts                 # fetchWithRetry with pluggable FetchImpl adapter and setFetchImpl() API
+│   ├── fetch-retry.test.ts            # Tests for fetch-retry
+│   ├── mailpit.ts                     # Email testing utilities
+│   ├── namespace-notifications-ui.ts  # Namespace notifications table/row locator helpers
+│   ├── proxy.ts                       # Playwright proxy config from HTTP_PROXY/HTTPS_PROXY/NO_PROXY env vars
+│   ├── s3.ts                          # S3 storage utilities
+│   ├── s3.test.ts                     # Tests for s3 utilities
+│   ├── security.ts                    # Security scanning utilities
+│   ├── test-utils.ts                  # General test helpers
+│   ├── upgrade-fixtures.ts            # Fixed deterministic fixtures for the operator-upgrade lane
+│   └── webhook.ts                     # Webhook receiver utilities
 ├── fixtures/                     # Static test data (e.g., ORAS referrer JSON)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
 ├── global-setup.ts               # Creates admin, testuser, readonly users
@@ -120,6 +128,11 @@ PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE=allowlisted-host.example/ns/repo \
 PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL=https://allowlisted-host.example \
 npx playwright test --grep ambient
 ```
+
+`applyChromiumLoopbackBypass()` in `utils/proxy.ts` (called from `global-setup.ts`) automatically
+sets `PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK=1` when a proxy is configured, preventing
+Chromium from routing loopback traffic (localhost) through the proxy. Set the variable yourself
+before the suite starts to suppress the automatic override.
 
 ### Running Tagged Tests
 
