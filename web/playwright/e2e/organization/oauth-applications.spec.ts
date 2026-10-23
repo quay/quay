@@ -153,6 +153,42 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   );
 
   test(
+    'shows token generation for global readonly superusers who administer the organization',
+    {tag: ['@PROJQUAY-13943', '@superuser']},
+    async ({readonlyPage: page, readonlyApi, superuserApi}) => {
+      const org = await superuserApi.organization('readonly-oauth');
+      const admins = await superuserApi.team(
+        org.name,
+        'readonly-admins',
+        'admin',
+      );
+      await superuserApi.teamMember(org.name, admins.name, 'readonly');
+      await readonlyApi.acceptTeamInviteForOrganization(org.name);
+      const currentUser = await readonlyApi.raw.getCurrentUser();
+      expect(currentUser.organizations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({name: org.name, is_org_admin: true}),
+        ]),
+      );
+      const app = await superuserApi.oauthApplication(
+        org.name,
+        'readonly-token',
+      );
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      await page
+        .getByTestId('oauth-applications-table')
+        .getByRole('button', {name: app.name, exact: true})
+        .click();
+      await page.getByRole('tab', {name: 'API Access Tokens'}).click();
+
+      await expect(
+        page.getByTestId('generate-new-api-token-button'),
+      ).toBeVisible();
+    },
+  );
+
+  test(
     'non-admin users cannot see OAuth Applications tab',
     {tag: '@superuser'},
     async ({authenticatedPage: page, superuserApi}) => {

@@ -31,12 +31,14 @@ vi.mock('src/hooks/UseQuayConfig', () => ({
   useQuayConfig: mockUseQuayConfig,
 }));
 
+const mockUseCurrentUser = vi.hoisted(() => vi.fn());
 vi.mock('src/hooks/UseCurrentUser', () => ({
-  useCurrentUser: () => ({user: {username: 'testuser'}}),
+  useCurrentUser: mockUseCurrentUser,
 }));
 
+const mockUseSuperuserPermissions = vi.hoisted(() => vi.fn());
 vi.mock('src/hooks/UseSuperuserPermissions', () => ({
-  useSuperuserPermissions: () => ({isReadOnlySuperUser: false}),
+  useSuperuserPermissions: mockUseSuperuserPermissions,
 }));
 
 vi.mock('src/hooks/UseQuotaManagement', () => ({
@@ -99,6 +101,14 @@ const oneRepo = {
 
 describe('RepositoriesList — search empty state (PROJQUAY-11217)', () => {
   beforeEach(() => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'testuser',
+        can_create_repo: true,
+        organizations: [],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: false});
     mockUseQuayConfig.mockReturnValue({
       features: {QUOTA_MANAGEMENT: false, EDIT_QUOTA: false},
     });
@@ -209,5 +219,161 @@ describe('RepositoriesList — search empty state (PROJQUAY-11217)', () => {
       'self',
       true,
     );
+  });
+
+  it('shows create repository for a global readonly superuser with scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="managedorg" />);
+
+    expect(
+      screen.getByRole('button', {name: 'Create Repository'}),
+    ).toBeVisible();
+    expect(screen.queryByRole('checkbox', {name: 'Select row 0'})).toBeNull();
+  });
+
+  it('hides the create repository toolbar action in registry readonly mode despite scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseQuayConfig.mockReturnValue({
+      features: {QUOTA_MANAGEMENT: false, EDIT_QUOTA: false},
+      registry_state: 'readonly',
+    });
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="managedorg" />);
+
+    expect(
+      screen.queryByRole('button', {name: 'Create Repository'}),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the create repository empty-state action in registry readonly mode despite scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseQuayConfig.mockReturnValue({
+      features: {QUOTA_MANAGEMENT: false, EDIT_QUOTA: false},
+      registry_state: 'readonly',
+    });
+    mockUseRepositories.mockReturnValue({
+      ...baseReposHook,
+      loading: false,
+      repos: [],
+    });
+    mockPaginatedTable.mockReturnValue(basePaginatedReturn);
+
+    render(<RepositoriesList organizationName="managedorg" />);
+
+    expect(
+      screen.queryByRole('button', {name: 'Create Repository'}),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows create repository for a global readonly superuser in their own namespace', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="readonly" isUserOrganization />);
+
+    expect(
+      screen.getByRole('button', {name: 'Create Repository'}),
+    ).toBeVisible();
+  });
+
+  it('preserves create repository for a full superuser without scoped membership', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'fullsuperuser',
+        super_user: true,
+        can_create_repo: false,
+        organizations: [],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: false});
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="unmanagedorg" />);
+
+    expect(
+      screen.getByRole('button', {name: 'Create Repository'}),
+    ).toBeVisible();
+  });
+
+  it('hides create repository for a global readonly superuser without scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="unmanagedorg" />);
+
+    expect(
+      screen.queryByRole('button', {name: 'Create Repository'}),
+    ).not.toBeInTheDocument();
   });
 });
