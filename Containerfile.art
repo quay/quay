@@ -184,6 +184,7 @@ ENV QUAYCONF=/quay-registry/conf
 ENV QUAYRUN=/quay-registry/conf
 ENV QUAYPATH=$QUAYDIR
 ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages:$QUAYPATH
+ENV PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
 ENV RED_HAT_QUAY=true
 
 # All of these chgrp+chmod commands are an Openshift-ism.
