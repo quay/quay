@@ -1,14 +1,13 @@
-from test.fixtures import *
-from test.test_external_jwt_authn import fake_jwt
-from test.test_keystone_auth import fake_keystone
-from test.test_ldap import mock_ldap
-
 import pytest
 from mock import patch
 
 from endpoints.api.search import EntitySearch, LinkExternalEntity
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
+from test.test_external_jwt_authn import fake_jwt
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
 
 
 @pytest.fixture(
@@ -41,11 +40,23 @@ def test_entity_search(auth_engine, requires_email, client):
             assert len(results) == 0
 
             # Try a known prefix.
+            # For federationuser(ldap): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) #2505
+            # we need to ensure, the user is federate before we can check it
+            # the assertname will ensure we do not modify the assert check for none federated checks
+            asserttname = "cool.user"
+            asserttype = "external"
+            if auth_engine == "mock_ldap":
+                with mock_ldap() as ldap:
+                    # Verify that the user is logged in and their username was adjusted.
+                    (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
+                    asserttname = "cool_user"
+                    asserttype = "user"
+
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
             entity = results[0]
-            assert entity["name"] == "cool.user"
-            assert entity["kind"] == "external"
+            assert entity["name"] == asserttname
+            assert entity["kind"] == asserttype
 
 
 def test_link_external_entity(auth_engine, requires_email, app):
