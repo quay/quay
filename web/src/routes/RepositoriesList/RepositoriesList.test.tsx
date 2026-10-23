@@ -247,6 +247,64 @@ describe('RepositoriesList — search empty state (PROJQUAY-11217)', () => {
     expect(screen.queryByRole('checkbox', {name: 'Select row 0'})).toBeNull();
   });
 
+  it('hides the create repository toolbar action in registry readonly mode despite scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseQuayConfig.mockReturnValue({
+      features: {QUOTA_MANAGEMENT: false, EDIT_QUOTA: false},
+      registry_state: 'readonly',
+    });
+    mockUseRepositories.mockReturnValue({...baseReposHook, loading: false});
+    mockPaginatedTable.mockReturnValue({
+      ...basePaginatedReturn,
+      filteredData: [oneRepo],
+      paginatedData: [oneRepo],
+    });
+
+    render(<RepositoriesList organizationName="managedorg" />);
+
+    expect(
+      screen.queryByRole('button', {name: 'Create Repository'}),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the create repository empty-state action in registry readonly mode despite scoped create permission', () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        username: 'readonly',
+        can_create_repo: true,
+        organizations: [
+          {name: 'managedorg', can_create_repo: true, is_org_admin: true},
+        ],
+      },
+    });
+    mockUseSuperuserPermissions.mockReturnValue({isReadOnlySuperUser: true});
+    mockUseQuayConfig.mockReturnValue({
+      features: {QUOTA_MANAGEMENT: false, EDIT_QUOTA: false},
+      registry_state: 'readonly',
+    });
+    mockUseRepositories.mockReturnValue({
+      ...baseReposHook,
+      loading: false,
+      repos: [],
+    });
+    mockPaginatedTable.mockReturnValue(basePaginatedReturn);
+
+    render(<RepositoriesList organizationName="managedorg" />);
+
+    expect(
+      screen.queryByRole('button', {name: 'Create Repository'}),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows create repository for a global readonly superuser in their own namespace', () => {
     mockUseCurrentUser.mockReturnValue({
       user: {

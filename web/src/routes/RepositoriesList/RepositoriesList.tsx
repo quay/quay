@@ -27,6 +27,7 @@ import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayState} from 'src/hooks/UseQuayState';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
@@ -68,6 +69,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const location = useLocation();
 
   const quayConfig = useQuayConfig();
+  const {inReadOnlyMode} = useQuayState();
   const {user} = useCurrentUser();
   const {isReadOnlySuperUser} = useSuperuserPermissions();
   const namespaceName = currentOrg || user?.username;
@@ -80,7 +82,9 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             organization.can_create_repo === true,
         ) === true;
   const canCreateRepository =
-    Boolean(user?.username) && (!isReadOnlySuperUser || canCreateInNamespace);
+    Boolean(user?.username) &&
+    !inReadOnlyMode &&
+    (!isReadOnlySuperUser || canCreateInNamespace);
   const isQuotaManagementEnabled =
     quayConfig?.features?.QUOTA_MANAGEMENT === true &&
     quayConfig?.features?.EDIT_QUOTA === true;
