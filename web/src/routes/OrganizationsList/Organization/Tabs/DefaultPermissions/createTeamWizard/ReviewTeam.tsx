@@ -25,12 +25,7 @@ export default function Review(props: ReviewProps) {
             className="fit-content"
           />
         </FormGroup>
-        <FormGroup
-          label="Repositories"
-          fieldId="team-repositories"
-          isRequired
-          disabled
-        >
+        <FormGroup label="Repositories" fieldId="team-repositories" disabled>
           <TextInput
             data-testid={'selected-repos-review'}
             value={props.selectedRepos?.map((item) => item.name).join(', ')}
@@ -40,7 +35,7 @@ export default function Review(props: ReviewProps) {
             className="fit-content"
           />
         </FormGroup>
-        <FormGroup label="Members" fieldId="team-members" isRequired disabled>
+        <FormGroup label="Members" fieldId="team-members" disabled>
           <TextInput
             data-testid={'selected-team-members-review'}
             value={props.addedTeamMembers?.map((item) => item.name).join(', ')}
