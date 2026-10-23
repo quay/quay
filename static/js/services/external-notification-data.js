@@ -144,6 +144,16 @@ function(Config, Features, VulnerabilityService, DocumentationService) {
           'values': VulnerabilityService.LEVELS,
           'help_text': 'A vulnerability must have a severity of the chosen level (or higher) ' +
                       'for this notification to fire.',
+        },
+        {
+          'name': 'tag-regex',
+          'type': 'regex',
+          'title': 'matching tag(s)',
+          'help_text': 'An optional regular expression that must match the whole tag(s) ' +
+                       'referencing the vulnerable image. If left blank, the notification ' +
+                       'will fire for all tags.',
+          'optional': true,
+          'placeholder': '(v2\\..*)|(latest)'
         }
       ]
     });
