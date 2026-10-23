@@ -216,6 +216,27 @@ jobs:
               PRIVACY_POLICY_URL: https://quay.acme.org/privacy
               SECURITY_URL: https://quay.acme.org/security
               ABOUT_URL: https://quay.acme.org/about
+      - name: Start Prometheus for Quay metrics
+        continue-on-error: true
+        env:
+          PROMETHEUS_IMAGE: prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # v3.15.0
+        run: |
+          # A separate container on quay-quay's network keeps scraping across
+          # both docker restart quay-quay below.
+          network=$(docker inspect quay-quay --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+          mkdir -p "$RUNNER_TEMP/prometheus-tsdb"
+          echo "PROMETHEUS_START=$(date -u +%s)" >> "$GITHUB_ENV"
+          docker run -d --rm --name quay-prometheus \
+            --network "$network" \
+            --user "$(id -u):$(id -g)" \
+            -p 127.0.0.1:9090:9090 \
+            -v "$PWD/.github/ci-metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            -v "$RUNNER_TEMP/prometheus-tsdb:/prometheus" \
+            "$PROMETHEUS_IMAGE" \
+            --config.file=/etc/prometheus/prometheus.yml \
+            --storage.tsdb.path=/prometheus
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:9090/-/ready
+
       - name: Start LDAP server (pre-initialize for later auth swap)
         run: |
           docker compose up -d ldap
@@ -405,6 +426,35 @@ jobs:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
         run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
+
+      - name: Export Quay metrics
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 .github/scripts/ci-metrics.py export \
+            --prom-url http://127.0.0.1:9090 \
+            --start "$PROMETHEUS_START" --end "$(date -u +%s)" --step 30s \
+            --queries .github/ci-metrics/queries.json --out quay-metrics
+          python3 .github/scripts/ci-metrics.py summarize --in quay-metrics
+          cat quay-metrics/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop Prometheus and archive Quay metrics
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p quay-metrics
+          docker stop quay-prometheus
+          tar -czf quay-metrics/tsdb.tar.gz -C "$RUNNER_TEMP" prometheus-tsdb
+          du -ab quay-metrics || true
+
+      - name: Upload Quay metrics
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quay-metrics
+          path: quay-metrics/
+          retention-days: 7
 
       - name: Merge test reports
         if: always()
