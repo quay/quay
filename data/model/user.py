@@ -21,6 +21,7 @@ from data.database import (
     NamespaceNotification,
     OAuthApplication,
     OauthAssignedToken,
+    QueueItem,
     QuotaNamespaceSize,
     QuotaNotificationState,
     RepoMirrorConfig,
@@ -37,6 +38,7 @@ from data.database import (
     TeamRole,
     TupleSelector,
     User,
+    UserOrganizationQuota,
     UserPrompt,
     UserPromptKind,
     UserPromptTypes,
@@ -127,6 +129,19 @@ def create_user(
     return created
 
 
+def _namespace_in_grace_period(marker):
+    """A namespace is in its grace period only when its queue item exists and
+    is not yet available for processing (available_after is in the future).
+    """
+    if not marker.queue_id:
+        return False
+    try:
+        qi = QueueItem.get(QueueItem.id == int(marker.queue_id))
+        return qi.retries_remaining > 0 and qi.available_after > datetime.utcnow()
+    except (QueueItem.DoesNotExist, ValueError):
+        return False
+
+
 def create_user_noverify(
     username, email, email_required=True, prompts=tuple(), is_possible_abuser=False
 ):
@@ -157,11 +172,9 @@ def create_user_noverify(
     except User.DoesNotExist:
         pass
 
-    try:
-        DeletedNamespace.get(DeletedNamespace.original_username == username)
-        raise InvalidUsernameException("Username is not available")
-    except DeletedNamespace.DoesNotExist:
-        pass
+    for marker in DeletedNamespace.select().where(DeletedNamespace.original_username == username):
+        if _namespace_in_grace_period(marker):
+            raise InvalidUsernameException("Username is not available")
 
     # Check email uniqueness only among non-organization users. Organizations are allowed
     # to share emails (enforced by the partial unique index on User.email).
@@ -1505,8 +1518,8 @@ def mark_namespace_for_deletion(
     A queue item will be added to delete the namespace's repositories and storage, while the
     namespace itself will be renamed, disabled, and delinked from other tables.
 
-    When available_after > 0 (grace period), linked data (teams, OAuth apps, robots, etc.) is
-    preserved so the namespace can be recovered via direct DB operations during the grace window.
+    When available_after > 0 (grace period), repository and image data is preserved so they can
+    be recovered via direct DB operations during the grace window.
     """
     if available_after is None:
         if force:
@@ -1547,10 +1560,9 @@ def mark_namespace_for_deletion(
     for queue in queues:
         queue.delete_namespaced_items(user.username)
 
-    # When a grace period is active, defer linked data deletion so the namespace can be
-    # recovered. The GC worker (delete_user) will clean up linked data at purge time.
-    if available_after <= 0:
-        _delete_user_linked_data(user)
+    # Delete linked data eagerly.  The grace period only preserves
+    # repository and image data.
+    _delete_user_linked_data(user)
 
     with db_transaction():
         original_username = user.username
@@ -1634,6 +1646,11 @@ def delete_user(user, queues):
                 is_progressing = True
 
         if not is_progressing:
+            logger.error(
+                "Namespace GC stuck for %s: unable to purge repos %s",
+                _resolve_namespace_name(user),
+                [repo.name for repo in repositories],
+            )
             return False
 
     # Delete any autoprune tasks and policies
@@ -1664,7 +1681,6 @@ def _resolve_namespace_name(user):
 
 
 def _delete_user_linked_data(user):
-    namespace_name = _resolve_namespace_name(user)
     if user.organization:
         # Delete the organization's teams.
         with db_transaction():
@@ -1689,8 +1705,7 @@ def _delete_user_linked_data(user):
             trigger.delete_instance(recursive=True, delete_nullable=False)
 
     with db_transaction():
-        quotas = namespacequota.get_namespace_quota_list(namespace_name)
-        for quota in quotas:
+        for quota in UserOrganizationQuota.select().where(UserOrganizationQuota.namespace == user):
             namespacequota.delete_namespace_quota(quota)
 
     if user.organization:
@@ -1703,16 +1718,19 @@ def _delete_user_linked_data(user):
         if org_mirror_config is not None:
             delete_org_mirror_config(org_mirror_config)
 
-    # Delete any mirrors with robots owned by this user.
-    with db_transaction():
-        robots = list(list_namespace_robots(namespace_name))
-        RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
+    # Delete robots by name prefix.  Skip when a new namespace has reclaimed
+    # the name to avoid colliding with its robots.
+    namespace_name = _resolve_namespace_name(user)
+    name_reused = User.select().where(User.username == namespace_name, User.id != user.id).exists()
+    if not name_reused:
+        with db_transaction():
+            robots = list(list_namespace_robots(namespace_name))
+            RepoMirrorConfig.delete().where(RepoMirrorConfig.internal_robot << robots).execute()
 
-    # Delete any robots owned by this user.
-    with db_transaction():
-        robots = list(list_namespace_robots(namespace_name))
-        for robot in robots:
-            robot.delete_instance(recursive=True, delete_nullable=True)
+        with db_transaction():
+            robots = list(list_namespace_robots(namespace_name))
+            for robot in robots:
+                robot.delete_instance(recursive=True, delete_nullable=True)
 
     # Null out any service key approvals. We technically lose information here, but its better than
     # falling and only occurs if a superuser is being deleted.
