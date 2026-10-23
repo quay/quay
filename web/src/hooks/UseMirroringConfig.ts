@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import {UseFormReset, UseFormGetValues} from 'react-hook-form';
 import {
   MirroringConfig,
   MirroringConfigResponse,
@@ -18,13 +19,23 @@ import {
 } from 'src/resources/MirroringResource';
 import {Entity, EntityKind} from 'src/resources/UserResource';
 
+export interface UseMirroringConfigReturn {
+  config: MirroringConfigResponse | null;
+  setConfig: (config: MirroringConfigResponse | null) => void;
+  isLoading: boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+  submitConfig: (data: MirroringFormData) => Promise<void>;
+}
+
 export const useMirroringConfig = (
   namespace: string,
   repoName: string,
   repoState: string | undefined,
-  reset: (data: MirroringFormData) => void,
+  reset: UseFormReset<MirroringFormData>,
   setSelectedRobot: (robot: Entity | null) => void,
-) => {
+  getValues: UseFormGetValues<MirroringFormData>,
+): UseMirroringConfigReturn => {
   const [config, setConfig] = useState<MirroringConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +51,7 @@ export const useMirroringConfig = (
         // Populate form with existing values
         const {value, unit} = convertFromSeconds(response.sync_interval);
 
-        reset({
+        const formData: MirroringFormData = {
           isEnabled: response.is_enabled,
           externalReference: response.external_reference || '',
           tags: response.root_rule.rule_value.join(', '),
@@ -59,7 +70,9 @@ export const useMirroringConfig = (
             response.external_registry_config?.unsigned_images ?? false,
           skopeoTimeoutInterval: response.skopeo_timeout_interval || 300,
           architectureFilter: response.architecture_filter || [],
-        });
+        };
+
+        reset(formData);
 
         // Set selected robot if there's one configured
         if (response.robot_username) {
