@@ -6,5 +6,5 @@ set -e
 cd ${QUAYDIR:-"/"}
 
 # Run the database migration
-REVISION_HEAD=$(PYTHONPATH=${QUAYPATH:-"."} python $QUAYCONF/init/data_migration.py)
-PYTHONPATH=${QUAYPATH:-"."} alembic upgrade $REVISION_HEAD
+REVISION_HEAD=$(PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" python $QUAYCONF/init/data_migration.py)
+PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" alembic upgrade $REVISION_HEAD
