@@ -6,6 +6,12 @@ from util.registry.filelike import READ_UNTIL_END
 
 logger = logging.getLogger(__name__)
 
+import re
+
+# UUID regex needed for matching exported log files
+_UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_EXPORTED_LOG_FILENAME_RE = re.compile(rf"^{_UUID_RE}-{_UUID_RE}$")
+
 
 class InvalidStorageConfigurationException(Exception):
     pass
@@ -101,6 +107,14 @@ class BaseStorage(StoragePaths):
         """
         Attempts to clean orphaned multipart uploads older than the set delete threshold on a compatible
         storage engine.
+        """
+        raise NotImplementedError
+
+    def clean_exported_action_logs(self, deletion_date_threshold, log_path):
+        """
+        Attempts to clean orphaned exported log files from storage. Exported logs are only
+        available for an hour via the API but are currently not cleaned in backend,
+        resulting in needless storage waste.
         """
         raise NotImplementedError
 
