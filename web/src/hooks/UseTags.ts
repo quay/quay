@@ -161,19 +161,30 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
   };
 }
 
+/** Poll interval when FEATURE_IMAGE_PULL_STATS_AUTO_REFRESH is enabled. */
+export const PULL_STATS_REFETCH_INTERVAL_MS = 60_000;
+
 export function useTagPullStatistics(
   org: string,
   repo: string,
   tag: string,
   enabled = true,
+  autoRefresh = false,
 ) {
+  const shouldAutoRefresh = enabled && autoRefresh;
   const {data, isLoading, isError, error} = useQuery(
     ['tagPullStatistics', org, repo, tag],
     () => getTagPullStatistics(org, repo, tag),
     {
       enabled: enabled,
       retry: false,
-      staleTime: 60000, // Consider data fresh for 60 seconds
+      // Without auto-refresh, cache for 60s. With auto-refresh, allow interval refetch.
+      staleTime: shouldAutoRefresh ? 0 : 60000,
+      refetchInterval: shouldAutoRefresh
+        ? PULL_STATS_REFETCH_INTERVAL_MS
+        : false,
+      refetchIntervalInBackground: false,
+      keepPreviousData: true,
     },
   );
 

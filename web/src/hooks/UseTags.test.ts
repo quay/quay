@@ -11,6 +11,7 @@ import {
   useRestoreTag,
   usePermanentlyDeleteTag,
   useTagPullStatistics,
+  PULL_STATS_REFETCH_INTERVAL_MS,
 } from './UseTags';
 import {
   getTags,
@@ -295,6 +296,64 @@ describe('UseTags', () => {
       );
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.isError).toBe(true);
+    });
+
+    it('does not poll when autoRefresh is false', async () => {
+      vi.useFakeTimers({shouldAdvanceTime: true});
+      const mockData = {
+        tag_name: 'latest',
+        tag_pull_count: 1,
+        last_tag_pull_date: '2024-01-01',
+        current_manifest_digest: 'sha256:abc',
+        last_manifest_pull_date: '2024-01-01',
+      };
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData as any);
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, false),
+        {wrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PULL_STATS_REFETCH_INTERVAL_MS * 2);
+      });
+      expect(getTagPullStatistics).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    it('polls when autoRefresh is true', async () => {
+      vi.useFakeTimers({shouldAdvanceTime: true});
+      const mockData = {
+        tag_name: 'latest',
+        tag_pull_count: 1,
+        last_tag_pull_date: '2024-01-01',
+        current_manifest_digest: 'sha256:abc',
+        last_manifest_pull_date: '2024-01-01',
+      };
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData as any);
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PULL_STATS_REFETCH_INTERVAL_MS);
+      });
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
+      vi.useRealTimers();
+    });
+
+    it('does not poll when enabled is false even if autoRefresh is true', () => {
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', false, true),
+        {wrapper},
+      );
+      expect(getTagPullStatistics).not.toHaveBeenCalled();
     });
   });
 });

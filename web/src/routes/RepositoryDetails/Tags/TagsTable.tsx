@@ -199,6 +199,7 @@ function TagsTableRow(props: RowProps) {
     props.repo,
     tag.name,
     config?.features?.IMAGE_PULL_STATS || false,
+    config?.features?.IMAGE_PULL_STATS_AUTO_REFRESH || false,
   );
 
   return (
@@ -724,6 +725,7 @@ interface SubRowProps {
   config: {
     features?: {
       IMAGE_PULL_STATS?: boolean;
+      IMAGE_PULL_STATS_AUTO_REFRESH?: boolean;
       SECURITY_SCANNER?: boolean;
     };
   } | null;
