@@ -78,9 +78,12 @@ class _LDAPTraceRedactor:
     # and their list-of-literals values in pprint'd search results, e.g.
     #   'userPassword': [b'{PBKDF2-SHA512}...']
     # Literals may be comma-separated or implicitly concatenated across lines.
+    # The separator is deliberately unambiguous (either comma-delimited or a
+    # whitespace run, never both) so that pathological inputs cannot cause
+    # exponential backtracking (CodeQL py/redos).
     _PW_ATTR_RE = re.compile(
         r"(?P<key>'(?:[^'\\]|\\.)*(?i:password|unicodepwd)(?:[^'\\]|\\.)*'\s*:\s*)"
-        r"(?P<value>\[\s*(?:b?(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')\s*,?\s*)*\])"
+        r"(?P<value>\[\s*(?:b?(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')(?:\s*,\s*|\s+)?)*\s*\])"
     )
 
     _BIND_HEADER_RE = re.compile(
