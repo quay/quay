@@ -96,7 +96,11 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard Step 2: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    const repoRow = authenticatedPage.getByTestId(`checkbox-row-${repo.name}`);
+    await repoRow.getByRole('checkbox').check();
+    await expect(
+      authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
+    ).toContainText('Read');
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard Step 3: Add team member
@@ -111,6 +115,12 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await expect(
       authenticatedPage.getByTestId(`${teamName}-team-name-review`),
     ).toHaveValue(teamName);
+    await expect(
+      authenticatedPage.getByTestId('selected-repos-review'),
+    ).toHaveValue(repo.name);
+    await expect(
+      authenticatedPage.getByTestId('selected-team-members-review'),
+    ).toHaveValue(TEST_USERS.admin.username);
     await authenticatedPage.getByTestId('review-and-finish-wizard-btn').click();
 
     await expect(
@@ -122,6 +132,47 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await expect(
       authenticatedPage.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1', {timeout: 15000});
+  });
+
+  test('team wizard review accepts empty optional repositories and members', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('tmorg');
+    const teamName = uniqueName('emptyteam');
+
+    await navigateToTeamsTab(authenticatedPage, org.name);
+
+    await authenticatedPage.getByTestId('create-new-team-button').click();
+    await authenticatedPage.getByTestId('new-team-name-input').fill(teamName);
+    await authenticatedPage.getByTestId('create-team-confirm').click();
+
+    await expect(
+      authenticatedPage
+        .getByText(`Successfully created new team: ${teamName}`)
+        .last(),
+    ).toBeVisible();
+
+    await authenticatedPage.getByTestId('next-btn').click();
+    await authenticatedPage.getByTestId('next-btn').click();
+    await authenticatedPage.getByTestId('next-btn').click();
+
+    await expect(
+      authenticatedPage.getByTestId(`${teamName}-team-name-review`),
+    ).toHaveValue(teamName);
+    await expect(
+      authenticatedPage.getByTestId('selected-repos-review'),
+    ).toHaveValue('');
+    await expect(
+      authenticatedPage.getByTestId('selected-team-members-review'),
+    ).toHaveValue('');
+    const finishButton = authenticatedPage.getByTestId(
+      'review-and-finish-wizard-btn',
+    );
+    await finishButton.click();
+    await expect(finishButton).toBeHidden();
+
+    await searchForTeam(authenticatedPage, teamName);
   });
 
   test('update team role', async ({authenticatedPage, api}) => {
