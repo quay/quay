@@ -161,8 +161,16 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
   };
 }
 
-/** Poll interval when FEATURE_IMAGE_PULL_STATS_AUTO_REFRESH is enabled. */
-export const PULL_STATS_REFETCH_INTERVAL_MS = 60_000;
+/**
+ * How long pull-stats responses stay "fresh" in React Query, and the poll
+ * interval when FEATURE_IMAGE_PULL_STATS_AUTO_REFRESH is enabled.
+ *
+ * Keep these equal: refetchInterval already drives updates while the page is
+ * open; staleTime: 0 would only cause extra refetches on row remounts
+ * (sort/filter/pagination) without making live updates any faster.
+ */
+export const PULL_STATS_STALE_TIME_MS = 60_000;
+export const PULL_STATS_REFETCH_INTERVAL_MS = PULL_STATS_STALE_TIME_MS;
 
 export function useTagPullStatistics(
   org: string,
@@ -178,8 +186,7 @@ export function useTagPullStatistics(
     {
       enabled: enabled,
       retry: false,
-      // Without auto-refresh, cache for 60s. With auto-refresh, allow interval refetch.
-      staleTime: shouldAutoRefresh ? 0 : 60000,
+      staleTime: PULL_STATS_STALE_TIME_MS,
       refetchInterval: shouldAutoRefresh
         ? PULL_STATS_REFETCH_INTERVAL_MS
         : false,
@@ -203,6 +210,7 @@ export function useTagPullStatistics(
         tag_pull_count: 0,
         last_tag_pull_date: null,
         current_manifest_digest: '',
+        manifest_pull_count: 0,
         last_manifest_pull_date: null,
       }
     : data || null;

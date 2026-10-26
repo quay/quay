@@ -12,6 +12,7 @@ import {
   usePermanentlyDeleteTag,
   useTagPullStatistics,
   PULL_STATS_REFETCH_INTERVAL_MS,
+  PULL_STATS_STALE_TIME_MS,
 } from './UseTags';
 import {
   getTags,
@@ -244,6 +245,55 @@ describe('UseTags', () => {
   });
 
   describe('useTagPullStatistics', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('exports matching stale-time and refetch-interval constants', () => {
+      expect(PULL_STATS_STALE_TIME_MS).toBe(60_000);
+      expect(PULL_STATS_REFETCH_INTERVAL_MS).toBe(PULL_STATS_STALE_TIME_MS);
+    });
+
+    it('does not refetch on remount within the stale window when autoRefresh is on', async () => {
+      const mockData = {
+        tag_name: 'latest',
+        tag_pull_count: 1,
+        last_tag_pull_date: '2024-01-01',
+        current_manifest_digest: 'sha256:abc',
+        last_manifest_pull_date: '2024-01-01',
+      };
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData as any);
+
+      // Shared QueryClient so remount hits the same cache (like TagsTable row remounts).
+      const queryClient = createTestQueryClient();
+      // Override cacheTime: 0 from createTestQueryClient so remount can reuse cached data.
+      queryClient.setDefaultOptions({
+        queries: {retry: false, cacheTime: PULL_STATS_STALE_TIME_MS},
+      });
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      const {unmount} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      unmount();
+
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper: localWrapper},
+      );
+      // Still within staleTime — must not hit the network again.
+      expect(getTagPullStatistics).toHaveBeenCalledTimes(1);
+    });
+
     it('returns pull statistics data on success', async () => {
       const mockData = {
         tag_name: 'latest',
@@ -285,6 +335,68 @@ describe('UseTags', () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       // 404 should not be reported as error
       expect(result.current.isError).toBe(false);
+      expect(result.current.pullStatistics).toEqual({
+        tag_name: 'latest',
+        tag_pull_count: 0,
+        last_tag_pull_date: null,
+        current_manifest_digest: '',
+        manifest_pull_count: 0,
+        last_manifest_pull_date: null,
+      });
+    });
+
+    it('keeps previous pull statistics while a refetch is in flight', async () => {
+      const first = {
+        tag_name: 'latest',
+        tag_pull_count: 1,
+        last_tag_pull_date: '2024-01-01',
+        current_manifest_digest: 'sha256:abc',
+        manifest_pull_count: 1,
+        last_manifest_pull_date: '2024-01-01',
+      };
+      const second = {...first, tag_pull_count: 2};
+      let resolveSecond: (value: typeof second) => void;
+      const secondPromise = new Promise<typeof second>((resolve) => {
+        resolveSecond = resolve;
+      });
+
+      const queryClient = createTestQueryClient();
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      vi.mocked(getTagPullStatistics)
+        .mockResolvedValueOnce(first as any)
+        .mockImplementationOnce(() => secondPromise as any);
+
+      const {result} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(first),
+      );
+
+      await act(async () => {
+        void queryClient.invalidateQueries([
+          'tagPullStatistics',
+          'myorg',
+          'myrepo',
+          'latest',
+        ]);
+      });
+      await waitFor(() => expect(getTagPullStatistics).toHaveBeenCalledTimes(2));
+      expect(result.current.pullStatistics).toEqual(first);
+
+      await act(async () => {
+        resolveSecond!(second);
+      });
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(second),
+      );
     });
 
     it('reports isError for non-404 errors', async () => {
