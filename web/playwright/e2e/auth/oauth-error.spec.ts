@@ -61,4 +61,46 @@ test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
     await page.getByText('Return to Sign In').click();
     await expect(page).toHaveURL(/\/signin/);
   });
+
+  test(
+    'OAuth callback error ignores an attacker-controlled Referer',
+    {tag: ['@PROJQUAY-10658', '@auth:OIDC']},
+    async ({unauthenticatedPage: page, quayConfig}) => {
+      test.skip(
+        !quayConfig?.external_login?.length,
+        'Requires an external login provider',
+      );
+
+      const provider = quayConfig.external_login[0];
+      await page.goto('/signin');
+      const authResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/v1/externallogin/${provider.id}`) &&
+          response.request().method() === 'POST',
+      );
+      await page.getByTestId(`external-login-${provider.id}`).click();
+      const authResponse = await authResponsePromise;
+      expect(authResponse.status()).toBe(200);
+
+      const {auth_url: authUrl} = await authResponse.json();
+      const authorizationUrl = new URL(authUrl);
+      const redirectUri = authorizationUrl.searchParams.get('redirect_uri');
+      const state = authorizationUrl.searchParams.get('state');
+      expect(redirectUri).toBeTruthy();
+      expect(state).toBeTruthy();
+
+      const callbackUrl = new URL(redirectUri!);
+      callbackUrl.searchParams.set('state', state!);
+      callbackUrl.searchParams.set('error', 'access_denied');
+      const response = await page.request.get(callbackUrl.toString(), {
+        headers: {Referer: 'https://evil.attacker.com/phishing'},
+        maxRedirects: 0,
+      });
+
+      expect(response.status()).toBe(302);
+      const location = new URL(response.headers()['location']);
+      expect(location.origin).toBe(callbackUrl.origin);
+      expect(location.pathname).toBe('/oauth-error');
+    },
+  );
 });
