@@ -1,4 +1,6 @@
 import {test, expect} from '../../fixtures';
+import {requestCsrfToken} from '../../utils/api/csrf';
+import {BASE_URL} from '../../utils/config';
 
 test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
   test('displays error page with provider name and decoded error message', async ({
@@ -66,20 +68,30 @@ test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
     'OAuth callback error ignores an attacker-controlled Referer',
     {tag: ['@PROJQUAY-10658', '@auth:OIDC']},
     async ({unauthenticatedPage: page, quayConfig}) => {
-      test.skip(
-        !quayConfig?.external_login?.length,
-        'Requires an external login provider',
-      );
+      const provider = quayConfig?.external_login?.[0];
+      if (!provider) {
+        test.skip(true, 'Requires an external login provider');
+        return;
+      }
 
-      const provider = quayConfig.external_login[0];
-      await page.goto('/signin');
-      const authResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes(`/api/v1/externallogin/${provider.id}`) &&
-          response.request().method() === 'POST',
+      // Exercise the backend callback without depending on sign-in UI timing.
+      const context = page.context();
+      await context.addCookies([
+        {
+          name: 'patternfly',
+          value: 'react',
+          domain: new URL(BASE_URL).hostname,
+          path: '/',
+        },
+      ]);
+      const csrfToken = await requestCsrfToken(context.request, BASE_URL);
+      const authResponse = await context.request.post(
+        `${BASE_URL}/api/v1/externallogin/${provider.id}`,
+        {
+          data: {kind: 'login'},
+          headers: {'X-CSRF-Token': csrfToken},
+        },
       );
-      await page.getByTestId(`external-login-${provider.id}`).click();
-      const authResponse = await authResponsePromise;
       expect(authResponse.status()).toBe(200);
 
       const {auth_url: authUrl} = await authResponse.json();
@@ -92,15 +104,23 @@ test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
       const callbackUrl = new URL(redirectUri!);
       callbackUrl.searchParams.set('state', state!);
       callbackUrl.searchParams.set('error', 'access_denied');
-      const response = await page.request.get(callbackUrl.toString(), {
+      const response = await context.request.get(callbackUrl.toString(), {
         headers: {Referer: 'https://evil.attacker.com/phishing'},
         maxRedirects: 0,
       });
 
       expect(response.status()).toBe(302);
-      const location = new URL(response.headers()['location']);
-      expect(location.origin).toBe(callbackUrl.origin);
+      const locationHeader = response.headers()['location'];
+      expect(locationHeader).toBeTruthy();
+      const location = new URL(locationHeader);
+      expect(location.origin).toBe(new URL(BASE_URL).origin);
       expect(location.pathname).toBe('/oauth-error');
+      expect(location.searchParams.get('error')).toBe('oauth_error');
+      expect(location.searchParams.get('error_description')).toBe(
+        'access_denied',
+      );
+      expect(location.searchParams.get('provider')).toBe(provider.title);
+      expect(location.href).not.toContain('evil.attacker.com');
     },
   );
 });
