@@ -110,6 +110,38 @@ async function globalSetup(config: FullConfig) {
     const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
     process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
 
+    // LDAP users exist in Quay only after their first login, so sign each
+    // role user in before any test references them (team members, quotas).
+    if (authType === 'LDAP') {
+      for (const [role, user] of Object.entries(TEST_USERS_LDAP)) {
+        const requestContext = await request.newContext({
+          ignoreHTTPSErrors: true,
+        });
+        try {
+          const api = new ApiClient(requestContext);
+          await api.signIn(user.username, user.password);
+          // Federated first login adds confirm_username and metadata prompts.
+          await api.clearUserPrompts(user.username);
+          console.log(
+            `[Global Setup] Signed in ${role} user: ${user.username}`,
+          );
+        } catch (error) {
+          failures.push(`${role} (${user.username}): ${error}`);
+        } finally {
+          await requestContext.dispose();
+        }
+      }
+      if (failures.length > 0) {
+        throw new Error(
+          `Global setup failed: Could not sign in LDAP test users:\n  - ${failures.join(
+            '\n  - ',
+          )}`,
+        );
+      }
+      console.log('[Global Setup] Complete');
+      return;
+    }
+
     // For OIDC auth, skip user creation — users are created on first login
     // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
     if (authType !== 'Database') {
@@ -192,7 +224,7 @@ async function globalSetup(config: FullConfig) {
         // Clear user prompts (enter_name, enter_company) so tests aren't
         // redirected to /updateuser when USER_METADATA is enabled.
         await api.signIn(user.username, user.password);
-        await api.clearUserPrompts();
+        await api.clearUserPrompts(user.username);
       } catch (error) {
         console.error(`[Global Setup] Error creating ${role} user: ${error}`);
         failures.push(`${role} (${user.username}): ${error}`);

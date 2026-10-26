@@ -1,6 +1,5 @@
-import {test, expect} from '../fixtures';
+import {test, expect, getTestUsers} from '../fixtures';
 import {pushImage} from '../utils/container';
-import {TEST_USERS} from '../global-setup';
 
 test.describe(
   'Immutability Audit Logs',
@@ -9,7 +8,9 @@ test.describe(
     test('logs retroactive immutability changes in usage logs', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const org = await api.organization('immaudit');
       const repo = await api.repository(org.name, 'immauditrepo');
 
@@ -18,8 +19,8 @@ test.describe(
         org.name,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       // Create immutability policy matching v* tags
@@ -52,7 +53,9 @@ test.describe(
     test('logs tag made immutable on push in usage logs', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const org = await api.organization('immaudit2');
       const repo = await api.repository(org.name, 'immauditrepo2');
 
@@ -64,8 +67,8 @@ test.describe(
         org.name,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       // Navigate to Usage Logs tab
