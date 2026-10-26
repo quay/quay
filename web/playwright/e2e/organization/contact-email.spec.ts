@@ -1,3 +1,4 @@
+import {selectFreeOrganizationPlan} from '../../utils/organization-creation';
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {API_URL} from '../../utils/config';
@@ -7,20 +8,18 @@ test.describe(
   {tag: ['@organization', '@PROJQUAY-6975']},
   () => {
     // =========================================================================
-    // Group 1: Create Organization Modal — Email
+    // Group 1: Create Organization Page — Email
     // =========================================================================
 
     test.describe(
-      'Create Organization Modal — Email',
+      'Create Organization Page — Email',
       {tag: ['@PROJQUAY-10592']},
       () => {
         test('field is always visible with correct label and helper text', async ({
           authenticatedPage,
         }) => {
           await authenticatedPage.goto('/organization');
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
 
           // Field always visible regardless of FEATURE_MAILING
           const emailInput = authenticatedPage.locator(
@@ -50,12 +49,11 @@ test.describe(
           await authenticatedPage.goto('/organization');
 
           const orgName = uniqueName('noemail');
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
           await authenticatedPage
             .locator('#create-org-name-input')
             .fill(orgName);
+          await selectFreeOrganizationPlan(authenticatedPage);
 
           // Email field should be empty and Create button should be enabled
           await expect(
@@ -77,7 +75,7 @@ test.describe(
 
           expect(response.status()).toBe(201);
 
-          // Modal closes on success
+          // Navigates to the organization on success
           await expect(
             authenticatedPage.locator('#create-org-cancel'),
           ).not.toBeVisible({timeout: 10000});
@@ -100,12 +98,11 @@ test.describe(
 
           const orgName = uniqueName('withemail');
           const email = `${orgName}@example.com`;
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
           await authenticatedPage
             .locator('#create-org-name-input')
             .fill(orgName);
+          await selectFreeOrganizationPlan(authenticatedPage);
           await authenticatedPage
             .locator('#create-org-email-input')
             .fill(email);
@@ -142,13 +139,12 @@ test.describe(
           authenticatedPage,
         }) => {
           await authenticatedPage.goto('/organization');
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
 
           await authenticatedPage
             .locator('#create-org-name-input')
             .fill('validname');
+          await selectFreeOrganizationPlan(authenticatedPage);
 
           // Type invalid email
           const emailInput = authenticatedPage.locator(
@@ -192,12 +188,11 @@ test.describe(
 
           // Create first org
           const orgName1 = uniqueName('shared');
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
           await authenticatedPage
             .locator('#create-org-name-input')
             .fill(orgName1);
+          await selectFreeOrganizationPlan(authenticatedPage);
           await authenticatedPage
             .locator('#create-org-email-input')
             .fill(sharedEmail);
@@ -217,12 +212,11 @@ test.describe(
 
           // Create second org with same email
           const orgName2 = uniqueName('shared');
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
+          await authenticatedPage.goto('/organizations/new');
           await authenticatedPage
             .locator('#create-org-name-input')
             .fill(orgName2);
+          await selectFreeOrganizationPlan(authenticatedPage);
           await authenticatedPage
             .locator('#create-org-email-input')
             .fill(sharedEmail);
@@ -438,8 +432,9 @@ test.describe(
         const updatedEmail = `updated-${orgName}@example.com`;
 
         // Create org with email via UI
-        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.goto('/organizations/new');
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
         await authenticatedPage
           .locator('#create-org-email-input')
           .fill(initialEmail);
@@ -489,8 +484,9 @@ test.describe(
         const addedEmail = `added-${orgName}@example.com`;
 
         // Create org without email
-        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.goto('/organizations/new');
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
 
         await Promise.all([
           authenticatedPage.waitForResponse(
@@ -603,8 +599,9 @@ test.describe(
 
         const orgName = uniqueName('nomailing');
 
-        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.goto('/organizations/new');
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await selectFreeOrganizationPlan(authenticatedPage);
 
         // Leave email empty — should still be able to create
         await expect(

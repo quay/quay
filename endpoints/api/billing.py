@@ -9,6 +9,7 @@ import uuid
 
 import stripe
 from flask import request
+from itsdangerous import BadData
 
 import features
 from app import app, billing, marketplace_subscriptions, marketplace_users
@@ -19,7 +20,7 @@ from auth.permissions import (
     GlobalReadOnlySuperUserPermission,
 )
 from data import model
-from data.billing import PLANS, get_plan, get_plan_using_rh_sku
+from data.billing import PLANS, FakeStripe, get_plan, get_plan_using_rh_sku
 from data.model import InvalidOrganizationException, organization_skus
 from endpoints.api import (
     ApiResource,
@@ -43,9 +44,115 @@ from endpoints.api.subscribe import (
     subscription_view,
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
+from util import fake_checkout
 from util.request import get_request_ip
 
 MILLISECONDS_IN_SECONDS = 1000
+
+
+def create_checkout_session(owner, **kwargs):
+    """Use the configured billing provider for hosted or local checkout."""
+    if app.config.get("BILLING_TYPE") != "FakeStripe":
+        return stripe.checkout.Session.create(**kwargs)
+    try:
+        return fake_checkout.create_session(
+            app.config["SECRET_KEY"],
+            owner,
+            get_authenticated_user(),
+            kwargs["mode"],
+            kwargs.get("line_items", [{}])[0].get("price"),
+            kwargs["success_url"],
+            kwargs["cancel_url"],
+        )
+    except ValueError as exc:
+        raise InvalidRequest(str(exc))
+
+
+def fake_checkout_session(owner, session_id, complete=False):
+    """Read or complete a signed development checkout for its original administrator."""
+    if app.config.get("BILLING_TYPE") != "FakeStripe":
+        raise NotFound()
+    try:
+        checkout = fake_checkout.read_session(app.config["SECRET_KEY"], session_id)
+    except BadData:
+        raise InvalidRequest("Local checkout session expired or is invalid.")
+    if (
+        checkout["owner"] != owner.uuid
+        or checkout["customer"] != owner.stripe_id
+        or checkout["performer"] != get_authenticated_user().uuid
+    ):
+        raise NotFound()
+    price = get_price(checkout["plan"], owner.organization) if checkout["plan"] else None
+    if not complete:
+        return {
+            "mode": checkout["mode"],
+            "plan": price,
+            "cancel_url": checkout["cancel_url"],
+            "fake": True,
+        }
+
+    customer = FakeStripe.Customer.retrieve(owner.stripe_id)
+    completed = customer.get("metadata", {}).get("completed_checkouts", [])
+    if checkout["id"] not in completed:
+        if price:
+            if customer.subscription and customer.subscription.plan.id != price["stripeId"]:
+                raise InvalidRequest(
+                    "A different subscription is already active. Review the organization's plan."
+                )
+            customer = FakeStripe.Customer.modify(owner.stripe_id, plan=price["stripeId"])
+            customer._subscription.current_period_start = int(time.time())
+            customer._subscription.current_period_end = int(time.time()) + 30 * 86400
+        customer.default_card = "card123"
+        customer.setdefault("metadata", {})["completed_checkouts"] = completed + [checkout["id"]]
+        FakeStripe.save_customer(customer)
+    return {"url": checkout["success_url"], "fake": True}
+
+
+@resource("/v1/user/checkout/<session_id>")
+@path_param("session_id", "Signed local checkout session")
+@internal_only
+@show_if(features.BILLING and app.config.get("BILLING_TYPE") == "FakeStripe")
+class UserFakeCheckout(ApiResource):
+    """Local development checkout for the signed-in user's subscription."""
+
+    @require_user_admin()
+    @nickname("getUserFakeCheckout")
+    def get(self, session_id):
+        """Read the user's local checkout."""
+        return fake_checkout_session(get_authenticated_user(), session_id)
+
+    @require_user_admin()
+    @nickname("completeUserFakeCheckout")
+    def post(self, session_id):
+        """Complete the user's simulated checkout."""
+        return fake_checkout_session(get_authenticated_user(), session_id, complete=True)
+
+
+@resource("/v1/organization/<orgname>/checkout/<session_id>")
+@path_param("orgname", "Organization name")
+@path_param("session_id", "Signed local checkout session")
+@internal_only
+@show_if(features.BILLING and app.config.get("BILLING_TYPE") == "FakeStripe")
+class OrganizationFakeCheckout(ApiResource):
+    """Local development checkout restricted to organization administrators."""
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrgFakeCheckout")
+    def get(self, orgname, session_id):
+        """Read the organization's local checkout."""
+        if not AdministerOrganizationPermission(orgname).can():
+            raise Unauthorized()
+        return fake_checkout_session(model.organization.get_organization(orgname), session_id)
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("completeOrgFakeCheckout")
+    def post(self, orgname, session_id):
+        """Complete the organization's simulated checkout."""
+        if not AdministerOrganizationPermission(orgname).can():
+            raise Unauthorized()
+        return fake_checkout_session(
+            model.organization.get_organization(orgname), session_id, complete=True
+        )
 
 
 def check_internal_api_for_subscription(namespace_user):
@@ -323,7 +430,8 @@ class UserCard(ApiResource):
             raise InvalidRequest("Invalid Stripe subscription")
 
         try:
-            checkout_session = stripe.checkout.Session.create(
+            checkout_session = create_checkout_session(
+                user,
                 payment_method_types=["card"],
                 mode="setup",
                 customer=user.stripe_id,
@@ -416,7 +524,8 @@ class OrganizationCard(ApiResource):
                 raise InvalidRequest("Invalid Stripe subscription")
 
             try:
-                checkout_session = stripe.checkout.Session.create(
+                checkout_session = create_checkout_session(
+                    organization,
                     payment_method_types=["card"],
                     mode="setup",
                     customer=organization.stripe_id,
@@ -504,7 +613,8 @@ class UserPlan(ApiResource):
             if not price:
                 abort(404, message="Plan not found")
 
-            checkout_session = stripe.checkout.Session.create(
+            checkout_session = create_checkout_session(
+                user,
                 line_items=[
                     {
                         "price": price["stripeId"],
@@ -528,6 +638,8 @@ class UserPlan(ApiResource):
             return checkout_session
         except stripe.error.APIConnectionError as e:
             abort(503, message="Cannot contact Stripe")
+        except InvalidRequest:
+            raise
         except Exception as e:
             abort(500, message=str(e))
 
@@ -644,7 +756,8 @@ class OrganizationPlan(ApiResource):
                 if not price:
                     abort(404, message="Plan not found")
 
-                checkout_session = stripe.checkout.Session.create(
+                checkout_session = create_checkout_session(
+                    organization,
                     line_items=[
                         {
                             "price": price["stripeId"],
@@ -669,6 +782,8 @@ class OrganizationPlan(ApiResource):
                 return checkout_session
             except stripe.error.APIConnectionError as e:
                 abort(503, message="Cannot contact Stripe")
+            except InvalidRequest:
+                raise
             except Exception as e:
                 abort(500, message=str(e))
 

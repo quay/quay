@@ -90,3 +90,70 @@ It correctly bundles React in production mode and optimizes the build for the be
 
 The build is minified and the filenames include the hashes.
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+## Organization plans and billing
+
+With `FEATURE_BILLING` enabled, Plan information in organization settings shows
+the plan, usage, payment method, invoices, and Customer Portal subscriptions.
+The plans, invoices, and subscriptions pages are available in both UI shells.
+
+Organization creation opens `/organizations/new` in the current page. Free
+plans create the organization immediately. Paid plans create it once, then open
+the checkout URL returned by its plan API in the same window. A failed checkout
+retains the organization and offers Retry checkout and Go to organization.
+
+Deployed Quay.io uses its existing authenticated session and CSRF handling.
+`POST /api/v1/organization/{name}/plan` (or `/api/v1/user/plan`) starts checkout
+for a new paid subscription; `PUT` updates an existing subscription. The card
+endpoint starts payment-method setup. Return URLs preserve the current origin
+and console router prefix. The UI refreshes the subscription and verifies its
+plan and status before confirming a change. Stripe keys and card details remain
+outside the frontend.
+
+### Local FakeStripe checkout
+
+Set `FEATURE_BILLING: true` and `BILLING_TYPE: FakeStripe` in your local backend
+configuration. Signed, expiring sessions restrict completion to the original
+administrator and namespace. Complete simulated checkout saves a sample Visa
+ending in 4242 and activates the local plan; Cancel leaves it unchanged. No
+payment or card details are collected. State persists in the configured Redis
+service. Fake checkout endpoints exist only for the FakeStripe provider.
+
+Run the frontend against the backend with the mock API disabled. The proxy
+defaults to `http://localhost:8080`; override it for another backend port:
+
+```bash
+MOCK_API=false REACT_QUAY_APP_API_URL= QUAY_PROXY_TARGET=http://localhost:8082 \
+  npm start -- --port 9010 --host 127.0.0.1 --no-open
+```
+
+The empty `REACT_QUAY_APP_API_URL` makes requests use the webpack proxy. The
+existing `MOCK_API=true` fixtures also use the PF6 simulation page, without an
+imitation card-entry form. Production builds should use `MOCK_API=false`.
+
+### Billing validation
+
+```bash
+npm test
+MOCK_API=false npm run build
+MOCK_API=false npm run build-plugin
+
+PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SKIP_WEBSERVER=1 \
+PLAYWRIGHT_BASE_URL=http://localhost:9010 \
+REACT_QUAY_APP_API_URL=http://localhost:8082 PLAYWRIGHT_FAKE_CHECKOUT=true \
+  npx playwright test --config playwright/billing-local.config.ts
+```
+
+The local Playwright profile provisions temporary accounts through the real API
+and checks creation, subscription changes, checkout cancellation/completion,
+authorization, keyboard use, dialog focus, reflow, and axe accessibility scans.
+It requires Database authentication without email verification and cleans up
+its temporary accounts and organizations.
+
+`playwright/native-billing.config.ts` accepts `QUAY_BILLING_STORAGE_STATE` and
+`QUAY_BILLING_NAMESPACE` for an authenticated deployed session. Its checkout
+write test additionally requires `QUAY_BILLING_CREATE_CHECKOUT=true` and
+`QUAY_BILLING_CHECKOUT_PLAN`. These deployment tests can create real Stripe
+sessions. Local FakeStripe tests do not verify hosted webhooks or authenticated
+console integration. Review reports and exact validation results are in
+`../review-reports/billing/`.

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Drawer,
   DrawerContent,
   DrawerContentBody,
@@ -9,7 +10,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {useParams, useSearchParams} from 'react-router-dom';
+import {useLocation, useParams, useSearchParams} from 'react-router-dom';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -52,6 +53,7 @@ const normalizeTabKey = (tab: string): string => {
 };
 
 export default function Organization() {
+  const location = useLocation();
   const quayConfig = useQuayConfig();
   const {organizationName, teamName} = useParams();
 
@@ -233,6 +235,14 @@ export default function Organization() {
       <DrawerContent panelContent={drawerContentOptions[drawerContent]}>
         <DrawerContentBody>
           <QuayBreadcrumb />
+          {location.state?.createdOrganization === organizationName && (
+            <Alert
+              isLiveRegion
+              isInline
+              variant="success"
+              title={`Successfully created organization ${organizationName}`}
+            />
+          )}
           <PageSection hasBodyWrapper={false} className="no-padding-bottom">
             <Title data-testid="repo-title" headingLevel="h1">
               {organizationName}

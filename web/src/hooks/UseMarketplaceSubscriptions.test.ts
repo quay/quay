@@ -34,6 +34,47 @@ describe('UseMarketplaceSubscriptions', () => {
   });
 
   describe('useMarketplaceSubscriptions', () => {
+    it('keeps two organizations subscription results separate in the same cache', async () => {
+      vi.mocked(fetchMarketplaceSubscriptions).mockImplementation((org) =>
+        Promise.resolve(
+          org
+            ? [
+                {
+                  id: org,
+                  sku: 'MW01885',
+                  quantity: 1,
+                  metadata: {privateRepos: 5},
+                },
+              ]
+            : [],
+        ),
+      );
+      const {result} = renderHook(
+        () => ({
+          first: useMarketplaceSubscriptions('firstorg', 'testuser'),
+          second: useMarketplaceSubscriptions('secondorg', 'testuser'),
+        }),
+        {wrapper: TestWrapper},
+      );
+      await waitFor(() => {
+        expect(result.current.first.orgSubscriptions[0]?.id).toBe('firstorg');
+        expect(result.current.second.orgSubscriptions[0]?.id).toBe('secondorg');
+      });
+    });
+
+    it('reports an organization fetch failure even when the user subscriptions load', async () => {
+      vi.mocked(fetchMarketplaceSubscriptions).mockImplementation((org) =>
+        org
+          ? Promise.reject(new Error('Organization subscriptions unavailable'))
+          : Promise.resolve([]),
+      );
+      const {result} = renderHook(
+        () => useMarketplaceSubscriptions('myorg', 'testuser'),
+        {wrapper: TestWrapper},
+      );
+      await waitFor(() => expect(result.current.error).toBe(true));
+      expect(result.current.loading).toBe(false);
+    });
     it('fetches user subscriptions', async () => {
       const mockUserSubs = [{id: 'sub1', sku: 'premium'}];
       vi.mocked(fetchMarketplaceSubscriptions).mockResolvedValue(
@@ -92,6 +133,75 @@ describe('UseMarketplaceSubscriptions', () => {
   });
 
   describe('useManageOrgSubscriptions', () => {
+    it('waits for the attachment request before reporting success', async () => {
+      let finish: () => void;
+      vi.mocked(setMarketplaceOrgAttachment).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const onSuccess = vi.fn();
+      const {result} = renderHook(
+        () => useManageOrgSubscriptions('myorg', {onSuccess, onError: vi.fn()}),
+        {wrapper: TestWrapper},
+      );
+      act(() =>
+        result.current.manageSubscription({
+          subscription: {
+            id: 'sub1',
+            sku: 'MW01885',
+            quantity: 1,
+            metadata: {privateRepos: 5},
+          },
+          manageType: 'attach',
+          bindingQuantity: null,
+        }),
+      );
+      await waitFor(() => expect(result.current.loading).toBe(true));
+      expect(onSuccess).not.toHaveBeenCalled();
+      act(() => finish());
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    });
+
+    it.each(['attach', 'remove'])(
+      'reports a failed %s request without reporting success',
+      async (manageType) => {
+        const requestError = new Error('Subscription update failed');
+        const request =
+          manageType === 'attach'
+            ? setMarketplaceOrgAttachment
+            : setMarketplaceOrgRemoval;
+        vi.mocked(request).mockRejectedValueOnce(requestError);
+        const onSuccess = vi.fn();
+        const onError = vi.fn();
+        const {result} = renderHook(
+          () => useManageOrgSubscriptions('myorg', {onSuccess, onError}),
+          {wrapper: TestWrapper},
+        );
+        act(() =>
+          result.current.manageSubscription({
+            subscription: {
+              id: 'sub1',
+              subscription_id: 'sub1',
+              sku: 'MW01885',
+              quantity: 1,
+              metadata: {privateRepos: 5},
+            },
+            manageType,
+            bindingQuantity: null,
+          }),
+        );
+        await waitFor(() =>
+          expect(onError).toHaveBeenCalledWith(
+            requestError,
+            expect.anything(),
+            undefined,
+          ),
+        );
+        expect(onSuccess).not.toHaveBeenCalled();
+      },
+    );
     it('calls setMarketplaceOrgAttachment for attach type', async () => {
       const onSuccess = vi.fn();
       const onError = vi.fn();
@@ -102,7 +212,12 @@ describe('UseMarketplaceSubscriptions', () => {
 
       act(() => {
         result.current.manageSubscription({
-          subscription: {id: 'sub-123'},
+          subscription: {
+            id: 'sub-123',
+            sku: 'MW02702',
+            quantity: 5,
+            metadata: {privateRepos: 5},
+          },
           manageType: 'attach',
           bindingQuantity: 5,
         });
@@ -126,7 +241,13 @@ describe('UseMarketplaceSubscriptions', () => {
 
       act(() => {
         result.current.manageSubscription({
-          subscription: {subscription_id: 'sub-456'},
+          subscription: {
+            id: 'binding-sub-456',
+            subscription_id: 'sub-456',
+            sku: 'MW01885',
+            quantity: 1,
+            metadata: {privateRepos: 5},
+          },
           manageType: 'remove',
           bindingQuantity: 0,
         });

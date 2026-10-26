@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {selectFreeOrganizationPlan} from '../../utils/organization-creation';
 
 test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
   test('shows empty state when organization has no repositories', async ({
@@ -47,6 +48,7 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
 
     const orgName = `alertorg${Date.now()}`;
     await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+    await selectFreeOrganizationPlan(authenticatedPage);
 
     const emailInput = authenticatedPage.locator('#create-org-email-input');
     if (await emailInput.isVisible({timeout: 1000}).catch(() => false)) {
