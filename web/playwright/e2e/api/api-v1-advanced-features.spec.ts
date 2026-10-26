@@ -282,6 +282,7 @@ test.describe(
         expect(quotasResp.status()).toBe(200);
         const quotas = await quotasResp.json();
         const quota = quotas.find((q: {id: string}) => q.id === quotaId);
+        expect(quota).toBeDefined();
         expect(quota.limit_bytes).toBe(2048000000);
 
         // Sign in as the isolated user for user-scoped quota endpoints
@@ -310,6 +311,7 @@ test.describe(
         const updated = verifiedQuotas.find(
           (q: {id: string}) => q.id === quotaId,
         );
+        expect(updated).toBeDefined();
         expect(updated.limit_bytes).toBe(4096000000);
       },
     );
