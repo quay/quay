@@ -27,7 +27,7 @@ function stubClient(ran: string[]): ApiClient {
 describe('TestApi.cleanup', () => {
   it('drains the whole stack and rethrows a failed app-token revoke', async () => {
     const ran: string[] = [];
-    const api = new TestApi(stubClient(ran));
+    const api = new TestApi(stubClient(ran), 'testuser');
     const org = await api.organization();
     api.trackAppToken('tok-uuid', async () => fakeResponse(500));
 
@@ -39,7 +39,7 @@ describe('TestApi.cleanup', () => {
 
   it('treats a 404 revoke as already-gone and does not throw', async () => {
     const ran: string[] = [];
-    const api = new TestApi(stubClient(ran));
+    const api = new TestApi(stubClient(ran), 'testuser');
     const org = await api.organization();
     api.trackAppToken('tok-uuid', async () => fakeResponse(404));
 
@@ -48,7 +48,7 @@ describe('TestApi.cleanup', () => {
   });
 
   it('rethrows only the last-registered of multiple failed cleanups', async () => {
-    const api = new TestApi({} as unknown as ApiClient);
+    const api = new TestApi({} as unknown as ApiClient, 'testuser');
     api.trackAppToken('tok-a', async () => fakeResponse(500));
     api.trackAppToken('tok-b', async () => fakeResponse(503));
 
