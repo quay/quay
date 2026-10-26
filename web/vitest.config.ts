@@ -5,6 +5,20 @@ export default defineConfig({
   plugins: [
     {
       name: 'stub-assets',
+      enforce: 'pre',
+      resolveId(id: string) {
+        if (/\.scss$/i.test(id)) {
+          return '\0virtual:empty-scss';
+        }
+      },
+      load(id: string) {
+        if (id === '\0virtual:empty-scss') {
+          return 'export default {}';
+        }
+        if (/\.(svg|png|jpe?g|gif|webp|ico|ttf|eot|woff2?)(\?.*)?$/i.test(id)) {
+          return 'export default ""';
+        }
+      },
       transform(_code: string, id: string) {
         if (/\.(svg|png|jpe?g|gif|webp|ico|ttf|eot|woff2?)(\?.*)?$/i.test(id)) {
           return {code: 'export default ""', map: null};
@@ -21,8 +35,8 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'cypress', 'playwright'],
+    include: ['src/**/*.test.{ts,tsx}', 'playwright/**/*.test.ts'],
+    exclude: ['node_modules', 'dist', 'playwright/e2e/**'],
     css: false,
     clearMocks: true,
     restoreMocks: true,

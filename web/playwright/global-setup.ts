@@ -10,10 +10,44 @@
  * - readonly: User with read-only access (if applicable)
  */
 
-import {chromium, FullConfig, request} from '@playwright/test';
+import {
+  APIRequestContext,
+  chromium,
+  FullConfig,
+  request,
+} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
+import {fetchJsonWithRetry, setFetchImpl} from './utils/fetch-retry';
+import type {FetchImpl} from './utils/fetch-retry';
+import {applyChromiumLoopbackBypass, proxyOptionFromEnv} from './utils/proxy';
+import type {QuayConfig} from './fixtures';
+
+/**
+ * Build a fetch implementation backed by a Playwright APIRequestContext.
+ *
+ * Native `fetch` (undici) ignores HTTP(S)_PROXY, so when Quay is only reachable
+ * through a proxy (bare-metal CI) global-setup's config/mailpit calls fail with
+ * ENOTFOUND. Playwright's request context honors the `proxy` option and
+ * `ignoreHTTPSErrors`, so route the retry helpers through it instead.
+ */
+function requestFetchImpl(context: APIRequestContext): FetchImpl {
+  return async (url, init, timeoutMs) => {
+    const method = (init?.method ?? 'GET').toString();
+    const response = await context.fetch(url, {
+      method,
+      timeout: timeoutMs,
+      headers: init?.headers as Record<string, string> | undefined,
+      data: init?.body as string | undefined,
+    });
+    return {
+      ok: response.ok(),
+      status: response.status(),
+      json: () => response.json(),
+    };
+  };
+}
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -81,7 +115,21 @@ export const TEST_USERS_LDAP = {
 } as const;
 
 async function globalSetup(config: FullConfig) {
-  const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
+  const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
+
+  // When Quay is reachable only through a proxy (bare-metal CI), route every
+  // global-setup network call through a Playwright request context configured
+  // with the proxy env vars. Native fetch() ignores HTTP(S)_PROXY. No-op
+  // locally where no proxy env is set.
+  // Keep localhost (mailpit, local webserver) direct when a proxy is set,
+  // before the email-confirmation Chromium launch below.
+  applyChromiumLoopbackBypass();
+  const proxy = proxyOptionFromEnv();
+  const setupRequestContext = await request.newContext({
+    ignoreHTTPSErrors: true,
+    ...(proxy ? {proxy} : {}),
+  });
+  setFetchImpl(requestFetchImpl(setupRequestContext));
 
   console.log(
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
@@ -94,32 +142,51 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
-    // Fetch Quay config with retry to check auth type and features
-    let mailingEnabled = false;
-    let authType: string | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const configResponse = await fetch(`${API_URL}/config`);
-        if (configResponse.ok) {
-          const quayConfig = await configResponse.json();
-          mailingEnabled = quayConfig?.features?.MAILING === true;
-          authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
-          process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
-          break;
+    // Fetch Quay config with retry to check auth type and features. Quay
+    // may not be listening yet at this point (this is the boot-wait path),
+    // so use a longer backoff than the default to give it time to come up.
+    const quayConfig = await fetchJsonWithRetry<QuayConfig>(
+      'global-setup config fetch',
+      `${API_URL}/config`,
+      undefined,
+      undefined,
+      [2000, 2000],
+    );
+    const mailingEnabled = quayConfig?.features?.MAILING === true;
+    const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+    process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
+
+    // LDAP users exist in Quay only after their first login, so sign each
+    // role user in before any test references them (team members, quotas).
+    if (authType === 'LDAP') {
+      for (const [role, user] of Object.entries(TEST_USERS_LDAP)) {
+        const requestContext = await request.newContext({
+          ignoreHTTPSErrors: true,
+          ...(proxy ? {proxy} : {}),
+        });
+        try {
+          const api = new ApiClient(requestContext);
+          await api.signIn(user.username, user.password);
+          // Federated first login adds confirm_username and metadata prompts.
+          await api.clearUserPrompts(user.username);
+          console.log(
+            `[Global Setup] Signed in ${role} user: ${user.username}`,
+          );
+        } catch (error) {
+          failures.push(`${role} (${user.username}): ${error}`);
+        } finally {
+          await requestContext.dispose();
         }
-      } catch {
-        console.log(
-          `[Global Setup] Config fetch attempt ${
-            attempt + 1
-          }/3 failed, retrying...`,
-        );
-        await new Promise((r) => setTimeout(r, 2000));
       }
-    }
-    if (!authType) {
-      throw new Error(
-        '[Global Setup] Failed to fetch Quay config after 3 attempts',
-      );
+      if (failures.length > 0) {
+        throw new Error(
+          `Global setup failed: Could not sign in LDAP test users:\n  - ${failures.join(
+            '\n  - ',
+          )}`,
+        );
+      }
+      console.log('[Global Setup] Complete');
+      return;
     }
 
     // For OIDC auth, skip user creation — users are created on first login
@@ -150,27 +217,44 @@ async function globalSetup(config: FullConfig) {
     for (const [role, user] of Object.entries(TEST_USERS)) {
       const requestContext = await request.newContext({
         ignoreHTTPSErrors: true,
+        ...(proxy ? {proxy} : {}),
       });
 
       try {
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
         const api = new ApiClient(requestContext);
-        await api.createUser(user.username, user.password, user.email);
-        console.log(`[Global Setup] Created ${role} user: ${user.username}`);
 
-        // Verify email if mailing is enabled and Mailpit is available
+        try {
+          await api.createUser(user.username, user.password, user.email);
+          console.log(`[Global Setup] Created ${role} user: ${user.username}`);
+        } catch (error) {
+          const errorMessage = String(error);
+          if (
+            errorMessage.includes('already exists') ||
+            errorMessage.includes('already taken')
+          ) {
+            console.log(
+              `[Global Setup] ${role} user already exists: ${user.username}`,
+            );
+          } else {
+            throw error;
+          }
+        }
+
+        // Verify email before signing in — sign-in returns 403 when
+        // needsEmailVerification is true.
         if (mailpitAvailable) {
           console.log(
             `[Global Setup] Verifying email for ${role} user: ${user.email}`,
           );
           const confirmLink = await mailpit.waitForConfirmationLink(user.email);
           if (confirmLink) {
-            // Email confirmation requires visiting a link — need a browser
             if (!browser) {
-              browser = await chromium.launch();
+              browser = await chromium.launch(proxy ? {proxy} : {});
             }
             const context = await browser.newContext({
               ignoreHTTPSErrors: true,
+              ...(proxy ? {proxy} : {}),
             });
             const page = await context.newPage();
             await page.goto(confirmLink);
@@ -185,20 +269,14 @@ async function globalSetup(config: FullConfig) {
             );
           }
         }
+
+        // Clear user prompts (enter_name, enter_company) so tests aren't
+        // redirected to /updateuser when USER_METADATA is enabled.
+        await api.signIn(user.username, user.password);
+        await api.clearUserPrompts(user.username);
       } catch (error) {
-        const errorMessage = String(error);
-        // User might already exist (400 error with "already exists")
-        if (
-          errorMessage.includes('already exists') ||
-          errorMessage.includes('already taken')
-        ) {
-          console.log(
-            `[Global Setup] ${role} user already exists: ${user.username}`,
-          );
-        } else {
-          console.error(`[Global Setup] Error creating ${role} user: ${error}`);
-          failures.push(`${role} (${user.username}): ${error}`);
-        }
+        console.error(`[Global Setup] Error creating ${role} user: ${error}`);
+        failures.push(`${role} (${user.username}): ${error}`);
       } finally {
         await requestContext.dispose();
       }
@@ -218,6 +296,10 @@ async function globalSetup(config: FullConfig) {
     console.error('[Global Setup] Failed:', error);
     throw error;
   } finally {
+    // Restore native fetch so later Playwright phases aren't bound to the
+    // disposed setup context, then dispose it.
+    setFetchImpl();
+    await setupRequestContext.dispose();
     if (browser) {
       await browser.close();
     }

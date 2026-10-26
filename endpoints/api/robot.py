@@ -16,6 +16,7 @@ from auth.permissions import (
 )
 from data.database import FederatedLogin, LoginService
 from data.model import InvalidRobotException
+from data.model.api_token import validate_api_scope_string
 from data.model.user import (
     attach_federated_login,
     create_federated_user,
@@ -43,6 +44,7 @@ from endpoints.api import (
     resource,
     validate_json_request,
 )
+from endpoints.api.organization_application_tokens import _can_mint_scope
 from endpoints.api.robot_models_pre_oci import pre_oci_model as model
 from endpoints.exception import Unauthorized
 from util.names import format_robot_username
@@ -70,6 +72,10 @@ CREATE_ROBOT_FEDERATION_SCHEMA = {
     "items": {
         "type": "object",
         "properties": {
+            "id": {
+                "type": "string",
+                "description": "Stable identifier of an existing federation binding",
+            },
             "issuer": {
                 "type": "string",
                 "description": "The issuer of the token",
@@ -78,12 +84,37 @@ CREATE_ROBOT_FEDERATION_SCHEMA = {
                 "type": "string",
                 "description": "The subject of the token",
             },
+            "api_scopes": {
+                "type": "string",
+                "description": "Optional Management API scopes allowed for this workload identity",
+            },
+            "audiences": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1},
+                "minItems": 1,
+                "description": "OIDC token audiences allowed for this workload identity",
+            },
         },
         "required": ["issuer", "subject"],
     },
 }
 
 ROBOT_MAX_SIZE = 1024 * 1024  # 1 KB.
+
+
+def _validate_federation_scopes(namespace, federation_config):
+    creator = get_authenticated_user()
+    for binding in federation_config:
+        scope = binding.get("api_scopes", "")
+        if not scope:
+            continue
+        if not isinstance(scope, str) or not validate_api_scope_string(scope):
+            abort(400, "Invalid federation API scope")
+        if scopes.SUPERUSER in scopes.scopes_from_scope_string(scope) and not features.SUPER_USERS:
+            abort(400, "super:user scope is disabled")
+        if not _can_mint_scope(namespace, scope, creator):
+            raise Unauthorized()
+
 
 logger = logging.getLogger(__name__)
 
@@ -230,20 +261,21 @@ class OrgRobotList(ApiResource):
             or allow_if_global_readonly_superuser()
             or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
-            include_token = (
-                AdministerOrganizationPermission(orgname).can()
-                or allow_if_global_readonly_superuser()
-            ) and parsed_args.get("token", True)
+            is_org_admin = AdministerOrganizationPermission(orgname).can()
+            is_full_access_superuser = features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            include_token = (is_org_admin or is_full_access_superuser) and parsed_args.get(
+                "token", True
+            )
             include_permissions = (
-                AdministerOrganizationPermission(orgname).can()
-                or allow_if_global_readonly_superuser()
+                is_org_admin or is_full_access_superuser or allow_if_global_readonly_superuser()
             ) and parsed_args.get("permissions", False)
-            return robots_list(
+            result = robots_list(
                 orgname,
                 include_permissions=include_permissions,
                 include_token=include_token,
                 limit=parsed_args.get("limit"),
             )
+            return result
 
         raise Unauthorized()
 
@@ -270,14 +302,18 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        is_org_admin = permission.can()
         if (
-            permission.can()
+            is_org_admin
             or allow_if_global_readonly_superuser()
             or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             robot = model.get_org_robot(robot_shortname, orgname)
-            return robot.to_dict(include_metadata=True, include_token=True)
+            include_token = is_org_admin or (
+                features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            )
+            result = robot.to_dict(include_metadata=True, include_token=include_token)
+            return result
 
         raise Unauthorized()
 
@@ -444,6 +480,7 @@ def _parse_federation_config(request):
     """
     fed_config = list()
     seen = set()
+    seen_ids = set()
     for item in request.json:
         if not item:
             raise request_error(message="Missing one or more required fields (issuer, subject)")
@@ -454,6 +491,21 @@ def _parse_federation_config(request):
         if not (issuer.startswith("http://") or issuer.startswith("https://")):
             raise request_error(message="Issuer must be a URL (http:// or https://)")
         entry = {"issuer": issuer, "subject": subject}
+        if item.get("id"):
+            if item["id"] in seen_ids:
+                raise request_error(message="Duplicate federation config entry")
+            seen_ids.add(item["id"])
+            entry["id"] = item["id"]
+        if "api_scopes" in item:
+            entry["api_scopes"] = item["api_scopes"]
+        audiences = item.get("audiences", ["quay"])
+        if (
+            not audiences
+            or not isinstance(audiences, list)
+            or not all(isinstance(audience, str) and audience for audience in audiences)
+        ):
+            raise request_error(message="Audiences must be a non-empty list of strings")
+        entry["audiences"] = audiences
 
         if (issuer, subject) in seen:
             raise request_error(message="Duplicate federation config entry")
@@ -500,7 +552,8 @@ class UserRobotFederation(ApiResource):
 
         robot_username = format_robot_username(parent.username, robot_shortname)
         robot = lookup_robot(robot_username)
-        create_robot_federation_config(robot, fed_config)
+        _validate_federation_scopes(parent.username, fed_config)
+        fed_config = create_robot_federation_config(robot, fed_config)
         log_action(
             "create_robot_federation",
             parent.username,
@@ -572,7 +625,8 @@ class OrgRobotFederation(ApiResource):
 
             robot_username = format_robot_username(orgname, robot_shortname)
             robot = lookup_robot(robot_username)
-            create_robot_federation_config(robot, fed_config)
+            _validate_federation_scopes(orgname, fed_config)
+            fed_config = create_robot_federation_config(robot, fed_config)
             log_action(
                 "create_robot_federation",
                 orgname,

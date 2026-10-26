@@ -21,7 +21,7 @@ type AioiInputOptions struct {
 // Database, Redis, and Server Hostname settings must be included
 func GenerateBaseConfig(options AioiInputOptions) (config.Config, error) {
 
-	// Check that all fields are correctly populated (this is a naive validtion)
+	// Check that all fields are correctly populated (this is a naive validation)
 	if options.DatabaseURI == "" {
 		return nil, errors.New("Database URI is required")
 	}

@@ -97,6 +97,13 @@ class BaseStorage(StoragePaths):
     def clean_partial_uploads(self, deletion_date_threshold):
         raise NotImplementedError
 
+    def clean_orphaned_multipart_uploads(self, deletion_date_threshold):
+        """
+        Attempts to clean orphaned multipart uploads older than the set delete threshold on a compatible
+        storage engine.
+        """
+        raise NotImplementedError
+
     def stream_write_to_fp(self, in_fp, out_fp, num_bytes=READ_UNTIL_END):
         """
         Copy the specified number of bytes from the input file stream to the output stream.

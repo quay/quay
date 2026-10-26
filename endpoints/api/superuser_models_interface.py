@@ -55,7 +55,7 @@ class BuildTrigger(
     """
 
     def to_dict(self):
-        if not self.trigger and not self.trigger.uuid:
+        if not self.trigger or not self.trigger.uuid:
             return None
 
         build_trigger = BuildTriggerHandler.get_handler(self.trigger)
@@ -138,7 +138,7 @@ class RepositoryBuild(
             "tags": self.job_config.get("docker_tags", []),
             "manual_user": self.job_config.get("manual_user", None),
             "is_writer": self.can_write,
-            "trigger": self.trigger.to_dict(),
+            "trigger": self.trigger.to_dict() if self.trigger else None,
             "trigger_metadata": (
                 self.job_config.get("trigger_metadata", None) if self.can_read else None
             ),

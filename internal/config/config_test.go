@@ -54,8 +54,66 @@ func TestParseDefaults(t *testing.T) {
 	assert.Equal(t, "http", cfg.PreferredURLScheme)
 	assert.Equal(t, "Red Hat Quay", cfg.RegistryTitle)
 	assert.Equal(t, "Database", cfg.AuthenticationType)
-	require.NotNil(t, cfg.FeatureDirectLogin)
-	assert.True(t, *cfg.FeatureDirectLogin)
+	assert.True(t, cfg.FeatureDirectLogin)
+}
+
+func TestParseRobotAuthConfig(t *testing.T) {
+	cfg, err := Parse([]byte(`
+SERVER_HOSTNAME: test
+ROBOTS_DISALLOW: true
+ROBOTS_WHITELIST:
+  - acme+deploy
+  - mirror+sync
+FEATURE_USER_LAST_ACCESSED: false
+LAST_ACCESSED_UPDATE_THRESHOLD_S: 300
+`))
+	require.NoError(t, err)
+
+	assert.True(t, cfg.RobotsDisallow)
+	assert.Equal(t, []string{"acme+deploy", "mirror+sync"}, cfg.RobotsWhitelist)
+	assert.False(t, cfg.FeatureUserLastAccessed)
+	assert.Equal(t, 300, cfg.LastAccessedUpdateThresholdS)
+}
+
+func TestParseRobotAuthDefaults(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\n"))
+	require.NoError(t, err)
+
+	assert.False(t, cfg.RobotsDisallow)
+	assert.Empty(t, cfg.RobotsWhitelist)
+	assert.True(t, cfg.FeatureSuperUsers)
+	assert.False(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureAnonymousAccess)
+	assert.True(t, cfg.FeatureReferrersAPI)
+	assert.True(t, cfg.FeatureLibrarySupport)
+	assert.True(t, cfg.FeatureUserLastAccessed)
+	assert.Equal(t, 60, cfg.LastAccessedUpdateThresholdS)
+	assert.Equal(t, DefaultPasswordAuthCacheTTLS, cfg.PasswordAuthCacheTTLS)
+}
+
+func TestParsePasswordAuthCacheTTL(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\nPASSWORD_AUTH_CACHE_TTL_S: 0\n"))
+	require.NoError(t, err)
+	assert.Equal(t, 0, cfg.PasswordAuthCacheTTLS, "explicit 0 disables the cache")
+
+	cfg, err = Parse([]byte("SERVER_HOSTNAME: test\nPASSWORD_AUTH_CACHE_TTL_S: 30\n"))
+	require.NoError(t, err)
+	assert.Equal(t, 30, cfg.PasswordAuthCacheTTLS)
+
+	assert.Equal(t, DefaultPasswordAuthCacheTTLS, NewDefault("localhost", "/data/storage").PasswordAuthCacheTTLS)
+}
+
+func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {
+	cfg := NewDefault("localhost", "/data/storage")
+
+	assert.Equal(t, "Database", cfg.AuthenticationType)
+	assert.Equal(t, []string{"admin"}, cfg.SuperUsers)
+	assert.True(t, cfg.FeatureAnonymousAccess)
+	assert.True(t, cfg.FeatureSuperUsers)
+	assert.True(t, cfg.FeatureSuperUsersFullAccess)
+	assert.True(t, cfg.FeatureReferrersAPI)
+	assert.True(t, cfg.FeatureLibrarySupport)
+	assert.True(t, cfg.FeatureUserLastAccessed)
 }
 
 func TestParseExplicitFalseNotOverridden(t *testing.T) {
@@ -63,8 +121,24 @@ func TestParseExplicitFalseNotOverridden(t *testing.T) {
 	cfg, err := Parse([]byte(yaml))
 	require.NoError(t, err)
 
-	require.NotNil(t, cfg.FeatureDirectLogin)
-	assert.False(t, *cfg.FeatureDirectLogin)
+	assert.False(t, cfg.FeatureDirectLogin)
+}
+
+func TestParseCreatePrivateRepoOnPush(t *testing.T) {
+	cfg, err := Parse([]byte("CREATE_PRIVATE_REPO_ON_PUSH: true\n"))
+	require.NoError(t, err)
+	assert.True(t, cfg.CreatePrivateOnPush)
+}
+
+func TestParseCreatePrivateRepoOnPushDefaultPublic(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\n"))
+	require.NoError(t, err)
+	assert.False(t, cfg.CreatePrivateOnPush)
+}
+
+func TestNewDefaultCreatePrivateRepoOnPushPublic(t *testing.T) {
+	cfg := NewDefault("localhost", "/data/storage")
+	assert.False(t, cfg.CreatePrivateOnPush)
 }
 
 func TestParseUnknownFields(t *testing.T) {

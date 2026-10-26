@@ -1,3 +1,6 @@
+from socket import gaierror
+from unittest.mock import MagicMock
+
 import pytest
 from mock import patch
 
@@ -7,14 +10,188 @@ from data.database import Tag, get_epoch_timestamp_ms
 from endpoints.api import api
 from endpoints.api.organization import (
     Organization,
+    OrganizationApplicationResource,
+    OrganizationApplications,
     OrganizationCollaboratorList,
     OrganizationList,
     OrganizationProxyCacheConfig,
+    ProxyCacheConfigValidation,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
 from features import FeatureNameValue
 from test.fixtures import *
+
+
+class TestContactEmail:
+    def test_create_org_with_contact_email(self, app):
+        body = {
+            "name": "contactemailorg",
+            "contact_email": "contact@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("contactemailorg")
+        assert org.email == "contact@example.com"
+
+    def test_create_org_without_email(self, app):
+        body = {"name": "noemailorg"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("noemailorg")
+        from util.validation import validate_email
+
+        assert not validate_email(org.email)
+
+    def test_create_org_email_backward_compat(self, app):
+        body = {
+            "name": "backcompatorg",
+            "email": "compat@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("backcompatorg")
+        assert org.email == "compat@example.com"
+
+    def test_update_org_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "updated@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert org.email == "updated@example.com"
+
+    def test_update_org_duplicate_contact_email(self, app):
+        body = {
+            "name": "dupemailorg",
+            "contact_email": "shared@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "shared@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert org.email == "shared@example.com"
+
+    def test_get_org_admin_sees_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "buynlarge"}, expected_code=200
+            )
+        assert "email" in resp.json
+
+    def test_get_org_nonadmin_no_email(self, app):
+        with client_with_identity("freshuser", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "buynlarge"}, expected_code=200
+            )
+        assert resp.json.get("email") == ""
+
+    def test_clear_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "temp@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert org.email == "temp@example.com"
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": ""},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        from util.validation import validate_email
+
+        assert not validate_email(org.email)
+
+    def test_clear_contact_email_with_null(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "temp@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert org.email == "temp@example.com"
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": None},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        from util.validation import validate_email
+
+        assert not validate_email(org.email)
+
+    def test_create_org_no_email_with_mailing(self, app):
+        body = {"name": "mailingnoemailorg"}
+        with toggle_feature("MAILING", True):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("mailingnoemailorg")
+        from util.validation import validate_email
+
+        assert not validate_email(org.email)
+
+    def test_create_org_invalid_contact_email(self, app):
+        body = {
+            "name": "invalemailorg",
+            "contact_email": "not-a-valid-email",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=400)
+
+    def test_update_org_invalid_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "not-a-valid-email"},
+                expected_code=400,
+            )
 
 
 @pytest.mark.parametrize(
@@ -276,14 +453,18 @@ class TestProxyCacheConfigWithImmutableTags:
         self._cleanup_proxy_cache_config("buynlarge")
 
         with toggle_feature("PROXY_CACHE", True):
-            with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
-                request_body = {
-                    "upstream_registry": "docker.io",
-                }
-                conduct_api_call(
-                    cl, OrganizationProxyCacheConfig, "POST", params, request_body, 201
-                )
+            with patch(
+                "util.security.ssrf._getaddrinfo",
+                return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": "buynlarge"}
+                    request_body = {
+                        "upstream_registry": "docker.io",
+                    }
+                    conduct_api_call(
+                        cl, OrganizationProxyCacheConfig, "POST", params, request_body, 201
+                    )
 
         # Clean up
         self._cleanup_proxy_cache_config("buynlarge")
@@ -299,3 +480,367 @@ class TestProxyCacheConfigWithImmutableTags:
         has_immutable = namespace_has_immutable_tags(org.id)
         # Initially there should be no immutable tags
         assert isinstance(has_immutable, bool)
+
+
+def test_create_application_rejects_reserved_bootstrap_name(app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrganizationApplications,
+            "POST",
+            {"orgname": "buynlarge"},
+            {"name": model.oauth.BOOTSTRAP_APP_NAME},
+            400,
+        )
+
+    assert "reserved" in response.json["error_message"]
+
+
+def test_create_application_allows_non_reserved_bootstrap_like_name(app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrganizationApplications,
+            "POST",
+            {"orgname": "buynlarge"},
+            {"name": "custom-bootstrap-api"},
+        )
+
+    assert response.json["name"] == "custom-bootstrap-api"
+
+
+def test_update_application_rejects_reserved_bootstrap_name(app):
+    org = model.organization.get_organization("buynlarge")
+    application = model.oauth.create_application(org, "legit-bootstrap-api-test", "", "")
+
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrganizationApplicationResource,
+            "PUT",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {
+                "name": model.oauth.BOOTSTRAP_APP_NAME,
+                "redirect_uri": "",
+                "application_uri": "",
+            },
+            400,
+        )
+
+    application = model.oauth.lookup_application(org, application.client_id)
+    assert "reserved" in response.json["error_message"]
+    assert application.name == "legit-bootstrap-api-test"
+
+
+def test_update_application_allows_non_reserved_bootstrap_like_name(app):
+    org = model.organization.get_organization("buynlarge")
+    application = model.oauth.create_application(org, "legit-custom-bootstrap-api-test", "", "")
+
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrganizationApplicationResource,
+            "PUT",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {
+                "name": "custom-bootstrap-api",
+                "redirect_uri": "",
+                "application_uri": "",
+            },
+        )
+
+    application = model.oauth.lookup_application(org, application.client_id)
+    assert application.name == "custom-bootstrap-api"
+
+
+@pytest.fixture()
+def _mock_dns_for_ssrf_validation():
+    with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+        mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        yield mock_dns
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestProxyCacheSSRFProtection:
+    """Tests for SSRF protection in proxy cache configuration endpoints (CVE-2026-32591)."""
+
+    def _cleanup_proxy_cache_config(self, orgname):
+        try:
+            model.proxy_cache.delete_proxy_cache_config(orgname)
+        except Exception:
+            pass
+
+    def test_create_with_private_ip_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "10.0.0.1"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_loopback_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "127.0.0.1"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_aws_metadata_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "169.254.169.254"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_kubernetes_hostname_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "kubernetes.default.svc"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_gcp_metadata_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "metadata.google.internal"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_valid_registry_succeeds(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "docker.io"}
+                conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 201)
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_validate_with_private_ip_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "10.0.0.1"}
+                resp = conduct_api_call(cl, ProxyCacheConfigValidation, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_validate_with_aws_metadata_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "169.254.169.254"}
+                resp = conduct_api_call(cl, ProxyCacheConfigValidation, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_validate_with_localhost_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "localhost"}
+                resp = conduct_api_call(cl, ProxyCacheConfigValidation, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_upstream_namespace_and_private_ip_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = {"upstream_registry": "10.0.0.1/myorg"}
+                resp = conduct_api_call(cl, OrganizationProxyCacheConfig, "POST", params, body, 400)
+                assert "not allowed" in resp.json.get("error_message", "")
+
+
+class TestProxyCacheProxyRouteSSRF:
+    """Proxy-route SSRF validation for proxy cache create/validate endpoints."""
+
+    _HOST = "isolated-registry.example.com"
+    _ENV_PROXY = {"https_proxy": "http://corp-proxy:8080", "http_proxy": "http://corp-proxy:8080"}
+
+    def _cleanup_proxy_cache_config(self, orgname):
+        try:
+            model.proxy_cache.delete_proxy_cache_config(orgname)
+        except Exception:
+            pass
+
+    def _mock_upstream_ok(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.ok = True
+        response.headers = {}
+        # validation=True runs _authorize (session.get) before Proxy.get;
+        # stub both so the test stays offline.
+        return patch.multiple(
+            "proxy.Proxy",
+            _authorize=MagicMock(return_value=None),
+            get=MagicMock(return_value=response),
+        )
+
+    def test_validate_allowlisted_proxy_route_skips_dns(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with patch.dict(realapp.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
+                with patch(
+                    "endpoints.api.organization.get_environment_proxy_config",
+                    return_value=self._ENV_PROXY,
+                ):
+                    with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                        with self._mock_upstream_ok():
+                            with client_with_identity("devtable", app) as cl:
+                                conduct_api_call(
+                                    cl,
+                                    ProxyCacheConfigValidation,
+                                    "POST",
+                                    {"orgname": "buynlarge"},
+                                    {"upstream_registry": self._HOST},
+                                    202,
+                                )
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_create_allowlisted_proxy_route_persists_config(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with patch.dict(realapp.config, {"SSRF_ALLOWED_HOSTS": [self._HOST]}):
+                with patch(
+                    "endpoints.api.organization.get_environment_proxy_config",
+                    return_value=self._ENV_PROXY,
+                ):
+                    with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                        with self._mock_upstream_ok():
+                            with client_with_identity("devtable", app) as cl:
+                                conduct_api_call(
+                                    cl,
+                                    OrganizationProxyCacheConfig,
+                                    "POST",
+                                    {"orgname": "buynlarge"},
+                                    {"upstream_registry": self._HOST},
+                                    201,
+                                )
+
+        config = model.proxy_cache.get_proxy_cache_config_for_org("buynlarge")
+        assert config.upstream_registry == self._HOST
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_validate_direct_route_dns_failure_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config",
+                return_value=None,
+            ):
+                with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(
+                            cl,
+                            ProxyCacheConfigValidation,
+                            "POST",
+                            {"orgname": "buynlarge"},
+                            {"upstream_registry": self._HOST},
+                            400,
+                        )
+                        assert resp.json.get("error_message")
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_validate_no_proxy_match_private_dns_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        # no_proxy forces DIRECT routing; without a hostname allowlist entry,
+        # a private DNS answer must be rejected.
+        env_proxy = {
+            **self._ENV_PROXY,
+            "no_proxy": self._HOST,
+        }
+        with toggle_feature("PROXY_CACHE", True):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config",
+                return_value=env_proxy,
+            ):
+                with patch(
+                    "util.security.ssrf._getaddrinfo",
+                    return_value=[(2, 1, 6, "", ("10.0.0.1", 0))],
+                ):
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(
+                            cl,
+                            ProxyCacheConfigValidation,
+                            "POST",
+                            {"orgname": "buynlarge"},
+                            {"upstream_registry": self._HOST},
+                            400,
+                        )
+                        assert "not allowed" in resp.json.get("error_message", "").lower()
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_validate_non_allowlisted_proxy_route_dns_failure_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config",
+                return_value=self._ENV_PROXY,
+            ):
+                with patch("util.security.ssrf._getaddrinfo", side_effect=gaierror("fail")):
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(
+                            cl,
+                            ProxyCacheConfigValidation,
+                            "POST",
+                            {"orgname": "buynlarge"},
+                            {"upstream_registry": self._HOST},
+                            400,
+                        )
+                        assert resp.json.get("error_message")
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_validate_non_allowlisted_proxy_route_private_dns_rejected(self, app):
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with patch(
+                "endpoints.api.organization.get_environment_proxy_config",
+                return_value=self._ENV_PROXY,
+            ):
+                with patch(
+                    "util.security.ssrf._getaddrinfo",
+                    return_value=[(2, 1, 6, "", ("10.0.0.1", 0))],
+                ):
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(
+                            cl,
+                            ProxyCacheConfigValidation,
+                            "POST",
+                            {"orgname": "buynlarge"},
+                            {"upstream_registry": self._HOST},
+                            400,
+                        )
+                        assert "not allowed" in resp.json.get("error_message", "").lower()
+
+        self._cleanup_proxy_cache_config("buynlarge")

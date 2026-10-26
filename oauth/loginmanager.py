@@ -1,7 +1,11 @@
-from oauth.oidc import OIDCLoginService
+import logging
+
+from oauth.oidc import DiscoveryFailureException, OIDCLoginService
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
 from oauth.services.rhsso import RHSSOOAuthService
+
+logger = logging.getLogger(__name__)
 
 CUSTOM_LOGIN_SERVICES = {
     "GITHUB_LOGIN_CONFIG": GithubOAuthService,
@@ -43,16 +47,32 @@ class OAuthLoginManager(object):
 
     def get_service_by_issuer(self, issuer):
         for service in self.services:
+            if hasattr(service, "get_issuers"):
+                try:
+                    for config_issuer in service.get_issuers():
+                        if config_issuer.rstrip("/") == issuer.rstrip("/"):
+                            return service
+                except (
+                    DiscoveryFailureException,
+                    ConnectionError,
+                    KeyError,
+                    AttributeError,
+                ) as e:
+                    logger.debug(
+                        "Failed to retrieve issuers from service %s: %s",
+                        service.service_id(),
+                        e,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Unexpected error retrieving issuers from service %s: %s",
+                        service.service_id(),
+                        e,
+                    )
 
-            if not hasattr(service, "get_issuer"):
-                continue
-
-            if not service.get_issuer:
-                continue
-
-            config_issuer = service.get_issuer()
-
-            if config_issuer.rstrip("/") == issuer.rstrip("/"):
-                return service
+            if hasattr(service, "get_issuer") and service.get_issuer:
+                config_issuer = service.get_issuer()
+                if config_issuer and config_issuer.rstrip("/") == issuer.rstrip("/"):
+                    return service
 
         return None

@@ -70,3 +70,24 @@ class NotificationWorkerDataInterface(object):
         Returns whether there are any Quay-local notifications for the given user.
         """
         pass
+
+    @abstractmethod
+    def get_enabled_namespace_notification(self, notification_uuid):
+        """
+        Returns an *enabled* namespace notification with the given UUID, or None if none.
+        """
+        pass
+
+    @abstractmethod
+    def reset_namespace_notification_failures(self, notification):
+        """
+        Resets the number of failures for the given namespace notification back to zero.
+        """
+        pass
+
+    @abstractmethod
+    def increment_namespace_notification_failure_count(self, notification):
+        """
+        Increments the number of failures on the given namespace notification.
+        """
+        pass

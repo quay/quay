@@ -1,8 +1,323 @@
+import pytest
+from jsonschema import ValidationError, validate
+
+from auth.scopes import validate_scope_string
 from config import DefaultConfig
 from util.config.schema import CONFIG_SCHEMA, INTERNAL_ONLY_PROPERTIES
 
 
 def test_ensure_schema_defines_all_fields():
-    for key in vars(DefaultConfig):
+    for key in (key for key in vars(DefaultConfig) if key.isupper()):
         has_key = key in CONFIG_SCHEMA["properties"] or key in INTERNAL_ONLY_PROPERTIES
         assert has_key, "Property `%s` is missing from config schema" % key
+
+
+def test_bootstrap_token_expiration_must_be_positive():
+    schema = CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_EXPIRATION"]
+
+    validate(1, schema)
+
+    for value in [0, -1]:
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+
+def test_oauth_application_maximum_token_count_is_optional_positive_integer():
+    schema = CONFIG_SCHEMA["properties"]["OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT"]
+
+    validate(None, schema)
+    validate(1, schema)
+
+    for value in [0, -1, "1"]:
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+
+def test_robot_api_token_exchange_requires_robot_api_tokens():
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKENS is False
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKEN_EXCHANGE is False
+
+    schema = {
+        "type": "object",
+        "allOf": CONFIG_SCHEMA["allOf"],
+        "properties": {
+            "FEATURE_ROBOT_API_TOKENS": CONFIG_SCHEMA["properties"]["FEATURE_ROBOT_API_TOKENS"],
+            "FEATURE_ROBOT_API_TOKEN_EXCHANGE": CONFIG_SCHEMA["properties"][
+                "FEATURE_ROBOT_API_TOKEN_EXCHANGE"
+            ],
+        },
+    }
+
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+        schema,
+    )
+
+    with pytest.raises(ValidationError):
+        validate(
+            {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+            schema,
+        )
+
+
+def test_bootstrap_token_owner_required_when_programmatic_bootstrap_enabled():
+    schema = {
+        "type": "object",
+        "allOf": CONFIG_SCHEMA["allOf"],
+        "properties": {
+            "FEATURE_PROGRAMMATIC_BOOTSTRAP": CONFIG_SCHEMA["properties"][
+                "FEATURE_PROGRAMMATIC_BOOTSTRAP"
+            ],
+            "BOOTSTRAP_TOKEN_OWNER": CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_OWNER"],
+        },
+    }
+
+    validate({"FEATURE_PROGRAMMATIC_BOOTSTRAP": False, "BOOTSTRAP_TOKEN_OWNER": None}, schema)
+    validate({"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": "admin"}, schema)
+
+    for config in [
+        {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True},
+        {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": None},
+        {"FEATURE_PROGRAMMATIC_BOOTSTRAP": True, "BOOTSTRAP_TOKEN_OWNER": ""},
+    ]:
+        with pytest.raises(ValidationError):
+            validate(config, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/var/lib/quay/quay-machine-token.json",
+        "/tmp/token.json",
+    ],
+)
+def test_bootstrap_token_path_accepts_absolute_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_PATH"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "../../../etc/shadow",
+        "var/lib/quay/token.json",
+        "/tmp/token\x00.json",
+    ],
+)
+def test_bootstrap_token_path_rejects_unsafe_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_PATH"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+def test_default_bootstrap_token_scope_uses_valid_oauth_scopes():
+    schema = CONFIG_SCHEMA["properties"]["BOOTSTRAP_TOKEN_SCOPE"]
+
+    validate(DefaultConfig.BOOTSTRAP_TOKEN_SCOPE, schema)
+    assert validate_scope_string(DefaultConfig.BOOTSTRAP_TOKEN_SCOPE)
+
+    for value in ["", "a" * 1025]:
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+
+def test_programmatic_token_k8s_defaults_validate():
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_SECRET,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"],
+    )
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_KEY,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"],
+    )
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_NAMESPACE,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"],
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "/var/lib/quay/bootstrap-token/token.json", "/tmp/token.json"],
+)
+def test_programmatic_token_path_accepts_null_and_absolute_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_PATH"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value", ["", "../token.json", "var/lib/quay/token.json", "/tmp/token\x00.json"]
+)
+def test_programmatic_token_path_rejects_unsafe_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_PATH"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "bootstrap-token", "q", "q1-token", "registry.example-bootstrap-token"],
+)
+def test_programmatic_token_k8s_secret_accepts_valid_dns_subdomains(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Bootstrap",
+        "bootstrap_token",
+        "-bootstrap",
+        "bootstrap-",
+        "bootstrap..token",
+        "a" * 64,
+        "a" * 254,
+    ],
+)
+def test_programmatic_token_k8s_secret_rejects_invalid_dns_subdomains(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize("value", ["token.json", "custom-token_json.1", "TOKEN.JSON"])
+def test_programmatic_token_k8s_key_accepts_valid_secret_data_keys(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize("value", ["", "token/json", "../token.json", "token json"])
+def test_programmatic_token_k8s_key_rejects_invalid_secret_data_keys(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize("value", [None, "quay-enterprise", "q", "q1-token"])
+def test_programmatic_token_k8s_namespace_accepts_valid_dns_labels(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "Quay", "quay_enterprise", "-quay", "quay-", "a" * 64],
+)
+def test_programmatic_token_k8s_namespace_rejects_invalid_dns_labels(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+class TestGunicornTimeoutSchema:
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_accepts_valid_timeout(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [30, 60, 300]:
+            validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_timeout_below_minimum(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [0, 1, 29]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_timeout_above_maximum(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in [301, 600, 1800, 3600, 7200]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    @pytest.mark.parametrize("field", ["GUNICORN_REGISTRY_TIMEOUT", "GUNICORN_WEB_TIMEOUT"])
+    def test_rejects_non_integer_timeout(self, field):
+        schema = CONFIG_SCHEMA["properties"][field]
+        for value in ["300", 30.5]:
+            with pytest.raises(ValidationError):
+                validate(value, schema)
+
+    def test_default_registry_timeout(self):
+        assert DefaultConfig.GUNICORN_REGISTRY_TIMEOUT == 30
+
+    def test_default_web_timeout(self):
+        assert DefaultConfig.GUNICORN_WEB_TIMEOUT == 30
+
+
+class TestNginxTimeoutSchema:
+    @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s", "5m"])
+    def test_manifests_timeout_accepts_valid_nginx_time_strings(self, value):
+        schema = CONFIG_SCHEMA["properties"]["MANIFESTS_ENDPOINT_READ_TIMEOUT"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000"])
+    def test_blob_upload_timeout_accepts_valid_seconds(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", "MANIFESTS_ENDPOINT_READ_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", [0, -1, 3600, True])
+    def test_rejects_non_string_values(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "3600s", "1h", "1.5", ""])
+    def test_blob_upload_timeout_rejects_invalid_format(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["on", "off", "always"])
+    def test_lingering_close_accepts_valid_values(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["yes", "true", "none", ""])
+    def test_lingering_close_rejects_invalid_values(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", ["60", "30", "120"])
+    def test_lingering_time_accepts_valid_seconds(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", ["60s", "1m", "abc", ""])
+    def test_lingering_time_rejects_invalid_format(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        with pytest.raises(ValidationError):
+            validate(value, schema)

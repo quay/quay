@@ -27,6 +27,12 @@ func (fg *AccessSettingsFieldGroup) Validate(opts shared.Options) []shared.Valid
 		}
 	}
 
+	if fg.SessionTimeout != "" {
+		if ok, err := shared.ValidateTimePattern(fg.SessionTimeout, "SESSION_TIMEOUT", "AccessSettings"); !ok {
+			errors = append(errors, err)
+		}
+	}
+
 	if fg.UserRecoveryTokenLifetime != "" {
 		if ok, err := shared.ValidateTimePattern(fg.UserRecoveryTokenLifetime, "USER_RECOVERY_TOKEN_LIFETIME", "AccessSettings"); !ok {
 			errors = append(errors, err)

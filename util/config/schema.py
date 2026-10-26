@@ -45,6 +45,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "INSTANCE_SERVICE_KEY_SERVICE",
     "INSTANCE_SERVICE_KEY_KID_LOCATION",
     "INSTANCE_SERVICE_KEY_EXPIRATION",
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES",
     "UNAPPROVED_SERVICE_KEY_TTL_SEC",
     "EXPIRED_SERVICE_KEY_TTL_SEC",
     "REGISTRY_JWT_AUTH_MAX_FRESH_S",
@@ -55,6 +56,8 @@ INTERNAL_ONLY_PROPERTIES = {
     "QUEUE_WORKER_METRICS_REFRESH_SECONDS",
     "PUSH_TEMP_TAG_EXPIRATION_SEC",
     "GARBAGE_COLLECTION_FREQUENCY",
+    "NAMESPACE_GC_GRACE_PERIOD_SECONDS",
+    "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST",
     "PAGE_TOKEN_KEY",
     "BUILD_MANAGER",
     "SECURITY_SCANNER_V4_REINDEX_THRESHOLD",
@@ -74,6 +77,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "USE_CDN",
     "ANALYTICS_TYPE",
     "LAST_ACCESSED_UPDATE_THRESHOLD_S",
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S",
     "GREENLET_TRACING",
     "EXCEPTION_LOG_TYPE",
     "SENTRY_DSN",
@@ -120,6 +124,28 @@ CONFIG_SCHEMA = {
         "DEFAULT_TAG_EXPIRATION",
         "TAG_EXPIRATION_OPTIONS",
     ],
+    "allOf": [
+        {
+            "if": {
+                "properties": {"FEATURE_PROGRAMMATIC_BOOTSTRAP": {"const": True}},
+                "required": ["FEATURE_PROGRAMMATIC_BOOTSTRAP"],
+            },
+            "then": {
+                "required": ["BOOTSTRAP_TOKEN_OWNER"],
+                "properties": {"BOOTSTRAP_TOKEN_OWNER": {"type": "string", "minLength": 1}},
+            },
+        },
+        {
+            "if": {
+                "properties": {"FEATURE_ROBOT_API_TOKEN_EXCHANGE": {"const": True}},
+                "required": ["FEATURE_ROBOT_API_TOKEN_EXCHANGE"],
+            },
+            "then": {
+                "required": ["FEATURE_ROBOT_API_TOKENS"],
+                "properties": {"FEATURE_ROBOT_API_TOKENS": {"const": True}},
+            },
+        },
+    ],
     "properties": {
         "REGISTRY_STATE": {
             "type": "string",
@@ -156,6 +182,13 @@ CONFIG_SCHEMA = {
             "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled",
             "x-example": ["TLSv1.1", "TLSv1.2"],
             "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols",
+        },
+        "SSL_ECDH_CURVES": {
+            "type": "array",
+            "description": "If specified, the nginx-defined list of elliptic curves and post-quantum key exchange groups",
+            "x-example": ["X25519MLKEM768", "X25519", "prime256v1"],
+            "items": {"type": "string", "minLength": 1},
+            "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ecdh_curve",
         },
         # User-visible configuration.
         "REGISTRY_TITLE": {
@@ -214,6 +247,11 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Whether emails are enabled. Defaults to True",
             "x-example": True,
+        },
+        "FEATURE_ORG_SHARED_EMAIL": {
+            "type": "boolean",
+            "description": "Whether organizations can share email addresses with existing user accounts. Defaults to False",
+            "x-example": False,
         },
         "MAIL_SERVER": {
             "type": "string",
@@ -319,6 +357,20 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
             "x-example": True,
         },
+        "GUNICORN_REGISTRY_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 300,
+            "description": "Timeout in seconds for gunicorn-registry workers. Workers that do not respond within this window are killed and restarted. Must be between 30 and 300 (5 minutes). Defaults to 30",
+            "x-example": 300,
+        },
+        "GUNICORN_WEB_TIMEOUT": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 300,
+            "description": "Timeout in seconds for gunicorn-web workers. Workers that do not respond within this window are killed and restarted. Must be between 30 and 300 (5 minutes). Defaults to 30",
+            "x-example": 60,
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",
@@ -422,6 +474,19 @@ CONFIG_SCHEMA = {
             "x-reference": "https://coreos.com/quay-enterprise/docs/latest/direct-oauth.html",
             "uniqueItems": True,
             "items": {"type": "string"},
+        },
+        "OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Optional maximum number of non-expired OAuth access tokens allowed per OAuth application. If omitted or null, no cap is enforced.",
+            "x-example": 1000,
+        },
+        "API_TOKEN_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Maximum number of active Quay-issued API tokens allowed per user or robot. Defaults to 20; set null to disable the cap.",
+            "default": 20,
+            "x-example": 20,
         },
         # Redis.
         "BUILDLOGS_REDIS": {
@@ -826,6 +891,32 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "SECURITY_SCANNER_V4_INDEXING": {
+            "type": "boolean",
+            "description": "Whether to enable the legacy V4 security scanner indexing operations. When set to False, the old indexing paths are disabled while the V2 indexer and security scan query APIs remain functional. Defaults to True",
+            "x-example": True,
+        },
+        "FEATURE_SECURITY_SCANNER_V2": {
+            "type": "boolean",
+            "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
+            "x-example": False,
+        },
+        "SECURITY_SCANNER_V2_BATCH_SIZE": {
+            "type": "number",
+            "description": "The number of manifests to claim per indexing cycle in the V2 security scanner. Defaults to 50.",
+            "x-example": 50,
+        },
+        "SECURITY_SCANNER_V2_INDEXING_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
+            "x-example": 30,
+        },
+        "SECURITY_SCANNER_MAX_SCAN_RETRIES": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The maximum number of scan retries per indexer hash before a manifest is skipped. Defaults to 5.",
+            "x-example": 5,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
@@ -1097,7 +1188,7 @@ CONFIG_SCHEMA = {
         },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
@@ -1469,6 +1560,12 @@ CONFIG_SCHEMA = {
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
         },
+        "SESSION_TIMEOUT": {
+            "type": "string",
+            "description": "The lifetime for permanent browser sessions. Used when FEATURE_PERMANENT_SESSIONS is enabled.",
+            "pattern": "^[0-9]+(w|m|d|h|s)$",
+            "x-example": "24h",
+        },
         # Webhook blacklist.
         "WEBHOOK_HOSTNAME_BLACKLIST": {
             "type": "array",
@@ -1490,6 +1587,78 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
+        },
+        "FEATURE_PROGRAMMATIC_BOOTSTRAP": {
+            "type": "boolean",
+            "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
+            "x-example": False,
+        },
+        "FEATURE_ROBOT_API_TOKENS": {
+            "type": "boolean",
+            "description": "Feature flag for scoped robot Management API tokens. Defaults to False.",
+            "x-example": False,
+        },
+        "FEATURE_ROBOT_API_TOKEN_EXCHANGE": {
+            "type": "boolean",
+            "description": "Feature flag for federated robot API token exchange. Requires FEATURE_ROBOT_API_TOKENS. Defaults to False.",
+            "x-example": False,
+        },
+        "BOOTSTRAP_TOKEN_OWNER": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Username that owns the programmatic bootstrap OAuth application and tokens. Required when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled, and the user must also be listed in SUPER_USERS.",
+            "x-example": "admin",
+        },
+        "BOOTSTRAP_TOKEN_PATH": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": r"^/[^\x00]*$",
+            "description": "Filesystem path where the bootstrap token JSON is written.",
+            "x-example": "/var/lib/quay/quay-machine-token.json",
+        },
+        "PROGRAMMATIC_TOKEN_PATH": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "pattern": r"^/[^\x00]*$",
+            "description": "Operator-rendered mounted programmatic bootstrap token path accepted for config compatibility.",
+            "x-example": "/var/lib/quay/bootstrap-token/token.json",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_SECRET": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 253,
+            "pattern": r"^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)*$",
+            "description": "Kubernetes Secret name used to store the programmatic bootstrap token when Quay is running in Kubernetes.",
+            "x-example": "quay-bootstrap-token",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_KEY": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": r"^[A-Za-z0-9._-]+$",
+            "description": "Kubernetes Secret data key used to store the programmatic bootstrap token JSON.",
+            "x-example": "token.json",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_NAMESPACE": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+            "description": "Kubernetes namespace containing the programmatic bootstrap token Secret. If unset, Quay uses the pod service account namespace.",
+            "x-example": "quay-enterprise",
+        },
+        "BOOTSTRAP_TOKEN_EXPIRATION": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Bootstrap token lifetime in seconds. Defaults to 3600 (60 minutes).",
+            "x-example": 3600,
+        },
+        "BOOTSTRAP_TOKEN_SCOPE": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "Space-separated OAuth scopes for the bootstrap token.",
+            "x-example": "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read",
         },
         # OCI artifact types
         "ALLOWED_OCI_ARTIFACT_TYPES": {
@@ -1517,6 +1686,11 @@ CONFIG_SCHEMA = {
         "FEATURE_QUOTA_MANAGEMENT": {
             "type": "boolean",
             "description": "Enables configuration, caching, and validation for quota management feature",
+            "x-example": False,
+        },
+        "FEATURE_QUOTA_NOTIFICATIONS": {
+            "type": "boolean",
+            "description": "Enables quota threshold notifications via namespace notification channels",
             "x-example": False,
         },
         "FEATURE_QUOTA_SUPPRESS_FAILURES": {
@@ -1549,6 +1723,11 @@ CONFIG_SCHEMA = {
             "description": "The amount of namespaces that will be calculated for quota backfill on wakeup of the backfill worker.",
             "x-example": 100,
         },
+        "QUOTA_NOTIFICATION_COOLDOWN_SECONDS": {
+            "type": "int",
+            "description": "Minimum seconds between duplicate quota notifications for the same namespace and threshold",
+            "x-example": 86400,
+        },
         "QUOTA_INVALIDATE_TOTALS": {
             "type": "boolean",
             "description": "Invalidates totals when a write happens to a namespace and repository when FEATURE_QUOTA_MANAGEMENT is not enabled",
@@ -1558,6 +1737,25 @@ CONFIG_SCHEMA = {
             "type": "int",
             "description": "The amount of time between runs of the quota registry size worker in seconds",
             "x-example": 30,
+        },
+        "QUOTA_METRICS": {
+            "type": "boolean",
+            "description": "Whether quota metrics are exposed about total registry storage consumption, organization and repository usage and organization quota limits and attainment. Defaults to False. Beware of high cardinality if there are many organizations and repositories. Metrics use mutable namespace/repository names as labels for dashboard readability; renames create new Prometheus series until stale ones expire. Use QUOTA_METRICS_*_LIMIT to cap cardinality.",
+            "x-example": False,
+        },
+        "QUOTA_METRICS_REPOS_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of repositories to report per-repository quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
+        },
+        "QUOTA_METRICS_NAMESPACES_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of namespaces to report per-namespace quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
         },
         "FEATURE_EDIT_QUOTA": {
             "type": "boolean",
@@ -1777,10 +1975,64 @@ CONFIG_SCHEMA = {
             "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
             "x-example": False,
         },
+        "FEATURE_SPAM_DETECTION": {
+            "type": "boolean",
+            "description": "Enables repository-description spam detection at API ingress. Defaults to False.",
+            "x-example": False,
+        },
+        "SPAM_DETECTION_DRY_RUN": {
+            "type": "boolean",
+            "description": "Evaluates repository descriptions without rejecting create or update requests. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_FAIL_OPEN": {
+            "type": "boolean",
+            "description": "Allows repository create and update requests if the local spam classifier cannot be evaluated. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_CLASSIFIER_PATH": {
+            "type": ["string", "null"],
+            "description": "Path to the in-image Bayesian spam classifier JSON artifact used for repository-description ingress evaluation. Defaults to /conf/spam-detection/classifier.json.",
+            "x-example": "/conf/spam-detection/classifier.json",
+        },
+        "SPAM_DETECTION_CLASSIFIER_VERSION": {
+            "type": ["string", "null"],
+            "description": "Expected version of the local spam classifier artifact. If set, Quay rejects or fail-opens classifier evaluation when the artifact version differs.",
+            "x-example": "2026-06-20.1",
+        },
+        "SPAM_DETECTION_CLASSIFIER_SHA256": {
+            "type": ["string", "null"],
+            "description": "Optional SHA-256 checksum for the local spam classifier artifact.",
+            "x-example": "a3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        },
         "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
             "type": "string",
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
+        },
+        "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Nginx client body timeout in seconds for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
+            "x-example": "3600",
+        },
+        "BLOB_UPLOAD_LINGERING_CLOSE": {
+            "type": "string",
+            "enum": ["on", "off", "always"],
+            "description": "Nginx lingering_close mode for blob upload endpoints. Set to 'always' to ensure clean connection close after timeouts, allowing load balancers to receive error responses instead of returning 502. Defaults to nginx's 'on' when not set.",
+            "x-example": "always",
+        },
+        "BLOB_UPLOAD_LINGERING_TIME": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum time in seconds nginx will drain remaining request body after closing a blob upload. Defaults to nginx's 30s when not set.",
+            "x-example": "60",
+        },
+        "BLOB_UPLOAD_LINGERING_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum wait time in seconds between successive reads while draining a blob upload request body. Defaults to nginx's 5s when not set.",
+            "x-example": "30",
         },
         "FEATURE_SUPERUSER_CONFIGDUMP": {
             "type": "boolean",
@@ -1832,6 +2084,11 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Comma separated list of urls to exclude from tracing",
             "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
+        },
+        "FEATURE_ENABLE_STALE_MPU_CLEANUP": {
+            "type": "boolean",
+            "description": "Enables cleanup of stale multipart uploads on the backend bucket. This feature flag is only applicable to S3 storage engines.",
+            "x-example": True,
         },
     },
     "DEBUG": {
@@ -2217,6 +2474,22 @@ CONFIG_SCHEMA = {
         "x-example": 30,
         "x-reference": None,
     },
+    "NAMESPACE_GC_GRACE_PERIOD_SECONDS": {
+        "type": "number",
+        "description": "Grace period in seconds before deleted namespaces (orgs/users) are permanently purged by GC. Only applies to namespaces listed in NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST. Defaults to 0 (immediate).",
+        "x-example": 1209600,
+        "x-reference": None,
+        "minimum": 0,
+    },
+    "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": {
+        "type": "array",
+        "description": "Allowlist of namespace names that receive the GC grace period. When empty, no namespaces are protected.",
+        "x-example": ["important-org"],
+        "x-reference": None,
+        "items": {
+            "type": "string",
+        },
+    },
     "GREENLET_TRACING": {
         "type": "boolean",
         "description": "[QUAY.IO] GREENLET_TRACING. Defaults to True",
@@ -2227,6 +2500,12 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "Defineexpiration for instance service keys, in minutes. Defaults to 120",
         "x-example": 120,
+        "x-reference": None,
+    },
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES": {
+        "type": "boolean",
+        "description": "When true, import the instance service key from mounted files instead of generating a new one. Defaults to False",
+        "x-example": False,
         "x-reference": None,
     },
     "INSTANCE_SERVICE_KEY_KID_LOCATION": {
@@ -2268,6 +2547,14 @@ CONFIG_SCHEMA = {
     "LAST_ACCESSED_UPDATE_THRESHOLD_S": {
         "type": "number",
         "description": "Update the LAST_ACCESSED database column. Defaults to 60 in seconds",
+        "x-example": 60,
+        "x-reference": None,
+    },
+    "OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S": {
+        "type": "number",
+        "description": (
+            "Update the OAuth token LAST_ACCESSED database column. Defaults to 60 seconds"
+        ),
         "x-example": 60,
         "x-reference": None,
     },
@@ -2345,8 +2632,8 @@ CONFIG_SCHEMA = {
     },
     "PUSH_TEMP_TAG_EXPIRATION_SEC": {
         "type": "number",
-        "description": "Temporary Tag expiration time in seconds. Defaults to 3600",
-        "x-example": 3600,
+        "description": "Temporary Tag expiration time in seconds. Defaults to 6 hours",
+        "x-example": 21600,
         "x-reference": None,
     },
     "QUEUE_METRICS_TYPE": {
@@ -2547,6 +2834,33 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
         "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_CONNECTION_POOLING": {
+        "type": "boolean",
+        "description": "Enable admin LDAP connection pooling to reuse connections across requests. Set false to fall back to per-request connections. Defaults to True.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_POOL_SIZE": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Maximum number of pooled admin LDAP connections per worker process. Defaults to 10.",
+        "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_POOL_MAX_WAIT": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Seconds to wait for a pooled LDAP connection before creating an overflow connection. Defaults to 5.0.",
+        "x-example": 5.0,
+        "x-reference": None,
+    },
+    "LDAP_POOL_CONNECTION_LIFETIME": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Maximum age in seconds of a pooled LDAP connection before it is rotated. Defaults to 300.",
+        "x-example": 300,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {

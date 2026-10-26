@@ -1,0 +1,949 @@
+package metastore
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/opencontainers/go-digest"
+
+	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/oci"
+)
+
+// SQLiteStore implements Store backed by a SQLite database. It holds only a
+// *sql.DB and cached enum IDs. All transactional methods bind daldb.Queries
+// to the transaction via WithTx---never to the pool---preventing deadlocks
+// under MaxOpenConns=1.
+type SQLiteStore struct {
+	db *sql.DB
+
+	defaultVisibility int64
+	repoKindImage     int64
+	tagKindTag        int64
+
+	mediaTypesMu sync.RWMutex
+	mediaTypes   map[string]int64
+
+	// mutex to ensure insert blob atomicity
+	blobMu sync.Mutex
+
+	// mutex to ensure manifest insert atomicity
+	manifestMu sync.Mutex
+
+	// mutex to ensure insert repository atomicity
+	repoMu sync.Mutex
+}
+
+// compile-time check
+var _ oci.MetadataStore = (*SQLiteStore)(nil)
+
+// DB returns the underlying database handle, primarily for use in tests.
+func (s *SQLiteStore) DB() *sql.DB { return s.db }
+
+// StoreConfig configures metastore behavior.
+type StoreConfig struct {
+	CreatePrivateOnPush bool
+}
+
+// NewSQLiteStore creates a Store backed by the given SQLite database. It
+// caches frequently-used enum IDs at construction time.
+func NewSQLiteStore(ctx context.Context, db *sql.DB, opts ...StoreConfig) (*SQLiteStore, error) {
+	var cfg StoreConfig
+	if len(opts) > 0 {
+		cfg = opts[0]
+	}
+	s := &SQLiteStore{db: db, mediaTypes: make(map[string]int64)}
+	if err := s.cacheEnums(ctx, cfg); err != nil {
+		return nil, fmt.Errorf("metastore: cache enums: %w", err)
+	}
+	return s, nil
+}
+
+func (s *SQLiteStore) cacheEnums(ctx context.Context, cfg StoreConfig) error {
+	q := daldb.New(s.db)
+
+	var err error
+	visibilityName := "public"
+	if cfg.CreatePrivateOnPush {
+		visibilityName = "private"
+	}
+	if s.defaultVisibility, err = q.GetVisibilityByName(ctx, visibilityName); err != nil {
+		return fmt.Errorf("visibility %q: %w", visibilityName, err)
+	}
+	if s.repoKindImage, err = q.GetRepositoryKindByName(ctx, "image"); err != nil {
+		return fmt.Errorf("repositorykind 'image': %w", err)
+	}
+	if s.tagKindTag, err = q.GetTagKindByName(ctx, "tag"); err != nil {
+		return fmt.Errorf("tagkind 'tag': %w", err)
+	}
+
+	mts, err := q.GetAllMediaTypes(ctx)
+	if err != nil {
+		return fmt.Errorf("mediatype: %w", err)
+	}
+	for _, mt := range mts {
+		s.mediaTypes[mt.Name] = mt.ID
+	}
+	return nil
+}
+
+// resolveMediaType returns the cached ID for a media type string. All valid
+// manifest media types are pre-seeded; distribution rejects unknown types
+// before they reach the middleware, so a cache miss is a deployment bug.
+func (s *SQLiteStore) resolveMediaType(mt string) (int64, error) {
+	s.mediaTypesMu.RLock()
+	id, ok := s.mediaTypes[mt]
+	s.mediaTypesMu.RUnlock()
+	if !ok {
+		return 0, fmt.Errorf("unknown media type %q: not in seed data", mt)
+	}
+	return id, nil
+}
+
+// EnsureRepository creates or retrieves the repository and its namespace user.
+func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryName) (int64, error) {
+	// lock mutex for the duration of the call so we don't get multiple repositories with the same name
+	// trying to be created under same user
+	s.repoMu.Lock()
+	defer s.repoMu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	userID, err := q.EnsureUser(ctx, name.Namespace)
+	if err != nil {
+		return 0, fmt.Errorf("ensure user %q: %w", name.Namespace, err)
+	}
+
+	repoID, err := q.GetOrCreateRepository(ctx, daldb.GetOrCreateRepositoryParams{
+		NamespaceUserID: sql.NullInt64{Int64: userID, Valid: true},
+		Name:            name.Name,
+		VisibilityID:    s.defaultVisibility,
+		KindID:          s.repoKindImage,
+		BadgeToken:      "",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("ensure repository %q: %w", name.String(), err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return repoID, nil
+}
+
+// PutManifest upserts a manifest and its blob/child references within a transaction.
+func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic,gocyclo // interface compliance
+	// lock mutex for the duration of the call, so we don't get same manifests inserted to the manifest table
+	// at the same time
+	s.manifestMu.Lock()
+	defer s.manifestMu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	mtID, err := s.resolveMediaType(m.MediaType)
+	if err != nil {
+		return 0, err
+	}
+
+	var childIDs []int64
+	var blobIDs []int64
+
+	// we need to verify that all blobs and children are stored before we commit to storing the image/manifest list
+	if len(m.BlobDigests) > 0 {
+		blobIDs, err = s.validateBlobs(ctx, repoID, q, &m)
+		if err != nil {
+			return 0, err
+		}
+
+	}
+
+	if len(m.ChildDigests) > 0 {
+		childIDs, err = s.validateChildManifests(ctx, repoID, q, &m)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// if we got to here, we can insert stuff
+	manifestID, err := q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+		RepositoryID:  repoID,
+		Digest:        m.Digest.String(),
+		MediaTypeID:   mtID,
+		ManifestBytes: string(m.Content),
+		Subject:       sql.NullString{String: m.Subject.String(), Valid: m.Subject != ""},
+		ArtifactType:  sql.NullString{String: m.ArtifactType, Valid: m.ArtifactType != ""},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("upsert manifest %s: %w", m.Digest, err)
+	}
+
+	// check if we're dealing with a normal manifest
+	if len(m.BlobDigests) > 0 {
+		err = s.linkBlobs(ctx, q, repoID, manifestID, blobIDs)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// check if we're dealing with a manifest list
+	if len(m.ChildDigests) > 0 {
+		err = s.linkChildManifests(ctx, q, repoID, manifestID, childIDs)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// if we push by tag, create a tag reference
+	if m.Tag != "" {
+		if _, err := s.putTag(ctx, q, repoID, manifestID, m.Tag); err != nil {
+			return 0, err
+		}
+	}
+
+	// if the manifest has a subject (we're dealing with referrers), insert a
+	// temporary tag and protect it
+	if m.Subject != "" {
+		if err := s.setSubjectAndProtect(ctx, q, repoID, manifestID, &m); err != nil {
+			return 0, err
+		}
+	}
+
+	// if we are missing both tag and subject, assume we're dealing with child images,
+	// insert temporary tag with a 6 hour expiry
+	if m.Subject == "" && m.Tag == "" {
+		err := s.insertTempTag(ctx, q, repoID, manifestID)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return manifestID, nil
+}
+
+// validateBlobs validates that all blobs are committed to the database before the image manifest is stored.
+// This ensures consistency: manifests are stored only after all content for a particular image is stored,
+// with no orphaned blobs created.
+//
+// Foreign layer support has been deprecated by Microsoft in 2022. and removed in 2023. All Windows images now follow
+// standard OCI practice, therefore support going forward is not eeded.
+// See the following link for details:
+//
+// https://techcommunity.microsoft.com/blog/containers/announcing-removal-of-foreign-layers-from-windows-container-images/3846833
+func (s *SQLiteStore) validateBlobs(ctx context.Context, repoID int64, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
+	var blobIDs []int64
+	for _, blob := range m.BlobDigests {
+		id, err := q.GetBlobByChecksumAndRepository(ctx, daldb.GetBlobByChecksumAndRepositoryParams{
+			ContentChecksum: sql.NullString{String: blob.Digest.String(), Valid: true},
+			RepositoryID:    repoID,
+			RepositoryID_2:  repoID,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, oci.BlobUnknownError{Digest: blob.Digest}
+			}
+			return nil, fmt.Errorf("error during blob lookup %s: %w", blob.Digest.String(), err)
+		}
+		blobIDs = append(blobIDs, id)
+	}
+	return blobIDs, nil
+}
+
+// validateChildManifests validates that all child manifests for a particular manifest list are stored in the database
+// before the image manifest is stored. This ensures consistency: we do not have indexes that have placeholder
+// manifests as children.
+func (s *SQLiteStore) validateChildManifests(ctx context.Context, repoID int64, q *daldb.Queries, m *oci.ManifestRecord) ([]int64, error) {
+	var childIDs []int64
+	for _, childDigest := range m.ChildDigests {
+		id, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+			RepositoryID: repoID,
+			Digest:       childDigest.String(),
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, oci.ChildManifestUnknownError{Digest: childDigest}
+			}
+			return nil, fmt.Errorf("error during child lookup %s: %w", childDigest.String(), err)
+		}
+		childIDs = append(childIDs, id.ID)
+	}
+	return childIDs, nil
+}
+
+// linkBlobs links all blobs to the specific manifest.
+func (s *SQLiteStore) linkBlobs(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, blobIDs []int64) error {
+	for _, id := range blobIDs {
+		if err := q.LinkManifestBlob(ctx, daldb.LinkManifestBlobParams{
+			RepositoryID: repoID,
+			ManifestID:   manifestID,
+			BlobID:       id,
+		}); err != nil {
+			return fmt.Errorf("link manifest blob failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// linkChildManifests links all child manifests of a specific parent.
+func (s *SQLiteStore) linkChildManifests(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, childIDs []int64) error {
+	for _, id := range childIDs {
+		if err := q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+			RepositoryID:    repoID,
+			ManifestID:      manifestID,
+			ChildManifestID: id,
+		}); err != nil {
+			return fmt.Errorf("link child manifest failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// insertTempTag inserts a temporary tag for each manifest if that manifest is pushed by digest.
+func (s *SQLiteStore) insertTempTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64) error {
+	startMs := time.Now().UnixMilli()
+	// Python Quay sets this to 1 hour, but for LLM models and multiarch images this time might be too short
+	// so increase expiration to 6 hours to ensure big images are properly pushed without errors.
+	expireMs := time.Now().Add(6 * time.Hour).UnixMilli()
+
+	rows, err := q.ExtendTemporaryTag(ctx, daldb.ExtendTemporaryTagParams{
+		LifetimeEndMs: sql.NullInt64{Int64: expireMs, Valid: true},
+		ManifestID:    sql.NullInt64{Int64: manifestID, Valid: true},
+	})
+
+	if err != nil {
+		return fmt.Errorf("check temporary tag: %w", err)
+	}
+
+	// if update operation returns any changed rows, exit, temp tag was properly updated
+	if rows != 0 {
+		return nil
+	}
+
+	// otherwise, insert a new temporary tag
+	if _, err := q.InsertTemporaryTag(ctx, daldb.InsertTemporaryTagParams{
+		Name:            "$temp-" + uuid.NewString(),
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: startMs,
+		LifetimeEndMs:   sql.NullInt64{Int64: expireMs, Valid: true},
+		TagKindID:       s.tagKindTag,
+		Hidden:          true,
+	}); err != nil {
+		return fmt.Errorf("insert temporary protection tag: %w", err)
+	}
+	return nil
+}
+
+// setSubjectAndProtect sets the subject column on a manifest and creates a
+// hidden tag to protect the referrer from GC, unless the manifest already
+// has a non-expiring tag. Referrer manifests typically have no user-visible
+// tag, so without the hidden tag FindOrphanedManifests would collect them.
+//
+// This mirrors Python's create_temporary_tag_if_necessary(skip_expiration=True)
+// (data/model/oci/tag.py): check-before-create avoids duplicate protection
+// tags on repeat pushes, and a random name ("$temp-" + uuid) means nothing
+// relies on ON CONFLICT against the (repository_id, name, lifetime_end_ms)
+// unique index, which never fires when lifetime_end_ms IS NULL (NULL != NULL
+// in SQL) -- that mismatch was the root cause of the duplication bug this
+// replaces.
+func (s *SQLiteStore) setSubjectAndProtect(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, m *oci.ManifestRecord) error {
+	if err := q.SetManifestSubject(ctx, daldb.SetManifestSubjectParams{
+		Subject: sql.NullString{String: m.Subject.String(), Valid: true},
+		ID:      manifestID,
+	}); err != nil {
+		return fmt.Errorf("set manifest subject %s: %w", m.Subject, err)
+	}
+
+	hasTag, err := q.HasNonExpiringTagForManifest(ctx, sql.NullInt64{Int64: manifestID, Valid: true})
+	if err != nil {
+		return fmt.Errorf("check existing tag for manifest %d: %w", manifestID, err)
+	}
+	if hasTag {
+		return nil
+	}
+
+	if _, err := q.InsertHiddenTag(ctx, daldb.InsertHiddenTagParams{
+		Name:            "$temp-" + uuid.NewString(),
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: time.Now().UnixMilli(),
+		TagKindID:       s.tagKindTag,
+	}); err != nil {
+		return fmt.Errorf("insert hidden protection tag: %w", err)
+	}
+	return nil
+}
+
+// DeleteManifest removes a manifest and all its FK references within a transaction.
+func (s *SQLiteStore) DeleteManifest(ctx context.Context, repoID int64, dgst digest.Digest) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	manifest, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID,
+		Digest:       dgst.String(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return oci.ErrNotExist
+	}
+	if err != nil {
+		return fmt.Errorf("lookup manifest %s: %w", dgst, err)
+	}
+
+	// Order follows Python's gc.py: clear all FK references, then delete
+	// the manifest row itself. Tags must be fully deleted (not just expired)
+	// because even expired tags hold an FK to the manifest.
+	mid := sql.NullInt64{Int64: manifest.ID, Valid: true}
+	if err := q.DeleteTagsByManifest(ctx, mid); err != nil {
+		return fmt.Errorf("delete manifest tags: %w", err)
+	}
+	if err := q.DeleteManifestLabels(ctx, manifest.ID); err != nil {
+		return fmt.Errorf("delete manifest labels: %w", err)
+	}
+	if err := q.DeleteManifestChildren(ctx, daldb.DeleteManifestChildrenParams{
+		ManifestID:      manifest.ID,
+		ChildManifestID: manifest.ID,
+	}); err != nil {
+		return fmt.Errorf("delete manifest child links: %w", err)
+	}
+	if err := q.DeleteManifestBlobs(ctx, manifest.ID); err != nil {
+		return fmt.Errorf("delete manifest blob links: %w", err)
+	}
+	if err := q.DeleteManifestSecurityStatus(ctx, manifest.ID); err != nil {
+		return fmt.Errorf("delete manifest security status: %w", err)
+	}
+	if err := q.DeleteManifest(ctx, manifest.ID); err != nil {
+		return fmt.Errorf("delete manifest: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
+
+// ensureBlob inserts a blob into imagestorage if it doesn't already exist,
+// returning its ID. Uses SELECT-first because content_checksum has a
+// non-unique index (the sqlc UpsertImageStorage ON CONFLICT clause targets
+// content_checksum which won't work). The db parameter must be the same
+// handle (pool or tx) used by the caller to avoid deadlocks.
+func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.BlobRef) (int64, error) {
+	// lock mutex for the duration of the insert
+	s.blobMu.Lock()
+	defer s.blobMu.Unlock()
+
+	q := daldb.New(db)
+	checksum := sql.NullString{String: ref.Digest.String(), Valid: true}
+
+	id, err := q.GetBlobByChecksum(ctx, checksum)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("lookup blob %s: %w", ref.Digest, err)
+	}
+
+	id, err = q.InsertBlob(ctx, daldb.InsertBlobParams{
+		Uuid:            ref.Digest.Encoded(),
+		ContentChecksum: checksum,
+		ImageSize:       sql.NullInt64{Int64: ref.Size, Valid: ref.Size > 0},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("insert blob %s: %w", ref.Digest, err)
+	}
+
+	return id, nil
+}
+
+// PutBlob inserts or retrieves a blob by its content checksum.
+func (s *SQLiteStore) PutBlob(ctx context.Context, b oci.BlobRecord) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	id, err := s.ensureBlob(ctx, tx, oci.BlobRef(b))
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return id, nil
+}
+
+// PutRepositoryBlob atomically inserts the blob metadata and its upload
+// protection marker in a single transaction, closing the race window where
+// GC could see the imagestorage row before the uploadedblob row exists.
+func (s *SQLiteStore) PutRepositoryBlob(ctx context.Context, repoID int64, b oci.BlobRecord) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	blobID, err := s.ensureBlob(ctx, tx, oci.BlobRef(b))
+	if err != nil {
+		return 0, err
+	}
+
+	if err := daldb.New(tx).InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{
+		RepositoryID: repoID,
+		BlobID:       blobID,
+	}); err != nil {
+		return 0, fmt.Errorf("insert uploaded blob %s: %w", b.Digest, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return blobID, nil
+}
+
+// PutTag expires any active tag with the same name and inserts a new one.
+func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	manifest, err := q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID,
+		Digest:       t.Digest.String(),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("lookup manifest for tag %q: %w", t.Name, err)
+	}
+
+	id, err := s.putTag(ctx, q, repoID, manifest.ID, t.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return id, nil
+}
+
+// putTag expires any active tag with the same name, then inserts a new one.
+// This avoids the NULL != NULL issue on the
+// (repository_id, name, lifetime_end_ms) unique index.
+func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string) (int64, error) {
+	transitionMs, err := expireActiveTag(ctx, q, repoID, tag, time.Now().UnixMilli())
+	if err != nil {
+		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
+	}
+
+	id, err := q.UpsertTag(ctx, daldb.UpsertTagParams{
+		Name:            tag,
+		RepositoryID:    repoID,
+		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
+		LifetimeStartMs: transitionMs,
+		TagKindID:       s.tagKindTag,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("insert tag %q: %w", tag, err)
+	}
+	return id, nil
+}
+
+// expireActiveTag chooses an unused transition millisecond no earlier than the
+// active tag's lifetime start. After the first collision it re-samples wall
+// time once, then advances logically while probing each candidate.
+// q must be transaction-bound so the reads and update cannot interleave with
+// another tag mutation.
+func expireActiveTag(ctx context.Context, q *daldb.Queries, repoID int64, tag string, requestedEnd int64) (int64, error) {
+	activeStart, err := q.GetActiveTagLifetimeStart(ctx, daldb.GetActiveTagLifetimeStartParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return requestedEnd, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get active tag lifetime start: %w", err)
+	}
+
+	candidate := max(requestedEnd, activeStart)
+	resampledWallClock := false
+	for {
+		exists, err := q.TagLifetimeEndExists(ctx, daldb.TagLifetimeEndExistsParams{
+			RepositoryID:  repoID,
+			Name:          tag,
+			LifetimeEndMs: sql.NullInt64{Int64: candidate, Valid: true},
+		})
+		if err != nil {
+			return 0, fmt.Errorf("check lifetime end %d: %w", candidate, err)
+		}
+		if !exists {
+			break
+		}
+
+		if !resampledWallClock {
+			resampledWallClock = true
+			next := max(time.Now().UnixMilli(), activeStart)
+			if next != candidate {
+				candidate = next
+				continue
+			}
+		}
+		if candidate == math.MaxInt64 {
+			return 0, fmt.Errorf("no lifetime end available after %d", candidate)
+		}
+		candidate++
+	}
+
+	_, err = q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
+		LifetimeEndMs: sql.NullInt64{Int64: candidate, Valid: true},
+		RepositoryID:  repoID,
+		Name:          tag,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return candidate, nil
+}
+
+// DeleteTag expires the active tag by setting lifetime_end_ms.
+func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+
+	if _, err := expireActiveTag(ctx, daldb.New(tx), repoID, tag, time.Now().UnixMilli()); err != nil {
+		return fmt.Errorf("expire tag %q: %w", tag, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
+
+// GetRepositoryID retrieves the repository ID by namespace and name.
+func (s *SQLiteStore) GetRepositoryID(ctx context.Context, name oci.RepositoryName) (int64, error) {
+	q := daldb.New(s.db)
+	id, err := q.GetRepositoryByNamespaceName(ctx, daldb.GetRepositoryByNamespaceNameParams{
+		Username: name.Namespace,
+		Name:     name.Name,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("get repository %s: %w", name, oci.ErrNotExist)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get repository %s: %w", name, err)
+	}
+	return id, nil
+}
+
+// GetTagDigest retrieves the manifest digest for an active tag.
+func (s *SQLiteStore) GetTagDigest(ctx context.Context, repoID int64, tag string) (digest.Digest, error) {
+	q := daldb.New(s.db)
+	d, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get tag %q: %w", tag, oci.ErrNotExist)
+	}
+	if err != nil {
+		return "", fmt.Errorf("get tag %q: %w", tag, err)
+	}
+	return digest.Parse(d)
+}
+
+// GetManifestDigest verifies a manifest exists in the repository and returns its digest.
+func (s *SQLiteStore) GetManifestDigest(ctx context.Context, repoID int64, dgst digest.Digest) (digest.Digest, error) {
+	q := daldb.New(s.db)
+	d, err := q.ManifestExistsByDigest(ctx, daldb.ManifestExistsByDigestParams{
+		RepositoryID: repoID,
+		Digest:       dgst.String(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get manifest %s: %w", dgst, oci.ErrNotExist)
+	}
+	if err != nil {
+		return "", fmt.Errorf("get manifest %s: %w", dgst, err)
+	}
+	return digest.Parse(d)
+}
+
+// GetManifestForServing verifies that a manifest exists in the database and returns both it and its media type for serving to the client.
+func (s *SQLiteStore) GetManifestForServing(ctx context.Context, repoID int64, dgst digest.Digest) (content []byte, mediaType string, err error) {
+	q := daldb.New(s.db)
+	row, err := q.GetManifestByDigestWithMediaType(ctx, daldb.GetManifestByDigestWithMediaTypeParams{
+		RepositoryID: repoID,
+		Digest:       dgst.String(),
+	})
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", fmt.Errorf("get manifest %s: %w", dgst, oci.ErrNotExist)
+		}
+		return nil, "", err
+	}
+
+	return []byte(row.ManifestBytes), row.MediaType, nil
+}
+
+// BlobLinkedToRepo checks if a blob is linked to a specific repository via
+// manifestblob or uploadedblob (matching Python's get_repository_blob_by_digest).
+func (s *SQLiteStore) BlobLinkedToRepo(ctx context.Context, repoID int64, dgst digest.Digest) (bool, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	_, err := q.BlobLinkedToRepo(ctx, daldb.BlobLinkedToRepoParams{
+		ContentChecksum: checksum,
+		RepositoryID:    repoID,
+		RepositoryID_2:  repoID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("blob linked to repo %d %s: %w", repoID, dgst, err)
+	}
+	return true, nil
+}
+
+// BlobExists checks if a blob exists in the global storage.
+func (s *SQLiteStore) BlobExists(ctx context.Context, dgst digest.Digest) (bool, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	_, err := q.GetBlobByChecksum(ctx, checksum)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("blob exists %s: %w", dgst, err)
+	}
+	return true, nil
+}
+
+// ListTags returns all active tags for a repository.
+func (s *SQLiteStore) ListTags(ctx context.Context, repoID int64) ([]string, error) {
+	q := daldb.New(s.db)
+	rows, err := q.GetTagsByRepository(ctx, repoID)
+	if err != nil {
+		return nil, fmt.Errorf("list tags: %w", err)
+	}
+	tags := make([]string, len(rows))
+	for i, r := range rows {
+		tags[i] = r.Name
+	}
+	return tags, nil
+}
+
+// ListRepositories returns all repositories.
+func (s *SQLiteStore) ListRepositories(ctx context.Context) ([]oci.RepositoryName, error) {
+	q := daldb.New(s.db)
+	rows, err := q.ListAllRepositories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list repositories: %w", err)
+	}
+	repos := make([]oci.RepositoryName, len(rows))
+	for i, r := range rows {
+		repos[i] = oci.RepositoryName{Namespace: r.Namespace, Name: r.Name}
+	}
+	return repos, nil
+}
+
+// ListReferrers returns manifests that reference the given subject digest.
+func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject digest.Digest, artifactType string) ([]oci.ReferrerRecord, error) {
+	q := daldb.New(s.db)
+	subjectStr := sql.NullString{String: subject.String(), Valid: true}
+
+	type row struct {
+		Digest        string
+		MediaType     string
+		ArtifactType  sql.NullString
+		Size          sql.NullInt64
+		ManifestBytes string
+	}
+	var rows []row
+
+	if artifactType != "" {
+		res, err := q.ListReferrersByArtifactType(ctx, daldb.ListReferrersByArtifactTypeParams{
+			RepositoryID: repoID,
+			Subject:      subjectStr,
+			ArtifactType: sql.NullString{String: artifactType, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list referrers by artifact type: %w", err)
+		}
+		for _, r := range res {
+			rows = append(rows, row{r.Digest, r.MediaType, r.ArtifactType, r.Size, r.ManifestBytes})
+		}
+	} else {
+		res, err := q.ListReferrers(ctx, daldb.ListReferrersParams{
+			RepositoryID: repoID,
+			Subject:      subjectStr,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list referrers: %w", err)
+		}
+		for _, r := range res {
+			rows = append(rows, row{r.Digest, r.MediaType, r.ArtifactType, r.Size, r.ManifestBytes})
+		}
+	}
+
+	seen := make(map[string]bool, len(rows))
+	out := make([]oci.ReferrerRecord, 0, len(rows))
+	for _, r := range rows {
+		seen[r.Digest] = true
+		out = append(out, oci.ReferrerRecord{
+			Digest:       r.Digest,
+			MediaType:    r.MediaType,
+			ArtifactType: r.ArtifactType.String,
+			Size:         r.Size.Int64,
+			Annotations:  parseAnnotations(r.ManifestBytes),
+		})
+	}
+
+	fallback, err := s.fallbackTagReferrers(ctx, q, repoID, subject, artifactType, seen)
+	if err != nil {
+		return nil, fmt.Errorf("fallback tag referrers: %w", err)
+	}
+	out = append(out, fallback...)
+	return out, nil
+}
+
+// fallbackTagReferrers looks up the OCI referrers fallback tag schema
+// (tag named "sha256-<encoded>") and extracts descriptors from the index.
+// Returns (nil, nil) when the fallback tag does not exist.
+func (s *SQLiteStore) fallbackTagReferrers(ctx context.Context, q *daldb.Queries, repoID int64, subject digest.Digest, artifactType string, seen map[string]bool) ([]oci.ReferrerRecord, error) {
+	tagName := strings.Replace(subject.String(), ":", "-", 1)
+	tagDigest, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
+		RepositoryID: repoID,
+		Name:         tagName,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get fallback tag %q: %w", tagName, err)
+	}
+	content, err := q.GetManifestContentByDigest(ctx, tagDigest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get fallback manifest %s: %w", tagDigest, err)
+	}
+
+	var idx struct {
+		Manifests []struct {
+			MediaType    string            `json:"mediaType"`
+			Digest       string            `json:"digest"`
+			Size         int64             `json:"size"`
+			ArtifactType string            `json:"artifactType"`
+			Annotations  map[string]string `json:"annotations"`
+		} `json:"manifests"`
+	}
+	if err := json.Unmarshal([]byte(content), &idx); err != nil {
+		return nil, nil //nolint:nilerr // malformed fallback index is treated as absent
+	}
+
+	var out []oci.ReferrerRecord
+	for _, m := range idx.Manifests {
+		if seen[m.Digest] {
+			continue
+		}
+		if artifactType != "" && m.ArtifactType != artifactType {
+			continue
+		}
+		out = append(out, oci.ReferrerRecord{
+			Digest:       m.Digest,
+			MediaType:    m.MediaType,
+			ArtifactType: m.ArtifactType,
+			Size:         m.Size,
+			Annotations:  m.Annotations,
+		})
+	}
+	return out, nil
+}
+
+func parseAnnotations(manifestBytes string) map[string]string {
+	var parsed struct {
+		Annotations map[string]string `json:"annotations"`
+	}
+	if json.Unmarshal([]byte(manifestBytes), &parsed) == nil && len(parsed.Annotations) > 0 {
+		return parsed.Annotations
+	}
+	return nil
+}
+
+// PutUploadedBlob marks a blob as recently uploaded to protect it from GC.
+func (s *SQLiteStore) PutUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	blobID, err := q.GetBlobByChecksum(ctx, checksum)
+	if err != nil {
+		return fmt.Errorf("lookup blob %s: %w", dgst, err)
+	}
+
+	if err := q.InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{
+		RepositoryID: repoID,
+		BlobID:       blobID,
+	}); err != nil {
+		return fmt.Errorf("insert uploaded blob %s: %w", dgst, err)
+	}
+
+	return tx.Commit()
+}
+
+// DeleteUploadedBlob removes a repository-scoped upload marker for a blob.
+func (s *SQLiteStore) DeleteUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) (int64, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+
+	rows, err := q.DeleteUploadedBlob(ctx, daldb.DeleteUploadedBlobParams{
+		RepositoryID:    repoID,
+		ContentChecksum: checksum,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("delete uploaded blob %s from repo %d: %w", dgst, repoID, err)
+	}
+	return rows, nil
+}
+
+// CleanExpiredUploadedBlobs removes uploaded blob markers that have expired.
+func (s *SQLiteStore) CleanExpiredUploadedBlobs(ctx context.Context) error {
+	q := daldb.New(s.db)
+	return q.CleanExpiredUploadedBlobs(ctx)
+}

@@ -33,15 +33,13 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     assert manifest
 
     if indexed_v4:
-        ManifestSecurityStatus.create(
-            manifest=manifest._db_id,
-            repository=repository_ref._db_id,
+        ManifestSecurityStatus.update(
             error_json={},
             index_status=IndexStatus.MANIFEST_UNSUPPORTED,
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
             metadata_json={},
-        )
+        ).where(ManifestSecurityStatus.manifest == manifest._db_id).execute()
 
     result = secscan_model.load_security_information(manifest, True)
 
@@ -76,3 +74,21 @@ def test_perform_indexing(next_token, expected_next_token, expected_error, initi
                 secscan_model.perform_indexing(next_token)
         else:
             assert secscan_model.perform_indexing(next_token) == expected_next_token
+
+
+def test_load_security_information_with_v4_indexing_disabled(initialized_db):
+    """Query path remains functional even when v4 indexing is disabled."""
+    flask_app.config["SECURITY_SCANNER_V4_INDEXING"] = False
+
+    secscan_model.configure(flask_app, instance_keys, storage)
+
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.find_matching_tag(repository_ref, ["latest"])
+    manifest = registry_model.get_manifest_for_tag(tag)
+    assert manifest
+
+    result = secscan_model.load_security_information(manifest, True)
+    assert isinstance(result, SecurityInformationLookupResult)
+    assert result.status == ScanLookupStatus.NOT_YET_INDEXED
+
+    flask_app.config["SECURITY_SCANNER_V4_INDEXING"] = True

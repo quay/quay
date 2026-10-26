@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+
 from test.fixtures import *
 from test.registry.fixtures import *
 from test.registry.liveserverfixture import *
@@ -22,11 +23,8 @@ def test_run_conformance(liveserver_session, app_reloader, registry_server_execu
 
     env["OCI_TEST_PULL"] = "1"
     env["OCI_TEST_PUSH"] = "1"
-    # TODO: support the content discovery once tags pagination is changed to support
-    # the expected pagination parameter for next page.
     env["OCI_TEST_CONTENT_DISCOVERY"] = "1"
-    # TODO: The Content Mangement API allows for deletion, etc
-    # env["OCI_TEST_CONTENT_MANAGEMENT"] = "1"
+    env["OCI_TEST_CONTENT_MANAGEMENT"] = "1"
 
     assert server_url.startswith("http://")
 

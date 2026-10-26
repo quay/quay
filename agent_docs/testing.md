@@ -46,11 +46,9 @@ make integration-test
 
 ### E2E Tests (Frontend)
 ```bash
-# Cypress (legacy)
-cd web && npm run test:integration
+# Playwright (all new E2E tests must use Playwright)
+cd web && pnpm run test:e2e
 
-# Playwright (new)
-cd web && npm run test:e2e
 ```
 
 ## Test Database
@@ -76,6 +74,26 @@ Defined in `test/testconfig.py` and used throughout tests:
 - `devtable/simple` - Basic test repo
 - `public/publicrepo` - Public repository
 - `buynlarge/orgrepo` - Organization repository
+
+### Test Credentials
+
+Never use a real credential in test code or fixtures. When the tested format
+permits it, prefix dummy credential values with `QUAY_FIXTURE_ONLY-`. The root
+`.gitleaks.toml` allowlists that explicit marker, not test paths, so an
+unmarked realistic credential in a test file is still reported.
+
+Use a same-line `gitleaks:allow` comment only when the test requires an exact
+format, ciphertext, or protocol value that cannot carry the marker. Keep the
+exception on the narrowest line and explain the format constraint nearby.
+
+For a scanner report, first verify that the value is not real. Prefer
+converting the value to the fixture convention; otherwise use a narrow inline
+exception and mark the external report as a false positive. A HEAD change
+does not suppress a finding from an older commit. Do not rewrite repository
+history for that case; add an exact report fingerprint to `.gitleaksignore`
+only if the scanner owner requires repository-side suppression. If the value
+is real, revoke or rotate it and follow the security-response process instead
+of allowlisting it.
 
 ## Writing Tests
 
@@ -116,5 +134,4 @@ def test_user_creation(initialized_db):
 - `data/model/test/` - Model tests
 - `auth/test/` - Auth tests
 - `workers/test/` - Worker tests
-- `web/cypress/` - Frontend Cypress tests
-- `web/playwright/` - Frontend Playwright tests
+- `web/playwright/` - Frontend Playwright tests (all new E2E tests go here)

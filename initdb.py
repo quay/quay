@@ -400,8 +400,23 @@ def setup_database_for_testing(testcase):
     testcases[testcase]["savepoint"].__enter__()
 
 
+def _create_seed_media_types():
+    MediaType.create(name="text/plain")
+    MediaType.create(name="application/json")
+    MediaType.create(name="text/markdown")
+
+    for media_type in sorted(DOCKER_SCHEMA1_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+    for media_type in sorted(DOCKER_SCHEMA2_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+    for media_type in sorted(OCI_CONTENT_TYPES):
+        MediaType.create(name=media_type)
+
+
 def initialize_database():
-    db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
+    db_encrypter.initialize(FieldEncrypter("QUAY_FIXTURE_ONLY-anothercrazykey!"))
     db.create_tables(all_models)
 
     Role.create(name="admin")
@@ -515,6 +530,10 @@ def initialize_database():
     LogEntryKind.create(name="delete_repo_notification")
     LogEntryKind.create(name="reset_repo_notification")
 
+    LogEntryKind.create(name="create_namespace_notification")
+    LogEntryKind.create(name="delete_namespace_notification")
+    LogEntryKind.create(name="reset_namespace_notification")
+
     LogEntryKind.create(name="regenerate_robot_token")
 
     LogEntryKind.create(name="repo_verb")
@@ -604,6 +623,11 @@ def initialize_database():
     LogEntryKind.create(name="org_change_quota_limit")
     LogEntryKind.create(name="org_delete_quota_limit")
 
+    LogEntryKind.create(name="create_oauth_api_token")
+    LogEntryKind.create(name="revoke_oauth_api_token")
+    LogEntryKind.create(name="create_robot_api_token")
+    LogEntryKind.create(name="revoke_robot_api_token")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
@@ -626,6 +650,9 @@ def initialize_database():
     ExternalNotificationEvent.create(name="repo_mirror_sync_success")
     ExternalNotificationEvent.create(name="repo_mirror_sync_failed")
     ExternalNotificationEvent.create(name="repo_image_expiry")
+
+    ExternalNotificationEvent.create(name="quota_warning")
+    ExternalNotificationEvent.create(name="quota_error")
 
     ExternalNotificationMethod.create(name="quay_notification")
     ExternalNotificationMethod.create(name="email")
@@ -664,18 +691,7 @@ def initialize_database():
     QuayRegion.create(name="us")
     QuayService.create(name="quay")
 
-    MediaType.create(name="text/plain")
-    MediaType.create(name="application/json")
-    MediaType.create(name="text/markdown")
-
-    for media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in DOCKER_SCHEMA2_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in OCI_CONTENT_TYPES:
-        MediaType.create(name=media_type)
+    _create_seed_media_types()
 
     LabelSourceType.create(name="manifest")
     LabelSourceType.create(name="api", mutable=True)
@@ -1556,12 +1572,15 @@ WHITELISTED_EMPTY_MODELS = [
     "QuotaRegistrySize",
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
+    "APIToken",
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
     "OrganizationContactEmail",
+    "NamespaceNotification",
+    "QuotaNotificationState",
 ]
 
 

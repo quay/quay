@@ -45,6 +45,8 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
+from image.docker.schema2.list import DockerSchema2ManifestList
+from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
 from image.oci.manifest import OCIManifest, OCIManifestDescriptor
@@ -296,6 +298,8 @@ class OCIIndex(ManifestListInterface):
         supported_types = {}
         supported_types[OCI_IMAGE_MANIFEST_CONTENT_TYPE] = OCIManifest
         supported_types[OCI_IMAGE_INDEX_CONTENT_TYPE] = OCIIndex
+        supported_types[DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE] = DockerSchema2Manifest
+        supported_types[DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE] = DockerSchema2ManifestList
         return [
             LazyManifestLoader(
                 m,
@@ -342,7 +346,9 @@ class OCIIndex(ManifestListInterface):
         if none.
         """
         for manifest_ref in self._parsed[INDEX_MANIFESTS_KEY]:
-            platform = manifest_ref[INDEX_PLATFORM_KEY]
+            platform = manifest_ref.get(INDEX_PLATFORM_KEY)
+            if platform is None:
+                continue
             architecture = platform.get(INDEX_ARCHITECTURE_KEY, None)
             os = platform.get(INDEX_OS_KEY, None)
             if architecture == "amd64" and os == "linux":
@@ -387,9 +393,11 @@ class OCIIndex(ManifestListInterface):
         if none or error.
         """
         for manifest_ref in self.manifests(content_retriever):
-            platform = manifest_ref._manifest_data[INDEX_PLATFORM_KEY]
-            architecture = platform[INDEX_ARCHITECTURE_KEY]
-            os = platform[INDEX_OS_KEY]
+            platform = manifest_ref._manifest_data.get(INDEX_PLATFORM_KEY)
+            if platform is None:
+                continue
+            architecture = platform.get(INDEX_ARCHITECTURE_KEY)
+            os = platform.get(INDEX_OS_KEY)
             if architecture != "amd64" or os != "linux":
                 continue
 

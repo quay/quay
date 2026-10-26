@@ -4,8 +4,32 @@ import zlib
 BLOCK_SIZE = 16384
 """Read block size"""
 
+MAX_PEEK_SIZE = 65536
+"""Most bytes read to decide the stream format"""
+
 WINDOW_BUFFER_SIZE = 16 + zlib.MAX_WBITS
 """zlib window buffer size, set to gzip's format"""
+
+GZIP_MAGIC = b"\x1f\x8b"
+"""Leading bytes of every gzip member (RFC 1952)"""
+
+JSON_LEAD = (b"{", b"[")
+"""First non-whitespace byte of a JSON document"""
+
+HEAD_BYTES = 32
+"""How many leading bytes an UnrecognizedStreamError carries"""
+
+
+class UnrecognizedStreamError(ValueError):
+    """
+    The stream starts with neither the gzip magic nor a JSON document.
+
+    `head` holds the first HEAD_BYTES bytes for logging.
+    """
+
+    def __init__(self, head):
+        super().__init__("stream is neither gzip nor JSON")
+        self.head = head[:HEAD_BYTES]
 
 
 class GzipInputStream(object):
@@ -14,6 +38,19 @@ class GzipInputStream(object):
 
     Python 2.x gzip.GZipFile relies on .seek() and .tell(), so it
     doesn't support this (@see: http://bo4.me/YKWSsL).
+
+    The leading bytes decide how the stream is read, before any byte is served:
+    the gzip magic means decompress; a JSON document (after optional whitespace)
+    is passed through unchanged, because some storage backends (e.g. Google
+    Cloud Storage) decompress objects stored with Content-Encoding: gzip on the
+    way out; anything else raises UnrecognizedStreamError. A short first read
+    (e.g. a single leading byte) is not enough to decide, so reads of up to
+    BLOCK_SIZE are accumulated until the case is decided, the stream ends, or
+    the prefix reaches MAX_PEEK_SIZE (so at most just under MAX_PEEK_SIZE + BLOCK_SIZE).
+    `passthrough` tells the caller which of the first two applied. A stream
+    that starts with the gzip magic but is corrupt still raises zlib.error
+    while being read, and a truncated gzip stream still yields the partial
+    payload without error.
 
     Adapted from: https://gist.github.com/beaufour/4205533
     """
@@ -27,7 +64,29 @@ class GzipInputStream(object):
         self._file = fileobj
         self._zip = zlib.decompressobj(WINDOW_BUFFER_SIZE)
         self._offset = 0  # position in unzipped stream
-        self._data = b""
+
+        first = self._file.read(BLOCK_SIZE)
+        while True:
+            if first.startswith(GZIP_MAGIC):
+                break
+            still_could_be_magic = len(first) < len(GZIP_MAGIC) and GZIP_MAGIC.startswith(first)
+            if not still_could_be_magic and first.lstrip():
+                break
+            if len(first) >= MAX_PEEK_SIZE:
+                break
+            chunk = self._file.read(BLOCK_SIZE)
+            if not chunk:
+                break
+            first += chunk
+
+        if first.startswith(GZIP_MAGIC):
+            self.passthrough = False
+            self._data = self._zip.decompress(first)
+        elif first.lstrip().startswith(JSON_LEAD):
+            self.passthrough = True
+            self._data = first
+        else:
+            raise UnrecognizedStreamError(first)
 
     def __fill(self, num_bytes):
         """
@@ -42,11 +101,15 @@ class GzipInputStream(object):
         while not num_bytes or len(self._data) < num_bytes:
             data = self._file.read(BLOCK_SIZE)
             if not data:
-                self._data = self._data + self._zip.flush()
+                if not self.passthrough:
+                    self._data = self._data + self._zip.flush()
                 self._zip = None  # no more data
                 break
 
-            self._data = self._data + self._zip.decompress(data)
+            if self.passthrough:
+                self._data = self._data + data
+            else:
+                self._data = self._data + self._zip.decompress(data)
 
     def __iter__(self):
         return self

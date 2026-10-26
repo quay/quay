@@ -862,7 +862,10 @@ class User(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, null=True, index=True)
     username = CharField(unique=True, index=True)
     password_hash = CharField(null=True)
-    email = CharField(unique=True, index=True, default=random_string_generator(length=64))
+    # Uniqueness is enforced at the DB level via a partial unique index
+    # (user_email_unique_non_org) that only applies to non-org users.
+    # Peewee cannot express partial indexes, so unique=True is omitted here.
+    email = CharField(index=True, default=random_string_generator(length=64))
     verified = BooleanField(default=False)
     stripe_id = CharField(index=True, null=True)
     organization = BooleanField(default=False, index=True)
@@ -933,6 +936,8 @@ class User(BaseModel):
                 UploadedBlob,
                 QuotaRepositorySize,
                 QuotaNamespaceSize,
+                QuotaNotificationState,
+                NamespaceNotification,
                 UserOrganizationQuota,
                 QuotaLimits,
                 RedHatSubscriptions,
@@ -1601,14 +1606,45 @@ class OAuthAuthorizationCode(BaseModel):
 class OAuthAccessToken(BaseModel):
     uuid = CharField(default=uuid_generator, index=True)
     application = ForeignKeyField(OAuthApplication)
-    authorized_user = QuayUserField()
+    authorized_user = QuayUserField(allows_robots=True)
     scope = CharField()
+    display_name = CharField(null=True)
     token_name = CharField(index=True, unique=True)
     token_code = CredentialField()
 
     token_type = CharField(default="Bearer")
     expires_at = DateTimeField()
     data = TextField()  # This is context for which this token was generated, such as the user
+
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.now)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("application", "last_accessed"), False),)
+
+
+class APIToken(BaseModel):
+    """Lifecycle metadata for an opaque, scoped API credential."""
+
+    id = BigAutoField()
+    uuid = CharField(default=uuid_generator, index=True, unique=True)
+    subject_user = QuayUserField(allows_robots=True, index=True)
+    creator = QuayUserField(allows_robots=False, null=True)
+    token_name = CharField(index=True, unique=True)
+    token_code = CredentialField()
+    scope = TextField()
+    display_name = CharField(null=True)
+    expires_at = DateTimeField()
+    revoked_at = DateTimeField(null=True)
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.now)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("subject_user", "revoked_at", "expires_at"), False),)
 
 
 class NotificationKind(BaseModel):
@@ -1643,6 +1679,30 @@ class RepositoryNotification(BaseModel):
     event_config_json = TextField(default="{}")
     number_of_failures = IntegerField(default=0)
     last_ran_ms = BigIntegerField(null=True, index=True)
+
+
+class NamespaceNotification(BaseModel):
+    uuid = CharField(default=uuid_generator, index=True)
+    namespace = QuayUserField(index=True)
+    event = EnumField(ExternalNotificationEvent)
+    method = EnumField(ExternalNotificationMethod)
+    title = CharField(null=True)
+    config_json = TextField()
+    event_config_json = TextField(default="{}")
+    number_of_failures = IntegerField(default=0)
+    last_ran_ms = BigIntegerField(null=True, index=True)
+
+
+class QuotaNotificationState(BaseModel):
+    namespace = QuayUserField(index=True)
+    threshold_percent = IntegerField()
+    last_notified_at = DateTimeField(null=True)
+    cleared = BooleanField(default=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("namespace", "threshold_percent"), True),)
 
 
 class RepositoryAuthorizedEmail(BaseModel):
@@ -2178,9 +2238,11 @@ class IndexStatus(IntEnum):
     Possible statuses of manifest security scan progress.
     """
 
+    SCAN_RETRIES_EXHAUSTED = -4
     MANIFEST_LAYER_TOO_LARGE = -3
     MANIFEST_UNSUPPORTED = -2
     FAILED = -1
+    PENDING = 0
     IN_PROGRESS = 1
     COMPLETED = 2
 

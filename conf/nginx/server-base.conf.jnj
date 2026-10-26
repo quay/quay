@@ -16,7 +16,7 @@ proxy_set_header X-Forwarded-For $proper_forwarded_for;
 proxy_set_header X-Forwarded-Proto $final_proto;
 
 proxy_redirect off;
-proxy_set_header Transfer-Encoding $http_transfer_encoding;
+
 absolute_redirect off;
 
 # Pass safe host for non standard external ports
@@ -51,7 +51,7 @@ location / {
     # Show new UI if cookie or default is set to react
     if ($user_requested_ui ~* "^react$") {
         # catch known React UI routes and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security|/search) /index.html break;
         # catch-all for shorthand URLs (/<org>, /<org>/<repo>) handled by React Router
         rewrite ^/[^.]*$ /index.html break;
     }
@@ -62,15 +62,29 @@ location / {
     }
 }
 
+location = /sts/token {
+    proxy_pass http://web_app_server;
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=5 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;
+    error_page 429 = @sts_rate_limited;
+    {% endif %}
+}
+
+{% if enable_rate_limits %}
+location @sts_rate_limited {
+    default_type application/json;
+    add_header Retry-After 1 always;
+    return 429 '{"error":"slow_down"}';
+}
+{% endif %}
+
 # Capture traffic that needs to go to web_app, see /web.py
 location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/recovery|/userfiles/(.*)|/health(/.*)?|/status|/_internal_ping|/buildlogs|/logarchive) {
     proxy_pass   http://web_app_server;
 }
 
-# Capture old UI paths that aren't present in new UI
-location ~* ^(/search) {
-    proxy_pass   http://web_app_server;
-}
 
 location /push {
     proxy_pass   http://web_app_server;
@@ -108,10 +122,107 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_buffers 4 32k;
 
     proxy_read_timeout 60s;
+
+    # Blobs must keep Content-Length; http-base gzips application/octet-stream with gzip_proxied any.
+    gzip off;
 }
 
 location = /_storage_proxy_auth {
     proxy_pass http://web_app_server;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+
+    proxy_set_header X-Original-URI $request_uri;
+
+    proxy_read_timeout 10;
+}
+
+# handles blob upstream proxy requests
+location ~ ^/_upstream_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
+    include resolver.conf;
+
+    # set up auth request and auth request header
+    auth_request /_upstream_proxy_auth;
+    auth_request_set $upstream_auth $upstream_http_x_upstream_auth;
+
+    proxy_pass $2://$3/$4$is_args$args;
+    proxy_http_version 1.1;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $3;
+    proxy_set_header Authorization $upstream_auth;
+    proxy_set_header x-forwarded-host "";
+    proxy_set_header forwarded "for=$remote_addr";
+
+    # make sure we send the proper registry hostname in our request
+    proxy_ssl_name $3;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
+
+    # set buffers
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_buffer_size 32k;
+    proxy_buffers 4 32k;
+
+    # Intercept upstream redirects: upstream registries can either serve blobs directly
+    # or return a 302/307/308 to the requester. If blobs are served directly, we just stream
+    # content. If a redirect is returned, we need to handle it so we follow whatever redirect
+    # URL is returned by upstream registry.
+    proxy_intercept_errors on;
+    error_page 301 302 307 308 = @upstream_proxy_redirect;
+
+    # make sure we give enough time to nginx to communicate with upstream
+    proxy_read_timeout 300s;
+}
+
+# handles blob upstream proxy request redirects
+location @upstream_proxy_redirect {
+    include resolver.conf;
+
+    set $redirect_location $upstream_http_location;
+
+    # Block non-https redirect targets to prevent SSRF via plain HTTP to internal addresses.
+    # Legitimate CDN/S3 presigned URLs are always https. Combined with proxy_ssl_verify on,
+    # this also prevents redirects to internal hosts that lack valid TLS certificates.
+    if ($redirect_location !~ "^https://") {
+        return 400;
+    }
+
+    proxy_pass $redirect_location;
+    proxy_http_version 1.1;
+
+    # S3 presigned URLs contain access credentials as parameters, we need to
+    # explicitly clear any auth headers before sending the request, otherwise
+    # we might get a 401
+    proxy_set_header Authorization "";
+    proxy_set_header Host $proxy_host;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_trusted_certificate /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem;
+
+    # turn on proxy buffering but explicitly stop nginx
+    # from writing anything to disk, force it to use memory
+    proxy_buffering on;
+    proxy_max_temp_file_size 0;
+
+    # use relatively large buffer sizes
+    proxy_buffer_size 128k;
+    proxy_buffers 16 1m;
+    proxy_busy_buffers_size 4m;
+
+    proxy_read_timeout 300s;
+}
+
+# handles upstream proxy request auth
+location = /_upstream_proxy_auth {
+    # make the endpoint internal so it cannot be accessed
+    # from outside
+    internal;
+
+    proxy_pass http://registry_app_server;
     proxy_pass_request_body off;
     proxy_set_header Content-Length "";
 
@@ -133,6 +244,7 @@ location ~ ^/v2/_catalog(.*)$ {
 
 location /secscan/ {
     proxy_pass http://secscan_app_server;
+    proxy_http_version 1.1;
 }
 
 {% if signing_enabled %}
@@ -142,6 +254,28 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
   proxy_set_header Host "{{ tuf_host }}";
 }
 {% endif %}
+
+location = /api/v1/bootstrap/renew/ {
+    return 307 /api/v1/bootstrap/renew;
+}
+
+location = /api/v1/bootstrap/renew {
+    proxy_pass   http://web_app_server;
+
+    proxy_set_header X-Forwarded-For $proper_forwarded_for;
+    proxy_set_header X-Quay-Bootstrap-Renewal-Location $quay_bootstrap_renewal_location;
+    proxy_set_header X-Forwarded-Proto $final_proto;
+    proxy_set_header Transfer-Encoding $http_transfer_encoding;
+    proxy_set_header Host $safe_host;
+    proxy_set_header X-Forwarded-Host $safe_host;
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=25 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;
+    {% endif %}
+
+    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+}
 
 location /api/ {
     proxy_pass   http://web_app_server;
@@ -184,6 +318,20 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     proxy_read_timeout 2000;
     proxy_send_timeout 2000;
     proxy_temp_path /tmp 1 2;
+
+    {% if blob_upload_client_body_timeout %}
+    client_body_timeout {{ blob_upload_client_body_timeout }};
+    {% endif %}
+
+    {% if blob_upload_lingering_close %}
+    lingering_close {{ blob_upload_lingering_close }};
+    {% endif %}
+    {% if blob_upload_lingering_time %}
+    lingering_time {{ blob_upload_lingering_time }};
+    {% endif %}
+    {% if blob_upload_lingering_timeout %}
+    lingering_timeout {{ blob_upload_lingering_timeout }};
+    {% endif %}
 
     client_max_body_size {{ maximum_layer_size }};
     http2_chunk_size 32k;
@@ -356,4 +504,16 @@ location /static/ {
     error_page 404 /404;
 }
 
-error_page 502 {{static_dir}}/502.html;
+location /nginx_status {
+    stub_status on;
+    allow 127.0.0.1;
+    allow ::1;
+    deny all;
+}
+
+error_page 502 =502 /502.html;
+
+location = /502.html {
+    root {{static_dir}};
+    internal;
+}

@@ -1,8 +1,14 @@
 import hashlib
 import logging
 import os
+import queue
+import random
+import re
+import sys
 import threading
+import time
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
@@ -40,6 +46,60 @@ _TRANSIENT_ERROR_MESSAGES = frozenset(
         "Failed to follow referral when looking up username",
     ]
 )
+
+
+class _LDAPTraceRedactor:
+    """
+    Wraps the LDAP output for password redaction when USERS_DEBUG is set.
+
+    python-ldap emits ``simple_bind`` traces via ``pprint.pformat``.  The
+    DN and password may be single- or double-quoted depending on their
+    content (e.g. a DN containing ``'`` is double-quoted by pprint).
+
+    To guard against split writes (where the header and argument tuple
+    arrive in separate ``write()`` calls), this class buffers any data
+    that contains a ``simple_bind`` header until the full bind tuple
+    (ending with ``None, None), {``) is received.
+    """
+
+    _PY_STR = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+
+    _BIND_PW_RE = re.compile(
+        r"(SimpleLDAPObject\.simple_bind\s*\n"
+        r"\(\(" + _PY_STR + r",\s*)"
+        r"(" + _PY_STR + r")"
+        r"(\s*,\s*None\s*,\s*None\))",
+    )
+
+    _BIND_HEADER_RE = re.compile(
+        r"SimpleLDAPObject\.simple_bind",
+    )
+
+    _BIND_TUPLE_COMPLETE_RE = re.compile(
+        r"None\s*,\s*None\)\s*,\s*\{",
+    )
+
+    def __init__(self, stream=None):
+        self._stream = stream or sys.stdout
+        self._buf = ""
+
+    @classmethod
+    def _redact(cls, data):
+        return cls._BIND_PW_RE.sub(r"\1'******'\3", data)
+
+    def write(self, data):
+        data = self._buf + data
+        self._buf = ""
+        if self._BIND_HEADER_RE.search(data) and not self._BIND_TUPLE_COMPLETE_RE.search(data):
+            self._buf = data
+            return
+        self._stream.write(self._redact(data))
+
+    def flush(self):
+        if self._buf:
+            self._stream.write(self._redact(self._buf))
+            self._buf = ""
+        self._stream.flush()
 
 
 class LDAPCache:
@@ -119,6 +179,14 @@ class LDAPConnectionBuilder(object):
         self._network_timeout = network_timeout
         self._referrals = int(referrals)
 
+    @property
+    def admin_dn(self) -> str:
+        return self._user_dn
+
+    @property
+    def admin_pw(self) -> str:
+        return self._user_pw
+
     def get_connection(self):
         return LDAPConnection(
             self._ldap_uri,
@@ -129,6 +197,221 @@ class LDAPConnectionBuilder(object):
             self._network_timeout,
             self._referrals,
         )
+
+    def verify_bind(self, user_dn: str, password: str) -> bool:
+        """Verify user credentials via a direct (non-pooled) connection."""
+        try:
+            with LDAPConnection(
+                self._ldap_uri,
+                user_dn,
+                password,
+                self._allow_tls_fallback,
+                self._timeout,
+                self._network_timeout,
+                self._referrals,
+            ):
+                pass
+            return True
+        except ldap.INVALID_CREDENTIALS:
+            return False
+
+
+_POOL_IDLE_THRESHOLD = 30.0
+_POOL_LIFETIME_JITTER = 0.2
+
+
+@dataclass
+class _PoolEntry:
+    conn: Any
+    created_at: float = field(default_factory=time.monotonic)
+    last_used: float = field(default_factory=time.monotonic)
+    is_overflow: bool = False
+    lifetime_jitter: float = field(
+        default_factory=lambda: random.uniform(1.0 - _POOL_LIFETIME_JITTER, 1.0)
+    )
+
+
+class LDAPConnectionPool:
+    """Queue-based admin LDAP connection pool.
+
+    Requires gevent monkey-patching (threading.Lock and queue.Queue must be
+    patched). All Quay gunicorn configs call monkey.patch_all() before imports.
+    Lazy-initialized so it is safe with preload_app=True (connections are
+    created post-fork, per-worker).
+    """
+
+    def __init__(self, builder, pool_size=10, max_wait=5.0, connection_lifetime=300):
+        self._builder = builder
+        self._pool_size = pool_size
+        self._max_wait = max_wait
+        self._connection_lifetime = connection_lifetime
+        self._queue = None
+        self._lock = threading.Lock()
+        self._total_created = 0
+
+    def _ensure_pool(self):
+        if self._queue is not None:
+            return
+        with self._lock:
+            if self._queue is None:
+                self._queue = queue.Queue(maxsize=self._pool_size)
+
+    def _create_raw_connection(self):
+        wrapper = self._builder.get_connection()
+        try:
+            return wrapper.__enter__()
+        except Exception:
+            try:
+                wrapper.__exit__(*sys.exc_info())
+            except Exception:
+                pass
+            raise
+
+    def _create_with_slot(self, **entry_kwargs):
+        """Reserve a capacity slot and create a connection. Rolls back on failure."""
+        with self._lock:
+            self._total_created += 1
+        try:
+            raw = self._create_raw_connection()
+            return _PoolEntry(conn=raw, **entry_kwargs)
+        except Exception:
+            with self._lock:
+                self._total_created -= 1
+            raise
+
+    def _replace(self, old_entry):
+        """Discard an old connection and create a replacement in its slot."""
+        self._discard(old_entry)
+        return self._create_with_slot()
+
+    def _discard(self, entry):
+        with self._lock:
+            self._total_created = max(0, self._total_created - 1)
+        try:
+            entry.conn.unbind_s()
+        except Exception:
+            pass
+
+    def _health_check(self, entry):
+        try:
+            entry.conn.search_s("", ldap.SCOPE_BASE, "(objectClass=*)", ["1.1"])
+            return True
+        except Exception:
+            return False
+
+    def _checkout(self):
+        self._ensure_pool()
+
+        try:
+            entry = self._queue.get(block=False)
+        except queue.Empty:
+            with self._lock:
+                if self._total_created < self._pool_size:
+                    self._total_created += 1
+                    reserved = True
+                else:
+                    reserved = False
+
+            if reserved:
+                try:
+                    raw = self._create_raw_connection()
+                    return _PoolEntry(conn=raw)
+                except Exception:
+                    with self._lock:
+                        self._total_created -= 1
+                    raise
+
+            try:
+                entry = self._queue.get(block=True, timeout=self._max_wait)
+            except queue.Empty:
+                logger.warning(
+                    "LDAP pool exhausted (size=%d, total=%d), creating overflow connection",
+                    self._pool_size,
+                    self._total_created,
+                )
+                return self._create_with_slot(is_overflow=True)
+
+        now = time.monotonic()
+
+        effective_lifetime = self._connection_lifetime * entry.lifetime_jitter
+        if (now - entry.created_at) >= effective_lifetime:
+            logger.debug("LDAP pooled connection exceeded lifetime, rotating")
+            return self._replace(entry)
+
+        if (now - entry.last_used) >= _POOL_IDLE_THRESHOLD:
+            if not self._health_check(entry):
+                logger.debug("LDAP pooled connection failed health check, replacing")
+                return self._replace(entry)
+
+        entry.last_used = now
+        return entry
+
+    def _return(self, entry, error_occurred=False):
+        if error_occurred or entry.is_overflow:
+            self._discard(entry)
+            return
+
+        effective_lifetime = self._connection_lifetime * entry.lifetime_jitter
+        if (time.monotonic() - entry.created_at) >= effective_lifetime:
+            self._discard(entry)
+            return
+
+        try:
+            self._queue.put_nowait(entry)
+        except queue.Full:
+            self._discard(entry)
+
+    def verify_bind(self, user_dn: str, password: str) -> bool:
+        """Verify user credentials via bind-and-revert on a pooled connection.
+
+        Binds as the user to check their password, then immediately rebinds
+        as admin to restore the connection identity. If the admin rebind
+        fails, the connection is discarded (never returned in wrong state).
+        """
+        entry = self._checkout()
+        try:
+            entry.conn.simple_bind_s(user_dn, password)
+        except ldap.INVALID_CREDENTIALS:
+            try:
+                entry.conn.simple_bind_s(self._builder.admin_dn, self._builder.admin_pw)
+                entry.last_used = time.monotonic()
+                self._return(entry)
+            except Exception:
+                self._discard(entry)
+            return False
+        except Exception:
+            self._discard(entry)
+            raise
+
+        try:
+            entry.conn.simple_bind_s(self._builder.admin_dn, self._builder.admin_pw)
+            entry.last_used = time.monotonic()
+            self._return(entry)
+        except Exception:
+            logger.warning(
+                "LDAP admin rebind failed after user verification, discarding connection"
+            )
+            self._discard(entry)
+
+        return True
+
+    def get_connection(self) -> "_PooledConnectionContext":
+        return _PooledConnectionContext(self)
+
+
+class _PooledConnectionContext:
+    def __init__(self, pool: LDAPConnectionPool) -> None:
+        self._pool = pool
+        self._entry: Optional[_PoolEntry] = None
+
+    def __enter__(self):
+        self._entry = self._pool._checkout()
+        return self._entry.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._entry is not None:
+            self._pool._return(self._entry, error_occurred=exc_type is not None)
+            self._entry = None
 
 
 class LDAPConnection(object):
@@ -154,7 +437,13 @@ class LDAPConnection(object):
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+        if trace_level:
+            self._conn = ldap.initialize(
+                self._ldap_uri, trace_level=trace_level, trace_file=_LDAPTraceRedactor()
+            )
+        else:
+            self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+
         self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
@@ -205,10 +494,14 @@ class LDAPUsers(FederatedUsers):
         ldap_referrals=_DEFAULT_REFERRALS,
         enable_caching=False,
         cache_ttl=_DEFAULT_CACHE_TTL,
+        connection_pooling=True,
+        pool_size=10,
+        pool_max_wait=5.0,
+        pool_connection_lifetime=300,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
-        self._ldap = LDAPConnectionBuilder(
+        builder = LDAPConnectionBuilder(
             ldap_uri,
             admin_dn,
             admin_passwd,
@@ -217,6 +510,13 @@ class LDAPUsers(FederatedUsers):
             network_timeout,
             referrals=ldap_referrals,
         )
+
+        if connection_pooling:
+            self._ldap = LDAPConnectionPool(
+                builder, pool_size, pool_max_wait, pool_connection_lifetime
+            )
+        else:
+            self._ldap = builder
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
         self._email_attr = email_attr
@@ -291,7 +591,7 @@ class LDAPUsers(FederatedUsers):
                 return cached
 
         logger.debug("Looking up LDAP %s with key=%s", log_name, cache_key)
-        (found_user, err_msg) = lookup_fn()
+        found_user, err_msg = lookup_fn()
         result = found_user is not None
 
         if found_user is None:
@@ -434,7 +734,7 @@ class LDAPUsers(FederatedUsers):
                 pairs = []
                 err_msg = None
                 for user_search_dn in self._user_dns:
-                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                    pairs, err_msg = self._ldap_user_search_with_rdn(
                         conn,
                         username_or_email,
                         user_search_dn,
@@ -575,7 +875,7 @@ class LDAPUsers(FederatedUsers):
         Looks up a username or email in LDAP.
         """
         logger.debug("Looking up LDAP username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if err_msg is not None:
             return (None, err_msg)
 
@@ -591,7 +891,7 @@ class LDAPUsers(FederatedUsers):
             return (None, self.federated_service, "Empty query")
 
         logger.debug("Got query %s with limit %s", query, limit)
-        (results, err_msg) = self._ldap_user_search(query, limit=limit, suffix="*")
+        results, err_msg = self._ldap_user_search(query, limit=limit, suffix="*")
         if err_msg is not None:
             return (None, self.federated_service, err_msg)
 
@@ -606,6 +906,19 @@ class LDAPUsers(FederatedUsers):
         logger.debug("For query %s found results %s", query, final_results)
         return (final_results, self.federated_service, None)
 
+    def _verify_password(self, found_dn, password):
+        """Verify password via self._ldap.verify_bind (works for both pool and builder)."""
+        try:
+            return self._ldap.verify_bind(found_dn, password)
+        except ldap.REFERRAL as re:
+            referral_dn = self._get_ldap_referral_dn(re)
+            if not referral_dn:
+                return False
+            try:
+                return self._ldap.verify_bind(referral_dn, password)
+            except ldap.INVALID_CREDENTIALS:
+                return False
+
     def verify_credentials(self, username_or_email, password):
         """
         Verify the credentials with LDAP.
@@ -614,7 +927,7 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        found_user, err_msg = self._ldap_single_user_search(username_or_email)
         if found_user is None:
             return (None, err_msg)
 
@@ -623,24 +936,7 @@ class LDAPUsers(FederatedUsers):
         logger.debug("DN %s found: %s", found_dn, found_response)
 
         # First validate the password by binding as the user
-        try:
-            with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
-                pass
-        except ldap.REFERRAL as re:
-            referral_dn = self._get_ldap_referral_dn(re)
-            if not referral_dn:
-                return (None, "Invalid username or password.")
-
-            try:
-                with LDAPConnection(
-                    self._ldap_uri, referral_dn, password, self._allow_tls_fallback
-                ):
-                    pass
-            except ldap.INVALID_CREDENTIALS:
-                logger.debug("Invalid LDAP credentials")
-                return (None, "Invalid username or password.")
-
-        except ldap.INVALID_CREDENTIALS:
+        if not self._verify_password(found_dn, password):
             logger.debug("Invalid LDAP credentials")
             return (None, "Invalid username or password.")
 
@@ -655,16 +951,18 @@ class LDAPUsers(FederatedUsers):
         if not group_lookup_args.get("group_dn"):
             return (False, "Missing group_dn")
 
-        (it, err) = self.iterate_group_members(
+        it, err = self.iterate_group_members(
             group_lookup_args, page_size=1, disable_pagination=disable_pagination
         )
         if err is not None:
             return (False, err)
 
-        if not next(it, False):
-            return (False, "Group does not exist or is empty")
-
-        return (True, None)
+        try:
+            if not next(it, False):
+                return (False, "Group does not exist or is empty")
+            return (True, None)
+        finally:
+            it.close()
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         try:
@@ -740,7 +1038,9 @@ class LDAPUsers(FederatedUsers):
 
                 # Conduct the initial search for users that are a member of the group.
                 logger.debug(
-                    "Conducting LDAP search of DN: %s and filter %s", user_search_dn, search_flt
+                    "Conducting LDAP search of DN: %s and filter %s",
+                    user_search_dn,
+                    search_flt,
                 )
                 try:
                     if has_pagination:
@@ -753,7 +1053,10 @@ class LDAPUsers(FederatedUsers):
                         )
                     else:
                         msgid = conn.search(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
+                            user_search_dn,
+                            ldap.SCOPE_SUBTREE,
+                            search_flt,
+                            attrlist=attributes,
                         )
                 except ldap.LDAPError as lde:
                     logger.exception(

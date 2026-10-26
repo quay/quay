@@ -1,6 +1,6 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
+import {pushImage} from '../../utils/container';
 
 /**
  * Helper to get the search input inside the PatternFly SearchInput component
@@ -78,8 +78,10 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       authenticatedPage,
       authenticatedRequest,
       api,
+      quayConfig,
     }) => {
-      const testUser = TEST_USERS.user.username;
+      const users = getTestUsers(quayConfig);
+      const testUser = users.user.username;
       const org = await api.organization('repocreate');
 
       // Generate unique names for UI-created repos to avoid conflicts with parallel tests
@@ -501,5 +503,79 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       const count = await rows.count();
       expect(count).toBeGreaterThanOrEqual(2);
     });
+
+    test('shows empty state instead of spinner when search matches nothing (PROJQUAY-11217)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('searchnomatch');
+      await api.repositoryWithName(org.name, 'exists-repo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Wait for initial load to complete — repo should be visible
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+
+      // Search for a name that will never match
+      await getSearchInput(authenticatedPage).fill('zzz-no-such-repo');
+
+      // Regression: old code showed a spinner here forever
+      await expect(reposPanel.getByRole('progressbar')).not.toBeVisible();
+      await expect(reposPanel.getByText('No repositories found')).toBeVisible();
+
+      // Clear search — repo should reappear
+      await getSearchInput(authenticatedPage).fill('');
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+    });
   });
+
+  // domainRoute's repository branch only runs when the current path is under
+  // /repository/...; org-page team links cannot exercise it.
+  test.describe(
+    'domainRoute repository keyword',
+    {tag: ['@PROJQUAY-11202', '@container']},
+    () => {
+      test('tag link stays correct from /repository/.../testrepository... path', async ({
+        authenticatedPage,
+        api,
+        quayConfig,
+      }) => {
+        const users = getTestUsers(quayConfig);
+        const org = await api.organization('kwrepo');
+        const repo = await api.repository(org.name, 'testrepository');
+        await pushImage(
+          org.name,
+          repo.name,
+          'latest',
+          users.user.username,
+          users.user.password,
+        );
+
+        const repoPath = `/repository/${org.name}/${repo.name}`;
+        const expectedTagPath = `${repoPath}/tag/latest`;
+
+        // Current path includes /repository and a later "repository" substring.
+        await authenticatedPage.goto(`${repoPath}?tab=tags`);
+        await expect(authenticatedPage.getByTestId('repo-title')).toContainText(
+          repo.name,
+        );
+
+        const tagLink = authenticatedPage.getByRole('link', {name: 'latest'});
+        const href = await tagLink.getAttribute('href');
+        expect(href, `malformed tag link href: ${href}`).toContain(
+          expectedTagPath,
+        );
+        expect(href).not.toContain(`${repoPath}/repository/`);
+
+        await tagLink.click();
+        await expect(authenticatedPage).toHaveURL(
+          (url) => url.pathname === expectedTagPath,
+        );
+      });
+    },
+  );
 });

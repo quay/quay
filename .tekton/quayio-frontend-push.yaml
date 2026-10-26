@@ -24,8 +24,10 @@ spec:
     value: '{{source_url}}'
   - name: revision
     value: '{{revision}}'
+  - name: use-ecr
+    value: 'true'
   - name: output-image
-    value: quay.io/redhat-user-workloads/quayio-tenant/quayio-frontend/quayio-frontend:{{revision}}
+    value: 'quayio-frontend-backup-staging:{{revision}}'
   - name: dockerfile
     value: build-tools/Dockerfile
   - name: path-context

@@ -52,6 +52,10 @@ from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
+from util.security.ssrf import (
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_reference,
+)
 from workers.repomirrorworker.manifest_utils import (
     ManifestSizeLimitExceeded,
     filter_manifests_by_architecture,
@@ -68,6 +72,51 @@ logger = logging.getLogger(__name__)
 unmirrored_repositories = Gauge(
     "quay_repository_rows_unmirrored",
     "number of repositories in the database that have not yet been mirrored",
+)
+
+# Repository mirroring metrics
+repo_mirror_pending_tags = Gauge(
+    "quay_repository_mirror_pending_tags",
+    "Total number of tags pending synchronization for each mirrored repository",
+    labelnames=["namespace", "repository"],
+)
+
+repo_mirror_last_sync_status = Gauge(
+    "quay_repository_mirror_last_sync_status",
+    "Status of the last synchronization attempt (0=failed, 1=success, 2=in_progress)",
+    labelnames=["namespace", "repository", "last_error_reason"],
+)
+
+repo_mirror_sync_complete = Gauge(
+    "quay_repository_mirror_sync_complete",
+    "Indicates if all tags have been successfully synchronized (0=incomplete, 1=complete)",
+    labelnames=["namespace", "repository"],
+)
+
+repo_mirror_sync_failures_total = Counter(
+    "quay_repository_mirror_sync_failures_total",
+    "Total number of synchronization failures aggregated by namespace",
+    labelnames=["namespace", "reason"],
+)
+
+# Additional supporting metrics
+repo_mirror_last_sync_timestamp = Gauge(
+    "quay_repository_mirror_last_sync_timestamp",
+    "Unix timestamp of the last synchronization attempt",
+    labelnames=["namespace", "repository"],
+)
+
+repo_mirror_sync_duration_seconds = Histogram(
+    "quay_repository_mirror_sync_duration_seconds",
+    "Duration of synchronization operations aggregated by namespace",
+    labelnames=["namespace"],
+    buckets=(60, 300, 900, 3600, float("inf")),
+)
+
+repo_mirror_workers_active = Gauge(
+    "quay_repository_mirror_workers_active",
+    "Number of repository mirror worker processes reporting from this Quay process (1 while a "
+    "RepoMirrorWorker is running; scrape all mirror worker targets and sum for cluster total)",
 )
 
 unmirrored_org_repositories = Gauge(
@@ -114,6 +163,29 @@ org_mirror_repo_sync_duration_seconds = Histogram(
 
 # Used only for testing - should not be set in production
 TAG_ROLLBACK_PAGE_SIZE = app.config.get("REPO_MIRROR_TAG_ROLLBACK_PAGE_SIZE", 100)
+
+
+def _map_failure_to_reason(error_message):
+    """
+    Map error messages to standardized failure reasons for metrics.
+    This helps categorize failures for better alerting and troubleshooting.
+    """
+    error_lower = str(error_message).lower()
+
+    if "auth" in error_lower or "unauthorized" in error_lower or "forbidden" in error_lower:
+        return "auth_failed"
+    elif "timeout" in error_lower or "timed out" in error_lower:
+        return "network_timeout"
+    elif "connection" in error_lower or "network" in error_lower:
+        return "connection_error"
+    elif "not found" in error_lower or "404" in error_lower:
+        return "not_found"
+    elif "tls" in error_lower or "certificate" in error_lower or "ssl" in error_lower:
+        return "tls_error"
+    elif "decrypt" in error_lower:
+        return "decryption_failed"
+    else:
+        return "unknown_error"
 
 
 class PreemptedException(Exception):
@@ -181,6 +253,59 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     if not mirror:
         raise PreemptedException
 
+    # Track start time for duration metric
+    sync_start_time = time.time()
+    namespace = mirror.repository.namespace_user.username
+    repository_name = mirror.repository.name
+
+    # Re-resolve the source immediately before use to catch persisted blocked
+    # configurations and DNS changes observed before the Skopeo invocation.
+    try:
+        validate_external_registry_reference(
+            mirror.external_reference,
+            resolve_dns=True,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+            proxy_config=resolve_proxy_config_for_ssrf(
+                (mirror.external_registry_config or {}).get("proxy")
+            ),
+        )
+    except ValueError:
+        logger.warning(
+            "Repository mirror source validation failed for repository %s/%s",
+            namespace,
+            repository_name,
+        )
+        emit_log(
+            mirror,
+            "repo_mirror_sync_failed",
+            "end",
+            "Source registry location is not allowed",
+            tags="",
+            stdout="Not applicable",
+            stderr="Not applicable",
+        )
+        _update_mirror_metrics_on_failure(
+            namespace,
+            repository_name,
+            "invalid_source_registry",
+            sync_start_time,
+        )
+        release_mirror(mirror, RepoMirrorStatus.FAIL)
+        return RepoMirrorStatus.FAIL
+
+    # Set sync status to in_progress (2)
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+        last_error_reason="",
+    ).set(2)
+
+    # Update timestamp
+    repo_mirror_last_sync_timestamp.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(sync_start_time)
+
     emit_log(
         mirror,
         "repo_mirror_sync_started",
@@ -192,9 +317,12 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     # Fetch the tags to mirror, being careful to handle exceptions. The 'Exception' is safety net only, allowing
     # easy communication by user through bug report.
     tags = []
+    failure_reason = None
+
     try:
         tags = tags_to_mirror(skopeo, mirror)
     except RepoMirrorSkopeoException as e:
+        failure_reason = _map_failure_to_reason(str(e))
         emit_log(
             mirror,
             "repo_mirror_sync_failed",
@@ -205,9 +333,14 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout=e.stdout,
             stderr=e.stderr,
         )
+        # Update metrics for early failure
+        _update_mirror_metrics_on_failure(
+            namespace, repository_name, failure_reason, sync_start_time
+        )
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
-    except Exception:
+    except Exception as e:
+        failure_reason = _map_failure_to_reason(str(e))
         emit_log(
             mirror,
             "repo_mirror_sync_failed",
@@ -217,6 +350,10 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             tags=", ".join(tags),
             stdout="Not applicable",
             stderr=traceback.format_exc(),
+        )
+        # Update metrics for early failure
+        _update_mirror_metrics_on_failure(
+            namespace, repository_name, failure_reason, sync_start_time
         )
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
@@ -229,6 +366,24 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
             tags="No tags matched",
         )
+        # Set metrics for empty tag list - this is a success
+        sync_duration = time.time() - sync_start_time
+        repo_mirror_pending_tags.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(0)
+        repo_mirror_last_sync_status.labels(
+            namespace=namespace,
+            repository=repository_name,
+            last_error_reason="",
+        ).set(1)
+        repo_mirror_sync_complete.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(1)
+        repo_mirror_sync_duration_seconds.labels(
+            namespace=namespace,
+        ).observe(sync_duration)
         release_mirror(mirror, RepoMirrorStatus.SUCCESS)
         return
 
@@ -236,6 +391,12 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     now_ms = database.get_epoch_timestamp_ms()
     overall_status = RepoMirrorStatus.SUCCESS
     failed_tags = []
+
+    # Set initial pending tags metric
+    repo_mirror_pending_tags.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(len(tags))
     try:
         try:
             username = (
@@ -271,7 +432,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 architecture_filter,
             )
 
-        for tag in tags:
+        for tag_index, tag in enumerate(tags):
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
                 dest_server,
@@ -307,6 +468,13 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                         ),
                     )
 
+            # Update pending tags metric after processing each tag
+            remaining_tags = len(tags) - (tag_index + 1)
+            repo_mirror_pending_tags.labels(
+                namespace=namespace,
+                repository=repository_name,
+            ).set(remaining_tags)
+
             if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
                 logger.info(
                     "Sync cancelled on repo %s/%s.",
@@ -319,6 +487,11 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             if not result.success:
                 overall_status = RepoMirrorStatus.FAIL
                 failed_tags.append(tag)
+                # Track the first failure reason for metrics
+                if failure_reason is None:
+                    failure_reason = _map_failure_to_reason(
+                        result.stderr or result.stdout or "unknown"
+                    )
                 emit_log(
                     mirror,
                     "repo_mirror_sync_tag_failed",
@@ -345,6 +518,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
     except PreemptedException:
         overall_status = RepoMirrorStatus.FAIL
+        failure_reason = "preempted"
         emit_log(
             mirror,
             "repo_mirror_sync_failed",
@@ -354,11 +528,12 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout="Not applicable",
             stderr="Not applicable",
         )
-        release_mirror(mirror, overall_status)
         return
 
-    except Exception:
+    except Exception as e:
         overall_status = RepoMirrorStatus.FAIL
+        if failure_reason is None:
+            failure_reason = _map_failure_to_reason(str(e))
         emit_log(
             mirror,
             "repo_mirror_sync_failed",
@@ -369,9 +544,10 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout="Not applicable",
             stderr=traceback.format_exc(),
         )
-        release_mirror(mirror, overall_status)
         return
     finally:
+        sync_duration = time.time() - sync_start_time
+
         if overall_status == RepoMirrorStatus.FAIL:
             log_tags = []
             log_message = "'%s' with tag pattern '%s'"
@@ -404,17 +580,16 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 rollback(mirror, now_ms)
             else:
                 rollback(mirror, now_ms, failed_tags)
-        if overall_status == RepoMirrorStatus.CANCEL:
+        elif overall_status == RepoMirrorStatus.CANCEL:
             log_message = "'%s' with tag pattern '%s'"
             emit_log(
                 mirror,
                 "repo_mirror_sync_failed",
                 "Cancelled",
                 log_message % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-                stdout="Not applicable",
-                stderr="Not applicable",
+                tags=", ".join(tags),
             )
-        else:
+        elif overall_status == RepoMirrorStatus.SUCCESS:
             emit_log(
                 mirror,
                 "repo_mirror_sync_success",
@@ -423,6 +598,52 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
                 tags=", ".join(tags),
             )
+
+        # Update mirroring metrics
+        # Set complete sync metric (1 if all tags synced successfully, 0 otherwise)
+        is_complete = (
+            1 if (overall_status == RepoMirrorStatus.SUCCESS and len(failed_tags) == 0) else 0
+        )
+        repo_mirror_sync_complete.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(is_complete)
+
+        # Set last sync status metric based on final status
+        if overall_status == RepoMirrorStatus.SUCCESS:
+            status_value = 1
+            error_reason = ""
+        elif overall_status == RepoMirrorStatus.SYNCING:
+            status_value = 2
+            error_reason = ""
+        else:  # FAIL or CANCEL
+            status_value = 0
+            error_reason = failure_reason or "unknown_error"
+
+        repo_mirror_last_sync_status.labels(
+            namespace=namespace,
+            repository=repository_name,
+            last_error_reason="",
+        ).set(status_value)
+        if error_reason:
+            repo_mirror_last_sync_status.labels(
+                namespace=namespace,
+                repository=repository_name,
+                last_error_reason=error_reason,
+            ).set(status_value)
+
+        # Record sync duration
+        repo_mirror_sync_duration_seconds.labels(
+            namespace=namespace,
+        ).observe(sync_duration)
+
+        # Increment failure counter on failures with reason
+        if overall_status == RepoMirrorStatus.FAIL:
+            repo_mirror_sync_failures_total.labels(
+                namespace=namespace,
+                reason=failure_reason or "unknown_error",
+            ).inc()
+
         release_mirror(mirror, overall_status)
 
     return overall_status
@@ -914,6 +1135,45 @@ def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, 
         "repo_mirror_sync_success",
     ):
         spawn_notification(wrap_repository(mirror.repository), log_kind, {"message": message})
+
+
+def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason, sync_start_time):
+    """
+    Helper function to update metrics when a mirror sync fails.
+    """
+    reason = failure_reason or "unknown_error"
+    repo_mirror_pending_tags.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(0)
+
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+        last_error_reason="",
+    ).set(0)
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+        last_error_reason=reason,
+    ).set(0)
+
+    repo_mirror_sync_complete.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(0)
+
+    repo_mirror_sync_failures_total.labels(
+        namespace=namespace,
+        reason=reason,
+    ).inc()
+
+    # Record duration if available
+    if sync_start_time:
+        sync_duration = time.time() - sync_start_time
+        repo_mirror_sync_duration_seconds.labels(
+            namespace=namespace,
+        ).observe(sync_duration)
 
 
 # ==============================================================================

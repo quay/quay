@@ -1,0 +1,1208 @@
+// Package installer implements the install and upgrade workflow for the
+// registry's Quadlet-based systemd deployment.
+package installer
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/quay/quay/internal/bootstrap"
+	"github.com/quay/quay/internal/certs"
+	"github.com/quay/quay/internal/config"
+	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/system"
+)
+
+// DefaultImage is the default container image for the registry.
+// Overridden at build time via ldflags for release builds.
+var DefaultImage = "quay.io/projectquay/quay-mirror:latest"
+
+const (
+	defaultPort         = "8443"
+	defaultInitUsername = "admin"
+	quadletServiceName  = "quay"
+)
+
+// Config holds the parameters for an install or upgrade operation.
+type Config struct {
+	Hostname                    string
+	DataDir                     string
+	ImageArchive                string
+	Image                       string
+	ConfigPath                  string
+	Port                        string
+	SSLCert                     string
+	SSLKey                      string
+	SSLSkipHostnameVerification bool
+	InitUser                    string
+	InitPassword                string
+	InitPasswordSet             bool
+}
+
+// Installer orchestrates fresh installs and upgrades of the registry
+// as a Quadlet systemd service.
+type Installer struct {
+	images     system.ImageLoader
+	runner     system.CommandRunner
+	systemd    system.ServiceManager
+	quadlet    *system.QuadletManager
+	env        *system.Env
+	fs         system.FileSystem
+	hostname   func(context.Context) (string, error)
+	healthWait func(ctx context.Context, url, certPath string, skipHostname bool, timeout time.Duration) error
+}
+
+// New detects the runtime environment and creates an Installer with the
+// appropriate system backends.
+func New(stderr io.Writer) (*Installer, error) {
+	env, err := system.NewEnv()
+	if err != nil {
+		return nil, fmt.Errorf("detect environment: %w", err)
+	}
+
+	runner := system.NewExecRunner(stderr)
+	fs := system.OSFS{}
+
+	return &Installer{
+		images:   system.NewPodmanLoader(runner),
+		runner:   runner,
+		systemd:  system.NewSystemdManager(runner, env),
+		quadlet:  system.NewQuadletManager(fs, env),
+		env:      env,
+		fs:       fs,
+		hostname: detectSystemHostname,
+	}, nil
+}
+
+// Initialize performs the one-shot initialization used by both `mirror-registry init`
+// and `mirror-registry install`, without starting a long-running server or container.
+func Initialize(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	resolvedCfg := *cfg
+	if resolvedCfg.InitUser == "" {
+		resolvedCfg.InitUser = defaultInitUsername
+	}
+	if err := validateInitConfig(&resolvedCfg); err != nil {
+		return fmt.Errorf("initial administrator: %w", err)
+	}
+	inst := &Installer{fs: system.OSFS{}}
+	return inst.initialize(ctx, &resolvedCfg)
+}
+
+// HasInstallation reports whether the Quay Quadlet already exists.
+func (inst *Installer) HasInstallation() bool {
+	return inst.quadlet.Exists(quadletServiceName)
+}
+
+// RemoveFailedInstallation removes the Quay Quadlet and reloads systemd. It
+// cannot distinguish a new installation from a pre-existing one, so callers
+// must first confirm that no installation existed before their operation.
+func (inst *Installer) RemoveFailedInstallation(ctx context.Context) error {
+	if !inst.HasInstallation() {
+		return nil
+	}
+	var errs []error
+	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil && !errors.Is(err, system.ErrUnitNotFound) {
+		errs = append(errs, fmt.Errorf("stop service: %w", err))
+	}
+	if err := inst.quadlet.Remove(quadletServiceName); err != nil {
+		errs = append(errs, err)
+	}
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("reload systemd: %w", err))
+	}
+	return errors.Join(errs...)
+}
+
+// Install performs a fresh installation. It fails when a Quadlet unit already
+// exists so that an accidental re-run cannot silently modify a live registry.
+func (inst *Installer) Install(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	if inst.HasInstallation() {
+		return fmt.Errorf(
+			"existing installation found at %s; run 'mirror-registry upgrade' to update it or 'mirror-registry uninstall' to remove it",
+			inst.env.QuadletPath(quadletServiceName),
+		)
+	}
+	if cfg.DataDir == "" {
+		return fmt.Errorf("data directory is required")
+	}
+	return inst.run(ctx, cfg, false)
+}
+
+// Upgrade updates an existing installation in place, preserving its data
+// directory, hostname, and port unless explicitly overridden. It fails when
+// no Quadlet unit exists.
+func (inst *Installer) Upgrade(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	if !inst.HasInstallation() {
+		return fmt.Errorf("no existing installation found; run 'mirror-registry install' first")
+	}
+	dataDir, err := inst.resolveUpgradeDataDir(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("resolve data directory: %w", err)
+	}
+	resolvedCfg := *cfg
+	resolvedCfg.DataDir = dataDir
+	return inst.run(ctx, &resolvedCfg, true)
+}
+
+// Run performs an install or upgrade based on whether a Quadlet unit already
+// exists. The migration workflow uses it to deploy a converted registry; the
+// CLI exposes the explicit Install and Upgrade entry points instead.
+func (inst *Installer) Run(ctx context.Context, cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil installer config")
+	}
+	return inst.run(ctx, cfg, inst.HasInstallation())
+}
+
+func (inst *Installer) run(ctx context.Context, cfg *Config, upgrading bool) error {
+	resolvedCfg := *cfg
+	if resolvedCfg.InitUser == "" {
+		resolvedCfg.InitUser = defaultInitUsername
+	}
+	if err := validateInitConfig(&resolvedCfg); err != nil {
+		return fmt.Errorf("initial administrator: %w", err)
+	}
+
+	if err := system.ValidateCgroupsForQuadlet(ctx, inst.runner); err != nil {
+		return fmt.Errorf("system compatibility: %w", err)
+	}
+
+	hostname, err := inst.resolveHostname(ctx, cfg.Hostname, upgrading)
+	if err != nil {
+		return fmt.Errorf("resolve hostname: %w", err)
+	}
+	resolvedCfg.Hostname = hostname
+
+	port, err := inst.resolvePort(cfg.Port, upgrading)
+	if err != nil {
+		return fmt.Errorf("resolve port: %w", err)
+	}
+	resolvedCfg.Port = port
+	if err := inst.validateUpgradePortChange(cfg.Port, port, upgrading); err != nil {
+		return fmt.Errorf("resolve port: %w", err)
+	}
+
+	if err := inst.initialize(ctx, &resolvedCfg); err != nil {
+		return fmt.Errorf("initialize registry: %w", err)
+	}
+
+	var snapshot *upgradeSnapshot
+	if upgrading {
+		snapshot, err = inst.snapshotUpgrade(ctx, &resolvedCfg)
+		if err != nil {
+			return fmt.Errorf("upgrade snapshot: %w", err)
+		}
+	}
+
+	imageRef, err := inst.resolveImage(ctx, resolvedCfg.ImageArchive, resolvedCfg.Image)
+	if err != nil {
+		return fmt.Errorf("image resolution: %w", err)
+	}
+
+	snapshot, deployErr := inst.deploy(ctx, &resolvedCfg, imageRef, port, upgrading, snapshot)
+	if deployErr != nil {
+		if snapshot != nil {
+			return inst.recoverFromFailedDeploy(ctx, snapshot, imageRef, deployErr)
+		}
+		return deployErr
+	}
+
+	healthURL := fmt.Sprintf("https://%s:%s/healthz", resolvedCfg.Hostname, port)
+	certPath := filepath.Join(resolvedCfg.DataDir, "ssl.cert")
+	if err := inst.verifyHealth(ctx, healthURL, certPath, resolvedCfg.SSLSkipHostnameVerification, snapshot, imageRef); err != nil {
+		return err
+	}
+
+	credPath := filepath.Join(resolvedCfg.DataDir, "auth", "admin-password")
+	attrs := []any{"url", fmt.Sprintf("https://%s:%s", resolvedCfg.Hostname, port), "credentials", credPath}
+	if caPath := inst.generatedCAPath(&resolvedCfg); caPath != "" {
+		attrs = append(attrs, "trust", caPath)
+	}
+	slog.Info("registry running", attrs...)
+	return nil
+}
+
+// generatedCAPath returns the CA certificate clients trust for a generated
+// ssl.cert, or "" when the certificate is user-supplied or rootCA.pem is absent.
+func (inst *Installer) generatedCAPath(cfg *Config) string {
+	if cfg.SSLCert != "" {
+		return ""
+	}
+	caPath := filepath.Join(cfg.DataDir, "rootCA.pem")
+	if _, err := inst.fs.Stat(caPath); err != nil {
+		return ""
+	}
+	return caPath
+}
+
+func (inst *Installer) resolveHostname(ctx context.Context, requestedHostname string, upgrading bool) (string, error) {
+	if requestedHostname != "" {
+		if err := ValidateHostname(requestedHostname); err != nil {
+			return "", fmt.Errorf("invalid hostname %q: %w", requestedHostname, err)
+		}
+		return requestedHostname, nil
+	}
+
+	if upgrading {
+		hostname, err := inst.quadlet.Hostname(quadletServiceName)
+		if err != nil {
+			return "", fmt.Errorf("determine existing hostname: %w; provide -hostname explicitly", err)
+		}
+		if err := ValidateHostname(hostname); err != nil {
+			return "", fmt.Errorf("invalid existing hostname %q: %w", hostname, err)
+		}
+		slog.Info("preserving existing hostname", "hostname", hostname)
+		return hostname, nil
+	}
+
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	detect := inst.hostname
+	if detect == nil {
+		detect = detectSystemHostname
+	}
+	hostname, err := detect(ctx)
+	if err != nil {
+		return "", fmt.Errorf("auto-detect system hostname: %w; provide -hostname explicitly", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" {
+		return "", fmt.Errorf("system hostname is empty; provide -hostname explicitly")
+	}
+	if net.ParseIP(hostname) != nil || !strings.Contains(hostname, ".") {
+		return "", fmt.Errorf("system hostname %q is not a fully qualified domain name; provide -hostname explicitly", hostname)
+	}
+	if err := ValidateHostname(hostname); err != nil {
+		return "", fmt.Errorf("invalid system hostname %q: %w; provide -hostname explicitly", hostname, err)
+	}
+	slog.Info("auto-detected hostname", "hostname", hostname)
+	return hostname, nil
+}
+
+func detectSystemHostname(ctx context.Context) (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", fmt.Errorf("read configured hostname: %w", err)
+	}
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" || strings.Contains(hostname, ".") {
+		return hostname, nil
+	}
+
+	fqdn, err := net.DefaultResolver.LookupCNAME(ctx, hostname)
+	if err != nil {
+		return "", fmt.Errorf("resolve fully qualified hostname for %q: %w", hostname, err)
+	}
+	return strings.TrimSuffix(fqdn, "."), nil
+}
+
+func (inst *Installer) resolvePort(requestedPort string, upgrading bool) (string, error) {
+	port := requestedPort
+	if port == "" {
+		if upgrading {
+			var err error
+			port, err = inst.quadlet.HostPort(quadletServiceName)
+			if err != nil {
+				return "", fmt.Errorf("determine existing port: %w", err)
+			}
+		} else {
+			port = defaultPort
+		}
+	}
+	if err := ValidatePort(port); err != nil {
+		return "", err
+	}
+	return port, nil
+}
+
+// resolveUpgradeDataDir returns the data directory recorded in the existing
+// Quadlet unit. A requested directory must match it: pointing an upgrade at a
+// different directory would initialize a second, empty registry there.
+func (inst *Installer) resolveUpgradeDataDir(requestedDataDir string) (string, error) {
+	existing, err := inst.quadlet.DataDir(quadletServiceName)
+	if err != nil {
+		return "", fmt.Errorf("determine existing data directory: %w", err)
+	}
+	if requestedDataDir == "" {
+		slog.Info("preserving existing data directory", "data-dir", existing)
+		return existing, nil
+	}
+	// The unit records an absolute path; resolve a relative -data-dir the
+	// same way so "registry" matches "$PWD/registry".
+	requested, err := filepath.Abs(requestedDataDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve requested data directory %s: %w", requestedDataDir, err)
+	}
+	if requested != filepath.Clean(existing) {
+		return "", fmt.Errorf(
+			"data directory %s does not match the existing installation's %s; omit -data-dir to preserve it",
+			requestedDataDir, existing,
+		)
+	}
+	return existing, nil
+}
+
+func (inst *Installer) validateUpgradePortChange(requestedPort, resolvedPort string, upgrading bool) error {
+	if !upgrading || requestedPort == "" {
+		return nil
+	}
+	existingPort, err := inst.quadlet.HostPort(quadletServiceName)
+	if err != nil {
+		return fmt.Errorf("determine existing port: %w", err)
+	}
+	if existingPort == resolvedPort {
+		return nil
+	}
+	configPath, err := inst.quadlet.ConfigPath(quadletServiceName)
+	if err != nil {
+		return fmt.Errorf("determine existing config path: %w", err)
+	}
+	if configPath != "" {
+		return fmt.Errorf(
+			"cannot change port from %s to %s for a config-backed installation; update SERVER_HOSTNAME in %s first",
+			existingPort, resolvedPort, configPath,
+		)
+	}
+	return nil
+}
+
+func (inst *Installer) resolveImage(ctx context.Context, archive, image string) (string, error) {
+	if archive != "" {
+		slog.Info("loading container image", "archive", archive)
+		ref, err := inst.images.Load(ctx, archive)
+		if err != nil {
+			return "", fmt.Errorf("loading image: %w", err)
+		}
+		slog.Info("loaded image", "ref", ref)
+		return ref, nil
+	}
+	slog.Info("pulling container image", "image", image)
+	if err := inst.images.Pull(ctx, image); err != nil {
+		return "", fmt.Errorf("pulling image: %w", err)
+	}
+	return image, nil
+}
+
+// verifyHealth waits for the registry to pass its health check. On failure
+// during an upgrade it attempts rollback via the snapshot; on context
+// cancellation it returns immediately without rollback.
+func (inst *Installer) verifyHealth(ctx context.Context, healthURL, certPath string, skipHostname bool, snapshot *upgradeSnapshot, imageRef string) error {
+	slog.Info("waiting for registry to start")
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
+	}
+	if err := healthWait(ctx, healthURL, certPath, skipHostname, 30*time.Second); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("health check: %w", err)
+		}
+		inst.dumpContainerLogs(ctx)
+		if snapshot != nil {
+			return inst.handleFailedUpgrade(ctx, snapshot, imageRef, err)
+		}
+		return fmt.Errorf("health check: %w", err)
+	}
+	return nil
+}
+
+// upgradeSnapshot captures the pre-upgrade state so that rollback can fully
+// restore the previous Quadlet unit, TLS material, and image identity.
+type upgradeSnapshot struct {
+	quadletPath string
+	quadletData []byte
+	imageID     string
+	port        string
+	hostname    string
+	healthURL   string
+	certPath    string
+	skipTLSHost bool
+	tlsCert     []byte
+	tlsKey      []byte
+	rootCA      []byte
+}
+
+// snapshotUpgrade captures the current installation state before any
+// modifications. The imageID field is best-effort: if the image cannot be
+// inspected (e.g. no local image yet), it is left empty and rollback restores
+// the Quadlet verbatim without pinning to a digest.
+func (inst *Installer) snapshotUpgrade(ctx context.Context, cfg *Config) (*upgradeSnapshot, error) {
+	quadletPath := inst.env.QuadletPath(quadletServiceName)
+	quadletData, err := inst.fs.ReadFile(quadletPath)
+	if err != nil {
+		return nil, fmt.Errorf("read quadlet: %w", err)
+	}
+
+	oldPort, err := inst.quadlet.HostPort(quadletServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("read port: %w", err)
+	}
+
+	oldHostname, err := inst.quadlet.Hostname(quadletServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("read hostname: %w", err)
+	}
+
+	oldImage, _ := inst.quadlet.Image(quadletServiceName)
+	var imageID string
+	if oldImage != "" && inst.images != nil {
+		imageID, _ = inst.images.ImageID(ctx, oldImage)
+	}
+
+	snap := &upgradeSnapshot{
+		quadletPath: quadletPath,
+		quadletData: quadletData,
+		imageID:     imageID,
+		port:        oldPort,
+		hostname:    oldHostname,
+		healthURL:   fmt.Sprintf("https://%s:%s/healthz", oldHostname, oldPort),
+		certPath:    filepath.Join(cfg.DataDir, "ssl.cert"),
+		skipTLSHost: cfg.SSLSkipHostnameVerification,
+	}
+
+	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
+	keyPath := filepath.Join(cfg.DataDir, "ssl.key")
+	if cfg.SSLCert != "" {
+		snap.tlsCert, _ = inst.fs.ReadFile(certPath)
+		snap.tlsKey, _ = inst.fs.ReadFile(keyPath)
+		snap.rootCA, _ = inst.fs.ReadFile(filepath.Join(cfg.DataDir, "rootCA.pem"))
+	}
+
+	return snap, nil
+}
+
+// deploy runs either an upgrade or a fresh install. On upgrade it returns the
+// pre-upgrade snapshot; on fresh install the snapshot is nil.
+func (inst *Installer) deploy(ctx context.Context, cfg *Config, imageRef, port string, upgrading bool, snapshot *upgradeSnapshot) (*upgradeSnapshot, error) {
+	if upgrading {
+		return snapshot, inst.upgrade(ctx, cfg, imageRef, port)
+	}
+	return nil, inst.freshInstall(ctx, cfg, imageRef)
+}
+
+func (inst *Installer) upgrade(ctx context.Context, cfg *Config, imageRef, port string) error {
+	slog.Info("existing installation detected, upgrading")
+
+	if cfg.SSLCert != "" {
+		if err := inst.copyUserTLS(cfg); err != nil {
+			return fmt.Errorf("TLS certificate setup: %w", err)
+		}
+	}
+
+	slog.Info("stopping registry")
+	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("stop service: %w", err)
+	}
+
+	if err := inst.quadlet.UpdateImageAndPort(quadletServiceName, imageRef, port); err != nil {
+		return fmt.Errorf("update quadlet: %w", err)
+	}
+	slog.Info("updated quadlet", "path", inst.env.QuadletPath(quadletServiceName))
+
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		return fmt.Errorf("reload systemd: %w", err)
+	}
+	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("start service: %w", err)
+	}
+	return nil
+}
+
+// recoverFromFailedDeploy attempts rollback when upgrade() itself fails
+// (e.g. start or daemon-reload failure after the Quadlet was overwritten).
+// After restoring the Quadlet it verifies the old image is healthy; if not,
+// the service is stopped and the error reports both image refs.
+func (inst *Installer) recoverFromFailedDeploy(ctx context.Context, snapshot *upgradeSnapshot, newImage string, deployErr error) error {
+	oldImage := snapshotImage(snapshot.quadletData)
+	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("upgrade: %w; rollback failed (previous image %s, new image %s): %w", deployErr, oldImage, newImage, rbErr)
+	}
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
+	}
+	if rbHealthErr := healthWait(ctx, snapshot.healthURL, snapshot.certPath, snapshot.skipTLSHost, 30*time.Second); rbHealthErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("upgrade: %w; rolled back to %s but it is also unhealthy (new image %s): %w", deployErr, oldImage, newImage, rbHealthErr)
+	}
+	slog.Info("rolled back to previous state after deploy failure", "image", oldImage)
+	return fmt.Errorf("upgrade: %w; rolled back to previous image %s", deployErr, oldImage)
+}
+
+// handleFailedUpgrade attempts to restore the previous state after a failed
+// health check. It always returns a non-nil error: on successful rollback the
+// error reports both the original failure and the restored image; on failed
+// rollback it includes both image refs so the user can recover manually; when
+// the old image is also unhealthy it stops the service and reports both refs.
+func (inst *Installer) handleFailedUpgrade(ctx context.Context, snapshot *upgradeSnapshot, newImage string, healthErr error) error {
+	oldImage := snapshotImage(snapshot.quadletData)
+	if rbErr := inst.rollbackUpgrade(ctx, snapshot); rbErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("health check: %w; rollback failed (previous image %s, new image %s): %w", healthErr, oldImage, newImage, rbErr)
+	}
+	healthWait := inst.healthWait
+	if healthWait == nil {
+		healthWait = inst.waitForHealth
+	}
+	rbHealthErr := healthWait(ctx, snapshot.healthURL, snapshot.certPath, snapshot.skipTLSHost, 30*time.Second)
+	if rbHealthErr != nil {
+		_ = inst.systemd.Stop(ctx, quadletServiceName)
+		return fmt.Errorf("health check: %w; rolled back to %s but it is also unhealthy (new image %s): %w", healthErr, oldImage, newImage, rbHealthErr)
+	}
+	slog.Info("rolled back to previous image", "image", oldImage)
+	return fmt.Errorf("health check: %w; rolled back to previous image %s", healthErr, oldImage)
+}
+
+// rollbackUpgrade restores the pre-upgrade Quadlet file and TLS material,
+// reloads systemd, and restarts the service with the old configuration.
+//
+// Note: database schema changes applied by dbcore.Setup during initialize()
+// are not reverted. Z-stream upgrades share the same schema version, so the
+// old image accepts the current schema. If a future migration changes the
+// schema, the backup created by ensureSchema (quay.db.backup-*) must be
+// restored manually.
+func (inst *Installer) rollbackUpgrade(ctx context.Context, snapshot *upgradeSnapshot) error {
+	slog.Warn("rolling back to previous state")
+
+	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("stop service for rollback: %w", err)
+	}
+
+	restored := snapshot.quadletData
+	if snapshot.imageID != "" {
+		restored = pinQuadletImage(restored, snapshot.imageID)
+	}
+	if err := inst.fs.WriteFile(snapshot.quadletPath, restored, 0o600); err != nil {
+		return fmt.Errorf("restore quadlet: %w", err)
+	}
+
+	if snapshot.tlsCert != nil {
+		dataDir := filepath.Dir(snapshot.certPath)
+		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.cert"), snapshot.tlsCert, 0o600)
+		_ = inst.fs.WriteFile(filepath.Join(dataDir, "ssl.key"), snapshot.tlsKey, 0o600)
+	}
+	if snapshot.rootCA != nil {
+		_ = inst.fs.WriteFile(filepath.Join(filepath.Dir(snapshot.certPath), "rootCA.pem"), snapshot.rootCA, 0o644)
+	}
+
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		return fmt.Errorf("reload systemd after rollback: %w", err)
+	}
+	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("start service after rollback: %w", err)
+	}
+	return nil
+}
+
+// snapshotImage extracts the Image= value from saved Quadlet data.
+func snapshotImage(quadletData []byte) string {
+	for _, line := range strings.Split(string(quadletData), "\n") {
+		if image, found := strings.CutPrefix(line, "Image="); found {
+			return image
+		}
+	}
+	return ""
+}
+
+// pinQuadletImage replaces the Image= line in Quadlet data with the given ID.
+func pinQuadletImage(quadletData []byte, imageID string) []byte {
+	lines := strings.Split(string(quadletData), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "Image=") {
+			lines[i] = "Image=" + imageID
+			break
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
+
+func (inst *Installer) freshInstall(ctx context.Context, cfg *Config, imageRef string) error {
+	if cfg.SSLCert != "" {
+		if err := inst.copyUserTLS(cfg); err != nil {
+			return fmt.Errorf("TLS certificate setup: %w", err)
+		}
+	}
+
+	spec := system.QuadletSpec{
+		Image:      imageRef,
+		DataDir:    cfg.DataDir,
+		Hostname:   cfg.Hostname,
+		Port:       cfg.Port,
+		ConfigPath: cfg.ConfigPath,
+	}
+	if err := inst.quadlet.Install(quadletServiceName, &spec); err != nil {
+		return fmt.Errorf("install quadlet: %w", err)
+	}
+	slog.Info("quadlet installed", "path", inst.env.QuadletPath(quadletServiceName))
+
+	if err := inst.systemd.DaemonReload(ctx); err != nil {
+		return fmt.Errorf("reload systemd: %w", err)
+	}
+	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("start service: %w", err)
+	}
+
+	if inst.env.Mode == system.UserMode {
+		_ = inst.systemd.EnableLinger(ctx)
+	}
+	return nil
+}
+
+func (inst *Installer) waitForHealth(ctx context.Context, url, certPath string, skipHostname bool, timeout time.Duration) error {
+	deadline := time.After(timeout)
+
+	// Wait for the container to generate the TLS certificate.
+	for {
+		if _, err := inst.fs.Stat(certPath); err == nil {
+			break
+		}
+		select {
+		case <-deadline:
+			return fmt.Errorf("timed out waiting for certificate: %s", certPath)
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+
+	caCert, err := inst.fs.ReadFile(certPath)
+	if err != nil {
+		return fmt.Errorf("read TLS certificate: %w", err)
+	}
+	tlsCfg, err := healthTLSConfig(caCert, skipHostname)
+	if err != nil {
+		return fmt.Errorf("parse TLS certificate %s: %w", certPath, err)
+	}
+	client := &http.Client{
+		Timeout:   2 * time.Second,
+		Transport: &http.Transport{TLSClientConfig: tlsCfg},
+	}
+	return system.WaitForHealth(ctx, client, url, timeout)
+}
+
+func healthTLSConfig(caCert []byte, skipHostname bool) (*tls.Config, error) {
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("no certificates found")
+	}
+
+	tlsCfg := certs.SecureTLSConfig(nil)
+	tlsCfg.RootCAs = pool
+	if skipHostname {
+		cert, err := parseCertPEM(caCert)
+		if err != nil {
+			return nil, err
+		}
+		serverName, err := healthServerName(cert)
+		if err != nil {
+			return nil, err
+		}
+		// A non-empty ServerName prevents net/http from substituting the URL
+		// hostname. Standard TLS verification remains enabled against an identity
+		// declared by the installed certificate and the pinned certificate pool.
+		tlsCfg.ServerName = serverName
+	}
+	return tlsCfg, nil
+}
+
+func healthServerName(cert *x509.Certificate) (string, error) {
+	for _, dnsName := range cert.DNSNames {
+		candidate := dnsName
+		if strings.HasPrefix(candidate, "*.") {
+			candidate = "health-check." + strings.TrimPrefix(candidate, "*.")
+		}
+		if err := cert.VerifyHostname(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	for _, ip := range cert.IPAddresses {
+		candidate := ip.String()
+		if err := cert.VerifyHostname(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("certificate has no usable DNS or IP subject alternative name")
+}
+
+func validateInitConfig(cfg *Config) error {
+	if err := ValidateInitUsername(cfg.InitUser); err != nil {
+		return fmt.Errorf("invalid username %q: %w", cfg.InitUser, err)
+	}
+	if cfg.InitPasswordSet || cfg.InitPassword != "" {
+		if err := ValidateInitPassword(cfg.InitPassword); err != nil {
+			return fmt.Errorf("invalid password: %w", err)
+		}
+	}
+	return nil
+}
+
+func (inst *Installer) initialize(ctx context.Context, cfg *Config) error {
+	slog.Info("initializing registry", "data-dir", cfg.DataDir)
+
+	storageDir := filepath.Join(cfg.DataDir, "storage")
+	for _, dir := range []string{cfg.DataDir, storageDir} {
+		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
+			return fmt.Errorf("create directory %s: %w", dir, err)
+		}
+	}
+
+	if cfg.ConfigPath != "" {
+		slog.Debug("resolving database from configuration file", "config", cfg.ConfigPath)
+	}
+	dbPath, runtimeCfg, err := resolveInitDatabase(cfg)
+	if err != nil {
+		return err
+	}
+	slog.Debug("database path resolved", "path", dbPath)
+
+	db, err := dbcore.Setup(ctx, dbPath)
+	if err != nil {
+		return fmt.Errorf("database setup: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	hasUsers, err := bootstrap.HasUsers(ctx, db)
+	if err != nil {
+		return err
+	}
+	if hasUsers {
+		if cfg.InitPasswordSet || cfg.InitPassword != "" {
+			credPath := filepath.Join(cfg.DataDir, "auth", "admin-password")
+			slog.Warn("registry already initialized; -init-password-stdin was ignored — existing credentials are unchanged",
+				"credentials", credPath)
+		}
+		slog.Info("initial administrator already provisioned")
+		slog.Info("registry initialization complete", "data-dir", cfg.DataDir, "database", dbPath)
+		return nil
+	}
+
+	if runtimeCfg != nil && !slices.Contains(runtimeCfg.SuperUsers, cfg.InitUser) {
+		return fmt.Errorf("initial username %q is not listed in SUPER_USERS", cfg.InitUser)
+	}
+
+	password, err := inst.prepareInitialPassword(cfg)
+	if err != nil {
+		return err
+	}
+	credentialPath := filepath.Join(cfg.DataDir, "auth", "admin-password")
+
+	created, err := bootstrap.AdminUser(ctx, db, cfg.InitUser, password)
+	if err != nil {
+		return fmt.Errorf("create initial administrator: %w", err)
+	}
+	if !created {
+		return fmt.Errorf("initial administrator was created concurrently; credentials were not changed")
+	}
+
+	slog.Info("registry initialization complete",
+		"data-dir", cfg.DataDir,
+		"database", dbPath,
+		"admin-user", cfg.InitUser,
+		"credential", credentialPath,
+	)
+	return nil
+}
+
+func resolveInitDatabase(cfg *Config) (string, *config.Config, error) {
+	dbPath := filepath.Join(cfg.DataDir, "quay.db")
+	if cfg.ConfigPath == "" {
+		return dbPath, nil, nil
+	}
+
+	hostConfigPath, err := hostDataPath(cfg.DataDir, cfg.ConfigPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve config path: %w", err)
+	}
+	resolved, err := config.Resolve(hostConfigPath, cfg.DataDir, cfg.Hostname)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve config: %w", err)
+	}
+	dbPath, err = hostDataPath(cfg.DataDir, resolved.DBPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve database path: %w", err)
+	}
+	return dbPath, resolved.Config, nil
+}
+
+func hostDataPath(dataDir, path string) (string, error) {
+	if path == "/data" {
+		return dataDir, nil
+	}
+	if relative, ok := strings.CutPrefix(path, "/data/"); ok {
+		cleaned := filepath.Clean(relative)
+		if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+			return "", fmt.Errorf("path %q escapes /data", path)
+		}
+		return filepath.Join(dataDir, cleaned), nil
+	}
+	return path, nil
+}
+
+func (inst *Installer) prepareInitialPassword(cfg *Config) (string, error) {
+	authDir := filepath.Join(cfg.DataDir, "auth")
+	if err := inst.secureAuthDir(authDir); err != nil {
+		return "", err
+	}
+
+	passwordPath := filepath.Join(authDir, "admin-password")
+	info, err := inst.fs.Lstat(passwordPath)
+	switch {
+	case err == nil && !info.Mode().IsRegular():
+		return "", fmt.Errorf("credential destination %s is not a regular file", passwordPath)
+	case err != nil && !errors.Is(err, os.ErrNotExist):
+		return "", fmt.Errorf("inspect credential destination: %w", err)
+	}
+
+	provided := cfg.InitPasswordSet || cfg.InitPassword != ""
+	if err == nil && !provided {
+		if info.Mode().Perm() != 0o600 {
+			return "", fmt.Errorf("existing credential file %s has unsafe permissions %04o", passwordPath, info.Mode().Perm())
+		}
+		data, readErr := inst.fs.ReadFile(passwordPath)
+		if readErr != nil {
+			return "", fmt.Errorf("read existing credential file: %w", readErr)
+		}
+		password := string(data)
+		if validateErr := ValidateInitPassword(password); validateErr != nil {
+			return "", fmt.Errorf("existing credential file is invalid; retry with -init-password-stdin: %w", validateErr)
+		}
+		return password, nil
+	}
+
+	password := cfg.InitPassword
+	if !provided {
+		password = rand.Text()
+	}
+	if err := ValidateInitPassword(password); err != nil {
+		return "", fmt.Errorf("invalid password: %w", err)
+	}
+	if err := inst.atomicWriteCredential(authDir, passwordPath, []byte(password)); err != nil {
+		return "", err
+	}
+	return password, nil
+}
+
+func (inst *Installer) secureAuthDir(authDir string) error {
+	info, err := inst.fs.Lstat(authDir)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if err := inst.fs.MkdirAll(authDir, 0o700); err != nil {
+			return fmt.Errorf("create auth directory: %w", err)
+		}
+	case err != nil:
+		return fmt.Errorf("inspect auth directory: %w", err)
+	case !info.IsDir():
+		return fmt.Errorf("auth destination %s is not a directory", authDir)
+	}
+	if err := inst.fs.Chmod(authDir, 0o700); err != nil {
+		return fmt.Errorf("secure auth directory: %w", err)
+	}
+	return nil
+}
+
+func (inst *Installer) atomicWriteCredential(dir, destination string, data []byte) (retErr error) {
+	stagingDir, err := inst.fs.MkdirTemp(dir, ".credential-")
+	if err != nil {
+		return fmt.Errorf("create credential staging directory: %w", err)
+	}
+	stagedPath := filepath.Join(stagingDir, "admin-password")
+	defer func() {
+		if err := inst.fs.Remove(stagedPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			retErr = errors.Join(retErr, fmt.Errorf("remove staged credential: %w", err))
+		}
+		if err := inst.fs.Remove(stagingDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+			retErr = errors.Join(retErr, fmt.Errorf("remove credential staging directory: %w", err))
+		}
+	}()
+	if err := inst.fs.Chmod(stagingDir, 0o700); err != nil {
+		return fmt.Errorf("secure credential staging directory: %w", err)
+	}
+	if err := inst.fs.WriteFile(stagedPath, data, 0o600); err != nil {
+		return fmt.Errorf("stage credential: %w", err)
+	}
+	if err := inst.fs.Chmod(stagedPath, 0o600); err != nil {
+		return fmt.Errorf("secure staged credential: %w", err)
+	}
+	if err := inst.fs.Rename(stagedPath, destination); err != nil {
+		return fmt.Errorf("install credential: %w", err)
+	}
+	return nil
+}
+
+func (inst *Installer) dumpContainerLogs(ctx context.Context) {
+	slog.Info("dumping container logs for diagnostics")
+	_ = inst.runner.Run(ctx, "podman", "logs", quadletServiceName)
+	_ = inst.runner.Run(ctx, "systemctl", "status", quadletServiceName)
+}
+
+// ValidateSSLFlags checks that -ssl-cert and -ssl-key are either both provided
+// or both absent. Returns an error if only one is set.
+func ValidateSSLFlags(sslCert, sslKey string) error {
+	if (sslCert == "") != (sslKey == "") {
+		return fmt.Errorf("-ssl-cert and -ssl-key must both be provided")
+	}
+	return nil
+}
+
+// copyUserTLS validates and copies user-provided TLS cert/key into the data
+// directory so the serve process uses them instead of auto-generating.
+func (inst *Installer) copyUserTLS(cfg *Config) error {
+	certData, err := inst.fs.ReadFile(cfg.SSLCert)
+	if err != nil {
+		return fmt.Errorf("read certificate: %w", err)
+	}
+	keyData, err := inst.fs.ReadFile(cfg.SSLKey)
+	if err != nil {
+		return fmt.Errorf("read key: %w", err)
+	}
+
+	if _, err := tls.X509KeyPair(certData, keyData); err != nil {
+		return fmt.Errorf("certificate/key pair invalid: %w", err)
+	}
+
+	if !cfg.SSLSkipHostnameVerification {
+		cert, err := parseCertPEM(certData)
+		if err != nil {
+			return fmt.Errorf("parse certificate: %w", err)
+		}
+		if err := verifyCertHostname(cert, cfg.Hostname); err != nil {
+			return fmt.Errorf("certificate hostname check failed (use -ssl-skip-hostname-verification to override): %w", err)
+		}
+	}
+
+	if err := inst.replaceTLSFiles(cfg.DataDir, certData, keyData); err != nil {
+		return err
+	}
+	// rootCA.pem only describes a generated ssl.cert.
+	if err := inst.fs.Remove(filepath.Join(cfg.DataDir, "rootCA.pem")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove generated CA: %w", err)
+	}
+
+	certDst := filepath.Join(cfg.DataDir, "ssl.cert")
+	keyDst := filepath.Join(cfg.DataDir, "ssl.key")
+	slog.Info("user-provided TLS certificate installed", "cert", certDst, "key", keyDst)
+	return nil
+}
+
+type tlsDestination struct {
+	path       string
+	backupPath string
+	info       os.FileInfo
+}
+
+func (inst *Installer) replaceTLSFiles(dataDir string, certData, keyData []byte) (retErr error) {
+	destinations := []tlsDestination{
+		{path: filepath.Join(dataDir, "ssl.cert")},
+		{path: filepath.Join(dataDir, "ssl.key")},
+	}
+	if err := inst.inspectTLSDestinations(destinations); err != nil {
+		return err
+	}
+
+	stagingDir, err := inst.fs.MkdirTemp(dataDir, ".tls-update-")
+	if err != nil {
+		return fmt.Errorf("create TLS staging directory: %w", err)
+	}
+
+	stagedPaths := []string{
+		filepath.Join(stagingDir, "ssl.cert"),
+		filepath.Join(stagingDir, "ssl.key"),
+	}
+	cleanupPaths := append([]string(nil), stagedPaths...)
+	defer func() {
+		retErr = errors.Join(retErr, inst.cleanupTLSStaging(stagingDir, cleanupPaths))
+	}()
+
+	if err := inst.stageTLSFiles(stagedPaths, destinations, [][]byte{certData, keyData}); err != nil {
+		return err
+	}
+
+	for i := range destinations {
+		if destinations[i].info == nil {
+			continue
+		}
+		destinations[i].backupPath = filepath.Join(stagingDir, filepath.Base(destinations[i].path)+".rollback")
+		cleanupPaths = append(cleanupPaths, destinations[i].backupPath)
+	}
+
+	if err := inst.preserveTLSDestinations(destinations); err != nil {
+		return err
+	}
+	return inst.commitTLSFiles(stagedPaths, destinations)
+}
+
+func (inst *Installer) inspectTLSDestinations(destinations []tlsDestination) error {
+	for i := range destinations {
+		info, _, err := inst.regularDestination(destinations[i].path)
+		if err != nil {
+			return err
+		}
+		destinations[i].info = info
+	}
+	return nil
+}
+
+func (inst *Installer) stageTLSFiles(stagedPaths []string, destinations []tlsDestination, contents [][]byte) error {
+	for i, data := range contents {
+		if err := inst.fs.WriteFile(stagedPaths[i], data, 0o600); err != nil {
+			return fmt.Errorf("stage %s: %w", filepath.Base(destinations[i].path), err)
+		}
+		if err := inst.fs.Chmod(stagedPaths[i], 0o600); err != nil {
+			return fmt.Errorf("secure staged %s: %w", filepath.Base(destinations[i].path), err)
+		}
+	}
+	return nil
+}
+
+func (inst *Installer) preserveTLSDestinations(destinations []tlsDestination) error {
+	for _, destination := range destinations {
+		if destination.info == nil {
+			continue
+		}
+		if err := inst.ensureDestinationUnchanged(destination); err != nil {
+			return err
+		}
+		if err := inst.fs.Link(destination.path, destination.backupPath); err != nil {
+			return fmt.Errorf("preserve existing %s: %w", filepath.Base(destination.path), err)
+		}
+	}
+	return nil
+}
+
+func (inst *Installer) commitTLSFiles(stagedPaths []string, destinations []tlsDestination) error {
+	replaced := false
+	for i := range destinations {
+		if err := inst.ensureDestinationUnchanged(destinations[i]); err != nil {
+			if replaced {
+				return errors.Join(err, inst.restoreTLSDestinations(destinations))
+			}
+			return err
+		}
+		if err := inst.fs.Rename(stagedPaths[i], destinations[i].path); err != nil {
+			rollbackErr := inst.restoreTLSDestinations(destinations)
+			return errors.Join(fmt.Errorf("replace %s: %w", filepath.Base(destinations[i].path), err), rollbackErr)
+		}
+		replaced = true
+	}
+	return nil
+}
+
+func (inst *Installer) cleanupTLSStaging(stagingDir string, paths []string) error {
+	var cleanupErr error
+	for _, path := range paths {
+		if err := inst.fs.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("remove staged TLS file %s: %w", path, err))
+		}
+	}
+	if err := inst.fs.Remove(stagingDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		cleanupErr = errors.Join(cleanupErr, fmt.Errorf("remove TLS staging directory: %w", err))
+	}
+	return cleanupErr
+}
+
+func (inst *Installer) regularDestination(path string) (info os.FileInfo, exists bool, err error) {
+	info, err = inst.fs.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect TLS destination %s: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, false, fmt.Errorf("TLS destination %s is not a regular file", path)
+	}
+	return info, true, nil
+}
+
+func (inst *Installer) ensureDestinationUnchanged(destination tlsDestination) error {
+	info, exists, err := inst.regularDestination(destination.path)
+	if err != nil {
+		return err
+	}
+	if destination.info == nil {
+		if exists {
+			return fmt.Errorf("TLS destination %s appeared during replacement", destination.path)
+		}
+		return nil
+	}
+	if !exists || !os.SameFile(destination.info, info) {
+		return fmt.Errorf("TLS destination %s changed during replacement", destination.path)
+	}
+	return nil
+}
+
+func (inst *Installer) restoreTLSDestinations(destinations []tlsDestination) error {
+	var rollbackErr error
+	for _, destination := range destinations {
+		if destination.info == nil {
+			if err := inst.fs.Remove(destination.path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				rollbackErr = errors.Join(rollbackErr, fmt.Errorf("remove partial %s: %w", destination.path, err))
+			}
+			continue
+		}
+		if err := inst.fs.Rename(destination.backupPath, destination.path); err != nil {
+			rollbackErr = errors.Join(rollbackErr, fmt.Errorf("restore %s: %w", destination.path, err))
+		}
+	}
+	if rollbackErr != nil {
+		return fmt.Errorf("rollback TLS replacement: %w", rollbackErr)
+	}
+	return nil
+}
+
+func parseCertPEM(data []byte) (*x509.Certificate, error) {
+	var block *pem.Block
+	rest := data
+	for {
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			return nil, fmt.Errorf("no CERTIFICATE block found in PEM data")
+		}
+		if block.Type == "CERTIFICATE" {
+			break
+		}
+	}
+	return x509.ParseCertificate(block.Bytes)
+}
+
+func verifyCertHostname(cert *x509.Certificate, hostname string) error {
+	if ip := net.ParseIP(hostname); ip != nil {
+		for _, certIP := range cert.IPAddresses {
+			if certIP.Equal(ip) {
+				return nil
+			}
+		}
+		return fmt.Errorf("certificate does not contain IP SAN for %s", hostname)
+	}
+	if err := cert.VerifyHostname(hostname); err != nil {
+		return fmt.Errorf("hostname %q not in certificate SANs: %w", hostname, err)
+	}
+	return nil
+}

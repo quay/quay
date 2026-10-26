@@ -6,6 +6,8 @@
   margin: 20px;
 }
 
-.pf-v6-theme-dark {
-  --pf-v6-chart-global--label--Fill: var(--pf-t--global--text--color--brand--hover);
+.usage-logs-legend-container {
+  overflow-y: auto;
+  max-height: 200px;
+  width: 1200px;
 }

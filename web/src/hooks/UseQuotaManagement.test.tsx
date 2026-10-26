@@ -82,6 +82,13 @@ describe('UseQuotaManagement', () => {
       expect(fetchOrganizationQuota).not.toHaveBeenCalled();
     });
 
+    it('does not fetch when disabled, even for viewMode=self', () => {
+      renderHook(() => useFetchOrganizationQuota('', 'self', false), {
+        wrapper,
+      });
+      expect(fetchOrganizationQuota).not.toHaveBeenCalled();
+    });
+
     it('is enabled when viewMode is "self" even with empty orgName', async () => {
       vi.mocked(fetchOrganizationQuota).mockResolvedValueOnce([mockQuota]);
       const {result} = renderHook(() => useFetchOrganizationQuota('', 'self'), {

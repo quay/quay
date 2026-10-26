@@ -7,6 +7,7 @@ import (
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/autoprune"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/bitbucketbuildtrigger"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/buildmanager"
+	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/cache"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/database"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/distributedstorage"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/elasticsearch"
@@ -164,5 +165,12 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["AutoPrune"] = newAutoPruneFieldGroup
+
+	newDataModelCacheConfigGroup, err := cache.NewCacheFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["ModelCacheConfig"] = newDataModelCacheConfigGroup
+
 	return newConfig, nil
 }

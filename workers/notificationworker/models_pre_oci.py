@@ -1,7 +1,7 @@
 import json
 
 from data import model
-from data.database import RepositoryNotification
+from data.database import NamespaceNotification, RepositoryNotification
 from workers.notificationworker.models_interface import (
     Notification,
     NotificationWorkerDataInterface,
@@ -22,6 +22,22 @@ def notification(notification_row):
         repository=Repository(
             notification_row.repository.namespace_user.username, notification_row.repository.name
         ),
+    )
+
+
+def namespace_notification_to_tuple(notification_row):
+    """
+    Converts a NamespaceNotification row into a Notification namedtuple.
+    Uses Repository(namespace_name, None) so existing notification methods
+    that access .repository.namespace_name work without modification.
+    """
+    return Notification(
+        uuid=notification_row.uuid,
+        event_name=NamespaceNotification.event.get_name(notification_row.event_id),
+        method_name=NamespaceNotification.method.get_name(notification_row.method_id),
+        event_config_dict=json.loads(notification_row.event_config_json or "{}"),
+        method_config_dict=json.loads(notification_row.config_json or "{}"),
+        repository=Repository(notification_row.namespace.username, None),
     )
 
 
@@ -60,6 +76,24 @@ class PreOCIModel(NotificationWorkerDataInterface):
     def user_has_local_notifications(self, target_username):
         user = model.user.get_namespace_user(target_username)
         return bool(list(model.notification.list_notifications(user)))
+
+    def get_enabled_namespace_notification(self, notification_uuid):
+        try:
+            notification_row = model.notification.get_enabled_namespace_notification(
+                notification_uuid
+            )
+        except model.InvalidNotificationException:
+            return None
+
+        return namespace_notification_to_tuple(notification_row)
+
+    def reset_namespace_notification_failures(self, notif):
+        model.notification.reset_namespace_notification_number_of_failures(
+            notif.repository.namespace_name, notif.uuid
+        )
+
+    def increment_namespace_notification_failure_count(self, notif):
+        model.notification.increment_namespace_notification_failure_count(notif.uuid)
 
 
 pre_oci_model = PreOCIModel()

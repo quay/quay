@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -16,6 +14,39 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
+
+
+class TestSlackFormatting:
+    def test_bold_tags_have_surrounding_spaces(self):
+        method = SlackMethod()
+        html = (
+            "Namespace <b>quayqe</b> storage usage has\n" "<b>exceeded</b> its quota limit (110%)."
+        )
+        result = method.format_for_slack(html)
+        assert "has *exceeded*" in result
+        assert "has*exceeded*" not in result
+
+    def test_bold_namespace_has_surrounding_spaces(self):
+        method = SlackMethod()
+        html = "Namespace <b>quayqe</b> storage usage has reached\n<b>70%</b> of its quota limit."
+        result = method.format_for_slack(html)
+        assert "*quayqe*" in result
+        assert "reached *70%*" in result
+        assert "reached*70%*" not in result
+
+    def test_br_tags_become_newlines(self):
+        method = SlackMethod()
+        html = "line one<br>line two"
+        result = method.format_for_slack(html)
+        assert result == "line one\nline two"
+
+    def test_existing_templates_unchanged(self):
+        method = SlackMethod()
+        html = '<a href="https://quay.io">link</a> and <i>italic</i>'
+        result = method.format_for_slack(html)
+        assert "<https://quay.io|link>" in result
+        assert "_italic_" in result
 
 
 def assert_validated(method, method_config, error_message, namespace_name, repo_name):

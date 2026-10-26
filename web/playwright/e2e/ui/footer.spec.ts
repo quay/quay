@@ -1,39 +1,55 @@
 import {test, expect} from '../../fixtures';
 
 test.describe('Footer', {tag: ['@ui']}, () => {
-  test('renders footer structure and documentation link', async ({
+  test('renders footer when footer items are configured', async ({
     authenticatedPage,
     quayConfig,
   }) => {
-    await authenticatedPage.goto('/organization');
+    const serverHostname = quayConfig?.config?.SERVER_HOSTNAME as
+      | string
+      | undefined;
+    const isQuayIO =
+      serverHostname === 'quay.io' || serverHostname === 'stage.quay.io';
+    const hasFooterLinks = !!(
+      quayConfig?.config?.FOOTER_LINKS?.TERMS_OF_SERVICE_URL ||
+      quayConfig?.config?.FOOTER_LINKS?.PRIVACY_POLICY_URL ||
+      quayConfig?.config?.FOOTER_LINKS?.SECURITY_URL ||
+      quayConfig?.config?.FOOTER_LINKS?.ABOUT_URL ||
+      quayConfig?.config?.BRANDING?.footer_img ||
+      quayConfig?.config?.CONTACT_INFO?.length
+    );
+    test.skip(
+      !isQuayIO && !hasFooterLinks,
+      'No footer items configured in this environment',
+    );
 
+    await authenticatedPage.goto('/organization');
     await expect(authenticatedPage.locator('#quay-footer')).toBeVisible();
     await expect(
       authenticatedPage.locator('.quay-footer-container'),
     ).toBeVisible();
     await expect(authenticatedPage.locator('.quay-footer-list')).toBeVisible();
-
-    if (quayConfig?.config?.DOCUMENTATION_ROOT) {
-      const docLink = authenticatedPage
-        .locator('.quay-footer-list')
-        .getByRole('link', {name: 'Documentation'});
-      await expect(docLink).toBeVisible();
-      await expect(docLink).toHaveAttribute(
-        'href',
-        quayConfig.config.DOCUMENTATION_ROOT as string,
-      );
-      await expect(docLink).toHaveAttribute('target', '_blank');
-      await expect(docLink).toHaveAttribute('rel', 'noopener noreferrer');
-    }
-
-    if (quayConfig?.version_number) {
-      await expect(
-        authenticatedPage.locator('.quay-footer-version'),
-      ).toContainText('Quay');
-    }
   });
 
-  test('footer is visible on multiple pages', async ({authenticatedPage}) => {
+  test('footer is visible on multiple pages when configured', async ({
+    authenticatedPage,
+    quayConfig,
+  }) => {
+    const serverHostname = quayConfig?.config?.SERVER_HOSTNAME as
+      | string
+      | undefined;
+    const isQuayIO =
+      serverHostname === 'quay.io' || serverHostname === 'stage.quay.io';
+    const hasFooterLinks = !!(
+      quayConfig?.config?.FOOTER_LINKS?.TERMS_OF_SERVICE_URL ||
+      quayConfig?.config?.BRANDING?.footer_img ||
+      quayConfig?.config?.CONTACT_INFO?.length
+    );
+    test.skip(
+      !isQuayIO && !hasFooterLinks,
+      'No footer items configured in this environment',
+    );
+
     await authenticatedPage.goto('/organization');
     await expect(authenticatedPage.locator('#quay-footer')).toBeVisible();
 

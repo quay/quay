@@ -24,6 +24,36 @@ runs:
           fi
         done
 
+    - name: Collect build manager diagnostics
+      if: always()
+      shell: bash
+      run: |
+        if docker ps -a --format '{{.Names}}' | grep -q "^quay-quay$"; then
+          echo "Collecting build manager diagnostics..."
+
+          # Build-related log lines
+          docker logs quay-quay 2>&1 | grep -iE "build|executor|grpc|popen|builder" \
+            > logs/quay-build-manager.log 2>&1 || true
+
+          # Redis build queue state
+          docker exec quay-redis redis-cli KEYS 'buildman/*' \
+            > logs/redis-build-keys.log 2>&1 || true
+          docker exec quay-redis redis-cli KEYS 'dockerfile_build_queue*' \
+            >> logs/redis-build-keys.log 2>&1 || true
+
+          # Process list inside Quay container
+          docker exec quay-quay ps aux \
+            > logs/quay-processes.log 2>&1 || true
+
+          # Docker socket accessibility
+          docker exec quay-quay bash -c 'ls -la /opt/docker.sock /run/docker.sock /var/run/docker.sock 2>&1; echo "DOCKER_HOST=$DOCKER_HOST"' \
+            > logs/docker-socket-status.log 2>&1 || echo "Docker socket not mounted" > logs/docker-socket-status.log
+
+          # Port listeners
+          docker exec quay-quay bash -c 'ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null' \
+            > logs/quay-ports.log 2>&1 || true
+        fi
+
     - name: Upload logs artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:

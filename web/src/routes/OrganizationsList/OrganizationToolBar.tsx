@@ -13,7 +13,9 @@ import * as React from 'react';
 import {useState} from 'react';
 import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {OrganizationDetail} from 'src/hooks/UseOrganizations';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
+import {OrganizationsTableItem} from './OrganizationsList';
 import {CreateUserModal} from './modals/CreateUserModal';
 
 export function OrganizationToolBar(props: OrganizationToolBarProps) {
@@ -21,29 +23,38 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
     useState<boolean>(false);
   const {canModify} = useSuperuserPermissions();
 
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <>
       <Toolbar>
         <ToolbarContent>
-          <DropdownCheckbox
-            selectedItems={props.selectedOrganization}
-            deSelectAll={props.setSelectedOrganization}
-            allItemsList={props.organizationsList}
-            itemsPerPageList={props.paginatedOrganizationsList}
-            onItemSelect={props.onSelectOrganization}
-          />
+          {props.isAuthenticated !== false && (
+            <DropdownCheckbox
+              selectedItems={props.selectedOrganization}
+              deSelectAll={props.setSelectedOrganization}
+              allItemsList={props.organizationsList}
+              itemsPerPageList={props.paginatedOrganizationsList}
+              onItemSelect={props.onSelectOrganization}
+            />
+          )}
           <FilterInput
             id="orgslist-search-input"
             searchState={props.search}
-            onChange={props.setSearch}
+            onChange={handleSearchChange}
           />
-          <ToolbarButton
-            id="create-organization-button"
-            buttonValue="Create Organization"
-            Modal={props.createOrgModal}
-            isModalOpen={props.isOrganizationModalOpen}
-            setModalOpen={props.setOrganizationModalOpen}
-          />
+          {props.isAuthenticated !== false && (
+            <ToolbarButton
+              id="create-organization-button"
+              buttonValue="Create Organization"
+              Modal={props.createOrgModal}
+              isModalOpen={props.isOrganizationModalOpen}
+              setModalOpen={props.setOrganizationModalOpen}
+            />
+          )}
           {canModify && !props.isExternalAuth && (
             <ToolbarItem>
               <Button
@@ -99,10 +110,10 @@ type OrganizationToolBarProps = {
   isKebabOpen: boolean;
   setKebabOpen: (open) => void;
   kebabItems: React.ReactElement[];
-  selectedOrganization: any[];
+  selectedOrganization: OrganizationsTableItem[];
   deleteKebabIsOpen: boolean;
   deleteModal: object;
-  organizationsList: any[];
+  organizationsList: OrganizationDetail[];
   perPage: number;
   page: number;
   setPage: (pageNumber) => void;
@@ -111,7 +122,8 @@ type OrganizationToolBarProps = {
   search: SearchState;
   setSearch: (searchState) => void;
   setSelectedOrganization: (selectedOrgList) => void;
-  paginatedOrganizationsList: any[];
+  paginatedOrganizationsList: OrganizationDetail[];
   onSelectOrganization: (Org, rowIndex, isSelecting) => void;
   isExternalAuth: boolean;
+  isAuthenticated?: boolean;
 };

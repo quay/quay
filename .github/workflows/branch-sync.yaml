@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -25,21 +25,20 @@ jobs:
       - name: Merge master into release
         env:
           BRANCH_NAME: ${{ vars.BRANCH_SYNC_TARGET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$BRANCH_NAME" ]; then echo "BRANCH_SYNC_TARGET variable is not set" && exit 1; fi
+          if [ -z "$BRANCH_NAME" ] || [ "${BRANCH_NAME,,}" = "none" ]; then echo "BRANCH_SYNC_TARGET is '${BRANCH_NAME:-unset}'; no release branch to sync, skipping" && exit 0; fi
           echo "Syncing master to $BRANCH_NAME"
           git checkout master
           git pull origin master
           MASTER_COMMIT=$(git rev-parse HEAD)
 
-          git fetch origin $BRANCH_NAME
-          git checkout $BRANCH_NAME
-          git pull origin $BRANCH_NAME
+          git fetch origin "$BRANCH_NAME"
+          git checkout "$BRANCH_NAME"
+          git pull origin "$BRANCH_NAME"
           RELEASE_COMMIT=$(git rev-parse HEAD)
-          echo "Rebasing $BRANCH_NAME ($RELEASE_COMMIT) onto master ($MASTER_COMMIT)"
-          git rebase master
-          git push origin $BRANCH_NAME
+          echo "Merging master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
+          git merge --no-edit master
+          git push origin "$BRANCH_NAME"
 
           echo "Merged master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -345,6 +345,34 @@ class TestRepositoryWriteOperationsBlocking:
                 # Should return 403 Unauthorized for write operations
                 resp = conduct_api_call(cl, RepositoryList, "POST", None, repo_data, 403)
 
+    def test_repository_creation_allowed_with_explicit_organization_permission(self, app):
+        """Global readonly status does not override an explicitly granted create permission."""
+        owner = model.user.get_user("randomuser")
+        readonly_user = model.user.get_user("globalreadonlysuperuser")
+        org = model.organization.create_organization(
+            "readonlyscopedrepo", "readonlyscopedrepo@example.com", owner
+        )
+        admins = model.team.create_team("readonlyadmins", org, "admin")
+        model.team.add_user_to_team(readonly_user, admins)
+
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            response = conduct_api_call(
+                cl,
+                RepositoryList,
+                "POST",
+                None,
+                {
+                    "namespace": org.username,
+                    "repository": "scoped-repository",
+                    "visibility": "public",
+                    "description": "",
+                },
+                201,
+            )
+
+        assert response.json["namespace"] == org.username
+        assert response.json["name"] == "scoped-repository"
+
 
 class TestOrganizationReadOperations:
     """Test that organization read operations work correctly for superusers."""
@@ -1002,19 +1030,22 @@ class TestUserAPIGlobalReadOnlySuperuserField:
             "endpoints.api.user.features.SUPER_USERS", FeatureNameValue("SUPER_USERS", True)
         ):
             with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm:
-                # Mock the permission to return True for regular superuser
-                mock_super_perm.return_value.can.return_value = True
+                with patch(
+                    "auth.permissions.usermanager.is_global_readonly_superuser", return_value=False
+                ):
+                    # Mock the permission to return True for regular superuser
+                    mock_super_perm.return_value.can.return_value = True
 
-                with client_with_identity("devtable", app) as cl:
-                    resp = conduct_api_call(cl, User, "GET", None, None, 200)
-                    assert resp.status_code == 200
+                    with client_with_identity("devtable", app) as cl:
+                        resp = conduct_api_call(cl, User, "GET", None, None, 200)
+                        assert resp.status_code == 200
 
-                    # Regular superuser should see super_user field
-                    assert "super_user" in resp.json
-                    assert resp.json["super_user"] is True
+                        # Regular superuser should see super_user field
+                        assert "super_user" in resp.json
+                        assert resp.json["super_user"] is True
 
-                    # But should NOT see global_readonly_super_user field since they're not one
-                    assert "global_readonly_super_user" not in resp.json
+                        # But should NOT see global_readonly_super_user field since they're not one
+                        assert "global_readonly_super_user" not in resp.json
 
     def test_regular_user_does_not_see_global_readonly_field(self, app):
         """

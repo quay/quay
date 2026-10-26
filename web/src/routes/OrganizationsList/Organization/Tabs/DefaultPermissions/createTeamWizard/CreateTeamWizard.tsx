@@ -48,7 +48,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const {addAlert} = useUI();
 
   // Fetching repos
-  const {repos} = useRepositories(props.orgName);
+  const {repos} = useRepositories(props.orgName, false);
 
   // Fetch team members
   const {allMembers} = useFetchTeamMembersForOrg(props.orgName, props.teamName);
@@ -147,10 +147,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
         aria-label="CreateTeam"
         variant={ModalVariant.large}
         isOpen={props.isTeamWizardOpen}
-        onClose={() => {
-          props.handleWizardToggle();
-          setSelectedRepoPerms([]);
-        }}
       >
         <Wizard
           onClose={() => {
@@ -158,7 +154,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
             setSelectedRepoPerms([]);
           }}
           height={600}
-          width={1170}
           header={
             <WizardHeader
               onClose={() => {

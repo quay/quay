@@ -23,6 +23,13 @@ function wrapper({children}: {children: React.ReactNode}) {
   );
 }
 
+function axiosError(status: number) {
+  const err: any = new Error(`Request failed with status ${status}`);
+  err._isAxiosError = true;
+  err.response = {status};
+  return err;
+}
+
 describe('useOrgMirrorExists', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -36,6 +43,54 @@ describe('useOrgMirrorExists', () => {
     const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.isOrgMirrored).toBe(true);
+  });
+
+  it('returns isOrgMirrored=false on 404 (no mirror config)', async () => {
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(axiosError(404));
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.isOrgMirrored).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('returns isOrgMirrored=false on 403 (PROJQUAY-11478: feature flag off)', async () => {
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(axiosError(403));
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.isOrgMirrored).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('returns isOrgMirrored=false on 405 (endpoint not registered)', async () => {
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(axiosError(405));
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.isOrgMirrored).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('returns isOrgMirrored=false on 400 (bad request)', async () => {
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(axiosError(400));
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.isOrgMirrored).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('propagates 5xx errors as query errors', async () => {
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(axiosError(500));
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isOrgMirrored).toBeUndefined();
+  });
+
+  it('propagates network errors (no response) as query errors', async () => {
+    const networkError: any = new Error('Network Error');
+    networkError._isAxiosError = true;
+    vi.mocked(getOrgMirrorConfig).mockRejectedValueOnce(networkError);
+    const {result} = renderHook(() => useOrgMirrorExists('myorg'), {wrapper});
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isOrgMirrored).toBeUndefined();
   });
 
   it('does not fetch when enabled=false', () => {

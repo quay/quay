@@ -1,0 +1,30 @@
+FEATURE_STORAGE_REPLICATION: true
+DISTRIBUTED_STORAGE_CONFIG:
+  us_east:
+    - RadosGWStorage
+    - hostname: garage
+      is_secure: false
+      storage_path: /datastorage/registry
+      access_key: GKe2e0123456789abcdef01234
+      secret_key: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
+      bucket_name: quay-us-east
+      port: 3900
+      signature_version: s3v4
+  eu_west:
+    - RadosGWStorage
+    - hostname: garage
+      is_secure: false
+      storage_path: /datastorage/registry
+      access_key: GKe2e0123456789abcdef01234
+      secret_key: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
+      bucket_name: quay-eu-west
+      port: 3900
+      signature_version: s3v4
+DISTRIBUTED_STORAGE_PREFERENCE:
+  - us_east
+DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS:
+  - us_east
+  - eu_west
+USERFILES_LOCATION: us_east
+LOG_ARCHIVE_LOCATION: us_east
+ACTION_LOG_ARCHIVE_LOCATION: us_east

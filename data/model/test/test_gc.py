@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import random
 import string
 from contextlib import contextmanager
@@ -21,6 +22,7 @@ from data.database import (
     Label,
     Manifest,
     ManifestBlob,
+    ManifestChild,
     ManifestLabel,
     ManifestPullStatistics,
     MediaType,
@@ -38,11 +40,13 @@ from digest.digest_tools import sha256_digest
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
+from image.oci.index import OCIIndexBuilder
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from test.fixtures import *
 from test.helpers import check_transitive_modifications
 from util.bytes import Bytes
+from util.locking import GlobalLock
 
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"
@@ -608,7 +612,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                 has_dependent_uploadedblobs = (
                     UploadedBlob.select()
                     .where(
-                        UploadedBlob == uploadedblob,
+                        UploadedBlob.blob == uploadedblob.blob,
                         UploadedBlob.repository != repo,
                     )
                     .count()
@@ -1304,6 +1308,140 @@ def test_gc_collects_orphaned_blobs_with_placement(default_tag_policy, initializ
     assert not ImageStorage.select().where(ImageStorage.id == normal_blob.id).exists()
 
 
+def test_gc_storage_logs_namespace_and_repo(default_tag_policy, initialized_db):
+    """
+    When namespace and repo_name are provided, garbage_collect_storage emits an
+    info-level log line containing both values for each removed blob.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        orphaned_ids = storage_model.garbage_collect_storage(
+            [orphan.id], namespace="testns", repo_name="testrepo"
+        )
+
+    assert orphan.id in orphaned_ids
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert "testns" in log_msg
+    assert "testrepo" in log_msg
+    assert blob_digest in log_msg
+
+
+def test_gc_storage_no_log_without_namespace(default_tag_policy, initialized_db):
+    """
+    When namespace is not provided, garbage_collect_storage does not emit
+    the audit log line.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        orphaned_ids = storage_model.garbage_collect_storage([orphan.id])
+
+    assert orphan.id in orphaned_ids
+    mock_logger.info.assert_not_called()
+
+
+def test_gc_storage_returns_version_id_from_store(default_tag_policy, initialized_db):
+    """
+    garbage_collect_storage captures the return value of config.store.remove
+    and includes a delete_marker in the log when the storage backend returns
+    a version id.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    fake_version_id = "v-abc123"
+    original_remove = storage.remove
+
+    def patched_remove(locations, path):
+        original_remove(locations, path)
+        return fake_version_id
+
+    import logging
+
+    with mock_patch.object(storage, "remove", side_effect=patched_remove):
+        with mock_patch("data.model.storage.logger") as mock_logger:
+            mock_logger.debug = logging.getLogger().debug
+            mock_logger.warning = logging.getLogger().warning
+
+            storage_model.garbage_collect_storage(
+                [orphan.id], namespace="testns", repo_name="testrepo"
+            )
+
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert fake_version_id in log_msg
+    assert "delete_marker" in log_msg
+
+
+def test_gc_storage_omits_delete_marker_when_none(default_tag_policy, initialized_db):
+    """
+    When the storage backend returns None (non-versioned bucket), the log
+    line should not include a delete_marker fragment.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    with mock_patch("data.model.storage.logger") as mock_logger:
+        mock_logger.debug = logging.getLogger().debug
+        mock_logger.warning = logging.getLogger().warning
+
+        storage_model.garbage_collect_storage([orphan.id], namespace="testns", repo_name="testrepo")
+
+    mock_logger.info.assert_called()
+    log_msg = mock_logger.info.call_args[0][0] % tuple(mock_logger.info.call_args[0][1:])
+    assert "delete_marker" not in log_msg
+
+
 def test_gc_proxy_cache_expired_temp_tag(default_tag_policy, initialized_db):
     """
     Test the proxy cache race condition scenario:
@@ -1562,3 +1700,274 @@ def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, i
         assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
     finally:
         storage_model.GlobalLock = original_lock
+
+
+def test_gc_manifest_list_with_children(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository with a manifest list correctly removes all
+    manifests and their children.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create three child manifests
+    _, build1 = create_manifest_for_testing(repo, differentiation_field="amd64")
+    _, build2 = create_manifest_for_testing(repo, differentiation_field="ppc64le")
+    _, build3 = create_manifest_for_testing(repo, differentiation_field="arm64")
+
+    # create index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(build1, architecture="amd64", os="Linux")
+    index_builder.add_manifest(build2, architecture="ppc64le", os="Linux")
+    index_builder.add_manifest(build3, architecture="arm64", os="Linux")
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+
+    # tag the manifest list
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # verify manifest child rows exist
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 3
+
+    # purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    # verify eveything's cleaned up
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 0
+    assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+
+
+def test_gc_manifest_with_labels(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository correctly GCs all labels associated with the manifests.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+    manifest, _ = create_manifest_for_testing(repo, differentiation_field="labeled")
+
+    # add labels to the manifest
+    model.oci.label.create_manifest_label(
+        manifest.id, "maintainer", "devtable@devtable.com", "manifest"
+    )
+    model.oci.label.create_manifest_label(manifest.id, "tester", "test@devtable.com", "manifest")
+    model.oci.label.create_manifest_label(manifest.id, "version", "0.0.1", "manifest")
+
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 3
+    pre_gc_label_count = Label.select().count()
+
+    # Purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 0
+    assert Label.select().count() < pre_gc_label_count
+
+
+def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db):
+    """
+    Tests that purging a repository with manifest lists does not end in an infinite loop when
+    child manifests have lower ID than their parent.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+
+    built_manifests = []
+    child_manifests = []
+
+    # create a massive manifest list that contains 15 child image
+    # Quay's batching process uses up to 10 manifests in a batch
+    test_architectures = [
+        "amd64",
+        "386",
+        "arm64",
+        "arm",
+        "ppc64le",
+        "ppc64",
+        "s390x",
+        "mips64le",
+        "mips64",
+        "mipsle",
+        "mips",
+        "riscv64",
+        "loong64",
+        "sparc64",
+        "wasm",
+    ]
+    for arch in test_architectures:
+        child, build = create_manifest_for_testing(repo, differentiation_field=arch)
+        built_manifests.append(build)
+        child_manifests.append(child)
+
+    index_builder = OCIIndexBuilder()
+    for i, build in enumerate(built_manifests):
+        index_builder.add_manifest(build, architecture=test_architectures[i], os="Linux")
+
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # check if children have lower IDs than the parent
+    for child in child_manifests:
+        assert child.id < created.manifest.id
+
+    assert model.gc.purge_repository(repo, force=True)
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+
+
+def test_gc_shared_label_survives_partial_gc(default_tag_policy, initialized_db):
+    """
+    Tests that labels shared across multiple images survive the GC process and are not
+    deleted during garbage collection.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    manifest1, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared2")
+
+    model.oci.tag.retarget_tag("tag1", manifest1)
+    model.oci.tag.retarget_tag("tag2", manifest2)
+
+    # add same label to both manifests
+    label = Label.create(
+        key="shared-key",
+        value="shared-value",
+        source_type=Label.source_type.get_id("manifest"),
+        media_type=Label.media_type.get_id("text/plain"),
+    )
+    ManifestLabel.create(manifest=manifest1.id, label=label, repository=repo)
+    ManifestLabel.create(manifest=manifest2.id, label=label, repository=repo)
+
+    # delete tag1, GC manifest1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # verify that label survived
+    assert Label.select().where(Label.id == label.id).exists()
+    assert not ManifestLabel.select().where(ManifestLabel.manifest == manifest1.id).exists()
+    assert ManifestLabel.select().where(ManifestLabel.manifest == manifest2.id).exists()
+
+
+def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialized_db):
+    """
+    Tests that child images still in use by other manifests are not deleted when one of the
+    parent's manifest list gets GCed.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create child manifests
+    child_shared, build_shared = create_manifest_for_testing(repo, differentiation_field="shared")
+    child_only1, build_only1 = create_manifest_for_testing(repo, differentiation_field="only1")
+    child_only2, build_only2 = create_manifest_for_testing(repo, differentiation_field="only2")
+
+    # create two different manifest lists that share the child image
+    index_builder1 = OCIIndexBuilder()
+    index_builder1.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder1.add_manifest(build_only1, architecture="arm64", os="linux")
+    list1 = index_builder1.build()
+
+    index_builder2 = OCIIndexBuilder()
+    index_builder2.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder2.add_manifest(build_only2, architecture="s390x", os="linux")
+    list2 = index_builder2.build()
+
+    created1 = model.oci.manifest.get_or_create_manifest(repo, list1, storage)
+    created2 = model.oci.manifest.get_or_create_manifest(repo, list2, storage)
+    assert created1
+    assert created2
+
+    model.oci.tag.retarget_tag("tag1", created1.manifest)
+    model.oci.tag.retarget_tag("tag2", created2.manifest)
+
+    # delete tag 1, GC manifest 1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", perform_gc=True, expect_gc=True)
+
+    # shared child must survive
+    assert Manifest.select().where(Manifest.id == child_shared.id).exists()
+
+    # child_only1 should be deleted
+    assert not Manifest.select().where(Manifest.id == child_only1.id).exists()
+
+    # child_only2 must survive
+    assert Manifest.select().where(Manifest.id == child_only2.id).exists()
+
+
+def test_garbage_collect_storage_acquires_blob_delete_lock_with_gc_role(
+    default_tag_policy, initialized_db, monkeypatch
+):
+    # End-to-end integration test for the lock-role feature.
+    #
+    # When repositorygcworker calls GlobalLock.configure(config, lock_role=
+    # "repositorygcworker") at startup, _process_lock_role is set on the class.
+    # Every subsequent GlobalLock("BLOB_DELETE_<digest>") instance must embed
+    # that role as the first segment of _holder_id so that waiting registry
+    # workers can distinguish a GC holder (must 503) from a registry holder
+    # (safe to proceed).
+    #
+    # This test verifies the full path:
+    #   configure(lock_role=...) → GlobalLock.__init__ → _holder_id prefix →
+    #   observed by a spy before the lock is released.
+    import functools
+
+    import fakeredis
+    import redis_lock
+
+    # initialized_db permanently replaces data.model.storage.GlobalLock with a
+    # no-op MockGlobalLock (see test/fixtures.py) the first time any test uses
+    # it.  Restore the real GlobalLock on the storage module so that
+    # garbage_collect_storage actually calls GlobalLock.__init__ and our spy
+    # fires.  We also give it a fakeredis backend so the lock acquisition
+    # succeeds (without real Redis the LockNotAcquiredException path fires and
+    # GC silently skips deletion, giving a false-negative).
+    server = fakeredis.FakeServer()
+    conn = fakeredis.FakeStrictRedis(server=server)
+    monkeypatch.setattr(GlobalLock, "lock_factory", functools.partial(redis_lock.Lock, conn))
+    monkeypatch.setattr(storage_model, "GlobalLock", GlobalLock)
+
+    # Simulate repositorygcworker startup: configure sets the process role.
+    monkeypatch.setattr(GlobalLock, "_process_lock_role", "repositorygcworker")
+
+    # Spy on GlobalLock.__init__ to capture _holder_id for every BLOB_DELETE
+    # lock that GC creates during garbage_collect_storage.
+    holder_ids_seen = []
+    original_init = GlobalLock.__init__
+
+    def spy_init(self, name, *args, **kwargs):
+        original_init(self, name, *args, **kwargs)
+        if name.startswith("BLOB_DELETE_"):
+            holder_ids_seen.append(self._holder_id)
+
+    monkeypatch.setattr(GlobalLock, "__init__", spy_init)
+
+    # Create an orphaned blob with placement — the same pattern used by
+    # test_gc_collects_orphaned_blobs_with_placement.  No ManifestBlob or
+    # UploadedBlob rows reference it, so _is_storage_orphaned returns True and
+    # garbage_collect_storage will attempt to acquire the BLOB_DELETE lock.
+    location = ImageStorageLocation.get(name="local_us")
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    orphan = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=orphan, location=location)
+    storage.put_content(["local_us"], storage.blob_path(blob_digest), blob_content)
+
+    storage_model.garbage_collect_storage([orphan.id])
+
+    assert holder_ids_seen, (
+        "No BLOB_DELETE lock was acquired — either the blob was not recognised as "
+        "orphaned or GlobalLock.lock_factory was not properly patched."
+    )
+    assert all(h.startswith("repositorygcworker:") for h in holder_ids_seen), (
+        f"Expected every BLOB_DELETE holder to start with 'repositorygcworker:', "
+        f"got: {holder_ids_seen}"
+    )

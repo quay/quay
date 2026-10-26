@@ -14,8 +14,33 @@
  * Migrated from: web/cypress/e2e/repository-autopruning.cy.ts (17 tests consolidated to 6)
  */
 
-import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
+import {test, expect, getTestUsers} from '../../fixtures';
+import {ApiClient} from '../../utils/api';
+import {
+  pushImage,
+  pushMultiArchImage,
+  pushUniqueImage,
+} from '../../utils/container';
+
+/**
+ * Creates a Cosign tag-schema `.sig` tag for an image tag
+ * (`sha256-<hex>.sig` pointing at the image digest).
+ */
+async function createCosignSigTag(
+  api: ApiClient,
+  namespace: string,
+  repo: string,
+  imageTag: string,
+): Promise<string> {
+  const tags = await api.getTags(namespace, repo, {specificTag: imageTag});
+  if (tags.tags.length === 0) {
+    throw new Error(`Tag ${imageTag} not found in ${namespace}/${repo}`);
+  }
+  const digest = tags.tags[0].manifest_digest;
+  const sigName = `${digest.replace(':', '-')}.sig`;
+  await api.createTag(namespace, repo, sigName, digest);
+  return sigName;
+}
 
 test.describe(
   'Repository Auto-Prune Policies',
@@ -468,5 +493,365 @@ test.describe(
         authenticatedPage.getByText(/unexpected issue occurred/i),
       ).toBeVisible();
     });
+  },
+);
+
+test.describe(
+  'Repository Auto-Prune Functional Verification',
+  {tag: ['@repository', '@feature:AUTO_PRUNE', '@container']},
+  () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
+    test('repo-level tag-count pruning removes excess tags', async ({api}) => {
+      test.slow();
+      const org = await api.organization('repoprunecnt');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const tagsBefore = await api.raw.getTags(org.name, repo.name);
+      expect(tagsBefore.tags).toHaveLength(2);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(1);
+        expect(tags.tags[0].name).toBe('v2');
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('repo-level time-based pruning removes old tags', async ({api}) => {
+      test.slow();
+      const org = await api.organization('repopruneage');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'creation_date',
+        value: '10s',
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(0);
+      }).toPass({timeout: 180_000, intervals: [10_000]});
+    });
+
+    test('auto-pruning does not affect mirror repos', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunemirror');
+      const normalRepo = await api.repository(org.name, 'normalrepo');
+      const mirrorRepo = await api.repository(org.name, 'mirrorrepo');
+
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.raw.changeRepositoryState(org.name, mirrorRepo.name, 'MIRROR');
+
+      await pushImage(
+        org.name,
+        normalRepo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        normalRepo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      // Normal repo should get pruned
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, normalRepo.name);
+        expect(tags.tags).toHaveLength(1);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+
+      // Mirror repo should retain both tags
+      const mirrorTags = await api.raw.getTags(org.name, mirrorRepo.name);
+      expect(mirrorTags.tags).toHaveLength(2);
+    });
+
+    test('multi-arch image pruning by tag count', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunearch');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushMultiArchImage(
+        org.name,
+        repo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushMultiArchImage(
+        org.name,
+        repo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        const activeNames = tags.tags.map((t) => t.name);
+        expect(activeNames).not.toContain('v1');
+        expect(activeNames).toContain('v2');
+      }).toPass({timeout: 150_000, intervals: [5_000]});
+    });
+
+    test('regex tag pattern limits which tags are pruned', async ({api}) => {
+      test.slow();
+      const org = await api.organization('pruneregex');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'release-1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'release-2',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'dev-1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'dev-2',
+        user.username,
+        user.password,
+      );
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+        tagPattern: '^dev-',
+        tagPatternMatches: true,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        const names = tags.tags.map((t) => t.name).sort();
+        // Both release tags should remain untouched
+        expect(names).toContain('release-1');
+        expect(names).toContain('release-2');
+        // Only the newest dev tag should remain
+        expect(names).toContain('dev-2');
+        expect(names).not.toContain('dev-1');
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('multiple repo-level policies coexist without interference', async ({
+      api,
+    }) => {
+      test.slow();
+      const org = await api.organization('repomulti');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'creation_date',
+        value: '10s',
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(0);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('policy removal stops pruning', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunestop');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const policy = await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      // Wait for pruning to take effect
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(1);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+
+      // Manually delete the policy mid-test
+      await api.raw.deleteOrgAutoPrunePolicy(org.name, policy.uuid);
+
+      // Push new tags — they should not be pruned
+      await pushImage(org.name, repo.name, 'v3', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v4', user.username, user.password);
+
+      // Wait two pruner cycles, tags should remain
+      await new Promise((r) => setTimeout(r, 90_000));
+      const tagsAfter = await api.raw.getTags(org.name, repo.name);
+      const names = tagsAfter.tags.map((t) => t.name).sort();
+      expect(names).toContain('v3');
+      expect(names).toContain('v4');
+    });
+
+    test(
+      'tag-count pruning excludes cosign .sig tags and cascades on prune',
+      {tag: '@PROJQUAY-11682'},
+      async ({api}) => {
+        test.slow();
+        const org = await api.organization('prunesigcnt');
+        const repo = await api.repository(org.name, 'prunetest');
+
+        // Unique digests so each image tag gets a distinct Cosign .sig name
+        await pushUniqueImage(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+        await pushUniqueImage(
+          org.name,
+          repo.name,
+          'v2',
+          user.username,
+          user.password,
+        );
+
+        const sigV1 = await createCosignSigTag(
+          api.raw,
+          org.name,
+          repo.name,
+          'v1',
+        );
+        const sigV2 = await createCosignSigTag(
+          api.raw,
+          org.name,
+          repo.name,
+          'v2',
+        );
+        expect(sigV1).not.toBe(sigV2);
+
+        const tagsBefore = await api.raw.getTags(org.name, repo.name);
+        expect(tagsBefore.tags).toHaveLength(4);
+
+        await api.repoAutoPrunePolicy(org.name, repo.name, {
+          method: 'number_of_tags',
+          value: 1,
+        });
+
+        // Keep-1 only counts image tags: prune v1 (and cascade its .sig), keep v2 + .sig
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          const names = tags.tags.map((t) => t.name);
+          expect(names).toContain('v2');
+          expect(names).toContain(sigV2);
+          expect(names).not.toContain('v1');
+          expect(names).not.toContain(sigV1);
+          expect(tags.tags).toHaveLength(2);
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+      },
+    );
+
+    test(
+      'creation-date pruning does not age-prune cosign .sig tags',
+      {tag: '@PROJQUAY-11682'},
+      async ({api}) => {
+        test.slow();
+        const org = await api.organization('prunesigage');
+        const repo = await api.repository(org.name, 'prunetest');
+
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+        const sigName = await createCosignSigTag(
+          api.raw,
+          org.name,
+          repo.name,
+          'v1',
+        );
+
+        const v1Tags = await api.raw.getTags(org.name, repo.name, {
+          specificTag: 'v1',
+        });
+        const digest = v1Tags.tags[0].manifest_digest;
+
+        // Age both tags past the upcoming 60s policy threshold
+        await new Promise((r) => setTimeout(r, 70_000));
+
+        // Refresh only the image tag so it is young; .sig stays old
+        await api.raw.createTag(org.name, repo.name, 'v1', digest);
+
+        await api.repoAutoPrunePolicy(org.name, repo.name, {
+          method: 'creation_date',
+          value: '60s',
+        });
+
+        // One prune cycle: .sig (~115s) would age-prune without exclusion;
+        // refreshed v1 (~45s) stays under the 60s threshold
+        await new Promise((r) => setTimeout(r, 45_000));
+
+        const tags = await api.raw.getTags(org.name, repo.name);
+        const names = tags.tags.map((t) => t.name);
+        expect(names).toContain('v1');
+        expect(names).toContain(sigName);
+      },
+    );
   },
 );

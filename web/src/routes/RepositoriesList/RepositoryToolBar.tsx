@@ -9,6 +9,11 @@ import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 export function RepositoryToolBar(props: RepositoryToolBarProps) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   const fetchConfirmationModalText = () => {
     if (props.selectedRepoNames.length == 1) {
       return props.selectedRepoNames[0];
@@ -53,9 +58,9 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
         <FilterInput
           id="repositorylist-search-input"
           searchState={props.search}
-          onChange={props.setSearch}
+          onChange={handleSearchChange}
         />
-        {props.showPageButton && (
+        {props.showCreateButton && (
           <ToolbarButton
             id="create-repository-button"
             buttonValue={props.buttonText}
@@ -114,6 +119,7 @@ type RepositoryToolBarProps = {
   total: number;
   currentOrg: string;
   showPageButton: boolean;
+  showCreateButton: boolean;
   buttonText: string;
   pageModal: object;
   isModalOpen: boolean;

@@ -93,6 +93,20 @@ func TestValidateInvalidAuthenticationType(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "AUTHENTICATION_TYPE"), "expected error for invalid AUTHENTICATION_TYPE")
 }
 
+func TestValidatePasswordAuthCacheTTL(t *testing.T) {
+	cfg, err := Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: -1\n"))
+	require.NoError(t, err)
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"), "expected error for negative PASSWORD_AUTH_CACHE_TTL_S")
+
+	for _, value := range []string{"0", "300"} {
+		cfg, err := Parse([]byte(minimalValidYAML + "PASSWORD_AUTH_CACHE_TTL_S: " + value + "\n"))
+		require.NoError(t, err)
+		errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+		assert.False(t, hasFieldError(errs, "PASSWORD_AUTH_CACHE_TTL_S"), "value %s should be accepted", value)
+	}
+}
+
 func TestValidateInvalidTagExpiration(t *testing.T) {
 	yaml := strings.Replace(minimalValidYAML, "DEFAULT_TAG_EXPIRATION: 2w", "DEFAULT_TAG_EXPIRATION: forever", 1)
 	cfg, err := Parse([]byte(yaml))
@@ -202,6 +216,77 @@ TAG_EXPIRATION_OPTIONS:
 	for _, key := range []string{"SECRET_KEY", "DATABASE_SECRET_KEY"} {
 		assert.True(t, hasFieldError(errs, key), "expected required-field error for %s", key)
 	}
+}
+
+func TestValidateSSLProtocolsTLS13Only(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.3 should be valid")
+}
+
+func TestValidateSSLProtocolsBothVersions(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.2
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.2 + TLSv1.3 should be valid")
+}
+
+func TestValidateSSLProtocolsInvalid(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.1
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "SSL_PROTOCOLS"), "TLSv1.1 should be rejected")
+}
+
+func TestValidateSSLProtocolsInvalidMixed(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+  - SSLv3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.True(t, hasFieldError(errs, "SSL_PROTOCOLS"), "SSLv3 should be rejected even with valid TLSv1.3")
+}
+
+func TestValidateSSLProtocolsEmpty(t *testing.T) {
+	cfg, err := Parse([]byte(minimalValidYAML))
+	require.NoError(t, err)
+
+	errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
+	assert.False(t, hasFieldError(errs, "SSL_PROTOCOLS"), "missing SSL_PROTOCOLS should be valid")
+}
+
+func TestSSLProtocolsParsedIntoConfig(t *testing.T) {
+	yaml := minimalValidYAML + `
+SSL_PROTOCOLS:
+  - TLSv1.3
+`
+	cfg, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"TLSv1.3"}, cfg.SSLProtocols)
+	_, hasExtra := cfg.Extra["SSL_PROTOCOLS"]
+	assert.False(t, hasExtra, "SSL_PROTOCOLS should not appear in Extra")
 }
 
 // hasFieldError checks if any validation error has the given field and error severity.

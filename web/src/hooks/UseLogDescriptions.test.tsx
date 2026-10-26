@@ -251,6 +251,83 @@ describe('UseLogDescriptions', () => {
         }),
       ).toContain('External Registry');
     });
+
+    it('repo_mirror_sync_success includes tags when present', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_success({
+        message: 'registry.example.com/repo',
+        tags: 'latest, v1.0',
+      });
+      expect(result).toBe(
+        'Mirror finished successfully for registry.example.com/repo latest, v1.0',
+      );
+    });
+
+    it('repo_mirror_sync_success omits tags when missing', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_success({
+        message: 'registry.example.com/repo',
+      });
+      expect(result).toBe(
+        'Mirror finished successfully for registry.example.com/repo',
+      );
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
+
+    it('repo_mirror_sync_failed includes all fields when present', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_failed({
+        message: 'registry.example.com/repo',
+        tags: 'latest',
+        stdout: 'output',
+        stderr: 'error',
+      });
+      expect(result).toContain('registry.example.com/repo');
+      expect(result).toContain('latest');
+      expect(result).toContain('output');
+      expect(result).toContain('error');
+    });
+
+    it('repo_mirror_sync_failed omits null/undefined fields', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_failed({
+        message: 'registry.example.com/repo',
+      });
+      expect(result).toBe(
+        'Mirror finished unsuccessfully for registry.example.com/repo',
+      );
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+      expect(result).not.toContain('Not applicable');
+    });
+
+    it('repo_mirror_sync_tag_success omits missing stdout/stderr', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_tag_success({
+        tag: 'latest',
+        namespace: 'ns',
+        repo: 'myrepo',
+        message: 'ok',
+      });
+      expect(result).toContain('latest');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
+
+    it('repo_mirror_sync_tag_failed omits missing stdout/stderr', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_tag_failed({
+        tag: 'latest',
+        namespace: 'ns',
+        repo: 'myrepo',
+        message: 'failed',
+      });
+      expect(result).toContain('latest');
+      expect(result).toContain('failure');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
   });
 
   describe('permission events', () => {
@@ -290,6 +367,59 @@ describe('UseLogDescriptions', () => {
           repo: 'myrepo',
         }),
       ).toContain('Push to Repository');
+    });
+  });
+
+  describe('namespace notification events', () => {
+    it('create_namespace_notification', () => {
+      const desc = getDescriptions();
+      const notificationId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const text = renderDescription(
+        desc.create_namespace_notification({
+          event: 'quota_warning',
+          method: 'webhook',
+          namespace: 'myorg',
+          notification_id: notificationId,
+        }),
+      );
+      expect(text).toBe(
+        'Add notification of event quota_warning via webhook for namespace myorg',
+      );
+      expect(text).not.toContain(notificationId);
+    });
+
+    it('delete_namespace_notification', () => {
+      const desc = getDescriptions();
+      const notificationId = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+      const text = renderDescription(
+        desc.delete_namespace_notification({
+          event: 'quota_error',
+          method: 'email',
+          namespace: 'testns',
+          notification_id: notificationId,
+        }),
+      );
+      expect(text).toBe(
+        'Delete notification of event quota_error via email for namespace testns',
+      );
+      expect(text).not.toContain(notificationId);
+    });
+
+    it('reset_namespace_notification', () => {
+      const desc = getDescriptions();
+      const notificationId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+      const text = renderDescription(
+        desc.reset_namespace_notification({
+          event: 'quota_warning',
+          method: 'slack',
+          namespace: 'prodns',
+          notification_id: notificationId,
+        }),
+      );
+      expect(text).toBe(
+        'Re-enable notification of event quota_warning via slack for namespace prodns',
+      );
+      expect(text).not.toContain(notificationId);
     });
   });
 
@@ -420,6 +550,62 @@ describe('UseLogDescriptions', () => {
           robot: 'myorg+bot',
         }),
       ).toContain('robot myorg+bot');
+    });
+  });
+
+  describe('oauth token events', () => {
+    it('create_oauth_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.create_oauth_api_token({
+          application_name: 'MyApp',
+          scope: 'repo:read',
+          auth_method: 'OAuth',
+        }),
+      );
+      expect(text).toContain('MyApp');
+      expect(text).toContain('repo:read');
+      expect(text).toContain('OAuth');
+    });
+
+    it('revoke_oauth_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.revoke_oauth_api_token({
+          oauth_token_uuid: 'abc-123',
+          application_name: 'My App',
+        }),
+      );
+      expect(text).toContain('abc-123');
+      expect(text).toContain('My App');
+    });
+  });
+
+  describe('robot API token events', () => {
+    it('create_robot_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.create_robot_api_token({
+          token_display_name: 'deploy-token',
+          robot: 'myorg+bot',
+          scope: 'repo:read',
+        }),
+      );
+      expect(text).toContain('deploy-token');
+      expect(text).toContain('myorg+bot');
+      expect(text).toContain('repo:read');
+    });
+
+    it('revoke_robot_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.revoke_robot_api_token({
+          api_token_uuid: 'abc-123',
+          robot: 'myorg+bot',
+        }),
+      );
+      expect(text).toContain('abc-123');
+      expect(text).toContain('myorg+bot');
     });
   });
 

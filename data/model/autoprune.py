@@ -516,7 +516,7 @@ def create_autoprune_task(namespace_id):
 def update_autoprune_task(task, task_status):
     try:
         task.status = task_status
-        task.save()
+        task.save(only=[AutoPruneTaskStatus.status])
     except AutoPruneTaskStatus.DoesNotExist:
         return None
     except Exception as err:
@@ -557,7 +557,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
 
         task.last_ran_ms = get_epoch_timestamp_ms()
         task.status = "running"
-        task.save()
+        task.save(only=[AutoPruneTaskStatus.last_ran_ms, AutoPruneTaskStatus.status])
 
         return task
 

@@ -84,7 +84,13 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_and_retarget_tag(
-        self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        model_cache=None,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -96,6 +102,9 @@ class RegistryDataInterface(object):
         method will fail and return None.
 
         Returns a reference to the (created manifest, tag) or (None, None) on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
@@ -401,12 +410,15 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage
+        self, repository_ref, manifest_interface_instance, expiration_sec, storage, model_cache=None
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
+
+        If model_cache is provided and the manifest has a subject, the referrers
+        cache for the subject digest is invalidated.
         """
 
     @abstractmethod
@@ -469,4 +481,18 @@ class RegistryDataInterface(object):
         """
         Updates any expired tags in the time machine window referencing the given manifest
         with an expiry outside the time machine window.
+        """
+
+    @abstractmethod
+    def get_upstream_blob_proxy_url(self, namespace, repo, digest, upstream_proxy):
+        """
+        Constructs an upstream blob URL address based on the namespace/repo and blob digest
+        and returns it to the caller.
+        """
+
+    @abstractmethod
+    def get_proxy_blob_size(self, namespace, repository, digest):
+        """
+        Returns the proxied blob size directly from the ImageStorage table. Returns None
+        if the method is unsupported. Returns BlobUnknown() if the blob cannot be found.
         """

@@ -1,4 +1,16 @@
 import {defineConfig, devices} from '@playwright/test';
+import {
+  applyChromiumLoopbackBypass,
+  proxyOptionFromEnv,
+} from './playwright/utils/proxy';
+
+// When Quay is only reachable through a proxy (bare-metal OpenShift CI), route
+// the browser and all APIRequestContext traffic through it. Playwright does not
+// pick up HTTP(S)_PROXY env vars for live traffic on its own. This module is
+// re-evaluated in each worker process, so setting the loopback-bypass env here
+// covers every Chromium launch.
+applyChromiumLoopbackBypass();
+const proxy = proxyOptionFromEnv();
 
 /**
  * Playwright configuration for Quay E2E tests
@@ -34,16 +46,24 @@ export default defineConfig({
   // Shared settings for all tests
   use: {
     // Base URL for navigation
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
 
     // Accept self-signed certificates (needed for OpenShift CI clusters)
     ignoreHTTPSErrors: true,
 
+    // Route browser + request traffic through the proxy when configured.
+    // `proxy` covers the context/page fixtures and APIRequestContext; setting
+    // it on `launchOptions` too launches the Chromium process itself with
+    // --proxy-server, so manually created `browser.newContext()` contexts
+    // inherit the proxy instead of attempting direct (failing) DNS.
+    proxy,
+    launchOptions: {proxy},
+
     // Action timeout
     actionTimeout: 30 * 1000,
 
-    // Collect trace only on failure
-    trace: 'on-first-retry',
+    // Collect trace on any failed attempt
+    trace: 'retain-on-failure',
 
     // Screenshot only on failure
     screenshot: 'only-on-failure',
@@ -59,18 +79,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /legacy-ui/,
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
-    },
-    {
-      name: 'legacy-ui',
-      testDir: './playwright/e2e/legacy-ui',
-      use: {
-        ...devices['Desktop Chrome'],
-        channel: 'chromium',
-        baseURL:
-          process.env.PLAYWRIGHT_LEGACY_BASE_URL || 'http://localhost:8080',
-      },
     },
   ],
 
@@ -82,8 +91,10 @@ export default defineConfig({
       ? undefined
       : {
           command:
-            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
-          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && ' +
+            'rm -rf ../static/patternfly && mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
+            'echo "React deployed to static/patternfly/" && tail -f /dev/null',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
           reuseExistingServer: true,
           timeout: 120 * 1000,
         },

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -11,9 +12,19 @@ from data.database import (
     DeletedNamespace,
     EmailConfirmation,
     FederatedLogin,
+    NamespaceNotification,
+    OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorStatus,
+    QueueItem,
+    QuotaNotificationState,
     Repository,
     RepositoryState,
+    SourceRegistryType,
+    Team,
     User,
+    Visibility,
+    db_for_update,
 )
 from data.fields import Credential
 from data.model.notification import create_notification
@@ -23,6 +34,7 @@ from data.model.oauth import (
     get_token_assignment,
 )
 from data.model.organization import (
+    InvalidOrganizationException,
     create_organization,
     get_organization,
     get_organizations,
@@ -31,6 +43,7 @@ from data.model.repository import create_repository
 from data.model.team import add_user_to_team, create_team
 from data.model.user import (
     InvalidRobotException,
+    InvalidUsernameException,
     RobotAccountToken,
     attach_federated_login,
     create_robot,
@@ -38,6 +51,7 @@ from data.model.user import (
     delete_namespace_via_marker,
     delete_robot,
     delete_user,
+    generate_federated_robot_jwt_token,
     get_active_namespaces,
     get_active_users,
     get_estimated_robot_count,
@@ -62,10 +76,181 @@ from util.security.token import encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
 
 
+def test_federated_robot_jwt_includes_binding_without_api_scopes():
+    binding = {"id": "binding-id", "version": 3}
+
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        generate_federated_robot_jwt_token("keys", Mock(), None, binding)
+
+    assert generate_bearer_token.call_args.args[-1] == {
+        "federation_binding_id": "binding-id",
+        "federation_binding_version": 3,
+    }
+
+
 def test_create_user_with_expiration(initialized_db):
     with patch("data.model.config.app_config", {"DEFAULT_TAG_EXPIRATION": "1h"}):
         user = create_user_noverify("foobar", "foo@example.com", email_required=False)
         assert user.removed_tag_expiration_s == 60 * 60
+
+
+def test_robot_federation_config_locks_binding_before_versioning(initialized_db):
+    creator = model.user.get_user("devtable")
+    robot, _ = create_robot("federated-lock", creator)
+    binding = {"issuer": "https://issuer.example", "subject": "original-subject"}
+    model.user.create_robot_federation_config(robot, [binding])
+    binding_id = model.user.get_robot_federation_config(robot)[0]["id"]
+
+    with patch("data.model.user.db_for_update", wraps=db_for_update) as locked_query:
+        updated = model.user.create_robot_federation_config(
+            robot,
+            [
+                {
+                    "id": binding_id,
+                    "issuer": "https://issuer.example",
+                    "subject": "updated-subject",
+                }
+            ],
+        )
+
+    assert locked_query.called
+    assert updated[0]["version"] == 2
+
+
+LEGACY_FEDERATION_BINDINGS = [
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-a",
+        "audiences": ["quay"],
+        "api_scopes": "repo:read",
+    },
+    {
+        "issuer": "https://issuer.example",
+        "subject": "system:serviceaccount:ci:builder-b",
+        "audiences": ["quay"],
+    },
+]
+
+
+def _store_legacy_federation_config(robot, bindings):
+    """Write bindings in the pre-id JSON shape (no id, no version) straight into the row."""
+    federated = FederatedLogin.get(FederatedLogin.user == robot)
+    federated.metadata_json = json.dumps({"federation_config": bindings})
+    federated.save()
+
+
+def _legacy_federated_robot(name):
+    robot, _ = create_robot(name, model.user.get_user("devtable"))
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+    return robot
+
+
+def test_robot_federation_config_reads_legacy_bindings_with_stable_ids(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-read")
+
+    first_read = model.user.get_robot_federation_config(robot)
+    second_read = model.user.get_robot_federation_config(robot)
+
+    assert [entry.get("version") for entry in first_read] == [1, 1]
+    assert all(entry.get("id") for entry in first_read)
+    assert first_read[0]["id"] != first_read[1]["id"]
+    assert first_read == second_read
+    assert first_read[0]["id"] == model.user.legacy_federation_binding_id(first_read[0])
+    # Reading never rewrites the stored JSON.
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == LEGACY_FEDERATION_BINDINGS
+
+
+def test_robot_federation_config_save_assigns_unique_ids_to_legacy_bindings(initialized_db):
+    # PROJQUAY-13549: two stored legacy bindings must not collapse under one null id.
+    robot = _legacy_federated_robot("legacy-fed-save")
+
+    saved = model.user.create_robot_federation_config(
+        robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS]
+    )
+
+    assert [entry["subject"] for entry in saved] == [
+        binding["subject"] for binding in LEGACY_FEDERATION_BINDINGS
+    ]
+    assert all(entry["id"] for entry in saved)
+    assert len({entry["id"] for entry in saved}) == 2
+    assert [entry["version"] for entry in saved] == [1, 1]
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == saved
+
+
+def test_robot_federation_config_resave_keeps_legacy_binding_ids(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-resave")
+    before = model.user.get_robot_federation_config(robot)
+
+    # The UI resaves exactly what it read: the derived ids persist and nothing is versioned up.
+    resaved = model.user.create_robot_federation_config(robot, before)
+    assert [(entry["id"], entry["version"]) for entry in resaved] == [
+        (before[0]["id"], 1),
+        (before[1]["id"], 1),
+    ]
+    stored = json.loads(FederatedLogin.get(FederatedLogin.user == robot).metadata_json)
+    assert stored["federation_config"] == resaved
+
+    # Removing one binding by id keeps the other with its id.
+    retained = model.user.create_robot_federation_config(robot, [resaved[1]])
+    assert retained == [resaved[1]]
+    assert model.user.get_robot_federation_config(robot) == [resaved[1]]
+    assert model.user.get_robot_federation_binding(robot, before[0]["id"], 1) is None
+    assert model.user.get_robot_federation_binding(robot, before[1]["id"], 1) == resaved[1]
+
+
+def test_robot_federation_binding_lookup_rejects_null_identity(initialized_db):
+    robot = _legacy_federated_robot("legacy-fed-null")
+
+    # A claim pair without a binding identity must never resolve to a stored binding.
+    assert model.user.get_robot_federation_binding(robot, None, None) is None
+    assert model.user.get_robot_federation_binding(robot, None, 1) is None
+
+    binding_id = model.user.get_robot_federation_config(robot)[0]["id"]
+    assert model.user.get_robot_federation_binding(robot, binding_id, None) is None
+    assert model.user.get_robot_federation_binding(robot, binding_id, 1) is not None
+
+
+@pytest.mark.parametrize(
+    "binding",
+    [
+        {"issuer": "https://issuer.example", "subject": "sa"},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": None, "version": None},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "", "version": 1},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "binding-id", "version": 0},
+        {"issuer": "https://issuer.example", "subject": "sa", "id": "binding-id", "version": "1"},
+    ],
+)
+def test_federated_robot_jwt_refuses_binding_without_identity(binding):
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        with pytest.raises(model.InvalidRobotCredentialException):
+            generate_federated_robot_jwt_token("keys", Mock(), "repo:read", binding)
+
+    assert not generate_bearer_token.called
+
+
+def test_federated_robot_jwt_carries_normalized_legacy_binding_identity():
+    legacy = dict(LEGACY_FEDERATION_BINDINGS[0])
+    binding = model.user.normalize_robot_federation_bindings([legacy])[0]
+
+    with (
+        patch("data.model.user.build_context_and_subject", return_value=("context", "subject")),
+        patch("data.model.user.generate_bearer_token") as generate_bearer_token,
+    ):
+        generate_federated_robot_jwt_token("keys", Mock(), "repo:read", binding)
+
+    assert generate_bearer_token.call_args.args[-1] == {
+        "api_scopes": "repo:read",
+        "federation_binding_id": model.user.legacy_federation_binding_id(legacy),
+        "federation_binding_version": 1,
+    }
 
 
 @pytest.mark.parametrize(
@@ -153,7 +338,7 @@ def test_mark_user_for_deletion(initialized_db):
 
     # Mark the user for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
-    mark_namespace_for_deletion(user, [], queue)
+    marker_id = mark_namespace_for_deletion(user, [], queue)
 
     # Ensure the older user is still in the DB.
     older_user = User.get(id=user.id)
@@ -177,12 +362,13 @@ def test_mark_user_for_deletion(initialized_db):
     # Ensure the oauth assigned token is gone
     assert get_token_assignment(assigned_token.uuid, user, org) is None
 
+    # Complete the GC cycle so the DeletedNamespace marker is removed.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
     # Ensure we can create a user with the same namespace again.
     new_user = create_user_noverify("foobar", "foo@example.com", email_required=False)
-    assert new_user.id != user.id
-
-    # Ensure the older user is still in the DB.
-    assert User.get(id=user.id).username != "foobar"
+    assert new_user.username == "foobar"
 
 
 def test_mark_organization_for_deletion(initialized_db):
@@ -219,13 +405,13 @@ def test_mark_organization_for_deletion(initialized_db):
     )
     assert get_token_assignment(assigned_token.uuid, user, org) is not None
 
-    # Mark the user for deletion.
+    # Mark the org for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
-    mark_namespace_for_deletion(org, [], queue)
+    marker_id = mark_namespace_for_deletion(org, [], queue)
 
-    # Ensure the older user is still in the DB.
-    older_user = User.get(id=org.id)
-    assert older_user.username != "foobar"
+    # Ensure the older org is still in the DB (renamed to UUID).
+    older_org = User.get(id=org.id)
+    assert older_org.username != "foobar"
 
     # Ensure the robots are deleted.
     with pytest.raises(InvalidRobotException):
@@ -234,7 +420,7 @@ def test_mark_organization_for_deletion(initialized_db):
     with pytest.raises(InvalidRobotException):
         assert lookup_robot("foobar+bar")
 
-    assert len(list(list_namespace_robots(older_user.username))) == 0
+    assert len(list(list_namespace_robots(older_org.username))) == 0
 
     # Ensure the federated logins are gone.
     assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 0
@@ -247,12 +433,53 @@ def test_mark_organization_for_deletion(initialized_db):
     assert get_oauth_application_for_client_id(application.client_id) is None
     assert get_token_assignment(assigned_token.uuid, org, org) is None
 
-    # Ensure we can create a user with the same namespace again.
-    new_org = create_organization("foobar", "foobar@devtable.com", user)
-    assert new_org.id != org.id
+    # Complete the GC cycle so the DeletedNamespace marker is removed.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
 
-    # Ensure the older org is still in the DB.
-    assert User.get(id=org.id).username != "foobar"
+    # Ensure we can create an org with the same namespace again.
+    new_org = create_organization("foobar", "foobar@devtable.com", user)
+    assert new_org.username == "foobar"
+
+
+def test_mark_organization_for_deletion_with_org_mirror(initialized_db):
+    def create_transaction(db):
+        return db.transaction()
+
+    user = get_user("devtable")
+    org = create_organization("foobar", "foobar@devtable.com", user)
+    robot, _ = create_robot("mirrorbot", org)
+    repo = create_repository("foobar", "mirrored", user)
+    repo.state = RepositoryState.ORG_MIRROR
+    repo.save()
+
+    config = OrgMirrorConfig.create(
+        organization=org,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="my-project",
+        internal_robot=robot,
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime.utcnow(),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+    )
+    OrgMirrorRepository.create(
+        org_mirror_config=config,
+        repository_name="mirrored",
+        repository=repo,
+    )
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    mark_namespace_for_deletion(org, [], queue)
+
+    assert (
+        not OrgMirrorRepository.select()
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .exists()
+    )
+    assert not OrgMirrorConfig.select().where(OrgMirrorConfig.id == config.id).exists()
+    assert Repository.get_by_id(repo.id).state == RepositoryState.NORMAL
 
 
 def test_delete_namespace_via_marker(initialized_db):
@@ -280,6 +507,49 @@ def test_delete_namespace_via_marker(initialized_db):
 
     with pytest.raises(DeletedNamespace.DoesNotExist):
         DeletedNamespace.get(id=marker_id)
+
+
+def test_delete_namespace_cleans_up_notifications(initialized_db):
+    """Namespace GC removes NamespaceNotification and QuotaNotificationState rows."""
+
+    def create_transaction(db):
+        return db.transaction()
+
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+
+    model.notification.create_namespace_notification(
+        user, "quota_warning", "email", {"email": "a@b.com"}, {}
+    )
+    QuotaNotificationState.create(
+        namespace=user,
+        threshold_percent=80,
+        cleared=False,
+    )
+
+    assert (
+        NamespaceNotification.select().where(NamespaceNotification.namespace == user).count() == 1
+    )
+    assert (
+        QuotaNotificationState.select().where(QuotaNotificationState.namespace == user).count() == 1
+    )
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    marker_id = mark_namespace_for_deletion(user, [], queue)
+
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=user.id)
+
+    assert (
+        NamespaceNotification.select().where(NamespaceNotification.namespace == user.id).count()
+        == 0
+    )
+    assert (
+        QuotaNotificationState.select().where(QuotaNotificationState.namespace == user.id).count()
+        == 0
+    )
 
 
 def test_delete_namespace_bulk_state_update(initialized_db):
@@ -323,6 +593,218 @@ def test_delete_namespace_with_mixed_repo_states(initialized_db):
 
     with pytest.raises(User.DoesNotExist):
         User.get(id=user.id)
+
+
+def test_mark_namespace_for_deletion_with_grace_period(initialized_db):
+    """When available_after > 0, linked data (robots, teams, federated logins) is preserved."""
+    user = get_user("devtable")
+    org = create_organization("graceorg", "grace@example.com", user)
+
+    robot, _ = create_robot("bot", org)
+    create_team("graceteam", org, "member")
+    attach_federated_login(org, "google", "grace_oidc")
+
+    assert User.select().where(User.id == robot.id).count() == 1
+    assert Team.select().where(Team.organization == org).count() >= 1
+    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 1
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    assert marker_id is not None
+
+    marker = DeletedNamespace.get(id=marker_id)
+    assert marker.original_username == "graceorg"
+
+    org_after = User.get(id=org.id)
+    assert not org_after.enabled
+    assert org_after.username != "graceorg"
+
+    # Linked data is still present (query by ID since username was renamed).
+    assert User.select().where(User.id == robot.id).count() == 1
+    assert Team.select().where(Team.organization == org_after).count() >= 1
+    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 1
+
+    # Queue item has the grace period delay.
+    qi = QueueItem.get(id=marker.queue_id)
+    assert qi.available_after > datetime.utcnow()
+
+
+def test_mark_namespace_grace_period_config_allowlist(initialized_db):
+    """Config-driven grace period only applies to namespaces in the allowlist."""
+    user = get_user("devtable")
+    org = create_organization("listed_org", "listed@example.com", user)
+    org2 = create_organization("unlisted_org", "unlisted@example.com", user)
+
+    robot_listed, _ = create_robot("bot", org)
+    robot_unlisted, _ = create_robot("bot", org2)
+
+    mock_config = {
+        "NAMESPACE_GC_GRACE_PERIOD_SECONDS": 86400,
+        "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["listed_org"],
+    }
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+
+    # Listed namespace gets grace period — robot preserved.
+    with patch("data.model.config.app_config", mock_config):
+        mark_namespace_for_deletion(org, [], queue)
+
+    assert User.select().where(User.id == robot_listed.id).count() == 1
+
+    # Unlisted namespace does NOT get grace period — robot deleted.
+    with patch("data.model.config.app_config", mock_config):
+        mark_namespace_for_deletion(org2, [], queue)
+
+    assert User.select().where(User.id == robot_unlisted.id).count() == 0
+
+
+def test_mark_namespace_for_deletion_without_grace_period(initialized_db):
+    """Without a grace period, linked data is eagerly deleted (current behavior)."""
+    user = get_user("devtable")
+    org = create_organization("nograceorg", "nograce@example.com", user)
+
+    create_robot("bot", org)
+    attach_federated_login(org, "google", "nograce_oidc")
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    assert marker_id is not None
+    org_after = User.get(id=org.id)
+
+    # Linked data is eagerly deleted.
+    assert len(list(list_namespace_robots(org_after.username))) == 0
+    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 0
+
+
+def test_mark_namespace_gc_worker_cleans_deferred_linked_data(initialized_db):
+    """GC worker cleans up linked data that was deferred during grace period marking."""
+    user = get_user("devtable")
+    org = create_organization("deferorg", "defer@example.com", user)
+
+    robot, _ = create_robot("bot", org)
+    create_team("deferteam", org, "member")
+    attach_federated_login(org, "google", "defer_oidc")
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    # Linked data preserved at mark time.
+    assert User.select().where(User.id == robot.id).count() == 1
+
+    # Simulate GC worker running after grace period.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    # Everything is cleaned up.
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=org.id)
+
+    assert User.select().where(User.id == robot.id).count() == 0
+
+
+def test_force_delete_bypasses_grace_period(initialized_db):
+    """force=True skips the grace period even for allowlisted namespaces."""
+    user = get_user("devtable")
+    org = create_organization("forceorg", "force@example.com", user)
+
+    robot, _ = create_robot("bot", org)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+
+    with patch(
+        "data.model.config.app_config",
+        {
+            "NAMESPACE_GC_GRACE_PERIOD_SECONDS": 86400,
+            "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["forceorg"],
+        },
+    ):
+        marker_id = mark_namespace_for_deletion(org, [], queue, force=True)
+
+    assert marker_id is not None
+
+    # Linked data is eagerly deleted (no grace period).
+    assert User.select().where(User.id == robot.id).count() == 0
+
+    # Queue item is immediately available.
+    marker = DeletedNamespace.get(id=marker_id)
+    qi = QueueItem.get(id=marker.queue_id)
+    assert qi.available_after <= datetime.utcnow()
+
+
+def test_grace_period_blocks_namespace_reregistration(initialized_db):
+    """Re-registering a namespace name is blocked while a DeletedNamespace marker exists."""
+    user = get_user("devtable")
+    org = create_organization("protectedorg", "protected@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    with patch(
+        "data.model.config.app_config",
+        {"DEFAULT_TAG_EXPIRATION": "2w"},
+    ):
+        with pytest.raises(InvalidUsernameException, match="Username is not available"):
+            create_user_noverify("protectedorg", "new@example.com", email_required=False)
+
+        with pytest.raises(InvalidOrganizationException, match="Username is not available"):
+            create_organization("protectedorg", "new@example.com", user)
+
+
+def test_grace_period_allows_reregistration_after_deletion_completes(initialized_db):
+    """Once the GC worker fully purges the namespace, the name can be re-registered."""
+    user = get_user("devtable")
+    org = create_organization("expiredorg", "expired@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+
+    # Still blocked before GC worker runs, even though grace period expired.
+    with patch("data.model.config.app_config", mock_config):
+        with pytest.raises(InvalidUsernameException, match="Username is not available"):
+            create_user_noverify("expiredorg", "new@example.com", email_required=False)
+
+    # GC worker purges the namespace (cascade-deletes the DeletedNamespace marker).
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    # Now the name is available.
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("expiredorg", "new@example.com", email_required=False)
+        assert new_user.username == "expiredorg"
+
+
+def test_reregistration_blocked_regardless_of_allowlist(initialized_db):
+    """Re-registering is blocked while a DeletedNamespace marker exists, even if the
+    namespace is not in the current allowlist."""
+    user = get_user("devtable")
+    org = create_organization("unlistedorg", "unlisted@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    with patch(
+        "data.model.config.app_config",
+        {
+            "DEFAULT_TAG_EXPIRATION": "2w",
+            "NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST": ["some_other_org"],
+        },
+    ):
+        with pytest.raises(InvalidUsernameException, match="Username is not available"):
+            create_user_noverify("unlistedorg", "new@example.com", email_required=False)
+
+    # After GC completes, the name becomes available again.
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    with patch(
+        "data.model.config.app_config",
+        {"DEFAULT_TAG_EXPIRATION": "2w"},
+    ):
+        new_user = create_user_noverify("unlistedorg", "new@example.com", email_required=False)
+        assert new_user.username == "unlistedorg"
 
 
 def test_delete_robot(initialized_db):

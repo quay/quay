@@ -67,6 +67,7 @@ from endpoints.api.manifest import (
     ManageRepositoryManifestLabel,
     RepositoryManifestLabels,
 )
+from endpoints.api.mirror import RepoMirrorResource
 from endpoints.api.organization import (
     ApplicationInformation,
     Organization,
@@ -470,7 +471,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(StarredRepositoryList, expected_code=200)
 
     def test_star_repo_guest(self):
@@ -487,7 +488,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             json = self.getJsonResponse(StarredRepositoryList)
             assert json["repositories"] == []
 
@@ -2169,7 +2170,7 @@ class TestListRepos(ApiTestCase):
         # Queries: Base + the list query + the popularity and last modified queries + full perms load
         # TODO: Add quota queries
         with patch("features.QUOTA_MANAGEMENT", False):
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 5):
                 json = self.getJsonResponse(
                     RepositoryList,
                     params=dict(
@@ -2630,11 +2631,11 @@ class TestGetRepository(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
@@ -3795,11 +3796,11 @@ class TestUserRobots(ApiTestCase):
         self.putJsonResponse(UserRobot, params=dict(robot_shortname="coolbot"), expected_code=201)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(UserRobotList)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(UserRobotList, params=dict(permissions=True))
 
     def test_robots(self):
@@ -4015,7 +4016,7 @@ class TestOrgRobots(ApiTestCase):
         self.login("globalreadonlysuperuser")
         params = dict(orgname=ORGANIZATION)
         for r in self.getJsonResponse(OrgRobotList, params=params)["robots"]:
-            assert "token" in r
+            assert r.get("token") is None
 
 
 class TestLogs(ApiTestCase):
@@ -4667,6 +4668,54 @@ class TestBuildTriggers(ApiTestCase):
         assert "id" in start_json
         self.assertEqual("build-name", start_json["display_name"])
         self.assertEqual(["bar"], start_json["tags"])
+
+    def test_list_build_triggers_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            BuildTriggerList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/building"),
+        )
+        self.assertEqual(1, len(json["triggers"]))
+
+        trigger = json["triggers"][0]
+        assert trigger["config"] == {}
+        assert trigger["can_invoke"] is False
+        assert trigger["build_source"] is not None
+
+    def test_get_build_trigger_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            BuildTriggerList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/building"),
+        )
+        trigger = json["triggers"][0]
+
+        trigger_json = self.getJsonResponse(
+            BuildTrigger,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/building",
+                trigger_uuid=trigger["id"],
+            ),
+        )
+        assert trigger_json["config"] == {}
+        assert trigger_json["can_invoke"] is False
+        assert trigger_json["build_source"] is not None
+
+
+class TestRepoMirror(ApiTestCase):
+    def test_get_mirror_config_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+
+        json = self.getJsonResponse(
+            RepoMirrorResource,
+            params=dict(repository=ADMIN_ACCESS_USER + "/mirrored"),
+        )
+        assert json["external_registry_username"] is None
+        assert json["external_registry_config"] == {}
+        assert json["external_reference"] is not None
+        assert json["is_enabled"] is True
 
 
 class TestUserAuthorizations(ApiTestCase):

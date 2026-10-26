@@ -18,6 +18,7 @@ from data.database import (
 from data.fields import DecryptedValue
 from data.model import DataModelException
 from util.names import parse_robot_username
+from util.security.ssrf import validate_external_registry_reference
 
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3
@@ -228,10 +229,22 @@ def enable_mirroring_for_repository(
     external_registry_config=None,
     is_enabled=True,
     sync_start_date=None,
+    allowed_hosts=None,
 ):
     """
     Create a RepoMirrorConfig and set the Repository to the MIRROR state.
     """
+    try:
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
+        validate_external_registry_reference(
+            external_reference,
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+        )
+    except ValueError as e:
+        raise DataModelException(str(e))
+
     assert internal_robot.robot
 
     namespace, _ = parse_robot_username(internal_robot.username)
@@ -449,11 +462,23 @@ def delete_mirror(repository):
     raise NotImplementedError("TODO: Not Implemented")
 
 
-def change_remote(repository, remote_repository):
+def change_remote(repository, remote_repository, allowed_hosts=None):
     """
     Update the external repository for Repository Mirroring.
     """
     mirror = get_mirror(repository)
+
+    try:
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
+        validate_external_registry_reference(
+            remote_repository,
+            resolve_dns=False,
+            allowed_hosts=allowed_hosts,
+        )
+    except ValueError as e:
+        raise DataModelException(str(e))
+
     updates = {"external_reference": remote_repository}
     return bool(update_with_transaction(mirror, **updates))
 
@@ -551,8 +576,7 @@ def change_external_registry_config(repository, config_updates):
             if key in config_updates["proxy"]:
                 if "proxy" not in external_registry_config:
                     external_registry_config["proxy"] = {}
-                else:
-                    external_registry_config["proxy"][key] = proxy_updates[key]
+                external_registry_config["proxy"][key] = proxy_updates[key]
 
     return update_with_transaction(mirror, external_registry_config=external_registry_config)
 

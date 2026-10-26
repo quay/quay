@@ -111,7 +111,7 @@ export const useMirroringConfig = (
         : timestampToISO(Math.floor(Date.now() / 1000)),
       sync_interval: convertToSeconds(Number(data.syncValue), data.syncUnit),
       robot_username: data.robotUsername,
-      skopeo_timeout_interval: data.skopeoTimeoutInterval,
+      skopeo_timeout_interval: data.skopeoTimeoutInterval ?? undefined,
       external_registry_config: {
         verify_tls: data.verifyTls,
         unsigned_images: data.unsignedImages,

@@ -5,6 +5,7 @@ from typing import DefaultDict, Optional
 
 from flask_principal import Identity, Permission, identity_changed, identity_loaded
 
+import features
 from app import app, model_cache, usermanager
 from auth import scopes
 from data import model
@@ -86,6 +87,16 @@ class QuayDeferredPermissionUser(Identity):
         self._repositories_loaded = set()
         self._repositories_loaded_from_primary = set()
         self._personal_loaded = False
+
+        self._superuser_loaded = False
+
+        # TODO (ibazulic): In a future fix, we should think about adding the global read only super user
+        # short circuit, like we did for the real super user. This flag is intended for that future use.
+        self._readonly_superuser_loaded = False
+
+        self._superuser_checked = False
+
+        self._all_namespaces_loaded = False
 
         self._scope_set = auth_scopes
         self._user_object = user
@@ -174,6 +185,8 @@ class QuayDeferredPermissionUser(Identity):
             )
             logger.debug("Team added permission: {0}".format(team_grant))
             self.provides.add(team_grant)
+            if namespace_filter is None:
+                self._namespace_wide_loaded.add(team.organization.username)
 
     def _populate_repository_provides(
         self, user_object, namespace_filter, repository_name, for_write=False
@@ -249,28 +262,44 @@ class QuayDeferredPermissionUser(Identity):
             logger.debug("User added permission: {0}".format(repo_grant))
             self.provides.add(repo_grant)
 
-    def _populate_superuser_provides(self, user_object):
-        # Global readonly superusers and regular superusers are mutually exclusive.
-        # If a user is in both lists (misconfiguration), readonly takes precedence.
-        if usermanager.is_global_readonly_superuser(user_object.username):
-            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
-            self.provides.add(_GlobalReadOnlySuperUserNeed())
-        elif (
-            scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
-        ) and usermanager.is_superuser(user_object.username):
-            logger.debug("Adding superuser to user: %s", user_object.username)
-            self.provides.add(_SuperUserNeed())
-
     def can(self, permission):
         logger.debug("Loading user permissions after deferring for: %s", self.id)
         user_object = self._user_object or model.user.get_user_by_uuid(self.id)
         if user_object is None:
             return super(QuayDeferredPermissionUser, self).can(permission)
 
+        # determine if this user is a super user or a normal user
+        # Global readonly superusers and regular superusers are mutually exclusive.
+        # If a user is in both lists (misconfiguration), readonly takes precedence.
+        if not self._superuser_checked:
+            if usermanager.is_global_readonly_superuser(user_object.username):
+                logger.debug("Adding global readonly superuser to user: %s", user_object.username)
+                self.provides.add(_GlobalReadOnlySuperUserNeed())
+                self._readonly_superuser_loaded = True
+            elif (
+                scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
+            ) and usermanager.is_superuser(user_object.username):
+                logger.debug("Adding superuser to user: %s", user_object.username)
+                self.provides.add(_SuperUserNeed())
+                self._superuser_loaded = True
+
+            self._superuser_checked = True
+
+        # Super users can do anything on the registry so we can simply return here if
+        # full access is enabled
+        if self._superuser_loaded and features.SUPERUSERS_FULL_ACCESS:
+            if permission.namespace or permission.repo_name:
+                return True
+
         # Add the user-specific provides.
         if not self._personal_loaded:
             self._populate_user_provides(user_object)
             self._personal_loaded = True
+
+        # Add all permissions for all namespaces but only if we have direct login (UI)
+        if not self._all_namespaces_loaded and scopes.DIRECT_LOGIN in self._scope_set:
+            self._populate_namespace_wide_provides(user_object, namespace_filter=None)
+            self._all_namespaces_loaded = True
 
         # If we now have permission, no need to load any more permissions.
         if super(QuayDeferredPermissionUser, self).can(permission):
@@ -285,8 +314,6 @@ class QuayDeferredPermissionUser(Identity):
             perm_repository = "%s/%s" % (perm_namespace, perm_repo_name)
 
         if not perm_namespace and not perm_repo_name:
-            self._populate_superuser_provides(user_object)
-
             # Nothing more to load, so just check directly.
             return super(QuayDeferredPermissionUser, self).can(permission)
 
@@ -314,12 +341,13 @@ class QuayDeferredPermissionUser(Identity):
                 return super(QuayDeferredPermissionUser, self).can(permission)
 
         # Lazy-load the namespace-wide-only permissions.
-        if perm_namespace and perm_namespace not in self._namespace_wide_loaded:
+        if (
+            perm_namespace
+            and perm_namespace not in self._namespace_wide_loaded
+            and not self._all_namespaces_loaded
+        ):
             self._populate_namespace_wide_provides(user_object, perm_namespace)
             self._namespace_wide_loaded.add(perm_namespace)
-
-        # Lazy-load superuser permissions
-        self._populate_superuser_provides(user_object)
 
         return super(QuayDeferredPermissionUser, self).can(permission)
 

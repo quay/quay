@@ -33,6 +33,22 @@ else
     dsconf localhost backend create --suffix "dc=example,dc=org" --be-name userroot
 fi
 
+# Add a custom user-modifiable schema attribute for LDAP group membership queries.
+# The built-in memberOf attribute is NO-USER-MODIFICATION (server-managed by the
+# MemberOf plugin), so it cannot be set in base.ldif. quayMemberOf is a regular
+# DN-syntax attribute we can set freely. Quay reads LDAP_MEMBEROF_ATTR from
+# ldap-config.yaml to know which attribute to query.
+echo "Adding custom schema for Quay group membership queries..."
+ldapmodify -H "$LDAPI_URI" -Y EXTERNAL 2>&1 << 'SCHEMA_EOF' | grep -v "^SASL" || true
+dn: cn=schema
+changetype: modify
+add: attributeTypes
+attributeTypes: ( 1.3.6.1.4.1.99999.1 NAME 'quayMemberOf' DESC 'Quay group membership reference' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
+-
+add: objectClasses
+objectClasses: ( 1.3.6.1.4.1.99999.2 NAME 'quayUser' DESC 'Quay user auxiliary class' SUP top AUXILIARY MAY ( quayMemberOf ) )
+SCHEMA_EOF
+
 # Check if base DN exists (anonymous search)
 if ldapsearch -x -H ldap://localhost:3389 -b "dc=example,dc=org" -s base &>/dev/null; then
     echo "Base DN already exists, skipping LDIF import"

@@ -1,11 +1,16 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
   'Immutability Policies',
   {tag: ['@repository', '@feature:IMMUTABLE_TAGS']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test.describe('Organization Settings', () => {
       test('can create an immutability policy', async ({
         authenticatedPage,
@@ -384,8 +389,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -429,8 +434,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'dev-build',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -476,8 +481,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'dev-build',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Push non-matching tag (v1.0.0) - should be immutable
@@ -485,8 +490,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -521,8 +526,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);

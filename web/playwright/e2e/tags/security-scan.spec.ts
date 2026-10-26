@@ -1,33 +1,40 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
-import {pushImage} from '../../utils/container';
+import {pushImage, pushOCIImage} from '../../utils/container';
 
 test.describe(
   'Security Scan',
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      // Covers the image push plus the 120s Clair poll below.
+      test.setTimeout(240000);
       if (!cachedContainerAvailable) return;
 
       const api = new ApiClient(userContext.request);
       const repoName = `secscan-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+      await api.createRepository(user.username, repoName, 'public');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Wait for Clair to scan the image (poll until status != queued)
@@ -184,6 +191,191 @@ test.describe(
         .locator('input[placeholder="Filter Packages..."]')
         .clear();
       await expect(packageRows).toHaveCount(initialCount);
+    });
+  },
+);
+
+test.describe(
+  'Pending security status on push',
+  {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
+    test('security scan is queued immediately after push', async ({
+      userContext,
+      cachedContainerAvailable,
+      authenticatedPage,
+    }) => {
+      test.skip(!cachedContainerAvailable, 'Container runtime unavailable');
+      test.setTimeout(60000);
+
+      const api = new ApiClient(userContext.request);
+      const repoName = `secscan-pending-${Date.now()}`;
+      await api.createRepository(user.username, repoName, 'public');
+
+      try {
+        await pushImage(
+          user.username,
+          repoName,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const tags = await api.getTags(user.username, repoName);
+        const digest = tags.tags[0].manifest_digest;
+        const sec = await api.getManifestSecurity(
+          user.username,
+          repoName,
+          digest,
+        );
+        expect(sec.status).toBe('queued');
+
+        await authenticatedPage.goto(
+          `/repository/${user.username}/${repoName}?tab=tags`,
+        );
+        await expect(
+          authenticatedPage.locator('th').filter({hasText: 'Security'}),
+        ).toBeVisible();
+        await expect(authenticatedPage.getByText('Queued')).toBeVisible();
+      } finally {
+        try {
+          await api.deleteRepository(user.username, repoName);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  },
+);
+
+test.describe(
+  'OCI Image Security Scan (PROJQUAY-11333)',
+  {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
+    let testRepo: {namespace: string; name: string; fullName: string};
+
+    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      test.setTimeout(180000);
+      if (!cachedContainerAvailable) return;
+
+      const api = new ApiClient(userContext.request);
+      const repoName = `oci-secscan-${Date.now()}`;
+      await api.createRepository(user.username, repoName, 'public');
+
+      testRepo = {
+        namespace: user.username,
+        name: repoName,
+        fullName: `${user.username}/${repoName}`,
+      };
+
+      await pushOCIImage(
+        testRepo.namespace,
+        testRepo.name,
+        'latest',
+        user.username,
+        user.password,
+      );
+
+      // Wait for Clair to scan the OCI image
+      const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      const digest = tags.tags[0].manifest_digest;
+      const deadline = Date.now() + 120000;
+      while (Date.now() < deadline) {
+        try {
+          const sec = await api.getManifestSecurity(
+            testRepo.namespace,
+            testRepo.name,
+            digest,
+          );
+          if (sec.status !== 'queued') break;
+        } catch (e: unknown) {
+          if (e instanceof Error && !e.message.includes('404')) throw e;
+        }
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    });
+
+    test.afterAll(async ({userContext}) => {
+      if (!testRepo) return;
+      const api = new ApiClient(userContext.request);
+      try {
+        await api.deleteRepository(testRepo.namespace, testRepo.name);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    test('OCI-format image is scanned successfully, not marked as unsupported', async ({
+      authenticatedPage,
+    }) => {
+      test.setTimeout(120000);
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=securityreport`,
+      );
+
+      // Verify Security Report tab exists and is selected
+      await expect(
+        authenticatedPage.getByRole('tab', {name: 'Security Report'}),
+      ).toBeVisible();
+
+      // The fix ensures OCI images are NOT marked as unsupported
+      await expect(
+        authenticatedPage.getByText('Security scan is not supported.'),
+      ).not.toBeVisible();
+
+      // Wait for scan to complete — reload if still queued
+      const scanned = authenticatedPage.getByText(
+        /detected \d+ vulnerabilit|detected no vulnerabilit/,
+      );
+      const deadline = Date.now() + 90000;
+      while (Date.now() < deadline) {
+        if (await scanned.isVisible().catch(() => false)) break;
+        await authenticatedPage.waitForTimeout(5000);
+        await authenticatedPage.reload();
+        await authenticatedPage
+          .getByRole('tab', {name: 'Security Report'})
+          .click();
+      }
+      await expect(scanned).toBeVisible({timeout: 5000});
+
+      await expect(
+        authenticatedPage.locator('[data-testid="vulnerability-chart"]'),
+      ).toBeVisible();
+    });
+
+    test('OCI-format image packages tab renders', async ({
+      authenticatedPage,
+    }) => {
+      test.setTimeout(120000);
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
+      );
+
+      const packages = authenticatedPage.getByText(
+        /recognized \d+ package|does not recognize any package/,
+      );
+      const deadline = Date.now() + 90000;
+      while (Date.now() < deadline) {
+        if (await packages.isVisible().catch(() => false)) break;
+        await authenticatedPage.waitForTimeout(5000);
+        await authenticatedPage.reload();
+      }
+      await expect(packages).toBeVisible({timeout: 5000});
+
+      await expect(
+        authenticatedPage.locator('[data-testid="packages-chart"]'),
+      ).toBeVisible();
     });
   },
 );

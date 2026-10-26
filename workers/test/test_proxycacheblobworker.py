@@ -2,11 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app import storage
+from data.model.blob import store_blob_record_and_temp_link
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
 from data.model.repository import create_repository
+from data.model.storage import get_layer_path
 from data.model.user import get_user
 from data.registry_model.registry_proxy_model import ProxyModel
+from digest.digest_tools import sha256_digest
 from test.fixtures import *
 from workers.proxycacheblobworker import ProxyCacheBlobWorker
 
@@ -435,3 +439,131 @@ def test_reset_security_status_only_affects_unsupported(proxy_cache_blob_worker,
         ManifestSecurityStatus.repository == repo,
     )
     assert status.index_status == IndexStatus.FAILED
+
+
+def test_should_download_blob_missing_from_storage(proxy_cache_blob_worker, initialized_db):
+    """
+    When a blob has a placement record in DB but the file is missing from
+    storage, _should_download_blob should return True (PROJQUAY-10315).
+    """
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        Manifest,
+        ManifestBlob,
+        MediaType,
+        Repository,
+    )
+
+    repo = Repository.get(Repository.name == "simple")
+    location = ImageStorageLocation.get(name="local_us")
+
+    content = b"worker test blob missing from storage"
+    digest = str(sha256_digest(content))
+    blob = store_blob_record_and_temp_link(
+        repo.namespace_user.username,
+        repo.name,
+        digest,
+        location,
+        len(content),
+        120,
+    )
+    layer_path = get_layer_path(blob)
+    storage.put_content(["local_us"], layer_path, content)
+
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+    manifest = Manifest.create(
+        digest="sha256:worker_test_missing",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+    ManifestBlob.create(manifest=manifest, blob=blob, repository=repo)
+
+    assert ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).exists()
+
+    orgname = "testorg-worker-missing"
+    user = get_user("devtable")
+    org = create_organization(orgname, f"{orgname}@devtable.com", user)
+    org.save()
+    create_proxy_cache_config(
+        org_name=orgname,
+        upstream_registry="quay.io",
+        expiration_s=3600,
+    )
+    with patch("data.registry_model.registry_proxy_model.Proxy", MagicMock()):
+        registry_proxy_model = ProxyModel(orgname, "app-sre/ubi8-ubi", user)
+
+    # File exists → should not download
+    assert not proxy_cache_blob_worker._should_download_blob(digest, repo.id, registry_proxy_model)
+
+    # Remove file from storage
+    storage.remove(["local_us"], layer_path)
+    assert not storage.exists(["local_us"], layer_path)
+
+    # File missing → should download
+    assert proxy_cache_blob_worker._should_download_blob(digest, repo.id, registry_proxy_model)
+
+
+def test_should_download_blob_storage_error(proxy_cache_blob_worker, initialized_db):
+    """
+    When storage.exists() raises an exception, _should_download_blob should
+    return True to trigger a re-download rather than serving stale data.
+    """
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        Manifest,
+        ManifestBlob,
+        MediaType,
+        Repository,
+    )
+
+    repo = Repository.get(Repository.name == "simple")
+    location = ImageStorageLocation.get(name="local_us")
+
+    content = b"worker test blob storage error"
+    digest = str(sha256_digest(content))
+    blob = store_blob_record_and_temp_link(
+        repo.namespace_user.username,
+        repo.name,
+        digest,
+        location,
+        len(content),
+        120,
+    )
+    layer_path = get_layer_path(blob)
+    storage.put_content(["local_us"], layer_path, content)
+
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+    manifest = Manifest.create(
+        digest="sha256:worker_test_error",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+    ManifestBlob.create(manifest=manifest, blob=blob, repository=repo)
+
+    orgname = "testorg-worker-error"
+    user = get_user("devtable")
+    org = create_organization(orgname, f"{orgname}@devtable.com", user)
+    org.save()
+    create_proxy_cache_config(
+        org_name=orgname,
+        upstream_registry="quay.io",
+        expiration_s=3600,
+    )
+    with patch("data.registry_model.registry_proxy_model.Proxy", MagicMock()):
+        registry_proxy_model = ProxyModel(orgname, "app-sre/ubi8-ubi", user)
+
+    with patch(
+        "workers.proxycacheblobworker.storage.exists",
+        side_effect=IOError("storage unavailable"),
+    ):
+        assert proxy_cache_blob_worker._should_download_blob(digest, repo.id, registry_proxy_model)

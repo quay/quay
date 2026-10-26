@@ -4,6 +4,7 @@ Manage organizations, members and OAuth applications.
 
 import logging
 import time
+import uuid
 
 import recaptcha2
 from flask import request
@@ -53,8 +54,36 @@ from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
 from util.request import get_request_ip
+from util.security.ssrf import (
+    SSRFBlockedError,
+    get_environment_proxy_config,
+    validate_external_registry_url,
+)
+from util.validation import validate_email
 
 logger = logging.getLogger(__name__)
+
+SSRF_GENERIC_ERROR = "The provided registry URL is not allowed"
+
+
+def _get_ssrf_allowed_hosts():
+    return app.config.get("SSRF_ALLOWED_HOSTS", [])
+
+
+def _validate_upstream_registry(upstream_registry, insecure=False):
+    hostname = upstream_registry.split("/", 1)[0]
+    scheme = "http" if insecure else "https"
+    url = f"{scheme}://{hostname}"
+    try:
+        validate_external_registry_url(
+            url,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=get_environment_proxy_config(),
+        )
+    except SSRFBlockedError:
+        raise request_error(SSRF_GENERIC_ERROR)
+    except ValueError as e:
+        raise request_error(str(e))
 
 
 def quota_view(quota):
@@ -114,9 +143,13 @@ def org_view(o, teams):
         is_admin = True
         is_member = True
 
+    org_email = ""
+    if is_admin or can_view_as_superuser:
+        org_email = o.email if validate_email(o.email) else ""
+
     view = {
         "name": o.username,
-        "email": o.email if is_admin or can_view_as_superuser else "",
+        "email": org_email,
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -173,6 +206,10 @@ class OrganizationList(ApiResource):
                     "type": "string",
                     "description": "Organization contact email",
                 },
+                "contact_email": {
+                    "type": "string",
+                    "description": "Optional contact email for organization recovery and notifications",
+                },
                 "recaptcha_response": {
                     "type": "string",
                     "description": "The (may be disabled) recaptcha response code for verification",
@@ -214,8 +251,9 @@ class OrganizationList(ApiResource):
             msg = "A user or organization with this name already exists"
             raise request_error(message=msg)
 
-        if features.MAILING and not org_data.get("email"):
-            raise request_error(message="Email address is required")
+        email = org_data.get("contact_email") or org_data.get("email")
+        if email and not validate_email(email):
+            raise request_error(message="Invalid email address")
 
         # If recaptcha is enabled, then verify the user is a human.
         if features.RECAPTCHA:
@@ -232,7 +270,7 @@ class OrganizationList(ApiResource):
         try:
             model.organization.create_organization(
                 org_data["name"],
-                org_data.get("email"),
+                email,
                 user,
                 email_required=features.MAILING,
                 is_possible_abuser=is_possible_abuser,
@@ -240,7 +278,7 @@ class OrganizationList(ApiResource):
             log_action(
                 "org_create",
                 org_data["name"],
-                {"email": org_data.get("email"), "namespace": org_data["name"]},
+                {"email": email, "namespace": org_data["name"]},
             )
             return "Created", 201
         except model.DataModelException as ex:
@@ -262,6 +300,10 @@ class Organization(ApiResource):
             "properties": {
                 "email": {
                     "type": "string",
+                    "description": "Organization contact email",
+                },
+                "contact_email": {
+                    "type": ["string", "null"],
                     "description": "Organization contact email",
                 },
                 "invoice_email": {
@@ -340,20 +382,29 @@ class Organization(ApiResource):
                     {"invoice_email_address": new_email, "namespace": orgname},
                 )
 
-            if "email" in org_data and org_data["email"] != org.email:
-                new_email = org_data["email"]
-                old_email = org.email
-
-                if model.user.find_user_by_email(new_email):
-                    raise request_error(message="E-mail address already used")
-
-                logger.debug("Changing email address for organization: %s", org.username)
-                model.user.update_email(org, new_email)
-                log_action(
-                    "org_change_email",
-                    orgname,
-                    {"email": new_email, "namespace": orgname, "old_email": old_email},
+            if "contact_email" in org_data or "email" in org_data:
+                new_email = (
+                    org_data.get("contact_email")
+                    if "contact_email" in org_data
+                    else org_data.get("email")
                 )
+                new_email = new_email or ""
+                current_email = org.email if validate_email(org.email) else ""
+                if new_email != current_email:
+                    if new_email and not validate_email(new_email):
+                        raise request_error(message="Invalid email address")
+                    old_email = current_email
+                    org.email = new_email if new_email else str(uuid.uuid4())
+                    org.save()
+                    log_action(
+                        "org_change_email",
+                        orgname,
+                        {
+                            "email": new_email,
+                            "namespace": orgname,
+                            "old_email": old_email,
+                        },
+                    )
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(
@@ -693,6 +744,11 @@ class ApplicationInformation(ApiResource):
         }
 
 
+def _ensure_oauth_app_name_is_not_reserved(name):
+    if model.oauth.is_bootstrap_app_name(name):
+        request_error(message="Application name is reserved for bootstrap token provisioning")
+
+
 def app_view(application):
     is_admin = AdministerOrganizationPermission(application.organization.username).can()
     client_secret = None
@@ -788,6 +844,7 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            _ensure_oauth_app_name_is_not_reserved(app_data["name"])
             application = model.oauth.create_application(
                 org,
                 app_data["name"],
@@ -889,6 +946,7 @@ class OrganizationApplicationResource(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            _ensure_oauth_app_name_is_not_reserved(app_data["name"])
             application.name = app_data["name"]
             application.application_uri = app_data["application_uri"]
             application.redirect_uri = app_data["redirect_uri"]
@@ -1055,6 +1113,11 @@ class OrganizationProxyCacheConfig(ApiResource):
 
         data = request.get_json()
 
+        _validate_upstream_registry(
+            data.get("upstream_registry", ""),
+            insecure=data.get("insecure", False),
+        )
+
         try:
             config = model.proxy_cache.create_proxy_cache_config(
                 org_name=orgname,
@@ -1063,6 +1126,7 @@ class OrganizationProxyCacheConfig(ApiResource):
                 upstream_registry_password=data.get("upstream_registry_password"),
                 expiration_s=data.get("expiration_s", 86400),
                 insecure=data.get("insecure", False),
+                allowed_hosts=_get_ssrf_allowed_hosts(),
             )
             if config is not None:
                 log_action(
@@ -1134,7 +1198,7 @@ class ProxyCacheConfigValidation(ApiResource):
 
         try:
             model.proxy_cache.get_proxy_cache_config_for_org(orgname)
-            request_error("Proxy Cache Configuration already exists")
+            raise request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
 
@@ -1142,6 +1206,11 @@ class ProxyCacheConfigValidation(ApiResource):
 
         # filter None values
         data = {k: v for k, v in data.items() if v is not None}
+
+        _validate_upstream_registry(
+            data.get("upstream_registry", ""),
+            insecure=data.get("insecure", False),
+        )
 
         try:
             config = ProxyCacheConfig(**data)
@@ -1154,6 +1223,8 @@ class ProxyCacheConfigValidation(ApiResource):
                 return "Valid", 202
             if response.status_code == 401:
                 return "Anonymous", 202
+        except SSRFBlockedError:
+            raise request_error(SSRF_GENERIC_ERROR)
         except UpstreamRegistryError as e:
             raise request_error(
                 message="Failed login to remote registry. Please verify entered details and try again."

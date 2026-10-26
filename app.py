@@ -48,6 +48,7 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from storage import Storage
+from storage.upstreamproxy import UpstreamProxy
 from util import get_app_url
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
@@ -66,12 +67,14 @@ from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
 from util.security.instancekeys import InstanceKeys
+from util.timedeltastring import convert_to_timedelta
 from util.tufmetadata.api import TUFMetadataAPI
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
 
 OVERRIDE_CONFIG_KEY = "QUAY_OVERRIDE_CONFIG"
+DEFAULT_SESSION_TIMEOUT = "31d"
 
 DOCKER_V2_SIGNINGKEY_FILENAME = "docker_v2.pem"
 INIT_SCRIPTS_LOCATION = "/conf/init/"
@@ -79,6 +82,12 @@ INIT_SCRIPTS_LOCATION = "/conf/init/"
 app = Flask(__name__)
 
 logger = logging.getLogger(__name__)
+
+
+def configure_app_session_lifetime(flask_app):
+    session_timeout = flask_app.config.get("SESSION_TIMEOUT", DEFAULT_SESSION_TIMEOUT)
+    flask_app.permanent_session_lifetime = convert_to_timedelta(session_timeout)
+
 
 # Instantiate the configuration.
 is_testing = IS_TESTING
@@ -113,14 +122,29 @@ if app.config.get("TESTING", False):
 environ_config = json.loads(os.environ.get(OVERRIDE_CONFIG_KEY, "{}"))
 app.config.update(environ_config)
 
+configure_app_session_lifetime(app)
+
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):
     app.wsgi_app = ProxyFix(app.wsgi_app)  # type: ignore[method-assign]
 
-# Allow user to define a custom storage preference for the local instance.
-_distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
-if _distributed_storage_preference:
-    app.config["DISTRIBUTED_STORAGE_PREFERENCE"] = _distributed_storage_preference
+
+def apply_storage_replication_config(config):
+    """Apply env var override and validate storage replication settings."""
+    pref = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
+    if pref:
+        config["DISTRIBUTED_STORAGE_PREFERENCE"] = pref
+
+    if not config.get("DISTRIBUTED_STORAGE_PREFERENCE") and config.get(
+        "FEATURE_STORAGE_REPLICATION", False
+    ):
+        raise Exception(
+            "Missing storage preference for geo-replication. Set DISTRIBUTED_STORAGE_PREFERENCE "
+            "in config.yaml or the QUAY_DISTRIBUTED_STORAGE_PREFERENCE environment variable."
+        )
+
+
+apply_storage_replication_config(app.config)
 
 # Generate a secret key if none was specified.
 if app.config["SECRET_KEY"] is None:
@@ -190,6 +214,7 @@ def _request_start():
 DEFAULT_FILTER = lambda x: "[FILTERED]"
 FILTERED_VALUES = [
     {"key": ["password"], "fn": DEFAULT_FILTER},
+    {"key": ["subject_token"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_password"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_username"], "fn": DEFAULT_FILTER},
     {"key": ["user", "password"], "fn": DEFAULT_FILTER},
@@ -205,7 +230,10 @@ def _request_end(resp):
     except HTTPException:
         jsonbody = None
 
-    values = request.values.to_dict()
+    try:
+        values = request.values.to_dict()
+    except HTTPException:
+        values = None
 
     if isinstance(jsonbody, dict):
         filter_logs(jsonbody, FILTERED_VALUES)
@@ -313,6 +341,12 @@ all_queues = [
     namespace_gc_queue,
 ]
 
+# initialize upstream proxy downloader instance
+upstream_proxy = None
+if app.config.get("FEATURE_PROXY_CACHE", False) and instance_keys is not None:
+    logger.debug("Initializing upstream proxy downloader")
+    upstream_proxy = UpstreamProxy(app, instance_keys)
+
 url_scheme_and_hostname = URLSchemeAndHostname(
     app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]
 )
@@ -336,14 +370,6 @@ if os.path.exists(_v2_key_path):
         docker_v2_signing_key = JsonWebKey.import_key(key_file.read())
 else:
     docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
-
-# Check if georeplication is turned on and whether env. variables exist:
-if os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE") is None and app.config.get(
-    "FEATURE_STORAGE_REPLICATION", False
-):
-    raise Exception(
-        "Missing storage preference, did you perhaps forget to define QUAY_DISTRIBUTED_STORAGE_PREFERENCE variable?"
-    )
 
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):

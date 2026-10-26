@@ -3,7 +3,7 @@
  */
 
 export {ApiClient} from './client';
-export {RawApiClient} from './raw-client';
+export {ApiRequestError, RawApiClient} from './raw-client';
 export {
   initializeSuperuser,
   getAccessToken,
@@ -11,6 +11,7 @@ export {
   getV2Token,
 } from './auth';
 export type {
+  AutoPrunePolicy,
   CreateRobotResponse,
   CreateUserResponse,
   GetPrototypesResponse,

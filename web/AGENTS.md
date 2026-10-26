@@ -45,9 +45,6 @@ web/
 │   │   ├── axios.ts         # Configured Axios instance (CSRF tokens)
 │   │   └── utils.ts         # Common utilities
 │   └── assets/              # Static assets
-├── cypress/
-│   ├── e2e/                 # Integration tests
-│   └── fixtures/            # Test data
 ├── webpack.dev.js           # Dev server + proxy config
 ├── webpack.prod.js          # Production build
 └── webpack.plugin.js        # OpenShift Console plugin build
@@ -57,26 +54,26 @@ web/
 
 ```bash
 # Local Development
-npm install              # Install dependencies
-npm start                # Dev server on http://localhost:9000 (hot-reload)
-MOCK_API=true npm start  # Mock API (no backend required)
-npm run format           # Prettier formatting
+pnpm install             # Install dependencies
+pnpm start               # Dev server on http://localhost:9000 (hot-reload)
+MOCK_API=true pnpm start # Mock API (no backend required)
+pnpm run format          # Prettier formatting
 
 # Unit Testing (Vitest + React Testing Library)
-npm test                 # Run all unit tests
-npm run test:watch       # Watch mode for development
-npm run test:coverage    # Run with coverage report
-npx vitest run src/libs/utils.test.ts  # Single test file
+pnpm test                # Run all unit tests
+pnpm run test:watch      # Watch mode for development
+pnpm run test:coverage   # Run with coverage report
+pnpm vitest run src/libs/utils.test.ts  # Single test file
 
 # E2E Testing (Playwright)
-npm run test:e2e         # Run all Playwright e2e tests
-npm run test:e2e:ui      # Playwright UI mode
-npm run test:api         # API-only tests
+pnpm run test:e2e        # Run all Playwright e2e tests
+pnpm run test:e2e:ui     # Playwright UI mode
+pnpm run test:api        # API-only tests
 
 # Building
-npm run build            # Production build → dist/
-npm run build-plugin     # OpenShift Console plugin build
-npm run start-plugin     # Plugin dev server
+pnpm run build           # Production build → dist/
+pnpm run build-plugin    # OpenShift Console plugin build
+pnpm run start-plugin    # Plugin dev server
 ```
 
 ## Quay-Specific Patterns
@@ -148,6 +145,20 @@ const RepositoriesList = lazy(() => import('./RepositoriesList'));
 - `AuthContext`: Current user
 
 **Legacy:** Recoil atoms in `src/atoms/` (avoid for new code)
+
+### Anonymous Access
+
+When `FEATURE_ANONYMOUS_ACCESS` is enabled, unauthenticated users can browse public repositories without signing in. This cross-cutting pattern touches auth, routing, data fetching, and the UI shell.
+
+**Anonymous user sentinel:** `fetchUser()` in `UserResource.ts` catches 401 from `/api/v1/user/` and returns an `ANONYMOUS_USER` object (`anonymous: true`) instead of throwing. After user loading completes, check `user?.anonymous` to detect the anonymous state. During loading, `user` may be null; do not treat a missing user as anonymous.
+
+**Route protection:** Use `ProtectedRepositoryRoute` (`src/routes/ProtectedRepositoryRoute.tsx`) to guard repository routes. It pre-checks repo accessibility for anonymous users: redirects 401/403 to `/signin` and renders `<RequestError>` for other errors (never returns `null` for terminal errors). All routes — including anonymous ones — must render inside the shared `<Page>` shell (`StandaloneMain.tsx`) so `SystemStatusBanner`, `GlobalMessages`, `Alerts`, and `QuayFooter` remain visible.
+
+**Hook gating:** Data-fetching hooks that require authentication (notifications, teams, user-specific data) must use the `enabled` parameter to skip queries for anonymous users. Gate on the user being non-null and not anonymous: `useQuery([...], fn, { enabled: user != null && !user.anonymous })`. Using `!!user` alone is insufficient because the `ANONYMOUS_USER` sentinel is truthy. New hooks fetching user-specific data should follow this pattern.
+
+**Axios interceptor ordering:** The 401 interceptor in `src/libs/axios.ts` refreshes OpenShift plugin tokens (`window.insights.chrome.auth`) *before* checking `shouldSkipRedirect`. The anonymous-mode skip logic (`_anonymousMode`) lives in the standalone-only `else` branch. Never move anonymous skip logic before the plugin token refresh — doing so wedges OpenShift Console sessions.
+
+**Pagination:** `fetchRepositories()` and `fetchRepositoriesForNamespace()` in `RepositoryResource.ts` recursively follow `next_page` cursors. Any new public-data fetch that returns paginated results must do the same — dropping cursors truncates results for anonymous users browsing large public namespaces.
 
 ## Critical Rules
 

@@ -40,6 +40,7 @@ import {
 } from 'src/hooks/UseQuotaManagement';
 import {
   IQuotaLimit,
+  QuotaViewMode,
   bytesToHumanReadable,
   humanReadableToBytes,
 } from 'src/resources/QuotaResource';
@@ -69,15 +70,18 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   // Determine the correct viewMode based on context
   // - If view is 'organization-view' and isUser is true: user viewing their own quota
   // - If view is 'organization-view' and isUser is false: organization viewing org quota
-  // - If view is 'super-user': superuser managing quota (use 'superuser' for users, 'organization' for orgs)
-  const viewMode =
+  // - If view is 'super-user': superuser managing quota, which must use the
+  //   /api/v1/superuser/... routes for organizations as well as for users. The
+  //   tenant /api/v1/organization/... routes reject every write unless
+  //   FEATURE_SUPERUSERS_FULL_ACCESS is enabled, which is off by default.
+  const viewMode: QuotaViewMode =
     props.view === 'organization-view'
       ? props.isUser
         ? 'self'
         : 'organization'
       : props.isUser
-      ? 'superuser'
-      : 'organization';
+        ? 'superuser'
+        : 'superuser-organization';
 
   const {organizationQuota, isLoadingQuotas} = useFetchOrganizationQuota(
     props.organizationName,

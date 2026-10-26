@@ -113,13 +113,26 @@ export async function fetchAllRepos(
 export async function fetchRepositoriesForNamespace(
   ns: string,
   options: FetchRepositoriesOptions = {},
+  quota?: boolean,
 ): Promise<IRepository[]> {
   const {signal, next_page_token = null, onPartialResult} = options;
+  const params: Record<string, string | boolean | number | undefined> = {
+    public: true,
+    last_modified: true,
+    namespace: ns,
+  };
 
-  const url = next_page_token
-    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&namespace=${ns}&public=true`
-    : `/api/v1/repository?last_modified=true&namespace=${ns}&public=true`;
-  const response: AxiosResponse = await axios.get(url, {signal});
+  if (quota === false) {
+    params.quota = false;
+  }
+
+  const url = `/api/v1/repository`;
+
+  if (next_page_token != null) {
+    params.next_page = next_page_token;
+  }
+
+  const response: AxiosResponse = await axios.get(url, {params, signal});
   assertHttpCode(response.status, 200);
 
   const next_page = response.data?.next_page;
@@ -131,23 +144,63 @@ export async function fetchRepositoriesForNamespace(
   }
 
   if (next_page) {
-    const resp = await fetchRepositoriesForNamespace(ns, {
-      signal,
-      next_page_token: next_page,
-      onPartialResult,
-    });
+    const resp = await fetchRepositoriesForNamespace(
+      ns,
+      {
+        signal,
+        next_page_token: next_page,
+        onPartialResult,
+      },
+      quota,
+    );
     return repos.concat(resp);
   }
   return repos as IRepository[];
 }
 
-export async function fetchRepositories() {
-  // TODO: Add return type to AxiosResponse
-  const response: AxiosResponse = await axios.get(
-    `/api/v1/repository?last_modified=true&public=true`,
-  );
+export async function fetchRepositories(
+  options: FetchRepositoriesOptions = {},
+  quota?: boolean,
+): Promise<IRepository[]> {
+  const {signal, next_page_token = null, onPartialResult} = options;
+
+  const params: Record<string, string | boolean | number | undefined> = {
+    public: true,
+    last_modified: true,
+  };
+
+  if (quota === false) {
+    params.quota = false;
+  }
+
+  const url = `/api/v1/repository`;
+
+  if (next_page_token != null) {
+    params.next_page = next_page_token;
+  }
+
+  const response: AxiosResponse = await axios.get(url, {params, signal});
   assertHttpCode(response.status, 200);
-  return response.data?.repositories as IRepository[];
+
+  const next_page = response.data?.next_page;
+  const repos = response.data?.repositories as IRepository[];
+
+  if (onPartialResult) {
+    onPartialResult(repos);
+  }
+
+  if (next_page) {
+    const rest = await fetchRepositories(
+      {
+        signal,
+        next_page_token: next_page,
+        onPartialResult,
+      },
+      quota,
+    );
+    return repos.concat(rest);
+  }
+  return repos;
 }
 
 /**

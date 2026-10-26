@@ -16,6 +16,14 @@ export type PrototypeRole = 'read' | 'write' | 'admin';
 export type MessageSeverity = 'info' | 'warning' | 'error';
 export type MessageMediaType = 'text/plain' | 'text/markdown';
 
+// Auto-prune policy types
+export interface AutoPrunePolicy {
+  method: 'number_of_tags' | 'creation_date';
+  value: number | string;
+  tagPattern?: string;
+  tagPatternMatches?: boolean;
+}
+
 // Immutability policy types
 export interface ImmutabilityPolicy {
   uuid?: string;
@@ -113,6 +121,15 @@ export interface CreateUserResponse {
   awaiting_verification?: boolean;
 }
 
+export interface CurrentUserResponse {
+  username: string;
+  organizations: Array<{
+    name: string;
+    can_create_repo?: boolean;
+    is_org_admin?: boolean;
+  }>;
+}
+
 export interface CreateRobotResponse {
   name: string;
   token: string;
@@ -205,10 +222,17 @@ export interface ProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
+// CSRF token belongs to the session, i.e. to the request context, not the client.
+const csrfTokenCache = new WeakMap<APIRequestContext, string>();
+// Bumped whenever a session-changing call (signIn/createUser) invalidates the
+// cache above, so a fetchToken() that started before the invalidation can
+// detect it lost the race and skip resurrecting a pre-invalidation token.
+const csrfTokenGeneration = new WeakMap<APIRequestContext, number>();
+
 export class ApiClient {
   private request: APIRequestContext;
-  private csrfToken: string | null = null;
   private credentials: {username: string; password: string} | null = null;
+  private hasFetchedToken = false;
 
   constructor(request: APIRequestContext) {
     this.request = request;
@@ -219,10 +243,24 @@ export class ApiClient {
   }
 
   private async fetchToken(): Promise<string> {
-    if (!this.csrfToken) {
-      this.csrfToken = await requestCsrfToken(this.request, API_URL);
+    // First use always hits the server, so a client self-heals a session
+    // rotation (e.g. a UI-driven fresh-login verify) it never observed.
+    let token = this.hasFetchedToken
+      ? csrfTokenCache.get(this.request)
+      : undefined;
+    if (!token) {
+      const generation = csrfTokenGeneration.get(this.request) ?? 0;
+      token = await requestCsrfToken(this.request, API_URL);
+      // If a sibling client's signIn/createUser invalidated the cache while
+      // this fetch was in flight, writing here would resurrect a token from
+      // before that invalidation. Leave hasFetchedToken false so the next
+      // call refetches instead of trusting a cache another client owns.
+      if ((csrfTokenGeneration.get(this.request) ?? 0) === generation) {
+        csrfTokenCache.set(this.request, token);
+        this.hasFetchedToken = true;
+      }
     }
-    return this.csrfToken;
+    return token;
   }
 
   /**
@@ -270,6 +308,10 @@ export class ApiClient {
     email?: string,
   ): Promise<{name: string}> {
     const token = await this.fetchToken();
+    const body: Record<string, string> = {name};
+    if (email) {
+      body.email = email;
+    }
     const response = await this.request.post(
       `${API_URL}/api/v1/organization/`,
       {
@@ -277,10 +319,7 @@ export class ApiClient {
         headers: {
           'X-CSRF-Token': token,
         },
-        data: {
-          name,
-          email: email || `${name}@example.com`,
-        },
+        data: body,
       },
     );
 
@@ -288,6 +327,24 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to create organization ${name}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async getOrganization(name: string): Promise<Record<string, unknown>> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${name}`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get organization ${name}: ${response.status()} - ${body}`,
       );
     }
 
@@ -670,6 +727,219 @@ export class ApiClient {
     return response.json();
   }
 
+  // Namespace notification methods
+
+  async createNamespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/notifications`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create namespace notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteNamespaceNotification(
+    orgName: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/notifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getNamespaceNotifications(orgName: string): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/notifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get namespace notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async testNamespaceNotification(
+    orgName: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/notifications/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // User namespace notification methods
+
+  async createUserNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/namespacenotifications`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create user namespace notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteUserNamespaceNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete user namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getUserNamespaceNotifications(): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/namespacenotifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get user namespace notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async testUserNamespaceNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/namespacenotifications/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test user namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Team methods
 
   async createTeam(
@@ -877,6 +1147,13 @@ export class ApiClient {
       );
     }
 
+    // Creating a user changes the server session; invalidate cached CSRF token
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
+
     const result = await response.json();
     return {
       username: result.username || username,
@@ -922,6 +1199,29 @@ export class ApiClient {
     };
   }
 
+  async updateUserAsSuperuser(
+    username: string,
+    data: {email?: string; enabled?: boolean; password?: string},
+  ): Promise<void> {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.put(`${API_URL}/api/v1/superuser/users/${username}`, {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data,
+      });
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update user ${username}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   async deleteUser(username: string): Promise<void> {
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();
@@ -954,6 +1254,22 @@ export class ApiClient {
     return response.ok();
   }
 
+  // Re-submitting the unchanged username clears confirm_username.
+  async clearUserPrompts(username: string): Promise<void> {
+    const token = await this.getToken();
+    const response = await this.request.put(`${API_URL}/api/v1/user/`, {
+      timeout: 5000,
+      headers: {'X-CSRF-Token': token},
+      data: {username, given_name: 'Test', family_name: 'User'},
+    });
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to clear user prompts: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Auth methods
 
   async signIn(username: string, password: string): Promise<void> {
@@ -975,22 +1291,46 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
-    this.csrfToken = null;
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
   }
 
   // User notification methods
 
-  async getUserNotifications(): Promise<{
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    const response = await this.request.get(`${API_URL}/api/v1/user/`, {
+      timeout: 5000,
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get current user: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async getUserNotifications(limit = 5): Promise<{
     notifications: Array<{
       id: string;
       kind: string;
-      metadata: {name: string; repository: string};
+      metadata: {
+        name?: string;
+        repository?: string;
+        org?: string;
+        code?: string;
+      };
       dismissed: boolean;
     }>;
     additional: boolean;
   }> {
     const response = await this.request.get(
-      `${API_URL}/api/v1/user/notifications`,
+      `${API_URL}/api/v1/user/notifications?limit=${limit}`,
       {
         timeout: 5000,
       },
@@ -1004,6 +1344,44 @@ export class ApiClient {
     }
 
     return response.json();
+  }
+
+  async acceptTeamInvite(code: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/teaminvite/${encodeURIComponent(code)}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`Failed to accept team invite: ${response.status()}`);
+    }
+  }
+
+  async dismissUserNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/user/notifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {dismissed: true},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to dismiss user notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
   }
 
   // Team member methods (for test setup)
@@ -1523,6 +1901,7 @@ export class ApiClient {
     namespace: string,
     repo: string,
     dockerfileContent = 'FROM scratch\n',
+    dockerTags: string[] = [],
   ): Promise<{id: string}> {
     const token = await this.fetchToken();
 
@@ -1577,6 +1956,7 @@ export class ApiClient {
         },
         data: {
           file_id: fileId,
+          ...(dockerTags.length > 0 && {docker_tags: dockerTags}),
         },
       },
     );
@@ -1589,6 +1969,130 @@ export class ApiClient {
     }
 
     return buildResponse.json();
+  }
+
+  /**
+   * Get build status for a specific build.
+   */
+  async getBuildStatus(
+    namespace: string,
+    repo: string,
+    buildId: string,
+  ): Promise<{id: string; phase: string; error?: string}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/${buildId}/status`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get build status: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get build logs for a specific build.
+   */
+  async getBuildLogs(
+    namespace: string,
+    repo: string,
+    buildId: string,
+  ): Promise<{start: number; total: number; logs: Array<{message: string}>}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/${buildId}/logs`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get build logs: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * List builds for a repository.
+   */
+  async getBuilds(
+    namespace: string,
+    repo: string,
+  ): Promise<{builds: Array<{id: string; phase: string; started: string}>}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(`Failed to get builds: ${response.status()} - ${body}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Poll build status until it reaches a terminal phase or timeout.
+   * Returns the final phase.
+   */
+  async waitForBuildPhase(
+    namespace: string,
+    repo: string,
+    buildId: string,
+    terminalPhases = [
+      'complete',
+      'error',
+      'internal_error',
+      'cancelled',
+      'expired',
+    ],
+    timeoutMs = 180000,
+    pollIntervalMs = 3000,
+  ): Promise<{phase: string; error?: string}> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const status = await this.getBuildStatus(namespace, repo, buildId);
+      if (terminalPhases.includes(status.phase)) {
+        return {phase: status.phase, error: status.error};
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    const finalStatus = await this.getBuildStatus(namespace, repo, buildId);
+    throw new Error(
+      `Build ${buildId} did not reach terminal phase within ${timeoutMs}ms. Current phase: ${finalStatus.phase}`,
+    );
+  }
+
+  /**
+   * Get a build via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/build`, {
+        timeout: 10000,
+      });
+    });
+  }
+
+  /**
+   * Get build logs via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildLogsAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/logs`, {
+        timeout: 10000,
+      });
+    });
   }
 
   // Proxy cache methods
@@ -2079,6 +2583,177 @@ export class ApiClient {
     }
   }
 
+  // Auto-prune policy methods
+
+  async createOrgAutoPrunePolicy(
+    orgName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/autoprunepolicy/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create auto-prune policy for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteOrgAutoPrunePolicy(
+    orgName: string,
+    policyUuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/autoprunepolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete auto-prune policy ${policyUuid} from ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async createRepoAutoPrunePolicy(
+    namespace: string,
+    repo: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/autoprunepolicy/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create auto-prune policy for ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteRepoAutoPrunePolicy(
+    namespace: string,
+    repo: string,
+    policyUuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/autoprunepolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete auto-prune policy ${policyUuid} from ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async listUserAutoPrunePolicies(): Promise<{uuid: string}[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/autoprunepolicy/`,
+      {timeout: 5000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to list user auto-prune policies: ${response.status()} - ${body}`,
+      );
+    }
+
+    const data = await response.json();
+    return data.policies ?? [];
+  }
+
+  async deleteAllUserAutoPrunePolicies(): Promise<void> {
+    const policies = await this.listUserAutoPrunePolicies();
+    for (const p of policies) {
+      await this.deleteUserAutoPrunePolicy(p.uuid);
+    }
+  }
+
+  async createUserAutoPrunePolicy(
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/autoprunepolicy/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create user auto-prune policy: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteUserAutoPrunePolicy(policyUuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/user/autoprunepolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete user auto-prune policy ${policyUuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Security scanner methods
 
   async getManifestSecurity(
@@ -2414,7 +3089,12 @@ export class ApiClient {
   async createRobotFederation(
     orgName: string,
     robotShortname: string,
-    federations: {issuer: string; subject: string}[],
+    federations: {
+      issuer: string;
+      subject: string;
+      api_scopes?: string;
+      audiences?: string[];
+    }[],
   ): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.post(
@@ -2460,6 +3140,116 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+  // Build trigger methods
+
+  async createCustomGitTrigger(
+    namespace: string,
+    repo: string,
+  ): Promise<string> {
+    const response = await this.request.get(
+      `${API_URL}/customtrigger/setup/${namespace}/${repo}`,
+      {timeout: 10000, maxRedirects: 0},
+    );
+
+    const location = response.headers()['location'] || '';
+    const match = location.match(/\/trigger\/([a-f0-9-]+)/);
+    if (!match) {
+      const body = await response.text();
+      throw new Error(
+        `Could not extract trigger UUID from redirect: ${response.status()} location=${location} - ${body}`,
+      );
+    }
+    return match[1];
+  }
+
+  async activateTrigger(
+    namespace: string,
+    repo: string,
+    triggerUuid: string,
+    config: Record<string, unknown>,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/activate`,
+      {
+        timeout: 10000,
+        headers: {'X-CSRF-Token': token},
+        data: {config},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to activate trigger ${triggerUuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async listTriggers(
+    namespace: string,
+    repo: string,
+  ): Promise<{triggers: Array<Record<string, unknown>>}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/trigger/`,
+      {timeout: 5000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to list triggers: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async toggleTrigger(
+    namespace: string,
+    repo: string,
+    triggerUuid: string,
+    enabled: boolean,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: {enabled},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to toggle trigger ${triggerUuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteTrigger(
+    namespace: string,
+    repo: string,
+    triggerUuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete trigger ${triggerUuid}: ${response.status()} - ${body}`,
       );
     }
   }

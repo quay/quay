@@ -26,6 +26,7 @@ from endpoints.v2.errors import (
     PushesDisabled,
     QuotaExceeded,
     ReadOnlyMode,
+    TemporarilyUnavailable,
     TooManyTagsRequested,
     Unauthorized,
     Unsupported,
@@ -33,6 +34,7 @@ from endpoints.v2.errors import (
 )
 from proxy import UpstreamRegistryError
 from util.http import abort
+from util.locking import LockAcquireTimeout
 from util.metrics.prometheus import timed_blueprint
 from util.pagination import decrypt_page_token, encrypt_page_token
 from util.registry.dockerver import docker_version
@@ -70,6 +72,13 @@ def handle_quota_error(error):
 @v2_bp.app_errorhandler(PushesDisabledException)
 def handle_pushes_disabled(error):
     return _format_error_response(PushesDisabled())
+
+
+@v2_bp.app_errorhandler(LockAcquireTimeout)
+def handle_lock_acquire_timeout(error):
+    # Transient: another holder (e.g. GC) has the blob's BLOB_DELETE lock. Clients retry a 503.
+    logger.warning("Returning 503: %s", error)
+    return _format_error_response(TemporarilyUnavailable())
 
 
 def _format_error_response(error: V2RegistryException) -> Response:

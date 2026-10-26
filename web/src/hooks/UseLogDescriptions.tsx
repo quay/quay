@@ -330,16 +330,28 @@ export function useLogDescriptions() {
       return `Mirror started for ${metadata.message}`;
     },
     repo_mirror_sync_success: function (metadata: Metadata) {
-      return `Mirror finished successfully for ${metadata.message} ${metadata.tags}`;
+      let msg = `Mirror finished successfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      return msg;
     },
     repo_mirror_sync_failed: function (metadata: Metadata) {
-      return `Mirror finished unsuccessfully for ${metadata.message} ${metadata.tags} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror finished unsuccessfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_success: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_failed: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_config_changed: function (metadata: Metadata) {
       switch (metadata.changed) {
@@ -978,6 +990,24 @@ export function useLogDescriptions() {
         </>
       );
     },
+    create_oauth_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Created OAuth API token for application{' '}
+          {wrapVariable(metadata.application_name)} with scope{' '}
+          {wrapVariable(metadata.scope)} via{' '}
+          {wrapVariable(metadata.auth_method)} auth
+        </>
+      );
+    },
+    revoke_oauth_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Revoked OAuth API token {wrapVariable(metadata.oauth_token_uuid)} from
+          application {wrapVariable(metadata.application_name)}
+        </>
+      );
+    },
     add_repo_notification: function (metadata: Metadata) {
       const event = events.events.find((e) => e.type == metadata.event);
       return `Add notification of event "${event.title}" for repository ${metadata.namespace}/${metadata.repo}`;
@@ -993,8 +1023,55 @@ export function useLogDescriptions() {
       return `Re-enable notification of event ${event.title} for repository ${metadata.namespace}/${metadata.repo}`;
     },
 
+    create_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Add notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
+    delete_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Delete notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
+    reset_namespace_notification: function (metadata: Metadata) {
+      return (
+        <>
+          Re-enable notification of event {wrapVariable(metadata.event)} via{' '}
+          {wrapVariable(metadata.method)} for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+
     regenerate_robot_token: function (metadata: Metadata) {
       return <>Regenerated token for robot {wrapVariable(metadata.robot)}</>;
+    },
+    create_robot_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Created API token {wrapVariable(metadata.token_display_name)} for
+          robot {wrapVariable(metadata.robot)} with scope{' '}
+          {wrapVariable(metadata.scope)}
+        </>
+      );
+    },
+    revoke_robot_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Revoked API token {wrapVariable(metadata.api_token_uuid)} from robot{' '}
+          {wrapVariable(metadata.robot)}
+        </>
+      );
     },
 
     service_key_create: function (metadata: Metadata) {

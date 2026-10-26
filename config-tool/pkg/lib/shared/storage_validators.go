@@ -56,14 +56,16 @@ func buildEndpoint(endpointURL string, host string, port int, defaultIsSecure bo
 }
 
 // buildSTSEndpointConfig builds endpoint configuration for STS-based storage types (IRSA and STS).
-func buildSTSEndpointConfig(args *DistributedStorageArgs) (string, bool, *aws.Config, error) {
+// defaultIsSecure controls TLS when no explicit scheme is present in the endpoint; callers should
+// pass true for S3Storage (mirrors Python's hardcoded is_secure=True) and args.IsSecure otherwise.
+func buildSTSEndpointConfig(args *DistributedStorageArgs, defaultIsSecure bool) (string, bool, *aws.Config, error) {
 	var s3Endpoint string
 	var isSecure bool
 	awsConfig := &aws.Config{}
 
 	if args.EndpointURL != "" || args.Host != "" {
 		var err error
-		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, args.IsSecure)
+		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, defaultIsSecure)
 		if err != nil {
 			return "", false, nil, err
 		}
@@ -125,6 +127,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			errors = append(errors, err)
 		}
 
+		var region string
+		if args.RegionName != "" {
+			region = args.RegionName
+		}
+
 		// Grab necessary variables
 		accessKey = args.AccessKey
 		secretKey = args.SecretKey
@@ -142,9 +149,22 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		log.Debugf("Storage parameters: ")
-		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+		log.Debugf("hostname: %s, region (if available): %s, bucket name: %s, TLS enabled: %t",
+			endpoint, region, bucketName, isSecure)
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		// for IBMCloudStorage region name should not be present in the config parameters
+		// because the driver doesn't support it
+		if storageType == "IBMCloudStorage" && region != "" {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    fmt.Sprintf("%s does not support region_name as parameter", storageName),
+			}
+			errors = append(errors, newError)
+		}
+
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, region, accessKey,
+			secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -159,11 +179,12 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
 
-		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
+		// Build endpoint from either endpoint_url (boto3) or host+port (boto2).
+		// S3Storage always uses HTTPS (matching Python storage/cloud.py:L803 is_secure=True).
 		var awsConfig *aws.Config
 		if args.EndpointURL != "" || args.Host != "" {
 			var err error
-			endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args)
+			endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args, true)
 			if err != nil {
 				errors = append(errors, ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -218,7 +239,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		log.Debugf("S3 Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, "", accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -253,7 +274,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		// Build endpoint configuration for STS and S3
 		var awsConfig *aws.Config
-		endpoint, isSecure, awsConfig, err := buildSTSEndpointConfig(args)
+		endpoint, isSecure, awsConfig, err := buildSTSEndpointConfig(args, args.IsSecure)
 		if err != nil {
 			errors = append(errors, ValidationError{
 				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -338,7 +359,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		log.Debugf("STS S3 Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, "", accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -370,7 +391,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		log.Debugf("GCS Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, "", accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -460,7 +481,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
 
 		// Validate bucket settings
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, "", accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -566,7 +587,12 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 }
 
-func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string) (bool, ValidationError) {
+func validateMinioGateway(opts Options, storageName, endpoint, region, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string) (bool, ValidationError) {
+	// verify that we're not in testing mode, if we are just return as we cannot confirm
+	// that real storage is available
+	if opts.Mode == "testing" {
+		return true, ValidationError{}
+	}
 
 	// Set transport
 	tr, err := minio.DefaultTransport(true)
@@ -588,6 +614,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 	// Create client
 	st, err := minio.New(endpoint, &minio.Options{
 		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
+		Region:    region,
 		Secure:    isSecure,
 		Transport: tr,
 	})
@@ -605,10 +632,15 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 
 	found, err := st.BucketExists(ctx, bucketName)
 	if err != nil {
+		msg := fmt.Sprintf("Could not connect to storage %s. Error: %s", storageName, err.Error())
+		if errResp := minio.ToErrorResponse(err); errResp.StatusCode != 0 {
+			msg = fmt.Sprintf("Could not connect to storage %s (HTTP error %d). Error: %s",
+				storageName, errResp.StatusCode, err.Error())
+		}
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 			FieldGroup: fgName,
-			Message:    "Could not connect to storage " + storageName + ". Error: " + err.Error(),
+			Message:    msg,
 		}
 		return false, newError
 	}

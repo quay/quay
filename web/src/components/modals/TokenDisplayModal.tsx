@@ -23,12 +23,15 @@ interface TokenDisplayModalProps {
   scopes: string[];
 }
 
-export default function TokenDisplayModal(props: TokenDisplayModalProps) {
+const TokenDisplayModal: React.FC<TokenDisplayModalProps> = (
+  props,
+): React.ReactElement => {
   return (
     <Modal
       variant={ModalVariant.medium}
       isOpen={props.isOpen}
       onClose={props.onClose}
+      data-testid="token-display-modal"
     >
       <ModalHeader title="Access Token Generated" />
       <ModalBody>
@@ -69,6 +72,7 @@ export default function TokenDisplayModal(props: TokenDisplayModalProps) {
               hoverTip="Copy to clipboard"
               clickTip="Copied!"
               variant="expansion"
+              data-testid="generated-token-secret"
             >
               {props.token}
             </ClipboardCopy>
@@ -77,7 +81,8 @@ export default function TokenDisplayModal(props: TokenDisplayModalProps) {
           <StackItem>
             <Alert variant="warning" title="Important Security Notice" isInline>
               <Content component={ContentVariants.p}>
-                Keep this token secure and do not share it. This token provides
+                This is the only time this token secret will be displayed. Keep
+                this token secure and do not share it. This token provides
                 access to your account with the selected permissions. You can
                 revoke this token at any time from the OAuth Applications
                 settings.
@@ -87,10 +92,17 @@ export default function TokenDisplayModal(props: TokenDisplayModalProps) {
         </Stack>
       </ModalBody>
       <ModalFooter>
-        <Button key="close" variant="primary" onClick={props.onClose}>
+        <Button
+          key="close"
+          variant="primary"
+          onClick={props.onClose}
+          data-testid="token-display-done"
+        >
           Done
         </Button>
       </ModalFooter>
     </Modal>
   );
-}
+};
+
+export default TokenDisplayModal;

@@ -1,4 +1,11 @@
-import {test, expect, mailpit} from '../../fixtures';
+import {
+  test,
+  expect,
+  mailpit,
+  uniqueName,
+  WebhookReceiver,
+  getTestUsers,
+} from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('renders and expands notification details', async ({
@@ -339,7 +346,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates email notification with authorization flow',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@PROJQUAY-7098']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
@@ -390,6 +397,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
 
       // Click Send Authorized Email
       await authenticatedPage.getByTestId('send-authorized-email-btn').click();
@@ -501,7 +511,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('recipient field: teams, users, and create team modal', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
+    const username = getTestUsers(quayConfig).user.username;
     // Create test organization with repository and team
     const org = await api.organization('recipnotif');
     const repo = await api.repository(org.name, 'reciprepo');
@@ -578,10 +590,10 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
     // Search for user
     await entitySearch.click();
-    await entitySearch.locator('input').fill('testuser');
+    await entitySearch.locator('input').fill(username);
 
     // Wait for search results and select user
-    await authenticatedPage.getByTestId('testuser').click();
+    await authenticatedPage.getByTestId(username).click();
 
     // Enter title
     await authenticatedPage
@@ -729,4 +741,201 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).toContain(skipped);
     }
   });
+
+  test(
+    'build event notifications delivered via email',
+    {tag: ['@feature:BUILD_SUPPORT', '@feature:MAILING', '@PROJQUAY-11626']},
+    async ({authenticatedPage, api}) => {
+      // Auth flow + build_queued wait (60s) + build_success wait (120s) + overhead
+      test.setTimeout(300_000);
+      const org = await api.organization('buildmail');
+      const repo = await api.repository(org.name, 'buildmailrepo');
+      const testEmail = `${uniqueName('build')}@example.com`;
+
+      // Navigate to notifications tab and create build_success email notification via UI
+      // to trigger and complete the email authorization flow.
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Image build success'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Email Notification'})
+        .click();
+      await authenticatedPage.getByTestId('notification-email').fill(testEmail);
+      await authenticatedPage
+        .getByTestId('notification-title')
+        .fill('Build Success Email');
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      // Authorization modal — send the confirmation email
+      await expect(
+        authenticatedPage.getByText('Email Authorization'),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('send-authorized-email-btn').click();
+
+      // Wait for the verification email in Mailpit (filtered by testEmail for parallel safety)
+      const authEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.toLowerCase().includes('verify'),
+        15000,
+      );
+      expect(authEmail, 'authorization email not received').not.toBeNull();
+
+      // Confirm the email address
+      const confirmLink = await mailpit.extractLink(authEmail!.ID);
+      expect(
+        confirmLink,
+        'confirmation link not found in email',
+      ).not.toBeNull();
+      const confirmPage = await authenticatedPage.context().newPage();
+      await confirmPage.goto(confirmLink!);
+      await confirmPage.close();
+
+      // Wait for the notification to appear as confirmed
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: 'Build Success Email'}),
+      ).toBeVisible({timeout: 15000});
+
+      // Create build_queued notification via API — email is now authorized for this repo
+      await api.notification(
+        org.name,
+        repo.name,
+        'build_queued',
+        'email',
+        {email: testEmail},
+        'Build Queued Email',
+      );
+
+      // Trigger a build — LABEL ensures a layer is produced so Quay marks it build_success
+      await api.build(
+        org.name,
+        repo.name,
+        'FROM scratch\nLABEL build="notification-test"\n',
+      );
+
+      // Assert build_queued email is delivered
+      const queuedEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.includes('Build queued') &&
+          msg.Subject.includes(`${org.name}/${repo.name}`),
+        60000,
+      );
+      expect(queuedEmail, 'build_queued email not received').not.toBeNull();
+
+      // Assert build_success email is delivered (240s: build may queue behind concurrent tests)
+      const successEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.includes('Build succeeded') &&
+          msg.Subject.includes(`${org.name}/${repo.name}`),
+        240000,
+      );
+      expect(successEmail, 'build_success email not received').not.toBeNull();
+    },
+  );
+
+  test(
+    'build event notification delivered via webhook',
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626', '@webhook']},
+    async ({api}) => {
+      // Build trigger + webhook wait (240s) + overhead; build may queue behind concurrent tests
+      test.setTimeout(300_000);
+      const org = await api.organization('buildwh');
+      const repo = await api.repository(org.name, 'buildwhrepo');
+
+      const receiver = new WebhookReceiver();
+      await receiver.start();
+
+      try {
+        // Create webhook notification for build_success event
+        await api.notification(
+          org.name,
+          repo.name,
+          'build_success',
+          'webhook',
+          {url: receiver.getUrl()},
+          'Build Success Webhook',
+        );
+
+        // Trigger a build — LABEL ensures a layer is produced so Quay marks it build_success
+        const build = await api.build(
+          org.name,
+          repo.name,
+          'FROM scratch\nLABEL build="notification-test"\n',
+        );
+
+        // Wait for webhook delivery and verify payload
+        const webhook = await receiver.waitForWebhook(
+          (req) =>
+            req.body.build_id === build.buildId &&
+            req.body.repository === `${org.name}/${repo.name}`,
+          240000,
+        );
+        expect(webhook, 'build_success webhook not received').not.toBeNull();
+        expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
+        expect(webhook!.body.build_id).toBe(build.buildId);
+      } finally {
+        await receiver.stop();
+      }
+    },
+  );
+
+  test(
+    'build_start notification delivered via webhook',
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-12196', '@webhook']},
+    async ({api}) => {
+      test.setTimeout(300_000);
+      const org = await api.organization('buildstartwh');
+      const repo = await api.repository(org.name, 'buildstartrepo');
+
+      const receiver = new WebhookReceiver();
+      await receiver.start();
+
+      try {
+        await api.notification(
+          org.name,
+          repo.name,
+          'build_start',
+          'webhook',
+          {url: receiver.getUrl()},
+          'Build Start Webhook',
+        );
+
+        const build = await api.build(
+          org.name,
+          repo.name,
+          'FROM scratch\nLABEL build="build-start-test"\n',
+        );
+
+        const webhook = await receiver.waitForWebhook(
+          (req) =>
+            req.body.build_id === build.buildId &&
+            req.body.repository === `${org.name}/${repo.name}`,
+          240000,
+        );
+        expect(webhook, 'build_start webhook not received').not.toBeNull();
+        expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
+        expect(webhook!.body.build_id).toBe(build.buildId);
+      } finally {
+        await receiver.stop();
+      }
+    },
+  );
 });

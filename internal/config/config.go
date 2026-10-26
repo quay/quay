@@ -16,14 +16,15 @@ import (
 
 // Config is the top-level Quay configuration.
 type Config struct {
-	Server   `yaml:",inline"`
-	Database `yaml:",inline"`
-	Storage  `yaml:",inline"`
-	Redis    `yaml:",inline"`
-	Auth     `yaml:",inline"`
-	Features `yaml:",inline"`
-	Security `yaml:",inline"`
-	Keys     `yaml:",inline"`
+	Server    `yaml:",inline"`
+	Database  `yaml:",inline"`
+	Storage   `yaml:",inline"`
+	Redis     `yaml:",inline"`
+	Auth      `yaml:",inline"`
+	Features  `yaml:",inline"`
+	Security  `yaml:",inline"`
+	Keys      `yaml:",inline"`
+	AccessLog `yaml:",inline"`
 
 	// Extra holds YAML keys not mapped to struct fields.
 	// The Python config has 200+ keys; the Go struct covers a subset.
@@ -37,7 +38,7 @@ type Config struct {
 // Load reads a config file from disk and parses it. path may be a file or a
 // directory containing config.yaml.
 func Load(path string) (*Config, error) {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) //nolint:gosec // path is a user-provided config file
 	if err != nil {
 		return nil, fmt.Errorf("config: stat %s: %w", path, err)
 	}

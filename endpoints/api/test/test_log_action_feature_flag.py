@@ -5,6 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app import app
+from auth.auth_context_type import SignedAuthContext, ValidatedAuthContext
+from auth.context_entity import ContextEntityKind
+from data import model
 
 
 class TestFeatureExtendedActionLogging:
@@ -70,6 +73,88 @@ class TestFeatureExtendedActionLogging:
                     assert call_kwargs["http_method"] == "POST"
                     assert "auth_type" in call_kwargs
                     assert "user_agent" in call_kwargs
+
+    def test_robot_credential_metadata_is_logged(self):
+        api_token = MagicMock(uuid="token-uuid", display_name="CI robot token")
+        federation_binding = {"id": "binding-id", "version": 3}
+        auth_context = ValidatedAuthContext(
+            robot=MagicMock(), api_token=api_token, federation_binding=federation_binding
+        )
+
+        with app.test_request_context("/api/v1/test", method="POST"):
+            with patch("endpoints.api.logs_model") as mock_logs_model:
+                with patch("endpoints.api.get_authenticated_context", return_value=auth_context):
+                    from endpoints.api import log_action
+
+                    log_action("test_action", "testuser")
+
+                metadata = mock_logs_model.log_action.call_args.kwargs["metadata"]
+
+        assert metadata == {
+            "api_token_uuid": "token-uuid",
+            "api_token_name": "CI robot token",
+            "federation_binding_id": "binding-id",
+            "federation_binding_version": 3,
+        }
+
+    def test_normalized_legacy_federation_binding_metadata_is_logged(self):
+        legacy = {
+            "issuer": "https://issuer.example",
+            "subject": "system:serviceaccount:ci:builder",
+            "audiences": ["quay"],
+        }
+        binding = model.user.normalize_robot_federation_bindings([legacy])[0]
+        auth_context = ValidatedAuthContext(robot=MagicMock(), federation_binding=binding)
+
+        with app.test_request_context("/api/v1/test", method="POST"):
+            with patch("endpoints.api.logs_model") as mock_logs_model:
+                with patch("endpoints.api.get_authenticated_context", return_value=auth_context):
+                    from endpoints.api import log_action
+
+                    log_action("test_action", "testuser")
+
+                metadata = mock_logs_model.log_action.call_args.kwargs["metadata"]
+
+        assert metadata == {
+            "federation_binding_id": model.user.legacy_federation_binding_id(legacy),
+            "federation_binding_version": 1,
+        }
+
+    def test_federation_binding_without_identity_does_not_fail_logging(self):
+        auth_context = ValidatedAuthContext(
+            robot=MagicMock(),
+            federation_binding={"issuer": "https://issuer.example", "subject": "sa"},
+        )
+
+        with app.test_request_context("/api/v1/test", method="POST"):
+            with patch("endpoints.api.logs_model") as mock_logs_model:
+                with patch("endpoints.api.get_authenticated_context", return_value=auth_context):
+                    from endpoints.api import log_action
+
+                    log_action("test_action", "testuser")
+
+                metadata = mock_logs_model.log_action.call_args.kwargs["metadata"]
+
+        assert metadata == {
+            "federation_binding_id": None,
+            "federation_binding_version": None,
+        }
+
+    def test_signed_auth_context_without_robot_token_metadata_is_logged(self):
+        auth_context = SignedAuthContext(
+            ContextEntityKind.anonymous, {"entity_kind": "anonymous"}, False
+        )
+
+        with app.test_request_context("/api/v1/test", method="POST"):
+            with patch("endpoints.api.logs_model") as mock_logs_model:
+                with patch("endpoints.api.get_authenticated_context", return_value=auth_context):
+                    from endpoints.api import log_action
+
+                    log_action("test_action", "testuser")
+
+                metadata = mock_logs_model.log_action.call_args.kwargs["metadata"]
+
+        assert metadata == {}
 
     def test_url_sanitized_when_extended_logging_enabled(self):
         """When extended logging is enabled, sensitive params in URL are redacted."""
