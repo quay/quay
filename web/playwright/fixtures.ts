@@ -335,6 +335,23 @@ export class TestApi {
   }
 
   /**
+   * Accept a pending team invite for an organization when the deployment
+   * requires invitations for users not already in that organization.
+   */
+  async acceptTeamInviteForOrganization(orgName: string): Promise<void> {
+    const {notifications} = await this.client.getUserNotifications(1000);
+    const invite = notifications.find(
+      (notification) =>
+        notification.kind === 'org_team_invite' &&
+        notification.metadata.org === orgName,
+    );
+
+    if (invite?.metadata.code) {
+      await this.client.acceptTeamInvite(invite.metadata.code);
+    }
+  }
+
+  /**
    * Create a robot account in an organization.
    * Automatically deleted after test.
    */
