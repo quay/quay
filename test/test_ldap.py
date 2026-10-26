@@ -2,7 +2,7 @@ import pprint
 import unittest
 from contextlib import contextmanager
 from io import StringIO
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import ldap
 from ldap.filter import filter_format
@@ -14,6 +14,19 @@ from data import model
 from data.users import LDAPUsers
 from data.users.externalldap import _LDAPTraceRedactor
 from initdb import finished_database_for_testing, setup_database_for_testing
+
+
+class _FakeConnection:
+    """Context manager yielding a mocked LDAP connection."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def __enter__(self):
+        return self._conn
+
+    def __exit__(self, *args):
+        return False
 
 
 def _create_ldap(
@@ -247,16 +260,23 @@ def mock_ldap(
         if not requires_email:
             cool_block.pop("mail", None)
 
-        obj.search_s.seed("ou=employees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))")(
-            [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
-        )
+        obj.search_s.seed(
+            "ou=employees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))", ["uid", "mail"]
+        )([("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)])
 
-        obj.search_s.seed("ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))")([])
+        obj.search_s.seed(
+            "ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))", ["uid", "mail"]
+        )([])
 
-        obj.search_s.seed("ou=employees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))")([])
-        obj.search_s.seed("ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))")(
-            []
-        )
+        obj.search_s.seed(
+            "ou=employees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))", ["uid", "mail"]
+        )([])
+        obj.search_s.seed(
+            "ou=otheremployees,dc=quay,dc=io",
+            2,
+            "(|(uid=unknown*)(mail=unknown*))",
+            ["uid", "mail"],
+        )([])
 
         no_users_found_exception = Exception()
         no_users_found_exception.message = {"matched": "dc=quay,dc=io", "desc": "No such object"}
@@ -265,7 +285,7 @@ def mock_ldap(
         obj.search_s.seed("ou=employees,dc=quay,dc=io", 2)(
             [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
         )
-        obj.search.seed("ou=employees,dc=quay,dc=io", 2, "(objectClass=*)")(
+        obj.search.seed("ou=employees,dc=quay,dc=io", 2, "(objectClass=*)", ["1.1"])(
             [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
         )
         obj.search.seed("ou=employees,dc=quay,dc=io", 2)(
@@ -777,6 +797,67 @@ class TestLDAP(unittest.TestCase):
             response, err_msg = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertTrue(response)
+
+    def test_user_search_requests_only_needed_attributes(self):
+        ldap_users = _create_ldap()
+        conn = MagicMock()
+        conn.search_s.return_value = [
+            (
+                "uid=someuser,ou=employees,dc=quay,dc=io",
+                {"uid": [b"someuser"], "mail": [b"foo@bar.com"]},
+            )
+        ]
+
+        results, err_msg = ldap_users._ldap_user_search_with_rdn(
+            conn, "someuser", "ou=employees,dc=quay,dc=io"
+        )
+        self.assertIsNone(err_msg)
+        self.assertEqual(len(results), 1)
+
+        # Only the uid and email attributes may be requested, so that
+        # sensitive attributes (e.g. userPassword) are never fetched.
+        conn.search_s.assert_called_once_with(
+            "ou=employees,dc=quay,dc=io",
+            ldap.SCOPE_SUBTREE,
+            "(|(uid=someuser)(mail=someuser))",
+            ["uid", "mail"],
+        )
+
+    def test_at_least_one_user_exists_requests_no_attributes(self):
+        ldap_users = _create_ldap()
+        conn = MagicMock()
+        conn.result3.return_value = (None, [("uid=someuser,dc=quay,dc=io", [])], None, [])
+
+        with patch.object(ldap_users._ldap, "get_connection", return_value=_FakeConnection(conn)):
+            response, err_msg = ldap_users.at_least_one_user_exists()
+
+        self.assertIsNone(err_msg)
+        self.assertTrue(response)
+
+        # Only existence is checked, so no attributes are requested ("1.1").
+        conn.search_ext.assert_called_once_with(
+            "ou=employees,dc=quay,dc=io",
+            ldap.SCOPE_SUBTREE,
+            "(objectClass=*)",
+            attrlist=["1.1"],
+            serverctrls=[ANY],
+        )
+
+    def test_at_least_one_user_exists_no_pagination_requests_no_attributes(self):
+        ldap_users = _create_ldap()
+        ldap_users._force_no_pagination = True
+        conn = MagicMock()
+        conn.result.return_value = (None, [("uid=someuser,dc=quay,dc=io", [])])
+
+        with patch.object(ldap_users._ldap, "get_connection", return_value=_FakeConnection(conn)):
+            response, err_msg = ldap_users.at_least_one_user_exists()
+
+        self.assertIsNone(err_msg)
+        self.assertTrue(response)
+
+        conn.search.assert_called_once_with(
+            "ou=employees,dc=quay,dc=io", ldap.SCOPE_SUBTREE, "(objectClass=*)", ["1.1"]
+        )
 
     def test_ldap_memberof_attr(self):
         base_dn = ["dc=quay", "dc=io"]
@@ -1692,6 +1773,104 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
             output = buf.getvalue()
             self.assertNotIn(pw, output, f"Password leaked for DN={dn}, PW={pw}")
             self.assertIn("******", output, f"No redaction marker for DN={dn}, PW={pw}")
+
+    def _make_search_result_trace(self, result):
+        """Use real pprint.pformat to produce a search result trace, matching python-ldap."""
+        header = (
+            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x3ff99b968d0> "
+            "ldap://10.250.64.5 - SimpleLDAPObject.result4"
+        )
+        return header + "\n=> result:\n" + pprint.pformat(result) + "\n"
+
+    def test_redacts_password_attribute_in_search_result(self):
+        """Search results may include userPassword hashes; they must be redacted."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        password_hash = (
+            b"{PBKDF2-SHA512}100000$ONCjgRfWvEhfL/+DIV23CIyBKfozw7jp$c"
+            b"/pkgmsLAoC0TnaWmG2bMgcPNB9xEsD93Oi+ylA9u6SNF56VdS06BpPbN"
+            b"83G45HXxXZATONCPqqWF+bRawIavA=="
+        )
+        result = [
+            (
+                "uid=testldap99,ou=users,dc=quay,dc=io",
+                {
+                    "uid": [b"testldap99"],
+                    "mail": [b"testldap99@quay.io"],
+                    "userPassword": [password_hash],
+                },
+            )
+        ]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn(password_hash.decode("utf-8"), output)
+        self.assertNotIn("PBKDF2", output)
+        self.assertIn("'userPassword': [b'******']", output)
+        # Non-sensitive attributes are preserved.
+        self.assertIn("testldap99", output)
+        self.assertIn("testldap99@quay.io", output)
+
+    def test_redacts_unicode_pwd_attribute_in_search_result(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("cn=user,dc=example", {"unicodePwd": [b"someadpassword"]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("someadpassword", output)
+        self.assertIn("'unicodePwd': [b'******']", output)
+
+    def test_redacts_password_attribute_with_quote_in_value(self):
+        """A value containing a quote is double-quoted by pprint."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        secret = "pa'ssword"
+        result = [("uid=user,dc=example", {"userPassword": [secret]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn(secret, output)
+        self.assertIn("'userPassword': [b'******']", output)
+
+    def test_redacts_multiple_password_attribute_values(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"userPassword": ["first", "second"], "uid": ["user"]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("'first'", output)
+        self.assertNotIn("'second'", output)
+        self.assertIn("'userPassword': [b'******']", output)
+        self.assertIn("'uid': ['user']", output)
+
+    def test_search_result_without_password_attributes_unchanged(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"uid": [b"user"], "mail": [b"user@example.com"]})]
+        trace = self._make_search_result_trace(result)
+        redactor.write(trace)
+
+        self.assertEqual(buf.getvalue(), trace)
+
+    def test_redacts_password_attribute_across_search_and_bind(self):
+        """A trace containing both a bind and a search result redacts both."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"userPassword": [b"hashvalue"]})]
+        redactor.write(self._make_bind_trace_pprint("cn=admin,dc=quay,dc=io", "adminsecret"))
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("adminsecret", output)
+        self.assertNotIn("hashvalue", output)
 
     def test_redacts_split_write_header_then_args(self):
         buf = StringIO()

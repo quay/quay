@@ -52,9 +52,12 @@ class _LDAPTraceRedactor:
     """
     Wraps the LDAP output for password redaction when USERS_DEBUG is set.
 
-    python-ldap emits ``simple_bind`` traces via ``pprint.pformat``.  The
-    DN and password may be single- or double-quoted depending on their
-    content (e.g. a DN containing ``'`` is double-quoted by pprint).
+    python-ldap emits method traces via ``pprint.pformat``. The DN and
+    password of ``simple_bind`` calls may be single- or double-quoted
+    depending on their content (e.g. a DN containing ``'`` is double-quoted
+    by pprint), and at ``trace_level >= 2`` the library also pretty-prints
+    the full result payload of every operation, which can include
+    password-like attributes (e.g. ``userPassword``) returned by searches.
 
     To guard against split writes (where the header and argument tuple
     arrive in separate ``write()`` calls), this class buffers any data
@@ -71,6 +74,15 @@ class _LDAPTraceRedactor:
         r"(\s*,\s*None\s*,\s*None\))",
     )
 
+    # Matches password-like attribute keys (e.g. 'userPassword', 'unicodePwd')
+    # and their list-of-literals values in pprint'd search results, e.g.
+    #   'userPassword': [b'{PBKDF2-SHA512}...']
+    # Literals may be comma-separated or implicitly concatenated across lines.
+    _PW_ATTR_RE = re.compile(
+        r"(?P<key>'(?:[^'\\]|\\.)*(?i:password|unicodepwd)(?:[^'\\]|\\.)*'\s*:\s*)"
+        r"(?P<value>\[\s*(?:b?(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')\s*,?\s*)*\])"
+    )
+
     _BIND_HEADER_RE = re.compile(
         r"SimpleLDAPObject\.simple_bind",
     )
@@ -85,7 +97,8 @@ class _LDAPTraceRedactor:
 
     @classmethod
     def _redact(cls, data):
-        return cls._BIND_PW_RE.sub(r"\1'******'\3", data)
+        data = cls._BIND_PW_RE.sub(r"\1'******'\3", data)
+        return cls._PW_ATTR_RE.sub(r"\g<key>[b'******']", data)
 
     def write(self, data):
         data = self._buf + data
@@ -689,8 +702,12 @@ class LDAPUsers(FederatedUsers):
             query = self._add_global_readonly_superuser_filter(query)
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
+        # Only request the attributes consumed when building user information, so
+        # that sensitive attributes (e.g. userPassword) are never fetched from
+        # the LDAP server and cannot leak into traces or logs.
+        attrlist = [self._uid_attr, self._email_attr]
         try:
-            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query), None)
+            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query, attrlist), None)
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
             if not referral_dn:
@@ -699,7 +716,7 @@ class LDAPUsers(FederatedUsers):
             try:
                 subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
                 subquery = self._add_user_filter(subquery)
-                return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
+                return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery, attrlist), None)
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
                 return (None, "Username not found")
@@ -853,11 +870,18 @@ class LDAPUsers(FederatedUsers):
                     try:
                         if has_pagination:
                             msgid = conn.search_ext(
-                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
+                                user_search_dn,
+                                ldap.SCOPE_SUBTREE,
+                                search_flt,
+                                # "1.1" requests no attributes; only existence is checked.
+                                attrlist=["1.1"],
+                                serverctrls=[lc],
                             )
                             _, rdata, _, _serverctrls = conn.result3(msgid)
                         else:
-                            msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
+                            msgid = conn.search(
+                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, ["1.1"]
+                            )
                             _, rdata = conn.result(msgid)
 
                         for _entry in rdata:  # Handles both lists and iterators.
@@ -933,7 +957,7 @@ class LDAPUsers(FederatedUsers):
 
         found_dn, found_response = found_user
         logger.debug("Found user for LDAP username %s; validating password", username_or_email)
-        logger.debug("DN %s found: %s", found_dn, found_response)
+        logger.debug("DN %s found", found_dn)
 
         # First validate the password by binding as the user
         if not self._verify_password(found_dn, password):
