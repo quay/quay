@@ -1872,6 +1872,21 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
         self.assertNotIn("adminsecret", output)
         self.assertNotIn("hashvalue", output)
 
+    def test_password_attribute_regex_no_exponential_backtracking(self):
+        """Regression test for CodeQL py/redos: many empty literals after a
+        password-like key, with no closing bracket, must not cause
+        exponential backtracking in the value pattern."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        # With an ambiguous separator this input takes ~4x longer per added
+        # repetition (11s at n=25, effectively a hang beyond n~30).
+        pathological = "'userPassword': [\"\" " + '"" ' * 1000
+        redactor.write(pathological)
+        output = buf.getvalue()
+
+        self.assertIn("userPassword", output)
+
     def test_redacts_split_write_header_then_args(self):
         buf = StringIO()
         redactor = _LDAPTraceRedactor(stream=buf)
