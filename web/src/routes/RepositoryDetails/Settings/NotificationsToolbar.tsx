@@ -21,6 +21,7 @@ export default function NotificationsToolbar(props: NotificationsToolbarProps) {
         <DropdownCheckbox
           id="notifications-select-all"
           data-testid="notifications-selection-dropdown"
+          selectedCountTestId="notifications-selected-count"
           selectedItems={props.selectedItems}
           deSelectAll={props.deselectAll}
           allItemsList={props.allItems}
