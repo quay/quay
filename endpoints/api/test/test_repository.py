@@ -729,6 +729,30 @@ def test_create_repository_blocked_in_org_mirror_org(app):
         config.delete_instance()
 
 
+@pytest.mark.parametrize(
+    "namespace, expected_code",
+    [
+        ("proxyorg", 400),
+        ("buynlarge", 201),
+    ],
+)
+def test_create_repository_in_proxy_cache_org(namespace, expected_code, app):
+    with client_with_identity("devtable", app) as cl:
+        body = {
+            "namespace": namespace,
+            "repository": "newrepo",
+            "visibility": "private",
+            "description": "",
+        }
+        resp = conduct_api_call(cl, RepositoryList, "POST", None, body, expected_code=expected_code)
+
+    if expected_code == 400:
+        assert "proxy cache" in resp.json["error_message"]
+        assert model.repository.get_repository(namespace, "newrepo") is None
+    else:
+        assert model.repository.get_repository(namespace, "newrepo") is not None
+
+
 def test_change_repo_state_blocked_in_org_mirror_org(app):
     """
     Verify that changing repository state is rejected when the organization

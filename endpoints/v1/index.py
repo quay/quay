@@ -236,6 +236,8 @@ def create_repository(namespace_name, repo_name):
                 % repository_ref.kind
             )
             abort(405, message=msg, namespace=namespace_name)
+        elif features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(403, message="Cannot push to repository: organization is a proxy cache")
     else:
         create_perm = CreateRepositoryPermission(namespace_name)
         if not create_perm.can():
@@ -253,6 +255,9 @@ def create_repository(namespace_name, repo_name):
                 message="Cannot create repository: organization is managed by "
                 "organization-level mirroring",
             )
+
+        if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(403, message="Cannot create repository: organization is a proxy cache")
 
         # Attempt to create the new repository.
         logger.debug(

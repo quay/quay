@@ -31,6 +31,7 @@ from data.model import DataModelException
 from data.model import repository as repository_model
 from data.model import spam_ingress
 from data.model.org_mirror import is_namespace_org_mirrored
+from data.model.proxy_cache import has_proxy_cache_config
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
@@ -278,6 +279,9 @@ class RepositoryList(ApiResource):
                     "Cannot create repository: organization is managed by "
                     "organization-level mirroring"
                 )
+
+            if features.PROXY_CACHE and has_proxy_cache_config(namespace_name):
+                raise InvalidRequest("Cannot create repository: organization is a proxy cache")
 
             kind = req.get("repo_kind", "image") or "image"
             _check_spam_ingress(

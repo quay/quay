@@ -1,10 +1,12 @@
 import json
 import unittest
+from base64 import b64encode
 
 from registry import application as app
 
 import endpoints.decorated
 from .specs import build_v1_index_specs
+from data import model
 from initdb import finished_database_for_testing, setup_database_for_testing
 from util.names import parse_namespace_repository
 
@@ -114,6 +116,30 @@ class TestAdminAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "admin_code"
     auth_username = ADMIN_ACCESS_USER
+
+
+class TestProxyCacheOrgPush(EndpointTestCase):
+    def _put_repository(self, repository):
+        auth = b64encode(b"%s:password" % ADMIN_ACCESS_USER.encode("ascii")).decode("ascii")
+        with app.test_client() as c:
+            return c.put(
+                "/v1/repositories/%s/" % repository,
+                data="{}",
+                content_type="application/json",
+                headers=[("authorization", "basic %s" % auth)],
+            )
+
+    def test_create_new_repository_refused(self):
+        rv = self._put_repository("proxyorg/newrepo")
+        self.assertEqual(rv.status_code, 403)
+        self.assertIsNone(model.repository.get_repository("proxyorg", "newrepo"))
+
+    def test_push_existing_repository_refused(self):
+        model.repository.create_repository(
+            "proxyorg", "cachedrepo", model.user.get_user(ADMIN_ACCESS_USER)
+        )
+        rv = self._put_repository("proxyorg/cachedrepo")
+        self.assertEqual(rv.status_code, 403)
 
 
 if __name__ == "__main__":
