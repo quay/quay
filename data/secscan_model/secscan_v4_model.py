@@ -572,6 +572,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
 
             manifest = ManifestDataType.for_manifest(candidate, None)
+            has_been_scanned = manifest.has_been_scanned
             if manifest.is_manifest_list:
                 mark_manifest_unsupported(manifest)
                 continue
@@ -653,8 +654,13 @@ class V4SecurityScanner(SecurityScannerInterface):
                     logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
                     continue
 
+            # Another worker can finish between the pre-claim state read and this
+            # claim. Re-read the durable success marker after claiming so that
+            # stale pre-claim data cannot replay the first-scan notification.
+            has_been_scanned = has_been_scanned or manifest.has_been_scanned
+
             try:
-                (report, state) = self._secscan_api.index(manifest, layers)
+                report, state = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.warning("Failed to perform indexing, invalid content sent")
@@ -709,7 +715,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             if report["state"] == IndexReportState.Index_Finished:
                 index_status = IndexStatus.COMPLETED
                 # record time to get results if manifest has just been uploaded
-                if not manifest.has_been_scanned:
+                if not has_been_scanned:
                     created_at = manifest.created_at
 
                     if created_at is not None:
@@ -825,16 +831,27 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
 
             metadata = {}
+            try:
+                previous_metadata = (
+                    ManifestSecurityStatus.get(
+                        ManifestSecurityStatus.manifest == candidate
+                    ).metadata_json
+                    or {}
+                )
+            except ManifestSecurityStatus.DoesNotExist:
+                previous_metadata = {}
+
+            if previous_metadata.get("has_been_scanned"):
+                metadata["has_been_scanned"] = True
+
+            if index_status == IndexStatus.COMPLETED:
+                metadata["has_been_scanned"] = True
+
             if index_status == IndexStatus.FAILED:
-                try:
-                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
-                    old_metadata = mss.metadata_json or {}
-                    if old_metadata.get("last_failed_hash") != current_indexer_hash:
-                        metadata["retry_count"] = 1
-                    else:
-                        metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
-                except ManifestSecurityStatus.DoesNotExist:
+                if previous_metadata.get("last_failed_hash") != current_indexer_hash:
                     metadata["retry_count"] = 1
+                else:
+                    metadata["retry_count"] = previous_metadata.get("retry_count", 0) + 1
                 metadata["last_failed_hash"] = current_indexer_hash
 
             with db_transaction():

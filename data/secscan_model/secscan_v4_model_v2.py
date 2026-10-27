@@ -135,7 +135,14 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                         )
                         secscan_v2_scan_result.labels(result="failed").inc()
                         continue
-                    self._process_index_result(mss_row.manifest, manifest, result, indexer_hash)
+                    self._process_index_result(
+                        mss_row.manifest,
+                        manifest,
+                        result,
+                        indexer_hash,
+                        mss_row.index_status == IndexStatus.COMPLETED
+                        or bool((mss_row.metadata_json or {}).get("has_been_scanned")),
+                    )
 
         cycle_duration = time.monotonic() - cycle_start
         secscan_v2_cycle_duration.observe(cycle_duration)
@@ -282,7 +289,9 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         ) as ex:
             return None, None, ex
 
-    def _process_index_result(self, candidate, manifest, result, current_indexer_hash):
+    def _process_index_result(
+        self, candidate, manifest, result, current_indexer_hash, has_been_scanned
+    ):
         report, state, error = result
 
         if error is not None:
@@ -317,13 +326,13 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             return
 
         if report["state"] == IndexReportState.Index_Finished:
-            self._handle_scan_success(manifest, candidate)
+            self._handle_scan_success(manifest, candidate, has_been_scanned)
             ManifestSecurityStatus.update(
                 error_json=report["err"],
                 index_status=IndexStatus.COMPLETED,
                 indexer_hash=state,
                 indexer_version=IndexerVersion.V4,
-                metadata_json={},
+                metadata_json={"has_been_scanned": True},
                 last_indexed=datetime.utcnow(),
             ).where(ManifestSecurityStatus.manifest == candidate).execute()
             secscan_v2_scan_result.labels(result="completed").inc()
@@ -344,8 +353,8 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 candidate.id,
             )
 
-    def _handle_scan_success(self, manifest, candidate):
-        if not manifest.has_been_scanned:
+    def _handle_scan_success(self, manifest, candidate, has_been_scanned):
+        if not has_been_scanned:
             created_at = manifest.created_at
             if created_at is not None:
                 dur_ms = get_epoch_timestamp_ms() - created_at
