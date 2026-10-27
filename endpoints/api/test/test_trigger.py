@@ -1,13 +1,17 @@
 import json
-from test.fixtures import *
 
 import pytest
 
 from data import model
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.api.trigger import BuildTrigger
+from endpoints.api.trigger import (
+    ActivateBuildTrigger,
+    BuildTrigger,
+    BuildTriggerActivate,
+)
 from endpoints.api.trigger_analyzer import is_parent
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -57,3 +61,21 @@ def test_enabled_disabled_trigger(app):
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, BuildTrigger, "PUT", params, body, 200).json
         assert result["enabled"]
+
+
+@pytest.mark.parametrize(
+    "resource",
+    [BuildTrigger, BuildTriggerActivate, ActivateBuildTrigger],
+)
+def test_trigger_write_refused_in_proxy_cache_org(resource, app):
+    user = model.user.get_user("devtable")
+    repo = model.repository.create_repository("proxyorg", "cached", user)
+    trigger = model.build.create_build_trigger(repo, "custom-git", None, user)
+
+    method = "PUT" if resource is BuildTrigger else "POST"
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached", "trigger_uuid": trigger.uuid}
+        resp = conduct_api_call(cl, resource, method, params, {}, 400)
+
+    assert "proxy cache" in resp.json["error_message"]
+    assert not list(model.build.list_repository_builds("proxyorg", "cached", 10))

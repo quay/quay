@@ -304,11 +304,15 @@ def disallow_for_non_normal_repositories(func):
     return wrapped
 
 
+def check_proxy_cache_org(namespace_name):
+    if features.PROXY_CACHE and data_model.proxy_cache.has_proxy_cache_config(namespace_name):
+        raise InvalidRequest("Cannot modify content: organization is a proxy cache")
+
+
 def disallow_for_proxy_cache_org(func):
     @wraps(func)
     def wrapped(self, namespace_name, repository_name, *args, **kwargs):
-        if features.PROXY_CACHE and data_model.proxy_cache.has_proxy_cache_config(namespace_name):
-            raise InvalidRequest("Cannot modify repository: organization is a proxy cache")
+        check_proxy_cache_org(namespace_name)
 
         return func(self, namespace_name, repository_name, *args, **kwargs)
 

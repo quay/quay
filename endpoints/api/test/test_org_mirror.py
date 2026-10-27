@@ -13,10 +13,12 @@ import pytest
 from app import app as quay_app
 from data import model
 from data.database import (
+    DEFAULT_PROXY_CACHE_EXPIRATION,
     OrgMirrorConfig,
     OrgMirrorRepository,
     OrgMirrorRepoStatus,
     OrgMirrorStatus,
+    ProxyCacheConfig,
     SourceRegistryType,
     Visibility,
 )
@@ -524,6 +526,40 @@ class TestCreateOrgMirrorConfig:
                     assert "proxy cache" in resp.json.get("error_message", "").lower()
         finally:
             proxy_config.delete_instance()
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestOrgMirrorRefusedInProxyCacheOrg:
+    """A legacy org mirror config coexisting with a proxy cache config cannot be changed or run."""
+
+    @pytest.mark.parametrize(
+        "resource, method, body",
+        [
+            (org_mirror.OrgMirrorConfig, "PUT", {"sync_interval": 7200}),
+            (org_mirror.OrgMirrorSyncNow, "POST", None),
+        ],
+    )
+    def test_write_refused(self, resource, method, body, app):
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+        proxy_config = ProxyCacheConfig.create(
+            organization=config.organization,
+            upstream_registry="docker.io",
+            expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
+        )
+
+        try:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                resp = conduct_api_call(cl, resource, method, params, body, 400)
+                assert "proxy cache" in resp.json["error_message"]
+
+            config = model.org_mirror.get_org_mirror_config(config.organization)
+            assert config.sync_interval == 3600
+            assert config.sync_status == OrgMirrorStatus.NEVER_RUN
+        finally:
+            proxy_config.delete_instance()
+            _cleanup_org_mirror_config("buynlarge")
 
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")

@@ -16,7 +16,8 @@ from flask import url_for
 from mock import patch
 from parameterized import parameterized, parameterized_class
 
-from app import app
+import features
+from app import app, github_trigger, gitlab_trigger
 from data import model
 from data.database import NotificationKind, ServiceKeyApprovalType
 from data.model.notification import list_notifications
@@ -27,6 +28,8 @@ from endpoints import keyserver
 from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+from endpoints.githubtrigger import githubtrigger as githubtrigger_bp
+from endpoints.gitlabtrigger import gitlabtrigger as gitlabtrigger_bp
 from endpoints.keyserver import jwk_with_kid
 from endpoints.test.shared import gen_basic_auth, toggle_feature
 from endpoints.web import web as web_bp
@@ -59,6 +62,13 @@ try:
 except ValueError:
     # This blueprint was already registered
     pass
+
+for trigger_bp in (githubtrigger_bp, gitlabtrigger_bp):
+    try:
+        app.register_blueprint(trigger_bp, url_prefix="/oauth2")
+    except ValueError:
+        # This blueprint was already registered
+        pass
 
 CSRF_TOKEN_KEY = "_csrf_token"
 CSRF_TOKEN = "123csrfforme"
@@ -519,6 +529,28 @@ class WebEndpointTestCase(EndpointTestCase):
         self.getResponse(
             "web.attach_custom_build_trigger", repository="devtable/simple", expected_code=302
         )
+
+    @parameterized.expand(
+        [
+            ("web.attach_custom_build_trigger", {"repository": "proxyorg/cached"}),
+            ("web.attach_bitbucket_trigger", {"repository": "proxyorg/cached"}),
+            ("callback.attach_github_build_trigger", {"repository": "proxyorg/cached"}),
+            ("gitlab.attach_gitlab_build_trigger", {"state": "repo:proxyorg/cached"}),
+        ]
+    )
+    def test_attach_build_trigger_refused_in_proxy_cache_org(self, endpoint, params):
+        model.repository.create_repository("proxyorg", "cached", get_user("devtable"))
+        self.login("devtable", "password")
+
+        with (
+            patch.object(features.BITBUCKET_BUILD, "value", True),
+            patch.object(features.GITLAB_BUILD, "value", True),
+            patch.object(github_trigger, "exchange_code_for_token", return_value="token"),
+            patch.object(gitlab_trigger, "exchange_code_for_token", return_value="token"),
+        ):
+            self.getResponse(endpoint, expected_code=400, **params)
+
+        self.assertEqual(list(model.build.list_build_triggers("proxyorg", "cached")), [])
 
     def test_redirect_to_repository(self):
         self.getResponse("web.redirect_to_repository", repository="foo/bar", expected_code=404)

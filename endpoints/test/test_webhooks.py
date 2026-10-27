@@ -270,3 +270,27 @@ def test_start_build_disabled_trigger(app, client):
         400,
         headers=headers,
     )
+
+
+def test_build_trigger_webhook_refused_in_proxy_cache_org(app, client):
+    user = get_user("devtable")
+    repo = model.repository.create_repository("proxyorg", "cached", user)
+    trigger = model.build.create_build_trigger(repo, "custom-git", None, user)
+
+    headers = {
+        "Authorization": gen_basic_auth("devtable", "password"),
+    }
+
+    resp = conduct_call(
+        client,
+        "webhooks.build_trigger_webhook",
+        url_for,
+        "POST",
+        {"trigger_uuid": trigger.uuid},
+        None,
+        400,
+        headers=headers,
+    )
+
+    assert b"proxy cache" in resp.data
+    assert not list(model.build.list_repository_builds("proxyorg", "cached", 10))
