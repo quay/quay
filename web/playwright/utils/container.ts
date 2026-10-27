@@ -7,17 +7,15 @@
  * directly against registries and work in restricted pods.
  */
 
-import {exec, execFile, execFileSync, spawn} from 'child_process';
-import {randomBytes} from 'crypto';
-import * as fs from 'fs';
+import {execFile, execFileSync, spawn} from 'child_process';
+import {createHash, randomBytes} from 'crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'fs';
-import {mkdtemp, mkdir, rm, writeFile} from 'fs/promises';
+import {mkdtemp, mkdir, readFile, rm, writeFile} from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 // Extract registry host from API_URL (e.g., 'localhost:8080')
@@ -199,36 +197,6 @@ async function retryOperation(
   throw lastErr;
 }
 
-/**
- * Execute a command, retrying with fixed 1s delays on failure.
- *
- * Accepts either an async callback or a {command, args, env} object for execFileAsync.
- */
-async function retryPush(
-  operation:
-    | (() => Promise<void>)
-    | {command: string; args: string[]; env?: NodeJS.ProcessEnv},
-  maxAttempts = 5,
-): Promise<void> {
-  let lastErr: unknown;
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      if (typeof operation === 'function') {
-        await operation();
-      } else {
-        await execFileAsync(operation.command, operation.args, {
-          env: operation.env,
-        });
-      }
-      return;
-    } catch (err) {
-      lastErr = err;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-  }
-  throw lastErr;
-}
-
 async function skopeoCopy(args: string[]): Promise<void> {
   await requireTool('skopeo');
   await execFileAsync('skopeo', ['copy', ...args]);
@@ -282,17 +250,13 @@ function execFileWithInput(
       } else {
         reject(
           new Error(
-            `${command} ${args.join(
-              ' ',
-            )} failed with exit code ${code}: ${stderr}`,
+            `${command} ${args.join(' ')} failed with exit code ${code}: ${stderr}`,
           ),
         );
       }
     });
 
-    // Append newline if not already present - most CLI tools expect newline-terminated stdin
-    const normalizedInput = input.endsWith('\n') ? input : `${input}\n`;
-    child.stdin.end(normalizedInput);
+    child.stdin.end(input);
   });
 }
 
@@ -772,12 +736,7 @@ export async function isRegctlAvailable(): Promise<boolean> {
  * Check if helm CLI is available on the system.
  */
 export async function isHelmAvailable(): Promise<boolean> {
-  try {
-    await execAsync('helm version');
-    return true;
-  } catch {
-    return false;
-  }
+  return commandAvailable('helm', ['version']);
 }
 
 /**
@@ -829,172 +788,23 @@ export async function regctlListTags(
 }
 
 /**
- * Push a Helm chart to the registry using helm CLI.
- *
- * Creates a minimal test Helm chart, packages it, and pushes to the registry.
- *
- * @param namespace - Organization/namespace
- * @param repo - Repository name (chart name)
- * @param version - Chart version (e.g., '1.0.0')
- * @param username - Registry username
- * @param password - Registry password
- * @param chartMetadata - Optional chart metadata overrides
- *
- * @example
- * ```typescript
- * await pushHelmChart('myorg', 'nginx-chart', '1.0.0', 'testuser', 'password');
- * await pushHelmChart('myorg', 'app-chart', '2.1.0', 'testuser', 'password', {
- *   description: 'My application chart',
- *   appVersion: '2.1.0',
- * });
- * ```
+ * Log helm in to the registry, then run operation in a temporary directory
+ * that is removed afterwards.
  */
-export async function pushHelmChart(
-  namespace: string,
-  repo: string,
-  version: string,
+async function withHelmRegistry<T>(
   username: string,
   password: string,
-  chartMetadata?: {
-    description?: string;
-    appVersion?: string;
-    dependencies?: Array<{name: string; version: string; repository: string}>;
-  },
-): Promise<void> {
-  // Create temporary directory for chart
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'helm-chart-'));
-  const chartDir = path.join(tmpDir, repo);
+  operation: (registryConfig: string, workDir: string) => Promise<T>,
+): Promise<T> {
+  const workDir = await mkdtemp(path.join(os.tmpdir(), 'quay-helm-'));
+  // A per-invocation registry config keeps parallel Playwright workers from
+  // racing on the shared ~/.config/helm/registry/config.json, which corrupts
+  // the stored credentials.
+  const registryConfig = path.join(workDir, 'registry-config.json');
 
   try {
-    // Create chart directory structure
-    fs.mkdirSync(chartDir);
-    fs.mkdirSync(path.join(chartDir, 'templates'));
-
-    // Create Chart.yaml
-    const chartYaml = `apiVersion: v2
-name: ${repo}
-description: ${chartMetadata?.description || `Test Helm chart for ${repo}`}
-type: application
-version: ${version}
-appVersion: "${chartMetadata?.appVersion || version}"
-${
-  chartMetadata?.dependencies
-    ? `dependencies:\n${chartMetadata.dependencies
-        .map(
-          (dep) =>
-            `  - name: ${dep.name}\n    version: "${dep.version}"\n    repository: "${dep.repository}"`,
-        )
-        .join('\n')}`
-    : ''
-}`;
-
-    fs.writeFileSync(path.join(chartDir, 'Chart.yaml'), chartYaml);
-
-    // Vendor a minimal stub subchart for each declared dependency. `helm
-    // package` fails with "found in Chart.yaml, but missing in charts/
-    // directory" unless every dependency exists under charts/, and the real
-    // dependency repositories are not reachable from CI.
-    if (chartMetadata?.dependencies?.length) {
-      const chartsDir = path.join(chartDir, 'charts');
-      fs.mkdirSync(chartsDir);
-      for (const dep of chartMetadata.dependencies) {
-        const depDir = path.join(chartsDir, dep.name);
-        fs.mkdirSync(path.join(depDir, 'templates'), {recursive: true});
-        // Build a concrete version that satisfies simple constraints like
-        // "2.x" or "^1.2.0" so `helm package` accepts the vendored subchart.
-        const match = dep.version.match(/(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
-        const depVersion = match
-          ? `${match[1]}.${match[2] ?? '0'}.${match[3] ?? '0'}`
-          : '0.1.0';
-        fs.writeFileSync(
-          path.join(depDir, 'Chart.yaml'),
-          `apiVersion: v2\nname: ${dep.name}\ndescription: Stub dependency ${dep.name}\ntype: application\nversion: ${depVersion}\n`,
-        );
-      }
-    }
-
-    // Create values.yaml
-    const valuesYaml = `# Default values for ${repo}
-replicaCount: 1
-
-image:
-  repository: nginx
-  pullPolicy: IfNotPresent
-  tag: "latest"
-
-service:
-  type: ClusterIP
-  port: 80
-`;
-    fs.writeFileSync(path.join(chartDir, 'values.yaml'), valuesYaml);
-
-    // Create a simple deployment template
-    const deploymentYaml = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "${repo}.fullname" . }}
-  labels:
-    app: {{ include "${repo}.name" . }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app: {{ include "${repo}.name" . }}
-  template:
-    metadata:
-      labels:
-        app: {{ include "${repo}.name" . }}
-    spec:
-      containers:
-      - name: {{ .Chart.Name }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        ports:
-        - containerPort: 80
-`;
-    fs.writeFileSync(
-      path.join(chartDir, 'templates', 'deployment.yaml'),
-      deploymentYaml,
-    );
-
-    // Create _helpers.tpl
-    const helpersTpl = `{{/*
-Expand the name of the chart.
-*/}}
-{{- define "${repo}.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a default fully qualified app name.
-*/}}
-{{- define "${repo}.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-`;
-    fs.writeFileSync(
-      path.join(chartDir, 'templates', '_helpers.tpl'),
-      helpersTpl,
-    );
-
-    // Package the chart
-    await execFileAsync('helm', ['package', chartDir], {cwd: tmpDir});
-
-    // Use a per-invocation registry config so parallel Playwright workers don't
-    // race on the shared default (~/.config/helm/registry/config.json). A
-    // concurrent login/logout there corrupts the stored credentials and makes
-    // the server reject otherwise-valid logins with "unauthorized: Invalid
-    // Username or Password".
-    const registryConfig = path.join(tmpDir, 'registry-config.json');
-
-    // Login to registry using --password-stdin to avoid shell interpolation
-    // Retry login to handle registry startup race conditions
-    await retryPush(async () => {
-      await execFileWithInput(
+    await retryOperation(() =>
+      execFileWithInput(
         'helm',
         [
           'registry',
@@ -1008,26 +818,95 @@ Create a default fully qualified app name.
           registryConfig,
         ],
         password,
-      );
-    });
+      ),
+    );
+    return await operation(registryConfig, workDir);
+  } finally {
+    await rm(workDir, {recursive: true, force: true});
+  }
+}
 
-    // Push the chart (with retries for repo-init race)
-    const registryUrl = `oci://${REGISTRY_HOST}`;
-    const packagedChart = `${repo}-${version}.tgz`;
-    const chartPath = path.join(tmpDir, packagedChart);
-    await retryPush({
-      command: 'helm',
-      args: [
-        'push',
-        chartPath,
-        `${registryUrl}/${namespace}`,
-        '--insecure',
+async function sha256File(file: string): Promise<string> {
+  return createHash('sha256')
+    .update(await readFile(file))
+    .digest('hex');
+}
+
+/**
+ * Package a minimal Helm chart named repo and push it with `helm push`, which
+ * stores it as namespace/repo:version.
+ *
+ * @returns sha256 hex digest of the pushed chart .tgz
+ */
+export async function pushHelmChart(
+  namespace: string,
+  repo: string,
+  version: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  return withHelmRegistry(
+    username,
+    password,
+    async (registryConfig, workDir) => {
+      const chartDir = path.join(workDir, repo);
+      await mkdir(chartDir);
+      await writeFile(
+        path.join(chartDir, 'Chart.yaml'),
+        `apiVersion: v2\nname: ${repo}\ndescription: Test Helm chart for ${repo}\ntype: application\nversion: ${version}\n`,
+      );
+      await writeFile(path.join(chartDir, 'values.yaml'), 'replicaCount: 1\n');
+      await execFileAsync('helm', [
+        'package',
+        chartDir,
+        '--destination',
+        workDir,
+      ]);
+
+      const chart = path.join(workDir, `${repo}-${version}.tgz`);
+      await retryOperation(async () => {
+        await execFileAsync('helm', [
+          'push',
+          chart,
+          `oci://${REGISTRY_HOST}/${namespace}`,
+          '--plain-http',
+          '--registry-config',
+          registryConfig,
+        ]);
+      });
+      return sha256File(chart);
+    },
+  );
+}
+
+/**
+ * Pull namespace/repo:version with `helm pull`.
+ *
+ * @returns sha256 hex digest of the pulled chart .tgz
+ */
+export async function pullHelmChart(
+  namespace: string,
+  repo: string,
+  version: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  return withHelmRegistry(
+    username,
+    password,
+    async (registryConfig, workDir) => {
+      await execFileAsync('helm', [
+        'pull',
+        `oci://${REGISTRY_HOST}/${namespace}/${repo}`,
+        '--version',
+        version,
+        '--plain-http',
+        '--destination',
+        workDir,
         '--registry-config',
         registryConfig,
-      ],
-    });
-  } finally {
-    // Cleanup temporary directory
-    fs.rmSync(tmpDir, {recursive: true, force: true});
-  }
+      ]);
+      return sha256File(path.join(workDir, `${repo}-${version}.tgz`));
+    },
+  );
 }
