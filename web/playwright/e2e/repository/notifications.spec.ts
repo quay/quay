@@ -7,6 +7,99 @@ import {
 } from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
+  test(
+    'filters, sorts, paginates, and selects matching notifications',
+    {tag: '@PROJQUAY-14062'},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('notificationfilter');
+      const repo = await api.repository(org.name, 'notificationfilterrepo');
+      const matchingTitles = Array.from(
+        {length: 21},
+        (_, index) =>
+          `Filtered notification ${String(index + 1).padStart(2, '0')}`,
+      );
+
+      await Promise.all([
+        ...matchingTitles.map((title) =>
+          api.notification(
+            org.name,
+            repo.name,
+            'repo_push',
+            'webhook',
+            {url: 'https://example.com/notification-filter'},
+            title,
+          ),
+        ),
+        api.notification(
+          org.name,
+          repo.name,
+          'build_failure',
+          'webhook',
+          {url: 'https://example.com/notification-filter-build'},
+          'Unfiltered notification',
+        ),
+      ]);
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+
+      const pagination = authenticatedPage.locator(
+        '#toolbar-pagination .pf-v6-c-pagination__total-items',
+      );
+      await expect(pagination).toContainText('1 - 20 of 22');
+
+      await authenticatedPage
+        .getByRole('button', {name: 'Go to next page'})
+        .first()
+        .click();
+      await expect(pagination).toContainText('21 - 22 of 22');
+
+      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage.getByRole('menuitem', {name: 'Events'}).hover();
+      await authenticatedPage.getByLabel('Push to Repository').check();
+
+      await expect(pagination).toContainText('1 - 20 of 21');
+      await expect(
+        authenticatedPage.getByText('Unfiltered notification', {exact: true}),
+      ).not.toBeVisible();
+
+      await authenticatedPage.locator('#toolbar-dropdown-checkbox').click();
+      const selectAllItems = authenticatedPage.getByTestId(
+        'select-all-items-action',
+      );
+      await expect(selectAllItems).toHaveText('Select all (21)');
+      await selectAllItems.click();
+      await expect(
+        authenticatedPage.getByTestId('notifications-actions-dropdown'),
+      ).toBeEnabled();
+      await expect(
+        authenticatedPage.locator('#toolbar-dropdown-checkbox'),
+      ).toContainText('21');
+
+      const titleHeader = authenticatedPage.getByRole('columnheader', {
+        name: 'Title',
+      });
+      await titleHeader.getByRole('button').click();
+      await expect(titleHeader).toHaveAttribute('aria-sort', 'descending');
+      await expect(
+        authenticatedPage.locator('td[data-label="title"]').first(),
+      ).toHaveText('Filtered notification 21');
+
+      await authenticatedPage
+        .getByRole('button', {name: 'Go to next page'})
+        .first()
+        .click();
+      await expect(pagination).toContainText('21 - 21 of 21');
+      await expect(
+        authenticatedPage.locator('td[data-label="title"]'),
+      ).toHaveText(['Filtered notification 01']);
+    },
+  );
+
   test('renders and expands notification details', async ({
     authenticatedPage,
     api,
