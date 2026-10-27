@@ -390,7 +390,9 @@ describe('UseTags', () => {
           'latest',
         ]);
       });
-      await waitFor(() => expect(getTagPullStatistics).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
       expect(result.current.pullStatistics).toEqual(first);
 
       await act(async () => {
@@ -442,7 +444,9 @@ describe('UseTags', () => {
           'latest',
         ]);
       });
-      await waitFor(() => expect(getTagPullStatistics).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
       expect(result.current.pullStatistics).toEqual(first);
       expect(result.current.isError).toBe(false);
     });
