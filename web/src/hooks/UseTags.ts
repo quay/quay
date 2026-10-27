@@ -180,6 +180,10 @@ export function useTagPullStatistics(
   autoRefresh = false,
 ) {
   const shouldAutoRefresh = enabled && autoRefresh;
+  // Do not use keepPreviousData: when the query key's tag changes (row reuse on
+  // sort/filter/page), that would briefly show another tag's pull stats.
+  // Same-key refetches already retain `data` while isFetching; failed polls
+  // also keep the last successful `data` — prefer that over an Error flash.
   const {data, isLoading, isError, error} = useQuery(
     ['tagPullStatistics', org, repo, tag],
     () => getTagPullStatistics(org, repo, tag),
@@ -191,7 +195,6 @@ export function useTagPullStatistics(
         ? PULL_STATS_REFETCH_INTERVAL_MS
         : false,
       refetchIntervalInBackground: false,
-      keepPreviousData: true,
     },
   );
 
@@ -203,7 +206,7 @@ export function useTagPullStatistics(
       ?.response?.status === 404;
 
   // For 404 (no data), return default values with 0 pulls
-  // For other errors, return null so components can show error state
+  // For other errors with no cached data, return null so UI can show error
   const pullStatistics = is404
     ? {
         tag_name: tag,
@@ -218,7 +221,8 @@ export function useTagPullStatistics(
   return {
     pullStatistics: pullStatistics,
     isLoading: isLoading,
-    isError: isError && !is404, // Only report error for non-404 errors
+    // Prefer last good stats over Error/- when a background poll fails
+    isError: isError && !is404 && !data,
     error: error,
   };
 }

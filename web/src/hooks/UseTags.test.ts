@@ -410,6 +410,48 @@ describe('UseTags', () => {
       expect(result.current.isError).toBe(true);
     });
 
+    it('keeps cached stats and does not report isError when a refetch fails', async () => {
+      const first = {
+        tag_name: 'latest',
+        tag_pull_count: 5,
+        last_tag_pull_date: '2024-01-01',
+        current_manifest_digest: 'sha256:abc',
+        manifest_pull_count: 5,
+        last_manifest_pull_date: '2024-01-01',
+      };
+      const queryClient = createTestQueryClient();
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      vi.mocked(getTagPullStatistics)
+        .mockResolvedValueOnce(first as any)
+        .mockRejectedValueOnce(new Error('poll failed'));
+
+      const {result} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(first),
+      );
+
+      await act(async () => {
+        void queryClient.invalidateQueries([
+          'tagPullStatistics',
+          'myorg',
+          'myrepo',
+          'latest',
+        ]);
+      });
+      await waitFor(() => expect(getTagPullStatistics).toHaveBeenCalledTimes(2));
+      expect(result.current.pullStatistics).toEqual(first);
+      expect(result.current.isError).toBe(false);
+    });
+
     it('does not poll when autoRefresh is false', async () => {
       vi.useFakeTimers({shouldAdvanceTime: true});
       const mockData = {

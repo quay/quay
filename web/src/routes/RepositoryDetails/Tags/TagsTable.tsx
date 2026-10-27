@@ -642,7 +642,7 @@ export default function TagsTable(props: TableProps) {
         </Thead>
         {props.tags.map((tag: Tag, localIndex: number) => (
           <TagsTableRow
-            key={localIndex}
+            key={tag.name}
             org={props.org}
             repo={props.repo}
             tag={tag}
