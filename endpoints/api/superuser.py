@@ -58,9 +58,10 @@ from endpoints.api.superuser_models_pre_oci import (
     ServiceKeyDoesNotExist,
     pre_oci_model,
 )
+from endpoints.exception import DownstreamIssue
 from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
-from util.registry.gzipinputstream import GzipInputStream
+from util.registry.gzipinputstream import GzipInputStream, UnrecognizedStreamError
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name
@@ -1338,10 +1339,23 @@ class SuperUserRepositoryBuildLogsArchive(ApiResource):
             try:
                 path = log_archive.get_file_id_path(build_uuid)
                 data_stream = log_archive._storage.stream_read_file(log_archive._locations, path)
-                return send_file(GzipInputStream(data_stream), mimetype="application/json")
             except IOError:
                 logger.exception("Could not read archived build logs")
                 raise InvalidResponse("Archived logs not available")
+
+            try:
+                stream = GzipInputStream(data_stream)
+            except UnrecognizedStreamError as e:
+                logger.error(
+                    "Archived build logs for %s are neither gzip nor JSON; first bytes: %s",
+                    build_uuid,
+                    e.head.hex(),
+                )
+                raise DownstreamIssue("Archived logs are unreadable")
+
+            if stream.passthrough:
+                logger.warning("Archived build logs for %s arrived already decoded", build_uuid)
+            return send_file(stream, mimetype="application/json")
 
         raise Unauthorized()
 
