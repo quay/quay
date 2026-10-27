@@ -29,6 +29,7 @@ from endpoints.api import (
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
     disallow_for_non_normal_repositories,
+    disallow_for_proxy_cache_org,
     disallow_for_user_namespace,
     format_date,
     log_action,
@@ -249,6 +250,7 @@ class RepositoryTag(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("changeTag")
     @validate_json_request("ChangeTag")
@@ -432,6 +434,7 @@ class RestoreTag(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("restoreTag")
     @validate_json_request("RestoreTag")

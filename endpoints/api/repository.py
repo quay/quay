@@ -39,6 +39,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    disallow_for_proxy_cache_org,
     format_date,
     log_action,
     nickname,
@@ -667,6 +668,7 @@ class RepositoryStateResource(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @nickname("changeRepoState")
     @validate_json_request("ChangeRepoState")
     def put(self, namespace, repository):

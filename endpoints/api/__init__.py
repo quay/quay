@@ -304,6 +304,17 @@ def disallow_for_non_normal_repositories(func):
     return wrapped
 
 
+def disallow_for_proxy_cache_org(func):
+    @wraps(func)
+    def wrapped(self, namespace_name, repository_name, *args, **kwargs):
+        if features.PROXY_CACHE and data_model.proxy_cache.has_proxy_cache_config(namespace_name):
+            raise InvalidRequest("Cannot modify repository: organization is a proxy cache")
+
+        return func(self, namespace_name, repository_name, *args, **kwargs)
+
+    return wrapped
+
+
 def require_repo_permission(permission_class, scope, allow_public=False):
     def _require_permission(
         allow_for_superuser=False,

@@ -10,6 +10,7 @@ from data.cache import cache_key
 from data.database import (
     OrgMirrorConfig,
     OrgMirrorStatus,
+    RepositoryState,
     SourceRegistryType,
     Visibility,
 )
@@ -784,6 +785,18 @@ def test_change_repo_state_blocked_in_org_mirror_org(app):
                 assert "organization-level mirroring" in resp.json["detail"]
     finally:
         config.delete_instance()
+
+
+def test_change_repo_state_refused_in_proxy_cache_org(app):
+    model.repository.create_repository("proxyorg", "cached", model.user.get_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached"}
+        body = {"state": "READ_ONLY"}
+        resp = conduct_api_call(cl, RepositoryStateResource, "PUT", params, body, expected_code=400)
+
+    assert "proxy cache" in resp.json["error_message"]
+    assert model.repository.get_repository("proxyorg", "cached").state == RepositoryState.NORMAL
 
 
 def test_delete_repo_properly_invalidates_cache(initialized_db, app):

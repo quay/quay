@@ -7,6 +7,8 @@ from playhouse.test_utils import assert_query_count
 from data.database import Manifest
 from data.model import DataModelException, ImmutableTagException
 from data.model.oci.tag import change_tag_expiration, set_tag_immutable
+from data.model.repository import create_repository
+from data.model.user import get_user
 from data.registry_model import registry_model
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
@@ -872,3 +874,17 @@ def test_set_tag_immutable_allowed_when_config_permits():
         # Clean up
         set_tag_immutable(repo_ref.id, "latest", False)
         change_tag_expiration(tag_ref.id, None)
+
+
+@pytest.mark.parametrize("resource, method", [(RepositoryTag, "PUT"), (RestoreTag, "POST")])
+def test_tag_write_refused_in_proxy_cache_org(resource, method, app):
+    create_repository("proxyorg", "cached", get_user("devtable"))
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    digest = registry_model.get_repo_tag(repo_ref, "latest").manifest.digest
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached", "tag": "latest"}
+        body = {"manifest_digest": digest}
+        resp = conduct_api_call(cl, resource, method, params, body, expected_code=400)
+
+    assert "proxy cache" in resp.json["error_message"]

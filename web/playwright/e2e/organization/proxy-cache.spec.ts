@@ -317,6 +317,44 @@ test.describe(
         expect(repoResponse.status()).toBe(404);
       },
     );
+
+    test(
+      'tag creation via API is blocked for proxy cache organizations',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        const org = await api.organization('tagblock');
+        // Pushed first: pushes are refused once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'cached');
+        await pushImage(
+          org.name,
+          'cached',
+          'latest',
+          user.username,
+          user.password,
+        );
+        const {tags} = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'latest',
+        });
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await expect(
+          api.raw.createTag(
+            org.name,
+            'cached',
+            'newtag',
+            tags[0].manifest_digest,
+          ),
+        ).rejects.toThrow(/400 - .*organization is a proxy cache/);
+
+        const after = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'newtag',
+        });
+        expect(after.tags).toHaveLength(0);
+      },
+    );
   },
 );
 

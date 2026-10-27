@@ -7,7 +7,11 @@ from data.database import ManifestPullStatistics, TagPullStatistics
 from data.model.repository import create_repository
 from data.model.user import get_user
 from data.registry_model import registry_model
-from endpoints.api.manifest import RepositoryManifest, _get_modelcard_layer_digest
+from endpoints.api.manifest import (
+    RepositoryManifest,
+    RepositoryManifestLabels,
+    _get_modelcard_layer_digest,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
@@ -245,3 +249,16 @@ def test_repository_manifest_pull_statistics_multiple_pulls(app, initialized_db)
     assert stats is not None
     assert stats["pull_count"] == 150
     assert stats["last_pull_date"] is not None
+
+
+def test_add_manifest_label_refused_in_proxy_cache_org(app):
+    create_repository("proxyorg", "cached", get_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached", "manifestref": "sha256:" + "0" * 64}
+        body = {"key": "hello", "value": "world", "media_type": "text/plain"}
+        resp = conduct_api_call(
+            cl, RepositoryManifestLabels, "POST", params, body, expected_code=400
+        )
+
+    assert "proxy cache" in resp.json["error_message"]

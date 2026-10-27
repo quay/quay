@@ -20,6 +20,7 @@ from endpoints.api import (
     abort,
     api,
     disallow_for_non_normal_repositories,
+    disallow_for_proxy_cache_org,
     disallow_for_user_namespace,
     format_date,
     log_action,
@@ -238,6 +239,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
     @require_repo_write(allow_for_superuser=True)
     @nickname("addManifestLabel")
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @validate_json_request("AddLabel")
     def post(self, namespace_name, repository_name, manifestref):
