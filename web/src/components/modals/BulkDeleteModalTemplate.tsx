@@ -47,10 +47,11 @@ export const BulkDeleteModalTemplate = <T,>(
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.selectedItems.filter((item) =>
-        item[props.mapOfColNamesToTableData[colNames[0]].label]
-          ?.toLowerCase()
-          .includes(value.toLowerCase()),
+      const filteredTableRow = props.selectedItems.filter(
+        (item) =>
+          item[props.mapOfColNamesToTableData[colNames[0]].label]
+            ?.toLowerCase()
+            .includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }

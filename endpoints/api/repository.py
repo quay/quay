@@ -65,7 +65,11 @@ from endpoints.exception import (
     Unauthorized,
 )
 from util.metrics.prometheus import spam_ingress_decisions
-from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX
+from util.names import (
+    REPOSITORY_NAME_EXTENDED_REGEX,
+    REPOSITORY_NAME_REGEX,
+    conflicts_with_build_route,
+)
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
@@ -272,6 +276,8 @@ class RepositoryList(ApiResource):
 
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
+            if conflicts_with_build_route(repository_name):
+                raise InvalidRequest("Repository name conflicts with a build route")
 
             if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
                 raise InvalidRequest(

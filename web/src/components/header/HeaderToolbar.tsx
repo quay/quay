@@ -401,8 +401,8 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     unreadCount === 0
       ? 'Notifications'
       : additional
-        ? `Notifications, more than ${unreadCount}`
-        : `Notifications, ${unreadCount}`;
+      ? `Notifications, more than ${unreadCount}`
+      : `Notifications, ${unreadCount}`;
   // The search page has its own search box, so don't render a second one.
   const searchingAllowed =
     (quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated) &&
