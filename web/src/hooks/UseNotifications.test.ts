@@ -202,4 +202,41 @@ describe('useNotifications', () => {
     });
     expect(result.current.filteredNotifications).toHaveLength(25);
   });
+
+  it('keeps the active filtered collection stable across rerenders', async () => {
+    vi.mocked(fetchNotifications).mockResolvedValueOnce(
+      mockNotifications as any,
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [],
+      });
+    });
+    const filteredNotifications = result.current.filteredNotifications;
+
+    rerender();
+
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
+  });
+
+  it('returns a stable empty filtered collection while loading', () => {
+    vi.mocked(fetchNotifications).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    const filteredNotifications = result.current.filteredNotifications;
+
+    expect(filteredNotifications).toEqual([]);
+    rerender();
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
+  });
 });
