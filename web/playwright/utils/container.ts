@@ -490,49 +490,11 @@ export async function tryPushImage(
   username: string,
   password: string,
 ): Promise<PushResult> {
-  const runtime = await detectContainerRuntime();
-  if (!runtime) {
-    return {
-      success: false,
-      error: 'No container runtime available (podman or docker)',
-    };
-  }
-
-  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
-  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
-
   try {
-    // Login to registry
-    await execAsync(
-      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
-    );
-
-    const busyboxImage = 'quay.io/prometheus/busybox:latest';
-
-    // Pull busybox and tag it
-    await execAsync(`${runtime} pull ${busyboxImage}`);
-    await execAsync(`${runtime} tag ${busyboxImage} ${image}`);
-
-    // Push to registry
-    const {stdout, stderr} = await execAsync(
-      `${runtime} push ${image} ${tlsFlag}`.trim(),
-    );
-
-    // Cleanup local image
-    try {
-      await execAsync(`${runtime} rmi ${image}`);
-    } catch {
-      // Ignore cleanup errors
-    }
-
-    return {success: true, stdout, stderr};
+    await pushImage(namespace, repo, tag, username, password);
+    return {success: true};
   } catch (error) {
-    // Extract error message
-    const err = error as Error & {
-      stdout?: string;
-      stderr?: string;
-      message?: string;
-    };
+    const err = error as Error & {stdout?: string; stderr?: string};
     return {
       success: false,
       error: err.stderr || err.message || String(error),
