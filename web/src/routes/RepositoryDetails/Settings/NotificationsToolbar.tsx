@@ -20,6 +20,7 @@ export default function NotificationsToolbar(props: NotificationsToolbarProps) {
       <ToolbarContent>
         <DropdownCheckbox
           id="notifications-select-all"
+          data-testid="notifications-selection-dropdown"
           selectedItems={props.selectedItems}
           deSelectAll={props.deselectAll}
           allItemsList={props.allItems}
@@ -59,6 +60,7 @@ export default function NotificationsToolbar(props: NotificationsToolbarProps) {
           />
         </ToolbarItem>
         <ToolbarPagination
+          data-testid="notifications-pagination"
           itemsList={props.allItems}
           perPage={props.perPage}
           page={props.page}
