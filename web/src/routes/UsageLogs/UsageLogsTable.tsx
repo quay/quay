@@ -298,8 +298,8 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                         {props.isSuperuser
                           ? log.metadata?.repo || ''
                           : log.metadata?.namespace && log.metadata?.repo
-                          ? `${log.metadata.namespace}/${log.metadata.repo}`
-                          : log.metadata?.repo || ''}
+                            ? `${log.metadata.namespace}/${log.metadata.repo}`
+                            : log.metadata?.repo || ''}
                       </Td>
                     )}
                     <Td dataLabel={usageLogColumnNames.performedBy}>
