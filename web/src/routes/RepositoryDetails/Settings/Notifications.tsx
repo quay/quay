@@ -92,18 +92,25 @@ export default function Notifications({
 
   useEffect(() => {
     paginationProps.setPage(1);
+  }, [filter, paginationProps.setPage]);
+
+  useEffect(() => {
     const filteredUuids = new Set(
       filteredNotifications.map((notification) => notification.uuid),
     );
-    setSelectedNotifications((prevSelected) => {
-      const filteredSelection = prevSelected.filter((notification) =>
+    if (
+      selectedNotifications.every((notification) =>
         filteredUuids.has(notification.uuid),
-      );
-      return filteredSelection.length === prevSelected.length
-        ? prevSelected
-        : filteredSelection;
-    });
-  }, [filter, paginationProps.setPage]);
+      )
+    ) {
+      return;
+    }
+    setSelectedNotifications((prevSelected) =>
+      prevSelected.filter((notification) =>
+        filteredUuids.has(notification.uuid),
+      ),
+    );
+  }, [filteredNotifications, selectedNotifications]);
 
   // Close drawer if navigating away from notification settings
   useEffect(() => {

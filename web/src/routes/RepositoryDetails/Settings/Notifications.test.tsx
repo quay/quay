@@ -52,9 +52,12 @@ vi.mock('src/components/toolbar/DropdownCheckbox', () => ({
 
 vi.mock('src/components/toolbar/ToolbarPagination', () => ({
   ToolbarPagination: (props: ToolbarPaginationProps) => (
-    <button onClick={() => props.setPage(2)} type="button">
-      Go to page two
-    </button>
+    <>
+      <button onClick={() => props.setPage(2)} type="button">
+        Go to page two
+      </button>
+      <output data-testid="current-notifications-page">{props.page}</output>
+    </>
   ),
 }));
 
@@ -85,6 +88,7 @@ type DropdownCheckboxProps = {
 };
 
 type ToolbarPaginationProps = {
+  page: number;
   setPage: (page: number) => void;
 };
 
@@ -115,15 +119,17 @@ const notifications = Array.from({length: 21}, (_, index) => ({
 }));
 
 describe('Notifications', () => {
+  let sourceNotifications = notifications;
   let filteredNotifications = notifications;
   let filter: NotificationFilter = {event: [], status: []};
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sourceNotifications = notifications;
     filteredNotifications = notifications;
     filter = {event: [], status: []};
     mockUseNotifications.mockImplementation(() => ({
-      notifications,
+      notifications: sourceNotifications,
       filteredNotifications,
       loading: false,
       error: false,
@@ -167,5 +173,48 @@ describe('Notifications', () => {
       screen.getByRole('button', {name: 'Delete selected notifications'}),
     );
     expect(mockDeleteNotifications).toHaveBeenCalledWith(['notification-1']);
+  });
+
+  it('removes selections deleted by a same-filter refetch without resetting the page', async () => {
+    const user = userEvent.setup();
+    filter = {event: [NotificationEventType.repoPush], status: []};
+    const {rerender} = render(
+      <Notifications org="myorg" repo="myrepo" setDrawerContent={vi.fn()} />,
+    );
+
+    await user.click(
+      screen.getByRole('button', {name: 'Select first notification'}),
+    );
+    await user.click(screen.getByRole('button', {name: 'Go to page two'}));
+    await user.click(
+      screen.getByRole('button', {name: 'Select first notification'}),
+    );
+
+    expect(screen.getByTestId('selected-notification-uuids')).toHaveTextContent(
+      'notification-1,notification-21',
+    );
+    expect(screen.getByTestId('current-notifications-page')).toHaveTextContent(
+      '2',
+    );
+
+    sourceNotifications = notifications.slice(1);
+    filteredNotifications = sourceNotifications;
+    rerender(
+      <Notifications org="myorg" repo="myrepo" setDrawerContent={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('selected-notification-uuids'),
+      ).toHaveTextContent('notification-21');
+    });
+    expect(screen.getByTestId('current-notifications-page')).toHaveTextContent(
+      '2',
+    );
+
+    await user.click(
+      screen.getByRole('button', {name: 'Delete selected notifications'}),
+    );
+    expect(mockDeleteNotifications).toHaveBeenCalledWith(['notification-21']);
   });
 });
