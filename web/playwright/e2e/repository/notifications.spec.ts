@@ -63,7 +63,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(pagination).toContainText('21 - 22 of 22');
 
       await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
-      await authenticatedPage.getByRole('menuitem', {name: 'Events'}).hover();
+      await authenticatedPage.getByRole('button', {name: 'Events'}).hover();
       await authenticatedPage.getByLabel('Push to Repository').check();
 
       await expect(pagination).toContainText('1 - 20 of 21');
