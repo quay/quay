@@ -435,6 +435,9 @@ def test_generate_registry_jwt(
     assert decoded["aud"] == original_app.config["SERVER_HOSTNAME"]
     assert decoded["sub"] == username if username else "(anonymous)"
 
+    if scope == "repository:proxyorg/newrepo:push":
+        assert model.repository.get_repository("proxyorg", "newrepo") is None
+
     expected_access = []
     for scope in expected_scopes:
         name, actions_str = scope.split(":")
@@ -456,9 +459,6 @@ def test_generate_registry_jwt(
         assert (
             model.repository.get_repository("devtable", "visibility").visibility.name == visibility
         )
-
-    if scope == "repository:proxyorg/newrepo:push":
-        assert model.repository.get_repository("proxyorg", "newrepo") is None
 
 
 @pytest.mark.parametrize(

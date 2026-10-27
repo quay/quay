@@ -243,7 +243,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         msg = "Namespace %s has been disabled. Please contact a system administrator." % namespace
         raise NamespaceDisabled(message=msg)
 
-    # Cached so the proxy cache config is looked up at most once per request.
+    # Cached so the proxy cache config is looked up at most once per scope.
     _proxy_cache_checked = False
     _is_proxy_cache_org = False
 
