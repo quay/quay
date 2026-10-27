@@ -398,7 +398,8 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                             raise Unsupported(message="Cannot create organization")
 
                 if (
-                    CreateRepositoryPermission(namespace).can()
+                    not is_proxy_cache_org()
+                    and CreateRepositoryPermission(namespace).can()
                     and user is not None
                     and namespace_exists
                 ):
