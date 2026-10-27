@@ -19,13 +19,14 @@
 # stage jobs with -agent- suffix. Roles operate independently (#2452).
 name: fullsend
 
+# quay: pull_request_target is removed on purpose. It only routes the review
+# and retro agents, which quay keeps off on every branch. Keep it out when
+# regenerating this file.
 on:
   issues:
     types: [opened, edited, labeled]
   issue_comment:
     types: [created]
-  pull_request_target:
-    types: [opened, synchronize, ready_for_review, closed, labeled, unlabeled]
   pull_request_review:
     types: [submitted]
 
