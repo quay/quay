@@ -2,6 +2,9 @@
 # This config adds Keycloak as an OIDC authentication provider
 #
 # Merge into config.yaml with: make enable-oidc
+# Keycloak is served over HTTP in the local-development and CI test topology.
+# Federation discovery permits HTTP only while Quay is explicitly in debug mode.
+DEBUG: true
 
 SOMEOIDC_LOGIN_CONFIG:
   SERVICE_NAME: "Keycloak"
@@ -11,6 +14,9 @@ SOMEOIDC_LOGIN_CONFIG:
     - "openid"
     - "profile"
     - "email"
+  PREFERRED_GROUP_CLAIM_NAME: "groups"
+  SUPERUSER_GROUP: "quay-superusers"
+  GLOBAL_READONLY_SUPERUSER_GROUP: "quay-readonly"
   DEBUGGING: true
   USE_PKCE: true
   PKCE_METHOD: "S256"

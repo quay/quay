@@ -19,6 +19,7 @@ from image.oci.index import OCIIndex
 from image.oci.manifest import OCIManifest
 from image.shared import ManifestException
 from image.shared.schemautil import ContentRetrieverForTesting, LazyManifestLoader
+from image.shared.types import SparseManifestList
 from util.bytes import Bytes
 
 # Docker Schema2 manifest bytes for testing (defined locally to avoid import chain)
@@ -696,3 +697,78 @@ class TestDebugLogging:
         assert "Skipping manifest with digest" in caplog.text
         assert "sha256:testdigest" in caplog.text
         assert "arm64" in caplog.text
+
+
+class TestSparseManifestListMissingPlatform:
+    """Tests for SparseManifestList.amd64_linux_manifest_digest with missing platform metadata."""
+
+    def test_amd64_digest_all_entries_missing_platform(self):
+        """amd64_linux_manifest_digest returns None when all entries lack platform."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:abc123",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:def456",
+                    "size": 1024,
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest is None
+
+    def test_amd64_digest_mixed_entries_with_and_without_platform(self):
+        """Returns correct digest when some entries have platform and some don't."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:no_platform",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:amd64_linux",
+                    "size": 946,
+                    "platform": {"architecture": "amd64", "os": "linux"},
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest == "sha256:amd64_linux"
+
+    def test_amd64_digest_no_matching_platform(self):
+        """Returns None when entries have platform but none match amd64+linux."""
+        index_data = {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:no_platform",
+                    "size": 946,
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "digest": "sha256:arm64_linux",
+                    "size": 946,
+                    "platform": {"architecture": "arm64", "os": "linux"},
+                },
+            ],
+        }
+        manifest = SparseManifestList(
+            Bytes.for_string_or_unicode(json.dumps(index_data)),
+            media_type=OCI_IMAGE_INDEX_CONTENT_TYPE,
+        )
+        assert manifest.amd64_linux_manifest_digest is None

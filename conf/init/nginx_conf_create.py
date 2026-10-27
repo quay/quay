@@ -64,6 +64,14 @@ def write_config(filename, **kwargs):
         f.write(rendered)
 
 
+def listen_ip_versions(config):
+    # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
+    ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
+    use_ipv4 = True if ip_version.lower() != "ipv6" else False
+    use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
+    return use_ipv4, use_ipv6
+
+
 def generate_nginx_config(config):
     """
     Generates nginx config from the app config.
@@ -74,11 +82,10 @@ def generate_nginx_config(config):
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     ssl_protocols = config.get("SSL_PROTOCOLS", SSL_PROTOCOL_DEFAULTS)
     ssl_ciphers = config.get("SSL_CIPHERS", SSL_CIPHER_DEFAULTS)
+    ssl_ciphersuites = config.get("SSL_CIPHERSUITES", [])
+    ssl_ecdh_curves = config.get("SSL_ECDH_CURVES")
 
-    # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
-    ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
-    use_ipv4 = True if ip_version.lower() != "ipv6" else False
-    use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
+    use_ipv4, use_ipv6 = listen_ip_versions(config)
 
     # Set preferred URL scheme explicitly in the headers to avoid collisions and
     # infinite redirects. Use https as default value.
@@ -94,6 +101,8 @@ def generate_nginx_config(config):
         v1_only_domain=v1_only_domain,
         ssl_protocols=ssl_protocols,
         ssl_ciphers=":".join(ssl_ciphers),
+        ssl_ciphersuites=":".join(ssl_ciphersuites),
+        ssl_ecdh_curves=":".join(ssl_ecdh_curves) if ssl_ecdh_curves else None,
         use_ipv4=use_ipv4,
         use_ipv6=use_ipv6,
         preferred_scheme=preferred_scheme,
@@ -111,6 +120,12 @@ def generate_server_config(config):
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
+    blob_upload_client_body_timeout = config.get("BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", None)
+    blob_upload_lingering_close = config.get("BLOB_UPLOAD_LINGERING_CLOSE", None)
+    blob_upload_lingering_time = config.get("BLOB_UPLOAD_LINGERING_TIME", None)
+    blob_upload_lingering_timeout = config.get("BLOB_UPLOAD_LINGERING_TIMEOUT", None)
+
+    enable_alb_health_check = config.get("FEATURE_ALB_HEALTH_CHECK", False)
 
     # Get default UI setting from config
     default_ui = config.get("DEFAULT_UI", "react").lower()
@@ -127,7 +142,12 @@ def generate_server_config(config):
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
         manifests_endpoint_read_timeout=manifests_endpoint_read_timeout,
+        blob_upload_client_body_timeout=blob_upload_client_body_timeout,
+        blob_upload_lingering_close=blob_upload_lingering_close,
+        blob_upload_lingering_time=blob_upload_lingering_time,
+        blob_upload_lingering_timeout=blob_upload_lingering_timeout,
         default_ui=default_ui,
+        enable_alb_health_check=enable_alb_health_check,
     )
 
 
@@ -165,10 +185,13 @@ def generate_hosted_http_base_config(config):
     """
     config = config or {}
     feature_proxy_protocol = config.get("FEATURE_PROXY_PROTOCOL", False)
+    use_ipv4, use_ipv6 = listen_ip_versions(config)
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/hosted-http-base.conf"),
         feature_proxy_protocol=feature_proxy_protocol,
+        use_ipv4=use_ipv4,
+        use_ipv6=use_ipv6,
     )
 
 

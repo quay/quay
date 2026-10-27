@@ -51,6 +51,57 @@ func TestInitDatabase(t *testing.T) {
 	}
 }
 
+func TestInitDatabase_ContainsOAuthAPITokenMetadata(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+
+	for _, column := range []string{"created", "last_accessed"} {
+		var count int
+		err := db.QueryRowContext(ctx,
+			"SELECT count(*) FROM pragma_table_info('oauthaccesstoken') WHERE name=?", column,
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("query column %s: %v", column, err)
+		}
+		if count != 1 {
+			t.Errorf("expected oauthaccesstoken.%s to exist", column)
+		}
+	}
+
+	var indexedColumns string
+	err = db.QueryRowContext(ctx,
+		"SELECT group_concat(name, ',') FROM (SELECT name FROM pragma_index_info('oauthaccesstoken_application_id_last_accessed') ORDER BY seqno)",
+	).Scan(&indexedColumns)
+	if err != nil {
+		t.Fatalf("query oauth access token last_accessed index: %v", err)
+	}
+	if indexedColumns != "application_id,last_accessed" {
+		t.Errorf("expected oauth access token last_accessed index columns application_id,last_accessed; got %s", indexedColumns)
+	}
+
+	for _, kind := range []string{"create_oauth_api_token", "revoke_oauth_api_token"} {
+		var count int
+		err := db.QueryRowContext(ctx,
+			"SELECT count(*) FROM logentrykind WHERE name=?", kind,
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("query log kind %s: %v", kind, err)
+		}
+		if count != 1 {
+			t.Errorf("expected log kind %s to exist", kind)
+		}
+	}
+}
+
 func TestInitDatabase_RejectsExisting(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := OpenSQLite(dbPath)
@@ -90,6 +141,27 @@ func TestSchemaVersion_EmptyDB(t *testing.T) {
 	}
 	if ver != "" {
 		t.Errorf("expected empty version for uninitialised db, got %q", ver)
+	}
+}
+
+func TestSplitStatements_DropsLineCommentsWithoutDroppingStatements(t *testing.T) {
+	sql := `-- migration metadata
+-- section comment
+CREATE TABLE first (id INTEGER);
+
+-- next section
+CREATE TABLE second (id INTEGER);
+`
+
+	stmts := splitStatements(sql)
+	if len(stmts) != 2 {
+		t.Fatalf("expected 2 statements, got %d: %#v", len(stmts), stmts)
+	}
+	if !strings.Contains(stmts[0], "CREATE TABLE first") {
+		t.Errorf("first statement was dropped: %#v", stmts)
+	}
+	if !strings.Contains(stmts[1], "CREATE TABLE second") {
+		t.Errorf("second statement was dropped: %#v", stmts)
 	}
 }
 

@@ -25,13 +25,16 @@ import {
   expect,
   Page,
   APIRequestContext,
+  APIResponse,
   BrowserContext,
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL, BASE_URL} from './utils/config';
+import {requestCsrfToken} from './utils/api/csrf';
 import {
   ApiClient,
+  ApiRequestError,
   AutoPrunePolicy,
   PrototypeRole,
   RawApiClient,
@@ -39,7 +42,21 @@ import {
   ServiceKey,
   TeamRole,
 } from './utils/api';
-import {isContainerRuntimeAvailable} from './utils/container';
+import {isContainerRuntimeAvailable, isHelmAvailable} from './utils/container';
+import {WebhookReceiver} from './utils/webhook';
+import {
+  attachFailureArtifacts,
+  newTraceContext,
+  shouldCollect,
+  TraceContext,
+} from './utils/failure-artifacts';
+import {proxyOptionFromEnv} from './utils/proxy';
+
+// Proxy for standalone APIRequestContexts created below. These do not inherit
+// `use.proxy` from the config, so when Quay is reachable only through a proxy
+// (bare-metal CI) they must be configured explicitly. undefined (the local-dev
+// default) means no proxy.
+const REQUEST_PROXY = proxyOptionFromEnv();
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -170,9 +187,9 @@ export class TestApi {
   private cleanupStack: CleanupAction[] = [];
   private defaultNamespace: string;
 
-  constructor(client: ApiClient, defaultNamespace?: string) {
+  constructor(client: ApiClient, defaultNamespace: string) {
     this.client = client;
-    this.defaultNamespace = defaultNamespace ?? TEST_USERS.user.username;
+    this.defaultNamespace = defaultNamespace;
   }
 
   /**
@@ -187,11 +204,11 @@ export class TestApi {
    * Create a unique organization.
    * Automatically deleted after test.
    */
-  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+  async organization(namePrefix = 'org', email?: string): Promise<CreatedOrg> {
     const name = uniqueName(namePrefix);
-    const email = `${name}@example.com`;
+    const orgEmail = email ?? `${name}@example.com`;
 
-    await this.client.createOrganization(name, email);
+    await this.client.createOrganization(name, orgEmail);
 
     this.cleanupStack.push(async () => {
       try {
@@ -201,7 +218,7 @@ export class TestApi {
       }
     });
 
-    return {name, email};
+    return {name, email: orgEmail};
   }
 
   /**
@@ -315,6 +332,23 @@ export class TestApi {
     });
 
     return {orgName, teamName, memberName};
+  }
+
+  /**
+   * Accept a pending team invite for an organization when the deployment
+   * requires invitations for users not already in that organization.
+   */
+  async acceptTeamInviteForOrganization(orgName: string): Promise<void> {
+    const {notifications} = await this.client.getUserNotifications(1000);
+    const invite = notifications.find(
+      (notification) =>
+        notification.kind === 'org_team_invite' &&
+        notification.metadata.org === orgName,
+    );
+
+    if (invite?.metadata.code) {
+      await this.client.acceptTeamInvite(invite.metadata.code);
+    }
   }
 
   /**
@@ -468,6 +502,68 @@ export class TestApi {
     });
 
     return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create a namespace notification for an organization.
+   * Automatically deleted after test.
+   */
+  async namespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createNamespaceNotification(
+      orgName,
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteNamespaceNotification(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create a namespace notification for the authenticated user.
+   * Automatically deleted after test.
+   */
+  async userNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const result = await this.client.createUserNamespaceNotification(
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserNamespaceNotification(result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid};
   }
 
   /**
@@ -827,15 +923,42 @@ export class TestApi {
   }
 
   /**
+   * Track an app token created via another client (e.g. a per-test
+   * RawApiClient) for cleanup. Unlike the other tracked resources, a failed
+   * revoke throws instead of being swallowed, since a silently failed
+   * delete leaves a live token with no other cleanup path to catch it.
+   * A 404 means the token is already gone (e.g. the test revoked it
+   * itself), which is the desired end state, not a failure.
+   */
+  trackAppToken(uuid: string, deleteFn: () => Promise<APIResponse>): void {
+    this.cleanupStack.push(async () => {
+      const r = await deleteFn();
+      if (!r.ok() && r.status() !== 404) {
+        throw new Error(`Failed to revoke app token ${uuid}: ${r.status()}`);
+      }
+    });
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
   async cleanup(): Promise<void> {
-    // Run in reverse order (LIFO)
+    // Run in reverse order (LIFO). Every action runs even if an earlier one
+    // throws, so one failed revoke can't strand resources registered before
+    // it; the first error is rethrown once cleanup is otherwise complete.
+    let firstError: unknown;
     let action = this.cleanupStack.pop();
     while (action) {
-      await action();
+      try {
+        await action();
+      } catch (err) {
+        firstError ??= err;
+      }
       action = this.cleanupStack.pop();
+    }
+    if (firstError !== undefined) {
+      throw firstError;
     }
   }
 }
@@ -848,6 +971,7 @@ export class TestApi {
  * Known Quay feature flags that can be enabled/disabled
  */
 export type QuayFeature =
+  | 'ANONYMOUS_ACCESS'
   | 'BILLING'
   | 'QUOTA_MANAGEMENT'
   | 'EDIT_QUOTA'
@@ -867,7 +991,11 @@ export type QuayFeature =
   | 'DIRECT_LOGIN'
   | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
   | 'BUILD_SUPPORT'
-  | 'STORAGE_REPLICATION';
+  | 'STORAGE_REPLICATION'
+  | 'SPAM_DETECTION'
+  | 'SUPER_USERS'
+  | 'ROBOT_API_TOKENS'
+  | 'ROBOT_API_TOKEN_EXCHANGE';
 
 /**
  * Quay configuration from /config endpoint
@@ -945,11 +1073,54 @@ export function skipUnlessAuthType(
   ];
 }
 
-function getTestUsers(config?: QuayConfig | null) {
+export function getTestUsers(config?: QuayConfig | null) {
   const authType = config?.config?.AUTHENTICATION_TYPE;
   if (authType === 'OIDC') return TEST_USERS_OIDC;
   if (authType === 'LDAP') return TEST_USERS_LDAP;
   return TEST_USERS;
+}
+
+export type IsolatedUserSlot =
+  | 'quota'
+  | 'prune-count'
+  | 'prune-age'
+  | 'prune-both'
+  | 'logout-success'
+  | 'logout-error'
+  | 'logout-access'
+  | 'metadata-submit'
+  | 'metadata-skip';
+
+// Seeded in local-dev/ldap/base.ldif. LDAP accounts cannot be created through
+// the API, so each slot gets its own pre-seeded identity.
+const LDAP_ISOLATED_USERS: Record<IsolatedUserSlot, string> = {
+  quota: 'quota_ldap',
+  'prune-count': 'prune_count_ldap',
+  'prune-age': 'prune_age_ldap',
+  'prune-both': 'prune_both_ldap',
+  'logout-success': 'logout_success_ldap',
+  'logout-error': 'logout_error_ldap',
+  'logout-access': 'logout_access_ldap',
+  'metadata-submit': 'metadata_submit_ldap',
+  'metadata-skip': 'metadata_skip_ldap',
+};
+
+async function createDatabaseUser(superuserApi: TestApi): Promise<CreatedUser> {
+  const created = await superuserApi.user('iso');
+  await superuserApi.raw.updateUserAsSuperuser(created.username, {
+    email: created.email,
+  });
+  return created;
+}
+
+async function signedInApi(
+  request: APIRequestContext,
+  user: CreatedUser,
+): Promise<TestApi> {
+  const client = new ApiClient(request);
+  await client.signIn(user.username, user.password);
+  client.setCredentials(user.username, user.password);
+  return new TestApi(client, user.username);
 }
 
 async function setReactUICookie(context: BrowserContext): Promise<void> {
@@ -958,6 +1129,15 @@ async function setReactUICookie(context: BrowserContext): Promise<void> {
     {name: 'defaultui', value: 'react', domain, path: '/'},
   ]);
 }
+
+// Quay's FRESH_LOGIN_TIMEOUT = "10m" (config.py), hardcoded here since it is
+// not exposed by the /config endpoint.
+const FRESH_LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
+// Tracks the last time superuserPage refreshed each worker's superuserContext,
+// so the refresh below only re-signs-in once the session is old enough to
+// risk falling outside FRESH_LOGIN_TIMEOUT_MS.
+const SUPERUSER_PAGE_REFRESH_INTERVAL_MS = FRESH_LOGIN_TIMEOUT_MS / 2;
+const superuserPageLastLogin = new WeakMap<BrowserContext, number>();
 
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
@@ -975,8 +1155,30 @@ async function loginUser(
   if (isOIDC) {
     const page = await context.newPage();
     try {
-      await page.goto('/signin');
-      await page.locator('[data-testid^="external-login-"]').first().click();
+      // Request the provider URL directly. This avoids depending on whether
+      // the React sign-in page has rendered before its single-provider
+      // auto-redirect runs, and keeps the OAuth session in this context.
+      const provider = config?.external_login?.[0];
+      if (!provider) {
+        throw new Error('No OIDC external login provider is configured');
+      }
+      const csrfToken = await requestCsrfToken(context.request, BASE_URL);
+      const loginResponse = await context.request.post(
+        `${BASE_URL}/api/v1/externallogin/${provider.id}`,
+        {
+          data: {kind: 'login'},
+          headers: {'X-CSRF-Token': csrfToken},
+        },
+      );
+      if (!loginResponse.ok()) {
+        throw new Error(
+          `Could not obtain OIDC login URL: ${loginResponse.status()}`,
+        );
+      }
+      const {auth_url: authUrl} = (await loginResponse.json()) as {
+        auth_url: string;
+      };
+      await page.goto(authUrl);
       await page.waitForURL(/.*realms\/.*/, {timeout: 15000});
       await page.fill('#username', username);
       await page.fill('#password', password);
@@ -984,7 +1186,8 @@ async function loginUser(
       // Wait for redirect back to Quay (exclude Keycloak realm paths)
       await page.waitForURL(
         (url) =>
-          url.hostname === 'localhost' && !url.pathname.includes('/realms/'),
+          url.origin === new URL(BASE_URL).origin &&
+          !url.pathname.includes('/realms/'),
         {timeout: 15000},
       );
     } finally {
@@ -1021,6 +1224,9 @@ type TestFixtures = {
   // Pre-authenticated API request context as superuser
   superuserRequest: APIRequestContext;
 
+  // Pre-authenticated API request context as readonly user
+  readonlyRequest: APIRequestContext;
+
   // Quay configuration (features, config settings)
   quayConfig: QuayConfig;
 
@@ -1030,11 +1236,19 @@ type TestFixtures = {
   // API client for superuser with auto-cleanup
   superuserApi: TestApi;
 
+  // API client for readonly user with auto-cleanup
+  readonlyApi: TestApi;
+
   // RawApiClient authenticated as admin/superuser (no browser required)
   adminClient: RawApiClient;
 
   // RawApiClient authenticated as normal user (no browser required)
   userClient: RawApiClient;
+
+  // RawApiClient authenticated as the readonly superuser (no browser
+  // required). Skips the test when the readonly superuser is not
+  // configured or lacks superuser privileges.
+  readonlyClient: RawApiClient;
 
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
@@ -1042,17 +1256,41 @@ type TestFixtures = {
   // Isolated user with its own API client (no shared namespace state)
   freshUser: {user: CreatedUser; api: TestApi};
 
+  // User with its own API client that works under Database and LDAP auth.
+  // Database creates (and deletes) a unique user; LDAP signs in the slot's
+  // seeded identity, which is never deleted. Not supported under OIDC.
+  isolatedUser: (
+    slot: IsolatedUserSlot,
+  ) => Promise<{user: CreatedUser; api: TestApi}>;
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
 
-  // Container runtime availability (cached per worker)
+  // Registry image tooling availability (cached per worker)
   containerAvailable: boolean;
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
+
+  // Helm CLI availability (cached per worker)
+  helmAvailable: boolean;
+
+  // Auto-fixture: skips tests based on @helm tag (runs automatically)
+  _autoSkipByHelm: void;
+
+  // WebhookReceiver that auto-starts and auto-stops per test
+  webhook: WebhookReceiver;
+
+  // Per-test W3C trace id/span id, propagated as a `traceparent` header on
+  // browser contexts and API request contexts
+  traceparent: TraceContext;
+
+  // Auto-fixture: attaches Jaeger spans to the test report on failure
+  // (runs automatically)
+  _autoFailureArtifacts: void;
 };
 
 /**
@@ -1071,8 +1309,11 @@ type WorkerFixtures = {
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
 
-  // Cached container runtime availability (checked once per worker)
+  // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
+
+  // Cached Helm CLI availability (checked once per worker)
+  cachedHelmAvailable: boolean;
 };
 
 /**
@@ -1111,6 +1352,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         users.admin.password,
         cachedQuayConfig,
       );
+      superuserPageLastLogin.set(context, Date.now());
       await use(context);
       await context.close();
     },
@@ -1157,9 +1399,32 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     {scope: 'worker'},
   ],
 
+  cachedHelmAvailable: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const available = await isHelmAvailable();
+      await use(available);
+    },
+    {scope: 'worker'},
+  ],
+
   // =========================================================================
   // Test-scoped fixtures (created fresh for each test)
   // =========================================================================
+
+  // Per-test trace id/span id, minted once and reused by every page/request
+  // fixture below so all backend spans for a test share one trace id. The
+  // trace id is recorded as a test annotation so it lands in the HTML/JSON
+  // report and can be looked up in Jaeger.
+  // eslint-disable-next-line no-empty-pattern
+  traceparent: async ({}, use, testInfo) => {
+    const trace = newTraceContext();
+    testInfo.annotations.push({
+      type: 'trace-id',
+      description: trace.traceId,
+    });
+    await use(trace);
+  },
 
   csrfToken: async ({userContext}, use) => {
     const api = new ApiClient(userContext.request);
@@ -1167,39 +1432,95 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(token);
   },
 
-  authenticatedPage: async ({userContext}, use) => {
+  authenticatedPage: async ({userContext, traceparent}, use) => {
     const page = await userContext.newPage();
+    // page-level headers are test-scoped and override the (worker-scoped,
+    // shared) context headers, so this cannot leak into other tests.
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  superuserPage: async ({superuserContext}, use) => {
+  superuserPage: async (
+    {superuserContext, cachedQuayConfig, traceparent},
+    use,
+  ) => {
+    // superuserContext is worker-scoped and signs in once; a test running
+    // near the end of a long worker lifetime can land outside Quay's 10m
+    // fresh-login window, so refresh the session before handing out a page.
+    // Skip under OIDC: Quay's SSO pass-through means a repeat browser login
+    // just times out waiting for a Keycloak redirect that never happens
+    // (there is no password-verify modal to refresh on that path anyway).
+    // Re-login also rotates the session CSRF token, so an ApiClient that
+    // cached a token before this refresh must refetch it before writing.
+    const isOIDC = cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC';
+    const lastLogin = superuserPageLastLogin.get(superuserContext) ?? 0;
+    // A test that runs longer than this refresh window can still run the
+    // session past FRESH_LOGIN_TIMEOUT_MS mid-test even though it was fresh
+    // at start; testInfo.timeout during fixture setup
+    // always reads the config default (test.setTimeout() calls in the test
+    // body run later), so there is nothing reliable to key an extra guard
+    // off here. Tests that run that long re-sign in directly instead (see
+    // build-logs.spec.ts's superuserApi.raw.signIn call).
+    if (
+      !isOIDC &&
+      Date.now() - lastLogin > SUPERUSER_PAGE_REFRESH_INTERVAL_MS
+    ) {
+      const users = getTestUsers(cachedQuayConfig);
+      await loginUser(
+        superuserContext,
+        users.admin.username,
+        users.admin.password,
+        cachedQuayConfig,
+      );
+      superuserPageLastLogin.set(superuserContext, Date.now());
+    }
     const page = await superuserContext.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  readonlyPage: async ({readonlyContext}, use) => {
+  readonlyPage: async ({readonlyContext, traceparent}, use) => {
     const page = await readonlyContext.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
   },
 
-  unauthenticatedPage: async ({browser}, use) => {
+  unauthenticatedPage: async ({browser, traceparent}, use) => {
     // Create a fresh browser context without any authentication
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
     await use(page);
     await page.close();
     await context.close();
   },
 
-  authenticatedRequest: async ({userContext}, use) => {
+  authenticatedRequest: async ({userContext, traceparent}, use) => {
+    // userContext is worker-scoped and reused across tests in this worker,
+    // but Playwright runs one test at a time per worker, so setting the
+    // header here per test does not race with another test's requests.
+    // Cleared after use so a raw-context consumer in a later test gets no
+    // traceparent instead of this test's.
+    await userContext.setExtraHTTPHeaders({
+      traceparent: traceparent.traceparent,
+    });
     await use(userContext.request);
+    await userContext.setExtraHTTPHeaders({});
   },
 
-  superuserRequest: async ({superuserContext}, use) => {
+  superuserRequest: async ({superuserContext, traceparent}, use) => {
+    await superuserContext.setExtraHTTPHeaders({
+      traceparent: traceparent.traceparent,
+    });
     await use(superuserContext.request);
+    await superuserContext.setExtraHTTPHeaders({});
+  },
+
+  readonlyRequest: async ({readonlyContext}, use) => {
+    await use(readonlyContext.request);
   },
 
   quayConfig: async ({cachedQuayConfig}, use) => {
@@ -1219,23 +1540,28 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const client = new ApiClient(superuserRequest);
     const users = getTestUsers(cachedQuayConfig);
     client.setCredentials(users.admin.username, users.admin.password);
-    const testApi = new TestApi(client);
+    const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
 
-  freshUser: async ({superuserApi, playwright}, use) => {
-    const created = await superuserApi.user('iso');
-    await superuserApi.raw.updateUserAsSuperuser(created.username, {
-      email: created.email,
-    });
+  readonlyApi: async ({readonlyRequest, cachedQuayConfig}, use) => {
+    const client = new ApiClient(readonlyRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.readonly.username, users.readonly.password);
+    const testApi = new TestApi(client, users.readonly.username);
+    await use(testApi);
+    await testApi.cleanup();
+  },
+
+  freshUser: async ({superuserApi, playwright, traceparent}, use) => {
+    const created = await createDatabaseUser(superuserApi);
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
-    const client = new ApiClient(request);
-    await client.signIn(created.username, created.password);
-    client.setCredentials(created.username, created.password);
-    const testApi = new TestApi(client, created.username);
+    const testApi = await signedInApi(request, created);
 
     await use({user: created, api: testApi});
 
@@ -1243,13 +1569,65 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await request.dispose();
   },
 
+  isolatedUser: async (
+    {superuserApi, playwright, traceparent, cachedQuayConfig},
+    use,
+  ) => {
+    const authType = cachedQuayConfig?.config?.AUTHENTICATION_TYPE;
+    const opened: {api: TestApi; request: APIRequestContext}[] = [];
+
+    await use(async (slot) => {
+      if (authType === 'OIDC') {
+        throw new Error(`isolatedUser('${slot}') is not supported under OIDC`);
+      }
+      let user: CreatedUser;
+      if (authType === 'LDAP') {
+        const username = LDAP_ISOLATED_USERS[slot];
+        user = {
+          username,
+          email: `${username}@example.com`,
+          password: 'password',
+        };
+      } else {
+        user = await createDatabaseUser(superuserApi);
+      }
+      const request = await playwright.request.newContext({
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+        ignoreHTTPSErrors: true,
+        extraHTTPHeaders: {traceparent: traceparent.traceparent},
+      });
+      // Under LDAP this first sign-in is what creates the Quay account.
+      const api = await signedInApi(request, user);
+      opened.push({api, request});
+      return {user, api};
+    });
+
+    let firstError: unknown;
+    for (const {api, request} of opened.reverse()) {
+      try {
+        await api.cleanup();
+      } catch (err) {
+        firstError ??= err;
+      } finally {
+        try {
+          await request.dispose();
+        } catch (err) {
+          firstError ??= err;
+        }
+      }
+    }
+    if (firstError !== undefined) throw firstError;
+  },
+
   // =========================================================================
   // API-only fixtures (no browser required)
   // =========================================================================
 
-  adminClient: async ({playwright, cachedQuayConfig}, use) => {
+  adminClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
@@ -1261,9 +1639,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
-  userClient: async ({playwright, cachedQuayConfig}, use) => {
+  userClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
@@ -1275,13 +1655,84 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
-  anonClient: async ({playwright}, use) => {
+  // A per-test client (rather than a single beforeAll-built one) so each
+  // request carries this test's traceparent; the tradeoff is the superuser
+  // privilege GET below re-running once per test instead of once per file.
+  readonlyClient: async (
+    {playwright, cachedQuayConfig, traceparent},
+    use,
+    testInfo,
+  ) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users = getTestUsers(cachedQuayConfig);
+
+      try {
+        await client.signIn(users.readonly.username, users.readonly.password);
+      } catch (err: unknown) {
+        // Skip when the readonly user is genuinely not configured (auth
+        // rejection), but let infrastructure errors (5xx, network) fail loudly.
+        if (
+          err instanceof ApiRequestError &&
+          (err.status === 401 || err.status === 403)
+        ) {
+          testInfo.skip(true, 'Readonly superuser is not configured');
+        }
+        throw err;
+      }
+
+      // Verify readonly user actually has superuser privileges
+      // (GET /api/v1/superuser/users/ requires superuser access)
+      const suCheck = await client.get('/api/v1/superuser/users/');
+      if (suCheck.status() === 401 || suCheck.status() === 403) {
+        testInfo.skip(true, 'Readonly user does not have superuser privileges');
+      }
+      if (suCheck.status() !== 200) {
+        throw new Error(
+          `Unexpected status ${suCheck.status()} verifying readonly superuser privileges`,
+        );
+      }
+
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  anonClient: async ({playwright, traceparent}, use) => {
+    const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
     try {
       const client = new RawApiClient(request, API_URL);
       await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  // Built-in request context overridden so raw API calls carry the per-test
+  // traceparent (needed for server-span collection on failure); specs must
+  // use this fixture instead of playwright.request.newContext. Only
+  // forwards baseURL/ignoreHTTPSErrors/traceparent, not other context
+  // options (e.g. devices['Desktop Chrome']'s userAgent); harmless while no
+  // test.use() overrides contextOptions in this suite.
+  request: async ({playwright, baseURL, traceparent}, use) => {
+    const request = await playwright.request.newContext({
+      baseURL,
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+      ignoreHTTPSErrors: true,
+      extraHTTPHeaders: {traceparent: traceparent.traceparent},
+    });
+    try {
+      await use(request);
     } finally {
       await request.dispose();
     }
@@ -1365,7 +1816,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   // =========================================================================
-  // Container runtime availability
+  // Registry image tooling availability
   // =========================================================================
 
   containerAvailable: async ({cachedContainerAvailable}, use) => {
@@ -1373,18 +1824,26 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   // =========================================================================
+  // Helm CLI availability
+  // =========================================================================
+
+  helmAvailable: async ({cachedHelmAvailable}, use) => {
+    await use(cachedHelmAvailable);
+  },
+
+  // =========================================================================
   // Auto-fixture: Skip tests based on @container tag
   // =========================================================================
 
   /**
-   * Automatically skip tests that have @container tag when no
-   * container runtime (podman/docker) is available.
+   * Automatically skip tests that have @container tag when registry
+   * image tooling (skopeo) is not available.
    *
    * @example
    * ```typescript
    * test.describe('Push Tests', {tag: ['@container']}, () => {
    *   test('pushes image', async ({authenticatedPage}) => {
-   *     // Auto-skipped if no container runtime available!
+   *     // Auto-skipped if registry image tooling is unavailable!
    *   });
    * });
    * ```
@@ -1393,9 +1852,66 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     async ({containerAvailable}, use, testInfo) => {
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
-        testInfo.skip(true, 'Container runtime (podman/docker) required');
+        testInfo.skip(true, 'Registry image tooling (skopeo) required');
       }
       await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @helm tag
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @helm tag when the
+   * Helm CLI is not available.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Helm Chart Tests', {tag: ['@helm']}, () => {
+   *   test('pushes chart', async ({authenticatedPage}) => {
+   *     // Auto-skipped if Helm CLI not available!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByHelm: [
+    async ({helmAvailable}, use, testInfo) => {
+      const hasHelmTag = testInfo.tags.includes('@helm');
+      if (hasHelmTag && !helmAvailable) {
+        testInfo.skip(true, 'Helm CLI required');
+      }
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // eslint-disable-next-line no-empty-pattern
+  webhook: async ({}, use) => {
+    const receiver = new WebhookReceiver();
+    await receiver.start();
+    await use(receiver);
+    await receiver.stop();
+  },
+
+  // =========================================================================
+  // Auto-fixture: attach failure diagnostics
+  // =========================================================================
+
+  /**
+   * On test failure, best-effort attach Jaeger spans for this test's trace
+   * id. Never throws -- a failed attachment must not mask the original
+   * test failure or fail an otherwise-passing test.
+   */
+  _autoFailureArtifacts: [
+    async ({traceparent}, use, testInfo) => {
+      await use();
+      if (shouldCollect(testInfo.status, testInfo.expectedStatus)) {
+        // attachFailureArtifacts never throws -- it handles its own
+        // best-effort diagnostics internally.
+        await attachFailureArtifacts(testInfo, traceparent);
+      }
     },
     {auto: true},
   ],

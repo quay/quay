@@ -342,7 +342,13 @@ def _run_garbage_collection(context):
 
         # GC any blobs encountered.
         if context.blob_ids:
-            storage_ids_removed = set(storage.garbage_collect_storage(context.blob_ids))
+            storage_ids_removed = set(
+                storage.garbage_collect_storage(
+                    context.blob_ids,
+                    namespace=context.repository.namespace_user.username,
+                    repo_name=context.repository.name,
+                )
+            )
             for blob_removed_id in storage_ids_removed:
                 context.mark_blob_id_removed(blob_removed_id)
                 has_changes = True

@@ -6,7 +6,7 @@ from flask import abort as flask_abort
 from flask import redirect, request, url_for
 
 import features
-from app import app, get_app_url, model_cache, storage, usermanager
+from app import app, get_app_url, model_cache, storage, upstream_proxy, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
@@ -69,7 +69,16 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
     # Find the blob.
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # try returning the blob size from the imagestorage row directly
+        proxy_size = registry_model.get_proxy_blob_size(namespace_name, repo_name, digest)
+        if proxy_size is None:
+            raise BlobUnknown()
+        headers = {
+            "Docker-Content-Digest": digest,
+            "Content-Length": proxy_size,
+            "Content-type": BLOB_CONTENT_TYPE,
+        }
+        return Response(headers=headers)
 
     # Build the response headers.
     headers = {
@@ -95,10 +104,18 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @cache_control(max_age=31536000)
 @inject_registry_model()
 def download_blob(namespace_name, repo_name, digest, registry_model):
-    # Find the blob.
+    # try returning blob from cache
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
     if blob is None:
-        raise BlobUnknown()
+        # we don't have a blob locally so we'll proxy content from upstream directly
+        # while simultaneously queueing the blob for download
+        redirect_url = registry_model.get_upstream_blob_proxy_url(
+            namespace_name, repo_name, digest, upstream_proxy
+        )
+        if redirect_url is None:
+            raise BlobUnknown()
+        logger.debug("Proxying upstream blob %s through the upstream proxy interface", digest)
+        return redirect(redirect_url)
 
     # Build the response headers.
     headers = {"Docker-Content-Digest": digest}
@@ -269,6 +286,8 @@ def start_blob_upload(namespace_name, repo_name):
         "FEATURE_VERIFY_QUOTA", True
     ):
         quota = namespacequota.verify_namespace_quota(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
@@ -366,21 +385,24 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
-        "FEATURE_VERIFY_QUOTA", True
-    ):
-        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(
-                repository_ref, "quota_error", {"severity": "Reject"}
-            )
-            raise QuotaExceeded
-
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
         raise BlobUploadUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_VERIFY_QUOTA", True
+    ):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
+            uploader.cancel_upload()
+            raise QuotaExceeded
 
     # Upload the chunk for the blob.
     _upload_chunk(uploader)
@@ -415,21 +437,24 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
-        "FEATURE_VERIFY_QUOTA", True
-    ):
-        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(
-                repository_ref, "quota_error", {"severity": "Reject"}
-            )
-            raise QuotaExceeded
-
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
         raise BlobUploadUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_VERIFY_QUOTA", True
+    ):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
+            uploader.cancel_upload()
+            raise QuotaExceeded
 
     # Upload the chunk for the blob and commit it once complete.
     with complete_when_uploaded(uploader):

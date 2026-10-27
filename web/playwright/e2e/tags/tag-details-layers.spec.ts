@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushMultiArchImage, pushImage} from '../../utils/container';
 
@@ -7,11 +6,17 @@ test.describe(
   'Tag Details - Multi-Architecture Manifest Layers',
   {tag: ['@tags', '@layers', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     // Shared test data created once per describe block
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      // Skip setup if no container runtime (tests auto-skip via @container tag)
+      // Skip setup if registry image tooling is unavailable (tests auto-skip via @container tag)
       if (!cachedContainerAvailable) return;
 
       // Use the pre-authenticated userContext (already logged in as test user)
@@ -19,12 +24,12 @@ test.describe(
 
       // Create repository for test images
       const repoName = `layers-test-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       // Push multi-arch image
@@ -32,8 +37,8 @@ test.describe(
         testRepo.namespace,
         testRepo.name,
         'manifestlist',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Push single-arch image for comparison test
@@ -41,8 +46,8 @@ test.describe(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
     });
 

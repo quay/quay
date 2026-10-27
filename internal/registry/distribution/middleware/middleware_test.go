@@ -3,14 +3,19 @@ package middleware
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/distribution/distribution/v3"
+	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
+	diststorage "github.com/distribution/distribution/v3/registry/storage"
 	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
 )
 
@@ -24,28 +29,39 @@ type mockStore struct {
 
 	putManifestID  int64
 	putManifestErr error
-	putManifestRec metastore.ManifestRecord
+	putManifestRec oci.ManifestRecord
 
 	deleteManifestErr  error
 	deleteManifestDgst digest.Digest
 
-	putBlobID  int64
-	putBlobErr error
-	putBlobRec metastore.BlobRecord
+	putBlobID   int64
+	putBlobErr  error
+	putBlobRec  oci.BlobRecord
+	putBlobHook func(repoID int64, b oci.BlobRecord)
 
-	putTagID  int64
-	putTagErr error
-	putTagRec metastore.TagRecord
+	putTagID    int64
+	putTagErr   error
+	putTagRec   oci.TagRecord
+	putTagCalls int
 
 	deleteTagErr  error
 	deleteTagName string
+
+	getManifestDigestResult digest.Digest
+	getManifestDigestErr    error
+
+	getRepositoryIDErr error
+
+	getManifestForServingContent   []byte
+	getManifestForServingMediaType string
+	getManifestForServingError     error
 }
 
 func (m *mockStore) EnsureRepository(_ context.Context, _ oci.RepositoryName) (int64, error) {
 	return m.ensureRepoID, m.ensureRepoErr
 }
 
-func (m *mockStore) PutManifest(_ context.Context, repoID int64, r metastore.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
+func (m *mockStore) PutManifest(_ context.Context, repoID int64, r oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
 	m.lastRepoID = repoID
 	m.putManifestRec = r
 	return m.putManifestID, m.putManifestErr
@@ -57,12 +73,13 @@ func (m *mockStore) DeleteManifest(_ context.Context, repoID int64, dgst digest.
 	return m.deleteManifestErr
 }
 
-func (m *mockStore) PutBlob(_ context.Context, b metastore.BlobRecord) (int64, error) {
+func (m *mockStore) PutBlob(_ context.Context, b oci.BlobRecord) (int64, error) {
 	m.putBlobRec = b
 	return m.putBlobID, m.putBlobErr
 }
 
-func (m *mockStore) PutTag(_ context.Context, repoID int64, t metastore.TagRecord) (int64, error) {
+func (m *mockStore) PutTag(_ context.Context, repoID int64, t oci.TagRecord) (int64, error) {
+	m.putTagCalls++
 	m.lastRepoID = repoID
 	m.putTagRec = t
 	return m.putTagID, m.putTagErr
@@ -72,6 +89,69 @@ func (m *mockStore) DeleteTag(_ context.Context, repoID int64, tag string) error
 	m.lastRepoID = repoID
 	m.deleteTagName = tag
 	return m.deleteTagErr
+}
+
+func (m *mockStore) GetRepositoryID(_ context.Context, _ oci.RepositoryName) (int64, error) {
+	if m.getRepositoryIDErr != nil {
+		return 0, m.getRepositoryIDErr
+	}
+	if m.ensureRepoID != 0 {
+		return m.ensureRepoID, nil
+	}
+	return 0, errNotImplemented
+}
+
+func (m *mockStore) GetTagDigest(_ context.Context, _ int64, _ string) (digest.Digest, error) {
+	return "", errNotImplemented
+}
+
+func (m *mockStore) GetManifestDigest(_ context.Context, _ int64, _ digest.Digest) (digest.Digest, error) {
+	return m.getManifestDigestResult, m.getManifestDigestErr
+}
+
+func (m *mockStore) BlobExists(_ context.Context, _ digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+
+func (m *mockStore) BlobLinkedToRepo(_ context.Context, _ int64, _ digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+
+func (m *mockStore) ListTags(_ context.Context, _ int64) ([]string, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) ListRepositories(_ context.Context) ([]oci.RepositoryName, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) PutRepositoryBlob(_ context.Context, repoID int64, b oci.BlobRecord) (int64, error) {
+	if m.putBlobHook != nil {
+		m.putBlobHook(repoID, b)
+	}
+	m.lastRepoID = repoID
+	m.putBlobRec = b
+	return m.putBlobID, m.putBlobErr
+}
+
+func (m *mockStore) PutUploadedBlob(_ context.Context, _ int64, _ digest.Digest) error {
+	return nil
+}
+
+func (m *mockStore) DeleteUploadedBlob(_ context.Context, _ int64, _ digest.Digest) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockStore) CleanExpiredUploadedBlobs(_ context.Context) error {
+	return errNotImplemented
+}
+
+func (m *mockStore) ListReferrers(_ context.Context, _ int64, _ digest.Digest, _ string) ([]oci.ReferrerRecord, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) GetManifestForServing(_ context.Context, _ int64, _ digest.Digest) (content []byte, mediaType string, err error) {
+	return m.getManifestForServingContent, m.getManifestForServingMediaType, m.getManifestForServingError
 }
 
 var errNotImplemented = errors.New("mock: not implemented")
@@ -136,30 +216,87 @@ func (ts *mockTagService) Lookup(_ context.Context, _ v1.Descriptor) ([]string, 
 	return nil, nil
 }
 
-type mockBlobStore struct {
-	distribution.BlobStore
-	putDesc   v1.Descriptor
-	putErr    error
-	createWr  distribution.BlobWriter
-	createErr error
+func (ts *mockTagService) List(_ context.Context, _ int, _ string) ([]string, error) {
+	return nil, nil
 }
 
-func (bs *mockBlobStore) Put(_ context.Context, _ string, _ []byte) (v1.Descriptor, error) {
+type mockBlobStore struct {
+	distribution.BlobStore
+	putDesc    v1.Descriptor
+	putErr     error
+	putHook    func(p []byte)
+	createWr   distribution.BlobWriter
+	createErr  error
+	createHook func(options []distribution.BlobCreateOption)
+	resumeWr   distribution.BlobWriter
+	resumeErr  error
+}
+
+func (bs *mockBlobStore) Put(_ context.Context, _ string, p []byte) (v1.Descriptor, error) {
+	if bs.putHook != nil {
+		bs.putHook(p)
+	}
 	return bs.putDesc, bs.putErr
 }
 
-func (bs *mockBlobStore) Create(_ context.Context, _ ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
+func (bs *mockBlobStore) Create(_ context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
+	if bs.createHook != nil {
+		bs.createHook(options)
+	}
 	return bs.createWr, bs.createErr
+}
+
+func (bs *mockBlobStore) Resume(_ context.Context, _ string) (distribution.BlobWriter, error) {
+	return bs.resumeWr, bs.resumeErr
 }
 
 type mockBlobWriter struct {
 	distribution.BlobWriter
 	commitDesc v1.Descriptor
 	commitErr  error
+	commitHook func(provisional v1.Descriptor)
 }
 
-func (bw *mockBlobWriter) Commit(_ context.Context, _ v1.Descriptor) (v1.Descriptor, error) { //nolint:gocritic // interface compliance
+func (bw *mockBlobWriter) Commit(_ context.Context, provisional v1.Descriptor) (v1.Descriptor, error) { //nolint:gocritic // interface compliance
+	if bw.commitHook != nil {
+		bw.commitHook(provisional)
+	}
 	return bw.commitDesc, bw.commitErr
+}
+
+type trackingBlobLocker struct {
+	mu   sync.Mutex
+	held map[digest.Digest]int
+}
+
+func (l *trackingBlobLocker) Lock(ctx context.Context, dgst digest.Digest) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	l.mu.Lock()
+	if l.held == nil {
+		l.held = make(map[digest.Digest]int)
+	}
+	l.held[dgst]++
+	l.mu.Unlock()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			l.held[dgst]--
+			if l.held[dgst] == 0 {
+				delete(l.held, dgst)
+			}
+		})
+	}, nil
+}
+
+func (l *trackingBlobLocker) isHeld(dgst digest.Digest) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.held[dgst] > 0
 }
 
 // --- helpers ---
@@ -179,19 +316,156 @@ func (r *fakeDistRepo) Manifests(_ context.Context, _ ...distribution.ManifestSe
 func (r *fakeDistRepo) Blobs(_ context.Context) distribution.BlobStore { return r.bs }
 func (r *fakeDistRepo) Tags(_ context.Context) distribution.TagService { return r.ts }
 
+func newTestRepository(inner distribution.Repository, store oci.MetadataStore) *repository {
+	return newRepository(inner, store, oci.NewBlobLockSet(), "library", nil)
+}
+
+func newTestMetrics(t *testing.T) *Metrics {
+	t.Helper()
+	reg := prometheus.NewRegistry()
+	m, err := NewMetrics(reg)
+	require.NoError(t, err)
+	return m
+}
+
 // --- tests ---
+
+func TestRegister_IsSafeToCallConcurrently(t *testing.T) {
+	const callers = 20
+	errs := make(chan error, callers)
+	for range callers {
+		go func() {
+			errs <- Register()
+		}()
+	}
+	for range callers {
+		require.NoError(t, <-errs)
+	}
+}
+
+func TestFactory_UsesPerInstanceOptions(t *testing.T) {
+	require.NoError(t, Register())
+
+	storeA := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	storeB := &mockStore{ensureRepoID: 2, putManifestID: 20}
+	lockerA := &trackingBlobLocker{}
+	lockerB := &trackingBlobLocker{}
+	innerA := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-a")},
+	}
+	innerB := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("manifest-b")},
+	}
+
+	metricsA := newTestMetrics(t)
+	metricsB := newTestMetrics(t)
+	repoA, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeA, lockerA, "library-a", WithMetrics(metricsA)), innerA)
+	require.NoError(t, err)
+	repoB, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(storeB, lockerB, "library-b", WithMetrics(metricsB)), innerB)
+	require.NoError(t, err)
+
+	wrappedA, ok := repoA.(*repository)
+	require.True(t, ok)
+	wrappedB, ok := repoB.(*repository)
+	require.True(t, ok)
+	require.Same(t, storeA, wrappedA.store)
+	require.Same(t, lockerA, wrappedA.locker)
+	require.Equal(t, "library-a", wrappedA.libraryNamespace)
+	require.Same(t, storeB, wrappedB.store)
+	require.Same(t, lockerB, wrappedB.locker)
+	require.Equal(t, "library-b", wrappedB.libraryNamespace)
+	require.Same(t, metricsA, wrappedA.metrics)
+	require.Same(t, metricsB, wrappedB.metrics)
+
+	manifestA := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2}`),
+	}
+
+	manifestB := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`),
+	}
+
+	_, payloadA, err := manifestA.Payload()
+	assert.NoError(t, err)
+	dgstA := digest.FromBytes(payloadA)
+
+	_, payloadB, err := manifestB.Payload()
+	assert.NoError(t, err)
+	dgstB := digest.FromBytes(payloadB)
+
+	serviceA, err := wrappedA.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceA.Put(t.Context(), manifestA)
+	require.NoError(t, err)
+	serviceB, err := wrappedB.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = serviceB.Put(t.Context(), manifestB)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), storeA.lastRepoID)
+	require.Equal(t, int64(2), storeB.lastRepoID)
+	require.Equal(t, dgstA, storeA.putManifestRec.Digest)
+	require.Equal(t, dgstB, storeB.putManifestRec.Digest)
+}
+
+// TestParameters_BackwardCompatThreeArgs verifies that the original
+// three-argument call to Parameters still compiles and produces valid
+// middleware options with nil metrics (recording disabled).
+func TestParameters_BackwardCompatThreeArgs(t *testing.T) {
+	require.NoError(t, Register())
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	locker := &trackingBlobLocker{}
+	inner := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: digest.FromString("compat")},
+	}
+
+	// Three-argument form — no Option values.
+	repo, err := repositorymiddleware.Get(t.Context(), Name(), Parameters(store, locker, "library"), inner)
+	require.NoError(t, err)
+
+	wrapped, ok := repo.(*repository)
+	require.True(t, ok)
+	require.Same(t, store, wrapped.store)
+	require.Same(t, locker, wrapped.locker)
+	require.Nil(t, wrapped.metrics, "3-arg Parameters must yield nil metrics")
+
+	// Operations should succeed without panic despite nil metrics.
+	ms, err := wrapped.Manifests(t.Context())
+	require.NoError(t, err)
+	_, err = ms.Put(t.Context(), &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion":2}`),
+	})
+	require.NoError(t, err)
+}
+
+func TestFactory_RejectsMissingOptions(t *testing.T) {
+	require.NoError(t, Register())
+	inner := &fakeDistRepo{name: namedRef(t)}
+
+	_, err := repositorymiddleware.Get(t.Context(), Name(), nil, inner)
+	require.ErrorContains(t, err, "metastore parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, nil, "library"), inner)
+	require.ErrorContains(t, err, "bloblocker parameter")
+
+	_, err = repositorymiddleware.Get(t.Context(), Name(), Parameters(&mockStore{}, &trackingBlobLocker{}, ""), inner)
+	require.ErrorContains(t, err, "librarynamespace parameter")
+}
 
 func TestManifestPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
-	dgst := digest.FromString("test-manifest")
 
-	innerMS := &mockManifestService{putDigest: dgst}
 	innerRepo := &fakeDistRepo{
 		name: namedRef(t),
-		ms:   innerMS,
+		ms:   &mockManifestService{},
 	}
 
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -204,6 +478,11 @@ func TestManifestPut_RecordsMetadata(t *testing.T) {
 			{Digest: digest.FromString("layer1"), Size: 100},
 		},
 	}
+
+	_, payload, err := manifest.Payload()
+	assert.NoError(t, err)
+
+	dgst := digest.FromBytes(payload)
 
 	got, err := ms.Put(context.Background(), manifest)
 	if err != nil {
@@ -225,13 +504,12 @@ func TestManifestPut_RecordsMetadata(t *testing.T) {
 
 func TestManifestPut_WithTag(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
-	dgst := digest.FromString("tagged-manifest")
 
 	innerRepo := &fakeDistRepo{
 		name: namedRef(t),
-		ms:   &mockManifestService{putDigest: dgst},
+		ms:   &mockManifestService{},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -259,7 +537,7 @@ func TestManifestPut_IndexClassifiesChildDigests(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putDigest: dgst},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -288,26 +566,6 @@ func TestManifestPut_IndexClassifiesChildDigests(t *testing.T) {
 	}
 }
 
-func TestManifestPut_StorageFailure_PassesThrough(t *testing.T) {
-	store := &mockStore{ensureRepoID: 1}
-	storageErr := errors.New("disk full")
-
-	innerRepo := &fakeDistRepo{
-		name: namedRef(t),
-		ms:   &mockManifestService{putErr: storageErr},
-	}
-	repo := newRepository(innerRepo, store, "library")
-	ms, _ := repo.Manifests(context.Background())
-
-	_, err := ms.Put(context.Background(), &mockManifest{
-		mediaType: "application/vnd.oci.image.manifest.v1+json",
-		payload:   []byte(`{}`),
-	})
-	if !errors.Is(err, storageErr) {
-		t.Errorf("err = %v, want %v", err, storageErr)
-	}
-}
-
 func TestManifestPut_MetadataFailure_BlocksOperation(t *testing.T) {
 	dbErr := errors.New("db locked")
 	store := &mockStore{ensureRepoID: 1, putManifestErr: dbErr}
@@ -316,7 +574,7 @@ func TestManifestPut_MetadataFailure_BlocksOperation(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putDigest: digest.FromString("m")},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ms, _ := repo.Manifests(context.Background())
 
 	_, err := ms.Put(context.Background(), &mockManifest{
@@ -340,7 +598,7 @@ func TestManifestDelete_RecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ms, _ := repo.Manifests(context.Background())
 
 	if err := ms.Delete(context.Background(), dgst); err != nil {
@@ -354,18 +612,42 @@ func TestManifestDelete_RecordsMetadata(t *testing.T) {
 	}
 }
 
+func TestManifestDelete_Proper_Error_Returned_When_Delete_Called_On_Nonexistent_Manifest(t *testing.T) {
+	store := &mockStore{
+		ensureRepoID:      1,
+		putManifestID:     1,
+		deleteManifestErr: oci.ErrNotExist,
+	}
+
+	dgst := digest.FromString("missing-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	err = ms.Delete(context.Background(), dgst)
+	assert.Error(t, err)
+
+	assert.ErrorIs(t, err, distribution.ErrBlobUnknown)
+}
+
 func TestBlobPut_RecordsMetadata(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1, putBlobID: 5}
-	desc := v1.Descriptor{Digest: digest.FromString("blob"), Size: 42}
+	content := []byte("data")
+	desc := v1.Descriptor{Digest: digest.FromBytes(content), Size: int64(len(content))}
 
 	innerRepo := &fakeDistRepo{
 		name: namedRef(t),
 		bs:   &mockBlobStore{putDesc: desc},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	bs := repo.Blobs(context.Background())
 
-	got, err := bs.Put(context.Background(), "application/octet-stream", []byte("data"))
+	got, err := bs.Put(context.Background(), "application/octet-stream", content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +668,7 @@ func TestBlobCommit_RecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		bs:   &mockBlobStore{createWr: innerBW},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	bs := repo.Blobs(context.Background())
 
 	wr, err := bs.Create(context.Background())
@@ -394,7 +676,7 @@ func TestBlobCommit_RecordsMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := wr.Commit(context.Background(), v1.Descriptor{})
+	got, err := wr.Commit(context.Background(), desc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,12 +699,18 @@ func TestBlobCreate_MountRecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		bs: &mockBlobStore{
 			createErr: distribution.ErrBlobMounted{From: fromRef, Descriptor: desc},
+			createHook: func(options []distribution.BlobCreateOption) {
+				var createOptions distribution.CreateOptions
+				for _, option := range options {
+					require.NoError(t, option.Apply(&createOptions))
+				}
+			},
 		},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	bs := repo.Blobs(context.Background())
 
-	_, err := bs.Create(context.Background())
+	_, err := bs.Create(context.Background(), diststorage.WithMountFrom(fromRef))
 	// ErrBlobMounted is still returned (distribution convention).
 	var mounted distribution.ErrBlobMounted
 	if !errors.As(err, &mounted) {
@@ -430,6 +718,250 @@ func TestBlobCreate_MountRecordsMetadata(t *testing.T) {
 	}
 	if store.putBlobRec.Digest != desc.Digest {
 		t.Errorf("stored digest = %s, want %s", store.putBlobRec.Digest, desc.Digest)
+	}
+}
+
+func TestBlobPut_LocksFinalizationThroughMetadata(t *testing.T) {
+	content := []byte("coordinated-put")
+	dgst := digest.FromBytes(content)
+	locker := &trackingBlobLocker{}
+	store := &mockStore{
+		ensureRepoID: 1,
+		putBlobHook: func(_ int64, b oci.BlobRecord) {
+			require.Equal(t, dgst, b.Digest)
+			require.True(t, locker.isHeld(dgst), "digest lock not held during metadata registration")
+		},
+	}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		bs: &mockBlobStore{
+			putDesc: v1.Descriptor{Digest: dgst, Size: int64(len(content))},
+			putHook: func(_ []byte) {
+				require.True(t, locker.isHeld(dgst), "digest lock not held during storage finalization")
+			},
+		},
+	}
+
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+	_, err := repo.Blobs(t.Context()).Put(t.Context(), "application/octet-stream", content)
+	require.NoError(t, err)
+	require.False(t, locker.isHeld(dgst), "digest lock retained after put")
+}
+
+func TestBlobPut_RejectsDigestMismatch(t *testing.T) {
+	content := []byte("digest-mismatch")
+	expected := digest.FromBytes(content)
+	store := &mockStore{ensureRepoID: 1}
+	locker := &trackingBlobLocker{}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		bs: &mockBlobStore{
+			putDesc: v1.Descriptor{Digest: digest.FromString("wrong-put-digest"), Size: int64(len(content))},
+		},
+	}
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+
+	_, err := repo.Blobs(t.Context()).Put(t.Context(), "application/octet-stream", content)
+	require.ErrorContains(t, err, "blob put digest mismatch")
+	require.Empty(t, store.putBlobRec.Digest)
+	require.False(t, locker.isHeld(expected), "digest lock retained after mismatch")
+}
+
+func TestBlobCommit_LocksFinalizationThroughMetadata(t *testing.T) {
+	testBlobCommitLocking(t, false)
+}
+
+func TestBlobResumeCommit_LocksFinalizationThroughMetadata(t *testing.T) {
+	testBlobCommitLocking(t, true)
+}
+
+func TestBlobCommit_RejectsDigestMismatch(t *testing.T) {
+	expected := digest.FromString("expected-commit-digest")
+	store := &mockStore{ensureRepoID: 1}
+	locker := &trackingBlobLocker{}
+	innerWriter := &mockBlobWriter{
+		commitDesc: v1.Descriptor{Digest: digest.FromString("wrong-commit-digest"), Size: 99},
+	}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		bs:   &mockBlobStore{createWr: innerWriter},
+	}
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+	wr, err := repo.Blobs(t.Context()).Create(t.Context())
+	require.NoError(t, err)
+
+	_, err = wr.Commit(t.Context(), v1.Descriptor{Digest: expected})
+	require.ErrorContains(t, err, "blob commit digest mismatch")
+	require.Empty(t, store.putBlobRec.Digest)
+	require.False(t, locker.isHeld(expected), "digest lock retained after mismatch")
+}
+
+func testBlobCommitLocking(t *testing.T, resume bool) {
+	t.Helper()
+	dgst := digest.FromString("coordinated-commit")
+	desc := v1.Descriptor{Digest: dgst, Size: 99}
+	locker := &trackingBlobLocker{}
+	store := &mockStore{
+		ensureRepoID: 1,
+		putBlobHook: func(_ int64, b oci.BlobRecord) {
+			require.Equal(t, dgst, b.Digest)
+			require.True(t, locker.isHeld(dgst), "digest lock not held during metadata registration")
+		},
+	}
+	innerWriter := &mockBlobWriter{
+		commitDesc: desc,
+		commitHook: func(provisional v1.Descriptor) {
+			require.Equal(t, dgst, provisional.Digest)
+			require.True(t, locker.isHeld(dgst), "digest lock not held during storage commit")
+		},
+	}
+	innerBlobs := &mockBlobStore{createWr: innerWriter, resumeWr: innerWriter}
+	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+	bs := repo.Blobs(t.Context())
+
+	var (
+		wr  distribution.BlobWriter
+		err error
+	)
+	if resume {
+		wr, err = bs.Resume(t.Context(), "upload-id")
+	} else {
+		wr, err = bs.Create(t.Context())
+	}
+	require.NoError(t, err)
+	_, err = wr.Commit(t.Context(), desc)
+	require.NoError(t, err)
+	require.False(t, locker.isHeld(dgst), "digest lock retained after commit")
+}
+
+func TestBlobCreate_MountLocksLinkThroughMetadata(t *testing.T) {
+	dgst := digest.FromString("coordinated-mount")
+	desc := v1.Descriptor{Digest: dgst, Size: 77}
+	fromNamed, err := reference.WithName("other/repo")
+	require.NoError(t, err)
+	fromRef, err := reference.WithDigest(fromNamed, dgst)
+	require.NoError(t, err)
+
+	locker := &trackingBlobLocker{}
+	store := &mockStore{
+		ensureRepoID: 1,
+		putBlobHook: func(_ int64, b oci.BlobRecord) {
+			require.Equal(t, dgst, b.Digest)
+			require.True(t, locker.isHeld(dgst), "digest lock not held during mounted metadata registration")
+		},
+	}
+	innerBlobs := &mockBlobStore{
+		createErr: distribution.ErrBlobMounted{From: fromRef, Descriptor: desc},
+		createHook: func(options []distribution.BlobCreateOption) {
+			var createOptions distribution.CreateOptions
+			for _, option := range options {
+				require.NoError(t, option.Apply(&createOptions))
+			}
+			require.True(t, locker.isHeld(dgst), "digest lock not held during mount")
+		},
+	}
+	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+
+	_, err = repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
+	var mounted distribution.ErrBlobMounted
+	require.ErrorAs(t, err, &mounted)
+	require.False(t, locker.isHeld(dgst), "digest lock retained after mount")
+}
+
+func TestBlobCreate_MountFallbackReleasesLock(t *testing.T) {
+	dgst := digest.FromString("mount-fallback")
+	fromNamed, err := reference.WithName("other/repo")
+	require.NoError(t, err)
+	fromRef, err := reference.WithDigest(fromNamed, dgst)
+	require.NoError(t, err)
+
+	locker := &trackingBlobLocker{}
+	innerWriter := &mockBlobWriter{}
+	innerBlobs := &mockBlobStore{
+		createWr: innerWriter,
+		createHook: func(options []distribution.BlobCreateOption) {
+			var createOptions distribution.CreateOptions
+			for _, option := range options {
+				require.NoError(t, option.Apply(&createOptions))
+			}
+			require.True(t, locker.isHeld(dgst), "digest lock not held while mount was attempted")
+		},
+	}
+	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
+	repo := newRepository(innerRepo, &mockStore{}, locker, "library", nil)
+
+	wr, err := repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
+	require.NoError(t, err)
+	require.Same(t, innerWriter, wr.(*blobWriter).BlobWriter)
+	require.False(t, locker.isHeld(dgst), "digest lock retained after mount fallback")
+}
+
+func TestBlobCreate_MountRejectsDigestMismatch(t *testing.T) {
+	expected := digest.FromString("expected-mount-digest")
+	fromNamed, err := reference.WithName("other/repo")
+	require.NoError(t, err)
+	fromRef, err := reference.WithDigest(fromNamed, expected)
+	require.NoError(t, err)
+
+	store := &mockStore{ensureRepoID: 1}
+	locker := &trackingBlobLocker{}
+	innerBlobs := &mockBlobStore{
+		createErr: distribution.ErrBlobMounted{
+			From: fromRef,
+			Descriptor: v1.Descriptor{
+				Digest: digest.FromString("wrong-mount-digest"),
+				Size:   77,
+			},
+		},
+		createHook: func(options []distribution.BlobCreateOption) {
+			var createOptions distribution.CreateOptions
+			for _, option := range options {
+				require.NoError(t, option.Apply(&createOptions))
+			}
+		},
+	}
+	innerRepo := &fakeDistRepo{name: namedRef(t), bs: innerBlobs}
+	repo := newRepository(innerRepo, store, locker, "library", nil)
+
+	_, err = repo.Blobs(t.Context()).Create(t.Context(), diststorage.WithMountFrom(fromRef))
+	require.ErrorContains(t, err, "mounted blob digest mismatch")
+	require.Empty(t, store.putBlobRec.Digest)
+	require.False(t, locker.isHeld(expected), "digest lock retained after mismatch")
+}
+
+func TestTagService_Get_InvalidDigestAsTag(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ts := repo.Tags(t.Context())
+
+	_, err := ts.Get(t.Context(), "sha256:totallywrong")
+	var tagUnknown distribution.ErrTagUnknown
+	if !errors.As(err, &tagUnknown) {
+		t.Fatalf("expected ErrTagUnknown, got %T: %v", err, err)
+	}
+	if tagUnknown.Tag != "sha256:totallywrong" {
+		t.Errorf("tag = %q, want %q", tagUnknown.Tag, "sha256:totallywrong")
+	}
+}
+
+func TestTagService_Get_ValidTag(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ts := repo.Tags(t.Context())
+
+	_, err := ts.Get(t.Context(), "latest")
+	if err != nil {
+		t.Fatalf("unexpected error for valid tag: %v", err)
 	}
 }
 
@@ -441,7 +973,7 @@ func TestTagService_Tag(t *testing.T) {
 		name: namedRef(t),
 		ts:   &mockTagService{},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ts := repo.Tags(context.Background())
 
 	if err := ts.Tag(context.Background(), "v2", desc); err != nil {
@@ -458,6 +990,89 @@ func TestTagService_Tag(t *testing.T) {
 	}
 }
 
+// One tagged manifest PUT reaches the store twice: PutManifest with the tag,
+// then the tag service. Within one request the second write is skipped.
+func TestTagService_Tag_SkipsTagStoredByManifestPutInSameRequest(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("tagged-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ctx := WithSubjectHolder(context.Background())
+
+	ms, err := repo.Manifests(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte("tagged-manifest"),
+	}
+	got, err := ms.Put(ctx, manifest, distribution.WithTag("latest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.putManifestRec.Tag != "latest" {
+		t.Fatalf("manifest stored with tag %q, want latest", store.putManifestRec.Tag)
+	}
+
+	if err := repo.Tags(ctx).Tag(ctx, "latest", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 0 {
+		t.Errorf("tag stored again in the same request: PutTag calls = %d, want 0", store.putTagCalls)
+	}
+
+	// A different tag, or the same tag for another digest, is a real write.
+	if err := repo.Tags(ctx).Tag(ctx, "stable", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Tags(ctx).Tag(ctx, "latest", v1.Descriptor{Digest: digest.FromString("other")}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 2 {
+		t.Errorf("PutTag calls = %d, want 2", store.putTagCalls)
+	}
+}
+
+// A later request carries a fresh context, so re-tagging the same digest is
+// stored and recorded in tag history.
+func TestTagService_Tag_StoresTagInLaterRequest(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("tagged-manifest")
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+		ts:   &mockTagService{},
+	}
+	repo := newTestRepository(innerRepo, store)
+
+	first := WithSubjectHolder(context.Background())
+	ms, err := repo.Manifests(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte("tagged-manifest"),
+	}
+	got, err := ms.Put(first, manifest, distribution.WithTag("latest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	second := WithSubjectHolder(context.Background())
+	if err := repo.Tags(second).Tag(second, "latest", v1.Descriptor{Digest: got}); err != nil {
+		t.Fatal(err)
+	}
+	if store.putTagCalls != 1 {
+		t.Errorf("PutTag calls = %d, want 1", store.putTagCalls)
+	}
+}
+
 func TestTagService_Untag(t *testing.T) {
 	store := &mockStore{ensureRepoID: 1}
 
@@ -465,7 +1080,7 @@ func TestTagService_Untag(t *testing.T) {
 		name: namedRef(t),
 		ts:   &mockTagService{},
 	}
-	repo := newRepository(innerRepo, store, "library")
+	repo := newTestRepository(innerRepo, store)
 	ts := repo.Tags(context.Background())
 
 	if err := ts.Untag(context.Background(), "old"); err != nil {
@@ -479,6 +1094,208 @@ func TestTagService_Untag(t *testing.T) {
 	}
 }
 
+func TestManifestPut_ParsesSubjectAndArtifactType(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("referrer-manifest")
+	subjectDgst := digest.FromString("subject-manifest")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{
+		"schemaVersion": 2,
+		"subject": {"digest": "` + subjectDgst.String() + `"},
+		"artifactType": "application/vnd.example.sbom.v1"
+	}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.Subject != subjectDgst {
+		t.Errorf("subject = %s, want %s", store.putManifestRec.Subject, subjectDgst)
+	}
+	if store.putManifestRec.ArtifactType != "application/vnd.example.sbom.v1" {
+		t.Errorf("artifactType = %q, want %q", store.putManifestRec.ArtifactType, "application/vnd.example.sbom.v1")
+	}
+}
+
+func TestManifestPut_NoSubject(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("normal-manifest")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion": 2}`),
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.Subject != "" {
+		t.Errorf("subject = %q, want empty", store.putManifestRec.Subject)
+	}
+	if store.putManifestRec.ArtifactType != "" {
+		t.Errorf("artifactType = %q, want empty", store.putManifestRec.ArtifactType)
+	}
+}
+
+func TestManifestPut_Missing_Blob(t *testing.T) {
+	missingBlobDigest := digest.FromString("missing-blob")
+
+	store := &mockStore{
+		ensureRepoID:  1,
+		putManifestID: 1,
+		putManifestErr: oci.BlobUnknownError{
+			Digest: missingBlobDigest,
+		},
+	}
+	dgst := digest.FromString("missing blob in manifest put")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms: &mockManifestService{
+			putDigest: dgst,
+		},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	payload := []byte(`{"schemaVersion": 2}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	// verify that the proper error is returned
+	var verr distribution.ErrManifestVerification
+	_, err = ms.Put(t.Context(), manifest)
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ErrManifestVerification, got %T: %v", err, err)
+	}
+
+	var blobErr distribution.ErrManifestBlobUnknown
+	if !errors.As(verr[0], &blobErr) {
+		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
+	}
+
+	if blobErr.Digest != missingBlobDigest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missingBlobDigest, blobErr.Digest)
+	}
+}
+
+func TestManifestPut_Missing_Child_Manifest(t *testing.T) {
+	missingChildDigest := digest.FromString("missing-child")
+
+	store := &mockStore{
+		ensureRepoID:  1,
+		putManifestID: 1,
+		putManifestErr: oci.ChildManifestUnknownError{
+			Digest: missingChildDigest,
+		},
+	}
+	dgst := digest.FromString("missing child manifest in manifest put")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms: &mockManifestService{
+			putDigest: dgst,
+		},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+
+	payload := []byte(`{"schemaVersion": 2}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.index.v1+json",
+		payload:   payload,
+	}
+
+	// verify that the proper error is returned
+	var verr distribution.ErrManifestVerification
+	_, err = ms.Put(t.Context(), manifest)
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ErrManifestVerification, got %T: %v", err, err)
+	}
+
+	var childErr distribution.ErrManifestBlobUnknown
+	if !errors.As(verr[0], &childErr) {
+		t.Fatalf("expected ErrManifestBlobUnknown inside verification error, got %T", verr[0])
+	}
+
+	if childErr.Digest != missingChildDigest {
+		t.Fatalf("wrong digest, expected: %s, got: %s", missingChildDigest, childErr.Digest)
+	}
+}
+
+func TestManifestPut_ArtifactTypeFallbackFromConfigMediaType(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("cosign-signature")
+	subjectDgst := digest.FromString("signed-image")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{
+		"schemaVersion": 2,
+		"subject": {"digest": "` + subjectDgst.String() + `"},
+		"config": {"mediaType": "application/vnd.dev.cosign.simplesigning.v1+json", "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a", "size": 2},
+		"layers": []
+	}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.ArtifactType != "application/vnd.dev.cosign.simplesigning.v1+json" {
+		t.Errorf("artifactType = %q, want cosign media type (fallback from config.mediaType)", store.putManifestRec.ArtifactType)
+	}
+}
+
 func namedRef(t *testing.T) reference.Named {
 	t.Helper()
 	ref, err := reference.WithName("library/test")
@@ -486,4 +1303,123 @@ func namedRef(t *testing.T) reference.Named {
 		t.Fatal(err)
 	}
 	return ref
+}
+
+func TestManifestExists_Found(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+
+	store := &mockStore{
+		ensureRepoID:            1,
+		getManifestDigestResult: dgst,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	exists, err := ms.Exists(context.Background(), dgst)
+	require.NoError(t, err)
+	require.True(t, exists)
+}
+
+func TestManifestExists_NotFound(t *testing.T) {
+	dgst := digest.FromString("missing")
+
+	store := &mockStore{
+		ensureRepoID:         1,
+		getManifestDigestErr: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	exists, err := ms.Exists(context.Background(), dgst)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func TestManifestGet_Found(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+	payload := []byte(`
+{"schemaVersion":2,"config":{"mediaType":"application/vnd.docker.container.image.v1+json","digest":"sha256:44136fa355b311bfa1d4b8f6e3e3b0e93a7a2b27eb2b5e0e3e0e8f3c1a7b1234","size":2},"layers":[],
+"mediaType":"application/vnd.docker.distribution.manifest.v2+json"}`)
+
+	store := &mockStore{
+		ensureRepoID:                   1,
+		getManifestForServingContent:   payload,
+		getManifestForServingMediaType: "application/vnd.docker.distribution.manifest.v2+json",
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	returnedManifest, err := ms.Get(context.Background(), dgst)
+	require.NoError(t, err)
+
+	mediatype, content, err := returnedManifest.Payload()
+	assert.NoError(t, err)
+
+	assert.Equal(t, mediatype, store.getManifestForServingMediaType)
+	assert.Equal(t, content, payload)
+}
+
+func TestManifestGet_NotFound(t *testing.T) {
+	dgst := digest.FromString("test-manifest")
+	store := &mockStore{
+		ensureRepoID:               1,
+		getManifestForServingError: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	require.NoError(t, err)
+
+	_, err = ms.Get(context.Background(), dgst)
+
+	assert.ErrorContains(t, err, "unknown manifest")
+}
+
+func TestManifestGet_Repository_Lookup_Failed(t *testing.T) {
+	dgst := digest.FromString("unknown repository")
+	store := &mockStore{
+		getRepositoryIDErr: oci.ErrNotExist,
+	}
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{},
+	}
+
+	repo := newTestRepository(innerRepo, store)
+	ms, err := repo.Manifests(context.Background())
+	assert.NoError(t, err)
+	_, err = ms.Get(context.Background(), dgst)
+
+	var repositoryUnknownError distribution.ErrManifestUnknownRevision
+
+	if !errors.As(err, &repositoryUnknownError) {
+		t.Fatalf("expected manifest not found error, got %T", err)
+	}
 }

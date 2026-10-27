@@ -86,6 +86,12 @@ ui_page_views = Counter(
     labelnames=["ui"],
 )
 
+spam_ingress_decisions = Counter(
+    "quay_spam_ingress_decisions_total",
+    "Repository description spam ingress decisions",
+    labelnames=["action", "outcome"],
+)
+
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
@@ -154,6 +160,12 @@ secscan_v2_cycle_duration = Histogram(
     "quay_secscan_v2_cycle_duration_seconds",
     "duration of a complete V2 security worker indexing cycle",
     buckets=(1, 5, 10, 30, 60, 120, 300, 600, INF),
+)
+
+secscan_v2_claim_status = Counter(
+    "quay_secscan_v2_claim_status_total",
+    "manifests claimed from MSS batch by original index status",
+    labelnames=["status"],
 )
 
 

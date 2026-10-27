@@ -10,7 +10,7 @@ if ! whoami &> /dev/null; then
 fi
 
 display_usage() {
-    echo "Usage: ${0} <registry|config|migrate|repomirror|shell|help>"
+    echo "Usage: ${0} <registry|config|migrate|repomirror|servicekey-expire|shell|help>"
     echo
     echo "If the first argument isn't one of the above modes,"
     echo "the arguments will be exec'd directly, i.e.:"
@@ -48,31 +48,6 @@ case "$QUAYENTRY" in
     "shell")
         echo "Entering shell mode"
         exec /bin/bash
-        ;;
-    "config")
-        echo ""; echo "Startup timestamp: "; date; echo ""
-        if [ -z "${QUAY_SERVICES}" ]; then
-            echo "Running all default config services"
-        else
-            echo "Running services ${QUAY_SERVICES}"
-        fi
-        if [ $CONFIG_APP_PASSWORD = "\"\"" ]; then
-            CONFIG_APP_PASSWORD=$2
-        fi
-        : "${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}"
-        export CONFIG_APP_PASSWORD="${CONFIG_APP_PASSWORD}"
-
-        if [ $OPERATOR_ENDPOINT = "\"\"" ]; then
-            if [ -n "$3" ]; then
-                OPERATOR_ENDPOINT=$3
-            fi
-        fi
-        export OPERATOR_ENDPOINT="${OPERATOR_ENDPOINT}"
-
-        "${QUAYPATH}/conf/init/certs_install.sh" || exit
-        "${QUAYPATH}/conf/init/client_certs.sh" || exit
-        "${QUAYPATH}/conf/init/supervisord_conf_create.sh" config || exit
-        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "migrate")
         echo ""; echo "Startup timestamp: "; date; echo ""
@@ -130,6 +105,14 @@ case "$QUAYENTRY" in
             "$f" || exit
         done
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
+        ;;
+    "servicekey-expire")
+        echo "Expiring service key"
+        "${QUAYPATH}/conf/init/certs_install.sh" || exit
+        "${QUAYPATH}/conf/init/client_certs.sh" || exit
+        shift
+        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" python3 \
+            "${QUAYPATH}/tools/manage_servicekey.py" expire "$@"
         ;;
     *)
         echo "Running '$QUAYENTRY'"

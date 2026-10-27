@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Superuser Build Logs',
@@ -85,7 +84,7 @@ test.describe(
 
     test('loads a triggerless build without 500 error', async ({
       superuserPage,
-      superuserRequest,
+      superuserApi,
       api,
     }) => {
       const org = await api.organization('sunotrigger');
@@ -93,8 +92,8 @@ test.describe(
       const build = await api.build(org.name, repo.name);
 
       // API layer: verify the fix — trigger is null, not a 500
-      const response = await superuserRequest.get(
-        `${API_URL}/api/v1/superuser/${build.buildId}/build`,
+      const response = await superuserApi.raw.getBuildAsSuperuser(
+        build.buildId,
       );
       expect(response.status()).toBe(200);
       const body = await response.json();
@@ -128,6 +127,7 @@ test.describe(
       superuserPage,
       superuserApi,
       api,
+      quayConfig,
     }) => {
       test.setTimeout(180_000);
 
@@ -143,7 +143,8 @@ test.describe(
       await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
 
       // Re-sign in to refresh the superuser session (stales during build wait)
-      await superuserApi.raw.signIn('admin', 'password');
+      const admin = getTestUsers(quayConfig).admin;
+      await superuserApi.raw.signIn(admin.username, admin.password);
 
       await superuserPage.goto('/build-logs');
 
@@ -158,6 +159,94 @@ test.describe(
       await expect(superuserPage.getByTestId('build-logs-display')).toBeVisible(
         {timeout: 15_000},
       );
+
+      // Verify the fix: logs are rendered, not the empty state
+      await expect(
+        superuserPage.getByText('No logs available'),
+      ).not.toBeVisible();
+    });
+
+    test('readonly superuser can view archived build logs without repo membership', async ({
+      readonlyPage,
+      readonlyApi,
+      superuserApi,
+    }) => {
+      test.slow();
+      // Budget: waitForBuildPhase default (180s) + archive poll (300s) + UI waits (~45s).
+      test.setTimeout(600_000);
+
+      // Create a private repo under a separate org — the readonly superuser
+      // has no membership in this org, so /logarchive/<uuid> would 403.
+      const org = await superuserApi.organization('roarchive');
+      const repo = await superuserApi.repository(org.name, 'private-logs');
+
+      const build = await superuserApi.build(
+        org.name,
+        repo.name,
+        'FROM scratch\nLABEL test="readonly-archived-logs"\n',
+      );
+
+      const {phase} = await superuserApi.raw.waitForBuildPhase(
+        org.name,
+        repo.name,
+        build.buildId,
+      );
+      // Only these phases are archived (data/model/build.py ARCHIVABLE_BUILD_PHASES);
+      // internal_error/expired would otherwise time out below with a misleading error.
+      expect(['complete', 'error', 'cancelled']).toContain(phase);
+
+      // Wait for the build logs archiver to archive this build's logs.
+      // The archiver polls every 30s (POLL_PERIOD_SECONDS) and archives one
+      // build per cycle, so the deadline covers the poll period plus queue.
+      const archiveDeadline = Date.now() + 300_000;
+      let hasLogsUrl = false;
+      while (Date.now() < archiveDeadline) {
+        const resp = await readonlyApi.raw.getBuildLogsAsSuperuser(
+          build.buildId,
+        );
+        if (resp.ok()) {
+          const body = await resp.json();
+          if (body.logs_url) {
+            hasLogsUrl = true;
+            break;
+          }
+        } else if ([400, 401, 403].includes(resp.status())) {
+          const body = await resp.text();
+          throw new Error(
+            `Unexpected ${resp.status()} polling build logs for ${
+              build.buildId
+            }: ${body}`,
+          );
+        }
+        await new Promise((r) => setTimeout(r, 5_000));
+      }
+      if (!hasLogsUrl) {
+        throw new Error(
+          `Archiver did not archive logs for ${build.buildId} within timeout`,
+        );
+      }
+
+      // Load Build Logs page as the readonly superuser — should render
+      // archived logs via the superuser archive endpoint, not 403 from /logarchive/
+      await readonlyPage.goto('/build-logs');
+      await readonlyPage.getByTestId('build-uuid-input').fill(build.buildId);
+      await readonlyPage.getByTestId('load-build-button').click();
+
+      await expect(readonlyPage.getByText('Build Information')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await expect(readonlyPage.getByTestId('build-logs-display')).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // The key assertion: no error alert and no empty state
+      await expect(
+        readonlyPage.getByTestId('build-error-alert'),
+      ).not.toBeVisible();
+      await expect(
+        readonlyPage.getByText('No logs available'),
+      ).not.toBeVisible();
     });
 
     test('navigates to Build Logs via sidebar', async ({superuserPage}) => {

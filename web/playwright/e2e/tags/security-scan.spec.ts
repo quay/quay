@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushOCIImage} from '../../utils/container';
 
@@ -7,27 +6,35 @@ test.describe(
   'Security Scan',
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      // Covers the image push plus the 120s Clair poll below.
+      test.setTimeout(240000);
       if (!cachedContainerAvailable) return;
 
       const api = new ApiClient(userContext.request);
       const repoName = `secscan-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+      await api.createRepository(user.username, repoName, 'public');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Wait for Clair to scan the image (poll until status != queued)
@@ -189,9 +196,73 @@ test.describe(
 );
 
 test.describe(
+  'Pending security status on push',
+  {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
+    test('security scan is queued immediately after push', async ({
+      userContext,
+      cachedContainerAvailable,
+      authenticatedPage,
+    }) => {
+      test.skip(!cachedContainerAvailable, 'Container runtime unavailable');
+      test.setTimeout(60000);
+
+      const api = new ApiClient(userContext.request);
+      const repoName = `secscan-pending-${Date.now()}`;
+      await api.createRepository(user.username, repoName, 'public');
+
+      try {
+        await pushImage(
+          user.username,
+          repoName,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const tags = await api.getTags(user.username, repoName);
+        const digest = tags.tags[0].manifest_digest;
+        const sec = await api.getManifestSecurity(
+          user.username,
+          repoName,
+          digest,
+        );
+        expect(sec.status).toBe('queued');
+
+        await authenticatedPage.goto(
+          `/repository/${user.username}/${repoName}?tab=tags`,
+        );
+        await expect(
+          authenticatedPage.locator('th').filter({hasText: 'Security'}),
+        ).toBeVisible();
+        await expect(authenticatedPage.getByText('Queued')).toBeVisible();
+      } finally {
+        try {
+          await api.deleteRepository(user.username, repoName);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  },
+);
+
+test.describe(
   'OCI Image Security Scan (PROJQUAY-11333)',
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -200,20 +271,20 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `oci-secscan-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+      await api.createRepository(user.username, repoName, 'public');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushOCIImage(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Wait for Clair to scan the OCI image

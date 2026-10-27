@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import time
 
 import jwt
@@ -250,3 +251,37 @@ def test_mixing_keys_e2e(initialized_db):
 def test_unicode_token(token):
     with pytest.raises(InvalidJWTException):
         _parse_token(token)
+
+
+@pytest.mark.parametrize(
+    "token, expected_message",
+    [
+        pytest.param("some random token", "Invalid bearer token format", id="bad format"),
+        pytest.param("Bearer: sometokenhere", "Invalid bearer token format", id="extra bearer"),
+        pytest.param(
+            _token(_token_data(), skip_header=True),
+            "Missing kid header",
+            id="no header",
+        ),
+        pytest.param(
+            _token(_token_data(), key_id="someunknownkey"),
+            "Unknown service key",
+            id="bad key",
+        ),
+    ],
+)
+def test_invalid_token_logs_at_warning_not_error(token, expected_message, caplog, initialized_db):
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(InvalidJWTException):
+            _parse_token(token)
+
+    warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+    error_records = [
+        r
+        for r in caplog.records
+        if r.levelno >= logging.ERROR
+        and r.name in ("auth.registry_jwt_auth", "util.security.registry_jwt")
+    ]
+
+    assert len(warning_records) > 0, "Expected WARNING-level log for invalid token"
+    assert len(error_records) == 0, "Invalid client tokens should not log at ERROR level"

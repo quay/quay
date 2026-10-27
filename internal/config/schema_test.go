@@ -16,8 +16,8 @@ import (
 // Go struct fields. This list should shrink over time as coverage increases.
 var knownUnmapped = map[string]bool{
 	// SSL/TLS
-	"SSL_CIPHERS":   true,
-	"SSL_PROTOCOLS": true,
+	"SSL_CIPHERS":     true,
+	"SSL_ECDH_CURVES": true,
 
 	// User-visible
 	"CONTACT_INFO":                 true,
@@ -57,12 +57,14 @@ var knownUnmapped = map[string]bool{
 	"LOG_ARCHIVE_PATH":                 true,
 
 	// OAuth
-	"DIRECT_OAUTH_CLIENTID_WHITELIST": true,
-	"GITHUB_LOGIN_CONFIG":             true,
-	"BITBUCKET_TRIGGER_CONFIG":        true,
-	"GITHUB_TRIGGER_CONFIG":           true,
-	"GOOGLE_LOGIN_CONFIG":             true,
-	"GITLAB_TRIGGER_CONFIG":           true,
+	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
+	"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": true,
+	"API_TOKEN_MAXIMUM_TOKEN_COUNT":         true,
+	"GITHUB_LOGIN_CONFIG":                   true,
+	"BITBUCKET_TRIGGER_CONFIG":              true,
+	"GITHUB_TRIGGER_CONFIG":                 true,
+	"GOOGLE_LOGIN_CONFIG":                   true,
+	"GITLAB_TRIGGER_CONFIG":                 true,
 
 	// Branding
 	"BRANDING":           true,
@@ -96,10 +98,12 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_SECURITY_NOTIFICATIONS":          true,
 	"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": true,
 	"SECURITY_SCANNER_V4_PSK":                 true,
+	"SECURITY_SCANNER_V4_INDEXING":            true,
 	"SECURITY_SCANNER_V4_MANIFEST_CLEANUP":    true,
 	"FEATURE_SECURITY_SCANNER_V2":             true,
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
 	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
+	"SECURITY_SCANNER_MAX_SCAN_RETRIES":       true,
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
@@ -112,6 +116,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_BLACKLISTED_EMAILS":                    true,
 	"FEATURE_DISABLE_OIDC_FALLBACK_GROUPS_CREATION": true,
 	"FEATURE_EDIT_QUOTA":                            true,
+	"FEATURE_ENABLE_STALE_MPU_CLEANUP":              true,
 	"FEATURE_ENTITLEMENT_RECONCILIATION":            true,
 	"FEATURE_EXPORT_COMPLIANCE":                     true,
 	"FEATURE_EXTENDED_REPOSITORY_NAMES":             true,
@@ -124,7 +129,6 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_GOOGLE_LOGIN":                          true,
 	"FEATURE_IMAGE_EXPIRY_TRIGGER":                  true,
 	"FEATURE_INVITE_ONLY_USER_CREATION":             true,
-	"FEATURE_LIBRARY_SUPPORT":                       true,
 	"FEATURE_LISTEN_IP_VERSION":                     true,
 	"FEATURE_LOG_EXPORT":                            true,
 	"FEATURE_MANIFEST_SUBJECT_BACKFILL":             true,
@@ -132,36 +136,47 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_OTEL_TRACING":                          true,
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
+	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
+	"FEATURE_ROBOT_API_TOKEN_EXCHANGE":              true,
+	"FEATURE_ROBOT_API_TOKENS":                      true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
+	"FEATURE_QUOTA_NOTIFICATIONS":                   true,
 	"FEATURE_QUOTA_SUPPRESS_FAILURES":               true,
 	"FEATURE_RATE_LIMITS":                           true,
 	"FEATURE_READER_BUILD_LOGS":                     true,
 	"FEATURE_READONLY_APP_REGISTRY":                 true,
 	"FEATURE_RECAPTCHA":                             true,
-	"FEATURE_REFERRERS_API":                         true,
 	"FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH":          true,
 	"FEATURE_REQUIRE_TEAM_INVITE":                   true,
 	"FEATURE_RESTRICTED_USERS":                      true,
 	"FEATURE_RESTRICTED_V1_PUSH":                    true,
 	"FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX":  true,
 	"FEATURE_SPARSE_INDEX":                          true,
-	"FEATURE_SUPERUSERS_FULL_ACCESS":                true,
+	"FEATURE_SPAM_DETECTION":                        true,
 	"FEATURE_SUPERUSERS_ORG_CREATION_ONLY":          true,
 	"FEATURE_SUPERUSER_CONFIGDUMP":                  true,
-	"FEATURE_SUPER_USERS":                           true,
 	"FEATURE_UI":                                    true,
 	"FEATURE_UI_DELAY_AFTER_WRITE":                  true,
 	"FEATURE_UI_MODELCARD":                          true,
 	"FEATURE_UI_V2":                                 true,
 	"FEATURE_USER_EVENTS":                           true,
 	"FEATURE_USER_INITIALIZE":                       true,
-	"FEATURE_USER_LAST_ACCESSED":                    true,
 	"FEATURE_USER_LOG_ACCESS":                       true,
 	"FEATURE_USER_METADATA":                         true,
 	"FEATURE_USER_RENAME":                           true,
 	"FEATURE_USERNAME_CONFIRMATION":                 true,
 	"FEATURE_VERIFY_QUOTA":                          true,
+
+	// Programmatic bootstrap token config
+	"BOOTSTRAP_TOKEN_OWNER":            true,
+	"BOOTSTRAP_TOKEN_EXPIRATION":       true,
+	"BOOTSTRAP_TOKEN_PATH":             true,
+	"BOOTSTRAP_TOKEN_SCOPE":            true,
+	"PROGRAMMATIC_TOKEN_PATH":          true,
+	"PROGRAMMATIC_TOKEN_K8S_SECRET":    true,
+	"PROGRAMMATIC_TOKEN_K8S_KEY":       true,
+	"PROGRAMMATIC_TOKEN_K8S_NAMESPACE": true,
 
 	// Triggers & entitlements
 	"SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD":        true,
@@ -180,13 +195,17 @@ var knownUnmapped = map[string]bool{
 	"REPO_MIRROR_TLS_VERIFY":             true,
 
 	// Quotas
-	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": true,
-	"QUOTA_BACKFILL":                    true,
-	"QUOTA_BACKFILL_BATCH_SIZE":         true,
-	"QUOTA_BACKFILL_POLL_PERIOD":        true,
-	"QUOTA_INVALIDATE_TOTALS":           true,
-	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":   true,
-	"QUOTA_TOTAL_DELAY_SECONDS":         true,
+	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES":   true,
+	"QUOTA_BACKFILL":                      true,
+	"QUOTA_BACKFILL_BATCH_SIZE":           true,
+	"QUOTA_BACKFILL_POLL_PERIOD":          true,
+	"QUOTA_INVALIDATE_TOTALS":             true,
+	"QUOTA_METRICS":                       true,
+	"QUOTA_METRICS_NAMESPACES_LIMIT":      true,
+	"QUOTA_METRICS_REPOS_LIMIT":           true,
+	"QUOTA_NOTIFICATION_COOLDOWN_SECONDS": true,
+	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":     true,
+	"QUOTA_TOTAL_DELAY_SECONDS":           true,
 
 	// UI
 	"DISABLE_ANGULAR_UI":            true,
@@ -214,20 +233,24 @@ var knownUnmapped = map[string]bool{
 	"WEBHOOK_HOSTNAME_BLACKLIST":  true,
 	"RESTRICTED_USERS_WHITELIST":  true,
 	"BLACKLISTED_EMAIL_DOMAINS":   true,
-	"ROBOTS_WHITELIST":            true,
 
 	// Misc continued
 	"ALLOWED_OCI_ARTIFACT_TYPES":                     true,
 	"APP_SPECIFIC_TOKEN_EXPIRATION":                  true,
 	"AUTO_PRUNE_DEFAULT_POLICY":                      true,
+	"BLOB_UPLOAD_CLIENT_BODY_TIMEOUT":                true,
+	"BLOB_UPLOAD_LINGERING_CLOSE":                    true,
+	"BLOB_UPLOAD_LINGERING_TIME":                     true,
+	"BLOB_UPLOAD_LINGERING_TIMEOUT":                  true,
 	"CLEAN_BLOB_UPLOAD_FOLDER":                       true,
 	"CREATE_NAMESPACE_ON_PUSH":                       true,
-	"CREATE_PRIVATE_REPO_ON_PUSH":                    true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
 	"DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT":          true,
 	"DISABLE_PUSHES":                                 true,
 	"ENTERPRISE_LOGO_URL":                            true,
 	"EXPIRED_APP_SPECIFIC_TOKEN_GC":                  true,
+	"NAMESPACE_GC_GRACE_PERIOD_SECONDS":              true,
+	"NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST":            true,
 	"FRESH_LOGIN_TIMEOUT":                            true,
 	"GLOBAL_READONLY_SUPER_USERS":                    true,
 	"IGNORE_UNKNOWN_MEDIATYPES":                      true,
@@ -239,10 +262,18 @@ var knownUnmapped = map[string]bool{
 	"ORG_MIRROR_MAX_DISCOVERY_DURATION":              true,
 	"PERMANENTLY_DELETE_TAGS":                        true,
 	"RESET_CHILD_MANIFEST_EXPIRATION":                true,
-	"ROBOTS_DISALLOW":                                true,
 	"SECURITY_SCANNER_INDEXING_INTERVAL":             true,
 	"SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE":       true,
+	"SPAM_DETECTION_CLASSIFIER_PATH":                 true,
+	"SPAM_DETECTION_CLASSIFIER_SHA256":               true,
+	"SPAM_DETECTION_CLASSIFIER_VERSION":              true,
+	"SPAM_DETECTION_DRY_RUN":                         true,
+	"SPAM_DETECTION_FAIL_OPEN":                       true,
+	"SESSION_TIMEOUT":                                true,
 	"WEBHOOK_NOTIFICATION_CONFIG":                    true,
+
+	"GUNICORN_REGISTRY_TIMEOUT": true,
+	"GUNICORN_WEB_TIMEOUT":      true,
 }
 
 // goOnlyFields lists Go struct fields that intentionally have no corresponding
@@ -250,9 +281,15 @@ var knownUnmapped = map[string]bool{
 // INTERNAL_ONLY_PROPERTIES) that the Go CLI needs but are not part of the
 // public schema.
 var goOnlyFields = map[string]bool{
-	"DATABASE_SECRET_KEY": true,
-	"SECRET_KEY":          true,
-	"LIBRARY_NAMESPACE":   true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"DATABASE_SECRET_KEY":               true,
+	"LAST_ACCESSED_UPDATE_THRESHOLD_S":  true,
+	"SECRET_KEY":                        true,
+	"LIBRARY_NAMESPACE":                 true, // QUAY.IO-only in Python schema but needed by Go middleware
+	"INSTANCE_SERVICE_KEY_KID_LOCATION": true,
+	"INSTANCE_SERVICE_KEY_LOCATION":     true,
+	"INSTANCE_SERVICE_KEY_SERVICE":      true,
+	"REGISTRY_JWT_AUTH_MAX_FRESH_S":     true,
+	"PASSWORD_AUTH_CACHE_TTL_S":         true, // mirror-registry token issuance cache
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

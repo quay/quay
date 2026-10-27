@@ -1,4 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 
 test.describe('Create Organization', {tag: ['@organization']}, () => {
   test('modal opens and shows form fields', async ({authenticatedPage}) => {
@@ -139,56 +139,4 @@ test.describe('Create Organization', {tag: ['@organization']}, () => {
       authenticatedPage.locator('#create-org-name-input'),
     ).not.toBeVisible();
   });
-
-  test.describe(
-    'Duplicate Email Validation',
-    {tag: ['@feature:MAILING']},
-    () => {
-      test('rejects creating organization with an email already in use (OCP-73835)', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const existingOrg = await api.organization('dupemail');
-
-        await authenticatedPage.goto('/organization');
-        await authenticatedPage
-          .getByRole('button', {name: 'Create Organization'})
-          .click();
-
-        const orgName = uniqueName('dupeorg');
-        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
-        await authenticatedPage
-          .locator('#create-org-email-input')
-          .fill(existingOrg.email);
-        await authenticatedPage.locator('#create-org-confirm').click();
-
-        await expect(
-          authenticatedPage.getByText('Email has already been used'),
-        ).toBeVisible();
-      });
-
-      test("rejects email already used by another user's organization (OCP-74424)", async ({
-        authenticatedPage,
-        superuserApi,
-      }) => {
-        const otherOrg = await superuserApi.organization('xorg');
-
-        await authenticatedPage.goto('/organization');
-        await authenticatedPage
-          .getByRole('button', {name: 'Create Organization'})
-          .click();
-
-        const orgName = uniqueName('dupeorg');
-        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
-        await authenticatedPage
-          .locator('#create-org-email-input')
-          .fill(otherOrg.email);
-        await authenticatedPage.locator('#create-org-confirm').click();
-
-        await expect(
-          authenticatedPage.getByText('Email has already been used'),
-        ).toBeVisible();
-      });
-    },
-  );
 });

@@ -1,7 +1,5 @@
 import json
 import logging
-from functools import wraps
-from io import BytesIO
 from unittest.mock import patch
 
 logger = logging.getLogger(__name__)
@@ -9,15 +7,10 @@ logger = logging.getLogger(__name__)
 import mock
 import pytest
 
-from app import storage
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 from data.encryption import DecryptionFailureException
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
-from data.registry_model import registry_model
-from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
-from data.registry_model.datatypes import RepositoryReference
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import (
@@ -30,75 +23,11 @@ from workers.repomirrorworker import (
     push_sparse_manifest_list,
 )
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
-
-
-def _assert_skopeo_args(actual_args, expected_args):
-    """Assert skopeo args match, stripping transient --authfile and legacy inline --*-creds pairs."""
-
-    def strip_cred_flags(args):
-        a = list(args)
-        for flag in ("--authfile", "--src-creds", "--dest-creds", "--creds"):
-            while flag in a:
-                i = a.index(flag)
-                del a[i : i + 2]
-        return a
-
-    assert strip_cred_flags(actual_args) == strip_cred_flags(expected_args)
-    assert "--authfile" in actual_args
-    for legacy in ("--src-creds", "--dest-creds", "--creds"):
-        assert legacy not in actual_args
-
-
-def disable_existing_mirrors(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        for mirror in RepoMirrorConfig.select():
-            mirror.is_enabled = False
-            mirror.save()
-
-        func(*args, **kwargs)
-
-        for mirror in RepoMirrorConfig.select():
-            mirror.is_enabled = True
-            mirror.save()
-
-    return wrapper
-
-
-def _create_tag(repo, name):
-    repo_ref = RepositoryReference.for_repo_obj(repo)
-
-    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500)) as upload:
-        app_config = {"TESTING": True}
-        config_json = json.dumps(
-            {
-                "config": {
-                    "author": "Repo Mirror",
-                },
-                "rootfs": {"type": "layers", "diff_ids": []},
-                "history": [
-                    {
-                        "created": "2019-07-30T18:37:09.284840891Z",
-                        "created_by": "base",
-                        "author": "Repo Mirror",
-                    },
-                ],
-            }
-        )
-        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
-        blob = upload.commit_to_blob(app_config)
-        assert blob
-
-    builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(blob.digest, blob.compressed_size)
-    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
-    manifest = builder.build()
-
-    manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repo_ref, manifest, name, storage, raise_on_error=True
-    )
-    assert tag
-    assert tag.name == name
+from workers.repomirrorworker.test.mirror_test_utils import (
+    assert_skopeo_args as _assert_skopeo_args,
+)
+from workers.repomirrorworker.test.mirror_test_utils import create_tag as _create_tag
+from workers.repomirrorworker.test.mirror_test_utils import disable_existing_mirrors
 
 
 @disable_existing_mirrors
@@ -158,6 +87,99 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
     worker._process_mirrors()
 
     assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_blocked_mirror_source_never_invokes_skopeo(run_skopeo_mock, initialized_db, app):
+    """Persisted legacy configurations are revalidated before network access."""
+    mirror, _ = create_mirror_repo_robot(["latest"], repo_name="blocked_source")
+    mirror.external_reference = "169.254.169.254/latest/meta-data"
+    mirror.save()
+
+    result = perform_mirror(SkopeoMirror(), mirror)
+
+    assert result == RepoMirrorStatus.FAIL
+    run_skopeo_mock.assert_not_called()
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.FAIL
+    assert updated.sync_expiration_date is None
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_worker_reresolves_source_before_skopeo(
+    run_skopeo_mock, initialized_db, app, _mock_dns_for_ssrf_validation
+):
+    mirror, _ = create_mirror_repo_robot(["latest"], repo_name="dns_revalidation")
+    _mock_dns_for_ssrf_validation.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+
+    result = perform_mirror(SkopeoMirror(), mirror)
+
+    assert result == RepoMirrorStatus.FAIL
+    run_skopeo_mock.assert_not_called()
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.FAIL
+    assert updated.sync_expiration_date is None
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_allowlisted_private_mirror_source_invokes_skopeo(run_skopeo_mock, initialized_db, app):
+    """The worker honors SSRF_ALLOWED_HOSTS for private enterprise registries."""
+    mirror, _ = create_mirror_repo_robot(["latest"], repo_name="allowed_source")
+    mirror.external_reference = "10.0.0.1/team/repository"
+    mirror.save()
+    run_skopeo_mock.return_value = SkopeoResults(True, [], '{"Tags": []}', "")
+
+    from workers.repomirrorworker import app as worker_app
+
+    with patch.dict(worker_app.config, {"SSRF_ALLOWED_HOSTS": ["10.0.0.0/8"]}):
+        result = perform_mirror(SkopeoMirror(), mirror)
+
+    assert result is None
+    run_skopeo_mock.assert_called_once()
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.SUCCESS
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_allowlisted_unresolved_uses_environment_proxy(
+    run_skopeo_mock, initialized_db, app, _mock_dns_for_ssrf_validation
+):
+    """Empty mirror proxy + ambient HTTPS_PROXY skips pod DNS for allowlisted hosts."""
+    from socket import gaierror
+
+    from workers.repomirrorworker import app as worker_app
+
+    _HOST = "isolated-worker-registry.example.com"
+    mirror, _ = create_mirror_repo_robot(
+        ["latest"],
+        repo_name="env_proxy_source",
+        external_registry_config={"verify_tls": True},
+    )
+    mirror.external_reference = f"{_HOST}/team/repository"
+    mirror.save()
+    run_skopeo_mock.return_value = SkopeoResults(True, [], '{"Tags": []}', "")
+    env_proxy = {
+        "http_proxy": "http://corp-proxy:8080",
+        "https_proxy": "http://corp-proxy:8080",
+    }
+
+    _mock_dns_for_ssrf_validation.side_effect = gaierror("fail")
+    with patch.dict(worker_app.config, {"SSRF_ALLOWED_HOSTS": [_HOST]}):
+        with patch(
+            "util.security.ssrf.get_environment_proxy_config",
+            return_value=env_proxy,
+        ):
+            result = perform_mirror(SkopeoMirror(), mirror)
+
+    assert result is None
+    run_skopeo_mock.assert_called_once()
+    _mock_dns_for_ssrf_validation.assert_not_called()
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.SUCCESS
 
 
 @disable_existing_mirrors
@@ -446,11 +468,11 @@ def test_rollback(
             _assert_skopeo_args(args, skopeo_call["args"])
             assert proxy == {}
 
-            if args[1] == "copy" and args[8].endswith(":updated"):
+            if args[1] == "copy" and args[-2].endswith(":updated"):
                 _create_tag(repo, "updated")
-            elif args[1] == "copy" and args[8].endswith(":created"):
+            elif args[1] == "copy" and args[-2].endswith(":created"):
                 _create_tag(repo, "created")
-            elif args[1] == "copy" and args[8].endswith(":zzerror"):
+            elif args[1] == "copy" and args[-2].endswith(":zzerror"):
                 _create_tag(repo, "zzerror")
 
             return skopeo_call["results"]
@@ -564,7 +586,7 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
     """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
-    mirror.external_reference = "& rm -rf /;/namespace/repository"
+    mirror.external_reference = "registry.example.com/namespace/repository;rm-rf"
     mirror.external_registry_username = "`rm -rf /`"
     mirror.save()
 
@@ -576,7 +598,7 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
                 "--tls-verify=True",
                 "--creds",
                 "`rm -rf /`",
-                "docker://& rm -rf /;/namespace/repository",
+                "docker://registry.example.com/namespace/repository;rm-rf",
             ],
             "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
@@ -593,7 +615,7 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
                 "`rm -rf /`",
-                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "'docker://registry.example.com/namespace/repository;rm-rf:latest'",
                 "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
@@ -627,7 +649,7 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
     """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
-    mirror.external_reference = "& rm -rf /;/namespace/repository"
+    mirror.external_reference = "registry.example.com/namespace/repository;rm-rf"
     mirror.external_registry_username = "`rm -rf /`"
     mirror.external_registry_password = '""$PATH\\"'
     mirror.save()
@@ -640,7 +662,7 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
                 "--tls-verify=True",
                 "--creds",
                 '`rm -rf /`:""$PATH\\"',
-                "docker://& rm -rf /;/namespace/repository",
+                "docker://registry.example.com/namespace/repository;rm-rf",
             ],
             "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
@@ -657,7 +679,7 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
                 '`rm -rf /`:""$PATH\\"',
-                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "'docker://registry.example.com/namespace/repository;rm-rf:latest'",
                 "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
@@ -2321,3 +2343,14 @@ def test_perform_mirror_generic_exception_during_sync(
     assert mock_release.call_count >= 1
     fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
     assert len(fail_calls) >= 1
+
+
+def test_workers_active_gauge_reset_on_terminate(initialized_db, app):
+    with mock.patch(
+        "workers.repomirrorworker.repomirrorworker.repo_mirror_workers_active"
+    ) as gauge:
+        worker = RepoMirrorWorker()
+        gauge.set.assert_called_once_with(1)
+
+        worker.terminate(graceful=True)
+        gauge.set.assert_called_with(0)

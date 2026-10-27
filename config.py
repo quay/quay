@@ -23,6 +23,7 @@ CLIENT_WHITELIST = [
     "MIXPANEL_KEY",
     "STRIPE_PUBLISHABLE_KEY",
     "ENTERPRISE_LOGO_URL",
+    "ENTERPRISE_LOGO_URL_DARK",
     "SENTRY_PUBLIC_DSN",
     "AUTHENTICATION_TYPE",
     "REGISTRY_TITLE",
@@ -45,6 +46,7 @@ CLIENT_WHITELIST = [
     "FEATURE_REPO_MIRROR",
     "FEATURE_ORG_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
+    "FEATURE_QUOTA_NOTIFICATIONS",
     "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
     "QUOTA_BACKFILL",
@@ -74,6 +76,8 @@ def frontend_visible_config(config_dict):
         if "ENTERPRISE_LOGO_URL" in config_dict:
             visible_dict["BRANDING"] = visible_dict.get("BRANDING", {})
             visible_dict["BRANDING"]["logo"] = config_dict["ENTERPRISE_LOGO_URL"]
+            if "ENTERPRISE_LOGO_URL_DARK" in config_dict:
+                visible_dict["BRANDING"]["logo_dark"] = config_dict["ENTERPRISE_LOGO_URL_DARK"]
 
     return visible_dict
 
@@ -190,6 +194,7 @@ class DefaultConfig(ImmutableConfig):
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_TIMEOUT = "31d"
 
     LOGGING_LEVEL = "DEBUG"
     SEND_FILE_MAX_AGE_DEFAULT = 0
@@ -357,6 +362,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether emails are enabled.
     FEATURE_MAILING = True
 
+    # Feature Flag: Whether organizations can share email addresses with other users/orgs.
+    FEATURE_ORG_SHARED_EMAIL = False
+
     # Feature Flag: Whether users can be created (by non-super users).
     FEATURE_USER_CREATION = True
 
@@ -490,7 +498,9 @@ class DefaultConfig(ImmutableConfig):
     ALLOW_WITHOUT_STRICT_LOGGING = False
 
     # Temporary tag expiration in seconds, this may actually be longer based on GC policy
-    PUSH_TEMP_TAG_EXPIRATION_SEC = 60 * 60  # One hour per layer
+    # Increased to 6 hours by default, to protect big multiarch images from not being
+    # GCed while pushes are still in progress
+    PUSH_TEMP_TAG_EXPIRATION_SEC = 6 * 60 * 60  # Six hours per layer
 
     # Signed registry grant token expiration in seconds
     SIGNED_GRANT_EXPIRATION_SEC = 60 * 60 * 24  # One day to complete a push/pull
@@ -511,18 +521,30 @@ class DefaultConfig(ImmutableConfig):
     if os.environ.get("RED_HAT_QUAY", False):
         BRANDING = {
             "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
+            "logo_dark": "/static/img/RH_Logo_Quay_White_UX-horizontal.svg",
             "footer_img": "/static/img/RedHat.svg",
             "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
         }
     else:
         BRANDING = {
             "logo": "/static/img/quay-horizontal-color.svg",
+            "logo_dark": "/static/img/quay-horizontal-whiteblue-nobackground.svg",
             "footer_img": None,
             "footer_url": None,
         }
 
     # How often the Garbage Collection worker runs.
     GARBAGE_COLLECTION_FREQUENCY = 30  # seconds
+
+    # Grace period (seconds) before deleted namespaces are permanently purged by GC.
+    # During this window the data remains in the database and can be recovered via
+    # direct DB operations. 0 means immediate purge (current behavior).
+    NAMESPACE_GC_GRACE_PERIOD_SECONDS = 0
+
+    # Allowlist of namespace names that receive the grace period. When non-empty,
+    # only namespaces in this list are protected. When empty, no grace period is
+    # applied (current behavior).
+    NAMESPACE_GC_GRACE_PERIOD_ALLOWLIST: list[str] = []
 
     # How long notifications will try to send before timing out.
     NOTIFICATION_SEND_TIMEOUT = 10
@@ -543,6 +565,12 @@ class DefaultConfig(ImmutableConfig):
     # Minimum number of seconds before re-indexing a manifest with the security scanner.
     SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
+    # Maximum number of scan retries per indexer hash before a manifest is skipped.
+    SECURITY_SCANNER_MAX_SCAN_RETRIES = 5
+
+    # Whether to enable the legacy V4 security scanner indexing operations.
+    SECURITY_SCANNER_V4_INDEXING = True
+
     # Security scanner V2 worker (lock-free, uses FOR UPDATE SKIP LOCKED)
     FEATURE_SECURITY_SCANNER_V2 = False
     SECURITY_SCANNER_V2_INDEXING_INTERVAL = 30
@@ -561,9 +589,9 @@ class DefaultConfig(ImmutableConfig):
     # Organization-level repository mirror
     FEATURE_ORG_MIRROR = False
 
-    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for organization mirrors
-    # and export log callbacks. Use for enterprise deployments where endpoints run on
-    # private networks.
+    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for repository mirrors,
+    # organization mirrors, proxy cache registries, and export log callbacks. Use for
+    # enterprise deployments where endpoints run on private networks.
     SSRF_ALLOWED_HOSTS: List[str] = []
 
     # The number of seconds between organization mirror worker iterations
@@ -627,6 +655,9 @@ class DefaultConfig(ImmutableConfig):
     # some additional window time.
     INSTANCE_SERVICE_KEY_REFRESH = 55
 
+    # If true, import the instance service key from mounted files instead of generating one.
+    INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES = False
+
     # The whitelist of client IDs for OAuth applications that allow for direct login.
     DIRECT_OAUTH_CLIENTID_WHITELIST: Optional[List[str]] = []
 
@@ -661,6 +692,10 @@ class DefaultConfig(ImmutableConfig):
 
     # Maximum size allowed for layers in the registry.
     MAXIMUM_LAYER_SIZE = "20G"
+
+    # Gunicorn worker timeouts (seconds). Workers killed after this duration.
+    GUNICORN_REGISTRY_TIMEOUT = 30
+    GUNICORN_WEB_TIMEOUT = 30
 
     # Feature Flag: Whether team syncing from the backing auth is enabled.
     FEATURE_TEAM_SYNCING = False
@@ -745,6 +780,18 @@ class DefaultConfig(ImmutableConfig):
     # Defines the delay required (in seconds) before the last_accessed field of a user/robot or access
     # token will be updated after the previous update.
     LAST_ACCESSED_UPDATE_THRESHOLD_S = 60
+
+    # Defines the delay required (in seconds) before the last_accessed field of an OAuth access
+    # token will be updated after the previous update.
+    OAUTH_TOKEN_LAST_ACCESSED_UPDATE_THRESHOLD_S = 60
+
+    # Optional maximum number of non-expired OAuth access tokens allowed per OAuth application.
+    # None disables the cap.
+    OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT: Optional[int] = None
+
+    # Maximum number of active Quay-issued API tokens per user or robot.
+    # Set to None to disable the cap.
+    API_TOKEN_MAXIMUM_TOKEN_COUNT: Optional[int] = 20
 
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
@@ -869,6 +916,22 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: If set to true, the first User account may be created via API /api/v1/user/initialize
     FEATURE_USER_INITIALIZE = False
 
+    # Feature Flag: Controls programmatic bootstrap token provisioning.
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+
+    # Feature Flags: Control robot Management API tokens and federated token exchange.
+    FEATURE_ROBOT_API_TOKENS = False
+    FEATURE_ROBOT_API_TOKEN_EXCHANGE = False
+    BOOTSTRAP_TOKEN_OWNER: Optional[str] = None
+    BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
+    PROGRAMMATIC_TOKEN_K8S_SECRET: Optional[str] = None
+    PROGRAMMATIC_TOKEN_K8S_KEY = "token.json"
+    PROGRAMMATIC_TOKEN_K8S_NAMESPACE: Optional[str] = None
+    BOOTSTRAP_TOKEN_EXPIRATION = 3600  # 60 minutes in seconds
+    BOOTSTRAP_TOKEN_SCOPE = (
+        "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
+    )
+
     # Allows "/" in repository names
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
@@ -886,6 +949,12 @@ class DefaultConfig(ImmutableConfig):
     # Catches and suppresses quota failures during image push and garbage collection
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
 
+    # Enables external notification channels (email, Slack, webhook) for quota threshold alerts
+    FEATURE_QUOTA_NOTIFICATIONS = False
+
+    # Cooldown period (in seconds) before re-sending a quota notification for the same threshold
+    QUOTA_NOTIFICATION_COOLDOWN_SECONDS = 86400
+
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
@@ -895,6 +964,20 @@ class DefaultConfig(ImmutableConfig):
 
     # Enables the quota backfill worker
     QUOTA_BACKFILL = True
+
+    # Enables exposing quota metrics for the registry, organizations and repositories.
+    # Beware of high cardinality if there are many organizations and repositories.
+    # Per-tenant series use namespace/repository names as labels (needed for
+    # dashboards); renames create new series until Prometheus drops stale ones.
+    QUOTA_METRICS = False
+
+    # Maximum number of repositories to report per-repository quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_REPOS_LIMIT = 10000
+
+    # Maximum number of namespaces to report per-namespace quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_NAMESPACES_LIMIT = 10000
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
@@ -982,6 +1065,22 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to "False".
     DISABLE_PUSHES = False
 
+    # Feature Flag: Enables repository-description spam detection at API ingress.
+    FEATURE_SPAM_DETECTION = False
+
+    # Evaluates repository descriptions without rejecting create/update requests.
+    SPAM_DETECTION_DRY_RUN = True
+
+    # Allows repository create/update requests if the local classifier cannot be evaluated.
+    SPAM_DETECTION_FAIL_OPEN = True
+
+    # In-image Bayesian classifier artifact used by Quay ingress. Generated by
+    # quay-service-tool and baked into the Quay image; Quay must not call
+    # quay-service-tool on the request path.
+    SPAM_DETECTION_CLASSIFIER_PATH = "/conf/spam-detection/classifier.json"
+    SPAM_DETECTION_CLASSIFIER_VERSION = None
+    SPAM_DETECTION_CLASSIFIER_SHA256 = None
+
     # Specific namespaces that be exceptions to the s3-cloudflare optimization
     # used for registry-proxy namespaces
     CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []
@@ -1003,3 +1102,7 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
     # When enabled, manifests for missing architectures will be skipped instead of raising errors.
     FEATURE_SPARSE_INDEX = False
+
+    # Feature flag: Enables cleanup of stale multipart uploads on the backend bucket. This feature flag
+    # is only applicable to S3 storage engines.
+    FEATURE_ENABLE_STALE_MPU_CLEANUP = True

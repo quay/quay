@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
@@ -130,8 +129,9 @@ test.describe(
 
     test('creates multiple policies for user namespace', async ({
       authenticatedPage,
+      quayConfig,
     }) => {
-      const username = TEST_USERS.user.username;
+      const username = getTestUsers(quayConfig).user.username;
 
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
       await authenticatedPage.getByTestId('Auto-Prune Policies').click();
@@ -202,7 +202,11 @@ test.describe(
   'Organization Auto-Prune Functional Verification',
   {tag: ['@organization', '@feature:AUTO_PRUNE', '@container']},
   () => {
-    const user = TEST_USERS.user;
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
 
     test('tag-count org-level pruning removes excess tags', async ({api}) => {
       test.slow();
@@ -273,59 +277,63 @@ test.describe(
       expect(deletedV1).toBeDefined();
     });
 
-    test('user namespace tag-count pruning removes excess tags', async ({
-      freshUser,
-    }) => {
-      test.slow();
-      const {user, api} = freshUser;
-      const repo = await api.repository(user.username, 'prunetest');
+    test(
+      'user namespace tag-count pruning removes excess tags',
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
+        test.slow();
+        const {user, api} = await isolatedUser('prune-count');
+        const repo = await api.repository(user.username, 'prunetest');
 
-      await pushImage(
-        user.username,
-        repo.name,
-        'v1',
-        user.username,
-        user.password,
-      );
-      await pushImage(
-        user.username,
-        repo.name,
-        'v2',
-        user.username,
-        user.password,
-      );
+        await pushImage(
+          user.username,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+        await pushImage(
+          user.username,
+          repo.name,
+          'v2',
+          user.username,
+          user.password,
+        );
 
-      await api.userAutoPrunePolicy({method: 'number_of_tags', value: 1});
+        await api.userAutoPrunePolicy({method: 'number_of_tags', value: 1});
 
-      await expect(async () => {
-        const tags = await api.raw.getTags(user.username, repo.name);
-        expect(tags.tags).toHaveLength(1);
-        expect(tags.tags[0].name).toBe('v2');
-      }).toPass({timeout: 120_000, intervals: [5_000]});
-    });
+        await expect(async () => {
+          const tags = await api.raw.getTags(user.username, repo.name);
+          expect(tags.tags).toHaveLength(1);
+          expect(tags.tags[0].name).toBe('v2');
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+      },
+    );
 
-    test('user namespace time-based pruning removes old tags', async ({
-      freshUser,
-    }) => {
-      test.slow();
-      const {user, api} = freshUser;
-      const repo = await api.repository(user.username, 'prunetest');
+    test(
+      'user namespace time-based pruning removes old tags',
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
+        test.slow();
+        const {user, api} = await isolatedUser('prune-age');
+        const repo = await api.repository(user.username, 'prunetest');
 
-      await pushImage(
-        user.username,
-        repo.name,
-        'v1',
-        user.username,
-        user.password,
-      );
+        await pushImage(
+          user.username,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
 
-      await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
+        await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
 
-      await expect(async () => {
-        const tags = await api.raw.getTags(user.username, repo.name);
-        expect(tags.tags).toHaveLength(0);
-      }).toPass({timeout: 180_000, intervals: [10_000]});
-    });
+        await expect(async () => {
+          const tags = await api.raw.getTags(user.username, repo.name);
+          expect(tags.tags).toHaveLength(0);
+        }).toPass({timeout: 180_000, intervals: [10_000]});
+      },
+    );
 
     test('combined org + repo policies coexist without interference', async ({
       api,
@@ -352,44 +360,46 @@ test.describe(
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
-    test('multiple user-namespace policies both take effect', async ({
-      freshUser,
-    }) => {
-      test.slow();
-      const {user, api} = freshUser;
-      const repo = await api.repository(user.username, 'prunetest');
+    test(
+      'multiple user-namespace policies both take effect',
+      {tag: '@superuser'},
+      async ({isolatedUser}) => {
+        test.slow();
+        const {user, api} = await isolatedUser('prune-both');
+        const repo = await api.repository(user.username, 'prunetest');
 
-      await pushImage(
-        user.username,
-        repo.name,
-        'v1',
-        user.username,
-        user.password,
-      );
-      await pushImage(
-        user.username,
-        repo.name,
-        'v2',
-        user.username,
-        user.password,
-      );
+        await pushImage(
+          user.username,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+        await pushImage(
+          user.username,
+          repo.name,
+          'v2',
+          user.username,
+          user.password,
+        );
 
-      // Create tag-count policy first and verify it prunes
-      await api.userAutoPrunePolicy({method: 'number_of_tags', value: 1});
+        // Create tag-count policy first and verify it prunes
+        await api.userAutoPrunePolicy({method: 'number_of_tags', value: 1});
 
-      await expect(async () => {
-        const tags = await api.raw.getTags(user.username, repo.name);
-        expect(tags.tags).toHaveLength(1);
-        expect(tags.tags[0].name).toBe('v2');
-      }).toPass({timeout: 120_000, intervals: [5_000]});
+        await expect(async () => {
+          const tags = await api.raw.getTags(user.username, repo.name);
+          expect(tags.tags).toHaveLength(1);
+          expect(tags.tags[0].name).toBe('v2');
+        }).toPass({timeout: 120_000, intervals: [5_000]});
 
-      // Add time-based policy — remaining tag is already >10s old
-      await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
+        // Add time-based policy — remaining tag is already >10s old
+        await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
 
-      await expect(async () => {
-        const tags = await api.raw.getTags(user.username, repo.name);
-        expect(tags.tags).toHaveLength(0);
-      }).toPass({timeout: 120_000, intervals: [5_000]});
-    });
+        await expect(async () => {
+          const tags = await api.raw.getTags(user.username, repo.name);
+          expect(tags.tags).toHaveLength(0);
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+      },
+    );
   },
 );

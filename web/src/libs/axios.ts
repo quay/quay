@@ -6,6 +6,21 @@ if (process.env.MOCK_API === 'true') {
   require('src/tests/fake-db/ApiMock');
 }
 
+// Track whether user is browsing anonymously. When true, 401 responses
+// from other endpoints (e.g. /api/v1/user/notifications) won't trigger
+// a redirect to /signin. Set by fetchUser() in UserResource.ts.
+let _anonymousMode = false;
+
+let _isRedirecting = false;
+
+export function setAnonymousMode(enabled: boolean): void {
+  _anonymousMode = enabled;
+}
+
+export function isRedirecting(): boolean {
+  return _isRedirecting;
+}
+
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -92,20 +107,40 @@ axiosIns.interceptors.response.use(
 
       // Handle regular session expiry
       if (!isFreshLoginRequired) {
+        // Always refresh plugin tokens when available, regardless of
+        // anonymous mode — prevents stale bearer tokens from wedging
+        // the OpenShift plugin session.
         if (window?.insights?.chrome?.auth) {
-          // Refresh token for plugin
           GlobalAuthState.bearerToken =
             await window.insights.chrome.auth.getToken();
         } else {
-          // Redirect to login page for standalone, but only if not already there
-          // This prevents infinite redirect loops when API calls fail on auth pages
-          const currentPath = window.location.pathname;
-          const isOnAuthPage =
-            currentPath === '/signin' ||
-            currentPath === '/createaccount' ||
-            currentPath.startsWith('/oauth');
-          if (!isOnAuthPage) {
-            window.location.href = '/signin';
+          // Standalone deployment: suppress redirect for user endpoint
+          // and anonymous mode so fetchUser() can return ANONYMOUS_USER
+          const requestUrl = error.config?.url || '';
+          const isUserEndpoint =
+            requestUrl === '/api/v1/user/' ||
+            requestUrl.endsWith('/api/v1/user/');
+
+          const isRepositoryEndpoint =
+            requestUrl.includes('/api/v1/repository/') ||
+            requestUrl.includes('/api/v2/');
+
+          const shouldSkipRedirect =
+            (isUserEndpoint || _anonymousMode) && !isRepositoryEndpoint;
+
+          if (!shouldSkipRedirect) {
+            const currentPath = window.location.pathname;
+            const isOnAuthPage =
+              currentPath === '/signin' ||
+              currentPath === '/createaccount' ||
+              currentPath.startsWith('/oauth');
+            if (!isOnAuthPage) {
+              _isRedirecting = true;
+              window.location.href = '/signin';
+              return new Promise(() => {
+                /* intentionally empty - prevents rejection during redirect */
+              });
+            }
           }
         }
       }

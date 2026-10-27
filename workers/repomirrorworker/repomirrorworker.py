@@ -25,7 +25,7 @@ DEFAULT_MIRROR_INTERVAL = 30
 class RepoMirrorWorker(Worker):
     def __init__(self):
         super(RepoMirrorWorker, self).__init__()
-        RepoMirrorConfigValidator(app.config.get("FEATURE_REPO_MIRROR", False)).valid()
+        RepoMirrorConfigValidator(features.REPO_MIRROR).valid()
 
         self._mirrorer = SkopeoMirror()
         self._next_token = None
@@ -45,9 +45,14 @@ class RepoMirrorWorker(Worker):
         if features.REPO_MIRROR:
             repo_mirror_workers_active.set(1)
 
+    def terminate(self, signal_num=None, stack_frame=None, graceful=False):
+        if features.REPO_MIRROR:
+            repo_mirror_workers_active.set(0)
+        super(RepoMirrorWorker, self).terminate(signal_num, stack_frame, graceful)
+
     def _process_mirrors(self):
         while True:
-            assert app.config.get("FEATURE_REPO_MIRROR", False)
+            assert features.REPO_MIRROR
 
             self._next_token = process_mirrors(self._mirrorer, self._next_token)
             if self._next_token is None:

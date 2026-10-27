@@ -2,32 +2,25 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
+  assignOAuthApplicationTokenToUser,
   bulkDeleteOAuthApplications,
   createOAuthApplication,
+  createOAuthApplicationToken,
   deleteOAuthApplication,
+  fetchOAuthApplicationTokens,
   fetchOAuthApplications,
   resetOAuthApplicationClientSecret,
+  revokeOAuthApplicationToken,
   updateOAuthApplication,
 } from 'src/resources/OAuthApplicationResource';
+import type {
+  AssignOAuthApplicationTokenParams,
+  CreateOAuthApplicationParams,
+  CreateOAuthApplicationTokenParams,
+  IOAuthApplication,
+  IOAuthApplicationToken,
+} from 'src/resources/OAuthApplicationTypes';
 import {oauthApplicationColumnName} from 'src/routes/OrganizationsList/Organization/Tabs/OAuthApplications/OAuthApplicationsList';
-
-export interface IOAuthApplication {
-  application_uri: string;
-  avatar_email: string;
-  client_id: string;
-  client_secret: string;
-  description: string;
-  name: string;
-  redirect_uri: string;
-}
-
-export interface CreateOAuthApplicationParams {
-  name: string;
-  redirect_uri: string;
-  application_uri: string;
-  description: string;
-  avatar_email: string;
-}
 
 export function useFetchOAuthApplications(org: string) {
   const [page, setPage] = useState(1);
@@ -74,6 +67,134 @@ export function useFetchOAuthApplications(org: string) {
     setPerPage,
     search,
     setSearch,
+  };
+}
+
+export function useFetchOAuthApplicationTokens(org: string, clientId: string) {
+  const {data: tokens, isRefetchError: errorRefreshingOAuthApplicationTokens} =
+    useQuery<IOAuthApplicationToken[]>(
+      ['oauthapplicationtokens', org, clientId],
+      () => fetchOAuthApplicationTokens(org, clientId),
+      {
+        enabled: Boolean(org && clientId),
+        suspense: true,
+        useErrorBoundary: (_error, query) => query.state.data === undefined,
+      },
+    );
+
+  return {
+    errorRefreshingOAuthApplicationTokens,
+    tokens: tokens || [],
+  };
+}
+
+export function useCreateOAuthApplicationToken(
+  org: string,
+  clientId: string,
+  onSuccess?: (createdToken: IOAuthApplicationToken) => void,
+  onError?: (error: unknown) => void,
+) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: createOAuthApplicationTokenMutation,
+    mutateAsync: createOAuthApplicationTokenMutationAsync,
+    isLoading: creatingOAuthApplicationToken,
+    reset: resetCreateOAuthApplicationToken,
+  } = useMutation(
+    async (params: CreateOAuthApplicationTokenParams) => {
+      return createOAuthApplicationToken(org, clientId, params);
+    },
+    {
+      onSuccess: (createdToken: IOAuthApplicationToken) => {
+        queryClient.invalidateQueries([
+          'oauthapplicationtokens',
+          org,
+          clientId,
+        ]);
+        onSuccess?.(createdToken);
+      },
+      onError: (error) => {
+        onError?.(error);
+      },
+    },
+  );
+
+  return {
+    createOAuthApplicationTokenMutation,
+    createOAuthApplicationTokenMutationAsync,
+    creatingOAuthApplicationToken,
+    resetCreateOAuthApplicationToken,
+  };
+}
+
+export function useAssignOAuthApplicationTokenToUser(
+  clientId: string,
+  onSuccess?: (response: {message: string}) => void,
+  onError?: (error: unknown) => void,
+) {
+  const {
+    mutate: assignOAuthApplicationTokenToUserMutation,
+    mutateAsync: assignOAuthApplicationTokenToUserMutationAsync,
+    isLoading: assigningOAuthApplicationTokenToUser,
+    reset: resetAssignOAuthApplicationTokenToUser,
+  } = useMutation(
+    async (params: AssignOAuthApplicationTokenParams) => {
+      return assignOAuthApplicationTokenToUser(clientId, params);
+    },
+    {
+      onSuccess: (response: {message: string}) => {
+        onSuccess?.(response);
+      },
+      onError: (error) => {
+        onError?.(error);
+      },
+    },
+  );
+
+  return {
+    assignOAuthApplicationTokenToUserMutation,
+    assignOAuthApplicationTokenToUserMutationAsync,
+    assigningOAuthApplicationTokenToUser,
+    resetAssignOAuthApplicationTokenToUser,
+  };
+}
+
+export function useRevokeOAuthApplicationToken(
+  org: string,
+  clientId: string,
+  onSuccess?: () => void,
+  onError?: (error: unknown) => void,
+) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: revokeOAuthApplicationTokenMutation,
+    mutateAsync: revokeOAuthApplicationTokenMutationAsync,
+    isLoading: revokingOAuthApplicationToken,
+    reset: resetRevokeOAuthApplicationToken,
+  } = useMutation(
+    async (tokenUuid: string) => {
+      return revokeOAuthApplicationToken(org, clientId, tokenUuid);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries([
+          'oauthapplicationtokens',
+          org,
+          clientId,
+        ]);
+        onSuccess?.();
+      },
+      onError: (error) => {
+        onError?.(error);
+      },
+    },
+  );
+
+  return {
+    revokeOAuthApplicationTokenMutation,
+    revokeOAuthApplicationTokenMutationAsync,
+    revokingOAuthApplicationToken,
+    resetRevokeOAuthApplicationToken,
   };
 }
 

@@ -9,13 +9,34 @@ import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchAllRepos,
   fetchAllReposAsSuperUser,
+  fetchRepositories,
   fetchRepositoriesForNamespace,
   IRepository,
   SuperUserReposResult,
 } from 'src/resources/RepositoryResource';
 import {useCurrentUser} from './UseCurrentUser';
 
-export function useRepositories(organization?: string) {
+export interface UseRepositoriesReturn {
+  repos: IRepository[];
+  loading: boolean;
+  error: unknown;
+  search: OrgSearchState;
+  setSearch: (search: OrgSearchState) => void;
+  searchFilter: (item: IRepository) => boolean;
+  page: number;
+  setPage: (page: number) => void;
+  perPage: number;
+  setPerPage: (perPage: number) => void;
+  organization: string | undefined;
+  setCurrentOrganization: (org: string | undefined) => void;
+  totalResults: number;
+  truncated: boolean;
+}
+
+export function useRepositories(
+  organization?: string,
+  quota?: boolean,
+): UseRepositoriesReturn {
   const {user, isSuperUser} = useCurrentUser();
 
   // Keep state of current search in this hook
@@ -29,7 +50,9 @@ export function useRepositories(organization?: string) {
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
-    : user?.organizations.map((org) => org.name).concat(user.username);
+    : user?.anonymous
+      ? [] // Anonymous users have no namespaces to fetch
+      : user?.organizations?.map((org) => org.name).concat(user.username) || [];
 
   const handlePartialResults = useCallback((newRepos: IRepository[]) => {
     setPartialResults((prev) => [...prev, ...newRepos]);
@@ -45,7 +68,8 @@ export function useRepositories(organization?: string) {
       'organization',
       organization || 'all',
       'repositories',
-      isSuperUser ? 'superuser' : 'user',
+      isSuperUser ? 'superuser' : user?.anonymous ? 'anonymous' : 'user',
+      quota === false ? 'no-quota' : 'with-quota',
     ],
     keepPreviousData: true,
     placeholderData: [],
@@ -54,11 +78,23 @@ export function useRepositories(organization?: string) {
       setPartialResults([]);
       setTruncated(false);
 
-      if (currentOrganization) {
-        return fetchRepositoriesForNamespace(currentOrganization, {
+      // Anonymous users without a specific org: show all public repos
+      if (user?.anonymous && !currentOrganization) {
+        return fetchRepositories({
           signal,
           onPartialResult: handlePartialResults,
         });
+      }
+
+      if (currentOrganization) {
+        return fetchRepositoriesForNamespace(
+          currentOrganization,
+          {
+            signal,
+            onPartialResult: handlePartialResults,
+          },
+          quota,
+        );
       }
 
       // Superusers: single paginated API call returns all repos across all namespaces

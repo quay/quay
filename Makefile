@@ -40,7 +40,8 @@ registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
-	test/registry/registry_tests.py
+	test/registry/registry_tests.py \
+	test/registry/test_cosign_signatures.py
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \
@@ -52,7 +53,7 @@ certs-test:
 	./test/test_certs_install.sh
 
 full-db-test: ensure-test-db
-	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
+	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!"}' \
 	alembic upgrade head
 	TEST=true PYTHONPATH=. \
 	SKIP_DB_SCHEMA=true py.test -m 'not e2e' --timeout=7200 \
@@ -453,14 +454,20 @@ enable-splunk:
 # Go targets #
 ##############
 
-GO_BINARY_NAME = quay
+GO_BINARY_NAME = mirror-registry
 GO_BUILD_DIR = bin
-GO_CMD_DIR = cmd/quay
+GO_CMD_DIR = cmd/mirror-registry
 GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
-GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/cmd.version=$(GO_VERSION)")
+GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/mirrorregistry/cmd.version=$(GO_VERSION)")
 
 SCHEMA_DIR := internal/dal/schema
 SCHEMA_TMP := /tmp/quay-schema-tmp
+
+# GO_SCHEMA_ALEMBIC_REVISION pins the Go binary's generated schema baseline.
+# The Go migration framework bridges OMR sources to this exact revision, so
+# generation must not silently follow a future Python Alembic head; advancing
+# it is a deliberate decision, not a side effect of an unrelated migration.
+GO_SCHEMA_ALEMBIC_REVISION := 9fa37f66a9b6
 
 .PHONY: go-schema go-schema-check
 
@@ -469,7 +476,7 @@ go-schema:
 	@rm -rf $(SCHEMA_TMP)
 	@mkdir -p $(SCHEMA_TMP)/stack $(SCHEMA_DIR)/sqlite
 	@echo 'DB_URI: sqlite:///$(SCHEMA_TMP)/quay.db' > $(SCHEMA_TMP)/stack/config.yaml
-	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
+	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade $(GO_SCHEMA_ALEMBIC_REVISION)
 	@echo "=== Extracting schema DDL ==="
 	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql > $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp && mv $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp $(SCHEMA_DIR)/sqlite/quay_schema.sql
@@ -510,7 +517,7 @@ go-schema-check:
 	  (echo "ERROR: Generated Go code is out of date. Run 'make go-schema' and commit." && exit 1)
 	@echo "All checks passed."
 
-.PHONY: go-build go-test go-fmt go-vet go-clean
+.PHONY: go-build go-test go-test-postgres go-fmt go-vet go-clean
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
@@ -518,6 +525,34 @@ go-build:
 
 go-test:
 	go test -cover -race ./...
+
+# Run PostgreSQL-source integration tests against a disposable Postgres 16.
+# Override DOCKER=podman when needed.
+GO_PG_TEST_CONTAINER := quay-go-postgres-testrunner
+GO_PG_TEST_PORT := 5434
+GO_PG_TEST_DATABASE := quay_migrate_test
+
+go-test-postgres:
+	@set -e; \
+	password="$$(openssl rand -hex 32)"; \
+	dsn="postgres://quay:$${password}@localhost:$(GO_PG_TEST_PORT)/$(GO_PG_TEST_DATABASE)?sslmode=disable"; \
+	trap '$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true' EXIT; \
+	$(DOCKER) rm -f $(GO_PG_TEST_CONTAINER) >/dev/null 2>&1 || true; \
+	$(DOCKER) run --name $(GO_PG_TEST_CONTAINER) \
+		-e POSTGRES_USER=quay -e POSTGRES_PASSWORD="$${password}" -e POSTGRES_DB=$(GO_PG_TEST_DATABASE) \
+		-p $(GO_PG_TEST_PORT):5432 -d docker.io/library/postgres:16; \
+	ready=0; \
+	for attempt in $$(seq 1 60); do \
+		if $(DOCKER) exec $(GO_PG_TEST_CONTAINER) pg_isready -U quay -d $(GO_PG_TEST_DATABASE) >/dev/null 2>&1; then ready=1; break; fi; \
+		echo "waiting for postgres ($$attempt/60)"; sleep 1; \
+	done; \
+	if [ "$$ready" -ne 1 ]; then \
+		echo "postgres did not become ready after 60 seconds"; \
+		$(DOCKER) logs $(GO_PG_TEST_CONTAINER) || true; \
+		exit 1; \
+	fi; \
+	if QUAY_TEST_POSTGRES_DSN="$${dsn}" go test ./internal/migrate/... -run Postgres -v -count=1; then status=0; else status=$$?; fi; \
+	exit $$status
 
 go-fmt:
 	go fmt ./...

@@ -19,10 +19,15 @@ class UserEventBuilder(object):
     """
 
     def __init__(self, redis_config):
+        self._client = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
         self._redis_config = redis_config
 
+    @property
+    def client(self):
+        return self._client
+
     def get_event(self, username):
-        return UserEvent(self._redis_config, username)
+        return UserEvent(self._client, username)
 
     def get_listener(self, username, events):
         return UserEventListener(self._redis_config, username, events)
@@ -60,8 +65,8 @@ class UserEvent(object):
     Defines a helper class for publishing to realtime user events as backed by Redis.
     """
 
-    def __init__(self, redis_config, username):
-        self._redis = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
+    def __init__(self, client, username):
+        self._redis = client
         self._username = username
 
     @staticmethod

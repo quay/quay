@@ -20,13 +20,13 @@ jobs:
     if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Apply area labels
-        uses: actions/labeler@f27b608878404679385c85cfa523b85ccb86e213 # v6.1.0
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
@@ -41,7 +41,7 @@ jobs:
     if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.ref }}
@@ -52,7 +52,7 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          BOTS="openshift-ci[bot] openshift-merge-robot openshift-cherrypick-robot"
+          BOTS="openshift-ci[bot] openshift-merge-robot openshift-cherrypick-robot fullsend-ai-coder[bot] fullsend-ai-retro[bot]"
           for bot in $BOTS; do
             if [[ "$PR_AUTHOR" == "$bot" ]]; then
               exit 0
@@ -78,7 +78,7 @@ jobs:
           echo "$PR_NUMBER" > ./pr-data/pr_number.txt
 
       - name: Upload PR data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pr-data-${{ github.event.pull_request.number }}
           path: pr-data/

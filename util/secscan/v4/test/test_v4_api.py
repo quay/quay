@@ -80,6 +80,12 @@ bad_vuln_report = {
             True,
             None,
         ),
+        (
+            actions["DeleteIndexReport"]("sha256:abc123"),
+            None,
+            True,
+            None,
+        ),
     ],
 )
 def test_is_valid_response(action, resp, expected, exception):

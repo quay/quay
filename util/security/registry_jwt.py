@@ -85,18 +85,18 @@ def decode_bearer_token(bearer_token, instance_keys, config):
     try:
         headers = jwt.get_unverified_header(bearer_token)
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.warning("Invalid token reason: %s", ite)
         raise InvalidBearerTokenException(ite)
 
     kid = headers.get("kid", None)
     if kid is None:
-        logger.error("Missing kid header on encoded JWT")
+        logger.warning("Missing kid header on encoded JWT")
         raise InvalidBearerTokenException("Missing kid header")
 
     # Find the matching public key.
     public_key = instance_keys.get_service_key_public_key(kid)
     if public_key is None:
-        logger.error("Could not find requested service key %s with encoded JWT", kid)
+        logger.warning("Could not find requested service key %s with encoded JWT", kid)
         raise InvalidBearerTokenException("Unknown service key")
 
     # Load the JWT returned.
@@ -115,7 +115,7 @@ def decode_bearer_token(bearer_token, instance_keys, config):
             leeway=JWT_CLOCK_SKEW_SECONDS,
         )
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.warning("Invalid token reason: %s", ite)
         raise InvalidBearerTokenException(ite)
 
     if not "sub" in payload:
@@ -124,7 +124,9 @@ def decode_bearer_token(bearer_token, instance_keys, config):
     return payload
 
 
-def generate_bearer_token(audience, subject, context, access, lifetime_s, instance_keys):
+def generate_bearer_token(
+    audience, subject, context, access, lifetime_s, instance_keys, extra_fields=None
+):
     """
     Generates a registry bearer token (without the 'Bearer ' portion) based on the given
     information.
@@ -138,11 +140,20 @@ def generate_bearer_token(audience, subject, context, access, lifetime_s, instan
         instance_keys.service_name,
         instance_keys.local_key_id,
         instance_keys.local_private_key,
+        extra_fields,
     )
 
 
 def _generate_jwt_object(
-    audience, subject, context, access, lifetime_s, issuer, key_id, private_key
+    audience,
+    subject,
+    context,
+    access,
+    lifetime_s,
+    issuer,
+    key_id,
+    private_key,
+    extra_fields=None,
 ):
     """
     Generates a compact encoded JWT with the values specified.
@@ -157,6 +168,12 @@ def _generate_jwt_object(
         "access": access,
         "context": context,
     }
+
+    if extra_fields:
+        reserved_fields = set(token_data).intersection(extra_fields)
+        if reserved_fields:
+            raise ValueError("extra_fields cannot override JWT fields")
+        token_data.update(extra_fields)
 
     token_headers = {
         "kid": key_id,

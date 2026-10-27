@@ -1,24 +1,30 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushMultiArchImage, pushImage} from '../../utils/container';
 
 test.describe('Tags - Expanded View', {tag: ['@tags', '@container']}, () => {
+  let user: {username: string; password: string};
+
+  test.beforeAll(({cachedQuayConfig}) => {
+    user = getTestUsers(cachedQuayConfig).user;
+  });
+
   test.slow();
 
   let testRepo: {namespace: string; name: string; fullName: string};
 
   test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+    test.setTimeout(120000);
     if (!cachedContainerAvailable) return;
 
     const api = new ApiClient(userContext.request);
     const repoName = `expanded-view-${Date.now()}`;
-    await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+    await api.createRepository(user.username, repoName, 'private');
 
     testRepo = {
-      namespace: TEST_USERS.user.username,
+      namespace: user.username,
       name: repoName,
-      fullName: `${TEST_USERS.user.username}/${repoName}`,
+      fullName: `${user.username}/${repoName}`,
     };
 
     // Push multi-arch image (creates manifest list tag)
@@ -26,8 +32,8 @@ test.describe('Tags - Expanded View', {tag: ['@tags', '@container']}, () => {
       testRepo.namespace,
       testRepo.name,
       'manifestlist',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      user.username,
+      user.password,
     );
 
     // Push single-arch image
@@ -35,8 +41,8 @@ test.describe('Tags - Expanded View', {tag: ['@tags', '@container']}, () => {
       testRepo.namespace,
       testRepo.name,
       'latest',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      user.username,
+      user.password,
     );
   });
 

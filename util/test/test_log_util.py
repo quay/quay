@@ -11,6 +11,7 @@ def test_filter_logs():
     values = {
         "user": {"password": "toto", "repeatPassword": "toto"},
         "password": "toto",
+        "subject_token": "external-oidc-jwt",
         "upstream_registry_username": "user",
         "upstream_registry_password": "testpass",
         "blob": "1234567890asdfewkqresfdsfewfdsfd",
@@ -20,6 +21,7 @@ def test_filter_logs():
     assert values == {
         "user": {"password": "[FILTERED]", "repeatPassword": "[FILTERED]"},
         "password": "[FILTERED]",
+        "subject_token": "[FILTERED]",
         "upstream_registry_username": "[FILTERED]",
         "upstream_registry_password": "[FILTERED]",
         "blob": "12345678",

@@ -52,6 +52,7 @@ from util.secscan.v4.api import (
     ClairSecurityScannerAPI,
     InvalidContentSent,
     LayerTooLargeException,
+    Non200ResponseException,
 )
 from util.secscan.validator import V4SecurityConfigValidator
 
@@ -59,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
+DEFAULT_MAX_SCAN_RETRIES = 5
 STALE_IN_PROGRESS_HOURS = 6  # Hours before an IN_PROGRESS manifest is considered stale
 TAG_LIMIT = 100
 
@@ -223,7 +225,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         except ManifestSecurityStatus.DoesNotExist:
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
-        if status.index_status == IndexStatus.FAILED:
+        if status.index_status in (IndexStatus.FAILED, IndexStatus.SCAN_RETRIES_EXHAUSTED):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.FAILED_TO_INDEX)
 
         if status.index_status == IndexStatus.MANIFEST_UNSUPPORTED:
@@ -236,7 +238,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
             )
 
-        if status.index_status == IndexStatus.IN_PROGRESS:
+        if status.index_status in (IndexStatus.PENDING, IndexStatus.IN_PROGRESS):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         assert status.index_status == IndexStatus.COMPLETED
@@ -297,6 +299,13 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def pending_query():
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(ManifestSecurityStatus.index_status == IndexStatus.PENDING)
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -304,6 +313,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                    ManifestSecurityStatus.index_status != IndexStatus.PENDING,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
                     ManifestSecurityStatus.last_indexed < reindex_threshold
                     or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
@@ -317,6 +327,13 @@ class V4SecurityScanner(SecurityScannerInterface):
         iterator = itertools.chain(
             yield_random_entries(
                 not_indexed_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                pending_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -373,7 +390,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             reindex_threshold=reindex_threshold,
         )
 
-        self._index(iterator, reindex_threshold)
+        self._index(iterator, reindex_threshold, indexer_state.get("state", ""))
 
     def perform_indexing(self, start_token=None, batch_size=None):
         try:
@@ -407,11 +424,15 @@ class V4SecurityScanner(SecurityScannerInterface):
             reindex_threshold=reindex_threshold,
         )
 
-        self._index(iterator, reindex_threshold)
+        self._index(iterator, reindex_threshold, indexer_state.get("state", ""))
 
         return ScanToken(max_id + 1)
 
-    def _index(self, iterator, reindex_threshold):
+    def _index(self, iterator, reindex_threshold, current_indexer_hash):
+        max_retries = self.app.config.get(
+            "SECURITY_SCANNER_MAX_SCAN_RETRIES", DEFAULT_MAX_SCAN_RETRIES
+        )
+
         def mark_manifest_unsupported(manifest):
             with db_transaction():
                 ManifestSecurityStatus.delete().where(
@@ -474,12 +495,43 @@ class V4SecurityScanner(SecurityScannerInterface):
                     & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
                 )
                 | (
-                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    (
+                        ManifestSecurityStatus.index_status.not_in(
+                            [IndexStatus.IN_PROGRESS, IndexStatus.PENDING]
+                        )
+                    )
                     & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
                 ),
             )
 
-            return {row.manifest_id for row in preempted_query}
+            preempted_ids = {row.manifest_id for row in preempted_query}
+
+            retry_exhausted_query = ManifestSecurityStatus.select(
+                ManifestSecurityStatus.manifest_id,
+                ManifestSecurityStatus.metadata_json,
+            ).where(
+                ManifestSecurityStatus.manifest_id.in_(candidate_ids),
+                ManifestSecurityStatus.index_status == IndexStatus.FAILED,
+            )
+            exhausted_manifest_ids = []
+            for row in retry_exhausted_query:
+                metadata = row.metadata_json or {}
+                retry_count = metadata.get("retry_count", 0)
+                if metadata.get("last_failed_hash") != current_indexer_hash:
+                    retry_count = 0
+                if retry_count >= max_retries:
+                    preempted_ids.add(row.manifest_id)
+                    exhausted_manifest_ids.append(row.manifest_id)
+
+            if exhausted_manifest_ids:
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.SCAN_RETRIES_EXHAUSTED,
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest_id.in_(exhausted_manifest_ids),
+                ).execute()
+
+            return preempted_ids
 
         def batched_iterator_with_preemption_check(iterator, batch_size=20):
             """
@@ -514,6 +566,11 @@ class V4SecurityScanner(SecurityScannerInterface):
         for candidate, abt, num_remaining, should_skip in batched_iterator_with_preemption_check(
             iterator
         ):
+            if should_skip:
+                logger.debug("Manifest %d preempted by another worker (batch check)", candidate.id)
+                abt.set()
+                continue
+
             manifest = ManifestDataType.for_manifest(candidate, None)
             if manifest.is_manifest_list:
                 mark_manifest_unsupported(manifest)
@@ -533,8 +590,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                 mark_manifest_unsupported(manifest)
                 continue
 
-            # We need to verify that the image layers are actual container images. Since Docker v2 schema 1 images
-            # cannot be anything other than container images, for them specifically we should skip the layer check.
             if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
                 if not _has_container_layers(layers):
                     logger.info(
@@ -547,12 +602,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                     )
                     mark_manifest_unsupported(manifest)
                     continue
-
-            # Check preemption status (computed via bulk query in batch)
-            if should_skip:
-                logger.debug("Manifest %d preempted by another worker (batch check)", candidate.id)
-                abt.set()
-                continue
 
             logger.debug(
                 "Indexing manifest [%d] %s/%s@%s"
@@ -608,10 +657,39 @@ class V4SecurityScanner(SecurityScannerInterface):
                 (report, state) = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
-                logger.exception("Failed to perform indexing, invalid content sent")
+                logger.warning("Failed to perform indexing, invalid content sent")
+                continue
+            except Non200ResponseException as ex:
+                try:
+                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                    metadata = mss.metadata_json or {}
+                    if metadata.get("last_failed_hash") != current_indexer_hash:
+                        metadata["retry_count"] = 1
+                    else:
+                        metadata["retry_count"] = metadata.get("retry_count", 0) + 1
+                except ManifestSecurityStatus.DoesNotExist:
+                    metadata = {"retry_count": 1}
+                metadata["last_failed_hash"] = current_indexer_hash
+
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="server_error",
+                    error_json={
+                        "error": "non-200 response",
+                        "status_code": ex.response.status_code,
+                    },
+                    metadata_json=metadata,
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
+                logger.exception(
+                    "Failed to perform indexing, security scanner returned %s",
+                    ex.response.status_code,
+                )
                 continue
             except APIRequestFailure as ex:
-                # Mark as FAILED instead of deleting to preserve scan history
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.FAILED,
                     indexer_hash="api_failure",
@@ -718,11 +796,22 @@ class V4SecurityScanner(SecurityScannerInterface):
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
-                # Unknown state - mark as FAILED instead of deleting to preserve scan history
+                try:
+                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                    metadata = mss.metadata_json or {}
+                    if metadata.get("last_failed_hash") != current_indexer_hash:
+                        metadata["retry_count"] = 1
+                    else:
+                        metadata["retry_count"] = metadata.get("retry_count", 0) + 1
+                except ManifestSecurityStatus.DoesNotExist:
+                    metadata = {"retry_count": 1}
+                metadata["last_failed_hash"] = current_indexer_hash
+
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.FAILED,
                     indexer_hash="unknown_state",
                     error_json={"error": "unknown_state", "state": report.get("state")},
+                    metadata_json=metadata,
                     last_indexed=datetime.utcnow(),
                 ).where(
                     ManifestSecurityStatus.manifest == candidate,
@@ -735,6 +824,19 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
                 continue
 
+            metadata = {}
+            if index_status == IndexStatus.FAILED:
+                try:
+                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                    old_metadata = mss.metadata_json or {}
+                    if old_metadata.get("last_failed_hash") != current_indexer_hash:
+                        metadata["retry_count"] = 1
+                    else:
+                        metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
+                except ManifestSecurityStatus.DoesNotExist:
+                    metadata["retry_count"] = 1
+                metadata["last_failed_hash"] = current_indexer_hash
+
             with db_transaction():
                 ManifestSecurityStatus.delete().where(
                     ManifestSecurityStatus.manifest == candidate
@@ -746,7 +848,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     index_status=index_status,
                     indexer_hash=state,
                     indexer_version=IndexerVersion.V4,
-                    metadata_json={},
+                    metadata_json=metadata,
                 )
 
     def lookup_notification_page(self, notification_id, page_index=None):

@@ -10,6 +10,7 @@ import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
 import ImmutabilityPolicies from './ImmutabilityPolicies';
+import NamespaceNotifications from './NamespaceNotifications';
 import {OrgMirroringState} from './OrgMirroringState';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
 import {QuotaManagement} from './QuotaManagement';
@@ -150,12 +151,23 @@ export default function Settings(props: SettingsProps) {
         quayConfig?.features?.QUOTA_MANAGEMENT &&
         quayConfig?.features?.EDIT_QUOTA,
     },
+    {
+      name: 'Notifications',
+      id: 'namespacenotifications',
+      content: () => (
+        <NamespaceNotifications
+          organizationName={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
+      ),
+      visible: !!quayConfig?.features?.QUOTA_NOTIFICATIONS,
+    },
   ];
 
   const visibleTabs = tabs.filter((tab) => tab.visible === true);
   const normalizedActiveId = visibleTabs.some((tab) => tab.id === activeTabId)
     ? activeTabId
-    : visibleTabs[0]?.id ?? null;
+    : (visibleTabs[0]?.id ?? null);
   const activeTab = normalizedActiveId
     ? visibleTabs.find((tab) => tab.id === normalizedActiveId)
     : null;

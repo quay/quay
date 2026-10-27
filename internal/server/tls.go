@@ -11,7 +11,7 @@ import (
 
 const defaultHostname = "localhost"
 
-func ensureTLS(hostname, certDir string, srv *http.Server) (certPath, keyPath string, err error) {
+func ensureTLS(hostname, certDir string, protocols []string, srv *http.Server) (certPath, keyPath string, err error) {
 	certPath = filepath.Join(certDir, "ssl.cert")
 	keyPath = filepath.Join(certDir, "ssl.key")
 
@@ -20,11 +20,11 @@ func ensureTLS(hostname, certDir string, srv *http.Server) (certPath, keyPath st
 			hostname = defaultHostname
 		}
 		slog.Info("generating self-signed certificate", "hostname", hostname)
-		if err = certs.GenerateSelfSigned(hostname, certPath, keyPath); err != nil {
+		if err = certs.GenerateSelfSigned(hostname, certPath, keyPath, filepath.Join(certDir, "rootCA.pem")); err != nil {
 			return "", "", fmt.Errorf("generating certificate: %w", err)
 		}
 	}
 
-	srv.TLSConfig = certs.SecureTLSConfig()
+	srv.TLSConfig = certs.SecureTLSConfig(protocols)
 	return certPath, keyPath, nil
 }

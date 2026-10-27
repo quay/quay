@@ -2,11 +2,26 @@ package config
 
 // Default values for Quay configuration fields.
 const (
-	DefaultPreferredURLScheme = "http"
-	DefaultRegistryTitle      = "Red Hat Quay"
-	DefaultAuthenticationType = "Database"
-	DefaultTagExpiration      = "2w"
-	DefaultLibraryNamespace   = "library"
+	DefaultPreferredURLScheme           = "http"
+	DefaultRegistryTitle                = "Red Hat Quay"
+	DefaultAuthenticationType           = "Database"
+	DefaultTagExpiration                = "2w"
+	DefaultLibraryNamespace             = "library"
+	DefaultLastAccessedUpdateThresholdS = 60
+	DefaultInstanceServiceKeyService    = "quay"
+	DefaultRegistryJWTAuthMaxFreshS     = 3660
+	// DefaultPasswordAuthCacheTTLS remembers a verified password for five
+	// minutes; see internal/auth.DefaultPasswordCacheTTL.
+	DefaultPasswordAuthCacheTTLS = 300
+
+	// Feature defaults mirror the Python configuration defaults. A nil feature
+	// value is resolved against these defaults by internal/features.
+	DefaultFeatureSuperUsers           = true
+	DefaultFeatureSuperUsersFullAccess = false
+	DefaultFeatureAnonymousAccess      = true
+	DefaultFeatureReferrersAPI         = true
+	DefaultFeatureLibrarySupport       = true
+	DefaultFeatureUserLastAccessed     = true
 )
 
 // newDefaultConfig returns a Config pre-populated with Quay's documented
@@ -21,22 +36,30 @@ func newDefaultConfig() Config {
 			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
-			AuthenticationType: DefaultAuthenticationType,
+			AuthenticationType:    DefaultAuthenticationType,
+			PasswordAuthCacheTTLS: DefaultPasswordAuthCacheTTLS,
 		},
 		Storage: Storage{
 			DefaultTagExpiration: DefaultTagExpiration,
 		},
 		Features: Features{
-			FeatureDirectLogin:         boolPtr(true),
-			FeatureUserCreation:        boolPtr(true),
-			FeatureAnonymousAccess:     boolPtr(true),
-			FeatureChangeTagExpiration: boolPtr(true),
-			FeatureAppSpecificTokens:   boolPtr(true),
+			FeatureDirectLogin:          true,
+			FeatureUserCreation:         true,
+			FeatureAnonymousAccess:      DefaultFeatureAnonymousAccess,
+			FeatureChangeTagExpiration:  true,
+			FeatureAppSpecificTokens:    true,
+			FeatureSuperUsers:           DefaultFeatureSuperUsers,
+			FeatureSuperUsersFullAccess: DefaultFeatureSuperUsersFullAccess,
+			FeatureReferrersAPI:         DefaultFeatureReferrersAPI,
+			FeatureLibrarySupport:       DefaultFeatureLibrarySupport,
+			FeatureUserLastAccessed:     DefaultFeatureUserLastAccessed,
+		},
+		AccessLog: AccessLog{
+			LastAccessedUpdateThresholdS: DefaultLastAccessedUpdateThresholdS,
+		},
+		Keys: Keys{
+			InstanceServiceKeyService: DefaultInstanceServiceKeyService,
+			RegistryJWTAuthMaxFreshS:  DefaultRegistryJWTAuthMaxFreshS,
 		},
 	}
-}
-
-// boolPtr returns a pointer to b.
-func boolPtr(b bool) *bool {
-	return &b
 }

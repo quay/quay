@@ -37,7 +37,7 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
     }
   });
 
-  test('new user can sign in', async ({adminClient, playwright}) => {
+  test('new user can sign in', async ({adminClient, request}) => {
     const username = uniqueName('user');
     const email = `${username}@example.com`;
     try {
@@ -52,32 +52,28 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
       expect(password).toBeTruthy();
 
       // Sign in as the new user using a separate request context
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
+      const newUserClient = new RawApiClient(request, API_URL);
+
       try {
-        const newUserClient = new RawApiClient(request, API_URL);
-
-        try {
-          await newUserClient.signIn(username, password);
-        } catch (e: unknown) {
-          // If email verification is required, the user was still created
-          // successfully — skip the sign-in portion of this test
-          const msg = e instanceof Error ? e.message : String(e);
-          if (msg.includes('needsEmailVerification')) {
-            return;
-          }
-          throw e;
+        await newUserClient.signIn(username, password);
+      } catch (e: unknown) {
+        // If email verification is required, the user was still created
+        // successfully — skip the sign-in portion of this test
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('needsEmailVerification')) {
+          return test.skip(
+            true,
+            'Email verification required — sign-in not exercised',
+          );
         }
-
-        // Verify the session belongs to the new user
-        const whoami = await newUserClient.get('/api/v1/user/');
-        expect(whoami.status()).toBe(200);
-        const whoamiBody = await whoami.json();
-        expect(whoamiBody.username).toBe(username);
-      } finally {
-        await request.dispose();
+        throw e;
       }
+
+      // Verify the session belongs to the new user
+      const whoami = await newUserClient.get('/api/v1/user/');
+      expect(whoami.status()).toBe(200);
+      const whoamiBody = await whoami.json();
+      expect(whoamiBody.username).toBe(username);
     } finally {
       await adminClient.delete(`/api/v1/superuser/users/${username}`);
     }
@@ -475,22 +471,23 @@ test.describe(
   'Organization Member Details',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('admin can get individual org member info', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('memberinfo');
+    test(
+      'admin can get individual org member info',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('memberinfo');
 
-      // The creating user (admin) is automatically in the 'owners' team
-      const resp = await adminClient.get(
-        `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
-      );
-      expect(resp.status()).toBe(200);
-      const member = await resp.json();
-      expect(member.name).toBe(TEST_USERS.admin.username);
-      expect(member.kind).toBe('user');
-      expect(member.teams).toBeDefined();
-    });
+        // The creating user (admin) is automatically in the 'owners' team
+        const resp = await adminClient.get(
+          `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
+        );
+        expect(resp.status()).toBe(200);
+        const member = await resp.json();
+        expect(member.name).toBe(TEST_USERS.admin.username);
+        expect(member.kind).toBe('user');
+        expect(member.teams).toBeDefined();
+      },
+    );
   },
 );
 
@@ -563,6 +560,65 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       }
     });
+
+    test('admin cannot use the reserved bootstrap app name', async ({
+      adminClient,
+    }) => {
+      const orgName = uniqueName('org');
+      const reservedAppName = '__quay_bootstrap_app';
+      let clientId = '';
+
+      try {
+        await adminClient.post('/api/v1/organization/', {
+          name: orgName,
+          email: `${orgName}@example.com`,
+        });
+
+        const createReservedResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/applications`,
+          {name: reservedAppName},
+        );
+        expect(createReservedResp.status()).toBe(400);
+        const createReservedBody = await createReservedResp.json();
+        expect(createReservedBody.detail).toBe(
+          'Application name is reserved for bootstrap token provisioning',
+        );
+
+        const appName = uniqueName('app');
+        const createResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/applications`,
+          {name: appName},
+        );
+        expect(createResp.status()).toBe(200);
+        const createBody = await createResp.json();
+        clientId = createBody.client_id;
+
+        const updateReservedResp = await adminClient.put(
+          `/api/v1/organization/${orgName}/applications/${clientId}`,
+          {
+            name: reservedAppName,
+            description: 'reserved app description',
+            application_uri: 'https://quay.io',
+            client_id: clientId,
+            client_secret: createBody.client_secret,
+            redirect_uri: 'https://quay.io',
+            avatar_email: 'apptest@redhat.com',
+          },
+        );
+        expect(updateReservedResp.status()).toBe(400);
+        const updateReservedBody = await updateReservedResp.json();
+        expect(updateReservedBody.detail).toBe(
+          'Application name is reserved for bootstrap token provisioning',
+        );
+      } finally {
+        if (clientId) {
+          await adminClient.delete(
+            `/api/v1/organization/${orgName}/applications/${clientId}`,
+          );
+        }
+        await adminClient.delete(`/api/v1/organization/${orgName}`);
+      }
+    });
   },
 );
 
@@ -574,32 +630,33 @@ test.describe(
   'OAuth Application Info',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('user can get OAuth application info by client_id', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('oauthapp');
+    test(
+      'user can get OAuth application info by client_id',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('oauthapp');
 
-      const appName = uniqueName('app');
-      const createResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/applications`,
-        {name: appName},
-      );
-      expect(createResp.status()).toBe(200);
-      const createBody = await createResp.json();
-      const clientId = createBody.client_id;
-
-      try {
-        const getResp = await adminClient.get(`/api/v1/app/${clientId}`);
-        expect(getResp.status()).toBe(200);
-        const appInfo = await getResp.json();
-        expect(appInfo.name).toBe(appName);
-      } finally {
-        await adminClient.delete(
-          `/api/v1/organization/${org.name}/applications/${clientId}`,
+        const appName = uniqueName('app');
+        const createResp = await adminClient.post(
+          `/api/v1/organization/${org.name}/applications`,
+          {name: appName},
         );
-      }
-    });
+        expect(createResp.status()).toBe(200);
+        const createBody = await createResp.json();
+        const clientId = createBody.client_id;
+
+        try {
+          const getResp = await adminClient.get(`/api/v1/app/${clientId}`);
+          expect(getResp.status()).toBe(200);
+          const appInfo = await getResp.json();
+          expect(appInfo.name).toBe(appName);
+        } finally {
+          await adminClient.delete(
+            `/api/v1/organization/${org.name}/applications/${clientId}`,
+          );
+        }
+      },
+    );
   },
 );
 

@@ -27,6 +27,7 @@ import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayState} from 'src/hooks/UseQuayState';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
@@ -68,12 +69,33 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const location = useLocation();
 
   const quayConfig = useQuayConfig();
+  const {inReadOnlyMode} = useQuayState();
   const {user} = useCurrentUser();
   const {isReadOnlySuperUser} = useSuperuserPermissions();
+  const namespaceName = currentOrg || user?.username;
+  const canCreateInNamespace =
+    namespaceName === user?.username
+      ? user?.can_create_repo === true
+      : user?.organizations?.some(
+          (organization) =>
+            organization.name === namespaceName &&
+            organization.can_create_repo === true,
+        ) === true;
+  const canCreateRepository =
+    Boolean(user?.username) &&
+    !inReadOnlyMode &&
+    (!isReadOnlySuperUser || canCreateInNamespace);
+  const isQuotaManagementEnabled =
+    quayConfig?.features?.QUOTA_MANAGEMENT === true &&
+    quayConfig?.features?.EDIT_QUOTA === true;
 
   // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
   const viewMode = props.isUserOrganization ? 'self' : 'organization';
-  const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
+  const {organizationQuota} = useFetchOrganizationQuota(
+    currentOrg,
+    viewMode,
+    isQuotaManagementEnabled,
+  );
   const {repos, loading, error, search, setSearch, searchFilter, truncated} =
     useRepositories(currentOrg);
 
@@ -294,6 +316,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state - only if there are truly no repositories
   // If filtered results are empty but repos exist, show the table with toolbar
   if (!loading && !repos?.length) {
@@ -301,9 +325,13 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       <Empty
         icon={CubesIcon}
         title="There are no viewable repositories"
-        body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
+        body={
+          isAuthenticated
+            ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
+            : 'No public repositories found. Sign in to view your private repositories.'
+        }
         button={
-          !isReadOnlySuperUser ? (
+          canCreateRepository ? (
             <ToolbarButton
               id=""
               buttonValue="Create Repository"
@@ -311,7 +339,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
               isModalOpen={isCreateRepoModalOpen}
               setModalOpen={setCreateRepoModalOpen}
             />
-          ) : undefined
+          ) : null
         }
       />
     );
@@ -334,29 +362,30 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             style={{marginBottom: '1em'}}
           />
         )}
-        {quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA &&
-          currentOrg && (
-            <div style={{marginBottom: '1em'}}>
-              <Title headingLevel="h4" size="md">
-                Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
-              </Title>
-            </div>
-          )}
+        {isQuotaManagementEnabled && currentOrg && (
+          <div style={{marginBottom: '1em'}}>
+            <Title headingLevel="h4" size="md">
+              Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
+            </Title>
+          </div>
+        )}
         <RepositoryToolBar
           search={search}
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={createRepoModal}
-          showPageButton={!isReadOnlySuperUser}
+          pageModal={canCreateRepository ? createRepoModal : null}
+          showPageButton={isAuthenticated && !isReadOnlySuperUser}
+          showCreateButton={canCreateRepository}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={!isReadOnlySuperUser ? kebabItems : []}
-          selectedRepoNames={!isReadOnlySuperUser ? selectedRepoNames : []}
+          kebabItems={isAuthenticated && !isReadOnlySuperUser ? kebabItems : []}
+          selectedRepoNames={
+            isAuthenticated && !isReadOnlySuperUser ? selectedRepoNames : []
+          }
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -376,15 +405,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              {!isReadOnlySuperUser && <Th />}
+              {isAuthenticated && !isReadOnlySuperUser && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
               <Th modifier="wrap" sort={getSortableSort(1)}>
                 {RepositoryListColumnNames.visibility}
               </Th>
-              {quayConfig?.features.QUOTA_MANAGEMENT &&
-              quayConfig?.features.EDIT_QUOTA ? (
+              {isQuotaManagementEnabled ? (
                 <Th modifier="wrap" sort={getSortableSort(2)}>
                   {RepositoryListColumnNames.size}
                 </Th>
@@ -412,7 +440,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  {!isReadOnlySuperUser && (
+                  {isAuthenticated && !isReadOnlySuperUser && (
                     <Td
                       select={{
                         rowIndex,
@@ -461,8 +489,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
                   </Td>
-                  {quayConfig?.features.QUOTA_MANAGEMENT &&
-                  quayConfig?.features.EDIT_QUOTA ? (
+                  {isQuotaManagementEnabled ? (
                     <Td dataLabel={RepositoryListColumnNames.size}>
                       {(() => {
                         const sizeDisplay =

@@ -55,10 +55,10 @@ def redis_cache_from_config(cache_config):
         redis_config:
           primary:
             host: localhost
-            pass: password
+            password: password
           replica:
             host: localhost
-            pass: password
+            password: password
 
     rediscluster:
 

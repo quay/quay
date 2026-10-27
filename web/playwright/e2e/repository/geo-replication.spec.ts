@@ -1,6 +1,6 @@
-import {expect, test} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {expect, getTestUsers, test} from '../../fixtures';
 import {
+  isCraneAvailable,
   pushUniqueImage,
   pushMultiArchImage,
   pullImage,
@@ -90,8 +90,11 @@ test.describe(
     test('pushed image blobs replicate to all storage regions', async ({
       api,
       authenticatedRequest,
+      quayConfig,
     }) => {
       test.setTimeout(120_000);
+      const users = getTestUsers(quayConfig);
+      test.skip(!(await isCraneAvailable()), 'crane CLI required');
 
       const org = await api.organization();
       const repo = await api.repository(org.name);
@@ -100,15 +103,15 @@ test.describe(
         org.name,
         repo.name,
         'v1.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       const token = await getV2Token(
         authenticatedRequest,
         API_URL,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
         `repository:${org.name}/${repo.name}:pull`,
       );
 
@@ -124,16 +127,18 @@ test.describe(
         org.name,
         repo.name,
         'v1.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
     });
 
     test('multi-arch manifest list blobs replicate to all storage regions', async ({
       api,
       authenticatedRequest,
+      quayConfig,
     }) => {
       test.setTimeout(120_000);
+      const users = getTestUsers(quayConfig);
 
       const org = await api.organization();
       const repo = await api.repository(org.name);
@@ -142,15 +147,15 @@ test.describe(
         org.name,
         repo.name,
         'multiarch',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       const token = await getV2Token(
         authenticatedRequest,
         API_URL,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
         `repository:${org.name}/${repo.name}:pull`,
       );
 

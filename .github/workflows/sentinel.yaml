@@ -23,113 +23,88 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.filter.outputs.go }}
+      config-tool: ${{ steps.filter.outputs.config-tool }}
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
-      oci: ${{ steps.filter.outputs.oci }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Detect changed paths
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
         with:
+          predicate-quantifier: every
           filters: |
             go:
-              - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
-              - '.golangci.yml'
-              - '.github/workflows/ci-go.yaml'
-              - 'internal/dal/**'
-              - 'sqlc.yaml'
-              - 'tools/schema_fingerprint.py'
-              - 'data/database.py'
-              - 'data/fields.py'
-              - 'data/migrations/versions/**'
-              - 'Makefile'
-              - 'requirements.txt'
+              - '{**/*.go,go.mod,go.sum,.golangci.yml,.github/workflows/ci-go.yaml,internal/dal/**,sqlc.yaml,tools/schema_fingerprint.py,data/database.py,data/fields.py,data/migrations/versions/**,Makefile,requirements.txt}'
               - '!config-tool/**'
+            config-tool:
+              - '{config-tool/**,.github/workflows/ci-config-tool.yaml}'
             python:
-              - '**/*.py'
-              - 'requirements*.txt'
-              - 'constraints.txt'
-              - 'tox.ini'
-              - 'setup.py'
-              - 'setup.cfg'
-              - 'pyproject.toml'
-              - '.flake8'
-              - '.pre-commit-config.yaml'
-              - 'mypy.ini'
-              - 'mypy_stubs/**'
-              - 'alembic.ini'
-              - 'Makefile'
-              - 'data/migrations/versions/**'
-              - '.github/workflows/ci-python.yaml'
-              - 'local-dev/**'
-              - 'docker-compose.yaml'
-              - 'docker-compose.static'
-              - '.github/actions/**'
-              - '.github/scripts/**'
-              - '.github/workflows/sentinel.yaml'
+              - '{**/*.py,requirements*.txt,constraints.txt,tox.ini,setup.py,setup.cfg,pyproject.toml,.flake8,.pre-commit-config.yaml,mypy.ini,mypy_stubs/**,alembic.ini,Makefile,data/migrations/versions/**,.github/workflows/ci-python.yaml,local-dev/**,docker-compose.yaml,docker-compose.static,.github/actions/**,.github/scripts/**}'
               - '!config-tool/**'
               - '!web/**'
+              - '!internal/**'
+              - '!cmd/**'
             web:
               - '**'
               - '!**/*.md'
               - '!docs/**'
+              - '!web/Containerfile.playwright'
+              - '!.agents/**'
+              - '!.claude/**'
               - '!agent_docs/**'
+              - '!.tekton/**'
+              - '!scripts/**'
               - '!deploy/**'
               - '!.chglog/**'
               - '!LICENSE'
               - '!OWNERS'
-            oci:
-              - '**/*.py'
-              - '**/*.go'
-              - 'Dockerfile'
-              - 'go.mod'
-              - 'go.sum'
-              - 'requirements*.txt'
-              - 'Makefile'
-              - '.github/workflows/ci-oci-spec.yaml'
-              - 'local-dev/**'
-              - 'docker-compose.yaml'
-              - 'docker-compose.static'
-              - '.github/actions/**'
-              - '.github/scripts/**'
-              - '.github/workflows/sentinel.yaml'
+              - '!.github/CODEOWNERS'
+              - '!.github/dependabot.yml'
+              - '!.github/labeler.yml'
+              - '!internal/**'
+              - '!cmd/**'
               - '!config-tool/**'
-              - '!web/**'
-              - '!docs/**'
-              - '!agent_docs/**'
-              - '!deploy/**'
-              - '!.chglog/**'
+              - '!.github/workflows/ci-config-tool.yaml'
+              - '!.github/workflows/ci-go.yaml'
+              - '!.github/workflows/ci-python.yaml'
+              - '!.github/workflows/ci-lint.yaml'
+              - '!.github/workflows/sentinel.yaml'
+              - '!.github/workflows/build-and-publish.yaml'
+              - '!.github/workflows/zizmor.yaml'
+              - '!.github/workflows/codeql.yml'
+              - '!.github/workflows/label-backported-pr.yml'
+              - '!.github/workflows/agent-pr-metrics.yaml'
+              - '!.github/workflows/aws-ip-json.yaml'
+              - '!.github/workflows/branch-sync.yaml'
+              - '!.github/workflows/CI-nightly.yaml'
+              - '!.github/workflows/cut-release.yml'
+              - '!.github/workflows/frozen-branch-check.yaml'
+              - '!.github/workflows/fullsend.yaml'
+              - '!.github/workflows/playwright-report-cleanup.yaml'
+              - '!.github/workflows/playwright-report-deploy.yaml'
+              - '!.github/workflows/pr-labeler.yaml'
+              - '!.github/workflows/pr-status-labeler.yaml'
+              - '!.github/workflows/prepare-release.yml'
+              - '!.github/workflows/renovate-pybuild-deps.yaml'
+              - '!.github/workflows/retest.yaml'
+              - '!.github/workflows/surge-preview-cleanup.yaml'
 
-  pr-lint:
-    name: conventional commit check
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - name: check conventional commit
-        uses: agenthunt/conventional-commit-checker-action@9e552d650d0e205553ec7792d447929fc78e012b # v2.0.0
-        with:
-          pr-title-regex: '^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
-          pr-body-regex: '(.*)?'
+  lint-ci:
+    name: Lint
+    uses: ./.github/workflows/ci-lint.yaml
+    with:
+      is-pr: ${{ github.event_name == 'pull_request' }}
 
   python-ci:
     name: Python
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.python == 'true' }}
     uses: ./.github/workflows/ci-python.yaml
-    with:
-      is-pr: ${{ github.event_name == 'pull_request' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -138,6 +113,12 @@ jobs:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.go == 'true' }}
     uses: ./.github/workflows/ci-go.yaml
+
+  config-tool-ci:
+    name: Config Tool
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.config-tool == 'true' }}
+    uses: ./.github/workflows/ci-config-tool.yaml
 
   web-ci:
     name: Web
@@ -149,31 +130,25 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  oci-spec:
-    name: OCI
-    needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.oci == 'true' }}
-    uses: ./.github/workflows/ci-oci-spec.yaml
-
   all-green:
     name: all-green
-    needs: [detect-changes, pr-lint, python-ci, go-ci, web-ci, oci-spec]
+    needs: [detect-changes, lint-ci, python-ci, go-ci, config-tool-ci, web-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
-        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # release/v1
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # release/v1
         with:
           allowed-skips: >-
             ${{
-              github.event_name != 'pull_request' && 'pr-lint,' || ''
+              needs.lint-ci.result == 'skipped' && 'lint-ci,' || ''
             }}${{
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
+            }}${{
+              needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''
             }}${{
               needs.python-ci.result == 'skipped' && 'python-ci,' || ''
             }}${{
               needs.web-ci.result == 'skipped' && 'web-ci,' || ''
-            }}${{
-              needs.oci-spec.result == 'skipped' && 'oci-spec,' || ''
             }}
           jobs: ${{ toJSON(needs) }}

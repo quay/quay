@@ -63,6 +63,7 @@ SECURITY_SCANNER_V4_NAMESPACE_WHITELIST:
 SECURITY_SCANNER_ISSUER_NAME: security_scanner
 SERVER_HOSTNAME: localhost:8080
 SETUP_COMPLETE: true
+SESSION_TIMEOUT: 2h
 SIGNING_ENGINE: gpg2
 TAG_EXPIRATION_OPTIONS:
 - 0s
@@ -103,7 +104,7 @@ FEATURE_USER_METADATA: True
 #  SERVICE_NAME: "Keycloak"
 #  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
 #  CLIENT_ID: "quay-ui"
-#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
+#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h" # gitleaks:allow: local Keycloak example client secret
 #  LOGIN_SCOPES: ["openid", "profile", "email"]
 #  DEBUGGING: true
 #  USE_PKCE: true
@@ -126,3 +127,10 @@ DEFAULT_UI: "angular"
 # - Quay and Pyroscope on same Docker network: http://pyroscope:4040
 # PROFILING_TYPE: Pyroscope
 # PYROSCOPE_SERVER_ADDRESS: http://localhost:4040
+
+FEATURE_SPAM_DETECTION: true
+SPAM_DETECTION_DRY_RUN: false
+SPAM_DETECTION_FAIL_OPEN: false
+SPAM_DETECTION_CLASSIFIER_PATH: /quay-registry/conf/stack/spam-classifier-e2e-v1.json
+SPAM_DETECTION_CLASSIFIER_VERSION: e2e-v1
+SPAM_DETECTION_CLASSIFIER_SHA256: 0861a11b624e0ed790530c8821930254a98f10cdc5c320d12e08a636a4fbc118

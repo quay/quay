@@ -16,8 +16,12 @@ http {
 
     resolver 127.0.0.1:8053 valid=10s;
 
-    ssl_ciphers '{{ ssl_ciphers }}';
+    {% if ssl_ciphers %}ssl_ciphers '{{ ssl_ciphers }}';{% endif %}
+    {% if ssl_ciphersuites %}ssl_conf_command Ciphersuites {{ ssl_ciphersuites }};{% endif %}
     ssl_protocols {% for ssl_protocol in ssl_protocols %}{{ ssl_protocol }} {% endfor %};
+{% if ssl_ecdh_curves %}
+    ssl_ecdh_curve {{ ssl_ecdh_curves }};
+{% endif %}
     ssl_session_cache shared:SSL:60m;
     ssl_session_timeout 2h;
     ssl_session_tickets on;
@@ -51,8 +55,6 @@ http {
         listen [::]:8443 ssl http2 default;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -80,8 +82,6 @@ http {
         listen [::]:7443 ssl http2 default proxy_protocol;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -106,7 +106,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:55443 ssl http2 default;
         {% endif %}
-        ssl on;
 
         # Required for gRPC streaming of long running builds
         client_header_timeout 2h;
@@ -145,8 +144,6 @@ http {
         listen [::]:8443 ssl;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -167,8 +164,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:7443 ssl proxy_protocol;
         {% endif %}
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 

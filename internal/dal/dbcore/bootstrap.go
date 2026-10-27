@@ -34,7 +34,7 @@ func ensureSchema(ctx context.Context, db *sql.DB, dbPath string) error {
 	}
 
 	if tableCount == 0 {
-		slog.Info("initializing database")
+		slog.Info("initializing database", "path", dbPath)
 		if err := InitDatabase(ctx, db, io.Discard); err != nil {
 			return fmt.Errorf("init database: %w", err)
 		}
@@ -58,7 +58,7 @@ func ensureSchema(ctx context.Context, db *sql.DB, dbPath string) error {
 	}
 	slog.Info("database backup created", "path", backupPath)
 
-	if err := ApplyMigrations(ctx, db, ver, TargetVersion, io.Discard); err != nil {
+	if err := RunBridge(ctx, db); err != nil {
 		return fmt.Errorf("migrate (restore from %s): %w", backupPath, err)
 	}
 

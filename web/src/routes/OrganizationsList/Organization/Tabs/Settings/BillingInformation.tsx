@@ -125,7 +125,9 @@ export const BillingInformation = (props: BillingInformationProps) => {
     setTouched(false);
   };
 
-  const {totalResults} = useRepositories(organizationName);
+  // don't read quota information for now when fetching repos, since the only thing we care
+  // about is the number of private/public repos
+  const {totalResults} = useRepositories(organizationName, false);
 
   return (
     <Form id="form-form" width="70%">

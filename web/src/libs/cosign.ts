@@ -60,13 +60,31 @@ export function isCosignSignatureTag(tagName: string): boolean {
 }
 
 /**
+ * True when the tag is signed via cosign (v2 .sig tag and/or v3 referrer).
+ * API enrichment may set only cosign_signature_manifest_digest for v3.
+ */
+export function isCosignSigned(tag: Tag): boolean {
+  return Boolean(
+    tag.cosign_signature_manifest_digest || tag.cosign_signature_tag,
+  );
+}
+
+/**
  * Enriches tags with Cosign signature information by adding
- * cosign_signature_tag and cosign_signature_manifest_digest fields
+ * cosign_signature_tag and cosign_signature_manifest_digest fields.
+ *
+ * Prefers fields already set by the tags API (v3 referrers / v2 server-side
+ * lookup). Falls back to client-side scanning for classic `.sig` sibling tags.
  */
 export function enrichTagsWithCosignData(tags: Tag[]): Tag[] {
   const cosignedManifests = getCosignSignatures(tags);
 
   return tags.map((tag) => {
+    // Preserve API-provided cosign fields (e.g. v3 referrers with no .sig tag).
+    if (isCosignSigned(tag)) {
+      return tag;
+    }
+
     if (cosignedManifests[tag.manifest_digest]) {
       return {
         ...tag,

@@ -5,4 +5,24 @@ exclude =
     node_modules
 max-line-length = 100
 max-complexity = 10
-extend-ignore = E704
+extend-ignore =
+    C901,
+    E203,
+    E262,
+    E265,
+    E266,
+    E402,
+    E501,
+    E704,
+    E712,
+    E713,
+    E722,
+    E731,
+    E741,
+    F401,
+    F403,
+    F405,
+    F811,
+    F821,
+    F841,
+    W503

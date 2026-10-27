@@ -88,8 +88,14 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 		port := fmt.Sprintf("%d", fg.LogsModelConfig.ElasticsearchConfig.Port)
 		//indexPrefix := fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix
 
+		// Determine protocol based on use_ssl setting
+		protocol := "https"
+		if !fg.LogsModelConfig.ElasticsearchConfig.UseSsl {
+			protocol = "http"
+		}
+
 		// Build url
-		url := "https://" + host + ":" + port + "/" + fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix + "*"
+		url := protocol + "://" + host + ":" + port + "/" + fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix + "*"
 		success = shared.ValidateElasticSearchCredentials(url, fg.LogsModelConfig.ElasticsearchConfig.AccessKey, fg.LogsModelConfig.ElasticsearchConfig.SecretKey)
 
 	} else {

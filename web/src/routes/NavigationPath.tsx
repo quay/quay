@@ -42,6 +42,7 @@ export enum NavigationPath {
   overviewList = '/overview',
   organizationsList = '/organization',
   repositoriesList = '/repository',
+  search = '/search',
 
   // Static pages
   about = '/about',
@@ -153,7 +154,7 @@ function domainRoute(currentRoute, definedRoute) {
    ***/
   return (
     currentRoute.replace(
-      /\/(overview|organization|repository|signin)(?!.*\1).*/,
+      /\/(overview|organization|repository|signin)(?=\/|$).*/,
       '',
     ) + definedRoute
   );

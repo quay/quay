@@ -94,6 +94,13 @@ def _authfile(entries: list) -> Iterator[str]:
         yield tmp.name
 
 
+@contextmanager
+def _src_dest_authfiles(src_entries: list, dest_entries: list) -> Iterator[tuple[str, str]]:
+    """Create separate source and destination authfiles, yielding both paths."""
+    with _authfile(src_entries) as src_path, _authfile(dest_entries) as dest_path:
+        yield src_path, dest_path
+
+
 class SkopeoMirror(object):
 
     # No DB calls here: This will be called from a separate worker that has no connection except
@@ -130,13 +137,13 @@ class SkopeoMirror(object):
         logger.debug(
             "Creating mirroring job: upstream image %s, local repository %s", src_image, dest_image
         )
-        with _authfile(
-            [
-                AuthContent(_registry_netloc(src_image), src_username, src_password),
-                AuthContent(_registry_netloc(dest_image), dest_username, dest_password),
-            ]
-        ) as authfile_path:
-            args.extend(["--authfile", authfile_path])
+        with _src_dest_authfiles(
+            [AuthContent(_registry_netloc(src_image), src_username, src_password)],
+            [AuthContent(_registry_netloc(dest_image), dest_username, dest_password)],
+        ) as (src_authfile_path, dest_authfile_path):
+            args.extend(
+                ["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path]
+            )
             args = args + [quote(src_image), quote(dest_image)]
             return self.run_skopeo(args, proxy, timeout)
 
@@ -250,33 +257,61 @@ class SkopeoMirror(object):
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
-        with _authfile(
-            [
-                AuthContent(
-                    _registry_netloc(src_image_with_digest),
-                    src_username,
-                    src_password,
-                ),
-                AuthContent(
-                    _registry_netloc(dest_image_with_digest),
-                    dest_username,
-                    dest_password,
-                ),
-            ]
-        ) as authfile_path:
-            args.extend(["--authfile", authfile_path])
+        with _src_dest_authfiles(
+            [AuthContent(_registry_netloc(src_image_with_digest), src_username, src_password)],
+            [AuthContent(_registry_netloc(dest_image_with_digest), dest_username, dest_password)],
+        ) as (src_authfile_path, dest_authfile_path):
+            args.extend(
+                ["--src-authfile", src_authfile_path, "--dest-authfile", dest_authfile_path]
+            )
             args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
             return self.run_skopeo(args, proxy or {}, timeout)
 
     def setup_env(self, proxy):
         env = os.environ.copy()
+        proxy = proxy or {}
 
-        if proxy.get("http_proxy"):
-            env["HTTP_PROXY"] = proxy.get("http_proxy")
-        if proxy.get("https_proxy"):
-            env["HTTPS_PROXY"] = proxy.get("https_proxy")
-        if proxy.get("no_proxy"):
+        # Treat all_proxy as an explicit proxy URL so SSRF PROXY routing (which
+        # honours all_proxy) matches the Skopeo child process environment.
+        has_explicit_proxy = bool(
+            proxy.get("http_proxy") or proxy.get("https_proxy") or proxy.get("all_proxy")
+        )
+        if has_explicit_proxy:
+            # Scheme-specific wins; otherwise materialize all_proxy into the
+            # scheme vars so ambient HTTP(S)_PROXY cannot override it.
+            if proxy.get("http_proxy"):
+                env["HTTP_PROXY"] = proxy.get("http_proxy")
+            elif proxy.get("all_proxy"):
+                env["HTTP_PROXY"] = proxy.get("all_proxy")
+            if proxy.get("https_proxy"):
+                env["HTTPS_PROXY"] = proxy.get("https_proxy")
+            elif proxy.get("all_proxy"):
+                env["HTTPS_PROXY"] = proxy.get("all_proxy")
+            if proxy.get("all_proxy"):
+                env["ALL_PROXY"] = proxy.get("all_proxy")
+            # Explicit proxies without no_proxy must not inherit ambient NO_PROXY,
+            # or Skopeo can route DIRECT while SSRF classified the request as PROXY.
+            if "no_proxy" in proxy:
+                if proxy.get("no_proxy"):
+                    env["NO_PROXY"] = proxy.get("no_proxy")
+                else:
+                    env.pop("NO_PROXY", None)
+                    env.pop("no_proxy", None)
+            else:
+                env.pop("NO_PROXY", None)
+                env.pop("no_proxy", None)
+        elif proxy.get("no_proxy"):
             env["NO_PROXY"] = proxy.get("no_proxy")
+
+        # Go's http.ProxyFromEnvironment ignores ALL_PROXY. When the child would
+        # otherwise inherit ambient ALL_PROXY without HTTP(S)_PROXY, materialize
+        # it so sync routing matches SSRF validation (which honours all_proxy).
+        all_proxy = env.get("ALL_PROXY") or env.get("all_proxy")
+        if all_proxy:
+            if not (env.get("HTTP_PROXY") or env.get("http_proxy")):
+                env["HTTP_PROXY"] = all_proxy
+            if not (env.get("HTTPS_PROXY") or env.get("https_proxy")):
+                env["HTTPS_PROXY"] = all_proxy
 
         return env
 

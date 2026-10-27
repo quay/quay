@@ -24,6 +24,13 @@ class PreOCIModel(KeyServerDataInterface):
         except data.model.ServiceKeyDoesNotExist:
             raise ServiceKeyDoesNotExist()
 
+    def get_service_key_for_status(self, kid, service):
+        try:
+            key = data.model.service_keys.get_service_key_for_status(kid, service)
+            return _db_key_to_servicekey(key)
+        except data.model.ServiceKeyDoesNotExist:
+            raise ServiceKeyDoesNotExist()
+
     def create_service_key(
         self, name, kid, service, jwk, metadata, expiration_date, rotation_duration=None
     ):

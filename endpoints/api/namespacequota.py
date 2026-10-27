@@ -6,7 +6,7 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import OrganizationMemberPermission
+from auth.permissions import OrganizationMemberPermission, SuperUserPermission
 from data import model
 from data.model import config
 from endpoints.api import (
@@ -270,6 +270,10 @@ class OrganizationQuota(ApiResource):
                         .format("{value:.1f} {unit}"),
                     },
                 )
+                model.namespacequota.maybe_trigger_retroactive_notifications_for_quota(
+                    orgname,
+                    quota,
+                )
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
@@ -347,7 +351,10 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
-        if not allow_if_superuser_with_full_access():
+        # Quota policy management is a core superuser operation. Unlike quota
+        # size writes through the tenant route, it intentionally does not
+        # require FEATURE_SUPERUSERS_FULL_ACCESS.
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -383,6 +390,12 @@ class OrganizationQuotaLimitList(ApiResource):
                     "type": quota_type,
                     "threshold_percent": quota_limit_threshold,
                 },
+            )
+            model.namespacequota.maybe_trigger_retroactive_notification(
+                orgname,
+                quota,
+                quota_limit_threshold,
+                quota_type,
             )
             return "Created", 201
         except model.DataModelException as ex:
@@ -431,7 +444,7 @@ class OrganizationQuotaLimit(ApiResource):
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -453,21 +466,30 @@ class OrganizationQuotaLimit(ApiResource):
             model.namespacequota.update_namespace_quota_limit_threshold(quota_limit, new_threshold)
 
         # Build metadata with current values after updates
+        current_type = quota_limit_data.get("type", previous_type)
+        current_threshold = quota_limit_data.get("threshold_percent", previous_threshold)
         metadata = {
             "namespace": orgname,
-            "type": quota_limit_data.get("type", previous_type),
-            "threshold_percent": quota_limit_data.get("threshold_percent", previous_threshold),
+            "type": current_type,
+            "threshold_percent": current_threshold,
             "previous_type": previous_type,
             "previous_threshold_percent": previous_threshold,
         }
         log_action("org_change_quota_limit", orgname, metadata)
+
+        model.namespacequota.maybe_trigger_retroactive_notification(
+            orgname,
+            quota,
+            current_threshold,
+            current_type,
+        )
 
         return quota_view(quota)
 
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)

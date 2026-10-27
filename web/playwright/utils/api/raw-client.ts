@@ -13,6 +13,17 @@ import {APIRequestContext, APIResponse} from '@playwright/test';
 
 import {requestCsrfToken} from './csrf';
 
+/** Error thrown by RawApiClient methods that carries the HTTP status. */
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
 export class RawApiClient {
   private request: APIRequestContext;
   private baseUrl: string;
@@ -49,8 +60,9 @@ export class RawApiClient {
     });
     if (!response.ok()) {
       const body = await response.text();
-      throw new Error(
+      throw new ApiRequestError(
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
+        response.status(),
       );
     }
     // Invalidate cached token — the new session has a different CSRF token

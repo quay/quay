@@ -25,6 +25,7 @@ type Config struct {
 	Hostname        string
 	PreferredScheme string
 	CertDir         string
+	SSLProtocols    []string
 }
 
 // Server wraps an *http.Server with registry-specific lifecycle.
@@ -64,7 +65,7 @@ func New(ctx context.Context, handler http.Handler, cfg *Config, opts ...Option)
 	s := &Server{srv: srv}
 
 	if cfg.PreferredScheme == schemeHTTPS {
-		certPath, keyPath, err := ensureTLS(cfg.Hostname, cfg.CertDir, srv)
+		certPath, keyPath, err := ensureTLS(cfg.Hostname, cfg.CertDir, cfg.SSLProtocols, srv)
 		if err != nil {
 			return nil, err
 		}

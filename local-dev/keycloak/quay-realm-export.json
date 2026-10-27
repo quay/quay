@@ -12,6 +12,16 @@
   "verifyEmail": false,
   "loginTheme": "keycloak",
   "accessTokenLifespan": 300,
+  "groups": [
+    {
+      "name": "quay-superusers",
+      "path": "/quay-superusers"
+    },
+    {
+      "name": "quay-readonly",
+      "path": "/quay-readonly"
+    }
+  ],
   "clients": [
     {
       "clientId": "quay-ui",
@@ -41,6 +51,18 @@
             "id.token.claim": "false",
             "access.token.claim": "true",
             "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "group-membership",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
           }
         }
       ]
@@ -134,6 +156,22 @@
       "email": "readonly_oidc@example.com",
       "firstName": "Readonly",
       "lastName": "OIDC",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sync_oidc",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "sync_oidc@example.com",
+      "firstName": "Sync",
+      "lastName": "OIDC",
+      "groups": ["/quay-superusers", "/quay-readonly"],
       "credentials": [
         {
           "type": "password",

@@ -154,10 +154,13 @@ class LayerTooLarge(V2RegistryException):
 
             up_str = bitmath.Byte(uploaded).best_prefix().format("{value:.2f} {unit}")
             max_str = bitmath.Byte(max_allowed).best_prefix().format("{value:.2f} {unit}")
+
             message = "Uploaded blob of %s is larger than %s allowed by this registry" % (
                 up_str,
                 max_str,
             )
+
+        super(LayerTooLarge, self).__init__("BLOB_TOO_LARGE", message, detail, 400)
 
 
 class QuotaExceeded(V2RegistryException):
@@ -222,3 +225,9 @@ class PushesDisabled(V2RegistryException):
             + " the administrator for more information."
         )
         super(PushesDisabled, self).__init__("METHOD NOT ALLOWED", message, {}, 405)
+
+
+class TemporarilyUnavailable(V2RegistryException):
+    def __init__(self, detail=None):
+        message = "The blob is temporarily locked by another operation. Please retry the request."
+        super(TemporarilyUnavailable, self).__init__("UNAVAILABLE", message, detail, 503)

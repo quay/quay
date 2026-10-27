@@ -4,6 +4,7 @@ import {
   mailpit,
   uniqueName,
   WebhookReceiver,
+  getTestUsers,
 } from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
@@ -345,7 +346,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates email notification with authorization flow',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@PROJQUAY-7098']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
@@ -396,6 +397,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
 
       // Click Send Authorized Email
       await authenticatedPage.getByTestId('send-authorized-email-btn').click();
@@ -507,7 +511,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('recipient field: teams, users, and create team modal', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
+    const username = getTestUsers(quayConfig).user.username;
     // Create test organization with repository and team
     const org = await api.organization('recipnotif');
     const repo = await api.repository(org.name, 'reciprepo');
@@ -584,10 +590,10 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
     // Search for user
     await entitySearch.click();
-    await entitySearch.locator('input').fill('testuser');
+    await entitySearch.locator('input').fill(username);
 
     // Wait for search results and select user
-    await authenticatedPage.getByTestId('testuser').click();
+    await authenticatedPage.getByTestId(username).click();
 
     // Enter title
     await authenticatedPage
@@ -847,7 +853,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'build event notification delivered via webhook',
-    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626']},
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626', '@webhook']},
     async ({api}) => {
       // Build trigger + webhook wait (240s) + overhead; build may queue behind concurrent tests
       test.setTimeout(300_000);
@@ -883,6 +889,48 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
           240000,
         );
         expect(webhook, 'build_success webhook not received').not.toBeNull();
+        expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
+        expect(webhook!.body.build_id).toBe(build.buildId);
+      } finally {
+        await receiver.stop();
+      }
+    },
+  );
+
+  test(
+    'build_start notification delivered via webhook',
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-12196', '@webhook']},
+    async ({api}) => {
+      test.setTimeout(300_000);
+      const org = await api.organization('buildstartwh');
+      const repo = await api.repository(org.name, 'buildstartrepo');
+
+      const receiver = new WebhookReceiver();
+      await receiver.start();
+
+      try {
+        await api.notification(
+          org.name,
+          repo.name,
+          'build_start',
+          'webhook',
+          {url: receiver.getUrl()},
+          'Build Start Webhook',
+        );
+
+        const build = await api.build(
+          org.name,
+          repo.name,
+          'FROM scratch\nLABEL build="build-start-test"\n',
+        );
+
+        const webhook = await receiver.waitForWebhook(
+          (req) =>
+            req.body.build_id === build.buildId &&
+            req.body.repository === `${org.name}/${repo.name}`,
+          240000,
+        );
+        expect(webhook, 'build_start webhook not received').not.toBeNull();
         expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
         expect(webhook!.body.build_id).toBe(build.buildId);
       } finally {

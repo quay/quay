@@ -21,6 +21,8 @@ class OIDCUsers(FederatedUsers):
         login_scopes,
         preferred_group_claim_name,
         requires_email=True,
+        oidc_superuser_group=None,
+        oidc_global_readonly_superuser_group=None,
     ):
         super(OIDCUsers, self).__init__("oidc", requires_email)
         self._client_id = client_id
@@ -30,6 +32,8 @@ class OIDCUsers(FederatedUsers):
         self._login_scopes = login_scopes
         self._preferred_group_claim_name = preferred_group_claim_name
         self._requires_email = requires_email
+        self._oidc_superuser_group = oidc_superuser_group
+        self._oidc_global_readonly_superuser_group = oidc_global_readonly_superuser_group
 
     def service_metadata(self):
         for service in app.oauth_login.services:
@@ -125,40 +129,51 @@ class OIDCUsers(FederatedUsers):
         """
         Adds user to quay teams that have team sync enabled with an OIDC group
         """
-        if user_groups is None:
-            logger.debug(
-                f"External OIDC Group Sync: Found no oidc groups for user: {user_obj.username}"
-            )
+        if not user_groups:
+            if user_groups is None:
+                logger.debug(
+                    "External OIDC Group Sync: No group claim found for user: %s - check PREFERRED_GROUP_CLAIM_NAME",
+                    user_obj.username,
+                )
+            else:
+                logger.debug(
+                    "External OIDC Group Sync: Found no oidc groups for user: %s", user_obj.username
+                )
             return
 
-        for oidc_group in user_groups:
-            # fetch TeamSync row if exists, for the oidc_group synced with the login service
-            synced_teams = team.get_oidc_team_from_groupname(oidc_group, self._federated_service)
-            if len(synced_teams) == 0:
-                logger.debug(
-                    f"External OIDC Group Sync: OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {self._federated_service} service"
-                )
+        # fetch all TeamSync rows for the oidc_group synced with the login service
+        synced_teams = team.get_oidc_teams_from_groupname(user_groups, self._federated_service)
+        if len(synced_teams) == 0:
+            logger.debug("External OIDC Group Sync: No teams with OIDC syncing groups found")
+            return
+
+        logger.debug(
+            "External OIDC Group Sync: Syncing user %s with %s groups: %s",
+            user_obj.username,
+            len(synced_teams),
+            [t.team.name for t in synced_teams],
+        )
+
+        # fetch team name and organization name for the Teamsync row
+        for team_synced in synced_teams:
+            team_name = team_synced.team.name
+            org_name = team_synced.team.organization.username
+            if not team_name or not org_name:
                 continue
 
-            # fetch team name and organization name for the Teamsync row
-            for team_synced in synced_teams:
-                team_name = team_synced.team.name
-                org_name = team_synced.team.organization.username
-                if not team_name or not org_name:
-                    logger.debug(
-                        f"External OIDC Group Sync: Cannot retrieve quay team synced with the oidc group: {oidc_group}"
-                    )
-
-                # add user to team
-                try:
-                    team.add_user_to_team(user_obj, team_synced.team)
-                except InvalidTeamException as err:
-                    logger.exception(
-                        f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
-                    )
-                except UserAlreadyInTeam:
-                    # Ignore
-                    pass
+            # add user to team
+            try:
+                team.add_user_to_team(user_obj, team_synced.team)
+            except InvalidTeamException as err:
+                logger.exception(
+                    "External OIDC Group Sync: Exception occurred when adding user %s to quay team %s: %s",
+                    user_obj.username,
+                    team_synced.team,
+                    err,
+                )
+            except UserAlreadyInTeam:
+                # Ignore
+                pass
         return
 
     def ping(self):
@@ -196,6 +211,52 @@ class OIDCUsers(FederatedUsers):
                     f"External OIDC Group Sync: Exception occurred for user {user_obj.username} when removing membership from quay team: {user_team.name} as {err}"
                 )
         return
+
+    def sync_superuser_status(self, user_groups, user_obj):
+        """
+        Syncs superuser and global readonly superuser status based on OIDC group membership.
+        Registers or deregisters the user via the shared ConfigUserManager arrays.
+        """
+        if not user_obj or user_groups is None:
+            return
+
+        try:
+            if self._oidc_superuser_group:
+                if user_groups and self._oidc_superuser_group in user_groups:
+                    logger.debug(
+                        "OIDC superuser sync: granting superuser to %s (member of %s)",
+                        user_obj.username,
+                        self._oidc_superuser_group,
+                    )
+                    app.usermanager.register_superuser(user_obj.username)
+                else:
+                    logger.debug(
+                        "OIDC superuser sync: revoking superuser from %s (not member of %s)",
+                        user_obj.username,
+                        self._oidc_superuser_group,
+                    )
+                    app.usermanager.deregister_superuser(user_obj.username)
+
+            if self._oidc_global_readonly_superuser_group:
+                if user_groups and self._oidc_global_readonly_superuser_group in user_groups:
+                    logger.debug(
+                        "OIDC superuser sync: granting global readonly superuser to %s (member of %s)",
+                        user_obj.username,
+                        self._oidc_global_readonly_superuser_group,
+                    )
+                    app.usermanager.register_global_readonly_superuser(user_obj.username)
+                else:
+                    logger.debug(
+                        "OIDC superuser sync: revoking global readonly superuser from %s (not member of %s)",
+                        user_obj.username,
+                        self._oidc_global_readonly_superuser_group,
+                    )
+                    app.usermanager.deregister_global_readonly_superuser(user_obj.username)
+        except Exception:
+            logger.exception(
+                "OIDC superuser sync: failed to sync superuser status for %s",
+                user_obj.username,
+            )
 
     def sync_user_groups(self, user_groups, user_obj, login_service):
         if not user_obj:

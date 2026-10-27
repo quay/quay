@@ -20,7 +20,7 @@ TEST_DB_FILE = NamedTemporaryFile(delete=True)
 class TestConfig(DefaultConfig):
     TESTING = True
     SECRET_KEY = "superdupersecret!!!1"
-    DATABASE_SECRET_KEY = "anothercrazykey!"
+    DATABASE_SECRET_KEY = "QUAY_FIXTURE_ONLY-anothercrazykey!"
     BILLING_TYPE = "FakeStripe"
 
     TEST_DB_FILE = TEST_DB_FILE
@@ -47,6 +47,11 @@ class TestConfig(DefaultConfig):
 
     FEATURE_SUPER_USERS = True
     FEATURE_SUPERUSERS_FULL_ACCESS = True
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = True
+    FEATURE_ROBOT_API_TOKENS = True
+    FEATURE_ROBOT_API_TOKEN_EXCHANGE = True
+    BOOTSTRAP_TOKEN_OWNER = "devtable"
+    BOOTSTRAP_TOKEN_PATH = f"{TEST_DB_FILE.name}-bootstrap-token.json"
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
@@ -99,9 +104,6 @@ class TestConfig(DefaultConfig):
 
     DATA_MODEL_CACHE_CONFIG = {
         "engine": "inmemory",
-        # OCI Conformance tests don't expect results to be cached.
-        # If we implement cache invalidation, we can enable it back.
-        "active_repo_tags_cache_ttl": "0s",
     }
 
     FEATURE_REPO_MIRROR = True
@@ -116,6 +118,7 @@ class TestConfig(DefaultConfig):
     FEATURE_EDIT_QUOTA = True
     FEATURE_VERIFY_QUOTA = True
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
+    FEATURE_QUOTA_NOTIFICATIONS = True
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     FEATURE_PROXY_CACHE = True
     PERMANENTLY_DELETE_TAGS = True

@@ -119,7 +119,9 @@ def test_invalid_unicode(app):
 
 
 def test_invalid_unicode_2(app):
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode("utf-8")
+    token = "“QUAY_FIXTURE_ONLY-4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode(
+        "utf-8"
+    )
     header = "basic " + b64encode(b"devtable+somerobot:%s" % token).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(

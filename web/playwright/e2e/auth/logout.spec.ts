@@ -1,79 +1,44 @@
-import {test as base, expect, uniqueName, mailpit} from '../../fixtures';
+import {test as base, expect, type IsolatedUserSlot} from '../../fixtures';
+import type {BrowserContext, Page} from '@playwright/test';
 import {ApiClient} from '../../utils/api';
 
 /**
- * Logout tests use unique temporary users to avoid session invalidation conflicts.
+ * Logout tests use one isolated user per test to avoid session invalidation conflicts.
  *
  * Background: Quay's /api/v1/signout endpoint calls `invalidate_all_sessions(user)`
  * which invalidates ALL sessions for that user across all browser contexts.
  * This would cause parallel tests using the same user to fail.
- *
- * Solution: Create a unique user per test, use it, then delete it.
  */
 
 interface LogoutTestFixtures {
-  /** Fresh page with a unique temporary user - safe to logout */
-  logoutPage: import('@playwright/test').Page;
-  /** The unique username for cleanup reference */
-  logoutUsername: string;
+  /** Opens a page signed in as the slot's isolated user - safe to logout */
+  logoutUser: (
+    slot: IsolatedUserSlot,
+  ) => Promise<{page: Page; username: string}>;
 }
 
 const test = base.extend<LogoutTestFixtures>({
-  // eslint-disable-next-line no-empty-pattern
-  logoutUsername: async ({}, use) => {
-    // Generate unique username for this test
-    const username = uniqueName('logout');
-    await use(username);
-  },
+  logoutUser: async ({browser, isolatedUser}, use) => {
+    const contexts: BrowserContext[] = [];
 
-  logoutPage: async (
-    {browser, superuserRequest, logoutUsername, quayConfig},
-    use,
-  ) => {
-    const username = logoutUsername;
-    const password = 'testpassword123';
-    const email = `${username}@example.com`;
-    const mailingEnabled = quayConfig?.features?.MAILING === true;
+    await use(async (slot) => {
+      const {user} = await isolatedUser(slot);
+      const context = await browser.newContext();
+      contexts.push(context);
+      await new ApiClient(context.request).signIn(user.username, user.password);
+      return {page: await context.newPage(), username: user.username};
+    });
 
-    // Create temporary user using superuser API
-    const superApi = new ApiClient(superuserRequest);
-    await superApi.createUser(username, password, email);
-
-    // Create new context for this user
-    const context = await browser.newContext();
-
-    // Verify email if mailing is enabled
-    if (mailingEnabled) {
-      const confirmLink = await mailpit.waitForConfirmationLink(email);
-      if (confirmLink) {
-        const page = await context.newPage();
-        await page.goto(confirmLink);
-        await page.close();
-      }
-    }
-
-    // Login as the temporary user
-    const api = new ApiClient(context.request);
-    await api.signIn(username, password);
-
-    const page = await context.newPage();
-    await use(page);
-
-    // Cleanup
-    await page.close();
-    await context.close();
-
-    // Delete the temporary user
-    try {
-      await superApi.deleteUser(username);
-    } catch {
-      // User may already be deleted or cleanup failed - that's ok
+    for (const context of contexts) {
+      await context.close();
     }
   },
 });
 
 test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
-  test('logs out successfully', async ({logoutPage}) => {
+  test('logs out successfully', {tag: '@superuser'}, async ({logoutUser}) => {
+    const {page: logoutPage} = await logoutUser('logout-success');
+
     // Navigate to organization page (where a logged-in user would be)
     await logoutPage.goto('/organization');
     await expect(logoutPage).toHaveURL(/\/organization/);
@@ -91,69 +56,88 @@ test.describe('Logout functionality', {tag: ['@auth', '@critical']}, () => {
     await expect(logoutPage).toHaveURL(/\/signin/);
   });
 
-  test('redirects to signin even when logout API fails', async ({
-    logoutPage,
-  }) => {
-    // Mock API to return 500 error - this is an acceptable mock for error scenarios
-    await logoutPage.route('**/api/v1/signout', (route) =>
-      route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({message: 'Internal server error'}),
-      }),
-    );
+  test(
+    'redirects to signin even when logout API fails',
+    {tag: '@superuser'},
+    async ({logoutUser}) => {
+      const {page: logoutPage} = await logoutUser('logout-error');
 
-    // Navigate to organization page
-    await logoutPage.goto('/organization');
-    await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
+      // Mock API to return 500 error - this is an acceptable mock for error scenarios
+      await logoutPage.route('**/api/v1/signout', (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({message: 'Internal server error'}),
+        }),
+      );
 
-    // Click user menu
-    await logoutPage.getByTestId('user-menu-toggle').click();
+      // Navigate to organization page
+      await logoutPage.goto('/organization');
+      await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
 
-    // Click logout
-    await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
+      // Click user menu
+      await logoutPage.getByTestId('user-menu-toggle').click();
 
-    // Should STILL redirect to signin page despite API error
-    // The frontend handles this gracefully in a finally block
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Click logout
+      await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
 
-    // Should NOT show error modal
-    await expect(logoutPage.getByText('Unable to log out')).not.toBeVisible();
-  });
+      // Should STILL redirect to signin page despite API error
+      // The frontend handles this gracefully in a finally block
+      await expect(logoutPage).toHaveURL(/\/signin/);
 
-  test('clears session and prevents access to protected pages', async ({
-    logoutPage,
-    logoutUsername,
-  }) => {
-    // Navigate to organization page
-    await logoutPage.goto('/organization');
-    await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
+      // Should NOT show error modal
+      await expect(logoutPage.getByText('Unable to log out')).not.toBeVisible();
+    },
+  );
 
-    // Click user menu
-    await logoutPage.getByTestId('user-menu-toggle').click();
+  test(
+    'clears session and prevents access to protected pages',
+    {tag: '@superuser'},
+    async ({logoutUser, quayConfig}) => {
+      const {page: logoutPage, username: logoutUsername} =
+        await logoutUser('logout-access');
+      const anonymousAccessEnabled =
+        quayConfig?.features?.ANONYMOUS_ACCESS === true;
 
-    // Click logout
-    await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
+      // Navigate to organization page
+      await logoutPage.goto('/organization');
+      await expect(logoutPage.getByTestId('user-menu-toggle')).toBeVisible();
 
-    // Should be on signin page
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Click user menu
+      await logoutPage.getByTestId('user-menu-toggle').click();
 
-    // Verify login form is visible
-    await expect(
-      logoutPage.getByRole('textbox', {name: /username/i}),
-    ).toBeVisible();
+      // Click logout
+      await logoutPage.getByRole('menuitem', {name: 'Logout'}).click();
 
-    // Try to navigate to a protected page (use the temp user's namespace)
-    await logoutPage.goto(`/organization/${logoutUsername}`);
+      // Should be on signin page
+      await expect(logoutPage).toHaveURL(/\/signin/);
 
-    // Should redirect back to signin (not authenticated)
-    await expect(logoutPage).toHaveURL(/\/signin/);
+      // Verify login form is visible
+      await expect(
+        logoutPage.getByRole('textbox', {name: /username/i}),
+      ).toBeVisible();
 
-    // Verify still on login page
-    await expect(
-      logoutPage.getByRole('textbox', {name: /username/i}),
-    ).toBeVisible();
-  });
+      // Try to navigate to a page (use the temp user's namespace)
+      await logoutPage.goto(`/organization/${logoutUsername}`);
+
+      if (anonymousAccessEnabled) {
+        // When ANONYMOUS_ACCESS is enabled, anonymous users stay on the page
+        // and see a Sign In link instead of user menu
+        await expect(
+          logoutPage.getByTestId('user-menu-toggle'),
+        ).not.toBeVisible();
+        await expect(
+          logoutPage.getByRole('link', {name: /sign in/i}),
+        ).toBeVisible();
+      } else {
+        // When ANONYMOUS_ACCESS is disabled, should redirect to signin
+        await expect(logoutPage).toHaveURL(/\/signin/);
+        await expect(
+          logoutPage.getByRole('textbox', {name: /username/i}),
+        ).toBeVisible();
+      }
+    },
+  );
 
   test('logout menu item has danger styling', async ({authenticatedPage}) => {
     // This test doesn't perform logout, so it's safe to use the shared context

@@ -19,6 +19,10 @@ export default function Footer(props: FooterProps) {
           variant="primary"
           type="submit"
           onClick={goToNextStep}
+          isDisabled={
+            activeStep.name === 'Robot name and description' &&
+            !props.isDataValid()
+          }
         >
           Next
         </Button>

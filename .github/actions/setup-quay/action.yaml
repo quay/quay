@@ -161,6 +161,19 @@ runs:
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "Jaeger tracing configuration merged"
 
+    - name: Configure Mailpit email
+      if: inputs.with-mailpit == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        MAILPIT_CONFIG="local-dev/mailpit/mailpit-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${MAILPIT_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Mailpit email configuration merged"
+
     - name: Merge extra config file
       if: inputs.extra-config-file != ''
       shell: bash

@@ -110,6 +110,9 @@ class DistributedStorage(StoragePaths):
     get_checksum = _location_aware(BaseStorage.get_checksum)
     get_supports_resumable_downloads = _location_aware(BaseStorage.get_supports_resumable_downloads)
     clean_partial_uploads = _location_aware(BaseStorage.clean_partial_uploads, requires_write=True)
+    clean_orphaned_multipart_uploads = _location_aware(
+        BaseStorage.clean_orphaned_multipart_uploads, requires_write=True
+    )
 
     initiate_chunked_upload = _location_aware(
         BaseStorageV2.initiate_chunked_upload, requires_write=True

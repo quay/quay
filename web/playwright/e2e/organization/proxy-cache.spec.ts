@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {tryPushImage} from '../../utils/container';
 
 test.describe(
@@ -165,12 +164,72 @@ test.describe(
       ).toBeEnabled();
     });
 
+    test('proxy cache rejects private IP as upstream registry (PROJQUAY-11180)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxyssrf');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('10.0.0.1');
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('The provided registry URL is not allowed')
+          .first(),
+      ).toBeVisible();
+
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      await expect(
+        authenticatedPage.getByTestId('delete-proxy-cache-btn'),
+      ).toBeDisabled();
+    });
+
+    test('proxy cache rejects cloud metadata endpoint as upstream registry (PROJQUAY-11180)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxymeta');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('169.254.169.254');
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('The provided registry URL is not allowed')
+          .first(),
+      ).toBeVisible();
+
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      await expect(
+        authenticatedPage.getByTestId('delete-proxy-cache-btn'),
+      ).toBeDisabled();
+    });
+
     test('proxy cache tab not visible for user namespaces', async ({
       authenticatedPage,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       // Navigate to user settings (the authenticated test user is a user namespace, not org)
       await authenticatedPage.goto(
-        `/organization/${TEST_USERS.user.username}?tab=Settings`,
+        `/organization/${users.user.username}?tab=Settings`,
       );
 
       // Proxy Cache tab should not exist for user namespaces
@@ -182,7 +241,8 @@ test.describe(
     test(
       'push to proxy cache organization is blocked',
       {tag: ['@container', '@PROJQUAY-9516']},
-      async ({api}) => {
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
         // Create organization and configure as proxy cache
         const org = await api.organization('pushblock');
         await api.raw.createProxyCacheConfig(org.name, {
@@ -197,8 +257,8 @@ test.describe(
           org.name,
           'testpush',
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Push should fail
@@ -215,7 +275,8 @@ test.describe(
     test(
       'repository creation via push is blocked for proxy cache organizations',
       {tag: ['@container', '@PROJQUAY-9516']},
-      async ({api}) => {
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
         // Create organization and configure as proxy cache
         const org = await api.organization('repocreateblock');
         await api.raw.createProxyCacheConfig(org.name, {
@@ -227,8 +288,8 @@ test.describe(
           org.name,
           'newrepo',
           'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Push should fail - can't create repos in proxy cache orgs
@@ -238,5 +299,100 @@ test.describe(
         );
       },
     );
+  },
+);
+
+/**
+ * Air-gapped proxy-route acceptance (real Quay deployment with HTTP_PROXY and SSRF allowlist).
+ * Set PLAYWRIGHT_PROXY_SSRF_E2E=1 and PLAYWRIGHT_PROXY_CACHE_UPSTREAM to the allowlisted hostname.
+ */
+const proxySsrfE2E = process.env.PLAYWRIGHT_PROXY_SSRF_E2E === '1';
+
+test.describe(
+  'Proxy cache proxy-route SSRF deployment',
+  {tag: ['@organization', '@feature:PROXY_CACHE', '@PROJQUAY-12813']},
+  () => {
+    test.skip(
+      !proxySsrfE2E,
+      'requires proxy+allowlist Quay deployment (PLAYWRIGHT_PROXY_SSRF_E2E=1)',
+    );
+
+    test('allowlisted unresolved upstream saves proxy cache config', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const upstream = process.env.PLAYWRIGHT_PROXY_CACHE_UPSTREAM;
+      test.skip(!upstream, 'PLAYWRIGHT_PROXY_CACHE_UPSTREAM not set');
+
+      const org = await api.organization('proxycachessrf');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill(upstream);
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Successfully configured proxy cache')
+          .first(),
+      ).toBeVisible();
+
+      const proxyConfig = await api.raw.getProxyCacheConfig(org.name);
+      expect(proxyConfig?.upstream_registry).toBe(upstream);
+    });
+
+    test('non-allowlisted unresolved upstream is rejected', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const upstream =
+        process.env.PLAYWRIGHT_PROXY_CACHE_NON_ALLOWLISTED_UPSTREAM ??
+        'non-allowlisted-isolated.example.com';
+
+      const org = await api.organization('proxycachessrfneg');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill(upstream);
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage.getByText(/not allowed|failed/i).first(),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      const proxyConfig = await api.raw.getProxyCacheConfig(org.name);
+      expect(proxyConfig?.upstream_registry).toBeFalsy();
+    });
+
+    test('NO_PROXY upstream is rejected in DNS-isolated deployment', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const upstream = process.env.PLAYWRIGHT_PROXY_NO_PROXY_UPSTREAM;
+      test.skip(!upstream, 'PLAYWRIGHT_PROXY_NO_PROXY_UPSTREAM not set');
+
+      const org = await api.organization('proxycachenoproxy');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill(upstream);
+      await authenticatedPage.getByTestId('save-proxy-cache-btn').click();
+
+      await expect(
+        authenticatedPage.getByText(/not allowed|failed/i).first(),
+      ).toBeVisible();
+
+      const proxyConfig = await api.raw.getProxyCacheConfig(org.name);
+      expect(proxyConfig?.upstream_registry).toBeFalsy();
+    });
   },
 );

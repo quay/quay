@@ -1,0 +1,22 @@
+# Quay Jira-aware code harness.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/d5c4d0d2f2c23cf3aa89e4a5bd4e40c90f003196/harness/code.yaml#sha256=bd1d925cbfac3f95d785e3c7abe6edc9ac649818b921f85fa7168ef9b6b77583
+model: claude-sonnet-4-6
+
+trigger: >
+  event.entity.kind == "work_item"
+    && (
+      (event.transition.kind == "label_changed"
+        && event.transition.label.name == "ready-to-code"
+        && event.transition.label.action == "added")
+      ||
+      (event.transition.kind == "comment_added"
+        && has(event.transition.comment.command)
+        && event.transition.comment.command == "/fs-code")
+    )
+
+env:
+  runner:
+    CODE_ALLOWED_TARGET_BRANCHES: "master"
+
+allowed_remote_resources:
+  - https://raw.githubusercontent.com/fullsend-ai/agents/

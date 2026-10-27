@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage, pullImage} from '../../utils/container';
 
@@ -7,6 +6,308 @@ test.describe(
   'Robot Accounts',
   {tag: ['@organization', '@robot-accounts']},
   () => {
+    test(
+      'personal robot creates an API token',
+      {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, userClient}) => {
+        const robotShortname = uniqueName('api-token').replace(/-/g, '_');
+
+        try {
+          const createResponse = await userClient.put(
+            `/api/v1/user/robots/${robotShortname}`,
+            {description: 'Personal robot API token test'},
+          );
+          expect(createResponse.status()).toBe(201);
+          const robot = await createResponse.json();
+
+          await authenticatedPage.goto(
+            `/organization/${robot.name.split('+')[0]}?tab=Robotaccounts`,
+          );
+          await expect(
+            authenticatedPage.getByTestId('robot-accounts-table'),
+          ).toBeVisible();
+
+          await authenticatedPage.getByText(robot.name).click();
+          await authenticatedPage
+            .getByRole('tab', {name: 'API Tokens'})
+            .click();
+          await authenticatedPage
+            .getByRole('button', {name: 'Create API token'})
+            .click();
+          const createTokenModal = authenticatedPage.getByRole('dialog', {
+            name: 'Create robot API token',
+          });
+          await createTokenModal.getByLabel('Token name').fill('CI token');
+          await createTokenModal
+            .getByLabel('View all visible repositories')
+            .check();
+
+          const tokenResponse = authenticatedPage.waitForResponse(
+            (response) =>
+              response.request().method() === 'POST' &&
+              response
+                .url()
+                .includes(`/api/v1/user/robots/${robotShortname}/tokens`),
+          );
+          await authenticatedPage.getByRole('button', {name: 'Create'}).click();
+          expect((await tokenResponse).status()).toBe(200);
+          await expect(
+            authenticatedPage.getByText('Robot API token created'),
+          ).toBeVisible();
+          await authenticatedPage.getByRole('button', {name: 'Done'}).click();
+
+          const tokensTable = authenticatedPage.getByTestId(
+            'robot-api-tokens-table',
+          );
+          await expect(tokensTable).toBeVisible();
+          const tokenRow = tokensTable.getByRole('row', {name: /CI token/});
+          await expect(tokenRow).toBeVisible();
+          await expect(tokenRow).toContainText('repo:read');
+          await expect(tokenRow).toContainText('Never');
+          await expect(tokenRow).not.toContainText('T00:00:00');
+
+          await authenticatedPage
+            .getByTestId('robot-api-token-search')
+            .fill('no-such-token');
+          await expect(
+            authenticatedPage.getByText('No API tokens match the search.'),
+          ).toBeVisible();
+        } finally {
+          await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
+        }
+      },
+    );
+
+    test(
+      'robot API token list paginates, filters and bulk revokes',
+      {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, userClient, quayConfig}) => {
+        const robotShortname = uniqueName('api-token-list').replace(/-/g, '_');
+
+        try {
+          const createResponse = await userClient.put(
+            `/api/v1/user/robots/${robotShortname}`,
+            {description: 'Personal robot API token list test'},
+          );
+          expect(createResponse.status()).toBe(201);
+          const robot = await createResponse.json();
+
+          // Create 12 real tokens via the API so pagination (10 per page) is
+          // exercised. Three tokens share a 'filter-' prefix to enable search
+          // filtering assertions. Tokens are listed newest-first by the API.
+          const tokenNames = [
+            'filter-01',
+            'filter-02',
+            'filter-03',
+            'tok-04',
+            'tok-05',
+            'tok-06',
+            'tok-07',
+            'tok-08',
+            'tok-09',
+            'tok-10',
+            'tok-11',
+            `ci-${'x'.repeat(20)}-tok`,
+          ];
+          for (const name of tokenNames) {
+            const resp = await userClient.post(
+              `/api/v1/user/robots/${robotShortname}/tokens`,
+              {name, scope: 'repo:read'},
+            );
+            expect(resp.status()).toBe(200);
+          }
+
+          await authenticatedPage.goto(
+            `/organization/${robot.name.split('+')[0]}?tab=Robotaccounts`,
+          );
+          await authenticatedPage.getByText(robot.name).click();
+          await authenticatedPage
+            .getByRole('tab', {name: 'API Tokens'})
+            .click();
+
+          // Token endpoints carry @require_fresh_login (10 min timeout).
+          // Handle the re-auth modal if the worker session has expired.
+          const tokensTable = authenticatedPage.getByTestId(
+            'robot-api-tokens-table',
+          );
+          const freshPasswordInput =
+            authenticatedPage.locator('#fresh-password');
+          await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+            timeout: 15_000,
+          });
+          if (await freshPasswordInput.isVisible()) {
+            await freshPasswordInput.fill(
+              getTestUsers(quayConfig).user.password,
+            );
+            await authenticatedPage
+              .getByRole('button', {name: 'Verify'})
+              .click();
+          }
+          await expect(tokensTable).toBeVisible();
+          // Ten rows per page plus the header row.
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+          const pagination = authenticatedPage.locator(
+            '#robot-api-tokens-pagination',
+          );
+          await expect(pagination).toContainText('12');
+
+          // Navigate to page 2 (remaining 2 tokens) and back.
+          await pagination
+            .getByRole('button', {name: 'Go to next page'})
+            .click();
+          await expect(tokensTable.getByRole('row')).toHaveCount(3);
+
+          await pagination
+            .getByRole('button', {name: 'Go to previous page'})
+            .click();
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+
+          // Search filters across all tokens; 'filter-' matches exactly 3.
+          const search = authenticatedPage.getByTestId(
+            'robot-api-token-search',
+          );
+          await search.fill('filter-');
+          await expect(tokensTable.getByRole('row')).toHaveCount(4);
+          await search.fill('');
+          await expect(tokensTable.getByRole('row')).toHaveCount(11);
+
+          // Bulk-revoke the first two visible tokens via the real DELETE API.
+          await tokensTable
+            .getByRole('checkbox', {name: 'Select row 0'})
+            .check();
+          await tokensTable
+            .getByRole('checkbox', {name: 'Select row 1'})
+            .check();
+          await authenticatedPage
+            .getByRole('button', {name: 'Revoke selected'})
+            .click();
+          const bulkModal = authenticatedPage.getByTestId('bulk-delete-modal');
+          await expect(bulkModal).toBeVisible();
+          await expect(bulkModal).toContainText('Revoke 2 robot API tokens?');
+          await expect(bulkModal).toContainText(
+            'Only the selected tokens are revoked.',
+          );
+          await expect(bulkModal).not.toContainText('Permanently delete');
+          await bulkModal
+            .getByTestId('delete-confirmation-input')
+            .fill('confirm');
+          const confirmButton = bulkModal.getByTestId(
+            'bulk-delete-confirm-btn',
+          );
+          await expect(confirmButton).toHaveText('Revoke');
+          await confirmButton.click();
+
+          await expect(bulkModal).toBeHidden();
+          // After revoking 2 tokens, 10 remain.
+          await expect(pagination).toContainText('of 10');
+        } finally {
+          await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
+        }
+      },
+    );
+
+    test(
+      'organization manager retains robot API token mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, api, userClient, quayConfig}) => {
+        const org = await api.organization('robotapitokenmanager');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = uniqueName('manager-token');
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+        await authenticatedPage
+          .getByText(robot.fullName, {exact: true})
+          .click();
+        await authenticatedPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = authenticatedPage.getByTestId(
+          'robot-api-tokens-table',
+        );
+        const freshPasswordInput =
+          authenticatedPage.getByLabel('Current Password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(getTestUsers(quayConfig).user.password);
+          await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Create API token'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('checkbox', {name: 'Select row 0'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toBeVisible();
+
+        await tokensTable.getByRole('checkbox', {name: 'Select row 0'}).check();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'global readonly superuser can list robot API tokens without mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS', '@superuser']},
+      async ({api, readonlyPage, userClient, quayConfig}) => {
+        const org = await api.organization('robotapitokenreadonly');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = uniqueName('readonly-token');
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await readonlyPage.goto(`/organization/${org.name}?tab=Robotaccounts`);
+        await readonlyPage.getByText(robot.fullName, {exact: true}).click();
+        await readonlyPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = readonlyPage.getByTestId('robot-api-tokens-table');
+        const freshPasswordInput = readonlyPage.getByLabel('Current Password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(
+            getTestUsers(quayConfig).readonly.password,
+          );
+          await readonlyPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Create API token'}),
+        ).toHaveCount(0);
+        await expect(
+          readonlyPage.getByTestId('robot-api-token-dropdown-checkbox'),
+        ).toHaveCount(0);
+        await expect(tokensTable.getByRole('checkbox')).toHaveCount(0);
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toHaveCount(0);
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toHaveCount(0);
+      },
+    );
+
     test('CRUD lifecycle: create, search, toolbar, and delete robot account', async ({
       authenticatedPage,
       api,
@@ -109,6 +410,56 @@ test.describe(
         .fill(robotShortname);
       await expect(paginationInfo).toContainText('0 - 0 of 0');
     });
+
+    test(
+      'robot wizard next button disabled if robot name or description fail validation',
+      {tag: '@PROJQUAY-6016'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('validationorg');
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+
+        const modal = authenticatedPage.getByRole('dialog', {
+          name: 'CreateRobotAccount',
+        });
+        await expect(modal).toBeVisible();
+
+        const nextBtn = modal.getByTestId('next-btn');
+        const reviewAndFinish = modal.getByTestId('create-robot-submit');
+
+        // no robot name -> next should be disabled
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
+
+        // valid name -> buttons should be enabled
+        await modal.getByTestId('robot-wizard-form-name').fill('validbot');
+        await expect(nextBtn).toBeEnabled();
+        await expect(reviewAndFinish).toBeEnabled();
+
+        // description over 255 characters -> buttons should be disabled
+        await modal
+          .getByTestId('robot-wizard-form-description')
+          .fill('a'.repeat(300));
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
+
+        // description exactly 255 characters -> buttons should be enabled
+        await modal
+          .getByTestId('robot-wizard-form-description')
+          .fill('a'.repeat(255));
+        await expect(nextBtn).toBeEnabled();
+        await expect(reviewAndFinish).toBeEnabled();
+
+        // robot account name over 255 characters -> next should be disabled
+        await modal.getByTestId('robot-wizard-form-name').fill('a'.repeat(300));
+        await expect(nextBtn).toBeDisabled();
+        await expect(reviewAndFinish).toBeDisabled();
+      },
+    );
 
     test('robot credentials and Kubernetes secrets', async ({
       authenticatedPage,
@@ -228,13 +579,6 @@ test.describe(
         'dockerbot',
         'Robot for Docker config test',
       );
-
-      // Get server hostname from config
-      const configResponse = await authenticatedRequest.get(
-        `${API_URL}/config`,
-      );
-      const config = await configResponse.json();
-      const serverHostname = config.config.SERVER_HOSTNAME;
 
       // Get robot token from API
       const robotResponse = await authenticatedRequest.get(
@@ -420,6 +764,7 @@ test.describe(
     test('robot wizard: org has 5 steps, user namespace has 3 steps', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
       // Part A: Verify org wizard has 5 steps
       const org = await api.organization('wizardorg');
@@ -461,7 +806,7 @@ test.describe(
       await authenticatedPage.getByTestId('create-robot-cancel').click();
 
       // Part B: Verify user namespace wizard has 3 steps
-      const userNamespace = TEST_USERS.user.username;
+      const userNamespace = getTestUsers(quayConfig).user.username;
       await authenticatedPage.goto(
         `/organization/${userNamespace}?tab=Robotaccounts`,
       );
@@ -1018,6 +1363,41 @@ test.describe(
         expect(robotData.token).toBe(robot.token);
       });
     });
+
+    test(
+      'robot wizard fits within modal without overflow (PROJQUAY-12151)',
+      {tag: '@PROJQUAY-12151'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('wizoverflow');
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        await expect(modal).toBeVisible();
+
+        const wizard = modal.locator('.pf-v6-c-wizard');
+        await expect(wizard).toBeVisible();
+
+        const modalBox = await modal.boundingBox();
+        const wizardBox = await wizard.boundingBox();
+
+        expect(modalBox).not.toBeNull();
+        expect(wizardBox).not.toBeNull();
+        if (modalBox && wizardBox) {
+          expect(wizardBox.width).toBeLessThanOrEqual(modalBox.width);
+          expect(wizardBox.x).toBeGreaterThanOrEqual(modalBox.x);
+          expect(wizardBox.x + wizardBox.width).toBeLessThanOrEqual(
+            modalBox.x + modalBox.width + 1,
+          );
+        }
+      },
+    );
 
     test.describe(
       'with ROBOTS_DISALLOW enabled',
