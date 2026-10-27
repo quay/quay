@@ -18,8 +18,6 @@ export interface NotificationFilter {
 }
 
 export function useNotifications(org: string, repo: string) {
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
   const [filter, setFilter] = useState<NotificationFilter>({
     event: [],
     status: [],
@@ -70,24 +68,14 @@ export function useNotifications(org: string, repo: string) {
     }
   }
 
-  const paginatedNotifications = filteredNotifications?.slice(
-    page * perPage - perPage,
-    page * perPage - perPage + perPage,
-  );
-
   return {
-    notifications: notifications,
-    paginatedNotifications: paginatedNotifications,
+    notifications,
+    filteredNotifications,
     loading: loading || isPlaceholderData,
     error: error,
 
-    page: page,
-    setPage: setPage,
-    perPage: perPage,
-    setPerPage: setPerPage,
-
-    filter: filter,
-    setFilter: setFilter,
-    resetFilter: resetFilter,
+    filter,
+    setFilter,
+    resetFilter,
   };
 }

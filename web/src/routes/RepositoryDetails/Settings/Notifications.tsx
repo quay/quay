@@ -44,14 +44,21 @@ export default function Notifications({
     RepoNotification[]
   >([]);
   const [expandedUuids, setExpandedUuids] = useState<string[]>([]);
-  const {notifications, loading, error, filter, setFilter, resetFilter} =
-    useNotifications(org, repo);
+  const {
+    notifications,
+    filteredNotifications,
+    loading,
+    error,
+    filter,
+    setFilter,
+    resetFilter,
+  } = useNotifications(org, repo);
 
   const {
     paginatedData: paginatedNotifications,
     getSortableSort,
     paginationProps,
-  } = usePaginatedSortableTable(notifications || [], {
+  } = usePaginatedSortableTable(filteredNotifications || [], {
     columns: {
       2: (item: RepoNotification) => item.title || '(Untitled)', // Title
       3: (item: RepoNotification) => item.event, // Event
@@ -82,6 +89,10 @@ export default function Notifications({
       return isSelecting ? [...others, notification] : others;
     });
   };
+
+  useEffect(() => {
+    paginationProps.setPage(1);
+  }, [filter, paginationProps.setPage]);
 
   // Close drawer if navigating away from notification settings
   useEffect(() => {
@@ -122,7 +133,7 @@ export default function Notifications({
       <NotificationsToolbar
         org={org}
         repo={repo}
-        allItems={notifications}
+        allItems={filteredNotifications}
         paginatedItems={paginatedNotifications}
         selectedItems={selectedNotifications}
         page={paginationProps.page}
