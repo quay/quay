@@ -45,6 +45,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "INSTANCE_SERVICE_KEY_SERVICE",
     "INSTANCE_SERVICE_KEY_KID_LOCATION",
     "INSTANCE_SERVICE_KEY_EXPIRATION",
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES",
     "UNAPPROVED_SERVICE_KEY_TTL_SEC",
     "EXPIRED_SERVICE_KEY_TTL_SEC",
     "REGISTRY_JWT_AUTH_MAX_FRESH_S",
@@ -133,7 +134,17 @@ CONFIG_SCHEMA = {
                 "required": ["BOOTSTRAP_TOKEN_OWNER"],
                 "properties": {"BOOTSTRAP_TOKEN_OWNER": {"type": "string", "minLength": 1}},
             },
-        }
+        },
+        {
+            "if": {
+                "properties": {"FEATURE_ROBOT_API_TOKEN_EXCHANGE": {"const": True}},
+                "required": ["FEATURE_ROBOT_API_TOKEN_EXCHANGE"],
+            },
+            "then": {
+                "required": ["FEATURE_ROBOT_API_TOKENS"],
+                "properties": {"FEATURE_ROBOT_API_TOKENS": {"const": True}},
+            },
+        },
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -469,6 +480,13 @@ CONFIG_SCHEMA = {
             "minimum": 1,
             "description": "Optional maximum number of non-expired OAuth access tokens allowed per OAuth application. If omitted or null, no cap is enforced.",
             "x-example": 1000,
+        },
+        "API_TOKEN_MAXIMUM_TOKEN_COUNT": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Maximum number of active Quay-issued API tokens allowed per user or robot. Defaults to 20; set null to disable the cap.",
+            "default": 20,
+            "x-example": 20,
         },
         # Redis.
         "BUILDLOGS_REDIS": {
@@ -1006,6 +1024,12 @@ CONFIG_SCHEMA = {
         "FEATURE_RATE_LIMITS": {
             "type": "boolean",
             "description": "Whether to enable rate limits on API and registry endpoints. Defaults to False",
+            "x-example": True,
+        },
+        # Feature Flag: ALB health check with drain file support.
+        "FEATURE_ALB_HEALTH_CHECK": {
+            "type": "boolean",
+            "description": "Whether to enable the /health/alb endpoint for ALB health checks with drain file support. Defaults to False",
             "x-example": True,
         },
         # Feature Flag: Aggregated log retrieval.
@@ -1575,6 +1599,16 @@ CONFIG_SCHEMA = {
             "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
             "x-example": False,
         },
+        "FEATURE_ROBOT_API_TOKENS": {
+            "type": "boolean",
+            "description": "Feature flag for scoped robot Management API tokens. Defaults to False.",
+            "x-example": False,
+        },
+        "FEATURE_ROBOT_API_TOKEN_EXCHANGE": {
+            "type": "boolean",
+            "description": "Feature flag for federated robot API token exchange. Requires FEATURE_ROBOT_API_TOKENS. Defaults to False.",
+            "x-example": False,
+        },
         "BOOTSTRAP_TOKEN_OWNER": {
             "type": ["string", "null"],
             "minLength": 1,
@@ -1709,6 +1743,25 @@ CONFIG_SCHEMA = {
             "type": "int",
             "description": "The amount of time between runs of the quota registry size worker in seconds",
             "x-example": 30,
+        },
+        "QUOTA_METRICS": {
+            "type": "boolean",
+            "description": "Whether quota metrics are exposed about total registry storage consumption, organization and repository usage and organization quota limits and attainment. Defaults to False. Beware of high cardinality if there are many organizations and repositories. Metrics use mutable namespace/repository names as labels for dashboard readability; renames create new Prometheus series until stale ones expire. Use QUOTA_METRICS_*_LIMIT to cap cardinality.",
+            "x-example": False,
+        },
+        "QUOTA_METRICS_REPOS_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of repositories to report per-repository quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
+        },
+        "QUOTA_METRICS_NAMESPACES_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Maximum number of namespaces to report per-namespace quota metrics for in each collection cycle. Limits metric cardinality and worker resource usage on large registries. Defaults to 10000. Hard ceiling is 100000.",
+            "x-example": 10000,
         },
         "FEATURE_EDIT_QUOTA": {
             "type": "boolean",
@@ -1962,6 +2015,30 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
+        },
+        "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Nginx client body timeout in seconds for blob upload endpoints. Set this to match or exceed the load balancer idle timeout to prevent 408/502 errors during large uploads. Defaults to nginx's 60s when not set.",
+            "x-example": "3600",
+        },
+        "BLOB_UPLOAD_LINGERING_CLOSE": {
+            "type": "string",
+            "enum": ["on", "off", "always"],
+            "description": "Nginx lingering_close mode for blob upload endpoints. Set to 'always' to ensure clean connection close after timeouts, allowing load balancers to receive error responses instead of returning 502. Defaults to nginx's 'on' when not set.",
+            "x-example": "always",
+        },
+        "BLOB_UPLOAD_LINGERING_TIME": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum time in seconds nginx will drain remaining request body after closing a blob upload. Defaults to nginx's 30s when not set.",
+            "x-example": "60",
+        },
+        "BLOB_UPLOAD_LINGERING_TIMEOUT": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Maximum wait time in seconds between successive reads while draining a blob upload request body. Defaults to nginx's 5s when not set.",
+            "x-example": "30",
         },
         "FEATURE_SUPERUSER_CONFIGDUMP": {
             "type": "boolean",
@@ -2431,6 +2508,12 @@ CONFIG_SCHEMA = {
         "x-example": 120,
         "x-reference": None,
     },
+    "INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES": {
+        "type": "boolean",
+        "description": "When true, import the instance service key from mounted files instead of generating a new one. Defaults to False",
+        "x-example": False,
+        "x-reference": None,
+    },
     "INSTANCE_SERVICE_KEY_KID_LOCATION": {
         "type": "string",
         "description": "ID of the local instance service key.",
@@ -2555,8 +2638,8 @@ CONFIG_SCHEMA = {
     },
     "PUSH_TEMP_TAG_EXPIRATION_SEC": {
         "type": "number",
-        "description": "Temporary Tag expiration time in seconds. Defaults to 3600",
-        "x-example": 3600,
+        "description": "Temporary Tag expiration time in seconds. Defaults to 6 hours",
+        "x-example": 21600,
         "x-reference": None,
     },
     "QUEUE_METRICS_TYPE": {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
@@ -22,6 +23,10 @@ const (
 	quayPostgresUnit = "quay-postgres.service"
 	quayRedisUnit    = "quay-redis.service"
 )
+
+// rollbackStepTimeout bounds each rollback operation on its own, so a slow
+// step cannot use up the time a later restart needs.
+var rollbackStepTimeout = 30 * time.Second
 
 // upgradeSchema opens the copied database, backs it up, and runs the bridge
 // migration to bring it to the Go binary's target schema version.
@@ -117,6 +122,7 @@ func (m *Migrator) stopSourceServices(ctx context.Context) error { //nolint:unpa
 		slog.Info("discovered running OMR services via probe", "scope", discovered)
 	}
 
+	m.sourceStopped = true
 	for _, svc := range omrServiceNames {
 		slog.Info("stopping service", "service", svc)
 		if err := m.runSourceService(ctx, "stop", svc+".service"); err != nil {
@@ -161,19 +167,64 @@ func (m *Migrator) stopPostgresRemainingServices(ctx context.Context) error {
 }
 
 func (m *Migrator) rollbackPostgresSource(ctx context.Context) error {
+	return errors.Join(
+		withRollbackTimeout(ctx, m.removeFailedTargetInstall),
+		m.removePersistedConfigMaterial(),
+		m.startSourceServices(ctx, quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit),
+	)
+}
+
+func (m *Migrator) rollbackSQLiteSource(ctx context.Context) error {
 	var errs []error
+	if m.ownsTargetInstall {
+		errs = append(errs, withRollbackTimeout(ctx, m.removeFailedTargetInstall))
+	}
+	errs = append(errs,
+		m.removePersistedConfigMaterial(),
+		m.startSourceServices(ctx, quayPodUnit, quayRedisUnit, quayAppUnit),
+	)
+	return errors.Join(errs...)
+}
+
+func (m *Migrator) removeFailedTargetInstall(ctx context.Context) error {
+	if m.removeTargetInstall != nil {
+		return m.removeTargetInstall(ctx)
+	}
 	inst, err := installer.New(m.Out)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("create installer for rollback: %w", err))
-	} else if err := inst.RemoveFailedInstallation(ctx); err != nil {
-		errs = append(errs, fmt.Errorf("remove failed target install: %w", err))
+		return fmt.Errorf("create installer for rollback: %w", err)
 	}
-	for _, service := range []string{quayPodUnit, quayPostgresUnit, quayRedisUnit, quayAppUnit} {
-		if err := m.runSourceService(ctx, "start", service); err != nil {
+	if err := inst.RemoveFailedInstallation(ctx); err != nil {
+		return fmt.Errorf("remove failed target install: %w", err)
+	}
+	return nil
+}
+
+func (m *Migrator) startSourceServices(ctx context.Context, services ...string) error {
+	var errs []error
+	for _, service := range services {
+		err := withRollbackTimeout(ctx, func(ctx context.Context) error {
+			return m.runSourceService(ctx, "start", service)
+		})
+		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func withRollbackTimeout(ctx context.Context, step func(context.Context) error) error {
+	stepCtx, cancel := context.WithTimeout(ctx, rollbackStepTimeout)
+	defer cancel()
+	return step(stepCtx)
+}
+
+// withSourceRollback tells the user whether the old OMR is running again.
+func withSourceRollback(err, rollbackErr error) error {
+	if rollbackErr != nil {
+		return errors.Join(err, fmt.Errorf("rollback old OMR: %w", rollbackErr))
+	}
+	return fmt.Errorf("%w (old OMR services restarted)", err)
 }
 
 func (m *Migrator) runSourceService(ctx context.Context, action, service string) error {
@@ -222,12 +273,29 @@ func (m *Migrator) install(ctx context.Context) error {
 		Port:         port,
 	}
 
+	// Rollback removes only an installation this run created.
+	exists, err := m.hasTargetInstallation()
+	if err != nil {
+		return fmt.Errorf("check target installation: %w", err)
+	}
+	m.ownsTargetInstall = !exists
 	slog.Info("installing new registry", "hostname", cfg.Hostname, "data-dir", cfg.DataDir)
-	if err := inst.Run(ctx, cfg); err != nil {
+	run := inst.Run
+	if m.runInstall != nil {
+		run = m.runInstall
+	}
+	if err := run(ctx, cfg); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
+	if err := failAt("at-install"); err != nil {
+		return err
+	}
 
-	removeMarker(m.DataDir)
+	// The new registry is already running, so a stuck marker must not roll
+	// it back; a rerun refuses to recopy over an existing installation.
+	if err := removeMarker(m.DataDir); err != nil {
+		slog.Warn("failed to remove migration marker", "path", filepath.Join(m.DataDir, markerFile), "err", err)
+	}
 	slog.Info("new registry installed and running")
 	return nil
 }

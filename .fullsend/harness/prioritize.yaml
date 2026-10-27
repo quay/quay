@@ -1,0 +1,3 @@
+# Quay prioritize overlay — use Sonnet 4.6 for prioritization agents.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/89d35ec899c5824b4d98d01e579cffe3a5962928/harness/prioritize.yaml#sha256=93afb2c50bfd828a37d29d24488d9492e541f254bf9153c768eda919e1fc9a33
+model: claude-sonnet-4-6

@@ -239,3 +239,9 @@ OTEL_TRACING: FeatureNameValue
 
 # Feature Flag: If set to true, enables programmatic bootstrap token provisioning.
 PROGRAMMATIC_BOOTSTRAP: FeatureNameValue
+
+# Feature Flag: If set to true, enables scoped robot Management API tokens.
+ROBOT_API_TOKENS: FeatureNameValue
+
+# Feature Flag: If set to true, enables federated exchange for robot API tokens.
+ROBOT_API_TOKEN_EXCHANGE: FeatureNameValue

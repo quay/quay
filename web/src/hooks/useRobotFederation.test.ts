@@ -55,6 +55,51 @@ describe('useRobotFederation', () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it('loads and saves personal robot federation config as a user', async () => {
+    const mockConfig = [{issuer: 'https://oidc.example.com', subject: 'sub'}];
+    vi.mocked(fetchRobotFederationConfig).mockResolvedValueOnce([] as any);
+    vi.mocked(createRobotFederationConfig).mockResolvedValueOnce(
+      mockConfig as any,
+    );
+    const onSuccess = vi.fn();
+    const onError = vi.fn();
+    const {result} = renderHook(
+      () =>
+        useRobotFederation({
+          namespace: 'myuser',
+          robotName: 'myuser+robot1',
+          isUser: true,
+          onSuccess,
+          onError,
+        }),
+      {wrapper},
+    );
+
+    await waitFor(() =>
+      expect(fetchRobotFederationConfig).toHaveBeenCalledWith(
+        'myuser',
+        'myuser+robot1',
+        expect.any(AbortSignal),
+        true,
+      ),
+    );
+    act(() => {
+      result.current.setRobotFederationConfig({
+        namespace: 'myuser',
+        robotName: 'myuser+robot1',
+        config: mockConfig,
+      } as any);
+    });
+    await waitFor(() =>
+      expect(createRobotFederationConfig).toHaveBeenCalledWith(
+        'myuser',
+        'myuser+robot1',
+        mockConfig,
+        true,
+      ),
+    );
+  });
+
   it('sets robot federation config on mutation success', async () => {
     const mockConfig = [{issuer: 'https://oidc.example.com', subject: 'sub'}];
     vi.mocked(fetchRobotFederationConfig).mockResolvedValueOnce([] as any);

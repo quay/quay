@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -393,8 +394,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                 "username": username,
                 "namespace": orgname,
             }
-            # available_after should be 5
-            assert kwargs["available_after"] == 5
+            # available_after should be 0
+            assert kwargs["available_after"] == 0
 
     @patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put")
     @patch.object(ProxyModel, "_create_blob")
@@ -445,8 +446,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                 "username": None,  # This should be None for public repositories
                 "namespace": orgname,
             }
-            # available_after should be 5
-            assert kwargs["available_after"] == 5
+            # available_after should be 0
+            assert kwargs["available_after"] == 0
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_create_placeholder_blobs_for_new_manifest(self, create_repo):
@@ -2092,7 +2093,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
     @pytest.fixture(autouse=True)
     def setup(self, app, create_repo):
         self.user = get_user("devtable")
-        self.org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        self.org = create_organization(self.orgname, f"{self.orgname}@devtable.com", self.user)
         self.org.save()
         self.config = create_proxy_cache_config(
             org_name=self.orgname,
@@ -2100,71 +2101,6 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             expiration_s=3600,
         )
         self.repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-
-    def test_refetches_blob_missing_from_storage(self):
-        """
-        When a blob has a placement record in DB but the file is missing from
-        storage, the proxy model should re-download it from upstream instead of
-        returning a reference to a non-existent file (PROJQUAY-10315).
-        """
-        content = b"test blob content for proxy cache"
-        digest = str(sha256_digest(content))
-        blob = store_blob_record_and_temp_link(
-            self.orgname,
-            self.upstream_repository,
-            digest,
-            ImageStorageLocation.get(name="local_us"),
-            len(content),
-            120,
-        )
-        layer_path = get_layer_path(blob)
-        storage.put_content(["local_us"], layer_path, content)
-
-        manifest_bytes = json.dumps(
-            {
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                "config": {
-                    "mediaType": "application/vnd.docker.container.image.v1+json",
-                    "size": len(content),
-                    "digest": digest,
-                },
-                "layers": [],
-            }
-        )
-        media_type, _ = MediaType.get_or_create(
-            name="application/vnd.docker.distribution.manifest.v2+json"
-        )
-        from data.database import Repository
-
-        repo = Repository.get(id=self.repo_ref.id)
-        manifest = Manifest.create(
-            repository=repo,
-            digest=_get_digest(manifest_bytes.encode("utf-8")),
-            manifest_bytes=manifest_bytes,
-            media_type=media_type,
-        )
-        ManifestBlob.create(
-            manifest=manifest,
-            repository=repo,
-            blob=blob,
-        )
-
-        assert storage.exists(["local_us"], layer_path)
-        assert ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).exists()
-
-        storage.remove(["local_us"], layer_path)
-        assert not storage.exists(["local_us"], layer_path)
-
-        proxy_model = ProxyModel(
-            self.orgname,
-            self.upstream_repository,
-            self.user,
-        )
-
-        with patch.object(proxy_model, "_download_blob") as mock_download:
-            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
-            mock_download.assert_called_once_with(self.repo_ref, digest)
 
     def test_does_not_refetch_blob_present_in_storage(self):
         """
@@ -2230,67 +2166,141 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             assert result is not None
             assert result.digest == digest
 
-    def test_refetches_blob_when_storage_check_raises(self):
+
+@pytest.mark.xdist_group("registry_proxy_serial")
+class TestGetUpstreamBlobProxyUrl:
+    orgname = "quayio-cache"
+    upstream_repository = "app-sre/ubi8-ubi"
+    upstream_registry = "quay.io"
+    digest = "sha256:" + "a" * 64
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app, create_repo):
+        self.user = get_user("devtable")
+        self.org = create_organization(self.orgname, f"{self.orgname}@devtable.com", self.user)
+        self.org.save()
+        self.config = create_proxy_cache_config(
+            org_name=self.orgname,
+            upstream_registry=self.upstream_registry,
+            expiration_s=3600,
+        )
+        self.repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        self.proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_none_when_upstream_proxy_is_none(self):
         """
-        When storage.exists() raises an exception (e.g. storage backend
-        unavailable), the proxy model should re-download from upstream
-        rather than serving a potentially missing blob.
+        When the upstream proxy feature is disabled (upstream_proxy=None),
+        the method returns None so the caller can raise BlobUnknown.
         """
-        content = b"test blob content for storage error"
-        digest = str(sha256_digest(content))
-        blob = store_blob_record_and_temp_link(
-            self.orgname,
-            self.upstream_repository,
-            digest,
-            ImageStorageLocation.get(name="local_us"),
-            len(content),
-            120,
+        result = self.proxy_model.get_upstream_blob_proxy_url(
+            self.orgname, self.upstream_repository, self.digest, None
         )
-        layer_path = get_layer_path(blob)
-        storage.put_content(["local_us"], layer_path, content)
+        assert result is None
 
-        manifest_bytes = json.dumps(
-            {
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                "config": {
-                    "mediaType": "application/vnd.docker.container.image.v1+json",
-                    "size": len(content),
-                    "digest": digest,
-                },
-                "layers": [],
-            }
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_none_when_repo_does_not_exist(self):
+        """
+        When the requested repository does not exist locally,
+        the method returns None.
+        """
+        mock_upstream_proxy = MagicMock()
+        result = self.proxy_model.get_upstream_blob_proxy_url(
+            self.orgname, "nonexistent/repo", self.digest, mock_upstream_proxy
         )
-        media_type, _ = MediaType.get_or_create(
-            name="application/vnd.docker.distribution.manifest.v2+json"
-        )
-        from data.database import Repository
+        assert result is None
 
-        repo = Repository.get(id=self.repo_ref.id)
-        manifest = Manifest.create(
-            repository=repo,
-            digest=_get_digest(manifest_bytes.encode("utf-8")),
-            manifest_bytes=manifest_bytes,
-            media_type=media_type,
-        )
-        ManifestBlob.create(
-            manifest=manifest,
-            repository=repo,
-            blob=blob,
-        )
-
-        proxy_model = ProxyModel(
-            self.orgname,
-            self.upstream_repository,
-            self.user,
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_enqueues_background_download_on_cache_miss(self):
+        """
+        When no download job exists for the blob, a new job is enqueued.
+        """
+        mock_upstream_proxy = MagicMock()
+        mock_upstream_proxy.create_upstream_proxy_url.return_value = (
+            "https://quay.test/_upstream_proxy/token/..."
         )
 
         with (
-            patch(
-                "data.registry_model.registry_proxy_model.storage.exists",
-                side_effect=IOError("storage unavailable"),
-            ),
-            patch.object(proxy_model, "_download_blob") as mock_download,
+            patch.object(self.proxy_model, "_lookup_blob_by_digest", return_value=MagicMock()),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue,
         ):
-            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
-            mock_download.assert_called_once_with(self.repo_ref, digest)
+            mock_queue.alive.return_value = False
+            self.proxy_model.get_upstream_blob_proxy_url(
+                self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+            )
+            assert mock_queue.put.call_count == 1
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_does_not_enqueue_duplicate_job_when_download_in_progress(self):
+        """
+        When a download job already exists in the queue for the blob,
+        no duplicate job is enqueued.
+        """
+        mock_upstream_proxy = MagicMock()
+        mock_upstream_proxy.create_upstream_proxy_url.return_value = (
+            "https://quay.test/_upstream_proxy/token/..."
+        )
+
+        with patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue:
+            mock_queue.alive.return_value = True
+            self.proxy_model.get_upstream_blob_proxy_url(
+                self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+            )
+            mock_queue.put.assert_not_called()
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_upstream_proxy_url(self):
+        """
+        When the repo exists and upstream_proxy is set, the method returns
+        the URL produced by create_upstream_proxy_url.
+        """
+        expected_url = (
+            "https://quay.test/_upstream_proxy/token/https/quay.io/v2/app-sre/ubi8-ubi/blobs/"
+            + self.digest
+        )
+        mock_upstream_proxy = MagicMock()
+        mock_upstream_proxy.create_upstream_proxy_url.return_value = expected_url
+
+        with (
+            patch.object(self.proxy_model, "_lookup_blob_by_digest", return_value=MagicMock()),
+            patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue,
+        ):
+            mock_queue.alive.return_value = False
+            result = self.proxy_model.get_upstream_blob_proxy_url(
+                self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+            )
+
+        assert result == expected_url
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_None_on_unknown_blobs(self):
+        """
+        Verifies that we get a None on blobs that do not exist and are not placeholder blobs.
+        """
+        mock_upstream_proxy = MagicMock()
+
+        result = self.proxy_model.get_upstream_blob_proxy_url(
+            self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+        )
+
+        assert result is None
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_do_not_enqueue_blobs_for_download_if_cache_worker_is_turned_off(self, app):
+        """
+        Verifies that we don't enqueue blobs for subsequent download unless
+        FEATURE_PROXY_CACHE_BLOB_DOWNLOAD is explicitly set to false.
+
+        to do: remove or refactor once FEATURE_PROXY_CACHE_BLOB_DOWNLOAD is removed as a flag.
+        """
+        mock_upstream_proxy = MagicMock()
+        mock_upstream_proxy.create_upstream_proxy_url.return_value = (
+            "https://quay.test/_upstream_proxy/token/..."
+        )
+
+        with patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue") as mock_queue:
+            with patch.dict(app.config, {"FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": False}):
+                self.proxy_model.get_upstream_blob_proxy_url(
+                    self.orgname, self.upstream_repository, self.digest, mock_upstream_proxy
+                )
+                mock_queue.put.assert_not_called()

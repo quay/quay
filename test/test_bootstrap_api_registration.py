@@ -7,6 +7,11 @@ def test_programmatic_bootstrap_disabled_by_default():
     assert DefaultConfig.FEATURE_PROGRAMMATIC_BOOTSTRAP is False
 
 
+def test_robot_api_features_disabled_by_default():
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKENS is False
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKEN_EXCHANGE is False
+
+
 def test_pytest_config_registers_bootstrap_renew_route(app):
     assert TestConfig.FEATURE_PROGRAMMATIC_BOOTSTRAP is True
     assert any(rule.rule == "/api/v1/bootstrap/renew" for rule in app.url_map.iter_rules())

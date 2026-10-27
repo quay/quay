@@ -96,10 +96,10 @@ describe('RepositoryResource', () => {
       );
 
       const result = await fetchRepositoriesForNamespace('org1');
-      expect(axios.get).toHaveBeenCalledWith(
-        '/api/v1/repository?last_modified=true&namespace=org1&public=true',
-        {signal: undefined},
-      );
+      expect(axios.get).toHaveBeenCalledWith('/api/v1/repository', {
+        params: {last_modified: true, namespace: 'org1', public: true},
+        signal: undefined,
+      });
       expect(result).toEqual(repos);
     });
 
@@ -118,9 +118,9 @@ describe('RepositoryResource', () => {
       const result = await fetchRepositoriesForNamespace('org1');
       expect(result).toEqual([...page1Repos, ...page2Repos]);
       expect(axios.get).toHaveBeenCalledTimes(2);
-      expect(vi.mocked(axios.get).mock.calls[1][0]).toContain(
-        'next_page=token123',
-      );
+      expect(vi.mocked(axios.get).mock.calls[1][1]).toMatchObject({
+        params: expect.objectContaining({next_page: 'token123'}),
+      });
     });
 
     it('calls onPartialResult for each page', async () => {
@@ -151,7 +151,7 @@ describe('RepositoryResource', () => {
       await fetchRepositoriesForNamespace('org1', {
         signal: controller.signal,
       });
-      expect(vi.mocked(axios.get).mock.calls[0][1]).toEqual({
+      expect(vi.mocked(axios.get).mock.calls[0][1]).toMatchObject({
         signal: controller.signal,
       });
     });
@@ -221,11 +221,46 @@ describe('RepositoryResource', () => {
       );
 
       const result = await fetchRepositories();
-      expect(axios.get).toHaveBeenCalledWith(
-        '/api/v1/repository?last_modified=true&public=true',
-        {signal: undefined},
-      );
+      expect(axios.get).toHaveBeenCalledWith('/api/v1/repository', {
+        params: {last_modified: true, public: true},
+        signal: undefined,
+      });
       expect(result).toEqual(repos);
+    });
+  });
+
+  describe('fetchRepositoriesWithNoQuota', () => {
+    it('fetches repositories with quota=false', async () => {
+      const repos = [createMockRepo('org1', 'repo1')];
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({repositories: repos}),
+      );
+
+      const result = await fetchRepositories({}, false);
+      expect(axios.get).toHaveBeenCalledWith('/api/v1/repository', {
+        params: {last_modified: true, public: true, quota: false},
+        signal: undefined,
+      });
+      expect(result).toEqual(repos);
+    });
+  });
+
+  describe('fetchAllRepositoriesWithNoQuotaSet', () => {
+    it('forwards quota=false to subsequent pages if we have multiple pages of repos', async () => {
+      const page1Repos = [createMockRepo('org1', 'repo1')];
+      const page2Repos = [createMockRepo('org1', 'repo2')];
+
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({repositories: [page1Repos], next_page: 'token123'}),
+      );
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({repositories: [page2Repos], next_page: null}),
+      );
+
+      await fetchRepositoriesForNamespace('org1', {}, false);
+      expect(vi.mocked(axios.get).mock.calls[1][1]).toMatchObject({
+        params: expect.objectContaining({quota: false}),
+      });
     });
   });
 

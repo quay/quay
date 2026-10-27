@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage} from '../../utils/container';
 
@@ -56,7 +55,7 @@ test.describe(
       api,
     }) => {
       const org = await api.organization('suvieworg');
-      await api.repository(org.name, 'viewrepo');
+      const repo = await api.repository(org.name, 'viewrepo');
 
       await superuserPage.goto(`/organization/${org.name}`);
 
@@ -64,7 +63,9 @@ test.describe(
       await expect(
         superuserPage.getByRole('tab', {name: 'Repositories'}),
       ).toBeVisible({timeout: 15000});
-      await expect(superuserPage.getByText('viewrepo')).toBeVisible();
+      await expect(
+        superuserPage.getByRole('link', {name: repo.name, exact: true}),
+      ).toBeVisible();
     });
 
     test("superuser can delete a repository in another user's organization", async ({
@@ -115,7 +116,8 @@ test.describe(
     test(
       "superuser can view and delete tags in another user's repository",
       {tag: ['@container']},
-      async ({superuserPage, api}) => {
+      async ({superuserPage, api, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const org = await api.organization('sutagorg');
         const repo = await api.repository(org.name, 'tagrepo');
 
@@ -124,8 +126,8 @@ test.describe(
           org.name,
           repo.name,
           'testtag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
 
         // Navigate to repo tags as superuser

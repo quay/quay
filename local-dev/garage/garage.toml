@@ -3,7 +3,7 @@ metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"
 db_engine = "sqlite"
 rpc_bind_addr = "[::]:3901"
-rpc_secret = "5c61c8739e9c6a1046347438ca7a1c77fc3ea1af4b0ef21573a1a11c8e8f4a08"
+rpc_secret = "5c61c8739e9c6a1046347438ca7a1c77fc3ea1af4b0ef21573a1a11c8e8f4a08" # gitleaks:allow: Garage requires exactly 64 hex chars
 
 [s3_api]
 api_bind_addr = "[::]:3900"

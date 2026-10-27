@@ -57,7 +57,7 @@ func TestNewAssemblesTopLevelRoutes(t *testing.T) {
 		{path: "/metrics", method: http.MethodGet, want: http.StatusOK},
 		{path: "/v2/", method: http.MethodGet, want: http.StatusUnauthorized},
 		{path: "/v2/auth", method: http.MethodGet, want: http.StatusUnauthorized},
-		{path: "/api/v1/repository/library/test", method: http.MethodDelete, want: http.StatusUnauthorized},
+		{path: "/api/v1/repository/library/test", method: http.MethodDelete, want: http.StatusNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {

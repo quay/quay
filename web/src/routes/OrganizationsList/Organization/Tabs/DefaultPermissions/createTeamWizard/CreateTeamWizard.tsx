@@ -48,7 +48,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const {addAlert} = useUI();
 
   // Fetching repos
-  const {repos} = useRepositories(props.orgName);
+  const {repos} = useRepositories(props.orgName, false);
 
   // Fetch team members
   const {allMembers} = useFetchTeamMembersForOrg(props.orgName, props.teamName);

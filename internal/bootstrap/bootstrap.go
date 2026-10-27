@@ -35,7 +35,7 @@ func RequireAdminUser(ctx context.Context, db *sql.DB) (string, error) {
 	`).Scan(&username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("database has no users; run `quay init` or `quay install` to provision the initial administrator")
+			return "", fmt.Errorf("database has no users; run `mirror-registry init` or `mirror-registry install` to provision the initial administrator")
 		}
 		return "", fmt.Errorf("find initial administrator: %w", err)
 	}

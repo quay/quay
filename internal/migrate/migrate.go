@@ -4,12 +4,14 @@ package migrate
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 
+	"github.com/quay/quay/internal/installer"
 	"github.com/quay/quay/internal/system"
 )
 
@@ -20,6 +22,10 @@ const (
 
 	databaseSQLite   = "sqlite"
 	databasePostgres = "postgres"
+
+	// failAtEnv names a phase at which the migration fails on purpose. It
+	// exists for tests that exercise rollback against a real OMR.
+	failAtEnv = "QUAY_MIGRATE_FAIL_AT"
 )
 
 // OMRSource describes a detected OMR v2.0.x installation.
@@ -70,6 +76,11 @@ type Migrator struct {
 	sourceRegistryJWTKey    *rsa.PrivateKey
 	sourceRegistryJWTKID    string
 	checkTargetInstallation func() (bool, error)
+	removeTargetInstall     func(context.Context) error
+	runInstall              func(context.Context, *installer.Config) error
+	sourceStopped           bool
+	ownsTargetInstall       bool
+	persistedConfigFiles    []string
 }
 
 // Run executes the migration phases in order.
@@ -98,10 +109,14 @@ func (m *Migrator) Run(ctx context.Context) error {
 func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	if m.DryRun {
 		if err := m.validate(ctx); err != nil {
-			return fmt.Errorf("validate: %w", err)
+			return errors.Join(fmt.Errorf("validate: %w", err), m.removePersistedConfigMaterial())
 		}
 		m.printPlan()
-		return nil
+		return m.removePersistedConfigMaterial()
+	}
+
+	if err := m.refuseResumeOverInstall(); err != nil {
+		return err
 	}
 
 	// If cleanup-only (target dir already populated from a previous migration),
@@ -114,14 +129,8 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 		return nil
 	}
 
-	if err := m.migrateData(ctx); err != nil {
+	if err := m.migrateAndInstall(ctx); err != nil {
 		return err
-	}
-
-	if !m.SkipInstall {
-		if err := m.install(ctx); err != nil {
-			return fmt.Errorf("install: %w", err)
-		}
 	}
 
 	if m.Cleanup {
@@ -134,9 +143,79 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	return nil
 }
 
+// migrateAndInstall restarts the old OMR when a step fails after it was
+// stopped, and removes this run's recovered key files when a step fails
+// before the stop. The failed target keeps its marker, so a rerun resumes the
+// copy.
+func (m *Migrator) migrateAndInstall(ctx context.Context) (retErr error) {
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		if !m.sourceStopped {
+			// Nothing to restart, but key material validation recovered from
+			// the running container must not stay in the source config dir.
+			if err := m.removePersistedConfigMaterial(); err != nil {
+				retErr = errors.Join(retErr, err)
+			}
+			return
+		}
+		retErr = withSourceRollback(retErr, m.rollbackSQLiteSource(context.Background()))
+	}()
+	if err := m.migrateData(ctx); err != nil {
+		return err
+	}
+	if m.SkipInstall {
+		// The copy is complete, so a later -cleanup must not resume it over
+		// a database the user may have installed by hand.
+		if err := removeMarker(m.DataDir); err != nil {
+			return fmt.Errorf("remove migration marker: %w", err)
+		}
+		return nil
+	}
+	if err := m.install(ctx); err != nil {
+		return fmt.Errorf("install: %w", err)
+	}
+	return nil
+}
+
+// targetDirPopulated reports a finished migration. A marker means the target
+// is an interrupted copy, which must be resumed rather than cleaned up after.
 func targetDirPopulated(dir string) bool {
+	if _, err := os.Stat(filepath.Join(dir, markerFile)); err == nil {
+		return false
+	}
 	_, err := os.Stat(filepath.Join(dir, "quay.db"))
 	return err == nil
+}
+
+// refuseResumeOverInstall keeps a rerun from recopying over a finished
+// migration: install removes the marker only after the new registry is
+// running, and that removal can be interrupted or fail.
+func (m *Migrator) refuseResumeOverInstall() error {
+	markerPath := filepath.Join(m.DataDir, markerFile)
+	if _, err := os.Stat(markerPath); errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("check migration marker: %w", err)
+	}
+	installed, err := m.hasTargetInstallation()
+	if err != nil {
+		return fmt.Errorf("check target installation: %w", err)
+	}
+	if !installed {
+		return nil
+	}
+	return fmt.Errorf("target directory %s has a migration marker but a Quay installation already exists, refusing to resume and recopy over it: "+
+		"if that installation serves %s and is healthy, the migration finished, so remove %s and rerun with -cleanup; "+
+		"otherwise run 'mirror-registry uninstall' and rerun the migration", m.DataDir, m.DataDir, markerPath)
+}
+
+func failAt(phase string) error {
+	if os.Getenv(failAtEnv) == phase {
+		return fmt.Errorf("injected failure at %s", phase)
+	}
+	return nil
 }
 
 func (m *Migrator) migrateData(ctx context.Context) error {
@@ -146,13 +225,20 @@ func (m *Migrator) migrateData(ctx context.Context) error {
 	if err := m.stopSourceServices(ctx); err != nil {
 		return fmt.Errorf("stop old OMR: %w", err)
 	}
+	return m.copyAndUpgrade(ctx)
+}
+
+func (m *Migrator) copyAndUpgrade(ctx context.Context) error {
 	if err := m.copyData(ctx); err != nil {
 		return fmt.Errorf("copy: %w", err)
+	}
+	if err := failAt("after-copy"); err != nil {
+		return err
 	}
 	if err := m.upgradeSchema(ctx); err != nil {
 		return fmt.Errorf("schema upgrade: %w", err)
 	}
-	return nil
+	return failAt("after-schema")
 }
 
 func (m *Migrator) detectAndOverride(ctx context.Context) error {

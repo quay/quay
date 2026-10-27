@@ -25,7 +25,7 @@ func newVersionCmd() *Command {
 func printVersion() {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		fmt.Println("quay (no build info available)")
+		fmt.Println(BinaryName + " (no build info available)")
 		return
 	}
 
@@ -34,7 +34,7 @@ func printVersion() {
 		v = vcsOr(info, "dev")
 	}
 
-	fmt.Printf("quay %s\n", v)
+	fmt.Printf("%s %s\n", BinaryName, v)
 	fmt.Printf("  commit:   %s\n", vcsSetting(info, "vcs.revision", "unknown"))
 	fmt.Printf("  built:    %s\n", vcsSetting(info, "vcs.time", "unknown"))
 	fmt.Printf("  modified: %s\n", vcsSetting(info, "vcs.modified", "unknown"))

@@ -10,6 +10,7 @@ import (
 type ImageLoader interface {
 	Load(ctx context.Context, archivePath string) (imageRef string, err error)
 	Pull(ctx context.Context, image string) error
+	ImageID(ctx context.Context, image string) (string, error)
 }
 
 // PodmanLoader implements ImageLoader using podman.
@@ -41,6 +42,19 @@ func (p *PodmanLoader) Pull(ctx context.Context, image string) error {
 		return fmt.Errorf("podman pull: %w", err)
 	}
 	return nil
+}
+
+// ImageID returns the local image ID for the given image reference.
+func (p *PodmanLoader) ImageID(ctx context.Context, image string) (string, error) {
+	output, err := p.runner.Output(ctx, "podman", "image", "inspect", "--format", "{{.Id}}", image)
+	if err != nil {
+		return "", fmt.Errorf("podman image inspect: %w", err)
+	}
+	id := strings.TrimSpace(output)
+	if id == "" {
+		return "", fmt.Errorf("empty image ID for %s", image)
+	}
+	return id, nil
 }
 
 // ParseLoadedImageRef extracts the image reference from podman load output.

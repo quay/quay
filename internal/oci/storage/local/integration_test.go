@@ -59,7 +59,7 @@ func TestIntegration_BlobRoundTrip(t *testing.T) {
 	}
 
 	// 5. Record blob metadata (simulating middleware)
-	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
+	if _, err := store.PutRepositoryBlob(ctx, repoID, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
 		t.Fatal(err)
 	}
 

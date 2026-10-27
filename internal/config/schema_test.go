@@ -59,6 +59,7 @@ var knownUnmapped = map[string]bool{
 	// OAuth
 	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
 	"OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT": true,
+	"API_TOKEN_MAXIMUM_TOKEN_COUNT":         true,
 	"GITHUB_LOGIN_CONFIG":                   true,
 	"BITBUCKET_TRIGGER_CONFIG":              true,
 	"GITHUB_TRIGGER_CONFIG":                 true,
@@ -136,6 +137,8 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
 	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
+	"FEATURE_ROBOT_API_TOKEN_EXCHANGE":              true,
+	"FEATURE_ROBOT_API_TOKENS":                      true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
 	"FEATURE_QUOTA_NOTIFICATIONS":                   true,
@@ -197,6 +200,9 @@ var knownUnmapped = map[string]bool{
 	"QUOTA_BACKFILL_BATCH_SIZE":           true,
 	"QUOTA_BACKFILL_POLL_PERIOD":          true,
 	"QUOTA_INVALIDATE_TOTALS":             true,
+	"QUOTA_METRICS":                       true,
+	"QUOTA_METRICS_NAMESPACES_LIMIT":      true,
+	"QUOTA_METRICS_REPOS_LIMIT":           true,
 	"QUOTA_NOTIFICATION_COOLDOWN_SECONDS": true,
 	"QUOTA_REGISTRY_SIZE_POLL_PERIOD":     true,
 	"QUOTA_TOTAL_DELAY_SECONDS":           true,
@@ -232,6 +238,10 @@ var knownUnmapped = map[string]bool{
 	"ALLOWED_OCI_ARTIFACT_TYPES":                     true,
 	"APP_SPECIFIC_TOKEN_EXPIRATION":                  true,
 	"AUTO_PRUNE_DEFAULT_POLICY":                      true,
+	"BLOB_UPLOAD_CLIENT_BODY_TIMEOUT":                true,
+	"BLOB_UPLOAD_LINGERING_CLOSE":                    true,
+	"BLOB_UPLOAD_LINGERING_TIME":                     true,
+	"BLOB_UPLOAD_LINGERING_TIMEOUT":                  true,
 	"CLEAN_BLOB_UPLOAD_FOLDER":                       true,
 	"CREATE_NAMESPACE_ON_PUSH":                       true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
@@ -279,6 +289,7 @@ var goOnlyFields = map[string]bool{
 	"INSTANCE_SERVICE_KEY_LOCATION":     true,
 	"INSTANCE_SERVICE_KEY_SERVICE":      true,
 	"REGISTRY_JWT_AUTH_MAX_FRESH_S":     true,
+	"PASSWORD_AUTH_CACHE_TTL_S":         true, // mirror-registry token issuance cache
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

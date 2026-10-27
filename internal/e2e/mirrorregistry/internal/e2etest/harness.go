@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -169,6 +170,46 @@ func (h *Harness) ExpireUploadProtection(ctx context.Context) error {
 		return fmt.Errorf("expire E2E uploaded blobs: %w", err)
 	}
 	return nil
+}
+
+// ExpireTemporaryTags forces expiration on the temporary pushed tags. Due to changes to how temporary tags are implemented,
+// we need to expire them explicitly so that all guards before a real GC process runs are removed.
+func (h *Harness) ExpireTemporaryTags(ctx context.Context) error {
+	if h == nil || h.gcDB == nil {
+		return fmt.Errorf("expire temp tags with uninitialized E2e harness")
+	}
+
+	query := `UPDATE tag SET lifetime_end_ms = strftime('%s', 'now', '-30 days') * 1000 WHERE hidden = 1 AND name LIKE '$temp-%'`
+	_, err := h.gcDB.ExecContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("expire E2E temporary tags: %w", err)
+	}
+	return nil
+}
+
+// TagRows reports how many live and expired rows the tag history table holds
+// for one tag name in a repository ("namespace/name").
+func (h *Harness) TagRows(ctx context.Context, repository, tag string) (live, expired int, err error) {
+	if h == nil || h.gcDB == nil {
+		return 0, 0, fmt.Errorf("count tag rows with uninitialized E2E harness")
+	}
+	namespace, name, ok := strings.Cut(repository, "/")
+	if !ok {
+		return 0, 0, fmt.Errorf("repository %q must be namespace/name", repository)
+	}
+	err = h.gcDB.QueryRowContext(ctx, `
+		SELECT
+		    COALESCE(SUM(CASE WHEN t.lifetime_end_ms IS NULL THEN 1 ELSE 0 END), 0),
+		    COALESCE(SUM(CASE WHEN t.lifetime_end_ms IS NOT NULL THEN 1 ELSE 0 END), 0)
+		FROM tag t
+		JOIN repository r ON r.id = t.repository_id
+		JOIN "user" u ON u.id = r.namespace_user_id
+		WHERE u.username = ? AND r.name = ? AND t.name = ?`,
+		namespace, name, tag).Scan(&live, &expired)
+	if err != nil {
+		return 0, 0, fmt.Errorf("count E2E tag rows: %w", err)
+	}
+	return live, expired, nil
 }
 
 // BaseURL returns the HTTP URL of the in-process registry.

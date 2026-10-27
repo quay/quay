@@ -1575,7 +1575,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
 
     def test_redacts_complex_password(self):
         buf = StringIO()
-        super_secret_password = "#HRx-u9r>W+?.?QTtN_X"
+        super_secret_password = "QUAY_FIXTURE_ONLY-#HRx-u9r>W+?.?QTtN_X"
         redactor = _LDAPTraceRedactor(stream=buf)
 
         redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
@@ -1615,7 +1615,7 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
 
     def test_redacts_single_line_complex_password(self):
         buf = StringIO()
-        secret = "#HRx-u9r>W+?.?QTtN_X"
+        secret = "QUAY_FIXTURE_ONLY-#HRx-u9r>W+?.?QTtN_X"
         redactor = _LDAPTraceRedactor(stream=buf)
 
         trace = (

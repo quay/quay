@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -22,17 +24,31 @@ func newServeCmd() *Command {
 	hostname := fs.String("hostname", "localhost:8443", "public registry hostname, including port when non-default")
 	addr := fs.String("addr", ":8443", "listen address")
 
+	// serve is the container entrypoint launched by the installed Quadlet
+	// unit; end users manage the service through systemd, so it is hidden
+	// from the top-level help listing.
 	return &Command{
 		Name:     "serve",
 		Synopsis: "Start the OCI container registry",
 		Flags:    fs,
+		Hidden:   true,
 		Run: func(ctx context.Context, _ *Command, _ []string) int {
 			return runServe(ctx, *configPath, *dataDir, *hostname, *addr)
 		},
 	}
 }
 
+func resolvePublicHostname(hostname, addr string) string {
+	if _, _, err := net.SplitHostPort(hostname); err != nil {
+		if _, port, splitErr := net.SplitHostPort(addr); splitErr == nil && port != "443" {
+			return net.JoinHostPort(strings.Trim(hostname, "[]"), port)
+		}
+	}
+	return hostname
+}
+
 func runServe(ctx context.Context, configPath, dataDir, hostname, addr string) int {
+	hostname = resolvePublicHostname(hostname, addr)
 	resolved, err := config.Resolve(configPath, dataDir, hostname)
 	if err != nil {
 		slog.Error("config error", "err", err)

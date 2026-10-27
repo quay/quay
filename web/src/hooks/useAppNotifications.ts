@@ -43,6 +43,7 @@ function mapAngularLevelToPF(
 export interface UseAppNotificationsReturn {
   notifications: AppNotification[];
   unreadCount: number;
+  additional: boolean;
   loading: boolean;
   dismissNotification: (id: string) => void;
   refetch: () => void;
@@ -51,14 +52,20 @@ export interface UseAppNotificationsReturn {
 export function useAppNotifications(enabled = true): UseAppNotificationsReturn {
   const queryClient = useQueryClient();
 
-  const {data: notifications = [], isLoading: loading} = useQuery({
+  const {
+    data: {notifications, additional} = {notifications: [], additional: false},
+    isLoading: loading,
+  } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
       const {data} = await axios.get('/api/v1/user/notifications');
-      return data.notifications.map((n: any) => ({
-        ...n,
-        level: mapAngularLevelToPF(n.level, n.metadata),
-      }));
+      return {
+        notifications: data.notifications.map((n: any) => ({
+          ...n,
+          level: mapAngularLevelToPF(n.level, n.metadata),
+        })),
+        additional: !!data.additional,
+      };
     },
     refetchInterval: 5 * 60 * 1000, // refetch every 5 minutes
     enabled,
@@ -78,6 +85,7 @@ export function useAppNotifications(enabled = true): UseAppNotificationsReturn {
   return {
     notifications,
     unreadCount,
+    additional,
     loading,
     dismissNotification: dismissMutation.mutate,
     refetch: () => queryClient.invalidateQueries({queryKey: ['notifications']}),

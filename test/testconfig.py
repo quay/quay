@@ -20,7 +20,7 @@ TEST_DB_FILE = NamedTemporaryFile(delete=True)
 class TestConfig(DefaultConfig):
     TESTING = True
     SECRET_KEY = "superdupersecret!!!1"
-    DATABASE_SECRET_KEY = "anothercrazykey!"
+    DATABASE_SECRET_KEY = "QUAY_FIXTURE_ONLY-anothercrazykey!"
     BILLING_TYPE = "FakeStripe"
 
     TEST_DB_FILE = TEST_DB_FILE
@@ -48,6 +48,8 @@ class TestConfig(DefaultConfig):
     FEATURE_SUPER_USERS = True
     FEATURE_SUPERUSERS_FULL_ACCESS = True
     FEATURE_PROGRAMMATIC_BOOTSTRAP = True
+    FEATURE_ROBOT_API_TOKENS = True
+    FEATURE_ROBOT_API_TOKEN_EXCHANGE = True
     BOOTSTRAP_TOKEN_OWNER = "devtable"
     BOOTSTRAP_TOKEN_PATH = f"{TEST_DB_FILE.name}-bootstrap-token.json"
     FEATURE_BILLING = True

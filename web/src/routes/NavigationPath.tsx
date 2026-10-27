@@ -42,6 +42,7 @@ export enum NavigationPath {
   overviewList = '/overview',
   organizationsList = '/organization',
   repositoriesList = '/repository',
+  search = '/search',
 
   // Static pages
   about = '/about',

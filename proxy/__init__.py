@@ -71,8 +71,12 @@ class Proxy:
         if config.insecure:
             url = f"http://{hostname}"
 
+        # resolve_dns=False: format/name-block only. Proxy-aware DNS skip is
+        # performed at the API layer (resolve_dns=True) before persistence.
         validate_external_registry_url(
-            url, resolve_dns=False, allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", [])
+            url,
+            resolve_dns=False,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
         )
 
         self.base_url = url

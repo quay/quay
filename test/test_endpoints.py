@@ -209,12 +209,56 @@ class ArchivedLogsTestCase(EndpointTestCase):
         with patch("endpoints.web.log_archive._storage.stream_read_file", return_value=mock_file):
             self.getResponse("web.logarchive", file_id=self.build_uuid, expected_code=200)
 
+    def test_logarchive_transcoded(self):
+        # Storage backends such as GCS decode Content-Encoding: gzip objects
+        # before serving them, so the stream may already be plain JSON.
+        self.login("public", "password")
+        data = b'{"logs": []}'
+        with patch(
+            "endpoints.web.log_archive._storage.stream_read_file", return_value=BytesIO(data)
+        ):
+            with self.assertLogs("endpoints.web", level="WARNING") as logs:
+                resp = self.getResponse(
+                    "web.logarchive", file_id=self.build_uuid, expected_code=200
+                )
+            self.assertEqual(data, resp)
+        self.assertEqual(len(logs.records), 1)
+        self.assertIn(self.build_uuid, logs.records[0].getMessage())
+        self.assertIn("already decoded", logs.records[0].getMessage())
+
+    def test_logarchive_unrecognized(self):
+        # Neither gzip nor JSON: controlled JSON 500 before any body bytes go
+        # out, with the build uuid and the leading bytes logged.
+        self.login("public", "password")
+        data = b"<html>not an archive</html>"
+        with patch(
+            "endpoints.web.log_archive._storage.stream_read_file", return_value=BytesIO(data)
+        ):
+            with self.assertLogs("endpoints.web", level="ERROR") as logs:
+                resp = self.getResponse(
+                    "web.logarchive", file_id=self.build_uuid, expected_code=500
+                )
+            self.assertEqual(py_json.loads(resp), {"error": "Archived logs are unreadable"})
+        self.assertEqual(len(logs.records), 1)
+        self.assertIn(self.build_uuid, logs.records[0].getMessage())
+        self.assertIn(data[:32].hex(), logs.records[0].getMessage())
+
 
 class WebhookEndpointTestCase(EndpointTestCase):
     def test_invalid_build_trigger_webhook(self):
         self.postResponse(
             "webhooks.build_trigger_webhook", trigger_uuid="invalidtrigger", expected_code=404
         )
+
+    def test_oversized_multipart_field_does_not_break_request_logging(self):
+        # A multipart text field over MAX_FORM_MEMORY_SIZE must not raise from the
+        # after_request logging hook.
+        rv = self.app.post(
+            url_for("webhooks.build_trigger_webhook", trigger_uuid="invalidtrigger"),
+            data={"field": "a" * 600_000, "file": (BytesIO(b"x"), "f.txt")},
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(rv.status_code, 404)
 
     def test_valid_build_trigger_webhook_invalid_auth(self):
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]

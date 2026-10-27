@@ -74,6 +74,11 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
   test('auto theme respects browser color scheme preference', async ({
     authenticatedPage,
   }) => {
+    // Worker-scoped context leaks the previous test's LIGHT preference
+    await authenticatedPage.addInitScript(() =>
+      localStorage.removeItem('theme-preference'),
+    );
+
     // Emulate dark mode preference
     await authenticatedPage.emulateMedia({colorScheme: 'dark'});
     await authenticatedPage.goto('/overview');

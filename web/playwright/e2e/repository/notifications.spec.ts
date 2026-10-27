@@ -4,6 +4,7 @@ import {
   mailpit,
   uniqueName,
   WebhookReceiver,
+  getTestUsers,
 } from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
@@ -345,7 +346,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
   test(
     'creates email notification with authorization flow',
-    {tag: '@feature:MAILING'},
+    {tag: ['@feature:MAILING', '@PROJQUAY-7098']},
     async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
@@ -396,6 +397,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByText('Email Authorization'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to verify email'),
+      ).not.toBeVisible();
 
       // Click Send Authorized Email
       await authenticatedPage.getByTestId('send-authorized-email-btn').click();
@@ -507,7 +511,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('recipient field: teams, users, and create team modal', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
+    const username = getTestUsers(quayConfig).user.username;
     // Create test organization with repository and team
     const org = await api.organization('recipnotif');
     const repo = await api.repository(org.name, 'reciprepo');
@@ -584,10 +590,10 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
     // Search for user
     await entitySearch.click();
-    await entitySearch.locator('input').fill('testuser');
+    await entitySearch.locator('input').fill(username);
 
     // Wait for search results and select user
-    await authenticatedPage.getByTestId('testuser').click();
+    await authenticatedPage.getByTestId(username).click();
 
     // Enter title
     await authenticatedPage

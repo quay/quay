@@ -294,6 +294,8 @@ test.describe(
                 issuer:
                   'https://sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1/',
                 subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
+                audiences: ['quay'],
+                api_scopes: 'repo:read',
                 isExpanded: true,
               },
             ],
@@ -314,6 +316,12 @@ test.describe(
           expect(fedBody[0].subject).toContain(
             '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
           );
+          expect(fedBody[0]).toMatchObject({
+            audiences: ['quay'],
+            api_scopes: 'repo:read',
+            version: 1,
+          });
+          expect(fedBody[0].id).toBeTruthy();
 
           // Delete federation
           const del = await adminClient.delete(

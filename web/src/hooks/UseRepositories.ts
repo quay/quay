@@ -33,7 +33,10 @@ export interface UseRepositoriesReturn {
   truncated: boolean;
 }
 
-export function useRepositories(organization?: string): UseRepositoriesReturn {
+export function useRepositories(
+  organization?: string,
+  quota?: boolean,
+): UseRepositoriesReturn {
   const {user, isSuperUser} = useCurrentUser();
 
   // Keep state of current search in this hook
@@ -66,6 +69,7 @@ export function useRepositories(organization?: string): UseRepositoriesReturn {
       organization || 'all',
       'repositories',
       isSuperUser ? 'superuser' : user?.anonymous ? 'anonymous' : 'user',
+      quota === false ? 'no-quota' : 'with-quota',
     ],
     keepPreviousData: true,
     placeholderData: [],
@@ -83,10 +87,14 @@ export function useRepositories(organization?: string): UseRepositoriesReturn {
       }
 
       if (currentOrganization) {
-        return fetchRepositoriesForNamespace(currentOrganization, {
-          signal,
-          onPartialResult: handlePartialResults,
-        });
+        return fetchRepositoriesForNamespace(
+          currentOrganization,
+          {
+            signal,
+            onPartialResult: handlePartialResults,
+          },
+          quota,
+        );
       }
 
       // Superusers: single paginated API call returns all repos across all namespaces

@@ -1,11 +1,11 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Organization List',
   {tag: ['@organization', '@critical']},
   () => {
-    test('search and filtering', async ({authenticatedPage}) => {
+    test('search and filtering', async ({authenticatedPage, quayConfig}) => {
+      const users = getTestUsers(quayConfig);
       await authenticatedPage.goto('/organization');
 
       // Wait for the table to load
@@ -15,11 +15,11 @@ test.describe(
 
       // Test basic search - search for current user
       const searchInput = authenticatedPage.getByPlaceholder(/Search by/);
-      await searchInput.fill(TEST_USERS.user.username);
+      await searchInput.fill(users.user.username);
 
       // Should find the user's namespace
       await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        authenticatedPage.getByRole('link', {name: users.user.username}),
       ).toBeVisible();
 
       // Reset search
@@ -49,9 +49,9 @@ test.describe(
         .click();
 
       // Search with regex pattern starting with 't' (should match testuser)
-      await searchInput.fill(`^${TEST_USERS.user.username.charAt(0)}`);
+      await searchInput.fill(`^${users.user.username.charAt(0)}`);
       await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        authenticatedPage.getByRole('link', {name: users.user.username}),
       ).toBeVisible();
 
       // Reset and verify results restored
@@ -59,8 +59,12 @@ test.describe(
       await expect(
         authenticatedPage.locator('td[data-label="Name"]').first(),
       ).toBeVisible();
+
+      // Verify search still finds the user's namespace after reset,
+      // without depending on its row position in the unfiltered list
+      await searchInput.fill(users.user.username);
       await expect(
-        authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
+        authenticatedPage.getByRole('link', {name: users.user.username}),
       ).toBeVisible();
     });
 
@@ -141,6 +145,66 @@ test.describe(
         authenticatedPage.locator('td[data-label="Name"]'),
       ).toHaveCount(5);
     });
+
+    test(
+      'search resets pagination to page 1',
+      {tag: '@PROJQUAY-5746'},
+      async ({authenticatedPage, api}) => {
+        // Create enough organizations to span two pages. Use a run-unique
+        // prefix so the search below only ever matches orgs from this test.
+        const testPrefix = uniqueName('pageresettest');
+        const orgPromises = Array.from({length: 21}, () =>
+          api.organization(testPrefix),
+        );
+        await Promise.all(orgPromises);
+
+        await authenticatedPage.goto('/organization');
+        await authenticatedPage.getByPlaceholder(/Search by/).fill(testPrefix);
+
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('1 - 20 of 21');
+
+        // Capture the org shown first on page 1
+        const page1OrgName = (
+          await authenticatedPage
+            .locator('td[data-label="Name"] a')
+            .first()
+            .textContent()
+        ).trim();
+
+        // Go to page 2
+        await authenticatedPage
+          .locator('button[aria-label="Go to next page"]')
+          .first()
+          .click();
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('21 - 21 of 21');
+
+        // Search for the org that is on page 1 while still on page 2
+        await authenticatedPage
+          .getByPlaceholder(/Search by/)
+          .fill(page1OrgName);
+
+        // Pagination should reset to page 1 and show the matched org
+        await expect(
+          authenticatedPage.locator(
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
+          ),
+        ).toContainText('1 - 1 of 1');
+        await expect(
+          authenticatedPage.getByRole('link', {
+            name: page1OrgName,
+            exact: true,
+          }),
+        ).toBeVisible();
+      },
+    );
 
     test(
       'organization CRUD lifecycle',
@@ -321,7 +385,8 @@ test.describe(
     test(
       'displays avatars',
       {tag: '@PROJQUAY-9749'},
-      async ({authenticatedPage}) => {
+      async ({authenticatedPage, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         await authenticatedPage.goto('/organization');
 
         // Wait for table to load
@@ -332,12 +397,12 @@ test.describe(
         // Search for the current user's namespace (user namespaces have avatars)
         await authenticatedPage
           .getByPlaceholder(/Search by/)
-          .fill(TEST_USERS.user.username);
+          .fill(users.user.username);
 
         // Verify the user's row has an avatar
         const userRow = authenticatedPage.locator('tr').filter({
           has: authenticatedPage.getByRole('link', {
-            name: TEST_USERS.user.username,
+            name: users.user.username,
           }),
         });
         await expect(userRow.locator('.pf-v6-c-avatar')).toBeVisible();
@@ -351,7 +416,8 @@ test.describe(
         test(
           'displays user status labels',
           {tag: '@superuser'},
-          async ({superuserPage}) => {
+          async ({superuserPage, quayConfig}) => {
+            const users = getTestUsers(quayConfig);
             await superuserPage.goto('/organization');
 
             // Wait for table to load
@@ -362,10 +428,10 @@ test.describe(
             // Search for admin (superuser) and verify label
             await superuserPage
               .getByPlaceholder(/Search by/)
-              .fill(TEST_USERS.admin.username);
+              .fill(users.admin.username);
             const adminRow = superuserPage.locator('tr').filter({
               has: superuserPage.getByRole('link', {
-                name: TEST_USERS.admin.username,
+                name: users.admin.username,
               }),
             });
             await expect(adminRow.getByText('Superuser')).toBeVisible();
@@ -374,10 +440,10 @@ test.describe(
             await superuserPage.locator('[aria-label="Reset search"]').click();
             await superuserPage
               .getByPlaceholder(/Search by/)
-              .fill(TEST_USERS.readonly.username);
+              .fill(users.readonly.username);
             const readonlyRow = superuserPage.locator('tr').filter({
               has: superuserPage.getByRole('link', {
-                name: TEST_USERS.readonly.username,
+                name: users.readonly.username,
               }),
             });
             await expect(
@@ -393,10 +459,10 @@ test.describe(
             await superuserPage.locator('[aria-label="Reset search"]').click();
             await superuserPage
               .getByPlaceholder(/Search by/)
-              .fill(TEST_USERS.admin.username);
+              .fill(users.admin.username);
             const adminRowAgain = superuserPage.locator('tr').filter({
               has: superuserPage.getByRole('link', {
-                name: TEST_USERS.admin.username,
+                name: users.admin.username,
               }),
             });
             await expect(adminRowAgain.getByText('Superuser')).toBeVisible();
@@ -409,7 +475,7 @@ test.describe(
         test(
           'shows user orgs when superuser API fails',
           {tag: '@superuser'},
-          async ({superuserPage, superuserApi}) => {
+          async ({superuserPage, superuserApi, quayConfig}) => {
             // Create an org that the superuser owns
             const ownedOrg = await superuserApi.organization('ownedbyadmin');
 
@@ -443,7 +509,7 @@ test.describe(
             // Should still show superuser's own organizations and namespace
             await expect(
               superuserPage.getByRole('link', {
-                name: TEST_USERS.admin.username,
+                name: getTestUsers(quayConfig).admin.username,
                 exact: true,
               }),
             ).toBeVisible();
@@ -498,7 +564,7 @@ test.describe(
         test(
           'can see orgs but cannot perform actions',
           {tag: '@superuser'},
-          async ({readonlyPage, superuserApi}) => {
+          async ({readonlyPage, superuserApi, quayConfig}) => {
             // Create orgs that readonly user doesn't own
             const otherOrg = await superuserApi.organization('readonlytest');
 
@@ -512,7 +578,7 @@ test.describe(
             // Can see all orgs/users
             await expect(
               readonlyPage.getByRole('link', {
-                name: TEST_USERS.readonly.username,
+                name: getTestUsers(quayConfig).readonly.username,
                 exact: true,
               }),
             ).toBeVisible();
@@ -558,10 +624,10 @@ test.describe(
             await readonlyPage.locator('[aria-label="Reset search"]').click();
             await readonlyPage
               .getByPlaceholder(/Search by/)
-              .fill(TEST_USERS.readonly.username);
+              .fill(getTestUsers(quayConfig).readonly.username);
             const ownRow = readonlyPage.locator('tr').filter({
               has: readonlyPage.getByRole('link', {
-                name: TEST_USERS.readonly.username,
+                name: getTestUsers(quayConfig).readonly.username,
               }),
             });
             await expect(
@@ -606,9 +672,10 @@ test.describe(
         test(
           'regular user sees their own namespace quota',
           {tag: ['@PROJQUAY-9886', '@superuser']},
-          async ({authenticatedPage, superuserApi}) => {
+          async ({authenticatedPage, superuserApi, quayConfig}) => {
+            const users = getTestUsers(quayConfig);
             // Superuser creates quota for the test user's namespace (uses superuser API for user namespaces)
-            await superuserApi.userQuota(TEST_USERS.user.username, 10737418240);
+            await superuserApi.userQuota(users.user.username, 10737418240);
 
             await authenticatedPage.goto('/organization');
 
@@ -620,10 +687,10 @@ test.describe(
             // Find user's own namespace row and verify quota is displayed
             await authenticatedPage
               .getByPlaceholder(/Search by/)
-              .fill(TEST_USERS.user.username);
+              .fill(users.user.username);
             const userRow = authenticatedPage.locator('tr').filter({
               has: authenticatedPage.getByRole('link', {
-                name: TEST_USERS.user.username,
+                name: users.user.username,
               }),
             });
             const sizeCell = userRow.locator('td[data-label="Size"]');

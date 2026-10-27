@@ -10,6 +10,9 @@ const (
 	DefaultLastAccessedUpdateThresholdS = 60
 	DefaultInstanceServiceKeyService    = "quay"
 	DefaultRegistryJWTAuthMaxFreshS     = 3660
+	// DefaultPasswordAuthCacheTTLS remembers a verified password for five
+	// minutes; see internal/auth.DefaultPasswordCacheTTL.
+	DefaultPasswordAuthCacheTTLS = 300
 
 	// Feature defaults mirror the Python configuration defaults. A nil feature
 	// value is resolved against these defaults by internal/features.
@@ -33,7 +36,8 @@ func newDefaultConfig() Config {
 			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
-			AuthenticationType: DefaultAuthenticationType,
+			AuthenticationType:    DefaultAuthenticationType,
+			PasswordAuthCacheTTLS: DefaultPasswordAuthCacheTTLS,
 		},
 		Storage: Storage{
 			DefaultTagExpiration: DefaultTagExpiration,

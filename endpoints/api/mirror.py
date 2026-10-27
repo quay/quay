@@ -13,6 +13,7 @@ from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     define_json_response,
     format_date,
     nickname,
@@ -25,7 +26,11 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
+from util.security.ssrf import (
+    SSRFBlockedError,
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_reference,
+)
 
 SSRF_GENERIC_ERROR = "The provided registry location is not allowed"
 
@@ -34,12 +39,36 @@ def _get_ssrf_allowed_hosts():
     return app.config.get("SSRF_ALLOWED_HOSTS", [])
 
 
-def _validate_external_reference(reference):
+_PROXY_KEYS = ("http_proxy", "https_proxy", "no_proxy", "all_proxy")
+
+
+def _effective_proxy_config(stored_registry_config, submitted_registry_config):
+    """
+    Build the proxy mapping that will be active after a field-wise config update.
+
+    Persistence overlays only submitted proxy keys onto the stored mapping. SSRF
+    validation must use that same effective mapping so the validated route matches
+    the runtime route.
+    """
+    stored = dict((stored_registry_config or {}).get("proxy") or {})
+    if submitted_registry_config is None or "proxy" not in submitted_registry_config:
+        return stored or None
+
+    merged = dict(stored)
+    submitted_proxy = submitted_registry_config.get("proxy") or {}
+    for key in _PROXY_KEYS:
+        if key in submitted_proxy:
+            merged[key] = submitted_proxy[key]
+    return merged or None
+
+
+def _validate_external_reference(reference, proxy_config=None):
     """Validate a repository mirror source and normalize SSRF errors."""
     try:
         validate_external_registry_reference(
             reference,
             allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=resolve_proxy_config_for_ssrf(proxy_config),
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
@@ -295,12 +324,16 @@ class RepoMirrorResource(RepositoryParamResource):
         robot = mirror.internal_robot.username if mirror.internal_robot is not None else None
         timeout = mirror.skopeo_timeout
 
+        is_readonly = allow_if_global_readonly_superuser()
+
         return {
             "is_enabled": mirror.is_enabled,
             "mirror_type": mirror.mirror_type.name,
             "external_reference": mirror.external_reference,
-            "external_registry_username": username,
-            "external_registry_config": mirror.external_registry_config or {},
+            "external_registry_username": None if is_readonly else username,
+            "external_registry_config": (
+                {} if is_readonly else (mirror.external_registry_config or {})
+            ),
             "sync_interval": mirror.sync_interval,
             "sync_start_date": sync_start_date,
             "sync_expiration_date": sync_expiration_date,
@@ -341,7 +374,11 @@ class RepoMirrorResource(RepositoryParamResource):
         data = request.get_json()
 
         # Validate the complete request before creating rules or changing permissions.
-        _validate_external_reference(data["external_reference"])
+        registry_config = data.get("external_registry_config") or {}
+        _validate_external_reference(
+            data["external_reference"],
+            proxy_config=registry_config.get("proxy"),
+        )
 
         arch_filter = data.get("architecture_filter")
         if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
@@ -419,7 +456,13 @@ class RepoMirrorResource(RepositoryParamResource):
 
         # Validate and normalize every requested change before applying any update.
         if "external_reference" in values:
-            _validate_external_reference(values["external_reference"])
+            _validate_external_reference(
+                values["external_reference"],
+                proxy_config=_effective_proxy_config(
+                    mirror.external_registry_config,
+                    values.get("external_registry_config"),
+                ),
+            )
 
         if "sync_start_date" in values:
             try:

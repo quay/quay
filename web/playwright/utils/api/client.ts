@@ -121,6 +121,15 @@ export interface CreateUserResponse {
   awaiting_verification?: boolean;
 }
 
+export interface CurrentUserResponse {
+  username: string;
+  organizations: Array<{
+    name: string;
+    can_create_repo?: boolean;
+    is_org_admin?: boolean;
+  }>;
+}
+
 export interface CreateRobotResponse {
   name: string;
   token: string;
@@ -213,10 +222,17 @@ export interface ProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
+// CSRF token belongs to the session, i.e. to the request context, not the client.
+const csrfTokenCache = new WeakMap<APIRequestContext, string>();
+// Bumped whenever a session-changing call (signIn/createUser) invalidates the
+// cache above, so a fetchToken() that started before the invalidation can
+// detect it lost the race and skip resurrecting a pre-invalidation token.
+const csrfTokenGeneration = new WeakMap<APIRequestContext, number>();
+
 export class ApiClient {
   private request: APIRequestContext;
-  private csrfToken: string | null = null;
   private credentials: {username: string; password: string} | null = null;
+  private hasFetchedToken = false;
 
   constructor(request: APIRequestContext) {
     this.request = request;
@@ -227,10 +243,24 @@ export class ApiClient {
   }
 
   private async fetchToken(): Promise<string> {
-    if (!this.csrfToken) {
-      this.csrfToken = await requestCsrfToken(this.request, API_URL);
+    // First use always hits the server, so a client self-heals a session
+    // rotation (e.g. a UI-driven fresh-login verify) it never observed.
+    let token = this.hasFetchedToken
+      ? csrfTokenCache.get(this.request)
+      : undefined;
+    if (!token) {
+      const generation = csrfTokenGeneration.get(this.request) ?? 0;
+      token = await requestCsrfToken(this.request, API_URL);
+      // If a sibling client's signIn/createUser invalidated the cache while
+      // this fetch was in flight, writing here would resurrect a token from
+      // before that invalidation. Leave hasFetchedToken false so the next
+      // call refetches instead of trusting a cache another client owns.
+      if ((csrfTokenGeneration.get(this.request) ?? 0) === generation) {
+        csrfTokenCache.set(this.request, token);
+        this.hasFetchedToken = true;
+      }
     }
-    return this.csrfToken;
+    return token;
   }
 
   /**
@@ -1118,7 +1148,11 @@ export class ApiClient {
     }
 
     // Creating a user changes the server session; invalidate cached CSRF token
-    this.csrfToken = null;
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
 
     const result = await response.json();
     return {
@@ -1220,12 +1254,13 @@ export class ApiClient {
     return response.ok();
   }
 
-  async clearUserPrompts(): Promise<void> {
+  // Re-submitting the unchanged username clears confirm_username.
+  async clearUserPrompts(username: string): Promise<void> {
     const token = await this.getToken();
     const response = await this.request.put(`${API_URL}/api/v1/user/`, {
       timeout: 5000,
       headers: {'X-CSRF-Token': token},
-      data: {given_name: 'Test', family_name: 'User'},
+      data: {username, given_name: 'Test', family_name: 'User'},
     });
     if (!response.ok()) {
       const body = await response.text();
@@ -1256,22 +1291,46 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
-    this.csrfToken = null;
+    csrfTokenCache.delete(this.request);
+    csrfTokenGeneration.set(
+      this.request,
+      (csrfTokenGeneration.get(this.request) ?? 0) + 1,
+    );
   }
 
   // User notification methods
 
-  async getUserNotifications(): Promise<{
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    const response = await this.request.get(`${API_URL}/api/v1/user/`, {
+      timeout: 5000,
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get current user: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async getUserNotifications(limit = 5): Promise<{
     notifications: Array<{
       id: string;
       kind: string;
-      metadata: {name: string; repository: string};
+      metadata: {
+        name?: string;
+        repository?: string;
+        org?: string;
+        code?: string;
+      };
       dismissed: boolean;
     }>;
     additional: boolean;
   }> {
     const response = await this.request.get(
-      `${API_URL}/api/v1/user/notifications`,
+      `${API_URL}/api/v1/user/notifications?limit=${limit}`,
       {
         timeout: 5000,
       },
@@ -1285,6 +1344,44 @@ export class ApiClient {
     }
 
     return response.json();
+  }
+
+  async acceptTeamInvite(code: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/teaminvite/${encodeURIComponent(code)}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`Failed to accept team invite: ${response.status()}`);
+    }
+  }
+
+  async dismissUserNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/user/notifications/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {dismissed: true},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to dismiss user notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
   }
 
   // Team member methods (for test setup)
@@ -1972,6 +2069,30 @@ export class ApiClient {
     throw new Error(
       `Build ${buildId} did not reach terminal phase within ${timeoutMs}ms. Current phase: ${finalStatus.phase}`,
     );
+  }
+
+  /**
+   * Get a build via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/build`, {
+        timeout: 10000,
+      });
+    });
+  }
+
+  /**
+   * Get build logs via the superuser endpoint. Fresh-login-protected, so
+   * callers that need to assert on status/body get the raw response back.
+   */
+  async getBuildLogsAsSuperuser(buildId: string): Promise<APIResponse> {
+    return this.withFreshLoginRetry(async () => {
+      return this.request.get(`${API_URL}/api/v1/superuser/${buildId}/logs`, {
+        timeout: 10000,
+      });
+    });
   }
 
   // Proxy cache methods
@@ -2968,7 +3089,12 @@ export class ApiClient {
   async createRobotFederation(
     orgName: string,
     robotShortname: string,
-    federations: {issuer: string; subject: string}[],
+    federations: {
+      issuer: string;
+      subject: string;
+      api_scopes?: string;
+      audiences?: string[];
+    }[],
   ): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.post(

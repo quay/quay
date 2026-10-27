@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushMultiArchImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Repository Details - Tag CRUD, Labels & Navigation',
   {tag: ['@tags', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     // Shared repo for read-only tests (rendering, navigation, popover, labels)
     let sharedRepo: {namespace: string; name: string; fullName: string};
 
@@ -16,28 +21,28 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `tag-crud-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       sharedRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         sharedRepo.namespace,
         sharedRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await pushMultiArchImage(
         sharedRepo.namespace,
         sharedRepo.name,
         'manifestlist',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
     });
 
@@ -134,7 +139,9 @@ test.describe(
           exact: true,
         }),
       });
-      await latestRow.locator('td[data-label="Pull"] svg').hover();
+      // @patternfly/react-icons >= 6.6 nests two inner <svg>s (default and
+      // rh-ui icon sets) in the outer svg.pf-v6-svg, so a bare "svg" matches 3.
+      await latestRow.locator('td[data-label="Pull"] svg.pf-v6-svg').hover();
 
       const popover = authenticatedPage.getByTestId('pull-popover');
       await expect(popover).toBeVisible({timeout: 10000});
@@ -208,8 +215,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -248,8 +255,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -260,7 +267,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Remove').click();
 
       await expect(
@@ -292,8 +299,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -333,15 +340,15 @@ test.describe(
         repo.namespace,
         repo.name,
         'tag1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
       await pushImage(
         repo.namespace,
         repo.name,
         'tag2',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -381,8 +388,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -393,16 +400,19 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Add new tag').click();
 
       await expect(
         authenticatedPage.getByText(/Add tag to manifest sha256:/),
       ).toBeVisible();
-      await authenticatedPage
-        .locator('input[placeholder="New tag name"]')
-        .fill('newtag');
-      await authenticatedPage.getByText('Create tag').click();
+
+      const tagTextField = authenticatedPage.getByRole('textbox', {
+        name: 'new tag name',
+      });
+
+      await tagTextField.fill('newtag');
+      await authenticatedPage.getByRole('button', {name: 'Create tag'}).click();
 
       await expect(
         authenticatedPage.getByText('Successfully created tag newtag'),
@@ -412,14 +422,83 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('add new tag: Create tag button disabled for bad tag names', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // push test image
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+
+      const errorMessage = `Must start with a letter, digit or underscore. Only letters, digits, underscores, hyphens and periods allowed. Max 128 characters.`;
+
+      // verify UI can be rendered
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1'}),
+      ).toBeVisible();
+
+      // open modal dialog for tag addition
+      const tagRow = authenticatedPage.getByTestId('table-entry').filter({
+        has: authenticatedPage.getByRole('link', {name: 'v1'}),
+      });
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
+      await authenticatedPage.getByText('Add new tag').click();
+      await expect(
+        authenticatedPage.getByText(/Add tag to manifest sha256:/),
+      ).toBeVisible();
+
+      const tagTextField = authenticatedPage.getByRole('textbox', {
+        name: 'new tag name',
+      });
+      const createButton = authenticatedPage.getByRole('button', {
+        name: 'Create tag',
+      });
+
+      // try filling a bad tag
+      await tagTextField.fill('*!"387%%%abdac');
+
+      // verify that error message is shown and button is not available
+      await expect(authenticatedPage.getByText(errorMessage)).toBeVisible();
+      await expect(createButton).toBeDisabled();
+
+      // replace tag with a too long tag name
+      await tagTextField.clear();
+      await tagTextField.fill('a'.repeat(129));
+
+      // verify that error message is shown and button is not available
+      await expect(authenticatedPage.getByText(errorMessage)).toBeVisible();
+      await expect(createButton).toBeDisabled();
+
+      // replace tag with a proper tag
+      await tagTextField.clear();
+      await tagTextField.fill('proper-tag');
+
+      // verify that error message is no longer present and button is enabled
+      await expect(authenticatedPage.getByText(errorMessage)).not.toBeVisible();
+      await expect(createButton).toBeEnabled();
+
+      // cancel
+      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Add tag modal'}),
+      ).not.toBeVisible();
+    });
+
     test('alert on failure to add tag', async ({authenticatedPage, api}) => {
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.route(
@@ -441,7 +520,7 @@ test.describe(
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Add new tag').click();
       await authenticatedPage
         .locator('input[placeholder="New tag name"]')
@@ -466,8 +545,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -480,7 +559,7 @@ test.describe(
       });
 
       // Open labels modal and create labels
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
 
       const mutableLabels = authenticatedPage
@@ -493,11 +572,15 @@ test.describe(
         .locator('input[placeholder="key=value"]')
         .fill('testkey=testval');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert first label was committed before adding the second
+      await expect(mutableLabels).toContainText('testkey=testval');
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('foo=bar');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert second label was committed before saving
+      await expect(mutableLabels).toContainText('foo=bar');
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(
@@ -505,7 +588,7 @@ test.describe(
       ).toBeVisible();
 
       // Re-open labels and delete them
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
 
       const mutableLabels2 = authenticatedPage
@@ -535,8 +618,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.route('**/labels', async (route) => {
@@ -556,13 +639,24 @@ test.describe(
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
       });
 
-      await tagRow.locator('#tag-actions-kebab').click();
+      await tagRow.getByRole('button', {name: 'Tag actions kebab'}).click();
       await authenticatedPage.getByText('Edit labels').click();
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('fail=test');
       await authenticatedPage.getByText('Mutable labels').click();
+
+      const mutableLabelContent = authenticatedPage
+        .locator('#mutable-labels .label-content')
+        .first();
+      await expect(mutableLabelContent).toContainText('fail=test');
+
+      const saveLabelsButton = authenticatedPage.getByRole('button', {
+        name: 'Save Labels',
+      });
+      await expect(saveLabelsButton).toBeEnabled();
+
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(

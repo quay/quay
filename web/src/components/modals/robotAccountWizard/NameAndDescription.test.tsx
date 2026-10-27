@@ -1,6 +1,7 @@
-import {render, screen, userEvent, waitFor} from 'src/test-utils';
+import {render, screen, userEvent} from 'src/test-utils';
 import NameAndDescription from './NameAndDescription';
 import {validateRobotName} from 'src/libs/utils';
+import {fireEvent} from '@testing-library/react';
 
 function makeProps(overrides = {}) {
   return {
@@ -116,5 +117,25 @@ describe('NameAndDescription', () => {
     expect(
       screen.getByText('Must match the robot name pattern.'),
     ).toBeInTheDocument();
+  });
+
+  it('shows error when decription exceeds 255 characters', async () => {
+    const setDescription = vi.fn();
+    render(<NameAndDescription {...makeProps({setDescription})} />);
+    const descInput = screen.getByTestId('robot-wizard-form-description');
+    fireEvent.change(descInput, {target: {value: 'a'.repeat(300)}});
+    expect(
+      screen.getByText('Description must not exceed 255 characters.'),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show error when description is exactly 255 characters', async () => {
+    const setDescription = vi.fn();
+    render(<NameAndDescription {...makeProps({setDescription})} />);
+    const descInput = screen.getByTestId('robot-wizard-form-description');
+    fireEvent.change(descInput, {target: {value: 'a'.repeat(255)}});
+    expect(
+      screen.queryByText('Description must not exceed 255 characters.'),
+    ).not.toBeInTheDocument();
   });
 });

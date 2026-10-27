@@ -32,6 +32,15 @@ const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 export const QUOTA_NOTIFICATION_SOURCE_IMAGE =
   'registry.access.redhat.com/ubi9/ubi@sha256:25a147defd01e19674714f55d17538c8dbe55d8c305fa157ecc3f9c8977b05b6';
 
+/**
+ * Pinned UBI9 ubi-micro manifest list used for multi-arch pushes, covering
+ * schema-2 (not prettyjws) linux/amd64 and linux/arm64 children.
+ * registry.access.redhat.com is used, same as QUOTA_NOTIFICATION_SOURCE_IMAGE
+ * above, because it retains digests for consumers.
+ */
+const MULTIARCH_SOURCE_IMAGE =
+  'registry.access.redhat.com/ubi9/ubi-micro@sha256:7a0454cbd9bd847e8f6a63b6f0254a6efbeb6e0ed71a5d824a4f6cccbe626650';
+
 type ToolAvailability = {
   skopeo: boolean;
   crane: boolean;
@@ -166,7 +175,8 @@ async function requireTool(tool: keyof ToolAvailability): Promise<void> {
  * Execute an async operation, retrying with fixed 1s delays on failure.
  *
  * Registry pushes can race with repository initialization, so push-like
- * helpers retry their registry operation a few times.
+ * helpers retry their registry operation a few times. Each failed attempt is
+ * logged so the final thrown error isn't the only one visible.
  */
 async function retryOperation(
   operation: () => Promise<void>,
@@ -179,6 +189,10 @@ async function retryOperation(
       return;
     } catch (err) {
       lastErr = err;
+      console.warn(
+        `retryOperation attempt ${i + 1}/${maxAttempts} failed:`,
+        err,
+      );
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
@@ -449,6 +463,12 @@ export async function pullImage(
         `docker://${image}`,
         `oci:${tmpDir}:${tag}`,
         '--src-tls-verify=false',
+        // The oci: transport cannot store signatures, and skopeo's manifest-list
+        // copy path attempts a signature copy even when none exist, failing with
+        // "Pushing signatures for OCI images is not supported". Our test images
+        // never carry real signatures, so stripping them on pull is a no-op for
+        // single-arch and unblocks multi-arch (manifest list) pulls.
+        '--remove-signatures',
         '--src-authfile',
         authFile,
       ]),
@@ -499,7 +519,7 @@ export async function pushMultiArchImage(
     retryOperation(() =>
       skopeoCopy([
         '--all',
-        `docker://${BUSYBOX_IMAGE}`,
+        `docker://${MULTIARCH_SOURCE_IMAGE}`,
         `docker://${image}`,
         '--dest-tls-verify=false',
         '--dest-authfile',
@@ -550,6 +570,57 @@ export function orasAttach(
       {stdio: 'pipe', timeout: 60_000},
     ),
   );
+}
+
+/**
+ * Discover the OCI referrers attached to a manifest using oras, returning the
+ * `artifactType` of every referrer found.
+ *
+ * Walks the `oras discover --format json` output defensively so it tolerates
+ * oras output-shape differences across versions.
+ *
+ * @returns Array of artifactType strings for the referrers of the given ref
+ */
+export async function orasDiscover(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  await requireTool('oras');
+
+  const ref = targetImage(namespace, repo, tag);
+  const {stdout} = await withRegistryAuthFile(username, password, (authFile) =>
+    execFileAsync('oras', [
+      'discover',
+      ref,
+      '--format',
+      'json',
+      '--insecure',
+      '--registry-config',
+      authFile,
+    ]),
+  );
+
+  const artifactTypes: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'artifactType' && typeof value === 'string') {
+          artifactTypes.push(value);
+        } else {
+          walk(value);
+        }
+      }
+    }
+  };
+  walk(JSON.parse(stdout));
+  return artifactTypes;
 }
 
 /**

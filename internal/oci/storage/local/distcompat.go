@@ -1,7 +1,6 @@
 package local
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -75,20 +74,9 @@ func (d *DistDriver) getBlobContent(ctx context.Context, path string) ([]byte, e
 	}
 	data, err := d.blobs.GetContent(ctx, dgst)
 	if errors.Is(err, storage.ErrNotExist) {
-		return d.getManifestBlobContent(ctx, path, dgst)
-	}
-	return data, err
-}
-
-func (d *DistDriver) getManifestBlobContent(ctx context.Context, path string, dgst digest.Digest) ([]byte, error) {
-	data, err := d.meta.GetManifestContent(ctx, dgst)
-	if err == nil {
-		return data, nil
-	}
-	if errors.Is(err, oci.ErrNotExist) {
 		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
-	return nil, err
+	return data, err
 }
 
 func (d *DistDriver) getMetadataContent(ctx context.Context, path string) ([]byte, error) {
@@ -134,10 +122,7 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 	return "", fmt.Errorf("unknown metadata path")
 }
 
-// resolveManifestRevision checks if a manifest exists, first via SQLite metadata,
-// then falling back to the BlobStore. The fallback handles the race where a child
-// manifest blob was written by distribution but the middleware's metadata write
-// hasn't committed yet (common under concurrent multi-arch pushes).
+// resolveManifestRevision checks if a manifest exists in the SQLite database. Returns an error if the manifest is not found.
 func (d *DistDriver) resolveManifestRevision(ctx context.Context, repoID int64, dgst digest.Digest) (digest.Digest, error) {
 	result, err := d.meta.GetManifestDigest(ctx, repoID, dgst)
 	if err == nil {
@@ -145,11 +130,6 @@ func (d *DistDriver) resolveManifestRevision(ctx context.Context, repoID int64, 
 	}
 	if !errors.Is(err, oci.ErrNotExist) {
 		return "", err
-	}
-	if _, statErr := d.blobs.Stat(ctx, dgst); statErr == nil {
-		return dgst, nil
-	} else if !errors.Is(statErr, storage.ErrNotExist) {
-		return "", statErr
 	}
 	return "", fmt.Errorf("manifest revision not found: %s", dgst)
 }
@@ -220,23 +200,9 @@ func (d *DistDriver) readerBlob(ctx context.Context, path string, offset int64) 
 	}
 	rc, err := d.blobs.Reader(ctx, dgst, offset)
 	if errors.Is(err, storage.ErrNotExist) {
-		return d.readerManifestBlob(ctx, path, dgst, offset)
+		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
 	return rc, err
-}
-
-func (d *DistDriver) readerManifestBlob(ctx context.Context, path string, dgst digest.Digest, offset int64) (io.ReadCloser, error) {
-	data, err := d.getManifestBlobContent(ctx, path, dgst)
-	if err != nil {
-		return nil, err
-	}
-	if offset < 0 {
-		return nil, fmt.Errorf("negative offset %d", offset)
-	}
-	if offset > int64(len(data)) {
-		return nil, fmt.Errorf("offset %d beyond manifest content size %d", offset, len(data))
-	}
-	return io.NopCloser(bytes.NewReader(data[offset:])), nil
 }
 
 // Writer returns a FileWriter for upload data. Distribution uses this
@@ -320,13 +286,7 @@ func (d *DistDriver) statBlob(ctx context.Context, path string) (storagedriver.F
 	}
 	info, err := d.blobs.Stat(ctx, dgst)
 	if errors.Is(err, storage.ErrNotExist) {
-		data, err := d.getManifestBlobContent(ctx, path, dgst)
-		if err != nil {
-			return nil, err
-		}
-		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
-			Path: path, Size: int64(len(data)), IsDir: false,
-		}}, nil
+		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
 	if err != nil {
 		return nil, err

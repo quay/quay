@@ -54,7 +54,11 @@ from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
 from util.request import get_request_ip
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+from util.security.ssrf import (
+    SSRFBlockedError,
+    get_environment_proxy_config,
+    validate_external_registry_url,
+)
 from util.validation import validate_email
 
 logger = logging.getLogger(__name__)
@@ -71,7 +75,11 @@ def _validate_upstream_registry(upstream_registry, insecure=False):
     scheme = "http" if insecure else "https"
     url = f"{scheme}://{hostname}"
     try:
-        validate_external_registry_url(url, allowed_hosts=_get_ssrf_allowed_hosts())
+        validate_external_registry_url(
+            url,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+            proxy_config=get_environment_proxy_config(),
+        )
     except SSRFBlockedError:
         raise request_error(SSRF_GENERIC_ERROR)
     except ValueError as e:

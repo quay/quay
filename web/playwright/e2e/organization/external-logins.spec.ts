@@ -49,12 +49,15 @@ test.describe('External Logins Tab', {tag: ['@user', '@auth:OIDC']}, () => {
         : TEST_USERS.user.username;
     await authenticatedPage.goto(`/user/${username}?tab=Externallogins`);
 
-    const noProvidersAlert = authenticatedPage.getByTestId(
-      'no-external-providers-alert',
-    );
-    const providerTable = authenticatedPage.getByTestId('external-logins-tab');
-
-    await expect(noProvidersAlert.or(providerTable)).toBeVisible();
+    if (externalLogins.length === 0) {
+      await expect(
+        authenticatedPage.getByTestId('no-external-providers-alert'),
+      ).toBeVisible();
+    } else {
+      await expect(
+        authenticatedPage.getByTestId('external-logins-table'),
+      ).toBeVisible();
+    }
   });
 
   test('tab not visible for organizations', async ({

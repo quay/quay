@@ -160,7 +160,7 @@ export function useFetchRepoPermForTeam(orgName: string, teamName: string) {
     isError: errorLoadingRepos,
   } = useQuery<IRepository[]>(
     ['repos'],
-    ({signal}) => fetchRepositoriesForNamespace(orgName, signal),
+    ({signal}) => fetchRepositoriesForNamespace(orgName, {signal}, false),
     {
       placeholderData: [],
     },

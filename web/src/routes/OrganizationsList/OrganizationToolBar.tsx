@@ -23,6 +23,11 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
     useState<boolean>(false);
   const {canModify} = useSuperuserPermissions();
 
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <>
       <Toolbar>
@@ -39,7 +44,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
           <FilterInput
             id="orgslist-search-input"
             searchState={props.search}
-            onChange={props.setSearch}
+            onChange={handleSearchChange}
           />
           {props.isAuthenticated !== false && (
             <ToolbarButton

@@ -2,7 +2,8 @@
 
 Please do not report security vulnerabilities or security incidents via public
 channels such as GitHub Issues or Pull Requests. To ensure coordinated
-disclosure, direct all security questions and vulnerability reports to:
+disclosure, direct all security questions, vulnerability reports, and incident
+reports to:
 
 - **Email**: secalert@redhat.com
 
@@ -28,6 +29,18 @@ We aim to provide an initial acknowledgement of your report within 10 business
 days. All confirmed security vulnerabilities and incidents will be addressed
 according to severity level and impact on the project.
 
+## Identification and Triage
+
+Red Hat Product Security performs initial triage, determines severity, and
+decides whether an embargo is needed. The Quay team verifies exploitability
+and works on fixes and releases, honoring any embargo. If Quay maintainers
+become aware of a known actively exploited vulnerability or severe incident,
+they immediately notify Red Hat Product Security at secalert@redhat.com, begin
+remediation, and provide status updates through an agreed private channel.
+Red Hat Product Security coordinates CRA reporting and user communication
+through Red Hat security advisories, including notice of available fixes or
+mitigations.
+
 ## Remediation Process
 
 ### Fix Development
@@ -50,6 +63,15 @@ The Project Quay project follows a **Coordinated Vulnerability Disclosure (CVD)*
 1. **Embargo Period:** Vulnerability details remain confidential until a fix is available and released.
 2. **Disclosure Timing:** Public disclosure occurs simultaneously with or immediately after the availability of a patched release.
 3. **Pre-notification:** For Critical severity issues affecting widely-deployed components, the Security Team may provide advance notice to major downstream users under embargo, up to 7 days before public disclosure.
+
+## Incident Response
+
+Security incidents include suspected compromise of the Quay project's GitHub
+repository, release tags, GitHub Actions release workflows, publishing
+credentials, or released artifacts. Report incidents privately to
+secalert@redhat.com. The Quay team coordinates with Red Hat Product Security to
+contain the incident, assess its impact, remediate and verify affected releases,
+communicate with users as appropriate, and review how to prevent recurrence.
 
 ## Supported Versions
 

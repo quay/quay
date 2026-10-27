@@ -22,6 +22,9 @@ type Command struct {
 	// chained onto children by propagateFlags so global setup (e.g. logging)
 	// fires at the leaf after all shared flag values are populated.
 	AfterParse func() error
+	// Hidden omits the command from its parent's help listing. Hidden
+	// commands still dispatch normally and print their own help on request.
+	Hidden bool
 }
 
 // Execute dispatches to a subcommand or parses flags and calls Run.
@@ -86,6 +89,16 @@ func (c *Command) findSubcommand(name string) *Command {
 	return nil
 }
 
+func (c *Command) visibleSubcommands() []*Command {
+	var visible []*Command
+	for _, sub := range c.Subcommands {
+		if !sub.Hidden {
+			visible = append(visible, sub)
+		}
+	}
+	return visible
+}
+
 func isHelp(arg string) bool {
 	return arg == "help" || arg == "-h" || arg == "--help"
 }
@@ -132,9 +145,9 @@ func (c *Command) Usage(w io.Writer) {
 		fmt.Fprintf(w, "\n%s\n", c.Description)
 	}
 
-	if len(c.Subcommands) > 0 {
+	if visible := c.visibleSubcommands(); len(visible) > 0 {
 		fmt.Fprintln(w, "\ncommands:")
-		for _, sub := range c.Subcommands {
+		for _, sub := range visible {
 			fmt.Fprintf(w, "  %-18s %s\n", sub.Name, sub.Synopsis)
 		}
 	}

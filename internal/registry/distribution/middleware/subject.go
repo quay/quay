@@ -11,9 +11,16 @@ type contextKey struct{}
 
 // subjectHolder is a mutable container placed into the request context
 // before distribution handles the request. The middleware writes into it;
-// the HTTP wrapper reads from it after the response status is known.
+// the HTTP wrapper reads the subject from it after the response status is
+// known, and the tag service reads the stored tag from it.
 type subjectHolder struct {
 	digest digest.Digest
+
+	// taggedName and taggedDigest record the tag the manifest middleware
+	// already stored for this request, so the tag service call that
+	// distribution makes next for the same tag does not store it again.
+	taggedName   string
+	taggedDigest digest.Digest
 }
 
 // WithSubjectHolder returns a context that carries an empty subjectHolder.
@@ -28,6 +35,22 @@ func SetSubject(ctx context.Context, d digest.Digest) {
 	if h, ok := ctx.Value(contextKey{}).(*subjectHolder); ok {
 		h.digest = d
 	}
+}
+
+// markTagStored records that the manifest PUT in this request stored tag for
+// dgst. It is a no-op when ctx carries no holder.
+func markTagStored(ctx context.Context, tag string, dgst digest.Digest) {
+	if h, ok := ctx.Value(contextKey{}).(*subjectHolder); ok {
+		h.taggedName = tag
+		h.taggedDigest = dgst
+	}
+}
+
+// tagStoredByManifestPut reports whether the manifest PUT in this request
+// already stored tag pointing at dgst.
+func tagStoredByManifestPut(ctx context.Context, tag string, dgst digest.Digest) bool {
+	h, ok := ctx.Value(contextKey{}).(*subjectHolder)
+	return ok && tag != "" && h.taggedName == tag && h.taggedDigest == dgst
 }
 
 // subjectFromContext retrieves the subject digest from the holder in ctx.

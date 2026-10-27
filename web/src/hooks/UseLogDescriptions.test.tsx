@@ -581,6 +581,34 @@ describe('UseLogDescriptions', () => {
     });
   });
 
+  describe('robot API token events', () => {
+    it('create_robot_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.create_robot_api_token({
+          token_display_name: 'deploy-token',
+          robot: 'myorg+bot',
+          scope: 'repo:read',
+        }),
+      );
+      expect(text).toContain('deploy-token');
+      expect(text).toContain('myorg+bot');
+      expect(text).toContain('repo:read');
+    });
+
+    it('revoke_robot_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.revoke_robot_api_token({
+          api_token_uuid: 'abc-123',
+          robot: 'myorg+bot',
+        }),
+      );
+      expect(text).toContain('abc-123');
+      expect(text).toContain('myorg+bot');
+    });
+  });
+
   describe('quota events', () => {
     it('org_create_quota', () => {
       const desc = getDescriptions();

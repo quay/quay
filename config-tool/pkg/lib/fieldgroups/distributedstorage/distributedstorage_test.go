@@ -5,13 +5,22 @@ import (
 	"testing"
 
 	"github.com/quay/quay/config-tool/pkg/lib/shared"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 // TestValidateSchema tests the ValidateSchema function
 func TestValidateDistributedStorage(t *testing.T) {
 
-	var config = []byte(`DISTRIBUTED_STORAGE_CONFIG:
+	// Define test data
+	var tests = []struct {
+		name   string
+		config []byte
+		want   string
+	}{
+
+		{name: "MissingStorageConfig", config: []byte(``), want: "invalid"},
+		{name: "CorrectStorageConfig", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
   local_us:
   - RadosGWStorage
   - access_key: X
@@ -20,16 +29,78 @@ func TestValidateDistributedStorage(t *testing.T) {
     is_secure: true
     port: 443
     secret_key: X
-    storage_path: /datastorage/registry`)
-
-	// Define test data
-	var tests = []struct {
-		name   string
-		config map[string]interface{}
-		want   string
-	}{
-
-		{name: "MissingStorageConfig", config: map[string]interface{}{}, want: "invalid"},
+    storage_path: /datastorage/registry`), want: "valid"},
+		{name: "StorageWithRegionSet", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: jonathan-registry.com
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "valid"},
+		{name: "StorageWithoutPortSet", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: jonathan-registry.com
+    is_secure: true
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "valid"},
+		{name: "StorageWithIPAddressSet", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: 1.2.3.4
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "valid"},
+		{name: "StorageWithNoHostnameSet", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "invalid"},
+		{name: "StorageWithNoAccessParamsSet", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - bucket_name: quay-datastore
+    hostname: jonathan-registry.com
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "invalid"},
+		{name: "IBMStorageCannotContainRegionName", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - IBMCloudStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: 1.2.3.4
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: someregion
+    storage_path: /datastorage/registry`), want: "invalid"},
+		{name: "RegionNameMustBeString", config: []byte(`DISTRIBUTED_STORAGE_CONFIG:
+  local_us:
+  - RadosGWStorage
+  - access_key: X
+    bucket_name: quay-datastore
+    hostname: 1.2.3.4
+    is_secure: true
+    port: 443
+    secret_key: X
+    region_name: 12345
+    storage_path: /datastorage/registry`), want: "typeError"},
 	}
 
 	// Iterate through tests
@@ -40,14 +111,23 @@ func TestValidateDistributedStorage(t *testing.T) {
 
 			// Load config into struct
 			var conf map[string]interface{}
-			if err := yaml.Unmarshal(config, &conf); err != nil {
+			if err := yaml.Unmarshal(tt.config, &conf); err != nil {
 				fmt.Println(err.Error())
 			}
 
 			// Get validation result
 			fg, err := NewDistributedStorageFieldGroup(conf)
-			if err != nil && tt.want != "typeError" {
-				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+			if err != nil {
+				if tt.want != "typeError" {
+					t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+				}
+				// stop here, fg is partially constructed
+				return
+			}
+
+			// explicitly validate that region is populated
+			if tt.name == "StorageWithRegionSet" {
+				assert.Equal(t, "someregion", fg.DistributedStorageConfig["local_us"].Args.RegionName)
 			}
 
 			opts := shared.Options{

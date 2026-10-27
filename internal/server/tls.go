@@ -20,7 +20,7 @@ func ensureTLS(hostname, certDir string, protocols []string, srv *http.Server) (
 			hostname = defaultHostname
 		}
 		slog.Info("generating self-signed certificate", "hostname", hostname)
-		if err = certs.GenerateSelfSigned(hostname, certPath, keyPath); err != nil {
+		if err = certs.GenerateSelfSigned(hostname, certPath, keyPath, filepath.Join(certDir, "rootCA.pem")); err != nil {
 			return "", "", fmt.Errorf("generating certificate: %w", err)
 		}
 	}

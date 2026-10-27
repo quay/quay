@@ -40,6 +40,14 @@ from endpoints.api.repository import *  # type: ignore[no-redef]
 from endpoints.api.repositorynotification import *  # type: ignore
 from endpoints.api.repotoken import *
 from endpoints.api.robot import *  # type: ignore[no-redef]
+from endpoints.api.robot_application_tokens import (
+    OrganizationRobotMintableScopes,
+    OrganizationRobotToken,
+    OrganizationRobotTokens,
+    UserRobotMintableScopes,
+    UserRobotToken,
+    UserRobotTokens,
+)
 from endpoints.api.search import *  # type: ignore
 from endpoints.api.secscan import *
 from endpoints.api.signing import *  # type: ignore[no-redef]
@@ -86,6 +94,14 @@ ORG_APPLICATION_TOKEN_UUID_PARAMS = {
 ORG_NS_NOTIFICATION_PARAMS = {"orgname": "buynlarge"}
 ORG_NS_NOTIFICATION_UUID_PARAMS = {"orgname": "buynlarge", "uuid": "someuuid"}
 USER_NS_NOTIFICATION_UUID_PARAMS = {"uuid": "someuuid"}
+USER_ROBOT_TOKEN_PARAMS = {"robot_shortname": "missingrobot"}
+USER_ROBOT_TOKEN_UUID_PARAMS = {"robot_shortname": "missingrobot", "token_uuid": "someuuid"}
+ORG_ROBOT_TOKEN_PARAMS = {"orgname": "buynlarge", "robot_shortname": "missingrobot"}
+ORG_ROBOT_TOKEN_UUID_PARAMS = {
+    "orgname": "buynlarge",
+    "robot_shortname": "missingrobot",
+    "token_uuid": "someuuid",
+}
 
 
 SECURITY_TESTS: List[
@@ -4387,6 +4403,14 @@ SECURITY_TESTS: List[
         403,
     ),
     (OrganizationApplicationToken, "DELETE", ORG_APPLICATION_TOKEN_UUID_PARAMS, None, None, 401),
+    (UserRobotMintableScopes, "GET", USER_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (OrganizationRobotMintableScopes, "GET", ORG_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (UserRobotTokens, "GET", USER_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (UserRobotTokens, "POST", USER_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (UserRobotToken, "DELETE", USER_ROBOT_TOKEN_UUID_PARAMS, None, None, 401),
+    (OrganizationRobotTokens, "GET", ORG_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (OrganizationRobotTokens, "POST", ORG_ROBOT_TOKEN_PARAMS, None, None, 401),
+    (OrganizationRobotToken, "DELETE", ORG_ROBOT_TOKEN_UUID_PARAMS, None, None, 401),
     (
         OrganizationApplicationToken,
         "DELETE",

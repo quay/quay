@@ -88,6 +88,19 @@ func TestParseRobotAuthDefaults(t *testing.T) {
 	assert.True(t, cfg.FeatureLibrarySupport)
 	assert.True(t, cfg.FeatureUserLastAccessed)
 	assert.Equal(t, 60, cfg.LastAccessedUpdateThresholdS)
+	assert.Equal(t, DefaultPasswordAuthCacheTTLS, cfg.PasswordAuthCacheTTLS)
+}
+
+func TestParsePasswordAuthCacheTTL(t *testing.T) {
+	cfg, err := Parse([]byte("SERVER_HOSTNAME: test\nPASSWORD_AUTH_CACHE_TTL_S: 0\n"))
+	require.NoError(t, err)
+	assert.Equal(t, 0, cfg.PasswordAuthCacheTTLS, "explicit 0 disables the cache")
+
+	cfg, err = Parse([]byte("SERVER_HOSTNAME: test\nPASSWORD_AUTH_CACHE_TTL_S: 30\n"))
+	require.NoError(t, err)
+	assert.Equal(t, 30, cfg.PasswordAuthCacheTTLS)
+
+	assert.Equal(t, DefaultPasswordAuthCacheTTLS, NewDefault("localhost", "/data/storage").PasswordAuthCacheTTLS)
 }
 
 func TestNewDefaultConfiguresStandaloneAdminFullAccess(t *testing.T) {

@@ -5,9 +5,9 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
 USER 0
-RUN CGO_ENABLED=0 go build -o /quay ./cmd/quay
+RUN CGO_ENABLED=0 go build -o /mirror-registry ./cmd/mirror-registry
 
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest
-COPY --from=builder /quay /quay
+COPY --from=builder /mirror-registry /mirror-registry
 EXPOSE 8443
-ENTRYPOINT ["/quay"]
+ENTRYPOINT ["/mirror-registry"]

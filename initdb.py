@@ -416,7 +416,7 @@ def _create_seed_media_types():
 
 
 def initialize_database():
-    db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
+    db_encrypter.initialize(FieldEncrypter("QUAY_FIXTURE_ONLY-anothercrazykey!"))
     db.create_tables(all_models)
 
     Role.create(name="admin")
@@ -625,6 +625,8 @@ def initialize_database():
 
     LogEntryKind.create(name="create_oauth_api_token")
     LogEntryKind.create(name="revoke_oauth_api_token")
+    LogEntryKind.create(name="create_robot_api_token")
+    LogEntryKind.create(name="revoke_robot_api_token")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
@@ -1570,6 +1572,7 @@ WHITELISTED_EMPTY_MODELS = [
     "QuotaRegistrySize",
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
+    "APIToken",
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",

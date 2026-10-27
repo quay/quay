@@ -33,6 +33,41 @@ def test_oauth_application_maximum_token_count_is_optional_positive_integer():
             validate(value, schema)
 
 
+def test_robot_api_token_exchange_requires_robot_api_tokens():
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKENS is False
+    assert DefaultConfig.FEATURE_ROBOT_API_TOKEN_EXCHANGE is False
+
+    schema = {
+        "type": "object",
+        "allOf": CONFIG_SCHEMA["allOf"],
+        "properties": {
+            "FEATURE_ROBOT_API_TOKENS": CONFIG_SCHEMA["properties"]["FEATURE_ROBOT_API_TOKENS"],
+            "FEATURE_ROBOT_API_TOKEN_EXCHANGE": CONFIG_SCHEMA["properties"][
+                "FEATURE_ROBOT_API_TOKEN_EXCHANGE"
+            ],
+        },
+    }
+
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": False},
+        schema,
+    )
+    validate(
+        {"FEATURE_ROBOT_API_TOKENS": True, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+        schema,
+    )
+
+    with pytest.raises(ValidationError):
+        validate(
+            {"FEATURE_ROBOT_API_TOKENS": False, "FEATURE_ROBOT_API_TOKEN_EXCHANGE": True},
+            schema,
+        )
+
+
 def test_bootstrap_token_owner_required_when_programmatic_bootstrap_enabled():
     schema = {
         "type": "object",
@@ -228,3 +263,61 @@ class TestGunicornTimeoutSchema:
 
     def test_default_web_timeout(self):
         assert DefaultConfig.GUNICORN_WEB_TIMEOUT == 30
+
+
+class TestNginxTimeoutSchema:
+    @pytest.mark.parametrize("value", ["3600s", "1h", "120", "2000s", "5m"])
+    def test_manifests_timeout_accepts_valid_nginx_time_strings(self, value):
+        schema = CONFIG_SCHEMA["properties"]["MANIFESTS_ENDPOINT_READ_TIMEOUT"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000"])
+    def test_blob_upload_timeout_accepts_valid_seconds(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT", "MANIFESTS_ENDPOINT_READ_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", [0, -1, 3600, True])
+    def test_rejects_non_string_values(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "3600s", "1h", "1.5", ""])
+    def test_blob_upload_timeout_rejects_invalid_format(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["on", "off", "always"])
+    def test_lingering_close_accepts_valid_values(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]
+        validate(value, schema)
+
+    @pytest.mark.parametrize("value", ["yes", "true", "none", ""])
+    def test_lingering_close_rejects_invalid_values(self, value):
+        schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_LINGERING_CLOSE"]
+        with pytest.raises(ValidationError):
+            validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", ["60", "30", "120"])
+    def test_lingering_time_accepts_valid_seconds(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        validate(value, schema)
+
+    @pytest.mark.parametrize(
+        "field",
+        ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
+    )
+    @pytest.mark.parametrize("value", ["60s", "1m", "abc", ""])
+    def test_lingering_time_rejects_invalid_format(self, field, value):
+        schema = CONFIG_SCHEMA["properties"][field]
+        with pytest.raises(ValidationError):
+            validate(value, schema)

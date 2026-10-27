@@ -40,7 +40,8 @@ registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
-	test/registry/registry_tests.py
+	test/registry/registry_tests.py \
+	test/registry/test_cosign_signatures.py
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \
@@ -52,7 +53,7 @@ certs-test:
 	./test/test_certs_install.sh
 
 full-db-test: ensure-test-db
-	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
+	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!"}' \
 	alembic upgrade head
 	TEST=true PYTHONPATH=. \
 	SKIP_DB_SCHEMA=true py.test -m 'not e2e' --timeout=7200 \
@@ -453,9 +454,9 @@ enable-splunk:
 # Go targets #
 ##############
 
-GO_BINARY_NAME = quay
+GO_BINARY_NAME = mirror-registry
 GO_BUILD_DIR = bin
-GO_CMD_DIR = cmd/quay
+GO_CMD_DIR = cmd/mirror-registry
 GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/mirrorregistry/cmd.version=$(GO_VERSION)")
 

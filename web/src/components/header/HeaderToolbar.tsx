@@ -47,7 +47,8 @@ import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
+import HeaderSearchBar from 'src/components/header/HeaderSearchBar';
 
 export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -58,6 +59,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const {themePreference, setThemePreference} = useTheme();
   const quayConfig = useQuayConfig();
   const navigate = useNavigate();
+  const location = useLocation();
   const showUIToggle =
     quayConfig?.features?.UI_V2 &&
     !(
@@ -394,7 +396,17 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   );
 
   const isAuthenticated = !!user?.username;
-  const {unreadCount} = useAppNotifications(isAuthenticated);
+  const {unreadCount, additional} = useAppNotifications(isAuthenticated);
+  const notificationLabel =
+    unreadCount === 0
+      ? 'Notifications'
+      : additional
+        ? `Notifications, more than ${unreadCount}`
+        : `Notifications, ${unreadCount}`;
+  // The search page has its own search box, so don't render a second one.
+  const searchingAllowed =
+    (quayConfig?.features?.ANONYMOUS_ACCESS || isAuthenticated) &&
+    location.pathname !== '/search';
 
   return (
     <>
@@ -405,7 +417,13 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
             variant="action-group-plain"
             align={{default: 'alignEnd'}}
             gap={{default: 'gapNone', md: 'gapMd'}}
+            data-testid="header-action-group"
           >
+            {searchingAllowed && (
+              <ToolbarItem data-testid="header-search-item">
+                <HeaderSearchBar />
+              </ToolbarItem>
+            )}
             {isAuthenticated && (
               <ToolbarItem
                 gap={{
@@ -421,11 +439,13 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                       ? NotificationBadgeVariant.unread
                       : NotificationBadgeVariant.read
                   }
-                  count={unreadCount}
+                  count={additional ? undefined : unreadCount}
                   onClick={toggleDrawer}
-                  aria-label="Notifications"
+                  aria-label={notificationLabel}
                   data-testid="notification-bell"
-                />
+                >
+                  {additional ? `${unreadCount}+` : undefined}
+                </NotificationBadge>
               </ToolbarItem>
             )}
             <ToolbarItem>{helpDropdown}</ToolbarItem>

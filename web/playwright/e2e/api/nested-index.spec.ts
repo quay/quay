@@ -29,7 +29,7 @@ test.describe(
 
     test('push nested OCI image index succeeds', async ({
       api,
-      playwright,
+      request,
       cachedContainerAvailable,
     }) => {
       test.skip(!cachedContainerAvailable, 'Container tooling not available');
@@ -42,144 +42,137 @@ test.describe(
       await pushImage(org.name, repo.name, 'img1', username, password);
       await pushImage(org.name, repo.name, 'img2', username, password);
 
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const scope = `repository:${org.name}/${repo.name}:pull,push`;
-        const v2Token = await getV2Token(
-          request,
-          API_URL,
-          username,
-          password,
-          scope,
-        );
-        const headers = {authorization: `Bearer ${v2Token}`};
+      const scope = `repository:${org.name}/${repo.name}:pull,push`;
+      const v2Token = await getV2Token(
+        request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
+      const headers = {authorization: `Bearer ${v2Token}`};
 
-        // --- Fetch manifests for both pushed images ---
+      // --- Fetch manifests for both pushed images ---
 
-        const img1Resp = await request.get(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/img1`,
-          {headers: {...headers, Accept: DOCKER_MANIFEST_V2}},
-        );
-        expect(img1Resp.status()).toBe(200);
-        const img1Digest = img1Resp.headers()['docker-content-digest'];
-        const img1Body = await img1Resp.body();
-        const img1Size = img1Body.byteLength;
-        expect(img1Digest).toBeTruthy();
+      const img1Resp = await request.get(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/img1`,
+        {headers: {...headers, Accept: DOCKER_MANIFEST_V2}},
+      );
+      expect(img1Resp.status()).toBe(200);
+      const img1Digest = img1Resp.headers()['docker-content-digest'];
+      const img1Body = await img1Resp.body();
+      const img1Size = img1Body.byteLength;
+      expect(img1Digest).toBeTruthy();
 
-        const img2Resp = await request.get(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/img2`,
-          {headers: {...headers, Accept: DOCKER_MANIFEST_V2}},
-        );
-        expect(img2Resp.status()).toBe(200);
-        const img2Digest = img2Resp.headers()['docker-content-digest'];
-        const img2Body = await img2Resp.body();
-        const img2Size = img2Body.byteLength;
-        expect(img2Digest).toBeTruthy();
+      const img2Resp = await request.get(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/img2`,
+        {headers: {...headers, Accept: DOCKER_MANIFEST_V2}},
+      );
+      expect(img2Resp.status()).toBe(200);
+      const img2Digest = img2Resp.headers()['docker-content-digest'];
+      const img2Body = await img2Resp.body();
+      const img2Size = img2Body.byteLength;
+      expect(img2Digest).toBeTruthy();
 
-        // --- Build inner OCI index referencing both images ---
+      // --- Build inner OCI index referencing both images ---
 
-        const innerIndex = {
-          schemaVersion: 2,
-          mediaType: OCI_INDEX_MEDIA_TYPE,
-          manifests: [
-            {
-              mediaType: DOCKER_MANIFEST_V2,
-              digest: img1Digest,
-              size: img1Size,
-              platform: {architecture: 'amd64', os: 'linux'},
-            },
-            {
-              mediaType: DOCKER_MANIFEST_V2,
-              digest: img2Digest,
-              size: img2Size,
-              platform: {architecture: 'arm64', os: 'linux'},
-            },
-          ],
-        };
-        const innerIndexBody = JSON.stringify(innerIndex);
-
-        // --- PUT inner index ---
-
-        const innerPutResp = await request.put(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/inner-index`,
+      const innerIndex = {
+        schemaVersion: 2,
+        mediaType: OCI_INDEX_MEDIA_TYPE,
+        manifests: [
           {
-            headers: {
-              ...headers,
-              'Content-Type': OCI_INDEX_MEDIA_TYPE,
-            },
-            data: innerIndexBody,
+            mediaType: DOCKER_MANIFEST_V2,
+            digest: img1Digest,
+            size: img1Size,
+            platform: {architecture: 'amd64', os: 'linux'},
           },
-        );
-        expect(innerPutResp.status()).toBe(201);
-
-        // --- GET inner index to obtain its digest and size ---
-
-        const innerGetResp = await request.get(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/inner-index`,
-          {headers: {...headers, Accept: OCI_INDEX_MEDIA_TYPE}},
-        );
-        expect(innerGetResp.status()).toBe(200);
-        const innerDigest = innerGetResp.headers()['docker-content-digest'];
-        const innerGetBody = await innerGetResp.body();
-        const innerSize = innerGetBody.byteLength;
-        expect(innerDigest).toBeTruthy();
-
-        // --- Build outer (nested) index referencing inner index + one image ---
-        // This is the key scenario: an index whose child is another index.
-        // Before the fix, pushing this returned 500 because the registry
-        // tried to read labels from the inner index (which has no config blob).
-
-        const outerIndex = {
-          schemaVersion: 2,
-          mediaType: OCI_INDEX_MEDIA_TYPE,
-          manifests: [
-            {
-              mediaType: OCI_INDEX_MEDIA_TYPE,
-              digest: innerDigest,
-              size: innerSize,
-            },
-            {
-              mediaType: DOCKER_MANIFEST_V2,
-              digest: img1Digest,
-              size: img1Size,
-              platform: {architecture: 'amd64', os: 'linux'},
-            },
-          ],
-        };
-        const outerIndexBody = JSON.stringify(outerIndex);
-
-        // --- PUT outer (nested) index ---
-        // Before the PROJQUAY-8272 fix, this returned 500 with
-        // "Unable to retrieve manifest labels"
-
-        const outerPutResp = await request.put(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/nested-index`,
           {
-            headers: {
-              ...headers,
-              'Content-Type': OCI_INDEX_MEDIA_TYPE,
-            },
-            data: outerIndexBody,
+            mediaType: DOCKER_MANIFEST_V2,
+            digest: img2Digest,
+            size: img2Size,
+            platform: {architecture: 'arm64', os: 'linux'},
           },
-        );
-        expect(outerPutResp.status()).toBe(201);
+        ],
+      };
+      const innerIndexBody = JSON.stringify(innerIndex);
 
-        // --- Verify the nested index can be retrieved ---
+      // --- PUT inner index ---
 
-        const outerGetResp = await request.get(
-          `${API_URL}/v2/${org.name}/${repo.name}/manifests/nested-index`,
-          {headers: {...headers, Accept: OCI_INDEX_MEDIA_TYPE}},
-        );
-        expect(outerGetResp.status()).toBe(200);
+      const innerPutResp = await request.put(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/inner-index`,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': OCI_INDEX_MEDIA_TYPE,
+          },
+          data: innerIndexBody,
+        },
+      );
+      expect(innerPutResp.status()).toBe(201);
 
-        const outerBody = await outerGetResp.json();
-        expect(outerBody.schemaVersion).toBe(2);
-        expect(outerBody.manifests).toHaveLength(2);
-      } finally {
-        await request.dispose();
-      }
+      // --- GET inner index to obtain its digest and size ---
+
+      const innerGetResp = await request.get(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/inner-index`,
+        {headers: {...headers, Accept: OCI_INDEX_MEDIA_TYPE}},
+      );
+      expect(innerGetResp.status()).toBe(200);
+      const innerDigest = innerGetResp.headers()['docker-content-digest'];
+      const innerGetBody = await innerGetResp.body();
+      const innerSize = innerGetBody.byteLength;
+      expect(innerDigest).toBeTruthy();
+
+      // --- Build outer (nested) index referencing inner index + one image ---
+      // This is the key scenario: an index whose child is another index.
+      // Before the fix, pushing this returned 500 because the registry
+      // tried to read labels from the inner index (which has no config blob).
+
+      const outerIndex = {
+        schemaVersion: 2,
+        mediaType: OCI_INDEX_MEDIA_TYPE,
+        manifests: [
+          {
+            mediaType: OCI_INDEX_MEDIA_TYPE,
+            digest: innerDigest,
+            size: innerSize,
+          },
+          {
+            mediaType: DOCKER_MANIFEST_V2,
+            digest: img1Digest,
+            size: img1Size,
+            platform: {architecture: 'amd64', os: 'linux'},
+          },
+        ],
+      };
+      const outerIndexBody = JSON.stringify(outerIndex);
+
+      // --- PUT outer (nested) index ---
+      // Before the PROJQUAY-8272 fix, this returned 500 with
+      // "Unable to retrieve manifest labels"
+
+      const outerPutResp = await request.put(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/nested-index`,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': OCI_INDEX_MEDIA_TYPE,
+          },
+          data: outerIndexBody,
+        },
+      );
+      expect(outerPutResp.status()).toBe(201);
+
+      // --- Verify the nested index can be retrieved ---
+
+      const outerGetResp = await request.get(
+        `${API_URL}/v2/${org.name}/${repo.name}/manifests/nested-index`,
+        {headers: {...headers, Accept: OCI_INDEX_MEDIA_TYPE}},
+      );
+      expect(outerGetResp.status()).toBe(200);
+
+      const outerBody = await outerGetResp.json();
+      expect(outerBody.schemaVersion).toBe(2);
+      expect(outerBody.manifests).toHaveLength(2);
     });
   },
 );

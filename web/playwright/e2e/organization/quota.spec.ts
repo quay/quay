@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
@@ -115,6 +114,71 @@ test.describe(
         // Verify quota deleted via API
         const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
         expect(quotas).toHaveLength(0);
+      },
+    );
+
+    // PROJQUAY-11177: the v2 UI sent organization quota writes to the tenant
+    // route /api/v1/organization/<org>/quota, which rejects every write with
+    // 403 insufficient_scope unless FEATURE_SUPERUSERS_FULL_ACCESS is on -- and
+    // it is off by default. The v1 Angular UI has always used the superuser
+    // route, which needs only SuperUserPermission.
+    //
+    // This asserts the endpoint rather than just the success toast. When
+    // FEATURE_SUPERUSERS_FULL_ACCESS is enabled, both routes return 200 and the
+    // lifecycle test above passes even with the bug present, so success alone
+    // is not a regression guard.
+    test(
+      'superuser organization quota writes target the superuser endpoint',
+      {tag: ['@superuser', '@PROJQUAY-11177']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('quotaendpoint');
+
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+
+        // CREATE must go to /api/v1/superuser/organization/<org>/quota
+        const createRequest = superuserPage.waitForRequest(
+          (req) => req.method() === 'POST' && req.url().includes('/quota'),
+        );
+        await superuserPage.getByTestId('quota-value-input').fill('10');
+        await superuserPage.getByTestId('apply-quota-button').click();
+        expect(new URL((await createRequest).url()).pathname).toBe(
+          `/api/v1/superuser/organization/${org.name}/quota`,
+        );
+        await expect(
+          superuserPage.getByText('Successfully created quota'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).not.toBeVisible();
+
+        // Reopen and wait for the existing value to populate
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByTestId('quota-value-input'),
+        ).toHaveValue('10');
+
+        // UPDATE must go to /api/v1/superuser/organization/<org>/quota/<id>.
+        // This is the request that produced "quota update error, Unauthorized".
+        const updateRequest = superuserPage.waitForRequest(
+          (req) => req.method() === 'PUT' && req.url().includes('/quota/'),
+        );
+        await superuserPage.getByTestId('quota-value-input').fill('20');
+        await superuserPage.getByTestId('apply-quota-button').click();
+        expect(new URL((await updateRequest).url()).pathname).toMatch(
+          new RegExp(`^/api/v1/superuser/organization/${org.name}/quota/\\d+$`),
+        );
+        await expect(
+          superuserPage.getByText('Successfully updated quota'),
+        ).toBeVisible();
       },
     );
 
@@ -315,6 +379,12 @@ test.describe(
     ],
   },
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test(
       'displays quota usage in organization dashboard',
       {tag: '@superuser'},
@@ -329,8 +399,8 @@ test.describe(
           org.name,
           'testrepo',
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Verify quota usage appears in Settings > Quota tab
@@ -371,20 +441,8 @@ test.describe(
         await api.repositoryWithName(org.name, 'repo2');
 
         // Push images to exceed 80% warning threshold (2 x ~1.2 MiB)
-        await pushImage(
-          org.name,
-          'repo1',
-          'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushImage(
-          org.name,
-          'repo2',
-          'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
+        await pushImage(org.name, 'repo1', 'v1', user.username, user.password);
+        await pushImage(org.name, 'repo2', 'v2', user.username, user.password);
 
         // Verify quota form and policy section in Settings > Quota tab
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -425,8 +483,8 @@ test.describe(
           org.name,
           'fillrepo',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Second push should be rejected (total ~2.4 MiB > 2 MiB limit)
@@ -436,8 +494,8 @@ test.describe(
             org.name,
             'fillrepo',
             'v2',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            user.username,
+            user.password,
           );
         } catch {
           secondPushFailed = true;
@@ -478,20 +536,8 @@ test.describe(
         await api.repositoryWithName(org.name, 'repo2');
 
         // Push images to trigger warning threshold
-        await pushImage(
-          org.name,
-          'repo1',
-          'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushImage(
-          org.name,
-          'repo2',
-          'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
+        await pushImage(org.name, 'repo1', 'v1', user.username, user.password);
+        await pushImage(org.name, 'repo2', 'v2', user.username, user.password);
 
         // Verify quota configuration and warning limit in Settings > Quota tab
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);

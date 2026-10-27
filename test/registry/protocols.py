@@ -26,8 +26,24 @@ Image = namedtuple(
 )
 Image.__new__.__defaults__ = (None, None, None, None, False, None)
 
+Artifact = namedtuple(
+    "Artifact",
+    [
+        "id",
+        "config",
+        "config_media_type",
+        "bytes",
+        "layer_media_type",
+        "artifact_type",
+        "layer_annotations",
+    ],
+)
+Artifact.__new__.__defaults__ = (None, None, None, None, None, None)
+
 PushResult = namedtuple("PushResult", ["manifests", "headers"])
 PullResult = namedtuple("PullResult", ["manifests", "image_ids"])
+ArtifactPushResult = namedtuple("ArtifactPushResult", ["manifest", "headers"])
+ArtifactPullResult = namedtuple("ArtifactPullResult", ["manifest", "headers"])
 
 
 def layer_bytes_for_contents(contents, mode="|gz", other_files=None, empty=False):
@@ -56,6 +72,13 @@ def layer_bytes_for_contents(contents, mode="|gz", other_files=None, empty=False
     layer_bytes = layer_data.getvalue()
     layer_data.close()
     return layer_bytes
+
+
+def artifact_config_bytes(artifact, ensure_ascii=True):
+    """
+    Serialize an Artifact's config dict to the JSON bytes stored as the manifest config blob.
+    """
+    return json.dumps(artifact.config, ensure_ascii=ensure_ascii).encode("utf-8")
 
 
 @unique
@@ -155,6 +178,41 @@ class RegistryProtocol(object):
         """
         Pushes the specified images as the given tag via the given session, using the given
         credentials.
+        """
+
+    @abstractmethod
+    def push_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        manifest,
+        blobs,
+        reference=None,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        """
+        Pushes a pre-built OCI/generic manifest and its referenced blobs.
+
+        manifest is a built manifest object (e.g. OCIManifest). blobs maps digest strings to
+        raw blob bytes. reference is the manifest tag or digest; defaults to manifest.digest.
+        """
+
+    @abstractmethod
+    def pull_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        digest,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        """
+        Pulls a manifest by digest and verifies referenced blobs are retrievable.
         """
 
     @abstractmethod
