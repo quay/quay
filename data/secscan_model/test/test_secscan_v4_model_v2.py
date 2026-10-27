@@ -639,6 +639,48 @@ class TestPerformIndexingCycle:
         assert terminal.index_status == expected_status
         assert terminal.metadata_json["has_been_scanned"] is True
 
+    @pytest.mark.parametrize(
+        ("method_name", "expected_status"),
+        [
+            ("_mark_unsupported", IndexStatus.MANIFEST_UNSUPPORTED),
+            ("_mark_layer_too_large", IndexStatus.MANIFEST_LAYER_TOO_LARGE),
+        ],
+    )
+    def test_claimed_historical_reindex_preserves_terminal_scan_history(
+        self, initialized_db, scanner, method_name, expected_status
+    ):
+        target = Manifest.select().first()
+        assert target is not None
+        ManifestSecurityStatus.delete().execute()
+        ManifestSecurityStatus.create(
+            manifest=target,
+            repository=target.repository,
+            error_json={},
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash="old_hash",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow() - timedelta(days=2),
+            metadata_json={"other": "preserved"},
+        )
+
+        claimed = scanner._find_and_claim_batch(
+            1,
+            datetime.utcnow() - timedelta(seconds=300),
+            datetime.utcnow() - timedelta(hours=6),
+            "new_hash",
+        )
+        assert [row.manifest_id for row in claimed] == [target.id]
+
+        in_progress = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert in_progress.index_status == IndexStatus.IN_PROGRESS
+        assert in_progress.metadata_json == {"other": "preserved", "has_been_scanned": True}
+
+        getattr(scanner, method_name)(ManifestDataType.for_manifest(target, None))
+
+        terminal = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert terminal.index_status == expected_status
+        assert terminal.metadata_json == {"other": "preserved", "has_been_scanned": True}
+
     def test_marks_failed_on_unexpected_exception(self, initialized_db, scanner):
         scanner._secscan_api.index.side_effect = RuntimeError("boom")
 
