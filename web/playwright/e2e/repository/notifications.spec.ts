@@ -82,8 +82,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByTestId('notifications-actions-dropdown'),
       ).toBeEnabled();
       await expect(
-        authenticatedPage.getByTestId('notifications-selection-dropdown'),
-      ).toContainText('21');
+        authenticatedPage.getByTestId('notifications-selected-count'),
+      ).toHaveText('21');
 
       const titleHeader = authenticatedPage.getByRole('columnheader', {
         name: 'Title',
