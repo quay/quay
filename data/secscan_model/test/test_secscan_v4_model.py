@@ -1782,6 +1782,56 @@ def test_historical_completed_reindex_failure_does_not_replay_notification(
     assert spawn_notification.call_count == 0
 
 
+def test_has_been_scanned_preserves_completed_and_metadata_history(
+    initialized_db, set_secscan_config
+):
+    target = Manifest.select().first()
+    assert target is not None
+
+    ManifestSecurityStatus.delete().where(ManifestSecurityStatus.manifest == target).execute()
+    assert not ManifestDataType.for_manifest(target, None).has_been_scanned
+
+    ManifestSecurityStatus.create(
+        manifest=target,
+        repository=target.repository,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="old_hash",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+    assert ManifestDataType.for_manifest(target, None).has_been_scanned
+
+    ManifestSecurityStatus.update(
+        index_status=IndexStatus.FAILED,
+        metadata_json={"has_been_scanned": True},
+    ).where(ManifestSecurityStatus.manifest == target).execute()
+    assert ManifestDataType.for_manifest(target, None).has_been_scanned
+
+
+def test_historical_completed_manifest_list_reindex_preserves_scan_history(
+    initialized_db, set_secscan_config
+):
+    target = _prepare_notification_target()
+    ManifestSecurityStatus.update(
+        indexer_hash="old_hash",
+        metadata_json={},
+        last_indexed=datetime.utcnow() - timedelta(days=2),
+    ).where(ManifestSecurityStatus.manifest == target).execute()
+    Manifest.update(media_type=MediaType.get(name=DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE)).where(
+        Manifest.id == target.id
+    ).execute()
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "new_hash"}
+    secscan.perform_indexing(batch_size=100)
+
+    terminal = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+    assert terminal.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+    assert terminal.metadata_json["has_been_scanned"] is True
+
+
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
     """
     Integration test verifying that batch preemption checking actually reduces

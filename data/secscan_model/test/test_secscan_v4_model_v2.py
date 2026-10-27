@@ -16,6 +16,7 @@ from data.database import (
     ManifestSecurityStatus,
 )
 from data.registry_model import registry_model
+from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.secscan_model.secscan_v4_model import IndexReportState
 from data.secscan_model.secscan_v4_model_v2 import V4SecurityScannerV2
 from test.fixtures import *
@@ -608,6 +609,35 @@ class TestPerformIndexingCycle:
             ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_LAYER_TOO_LARGE
         ):
             assert mss.indexer_hash == "none"
+
+    @pytest.mark.parametrize(
+        ("method_name", "expected_status"),
+        [
+            ("_mark_unsupported", IndexStatus.MANIFEST_UNSUPPORTED),
+            ("_mark_layer_too_large", IndexStatus.MANIFEST_LAYER_TOO_LARGE),
+        ],
+    )
+    def test_terminal_reindex_preserves_historical_scan_history(
+        self, initialized_db, scanner, method_name, expected_status
+    ):
+        target = Manifest.select().first()
+        assert target is not None
+        ManifestSecurityStatus.delete().execute()
+        ManifestSecurityStatus.create(
+            manifest=target,
+            repository=target.repository,
+            error_json={},
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash="old_hash",
+            indexer_version=IndexerVersion.V4,
+            metadata_json={},
+        )
+
+        getattr(scanner, method_name)(ManifestDataType.for_manifest(target, None))
+
+        terminal = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert terminal.index_status == expected_status
+        assert terminal.metadata_json["has_been_scanned"] is True
 
     def test_marks_failed_on_unexpected_exception(self, initialized_db, scanner):
         scanner._secscan_api.index.side_effect = RuntimeError("boom")
