@@ -14,7 +14,8 @@ agents:
     - source: harness/code.yaml
     - name: review
       enabled: false
-    - source: harness/retro.yaml
+    - name: retro
+      enabled: false
     - source: harness/prioritize.yaml
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
