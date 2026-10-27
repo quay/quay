@@ -33,7 +33,12 @@ from endpoints.decorators import (
     parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v2 import require_repo_read, require_repo_write, v2_bp
+from endpoints.v2 import (
+    disallow_for_proxy_cache_org,
+    require_repo_read,
+    require_repo_write,
+    v2_bp,
+)
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
@@ -305,6 +310,7 @@ def _doesnt_accept_schema_v1():
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
 
@@ -331,6 +337,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:

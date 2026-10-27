@@ -35,7 +35,7 @@ from endpoints.decorators import (
     parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v1 import check_v1_push_enabled, v1_bp
+from endpoints.v1 import check_v1_push_enabled, disallow_for_proxy_cache_org, v1_bp
 from notifications import spawn_notification
 from util.audit import track_and_log
 from util.http import abort
@@ -301,6 +301,7 @@ def create_repository(namespace_name, repo_name):
 @generate_headers(scope=GrantType.WRITE_REPOSITORY)
 @anon_allowed
 @check_readonly
+@disallow_for_proxy_cache_org
 def update_images(namespace_name, repo_name):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     if permission.can():

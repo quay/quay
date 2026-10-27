@@ -141,6 +141,38 @@ class TestProxyCacheOrgPush(EndpointTestCase):
         rv = self._put_repository("proxyorg/cachedrepo")
         self.assertEqual(rv.status_code, 403)
 
+    def test_push_session_refused_after_org_becomes_proxy_cache(self):
+        auth = b64encode(b"%s:password" % ADMIN_ACCESS_USER.encode("ascii")).decode("ascii")
+        headers = [("authorization", "basic %s" % auth)]
+        with app.test_client() as c:
+            rv = c.put(
+                "/v1/repositories/buynlarge/orgrepo/",
+                data="[]",
+                content_type="application/json",
+                headers=headers,
+            )
+            self.assertEqual(rv.status_code, 201)
+
+            model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+            calls = [
+                ("/v1/images/someimage/json", '{"id": "someimage"}'),
+                ("/v1/images/someimage/layer", "layer"),
+                ("/v1/images/someimage/checksum", ""),
+                ("/v1/repositories/buynlarge/orgrepo/tags/newtag", '"someimage"'),
+                ("/v1/repositories/buynlarge/orgrepo/images", "[]"),
+            ]
+            codes = {
+                url: c.put(
+                    url, data=data, content_type="application/json", headers=headers
+                ).status_code
+                for url, data in calls
+            }
+            self.assertEqual(codes, {url: 403 for url, _ in calls})
+
+        repo = model.repository.get_repository("buynlarge", "orgrepo")
+        self.assertIsNone(model.oci.tag.get_tag(repo.id, "newtag"))
+
 
 if __name__ == "__main__":
     unittest.main()
