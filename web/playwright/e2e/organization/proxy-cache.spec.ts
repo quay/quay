@@ -246,11 +246,11 @@ test.describe(
         const {user} = getTestUsers(quayConfig);
         // Create organization and configure as proxy cache
         const org = await api.organization('pushblock');
+        // Created first: the API refuses repo creation once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'testpush');
         await api.raw.createProxyCacheConfig(org.name, {
           upstream_registry: 'docker.io',
         });
-
-        await api.repositoryWithName(org.name, 'testpush');
 
         // Proxy cache orgs are read-only, so the push token carries no push.
         await expect(
@@ -290,6 +290,26 @@ test.describe(
         ).rejects.toThrow(
           /unauthorized: access to the requested resource is not authorized/,
         );
+
+        const repoResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/repository/${org.name}/newrepo`,
+        );
+        expect(repoResponse.status()).toBe(404);
+      },
+    );
+
+    test(
+      'repository creation via API is blocked for proxy cache organizations',
+      {tag: ['@PROJQUAY-9516']},
+      async ({api, authenticatedRequest}) => {
+        const org = await api.organization('apicreateblock');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await expect(
+          api.raw.createRepository(org.name, 'newrepo'),
+        ).rejects.toThrow(/400 - .*organization is a proxy cache/);
 
         const repoResponse = await authenticatedRequest.get(
           `${API_URL}/api/v1/repository/${org.name}/newrepo`,
