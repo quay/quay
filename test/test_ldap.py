@@ -2,7 +2,7 @@ import pprint
 import unittest
 from contextlib import contextmanager
 from io import StringIO
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock
 
 import ldap
 from ldap.filter import filter_format
@@ -14,19 +14,6 @@ from data import model
 from data.users import LDAPUsers
 from data.users.externalldap import _LDAPTraceRedactor
 from initdb import finished_database_for_testing, setup_database_for_testing
-
-
-class _FakeConnection:
-    """Context manager yielding a mocked LDAP connection."""
-
-    def __init__(self, conn):
-        self._conn = conn
-
-    def __enter__(self):
-        return self._conn
-
-    def __exit__(self, *args):
-        return False
 
 
 def _create_ldap(
@@ -260,23 +247,16 @@ def mock_ldap(
         if not requires_email:
             cool_block.pop("mail", None)
 
-        obj.search_s.seed(
-            "ou=employees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))", ["uid", "mail"]
-        )([("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)])
+        obj.search_s.seed("ou=employees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))")(
+            [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
+        )
 
-        obj.search_s.seed(
-            "ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))", ["uid", "mail"]
-        )([])
+        obj.search_s.seed("ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=cool*)(mail=cool*))")([])
 
-        obj.search_s.seed(
-            "ou=employees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))", ["uid", "mail"]
-        )([])
-        obj.search_s.seed(
-            "ou=otheremployees,dc=quay,dc=io",
-            2,
-            "(|(uid=unknown*)(mail=unknown*))",
-            ["uid", "mail"],
-        )([])
+        obj.search_s.seed("ou=employees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))")([])
+        obj.search_s.seed("ou=otheremployees,dc=quay,dc=io", 2, "(|(uid=unknown*)(mail=unknown*))")(
+            []
+        )
 
         no_users_found_exception = Exception()
         no_users_found_exception.message = {"matched": "dc=quay,dc=io", "desc": "No such object"}
@@ -285,7 +265,7 @@ def mock_ldap(
         obj.search_s.seed("ou=employees,dc=quay,dc=io", 2)(
             [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
         )
-        obj.search.seed("ou=employees,dc=quay,dc=io", 2, "(objectClass=*)", ["1.1"])(
+        obj.search.seed("ou=employees,dc=quay,dc=io", 2, "(objectClass=*)")(
             [("uid=cool.user,ou=employees,dc=quay,dc=io", cool_block)]
         )
         obj.search.seed("ou=employees,dc=quay,dc=io", 2)(
@@ -798,66 +778,22 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err_msg)
             self.assertTrue(response)
 
-    def test_user_search_requests_only_needed_attributes(self):
-        ldap_users = _create_ldap()
-        conn = MagicMock()
-        conn.search_s.return_value = [
-            (
-                "uid=someuser,ou=employees,dc=quay,dc=io",
-                {"uid": [b"someuser"], "mail": [b"foo@bar.com"]},
-            )
-        ]
-
-        results, err_msg = ldap_users._ldap_user_search_with_rdn(
-            conn, "someuser", "ou=employees,dc=quay,dc=io"
-        )
-        self.assertIsNone(err_msg)
-        self.assertEqual(len(results), 1)
-
-        # Only the uid and email attributes may be requested, so that
-        # sensitive attributes (e.g. userPassword) are never fetched.
-        conn.search_s.assert_called_once_with(
-            "ou=employees,dc=quay,dc=io",
-            ldap.SCOPE_SUBTREE,
-            "(|(uid=someuser)(mail=someuser))",
-            ["uid", "mail"],
-        )
-
-    def test_at_least_one_user_exists_requests_no_attributes(self):
-        ldap_users = _create_ldap()
-        conn = MagicMock()
-        conn.result3.return_value = (None, [("uid=someuser,dc=quay,dc=io", [])], None, [])
-
-        with patch.object(ldap_users._ldap, "get_connection", return_value=_FakeConnection(conn)):
-            response, err_msg = ldap_users.at_least_one_user_exists()
+    def test_verify_credentials_debug_log_masks_password_attributes(self):
+        with mock_ldap() as ldap:
+            with self.assertLogs("data.users.externalldap", level="DEBUG") as logs:
+                response, err_msg = ldap.verify_and_link_user("someuser", "somepass")
 
         self.assertIsNone(err_msg)
-        self.assertTrue(response)
+        self.assertEqual(response.username, "someuser")
 
-        # Only existence is checked, so no attributes are requested ("1.1").
-        conn.search_ext.assert_called_once_with(
-            "ou=employees,dc=quay,dc=io",
-            ldap.SCOPE_SUBTREE,
-            "(objectClass=*)",
-            attrlist=["1.1"],
-            serverctrls=[ANY],
-        )
-
-    def test_at_least_one_user_exists_no_pagination_requests_no_attributes(self):
-        ldap_users = _create_ldap()
-        ldap_users._force_no_pagination = True
-        conn = MagicMock()
-        conn.result.return_value = (None, [("uid=someuser,dc=quay,dc=io", [])])
-
-        with patch.object(ldap_users._ldap, "get_connection", return_value=_FakeConnection(conn)):
-            response, err_msg = ldap_users.at_least_one_user_exists()
-
-        self.assertIsNone(err_msg)
-        self.assertTrue(response)
-
-        conn.search.assert_called_once_with(
-            "ou=employees,dc=quay,dc=io", ldap.SCOPE_SUBTREE, "(objectClass=*)", ["1.1"]
-        )
+        # The debug log keeps all LDAP attributes for debugging, but the values of
+        # password-like attributes (e.g. userPassword) are masked.
+        found_logs = [line for line in logs.output if "DN uid=someuser,ou=employees" in line]
+        self.assertEqual(len(found_logs), 1)
+        self.assertIn("'uid': ['someuser']", found_logs[0])
+        self.assertIn("'mail': ['foo@bar.com']", found_logs[0])
+        self.assertIn("'userPassword': ['******']", found_logs[0])
+        self.assertNotIn("somepass", found_logs[0])
 
     def test_ldap_memberof_attr(self):
         base_dn = ["dc=quay", "dc=io"]

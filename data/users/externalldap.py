@@ -118,6 +118,18 @@ class _LDAPTraceRedactor:
         self._stream.flush()
 
 
+_PW_KEY_RE = re.compile(r"password|unicodepwd", re.IGNORECASE)
+
+
+def _mask_password_attributes(attrs):
+    """
+    Copy an LDAP attribute dict with the values of password-like keys
+    (e.g. userPassword, unicodePwd) masked, leaving all other attributes
+    intact for debugging.
+    """
+    return {key: ["******"] if _PW_KEY_RE.search(key) else value for key, value in attrs.items()}
+
+
 class LDAPCache:
     """
     Thread-safe in-memory TTL cache with LRU eviction for LDAP query results.
@@ -705,12 +717,8 @@ class LDAPUsers(FederatedUsers):
             query = self._add_global_readonly_superuser_filter(query)
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
-        # Only request the attributes consumed when building user information, so
-        # that sensitive attributes (e.g. userPassword) are never fetched from
-        # the LDAP server and cannot leak into traces or logs.
-        attrlist = [self._uid_attr, self._email_attr]
         try:
-            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query, attrlist), None)
+            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query), None)
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
             if not referral_dn:
@@ -719,7 +727,7 @@ class LDAPUsers(FederatedUsers):
             try:
                 subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
                 subquery = self._add_user_filter(subquery)
-                return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery, attrlist), None)
+                return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
                 return (None, "Username not found")
@@ -873,18 +881,11 @@ class LDAPUsers(FederatedUsers):
                     try:
                         if has_pagination:
                             msgid = conn.search_ext(
-                                user_search_dn,
-                                ldap.SCOPE_SUBTREE,
-                                search_flt,
-                                # "1.1" requests no attributes; only existence is checked.
-                                attrlist=["1.1"],
-                                serverctrls=[lc],
+                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
                             )
                             _, rdata, _, _serverctrls = conn.result3(msgid)
                         else:
-                            msgid = conn.search(
-                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, ["1.1"]
-                            )
+                            msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
                             _, rdata = conn.result(msgid)
 
                         for _entry in rdata:  # Handles both lists and iterators.
@@ -960,7 +961,7 @@ class LDAPUsers(FederatedUsers):
 
         found_dn, found_response = found_user
         logger.debug("Found user for LDAP username %s; validating password", username_or_email)
-        logger.debug("DN %s found", found_dn)
+        logger.debug("DN %s found: %s", found_dn, _mask_password_attributes(found_response))
 
         # First validate the password by binding as the user
         if not self._verify_password(found_dn, password):
