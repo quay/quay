@@ -88,6 +88,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
                 ) : null}
               </MenuToggleCheckbox>,
             ]}
+            data-testid={props['data-testid']}
             id="toolbar-dropdown-checkbox"
             onChange={toggleOpen}
             onClick={toggleOpen}
@@ -110,4 +111,5 @@ type DropdownCheckboxProps = {
   itemsPerPageList: unknown[];
   onItemSelect: (Item, rowIndex, isSelecting) => void;
   id?: string;
+  'data-testid'?: string;
 };

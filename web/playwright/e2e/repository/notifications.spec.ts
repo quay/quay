@@ -47,8 +47,11 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         .getByTestId('settings-tab-eventsandnotifications')
         .click();
 
-      const pagination = authenticatedPage.locator(
-        '#toolbar-pagination .pf-v6-c-pagination__total-items',
+      const pagination = authenticatedPage.getByTestId(
+        'notifications-pagination',
+      );
+      const notificationsTable = authenticatedPage.getByTestId(
+        'notifications-table',
       );
       await expect(pagination).toContainText('1 - 20 of 22');
 
@@ -67,7 +70,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByText('Unfiltered notification', {exact: true}),
       ).not.toBeVisible();
 
-      await authenticatedPage.locator('#toolbar-dropdown-checkbox').click();
+      await authenticatedPage
+        .getByTestId('notifications-selection-dropdown')
+        .click();
       const selectAllItems = authenticatedPage.getByTestId(
         'select-all-items-action',
       );
@@ -77,7 +82,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByTestId('notifications-actions-dropdown'),
       ).toBeEnabled();
       await expect(
-        authenticatedPage.locator('#toolbar-dropdown-checkbox'),
+        authenticatedPage.getByTestId('notifications-selection-dropdown'),
       ).toContainText('21');
 
       const titleHeader = authenticatedPage.getByRole('columnheader', {
@@ -86,8 +91,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await titleHeader.getByRole('button').click();
       await expect(titleHeader).toHaveAttribute('aria-sort', 'descending');
       await expect(
-        authenticatedPage.locator('td[data-label="title"]').first(),
-      ).toHaveText('Filtered notification 21');
+        notificationsTable.getByText('Filtered notification 21', {exact: true}),
+      ).toBeVisible();
 
       await authenticatedPage
         .getByRole('button', {name: 'Go to next page'})
@@ -95,8 +100,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         .click();
       await expect(pagination).toContainText('21 - 21 of 21');
       await expect(
-        authenticatedPage.locator('td[data-label="title"]'),
-      ).toHaveText(['Filtered notification 01']);
+        notificationsTable.getByText('Filtered notification 01', {exact: true}),
+      ).toBeVisible();
     },
   );
 
