@@ -461,50 +461,6 @@ export async function isRegistryImageToolingAvailable(): Promise<boolean> {
 }
 
 /**
- * Result of attempting to push an image
- */
-export interface PushResult {
-  success: boolean;
-  error?: string;
-  stdout?: string;
-  stderr?: string;
-}
-
-/**
- * Attempt to push an image and return the result (success/failure).
- *
- * Unlike `pushImage`, this function does not throw on failure.
- * Use this when testing scenarios where push should be blocked.
- *
- * @example
- * ```typescript
- * const result = await tryPushImage('myorg', 'myrepo', 'latest', 'user', 'pass');
- * expect(result.success).toBe(false);
- * expect(result.error).toContain('denied');
- * ```
- */
-export async function tryPushImage(
-  namespace: string,
-  repo: string,
-  tag: string,
-  username: string,
-  password: string,
-): Promise<PushResult> {
-  try {
-    await pushImage(namespace, repo, tag, username, password);
-    return {success: true};
-  } catch (error) {
-    const err = error as Error & {stdout?: string; stderr?: string};
-    return {
-      success: false,
-      error: err.stderr || err.message || String(error),
-      stdout: err.stdout,
-      stderr: err.stderr,
-    };
-  }
-}
-
-/**
  * Push a multi-architecture manifest list to the registry.
  *
  * Uses a pinned busybox manifest list as the source image.

@@ -1,5 +1,6 @@
 import {test, expect, getTestUsers} from '../../fixtures';
-import {tryPushImage} from '../../utils/container';
+import {API_URL} from '../../utils/config';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Organization Proxy Cache',
@@ -251,23 +252,17 @@ test.describe(
 
         await api.repositoryWithName(org.name, 'testpush');
 
-        // Attempt to push an image to the proxy cache org
-        // This should fail because proxy cache orgs are read-only
-        const result = await tryPushImage(
-          org.name,
-          'testpush',
-          'latest',
-          user.username,
-          user.password,
-        );
-
-        // Push should fail
-        expect(result.success).toBe(false);
-
-        // Error should indicate access was denied
-        // The registry returns "denied" or "unauthorized" when push permissions are blocked
-        expect(result.error?.toLowerCase()).toMatch(
-          /denied|unauthorized|access/,
+        // Proxy cache orgs are read-only, so the push token carries no push.
+        await expect(
+          pushImage(
+            org.name,
+            'testpush',
+            'latest',
+            user.username,
+            user.password,
+          ),
+        ).rejects.toThrow(
+          /unauthorized: access to the requested resource is not authorized/,
         );
       },
     );
@@ -275,7 +270,7 @@ test.describe(
     test(
       'repository creation via push is blocked for proxy cache organizations',
       {tag: ['@container', '@PROJQUAY-9516']},
-      async ({api, quayConfig}) => {
+      async ({api, authenticatedRequest, quayConfig}) => {
         const {user} = getTestUsers(quayConfig);
         // Create organization and configure as proxy cache
         const org = await api.organization('repocreateblock');
@@ -283,20 +278,23 @@ test.describe(
           upstream_registry: 'docker.io',
         });
 
-        // Attempt to push to a non-existent repo (would create it normally)
-        const result = await tryPushImage(
-          org.name,
-          'newrepo',
-          'v1.0.0',
-          user.username,
-          user.password,
+        // A push to a non-existent repo would normally create it.
+        await expect(
+          pushImage(
+            org.name,
+            'newrepo',
+            'v1.0.0',
+            user.username,
+            user.password,
+          ),
+        ).rejects.toThrow(
+          /unauthorized: access to the requested resource is not authorized/,
         );
 
-        // Push should fail - can't create repos in proxy cache orgs
-        expect(result.success).toBe(false);
-        expect(result.error?.toLowerCase()).toMatch(
-          /denied|unauthorized|access/,
+        const repoResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/repository/${org.name}/newrepo`,
         );
+        expect(repoResponse.status()).toBe(404);
       },
     );
   },
