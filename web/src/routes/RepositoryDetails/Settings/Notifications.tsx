@@ -92,6 +92,17 @@ export default function Notifications({
 
   useEffect(() => {
     paginationProps.setPage(1);
+    const filteredUuids = new Set(
+      filteredNotifications.map((notification) => notification.uuid),
+    );
+    setSelectedNotifications((prevSelected) => {
+      const filteredSelection = prevSelected.filter((notification) =>
+        filteredUuids.has(notification.uuid),
+      );
+      return filteredSelection.length === prevSelected.length
+        ? prevSelected
+        : filteredSelection;
+    });
   }, [filter, paginationProps.setPage]);
 
   // Close drawer if navigating away from notification settings
@@ -147,7 +158,11 @@ export default function Notifications({
         setFilter={setFilter}
         resetFilter={resetFilter}
       />
-      <Table aria-label="Repository notifications table" variant="compact">
+      <Table
+        aria-label="Repository notifications table"
+        data-testid="notifications-table"
+        variant="compact"
+      >
         <Thead>
           <Tr>
             <Th />
