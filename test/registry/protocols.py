@@ -11,20 +11,9 @@ from six import add_metaclass
 from image.docker.schema2 import EMPTY_LAYER_BYTES
 
 Image = namedtuple(
-    "Image",
-    [
-        "id",
-        "parent_id",
-        "bytes",
-        "size",
-        "config",
-        "created",
-        "urls",
-        "is_empty",
-        "layer_mediatype",
-    ],
+    "Image", ["id", "parent_id", "bytes", "size", "config", "created", "urls", "is_empty"]
 )
-Image.__new__.__defaults__ = (None, None, None, None, False, None)
+Image.__new__.__defaults__ = (None, None, None, None, False)
 
 Artifact = namedtuple(
     "Artifact",

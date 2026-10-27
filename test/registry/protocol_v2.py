@@ -354,9 +354,7 @@ class V2Protocol(RegistryProtocol):
                 checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             if not image.is_empty:
-                builder.add_layer(
-                    checksum, len(image.bytes), urls=image.urls, mediatype=image.layer_mediatype
-                )
+                builder.add_layer(checksum, len(image.bytes), urls=image.urls)
 
         def history_for_image(image):
             history = {
@@ -380,17 +378,12 @@ class V2Protocol(RegistryProtocol):
             "history": [history_for_image(image) for image in images],
         }
 
-        # Extract custom mediaType if present in image config
-        config_mediatype = None
         if images[-1].config:
             config["config"] = images[-1].config
-            # Check if the image config specifies a custom mediaType (e.g., for Helm charts)
-            if "mediaType" in images[-1].config:
-                config_mediatype = images[-1].config["mediaType"]
 
         config_json = json.dumps(config, ensure_ascii=options.ensure_ascii)
         oci_config = OCIConfig(Bytes.for_string_or_unicode(config_json))
-        builder.set_config_digest(oci_config.digest, oci_config.size, mediatype=config_mediatype)
+        builder.set_config(oci_config)
 
         blobs[oci_config.digest] = oci_config.bytes.as_encoded_str()
         return builder.build(ensure_ascii=options.ensure_ascii)

@@ -1,647 +1,187 @@
-# -*- coding: utf-8 -*-
-
+# pylint: disable=W0401, W0621, W0613, W0614
 """
-Integration tests for Helm chart OCI artifacts.
+Registry protocol tests for Helm charts stored as OCI artifacts.
 
-Tests the complete Helm chart workflow through V2 registry protocol:
-- Push and pull Helm charts as OCI artifacts
-- Verify chart tar.gz content integrity
-- Validate Chart.yaml metadata extraction
-- Test chart versioning and overwrites
-- Verify OCI annotation preservation
+Manifests are shaped like a `helm push`: the config blob is Chart.yaml as JSON, the
+first layer is the packaged chart .tgz, and a signed chart adds a provenance layer.
 
-Run with:
-    TEST=true PYTHONPATH="." pytest test/registry/test_helm_oci_artifacts.py -v
+Run:
+  TEST=true PYTHONPATH="." pytest test/registry/test_helm_oci_artifacts.py -v
 """
 
-import json
+import gzip
 import tarfile
 from io import BytesIO
 
 import pytest
 
-from test.fixtures import *  # noqa: F401,F403
-from test.registry.fixtures import *  # noqa: F401,F403
-from test.registry.liveserverfixture import *  # noqa: F401,F403
-from test.registry.protocol_fixtures import *  # noqa: F401,F403
-from test.registry.protocols import Image, layer_bytes_for_contents
+from test.fixtures import *
+from test.registry.cosign_test_helpers import (
+    HELM_CONFIG_TYPE,
+    HELM_LAYER_TYPE,
+    HELM_PROVENANCE_TYPE,
+    build_oci_artifact_manifest,
+)
+from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
+from test.registry.protocol_fixtures import jwk
+from test.registry.protocol_v2 import V2Protocol
+from test.registry.protocols import Artifact, ProtocolOptions, artifact_config_bytes
+
+NAMESPACE = "devtable"
+CREDENTIALS = ("devtable", "password")
+
+# Pushing one chart under a second tag uploads blobs the repository already has.
+_PUSH_OPTIONS = ProtocolOptions()
+_PUSH_OPTIONS.skip_head_checks = True
 
 
-@pytest.fixture(scope="session")
-def helm_chart():
-    """
-    Returns a basic Helm chart OCI artifact for push and pull testing.
-
-    Simulates a real Helm chart with Chart.yaml metadata packaged as tar.gz.
-    """
-    chart_yaml = b"""apiVersion: v2
-name: test-chart
-description: A test Helm chart for OCI artifact testing
-type: application
-version: 1.0.0
-appVersion: "1.0"
-"""
-
-    # Create a tar.gz layer with Chart.yaml (simulating helm package output)
-    chart_bytes = layer_bytes_for_contents(
-        b"chart contents",
-        mode="|gz",
-        other_files={
-            "test-chart/Chart.yaml": chart_yaml,
-            "test-chart/values.yaml": b"# Default values\nreplicaCount: 1\n",
-            "test-chart/templates/deployment.yaml": b"apiVersion: apps/v1\nkind: Deployment\n",
-        },
-    )
-
-    return [
-        Image(
-            id="helmchartid",
-            bytes=chart_bytes,
-            parent_id=None,
-            size=len(chart_bytes),
-            config={
-                "name": "test-chart",
-                "version": "1.0.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-            },
-            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
-        ),
-    ]
+@pytest.fixture()
+def protocol(data_model, jwk):
+    return V2Protocol(jwk, schema="oci")
 
 
-@pytest.fixture(scope="session")
-def helm_chart_with_dependencies():
-    """
-    Returns a Helm chart with dependencies packaged within the main chart.
+def helm_chart(name, version):
+    """Return an Artifact laid out like the manifest `helm push` writes for a minimal chart."""
+    chart = {
+        "apiVersion": "v2",
+        "name": name,
+        "version": version,
+        "description": "Helm OCI registry test chart",
+        "type": "application",
+    }
+    chart_yaml = "".join("%s: %s\n" % item for item in chart.items()).encode("utf-8")
 
-    Tests that complex charts with dependencies maintain structure. In real Helm
-    charts, dependencies are packaged under charts/ subdirectory within the main
-    chart archive (one layer), not as separate layers.
-    """
-    chart_yaml = b"""apiVersion: v2
-name: complex-chart
-description: A Helm chart with dependencies
-type: application
-version: 2.0.0
-appVersion: "2.0"
-dependencies:
-  - name: postgresql
-    version: "12.x"
-    repository: "https://charts.bitnami.com/bitnami"
-"""
+    tar_bytes = BytesIO()
+    with tarfile.open(fileobj=tar_bytes, mode="w") as tar:
+        for path, contents in (
+            ("Chart.yaml", chart_yaml),
+            ("values.yaml", b"replicaCount: 1\n"),
+        ):
+            info = tarfile.TarInfo("%s/%s" % (name, path))
+            info.size = len(contents)
+            tar.addfile(info, BytesIO(contents))
 
-    # Single layer with main chart and dependency nested inside
-    chart_bytes = layer_bytes_for_contents(
-        b"main chart contents",
-        mode="|gz",
-        other_files={
-            "complex-chart/Chart.yaml": chart_yaml,
-            "complex-chart/values.yaml": b"# Values with dependencies\n",
-            "complex-chart/charts/postgresql/Chart.yaml": b"apiVersion: v2\nname: postgresql\nversion: 12.0.0\n",
-        },
-    )
-
-    return [
-        Image(
-            id="main-chart-id",
-            bytes=chart_bytes,
-            parent_id=None,
-            size=len(chart_bytes),
-            config={
-                "name": "complex-chart",
-                "version": "2.0.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-            },
-            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
-        ),
-    ]
-
-
-@pytest.fixture(scope="session")
-def helm_chart_multi_layer():
-    """
-    Returns a Helm chart with multiple layers (chart content + provenance).
-
-    Tests multi-layer OCI artifacts where additional layers (like provenance files)
-    are included alongside the chart layer. This is a dedicated fixture for testing
-    multi-layer scenarios, separate from the dependency fixture which focuses on
-    chart structure.
-    """
-    chart_yaml = b"""apiVersion: v2
-name: multi-layer-chart
-description: A Helm chart with provenance layer
-type: application
-version: 3.0.0
-appVersion: "3.0"
-"""
-
-    # Chart content layer
-    chart_bytes = layer_bytes_for_contents(
-        b"chart content layer",
-        mode="|gz",
-        other_files={
-            "multi-layer-chart/Chart.yaml": chart_yaml,
-            "multi-layer-chart/values.yaml": b"# Multi-layer chart values\n",
-        },
-    )
-
-    # Provenance layer (separate layer for chart provenance/signature data)
-    provenance_bytes = layer_bytes_for_contents(
-        b"-----BEGIN PGP SIGNED MESSAGE-----\nChart provenance data\n-----END PGP SIGNATURE-----\n",
-        mode="|gz",
-        other_files={
-            "multi-layer-chart.prov": b"PGP signature data for chart verification\n",
-        },
-    )
-
-    return [
-        Image(
-            id="chart-content-layer",
-            bytes=chart_bytes,
-            parent_id=None,
-            size=len(chart_bytes),
-            config={
-                "name": "multi-layer-chart",
-                "version": "3.0.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-            },
-            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
-        ),
-        Image(
-            id="provenance-layer",
-            bytes=provenance_bytes,
-            parent_id="chart-content-layer",
-            size=len(provenance_bytes),
-            config={
-                "name": "multi-layer-chart",
-                "version": "3.0.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-            },
-            layer_mediatype="application/vnd.cncf.helm.chart.provenance.v1.prov",
-        ),
-    ]
-
-
-@pytest.fixture(scope="session")
-def helm_chart_with_annotations():
-    """
-    Returns a Helm chart with OCI annotations.
-
-    Tests that OCI annotations (org.opencontainers.image.*) are preserved.
-    """
-    chart_yaml = b"""apiVersion: v2
-name: annotated-chart
-description: A Helm chart with OCI annotations
-type: application
-version: 1.5.0
-appVersion: "1.5"
-"""
-
-    chart_bytes = layer_bytes_for_contents(
-        b"annotated chart contents",
-        mode="|gz",
-        other_files={
-            "annotated-chart/Chart.yaml": chart_yaml,
-        },
-    )
-
-    return [
-        Image(
-            id="annotated-chart-id",
-            bytes=chart_bytes,
-            parent_id=None,
-            size=len(chart_bytes),
-            config={
-                "name": "annotated-chart",
-                "version": "1.5.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-                "annotations": {
-                    "org.opencontainers.image.title": "Annotated Chart",
-                    "org.opencontainers.image.description": "Chart with OCI annotations",
-                    "org.opencontainers.image.version": "1.5.0",
-                    "org.opencontainers.image.created": "2026-05-07T00:00:00Z",
-                },
-            },
-            layer_mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip",
-        ),
-    ]
-
-
-def test_helm_chart_push_and_pull(manifest_protocol, helm_chart, liveserver_session, app_reloader):
-    """
-    Test 1.1: Basic Helm chart push and pull - verify byte identity.
-
-    Validates that a Helm chart can be pushed to the registry and pulled back
-    with identical byte content (chart tar.gz integrity preserved).
-    """
-    credentials = ("devtable", "password")
-
-    # Push the Helm chart
-    push_result = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-test-repo",
-        "1.0.0",
-        helm_chart,
-        credentials=credentials,
-    )
-
-    assert push_result is not None
-    assert len(push_result.manifests) > 0
-
-    # Pull the chart by tag and verify
-    pull_result = manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-test-repo",
-        "1.0.0",
-        helm_chart,
-        credentials=credentials,
-    )
-
-    assert pull_result is not None
-    assert len(pull_result.manifests) > 0
-
-    # Verify we can also pull by digest
-    digests = [str(manifest.digest) for manifest in list(push_result.manifests.values())]
-    manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-test-repo",
-        digests,
-        helm_chart,
-        credentials=credentials,
-        expected_failure=None,
+    return Artifact(
+        id=name,
+        config=chart,
+        config_media_type=HELM_CONFIG_TYPE,
+        bytes=gzip.compress(tar_bytes.getvalue(), mtime=0),
+        layer_media_type=HELM_LAYER_TYPE,
     )
 
 
-@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
-def test_helm_chart_metadata_extraction(
-    manifest_protocol, helm_chart, liveserver_session, app_reloader
+def push_chart(protocol, session, repo_name, manifest, blobs, reference):
+    """Push a chart manifest and its blobs under the given tag."""
+    protocol.push_artifact(
+        session,
+        NAMESPACE,
+        repo_name,
+        manifest,
+        blobs,
+        reference=reference,
+        credentials=CREDENTIALS,
+        options=_PUSH_OPTIONS,
+    )
+
+
+def pull_chart(protocol, session, repo_name, reference):
+    """Pull a chart manifest by tag or digest."""
+    return protocol.pull_artifact(session, NAMESPACE, repo_name, reference, credentials=CREDENTIALS)
+
+
+def fetch_blob(protocol, session, repo_name, digest, headers):
+    """Return the bytes the V2 blob endpoint serves for digest."""
+    return protocol.conduct(
+        session,
+        "GET",
+        "/v2/%s/%s/blobs/%s" % (NAMESPACE, repo_name, digest),
+        headers=headers,
+    ).content
+
+
+def test_helm_chart_pull_returns_helm_media_types_and_pushed_bytes(
+    protocol, liveserver_session, app_reloader
 ):
-    """
-    Test 1.2: Chart metadata extraction - Chart.yaml parsed correctly.
+    """A pushed chart pulls back with Helm media types and byte-identical config and chart."""
+    repo = "helm-push-pull"
+    artifact = helm_chart("pushpull", "0.1.0")
+    manifest, blobs = build_oci_artifact_manifest(artifact)
+    push_chart(protocol, liveserver_session, repo, manifest, blobs, "0.1.0")
 
-    Validates that Chart.yaml metadata from the Helm chart is correctly
-    extracted and accessible after push. Only runs for OCI protocol since
-    Helm charts are OCI artifacts.
-    """
-    credentials = ("devtable", "password")
+    pulled = pull_chart(protocol, liveserver_session, repo, "0.1.0")
+    assert pulled.manifest.digest == manifest.digest
+    assert pulled.manifest.config_media_type == HELM_CONFIG_TYPE
+    layers = pulled.manifest.filesystem_layers
+    assert [layer.mediatype for layer in layers] == [HELM_LAYER_TYPE]
 
-    # Push the Helm chart
-    result = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-metadata-repo",
-        "1.0.0",
-        helm_chart,
-        credentials=credentials,
-    )
+    def fetch(digest):
+        return fetch_blob(protocol, liveserver_session, repo, digest, pulled.headers)
 
-    assert result is not None
-    assert len(result.manifests) > 0, "Push returned no manifests"
-
-    # Fetch and verify config blob content
-    token, _ = manifest_protocol.auth(
-        liveserver_session,
-        credentials,
-        "devtable",
-        "helm-metadata-repo",
-        scopes=["repository:devtable/helm-metadata-repo:pull"],
-    )
-    headers = {"Authorization": f"Bearer {token}"}
-
-    for manifest in result.manifests.values():
-        # Verify Helm config media type
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-        # Fetch the config blob via authenticated V2 blobs endpoint
-        blob_response = manifest_protocol.conduct(
-            liveserver_session,
-            "GET",
-            f"/v2/devtable/helm-metadata-repo/blobs/{manifest.config.digest}",
-            headers=headers,
-            expected_status=200,
-        )
-
-        # Decode and validate config payload
-        config_blob = json.loads(blob_response.content)
-        assert config_blob.get("config") is not None, "Config blob missing 'config' field"
-
-        # Validate Helm chart metadata in config
-        config = config_blob["config"]
-        assert (
-            config.get("name") == "test-chart"
-        ), f"Expected name 'test-chart', got {config.get('name')}"
-        assert (
-            config.get("version") == "1.0.0"
-        ), f"Expected version '1.0.0', got {config.get('version')}"
+    assert fetch(pulled.manifest.config.digest) == artifact_config_bytes(artifact)
+    assert fetch(layers[0].digest) == artifact.bytes
 
 
-@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
-def test_helm_chart_with_dependencies(
-    manifest_protocol, helm_chart_with_dependencies, liveserver_session, app_reloader
+def test_signed_helm_chart_keeps_chart_then_provenance_layer(
+    protocol, liveserver_session, app_reloader
 ):
-    """
-    Test 1.3: Helm chart with dependencies - structure maintained.
-
-    Validates that Helm charts with dependencies maintain their structure through
-    push/pull operations. Dependencies are packaged within the main chart archive
-    under the charts/ subdirectory. Only runs for OCI protocol since Helm charts
-    are OCI artifacts.
-    """
-    credentials = ("devtable", "password")
-
-    # Push the complex chart with dependencies
-    push_result = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-complex-repo",
-        "2.0.0",
-        helm_chart_with_dependencies,
-        credentials=credentials,
+    """A signed chart pulls back with its chart and provenance layers in order, byte-identical."""
+    repo = "helm-signed"
+    artifact = helm_chart("signedchart", "0.1.0")
+    provenance = (
+        b"-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA512\n\nname: signedchart\n"
+        b"-----BEGIN PGP SIGNATURE-----\n\ntest\n-----END PGP SIGNATURE-----\n"
     )
-
-    assert push_result is not None
-    assert len(push_result.manifests) > 0
-
-    # Verify Helm config media type
-    for manifest in push_result.manifests.values():
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-    # Pull and verify structure is preserved
-    pull_result = manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-complex-repo",
-        "2.0.0",
-        helm_chart_with_dependencies,
-        credentials=credentials,
+    manifest, blobs = build_oci_artifact_manifest(
+        artifact, extra_layers=[(HELM_PROVENANCE_TYPE, provenance)]
     )
+    push_chart(protocol, liveserver_session, repo, manifest, blobs, "0.1.0")
 
-    assert pull_result is not None
-    assert len(pull_result.manifests) > 0
+    pulled = pull_chart(protocol, liveserver_session, repo, "0.1.0")
+    layers = pulled.manifest.filesystem_layers
+    assert [layer.mediatype for layer in layers] == [HELM_LAYER_TYPE, HELM_PROVENANCE_TYPE]
+    assert [
+        fetch_blob(protocol, liveserver_session, repo, layer.digest, pulled.headers)
+        for layer in layers
+    ] == [artifact.bytes, provenance]
 
-    # Verify the Helm config media type is preserved
-    for manifest in pull_result.manifests.values():
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
 
-
-@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
-def test_helm_chart_multi_layer(
-    manifest_protocol, helm_chart_multi_layer, liveserver_session, app_reloader
+def test_helm_chart_new_version_moves_latest_and_old_digest_still_pulls(
+    protocol, liveserver_session, app_reloader
 ):
-    """
-    Test 1.3b: Multi-layer Helm OCI artifact - chart content + provenance layers.
+    """Pushing 0.2.0 moves latest off 0.1.0, and 0.1.0 still pulls by tag and by digest."""
+    repo = "helm-versions"
+    v1, v1_blobs = build_oci_artifact_manifest(helm_chart("versions", "0.1.0"))
+    v2, v2_blobs = build_oci_artifact_manifest(helm_chart("versions", "0.2.0"))
 
-    Validates that multi-layer Helm OCI artifacts (chart with separate provenance
-    layer) maintain both layers through push/pull operations. Asserts both layer
-    descriptors are present in the manifest's blob digests. Only runs for OCI
-    protocol since Helm charts are OCI artifacts.
-    """
-    credentials = ("devtable", "password")
+    def pulled_digest(reference):
+        return pull_chart(protocol, liveserver_session, repo, reference).manifest.digest
 
-    # Push the multi-layer chart
-    push_result = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-multi-layer-repo",
-        "3.0.0",
-        helm_chart_multi_layer,
-        credentials=credentials,
+    for reference in ("0.1.0", "latest"):
+        push_chart(protocol, liveserver_session, repo, v1, v1_blobs, reference)
+    assert pulled_digest("latest") == v1.digest
+
+    for reference in ("0.2.0", "latest"):
+        push_chart(protocol, liveserver_session, repo, v2, v2_blobs, reference)
+    assert pulled_digest("latest") == v2.digest
+    assert pulled_digest("0.2.0") == v2.digest
+    assert pulled_digest("0.1.0") == v1.digest
+    assert pulled_digest(v1.digest) == v1.digest
+
+
+def test_helm_chart_manifest_annotations_round_trip(protocol, liveserver_session, app_reloader):
+    """Manifest-level org.opencontainers.image.* annotations come back unchanged on pull."""
+    repo = "helm-annotated"
+    annotations = {
+        "org.opencontainers.image.created": "2026-10-27T09:50:30-04:00",
+        "org.opencontainers.image.description": "Helm OCI registry test chart",
+        "org.opencontainers.image.title": "annotated",
+        "org.opencontainers.image.version": "0.1.0",
+    }
+    manifest, blobs = build_oci_artifact_manifest(
+        helm_chart("annotated", "0.1.0"), annotations=annotations
     )
+    push_chart(protocol, liveserver_session, repo, manifest, blobs, "0.1.0")
 
-    assert push_result is not None
-    assert len(push_result.manifests) > 0
-
-    # Verify both layers are present in the pushed manifest
-    for manifest in push_result.manifests.values():
-        # Verify Helm config media type
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-        # Assert both layer descriptors are present through manifest's blob digests
-        # OCI manifests include one config blob + layer blobs
-        blob_digests = list(manifest.blob_digests)
-        assert len(blob_digests) >= len(
-            helm_chart_multi_layer
-        ), f"Expected at least {len(helm_chart_multi_layer)} layers, got {len(blob_digests)}"
-
-    # Pull and verify both layers are preserved
-    pull_result = manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-multi-layer-repo",
-        "3.0.0",
-        helm_chart_multi_layer,
-        credentials=credentials,
-    )
-
-    assert pull_result is not None
-    assert len(pull_result.manifests) > 0
-
-    # Verify both layers are still present after round-trip
-    for manifest in pull_result.manifests.values():
-        # Verify Helm config media type is preserved
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-        # Verify both layer descriptors are preserved
-        blob_digests = list(manifest.blob_digests)
-        assert len(blob_digests) >= len(
-            helm_chart_multi_layer
-        ), f"Expected at least {len(helm_chart_multi_layer)} layers after pull, got {len(blob_digests)}"
-
-
-def test_helm_chart_version_overwrite(
-    manifest_protocol, helm_chart, liveserver_session, app_reloader
-):
-    """
-    Test 1.4: Chart version overwrite - versioning works correctly.
-
-    Validates that pushing a new chart with the same tag overwrites correctly,
-    and that chart version metadata is properly handled.
-    """
-    credentials = ("devtable", "password")
-
-    # Push initial version
-    result1 = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-version-repo",
-        "latest",
-        helm_chart,
-        credentials=credentials,
-    )
-
-    assert result1 is not None
-    assert result1.manifests, "First push returned no manifests"
-    digest1 = list(result1.manifests.values())[0].digest
-
-    # Create a modified chart (different contents)
-    updated_chart_bytes = layer_bytes_for_contents(
-        b"updated chart contents v2",
-        mode="|gz",
-        other_files={
-            "test-chart/Chart.yaml": b"""apiVersion: v2
-name: test-chart
-version: 2.0.0
-appVersion: "2.0"
-""",
-        },
-    )
-
-    updated_chart = [
-        Image(
-            id="helmchartid-v2",
-            bytes=updated_chart_bytes,
-            parent_id=None,
-            size=len(updated_chart_bytes),
-            config={
-                "name": "test-chart",
-                "version": "2.0.0",
-                "mediaType": "application/vnd.cncf.helm.config.v1+json",
-            },
-        ),
-    ]
-
-    # Push updated version with same tag
-    result2 = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-version-repo",
-        "latest",
-        updated_chart,
-        credentials=credentials,
-    )
-
-    assert result2 is not None
-    assert result2.manifests, "Second push returned no manifests"
-    digest2 = list(result2.manifests.values())[0].digest
-
-    # Digests should be different (content changed)
-    assert digest1 != digest2
-
-    # Pull should get the updated version
-    pull_result = manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-version-repo",
-        "latest",
-        updated_chart,
-        credentials=credentials,
-    )
-
-    assert pull_result is not None
-
-
-@pytest.mark.parametrize("manifest_protocol", ["oci"], indirect=True)
-def test_helm_chart_oci_annotations(
-    manifest_protocol, helm_chart_with_annotations, liveserver_session, app_reloader
-):
-    """
-    Test 1.5: OCI config metadata preservation (including annotations).
-
-    Validates that OCI config metadata and embedded annotations on Helm charts
-    are correctly preserved through push and pull operations (round-trip test).
-    Only runs for OCI protocol since Helm charts are OCI artifacts.
-
-    Note: This tests config-level metadata (stored in the OCI config blob),
-    which includes Helm chart metadata and embedded annotations. Manifest-level
-    OCI annotations (manifest.annotations) would require protocol modifications
-    to support the Image namedtuple passing annotations to OCIManifestBuilder.
-    """
-    credentials = ("devtable", "password")
-
-    # Push chart with metadata/annotations in config
-    push_result = manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "helm-annotated-repo",
-        "1.5.0",
-        helm_chart_with_annotations,
-        credentials=credentials,
-    )
-
-    assert push_result is not None
-    assert len(push_result.manifests) > 0
-
-    # Fetch and verify config blob with annotations after push
-    token, _ = manifest_protocol.auth(
-        liveserver_session,
-        credentials,
-        "devtable",
-        "helm-annotated-repo",
-        scopes=["repository:devtable/helm-annotated-repo:pull"],
-    )
-    headers = {"Authorization": f"Bearer {token}"}
-
-    for manifest in push_result.manifests.values():
-        assert manifest is not None
-        assert hasattr(manifest, "digest")
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-        # Fetch the config blob via authenticated V2 blobs endpoint
-        blob_response = manifest_protocol.conduct(
-            liveserver_session,
-            "GET",
-            f"/v2/devtable/helm-annotated-repo/blobs/{manifest.config.digest}",
-            headers=headers,
-            expected_status=200,
-        )
-
-        # Decode and validate config payload with annotations
-        config_blob = json.loads(blob_response.content)
-        assert config_blob.get("config") is not None, "Config blob missing 'config' field"
-        config = config_blob["config"]
-
-        # Validate Helm chart metadata
-        assert config.get("name") == "annotated-chart"
-        assert config.get("version") == "1.5.0"
-
-        # Validate OCI annotations in config
-        assert "annotations" in config, "config must contain annotations map"
-        annotations = config["annotations"]
-        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
-        assert (
-            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
-        )
-        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
-
-    # Pull and verify config blob with annotations is preserved after round-trip
-    pull_result = manifest_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "helm-annotated-repo",
-        "1.5.0",
-        helm_chart_with_annotations,
-        credentials=credentials,
-    )
-
-    assert pull_result is not None
-    assert len(pull_result.manifests) > 0
-
-    for manifest in pull_result.manifests.values():
-        assert manifest is not None
-        assert hasattr(manifest, "digest")
-        assert manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
-
-        # Fetch the config blob again after pull
-        blob_response = manifest_protocol.conduct(
-            liveserver_session,
-            "GET",
-            f"/v2/devtable/helm-annotated-repo/blobs/{manifest.config.digest}",
-            headers=headers,
-            expected_status=200,
-        )
-
-        # Verify annotations are preserved after round-trip
-        config_blob = json.loads(blob_response.content)
-        config = config_blob["config"]
-        assert "annotations" in config
-        annotations = config["annotations"]
-        assert annotations.get("org.opencontainers.image.title") == "Annotated Chart"
-        assert annotations.get("org.opencontainers.image.version") == "1.5.0"
-        assert (
-            annotations.get("org.opencontainers.image.description") == "Chart with OCI annotations"
-        )
-        assert annotations.get("org.opencontainers.image.created") == "2026-05-07T00:00:00Z"
+    pulled = pull_chart(protocol, liveserver_session, repo, "0.1.0")
+    assert pulled.manifest.annotations == annotations

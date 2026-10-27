@@ -78,7 +78,7 @@ OCI_MANIFEST_SUBJECT_KEY = "subject"
 OCI_MANIFEST_ARTIFACT_TYPE_KEY = "artifactType"
 
 # Named tuples.
-OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest", "mediatype"])
+OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
 OCIManifestDescriptor = namedtuple("OCIManifestDescriptor", ["mediatype", "size", "digest"])
 OCIManifestLayer = namedtuple(
     "OCIManifestLayer",
@@ -569,13 +569,11 @@ class OCIManifestBuilder(object):
         """
         self.set_config_digest(schema2_config.digest, schema2_config.size)
 
-    def set_config_digest(self, config_digest, config_size, mediatype=None):
+    def set_config_digest(self, config_digest, config_size):
         """
         Sets the digest and size of the configuration layer.
         """
-        if mediatype is None:
-            mediatype = OCI_IMAGE_CONFIG_CONTENT_TYPE
-        self.config = OCIManifestConfig(size=config_size, digest=config_digest, mediatype=mediatype)
+        self.config = OCIManifestConfig(size=config_size, digest=config_digest)
 
     def set_subject(self, digest, size, mediatype):
         self.subject = OCIManifestDescriptor(digest=digest, size=size, mediatype=mediatype)
@@ -597,8 +595,8 @@ class OCIManifestBuilder(object):
                 compressed_size=size,
                 urls=urls,
                 is_remote=bool(urls),
-                annotations=annotations,
-                mediatype=mediatype,
+                annotations=None,
+                mediatype=None,
             )
         )
 
@@ -610,31 +608,26 @@ class OCIManifestBuilder(object):
         assert self.config
 
         def _build_layer(layer):
-            # Use explicit media type if provided, otherwise fall back to OCI image defaults
-            if layer.mediatype:
-                mediatype = layer.mediatype
-            elif layer.urls:
-                mediatype = OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE
-            else:
-                mediatype = OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE
+            if layer.urls:
+                return {
+                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
+                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                    OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
+                    OCI_MANIFEST_URLS_KEY: layer.urls,
+                }
 
-            layer_dict = {
-                OCI_MANIFEST_MEDIATYPE_KEY: mediatype,
+            return {
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
                 OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
                 OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
             }
-
-            if layer.urls:
-                layer_dict[OCI_MANIFEST_URLS_KEY] = layer.urls
-
-            return layer_dict
 
         manifest_dict = {
             OCI_MANIFEST_VERSION_KEY: 2,
             OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_MANIFEST_CONTENT_TYPE,
             # Config
             OCI_MANIFEST_CONFIG_KEY: {
-                OCI_MANIFEST_MEDIATYPE_KEY: self.config.mediatype,
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_CONFIG_CONTENT_TYPE,
                 OCI_MANIFEST_SIZE_KEY: self.config.size,
                 OCI_MANIFEST_DIGEST_KEY: str(self.config.digest),
             },
