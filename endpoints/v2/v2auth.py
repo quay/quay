@@ -243,7 +243,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         msg = "Namespace %s has been disabled. Please contact a system administrator." % namespace
         raise NamespaceDisabled(message=msg)
 
-    # Lazy-load proxy cache config check to avoid DB hit on pull-only requests
+    # Cached so the proxy cache config is looked up at most once per request.
     _proxy_cache_checked = False
     _is_proxy_cache_org = False
 
@@ -306,7 +306,9 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                             namespace,
                             reponame,
                         )
+                    # Check for different repository states.
                     elif repository_ref.state == RepositoryState.NORMAL:
+                        # In NORMAL mode, if the user has permission, then they can push.
                         final_actions.append("push")
                     elif repository_ref.state == RepositoryState.MIRROR:
                         # In MIRROR mode, only the repo-level mirroring robot can push.
@@ -493,12 +495,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     # Final sanity checks.
     if "push" in final_actions:
         assert repository_ref.state != RepositoryState.READ_ONLY
-        # Ensure not pushing to proxy cache org
         assert not is_proxy_cache_org()
 
     if "*" in final_actions:
         assert repository_ref.state == RepositoryState.NORMAL
-        # Ensure not admin in proxy cache org
         assert not is_proxy_cache_org()
 
     return scopeResult(
