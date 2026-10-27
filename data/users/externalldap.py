@@ -121,10 +121,10 @@ class _LDAPTraceRedactor:
 _PW_KEY_RE = re.compile(r"password|unicodepwd", re.IGNORECASE)
 
 
-def _mask_password_attributes(attrs):
+def _redact_password_attributes(attrs):
     """
     Copy an LDAP attribute dict with the values of password-like keys
-    (e.g. userPassword, unicodePwd) masked, leaving all other attributes
+    (e.g. userPassword, unicodePwd) redacted, leaving all other attributes
     intact for debugging.
     """
     return {key: ["******"] if _PW_KEY_RE.search(key) else value for key, value in attrs.items()}
@@ -961,7 +961,7 @@ class LDAPUsers(FederatedUsers):
 
         found_dn, found_response = found_user
         logger.debug("Found user for LDAP username %s; validating password", username_or_email)
-        logger.debug("DN %s found: %s", found_dn, _mask_password_attributes(found_response))
+        logger.debug("DN %s found: %s", found_dn, _redact_password_attributes(found_response))
 
         # First validate the password by binding as the user
         if not self._verify_password(found_dn, password):
