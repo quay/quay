@@ -581,7 +581,7 @@ export default function TagsTable(props: TableProps) {
   };
 
   // Calculate manifest tracks for visual grouping of tags sharing the same digest
-  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+  const {getTrackEntry, getLineClass, trackCount} = useManifestTracks(
     props.tags,
   );
 
