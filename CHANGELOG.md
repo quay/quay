@@ -1,10 +1,10 @@
 ## Red Hat Quay Release Notes
 
-[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/5.0/html/red_hat_quay_release_notes/index)
 
 
 <a name="v5.0.0"></a>
-## v5.0.0 - 2026-10-26
+## v5.0.0 - 2026-10-27
 ### NO-ISSUE: Chore
 - [8ffbb9b00](https://github.com/quay/quay/commit/8ffbb9b00dc7dc7d959c68f5b02ea7e540200f8b): add prow playwright debug skill ([#7050](https://github.com/quay/quay/issues/7050))
 - [74895c935](https://github.com/quay/quay/commit/74895c9358a48fbc140a24b412e2d0c67d2efdbf): Remove references to old config tool deployment form the startup scripts ([#6649](https://github.com/quay/quay/issues/6649))
