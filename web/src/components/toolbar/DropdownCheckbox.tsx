@@ -84,7 +84,9 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
                 }
               >
                 {props.selectedItems?.length != 0 ? (
-                  <Badge>{props.selectedItems.length}</Badge>
+                  <Badge data-testid={props.selectedCountTestId}>
+                    {props.selectedItems.length}
+                  </Badge>
                 ) : null}
               </MenuToggleCheckbox>,
             ]}
@@ -112,4 +114,5 @@ type DropdownCheckboxProps = {
   onItemSelect: (Item, rowIndex, isSelecting) => void;
   id?: string;
   'data-testid'?: string;
+  selectedCountTestId?: string;
 };
