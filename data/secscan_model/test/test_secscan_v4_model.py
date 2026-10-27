@@ -1743,6 +1743,45 @@ def test_reindex_never_replays_initial_scan_notification(initialized_db, set_sec
     assert spawn_notification.call_count == 0
 
 
+def test_historical_completed_reindex_failure_does_not_replay_notification(
+    initialized_db, set_secscan_config
+):
+    target = _prepare_notification_target()
+    ManifestSecurityStatus.update(
+        indexer_hash="old_hash",
+        metadata_json={},
+        last_indexed=datetime.utcnow() - timedelta(days=2),
+    ).where(ManifestSecurityStatus.manifest == target).execute()
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "new_hash"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "temporary failure", "state": IndexReportState.Index_Error},
+        "new_hash",
+    )
+    secscan.perform_indexing(batch_size=100)
+
+    failed = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+    assert failed.index_status == IndexStatus.FAILED
+    assert failed.metadata_json["has_been_scanned"] is True
+
+    ManifestSecurityStatus.update(last_indexed=datetime.utcnow() - timedelta(days=2)).where(
+        ManifestSecurityStatus.manifest == target
+    ).execute()
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "new_hash",
+    )
+    secscan._secscan_api.vulnerability_report.return_value = _high_vulnerability_report()
+
+    with mock.patch.object(features, "SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX", True):
+        with mock.patch("notifications.spawn_notification") as spawn_notification:
+            secscan.perform_indexing(batch_size=100)
+
+    assert spawn_notification.call_count == 0
+
+
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
     """
     Integration test verifying that batch preemption checking actually reduces

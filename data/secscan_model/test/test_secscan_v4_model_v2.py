@@ -731,6 +731,41 @@ class TestPerformIndexingCycle:
 
         assert spawn_notification.call_count == 0
 
+    def test_historical_completed_reindex_failure_does_not_replay_notification(
+        self, initialized_db, scanner
+    ):
+        target = self._prepare_notification_target()
+        ManifestSecurityStatus.update(
+            indexer_hash="old_hash",
+            metadata_json={},
+            last_indexed=datetime.utcnow() - timedelta(days=2),
+        ).where(ManifestSecurityStatus.manifest == target).execute()
+        scanner._secscan_api.state.return_value = {"state": "new_hash"}
+        scanner._secscan_api.index.return_value = (
+            {"err": "temporary failure", "state": IndexReportState.Index_Error},
+            "new_hash",
+        )
+        scanner.perform_indexing(batch_size=100)
+
+        failed = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == target)
+        assert failed.index_status == IndexStatus.FAILED
+        assert failed.metadata_json["has_been_scanned"] is True
+
+        ManifestSecurityStatus.update(last_indexed=datetime.utcnow() - timedelta(days=2)).where(
+            ManifestSecurityStatus.manifest == target
+        ).execute()
+        scanner._secscan_api.index.return_value = (
+            {"err": None, "state": IndexReportState.Index_Finished},
+            "new_hash",
+        )
+        scanner._secscan_api.vulnerability_report.return_value = self._high_vulnerability_report()
+
+        with mock.patch.object(features, "SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX", True):
+            with mock.patch("notifications.spawn_notification") as spawn_notification:
+                scanner.perform_indexing(batch_size=100)
+
+        assert spawn_notification.call_count == 0
+
     def test_handles_deleted_manifest(self, initialized_db, scanner):
         mss = ManifestSecurityStatus.select().first()
         manifest_id = mss.manifest_id

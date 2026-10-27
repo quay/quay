@@ -231,12 +231,17 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             if not eligible:
                 return []
 
-            row_ids = [r.id for r in eligible]
-            ManifestSecurityStatus.update(
-                index_status=IndexStatus.IN_PROGRESS,
-                indexer_hash="in_progress_v2",
-                last_indexed=now,
-            ).where(ManifestSecurityStatus.id.in_(row_ids)).execute()
+            for row in eligible:
+                metadata = row.metadata_json or {}
+                if row.index_status == IndexStatus.COMPLETED or metadata.get("has_been_scanned"):
+                    metadata["has_been_scanned"] = True
+
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress_v2",
+                    metadata_json=metadata,
+                    last_indexed=now,
+                ).where(ManifestSecurityStatus.id == row.id).execute()
 
             return eligible
 
@@ -412,6 +417,17 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
 
     def _mark_unsupported(self, manifest):
         with db_transaction():
+            try:
+                mss = db_for_update(
+                    ManifestSecurityStatus.select().where(
+                        ManifestSecurityStatus.manifest == manifest._db_id
+                    )
+                ).get()
+            except ManifestSecurityStatus.DoesNotExist:
+                mss = None
+            metadata = (mss.metadata_json or {}) if mss else {}
+            if mss and mss.index_status == IndexStatus.COMPLETED:
+                metadata["has_been_scanned"] = True
             ManifestSecurityStatus.delete().where(
                 ManifestSecurityStatus.manifest == manifest._db_id,
                 ManifestSecurityStatus.repository == manifest.repository._db_id,
@@ -422,11 +438,22 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 index_status=IndexStatus.MANIFEST_UNSUPPORTED,
                 indexer_hash="none",
                 indexer_version=IndexerVersion.V4,
-                metadata_json={},
+                metadata_json=metadata,
             )
 
     def _mark_layer_too_large(self, manifest):
         with db_transaction():
+            try:
+                mss = db_for_update(
+                    ManifestSecurityStatus.select().where(
+                        ManifestSecurityStatus.manifest == manifest._db_id
+                    )
+                ).get()
+            except ManifestSecurityStatus.DoesNotExist:
+                mss = None
+            metadata = (mss.metadata_json or {}) if mss else {}
+            if mss and mss.index_status == IndexStatus.COMPLETED:
+                metadata["has_been_scanned"] = True
             ManifestSecurityStatus.delete().where(
                 ManifestSecurityStatus.manifest == manifest._db_id,
                 ManifestSecurityStatus.repository == manifest.repository._db_id,
@@ -437,7 +464,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 index_status=IndexStatus.MANIFEST_LAYER_TOO_LARGE,
                 indexer_hash="none",
                 indexer_version=IndexerVersion.V4,
-                metadata_json={},
+                metadata_json=metadata,
             )
 
     def _mark_failed(self, manifest_id, indexer_hash, error_json, current_indexer_hash):
