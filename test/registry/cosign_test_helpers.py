@@ -23,7 +23,8 @@ IN_TOTO_LAYER_TYPE = "application/vnd.in-toto+json"
 IN_TOTO_ARTIFACT_TYPE = "application/vnd.in-toto+json"
 
 HELM_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
-HELM_LAYER_TYPE = "application/tar+gzip"
+HELM_LAYER_TYPE = "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+HELM_PROVENANCE_TYPE = "application/vnd.cncf.helm.chart.provenance.v1.prov"
 
 OCI_CONFIG_TYPE = "application/vnd.oci.image.config.v1+json"
 DEFAULT_CREDENTIALS = ("devtable", "password")
@@ -54,9 +55,14 @@ def build_cosign_signature_payload(subject_digest: str, registry_ref: str) -> by
 def build_oci_artifact_manifest(
     artifact: Artifact,
     subject_manifest: Optional[OCIManifest] = None,
+    extra_layers: Optional[List[Tuple[str, bytes]]] = None,
+    annotations: Optional[Dict[str, str]] = None,
 ) -> Tuple[OCIManifest, Dict[str, bytes]]:
     """
     Build an OCI manifest for a generic artifact (signature, SBOM, Helm chart, etc.).
+
+    extra_layers is a list of (media_type, bytes) appended after the artifact's layer.
+    annotations are set on the manifest itself.
 
     Returns the manifest and a dict of blob digest -> bytes to upload.
     """
@@ -78,6 +84,22 @@ def build_oci_artifact_manifest(
     if layer_annotations:
         layer_descriptor["annotations"] = layer_annotations
 
+    layers = [layer_descriptor]
+    blobs = {
+        config_digest: config_bytes,
+        layer_digest: layer_bytes,
+    }
+    for extra_media_type, extra_bytes in extra_layers or []:
+        extra_digest = digest_for_bytes(extra_bytes)
+        layers.append(
+            {
+                "mediaType": extra_media_type,
+                "size": len(extra_bytes),
+                "digest": extra_digest,
+            }
+        )
+        blobs[extra_digest] = extra_bytes
+
     manifest_dict: Dict[str, Any] = {
         "schemaVersion": 2,
         "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
@@ -86,11 +108,14 @@ def build_oci_artifact_manifest(
             "size": len(config_bytes),
             "digest": config_digest,
         },
-        "layers": [layer_descriptor],
+        "layers": layers,
     }
 
     if artifact_type:
         manifest_dict["artifactType"] = artifact_type
+
+    if annotations:
+        manifest_dict["annotations"] = annotations
 
     if subject_manifest is not None:
         subject_bytes = subject_manifest.bytes.as_encoded_str()
@@ -101,10 +126,6 @@ def build_oci_artifact_manifest(
         }
 
     manifest = OCIManifest(Bytes.for_string_or_unicode(json.dumps(manifest_dict)))
-    blobs = {
-        config_digest: config_bytes,
-        layer_digest: layer_bytes,
-    }
     return manifest, blobs
 
 

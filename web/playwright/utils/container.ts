@@ -8,9 +8,9 @@
  */
 
 import {execFile, execFileSync, spawn} from 'child_process';
-import {randomBytes} from 'crypto';
+import {createHash, randomBytes} from 'crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'fs';
-import {mkdtemp, mkdir, rm, writeFile} from 'fs/promises';
+import {mkdtemp, mkdir, readFile, rm, writeFile} from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import {promisify} from 'util';
@@ -733,6 +733,13 @@ export async function isRegctlAvailable(): Promise<boolean> {
 }
 
 /**
+ * Check if helm CLI is available on the system.
+ */
+export async function isHelmAvailable(): Promise<boolean> {
+  return commandAvailable('helm', ['version']);
+}
+
+/**
  * List tags for a repository using skopeo.
  *
  * @returns Array of tag name strings
@@ -778,4 +785,128 @@ export async function regctlListTags(
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+/**
+ * Log helm in to the registry, then run operation in a temporary directory
+ * that is removed afterwards.
+ */
+async function withHelmRegistry<T>(
+  username: string,
+  password: string,
+  operation: (registryConfig: string, workDir: string) => Promise<T>,
+): Promise<T> {
+  const workDir = await mkdtemp(path.join(os.tmpdir(), 'quay-helm-'));
+  // A per-invocation registry config keeps parallel Playwright workers from
+  // racing on the shared ~/.config/helm/registry/config.json, which corrupts
+  // the stored credentials.
+  const registryConfig = path.join(workDir, 'registry-config.json');
+
+  try {
+    await retryOperation(() =>
+      execFileWithInput(
+        'helm',
+        [
+          'registry',
+          'login',
+          REGISTRY_HOST,
+          '-u',
+          username,
+          '--password-stdin',
+          '--insecure',
+          '--registry-config',
+          registryConfig,
+        ],
+        password,
+      ),
+    );
+    return await operation(registryConfig, workDir);
+  } finally {
+    await rm(workDir, {recursive: true, force: true});
+  }
+}
+
+async function sha256File(file: string): Promise<string> {
+  return createHash('sha256')
+    .update(await readFile(file))
+    .digest('hex');
+}
+
+/**
+ * Package a minimal Helm chart named repo and push it with `helm push`, which
+ * stores it as namespace/repo:version.
+ *
+ * @returns sha256 hex digest of the pushed chart .tgz
+ */
+export async function pushHelmChart(
+  namespace: string,
+  repo: string,
+  version: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  return withHelmRegistry(
+    username,
+    password,
+    async (registryConfig, workDir) => {
+      const chartDir = path.join(workDir, repo);
+      await mkdir(chartDir);
+      await writeFile(
+        path.join(chartDir, 'Chart.yaml'),
+        `apiVersion: v2\nname: ${repo}\ndescription: Test Helm chart for ${repo}\ntype: application\nversion: ${version}\n`,
+      );
+      await writeFile(path.join(chartDir, 'values.yaml'), 'replicaCount: 1\n');
+      await execFileAsync('helm', [
+        'package',
+        chartDir,
+        '--destination',
+        workDir,
+      ]);
+
+      const chart = path.join(workDir, `${repo}-${version}.tgz`);
+      await retryOperation(async () => {
+        await execFileAsync('helm', [
+          'push',
+          chart,
+          `oci://${REGISTRY_HOST}/${namespace}`,
+          '--plain-http',
+          '--registry-config',
+          registryConfig,
+        ]);
+      });
+      return sha256File(chart);
+    },
+  );
+}
+
+/**
+ * Pull namespace/repo:version with `helm pull`.
+ *
+ * @returns sha256 hex digest of the pulled chart .tgz
+ */
+export async function pullHelmChart(
+  namespace: string,
+  repo: string,
+  version: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  return withHelmRegistry(
+    username,
+    password,
+    async (registryConfig, workDir) => {
+      await execFileAsync('helm', [
+        'pull',
+        `oci://${REGISTRY_HOST}/${namespace}/${repo}`,
+        '--version',
+        version,
+        '--plain-http',
+        '--destination',
+        workDir,
+        '--registry-config',
+        registryConfig,
+      ]);
+      return sha256File(path.join(workDir, `${repo}-${version}.tgz`));
+    },
+  );
 }
