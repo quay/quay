@@ -173,6 +173,20 @@ class TestProxyCacheOrgPush(EndpointTestCase):
         repo = model.repository.get_repository("buynlarge", "orgrepo")
         self.assertIsNone(model.oci.tag.get_tag(repo.id, "newtag"))
 
+    def test_delete_tag_refused(self):
+        model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+        auth = b64encode(b"%s:password" % ADMIN_ACCESS_USER.encode("ascii")).decode("ascii")
+        with app.test_client() as c:
+            rv = c.delete(
+                "/v1/repositories/buynlarge/orgrepo/tags/latest",
+                headers=[("authorization", "basic %s" % auth)],
+            )
+        self.assertEqual(rv.status_code, 403)
+
+        repo = model.repository.get_repository("buynlarge", "orgrepo")
+        self.assertIsNotNone(model.oci.tag.get_tag(repo.id, "latest"))
+
 
 if __name__ == "__main__":
     unittest.main()

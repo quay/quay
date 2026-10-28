@@ -416,6 +416,7 @@ def _parse_manifest(content_type, request_data):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     """
     Delete the manifest specified by the digest.
@@ -456,6 +457,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
     """
     Deletes the manifest specified by the tag.

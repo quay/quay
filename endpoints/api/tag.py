@@ -37,6 +37,7 @@ from endpoints.api import (
     parse_args,
     path_param,
     query_param,
+    require_repo_admin_in_proxy_cache_org,
     require_repo_read,
     require_repo_write,
     resource,
@@ -380,6 +381,7 @@ class RepositoryTag(RepositoryParamResource):
         return "Updated", 201
 
     @require_repo_write(allow_for_superuser=True)
+    @require_repo_admin_in_proxy_cache_org
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("deleteFullTag")
@@ -519,6 +521,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
+    @require_repo_admin_in_proxy_cache_org
     @nickname("removeTagFromTimemachine")
     @validate_json_request("ExpireTag")
     def post(self, namespace, repository, tag):

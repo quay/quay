@@ -355,6 +355,34 @@ test.describe(
         expect(after.tags).toHaveLength(0);
       },
     );
+
+    test(
+      'tag deletion via API is allowed for proxy cache organization admins',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        const org = await api.organization('tagdelete');
+        // Pushed first: pushes are refused once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'cached');
+        await pushImage(
+          org.name,
+          'cached',
+          'latest',
+          user.username,
+          user.password,
+        );
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await api.raw.deleteTag(org.name, 'cached', 'latest');
+
+        const after = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'latest',
+        });
+        expect(after.tags).toHaveLength(0);
+      },
+    );
   },
 );
 

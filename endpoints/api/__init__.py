@@ -304,8 +304,12 @@ def disallow_for_non_normal_repositories(func):
     return wrapped
 
 
+def is_proxy_cache_org(namespace_name):
+    return features.PROXY_CACHE and data_model.proxy_cache.has_proxy_cache_config(namespace_name)
+
+
 def check_proxy_cache_org(namespace_name):
-    if features.PROXY_CACHE and data_model.proxy_cache.has_proxy_cache_config(namespace_name):
+    if is_proxy_cache_org(namespace_name):
         raise InvalidRequest("Cannot modify content: organization is a proxy cache")
 
 
@@ -388,6 +392,22 @@ def require_repo_permission(permission_class, scope, allow_public=False):
 require_repo_read = require_repo_permission(ReadRepositoryPermission, scopes.READ_REPO, True)
 require_repo_write = require_repo_permission(ModifyRepositoryPermission, scopes.WRITE_REPO)
 require_repo_admin = require_repo_permission(AdministerRepositoryPermission, scopes.ADMIN_REPO)
+
+
+def require_repo_admin_in_proxy_cache_org(func):
+    # Cache cleanup is limited to repository admins, as pull-through is the only writer.
+    @wraps(func)
+    def wrapped(self, namespace_name, repository_name, *args, **kwargs):
+        if (
+            is_proxy_cache_org(namespace_name)
+            and not AdministerRepositoryPermission(namespace_name, repository_name).can()
+            and not allow_if_superuser_with_full_access()
+        ):
+            raise Unauthorized()
+
+        return func(self, namespace_name, repository_name, *args, **kwargs)
+
+    return wrapped
 
 
 def require_user_permission(permission_class, scope=None):

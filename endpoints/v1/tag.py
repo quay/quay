@@ -130,6 +130,7 @@ def put_tag(namespace_name, repo_name, tag):
 @check_repository_state
 @check_v1_push_enabled()
 @check_readonly
+@disallow_for_proxy_cache_org
 def delete_tag(namespace_name, repo_name, tag):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(

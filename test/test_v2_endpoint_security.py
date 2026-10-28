@@ -4,6 +4,9 @@ import unittest
 from registry import application as app
 
 import endpoints.decorated  # Register the various exceptions via decorators.
+from data import model
+from data.registry_model import registry_model
+from endpoints.test.shared import gen_basic_auth
 from initdb import finished_database_for_testing, setup_database_for_testing
 from test.specs import build_v2_index_specs
 
@@ -124,6 +127,34 @@ class TestGlobalReadOnlySuperUserAccess(EndpointTestCase, metaclass=_SpecTestBui
     spec_func = build_v2_index_specs
     result_attr = "global_readonly_code"
     auth_username = GLOBAL_READONLY_SUPERUSER
+
+
+class TestProxyCacheOrgDelete(EndpointTestCase):
+    def test_manifest_delete_refused_after_org_becomes_proxy_cache(self):
+        repo_ref = registry_model.lookup_repository("buynlarge", "orgrepo")
+        digest = registry_model.get_repo_tag(repo_ref, "prod").manifest.digest
+
+        with app.test_client() as c:
+            # The push token predates the org's proxy cache config.
+            arv = c.open(
+                "/v2/auth",
+                headers=[("authorization", gen_basic_auth(ADMIN_ACCESS_USER, "password"))],
+                query_string={
+                    "service": app.config["SERVER_HOSTNAME"],
+                    "scope": "repository:buynlarge/orgrepo:pull,push",
+                },
+            )
+            self.assertEqual(arv.status_code, 200)
+            headers = [("authorization", "Bearer " + json.loads(arv.data)["token"])]
+
+            model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+            for ref in ["latest", digest]:
+                rv = c.delete("/v2/buynlarge/orgrepo/manifests/" + ref, headers=headers)
+                self.assertEqual(rv.status_code, 401)
+
+        self.assertIsNotNone(registry_model.get_repo_tag(repo_ref, "latest"))
+        self.assertIsNotNone(registry_model.get_repo_tag(repo_ref, "prod"))
 
 
 if __name__ == "__main__":
