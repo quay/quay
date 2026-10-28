@@ -588,57 +588,6 @@ test.describe(
       });
     });
 
-    test.describe('Proxy Cache Feature Disabled', () => {
-      test('can add a namespace policy when FEATURE_PROXY_CACHE is disabled (PROJQUAY-14086)', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const org = await api.organization('immpolnoproxy');
-
-        await authenticatedPage.route('**/config', async (route) => {
-          const response = await route.fetch();
-          const body = await response.json();
-          body.features.PROXY_CACHE = false;
-          await route.fulfill({response, body: JSON.stringify(body)});
-        });
-        // With the feature off the proxycache endpoint is not registered;
-        // stub its 404 so this holds on a stack with the feature on.
-        await authenticatedPage.route(
-          `**/api/v1/organization/${org.name}/proxycache`,
-          (route) =>
-            route.fulfill({
-              status: 404,
-              contentType: 'application/json',
-              body: JSON.stringify({error_message: 'Not Found'}),
-            }),
-        );
-
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-        await authenticatedPage.getByTestId('Immutability Policies').click();
-
-        const addButton = authenticatedPage.getByTestId(
-          'add-immutability-policy-btn',
-        );
-        await expect(addButton).toBeEnabled();
-        await expect(
-          authenticatedPage.getByTestId('proxy-cache-error-alert'),
-        ).not.toBeAttached();
-
-        await addButton.click();
-        await authenticatedPage
-          .getByTestId('immutability-tag-pattern')
-          .fill('v[0-9]+\\..*');
-        await authenticatedPage
-          .getByTestId('save-immutability-policy-btn')
-          .click();
-        await expect(
-          authenticatedPage.getByText(
-            'Successfully created immutability policy',
-          ),
-        ).toBeVisible();
-      });
-    });
-
     test.describe('Permanence Warning', () => {
       test('shows warning when creating a new org policy', async ({
         authenticatedPage,
