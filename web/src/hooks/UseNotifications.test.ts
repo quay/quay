@@ -239,4 +239,33 @@ describe('useNotifications', () => {
     rerender();
     expect(result.current.filteredNotifications).toBe(filteredNotifications);
   });
+
+  it('returns a stable empty filtered collection after an initial fetch error', async () => {
+    vi.mocked(fetchNotifications).mockRejectedValueOnce(
+      new Error('notifications unavailable'),
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    const unfilteredNotifications = result.current.filteredNotifications;
+    expect(unfilteredNotifications).toEqual([]);
+
+    rerender();
+    expect(result.current.filteredNotifications).toBe(unfilteredNotifications);
+
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [NotifiationStatus.disabled],
+      });
+    });
+    const filteredNotifications = result.current.filteredNotifications;
+    expect(filteredNotifications).toEqual([]);
+
+    rerender();
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
+  });
 });

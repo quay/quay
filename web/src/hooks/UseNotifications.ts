@@ -48,7 +48,7 @@ export function useNotifications(org: string, repo: string) {
   );
 
   const filteredNotifications = useMemo(() => {
-    let filteredNotifications = notifications;
+    let filteredNotifications = notifications ?? [];
     if (filter.event.length > 0) {
       filteredNotifications = filteredNotifications.filter((n) =>
         filter.event.includes(n.event),

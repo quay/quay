@@ -163,6 +163,9 @@ describe('Notifications', () => {
       <Notifications org="myorg" repo="myrepo" setDrawerContent={vi.fn()} />,
     );
 
+    expect(screen.getByText('Notification 1')).toBeVisible();
+    expect(screen.queryByText('Notification 2')).not.toBeInTheDocument();
+
     await waitFor(() => {
       expect(
         screen.getByTestId('selected-notification-uuids'),
