@@ -62,6 +62,31 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(pagination).toContainText('21 - 22 of 22');
 
       await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage.getByRole('button', {name: 'Status'}).hover();
+      await authenticatedPage.getByRole('checkbox', {name: 'Disabled'}).check();
+
+      await expect(pagination).toContainText('0 - 0 of 0');
+      await expect(notificationsTable.locator('tbody')).toHaveCount(0);
+      await expect(
+        authenticatedPage.getByTestId('notifications-actions-dropdown'),
+      ).toBeDisabled();
+      await authenticatedPage
+        .getByTestId('notifications-selection-dropdown')
+        .click();
+      await expect(
+        authenticatedPage.getByTestId('select-all-items-action'),
+      ).toHaveText('Select all (0)');
+
+      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage.getByRole('button', {name: 'Status'}).hover();
+      await authenticatedPage
+        .getByRole('checkbox', {name: 'Disabled'})
+        .uncheck();
+      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+
+      await expect(pagination).toContainText('1 - 20 of 22');
+
+      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
       await authenticatedPage.getByRole('button', {name: 'Events'}).hover();
       await authenticatedPage.getByLabel('Push to Repository').check();
 
