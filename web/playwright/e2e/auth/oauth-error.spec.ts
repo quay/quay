@@ -1,4 +1,6 @@
 import {test, expect} from '../../fixtures';
+import {requestCsrfToken} from '../../utils/api/csrf';
+import {BASE_URL} from '../../utils/config';
 
 test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
   test('displays error page with provider name and decoded error message', async ({
@@ -61,4 +63,64 @@ test.describe('OAuth Error Page', {tag: ['@auth']}, () => {
     await page.getByText('Return to Sign In').click();
     await expect(page).toHaveURL(/\/signin/);
   });
+
+  test(
+    'OAuth callback error ignores an attacker-controlled Referer',
+    {tag: ['@PROJQUAY-10658', '@auth:OIDC']},
+    async ({unauthenticatedPage: page, quayConfig}) => {
+      const provider = quayConfig?.external_login?.[0];
+      if (!provider) {
+        test.skip(true, 'Requires an external login provider');
+        return;
+      }
+
+      // Exercise the backend callback without depending on sign-in UI timing.
+      const context = page.context();
+      await context.addCookies([
+        {
+          name: 'patternfly',
+          value: 'react',
+          domain: new URL(BASE_URL).hostname,
+          path: '/',
+        },
+      ]);
+      const csrfToken = await requestCsrfToken(context.request, BASE_URL);
+      const authResponse = await context.request.post(
+        `${BASE_URL}/api/v1/externallogin/${provider.id}`,
+        {
+          data: {kind: 'login'},
+          headers: {'X-CSRF-Token': csrfToken},
+        },
+      );
+      expect(authResponse.status()).toBe(200);
+
+      const {auth_url: authUrl} = await authResponse.json();
+      const authorizationUrl = new URL(authUrl);
+      const redirectUri = authorizationUrl.searchParams.get('redirect_uri');
+      const state = authorizationUrl.searchParams.get('state');
+      expect(redirectUri).toBeTruthy();
+      expect(state).toBeTruthy();
+
+      const callbackUrl = new URL(redirectUri!);
+      callbackUrl.searchParams.set('state', state!);
+      callbackUrl.searchParams.set('error', 'access_denied');
+      const response = await context.request.get(callbackUrl.toString(), {
+        headers: {Referer: 'https://evil.attacker.com/phishing'},
+        maxRedirects: 0,
+      });
+
+      expect(response.status()).toBe(302);
+      const locationHeader = response.headers()['location'];
+      expect(locationHeader).toBeTruthy();
+      const location = new URL(locationHeader);
+      expect(location.origin).toBe(new URL(BASE_URL).origin);
+      expect(location.pathname).toBe('/oauth-error');
+      expect(location.searchParams.get('error')).toBe('oauth_error');
+      expect(location.searchParams.get('error_description')).toBe(
+        'access_denied',
+      );
+      expect(location.searchParams.get('provider')).toBe(provider.title);
+      expect(location.href).not.toContain('evil.attacker.com');
+    },
+  );
 });

@@ -26,11 +26,12 @@ class TestRenderOAuthErrorAuthenticated:
     @patch("endpoints.oauth.login.request")
     @patch("endpoints.oauth.login.get_authenticated_user")
     @patch("endpoints.oauth.login.redirect")
+    @patch("endpoints.oauth.login.get_app_url")
     @patch("features.USER_CREATION", True)
     @patch("features.DIRECT_LOGIN", True)
     @patch("features.INVITE_ONLY_USER_CREATION", False)
     def test_react_ui_authenticated_user_adds_params(
-        self, mock_redirect, mock_get_user, mock_request, app
+        self, mock_get_app_url, mock_redirect, mock_get_user, mock_request, app
     ):
         """Test that authenticated user params are added to redirect URL."""
         # Setup authenticated user
@@ -40,7 +41,7 @@ class TestRenderOAuthErrorAuthenticated:
 
         # Setup React UI
         mock_request.cookies.get.return_value = "react"
-        mock_request.headers.get.return_value = "http://localhost:9000/"
+        mock_get_app_url.return_value = "https://quay.example.com"
         mock_redirect.return_value = Mock()
 
         # Execute
@@ -54,11 +55,12 @@ class TestRenderOAuthErrorAuthenticated:
     @patch("endpoints.oauth.login.request")
     @patch("endpoints.oauth.login.get_authenticated_user")
     @patch("endpoints.oauth.login.redirect")
+    @patch("endpoints.oauth.login.get_app_url")
     @patch("features.USER_CREATION", True)
     @patch("features.DIRECT_LOGIN", True)
     @patch("features.INVITE_ONLY_USER_CREATION", False)
     def test_react_ui_unauthenticated_user_no_params(
-        self, mock_redirect, mock_get_user, mock_request, app
+        self, mock_get_app_url, mock_redirect, mock_get_user, mock_request, app
     ):
         """Test that unauthenticated user doesn't add authenticated params."""
         # Setup unauthenticated (None)
@@ -66,7 +68,7 @@ class TestRenderOAuthErrorAuthenticated:
 
         # Setup React UI
         mock_request.cookies.get.return_value = "react"
-        mock_request.headers.get.return_value = "http://localhost:9000/"
+        mock_get_app_url.return_value = "https://quay.example.com"
         mock_redirect.return_value = Mock()
 
         # Execute
@@ -80,32 +82,52 @@ class TestRenderOAuthErrorAuthenticated:
     @patch("endpoints.oauth.login.request")
     @patch("endpoints.oauth.login.get_authenticated_user")
     @patch("endpoints.oauth.login.redirect")
-    def test_react_ui_no_referer_uses_relative_redirect(
-        self, mock_redirect, mock_get_user, mock_request, app
+    @patch("endpoints.oauth.login.get_app_url")
+    def test_react_ui_uses_configured_app_url(
+        self, mock_get_app_url, mock_redirect, mock_get_user, mock_request, app
     ):
-        """Test fallback to relative redirect when Referer header is missing."""
+        """Test that redirect uses configured app URL, not Referer header."""
         mock_get_user.return_value = None
         mock_request.cookies.get.return_value = "react"
-        mock_request.headers.get.return_value = None  # No Referer header
+        mock_get_app_url.return_value = "https://quay.example.com"
         mock_redirect.return_value = Mock()
 
         _render_ologin_error("GitHub", "Error", False)
 
-        # Verify relative redirect (no origin prefix)
         call_args = mock_redirect.call_args[0][0]
-        assert call_args.startswith("/oauth-error?")
-        assert "http" not in call_args  # No absolute URL
+        assert call_args.startswith("https://quay.example.com/oauth-error?")
 
     @patch("endpoints.oauth.login.request")
     @patch("endpoints.oauth.login.get_authenticated_user")
     @patch("endpoints.oauth.login.redirect")
+    @patch("endpoints.oauth.login.get_app_url")
+    def test_react_ui_ignores_malicious_referer(
+        self, mock_get_app_url, mock_redirect, mock_get_user, mock_request, app
+    ):
+        """Test that a malicious Referer header does not affect the redirect URL."""
+        mock_get_user.return_value = None
+        mock_request.cookies.get.return_value = "react"
+        mock_request.headers.get.return_value = "https://evil.attacker.com/phishing"
+        mock_get_app_url.return_value = "https://quay.example.com"
+        mock_redirect.return_value = Mock()
+
+        _render_ologin_error("GitHub", "Error", False)
+
+        call_args = mock_redirect.call_args[0][0]
+        assert "evil.attacker.com" not in call_args
+        assert call_args.startswith("https://quay.example.com/oauth-error?")
+
+    @patch("endpoints.oauth.login.request")
+    @patch("endpoints.oauth.login.get_authenticated_user")
+    @patch("endpoints.oauth.login.redirect")
+    @patch("endpoints.oauth.login.get_app_url")
     def test_react_ui_register_redirect_param(
-        self, mock_redirect, mock_get_user, mock_request, app
+        self, mock_get_app_url, mock_redirect, mock_get_user, mock_request, app
     ):
         """Test register_redirect parameter is added when True."""
         mock_get_user.return_value = None
         mock_request.cookies.get.return_value = "react"
-        mock_request.headers.get.return_value = "http://localhost:9000/"
+        mock_get_app_url.return_value = "https://quay.example.com"
         mock_redirect.return_value = Mock()
 
         _render_ologin_error("GitHub", "Error", register_redirect=True)
