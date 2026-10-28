@@ -10,6 +10,9 @@ objects:
     name: quay-envoy-svc
     labels:
       app: quay-envoy
+    annotations:
+      alb.ingress.kubernetes.io/healthcheck-path: /ready
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
   spec:
     type: NodePort
     externalTrafficPolicy: Cluster
