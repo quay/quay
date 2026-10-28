@@ -49,7 +49,19 @@ function requestFetchImpl(context: APIRequestContext): FetchImpl {
   };
 }
 
-export const TEST_USERS = {
+export type TestUser = {
+  username: string;
+  password: string;
+  email: string;
+};
+export type TestUsers = {
+  readonly admin: TestUser;
+  readonly user: TestUser;
+  readonly readonly: TestUser;
+};
+
+// Users for Database auth. Created by globalSetup in that mode.
+const TEST_USERS_DATABASE: TestUsers = {
   // Admin/superuser for admin operations
   admin: {
     username: 'admin',
@@ -68,13 +80,13 @@ export const TEST_USERS = {
     password: 'password',
     email: 'readonly@example.com',
   },
-} as const;
+};
 
 // Separate OIDC test users to avoid naming collisions with Database-auth users.
 // OIDCUsers.get_user() returns None, so LOGIN_BINDING_FIELD doesn't work —
 // first OIDC login always creates a new Quay account. Using distinct usernames
 // ensures clean creation regardless of whether DB users already exist.
-export const TEST_USERS_OIDC = {
+export const TEST_USERS_OIDC: TestUsers = {
   admin: {
     username: 'admin_oidc',
     password: 'password',
@@ -90,13 +102,13 @@ export const TEST_USERS_OIDC = {
     password: 'password',
     email: 'readonly_oidc@example.com',
   },
-} as const;
+};
 
 // Separate LDAP test users to avoid naming collisions with Database-auth users.
 // LDAP first-login creates a federated user entry; if the username or email
 // is already taken by a Database-phase user, creation fails. Using distinct
 // usernames/emails ensures clean federated user creation.
-export const TEST_USERS_LDAP = {
+export const TEST_USERS_LDAP: TestUsers = {
   admin: {
     username: 'admin_ldap',
     password: 'password',
@@ -112,7 +124,42 @@ export const TEST_USERS_LDAP = {
     password: 'password',
     email: 'readonly_ldap@example.com',
   },
-} as const;
+};
+
+// Resolve the user set for the current auth mode. globalSetup sets
+// QUAY_AUTH_TYPE from Quay's /config before any worker starts (the same
+// env-inheritance path QUAY_CONFIG_JSON already relies on), so this resolves
+// correctly wherever specs access it -- including module- and describe-level
+// code, which is why specs can keep importing TEST_USERS statically instead
+// of threading getTestUsers() through every fixture. Before globalSetup runs
+// (e.g. test discovery, --list), it falls back to the Database users.
+function currentTestUsers(): TestUsers {
+  const authType = process.env.QUAY_AUTH_TYPE;
+  if (authType === 'OIDC') return TEST_USERS_OIDC;
+  if (authType === 'LDAP') return TEST_USERS_LDAP;
+  return TEST_USERS_DATABASE;
+}
+
+// Auth-aware stand-in for the former `export const TEST_USERS = {...}`.
+// Specs that statically import TEST_USERS previously always got the Database
+// usernames (testuser/readonly/admin) even under OIDC/LDAP, where the logged-in
+// sessions belong to testuser_oidc/... — causing 403 insufficient_scope on
+// repo creation, 401s on registry basic auth with Database credentials, and
+// UI timeouts on /user/<database-username> pages (see the OIDC full-suite
+// RCA in .cursor/oidc-testing). Property access resolves per auth mode, so
+// e.g. TEST_USERS.user.username yields 'testuser' under Database auth,
+// 'testuser_oidc' under OIDC, and 'testuser_ldap' under LDAP.
+export const TEST_USERS = {
+  get admin(): TestUser {
+    return currentTestUsers().admin;
+  },
+  get user(): TestUser {
+    return currentTestUsers().user;
+  },
+  get readonly(): TestUser {
+    return currentTestUsers().readonly;
+  },
+};
 
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
@@ -153,8 +200,14 @@ async function globalSetup(config: FullConfig) {
       [2000, 2000],
     );
     const mailingEnabled = quayConfig?.features?.MAILING === true;
-    const authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+    const authType =
+      (quayConfig?.config?.AUTHENTICATION_TYPE as string | undefined) ||
+      'Database';
     process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
+    // Read by the lazy TEST_USERS getters (see currentTestUsers) so that
+    // statically-imported TEST_USERS in specs resolves to the auth-mode user
+    // set inside workers. Safe to overwrite on re-runs.
+    process.env.QUAY_AUTH_TYPE = authType;
 
     // For OIDC auth, skip user creation — users are created on first login
     // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
