@@ -9,7 +9,7 @@ export default function RegistryAutoPruneNotice(
     return null;
   }
 
-  const tooltipContent = `Tags will be pruned across all repositories with the policy method: ${props.policy.method} and value: ${props.policy.value}`;
+  const tooltipContent = `Tags will be pruned across eligible repositories with the policy method: ${props.policy.method} and value: ${props.policy.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`;
 
   return (
     <Alert
