@@ -428,7 +428,7 @@ test.describe(
       ).toContainText('does not match');
     });
 
-    test('shows registry auto-prune policy when configured', async ({
+    test('shows the registry auto-prune notice throughout repository settings when configured', async ({
       authenticatedPage,
       api,
       quayConfig,
@@ -445,8 +445,28 @@ test.describe(
       const org = await api.organization('regpolicy');
       const repo = await api.repository(org.name, 'testrepo');
 
-      // Navigate to repository settings → Auto-Prune Policies
+      // The notice is visible as soon as repository settings opens.
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
+      const registryNotice = authenticatedPage.getByTestId(
+        'registry-autoprune-notice',
+      );
+      await expect(registryNotice).toBeVisible();
+      await registryNotice
+        .getByRole('button', {
+          name: 'Registry-wide auto-prune policy details',
+        })
+        .focus();
+      await expect(authenticatedPage.getByRole('tooltip')).toHaveText(
+        `Tags will be pruned across all repositories with the policy method: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method} and value: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}`,
+      );
+
+      // The shared notice remains visible after moving to another settings section.
+      await authenticatedPage
+        .getByTestId('settings-tab-repositoryvisiblity')
+        .click();
+      await expect(registryNotice).toBeVisible();
+
+      // The existing read-only table remains available on the Auto-Prune tab.
       await authenticatedPage
         .getByText('Repository Auto-Prune Policies')
         .click();
