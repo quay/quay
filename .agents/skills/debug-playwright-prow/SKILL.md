@@ -127,10 +127,13 @@ Summarize what happened conversationally:
 - Link to the Prow job (`prow_url`)
 - Link to the HTML report on GCSWeb (`html_report_url`), if available
 - Link to browse all artifacts (`gcsweb_url`)
-- List flaky tests briefly (name + file) — note them but don't deep-dive unless asked
+- List flaky tests briefly (name + file). When the run also has a hard
+  failure, read each flaky test's failed attempt (`attempts[]` errors and
+  trace) before setting it aside — a real defect can hide behind a retry pass
 - Note any interrupted tests (worker crashes)
 
-If `global_setup_failure` is true, report the setup errors and stop.
+If `global_setup_failure` is true, run Step 3's dependency-state and
+known-issue checks against the setup errors, report them, and stop.
 
 If there are no real failures, report "all failures were flaky" with the list and stop.
 
@@ -146,6 +149,26 @@ the `jaeger-extract.sh` invocation, and the failure classification list
 (selector change, backend error, timing/race, auth/config, test isolation,
 infra) — is in
 [references/root-cause-analysis.md](references/root-cause-analysis.md).
+
+Follow `.agents/skills/quay-prow-triage/SKILL.md`'s section a evidence
+bullets and section b's dependency-state, permafail and known-issue
+paragraphs. In particular, before naming a cause:
+
+- **Check dependency state.** Corroborate what the failure depends on from
+  the same run — the runner image's baked Playwright/browser vs. the
+  lockfile, a dependency pod's health and API responses (e.g. Mailpit) — not
+  just the first failing symptom.
+- **Drill into a dominant span.** When one Jaeger span takes most of the
+  test's budget, read its `child_operations` and any lock waits (e.g. a
+  `GlobalLock` acquire in `data/model/storage.py`) before calling the cause
+  unverified.
+- **Pin the input.** Establish whether the input (image, manifest, fixture
+  data) was already pinned to a digest or otherwise immutable. When a retry
+  changed environment (fresh repository, new namespace), confirm it carried
+  the identical digest/content before contrasting the two outcomes.
+- **Look up known issues.** Search open and merged quay/quay PRs and issues,
+  and the release branch's history after the run's SHA, for the failing
+  endpoint or symptom before suggesting generic next steps.
 
 ## Step 4: Offer Fixes
 
