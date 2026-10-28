@@ -52,7 +52,7 @@ describe('RegistryAutoPruneNotice', () => {
       }),
     ).toHaveFocus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Tags will be pruned across all repositories with the policy method: number_of_tags and value: 20',
+      'Tags will be pruned across eligible repositories with the policy method: number_of_tags and value: 20. Read-only, mirrored, and marked-for-deletion repositories are excluded.',
     );
   });
 });

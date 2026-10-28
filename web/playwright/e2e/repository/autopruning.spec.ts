@@ -457,7 +457,7 @@ test.describe(
         })
         .focus();
       await expect(authenticatedPage.getByRole('tooltip')).toHaveText(
-        `Tags will be pruned across all repositories with the policy method: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method} and value: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}`,
+        `Tags will be pruned across eligible repositories with the policy method: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method} and value: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`,
       );
 
       // The shared notice remains visible after moving to another settings section.
