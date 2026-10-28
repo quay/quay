@@ -62,7 +62,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(pagination).toContainText('21 - 22 of 22');
 
       await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
-      await authenticatedPage.getByRole('button', {name: 'Status'}).hover();
+      await authenticatedPage
+        .getByTestId('notifications-filter-status')
+        .hover();
       await authenticatedPage.getByRole('checkbox', {name: 'Disabled'}).check();
 
       await expect(pagination).toContainText('0 - 0 of 0');
@@ -78,7 +80,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).toHaveText('Select all (0)');
 
       await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
-      await authenticatedPage.getByRole('button', {name: 'Status'}).hover();
+      await authenticatedPage
+        .getByTestId('notifications-filter-status')
+        .hover();
       await authenticatedPage
         .getByRole('checkbox', {name: 'Disabled'})
         .uncheck();
