@@ -1,6 +1,9 @@
 import {render, screen, userEvent} from 'src/test-utils';
+import {Table, Th, Thead, Tr} from '@patternfly/react-table';
+import {useState} from 'react';
 import {NotificationEventType} from 'src/resources/NotificationResource';
 import type {NotificationFilter} from 'src/hooks/UseNotifications';
+import {usePaginatedSortableTable} from 'src/hooks/usePaginatedSortableTable';
 import NotificationsFilter from './NotificationsFilter';
 
 const mockUseEvents = vi.hoisted(() => vi.fn());
@@ -8,6 +11,32 @@ const mockUseEvents = vi.hoisted(() => vi.fn());
 vi.mock('src/hooks/UseEvents', () => ({
   useEvents: mockUseEvents,
 }));
+
+function NotificationsFilterWithSortableStatusHeader() {
+  const [filter, setFilter] = useState<NotificationFilter>({
+    event: [],
+    status: [],
+  });
+  const {getSortableSort} = usePaginatedSortableTable([{status: 'Enabled'}], {
+    columns: {0: (notification) => notification.status},
+  });
+
+  return (
+    <>
+      <NotificationsFilter
+        filter={filter}
+        setFilter={(updateFilter) => setFilter(updateFilter)}
+      />
+      <Table aria-label="Notifications">
+        <Thead>
+          <Tr>
+            <Th sort={getSortableSort(0)}>Status</Th>
+          </Tr>
+        </Thead>
+      </Table>
+    </>
+  );
+}
 
 describe('NotificationsFilter', () => {
   beforeEach(() => {
@@ -47,5 +76,22 @@ describe('NotificationsFilter', () => {
       event: [NotificationEventType.repoPush],
       status: [],
     });
+  });
+
+  it('scopes the status filter flyout when a sortable status header exists', async () => {
+    const user = userEvent.setup();
+
+    render(<NotificationsFilterWithSortableStatusHeader />);
+
+    await user.click(screen.getByRole('button', {name: 'Filter'}));
+    expect(screen.getAllByRole('button', {name: 'Status'})).toHaveLength(2);
+
+    await user.hover(screen.getByTestId('notifications-filter-status'));
+    const disabled = screen.getByRole('checkbox', {name: 'Disabled'});
+    await user.click(disabled);
+    expect(disabled).toBeChecked();
+
+    await user.click(disabled);
+    expect(disabled).not.toBeChecked();
   });
 });
