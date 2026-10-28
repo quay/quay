@@ -9,7 +9,7 @@ import {
 import Conditional from 'src/components/empty/Conditional';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
-  AutoPruneMethod,
+  getAutoPruneMethodLabel,
   NamespaceAutoPrunePolicy,
 } from 'src/resources/NamespaceAutoPruneResource';
 
@@ -68,7 +68,7 @@ export default function ReadonlyAutoprunePolicy(
                     data-testid={`${props.testId}-method`}
                   >
                     <span id="simple-item1">
-                      <b>{getAutoPrunePolicyType(policy.method)}</b>
+                      <b>{getAutoPruneMethodLabel(policy.method)}</b>
                     </span>
                   </DataListCell>,
                   <DataListCell
@@ -110,24 +110,6 @@ export default function ReadonlyAutoprunePolicy(
       </DataList>
     </>
   );
-}
-
-enum AutoPrunePolicyType {
-  NONE = 'None',
-  TAG_NUMBER = 'Number of Tags',
-  TAG_CREATION_DATE = 'Age of Tags',
-}
-
-// mapping between AutoPruneMethod and AutoPrunePolicyType values
-const methodToPolicyType: Record<AutoPruneMethod, AutoPrunePolicyType> = {
-  [AutoPruneMethod.NONE]: AutoPrunePolicyType.NONE,
-  [AutoPruneMethod.TAG_NUMBER]: AutoPrunePolicyType.TAG_NUMBER,
-  [AutoPruneMethod.TAG_CREATION_DATE]: AutoPrunePolicyType.TAG_CREATION_DATE,
-};
-
-// function to get the corresponding display string based on AutoPruneMethod
-function getAutoPrunePolicyType(method: AutoPruneMethod): AutoPrunePolicyType {
-  return methodToPolicyType[method];
 }
 
 interface ReadonlyAutoprunePolicyProps {

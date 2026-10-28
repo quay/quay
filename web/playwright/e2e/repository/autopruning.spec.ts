@@ -455,8 +455,15 @@ test.describe(
           name: 'Registry-wide auto-prune policy details',
         })
         .focus();
+      const methodLabels = {
+        none: 'None',
+        number_of_tags: 'Number of Tags',
+        creation_date: 'Age of Tags',
+      };
+      const registryPolicy =
+        quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY;
       await expect(authenticatedPage.getByRole('tooltip')).toHaveText(
-        `Tags will be pruned across eligible repositories with the policy method: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method} and value: ${quayConfig.config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`,
+        `Tags will be pruned across eligible repositories with the policy method: ${methodLabels[registryPolicy.method as keyof typeof methodLabels]} and value: ${registryPolicy.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`,
       );
 
       // The shared notice remains visible after moving to another settings section.
