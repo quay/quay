@@ -4,6 +4,10 @@ import {useEffect, useRef, useState} from 'react';
 export default function EditableLabel(props: EditableLabelProps) {
   const [isEditable, setIsEditable] = useState(false);
   const wrapperRef = useRef(null);
+  const valueRef = useRef(props.value);
+  valueRef.current = props.value;
+  const onEditCompleteRef = useRef(props.onEditComplete);
+  onEditCompleteRef.current = props.onEditComplete;
 
   // This re-renders the label component when clicking
   // outside of the text input
@@ -11,14 +15,14 @@ export default function EditableLabel(props: EditableLabelProps) {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsEditable(false);
-        props.onEditComplete(props.value);
+        onEditCompleteRef.current(valueRef.current);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [wrapperRef, props.value]);
+  }, [wrapperRef]);
 
   if (isEditable) {
     return (

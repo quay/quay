@@ -22,6 +22,14 @@ const REGISTRY_HOST = new URL(API_URL).host;
 
 const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 
+/**
+ * Pinned UBI9 ubi-micro manifest list used for multi-arch pushes, covering
+ * schema-2 (not prettyjws) linux/amd64 and linux/arm64 children.
+ * registry.access.redhat.com retains digests for consumers.
+ */
+const MULTIARCH_SOURCE_IMAGE =
+  'registry.access.redhat.com/ubi9/ubi-micro@sha256:7a0454cbd9bd847e8f6a63b6f0254a6efbeb6e0ed71a5d824a4f6cccbe626650';
+
 type ToolAvailability = {
   skopeo: boolean;
   crane: boolean;
@@ -395,7 +403,7 @@ export async function pushMultiArchImage(
     retryOperation(() =>
       skopeoCopy([
         '--all',
-        `docker://${BUSYBOX_IMAGE}`,
+        `docker://${MULTIARCH_SOURCE_IMAGE}`,
         `docker://${image}`,
         '--dest-tls-verify=false',
         '--dest-authfile',
