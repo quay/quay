@@ -140,7 +140,8 @@ failure itself, and use that attempt's own trace to see it happen.
 Before narrowing to the first failing symptom, corroborate the state of what
 it depends on from the same run's artifacts. Example: a failed browser
 download — compare the runner image's baked Playwright/browser version with
-the checkout's lockfile version (a skew is why the download ran at all). A
+the checkout's lockfile version, and check whether the browser was already
+cached and whether the job ran an install step, before blaming skew. A
 setup probe reporting a dependency down (e.g. Mailpit) — check that
 dependency's pod status and API responses before trusting a one-shot probe.
 

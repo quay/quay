@@ -199,7 +199,8 @@ Before blaming the input, establish whether it was already pinned to a
 digest or otherwise immutable. When a retry ran in a changed environment
 (fresh repository, new namespace), confirm it carried the identical
 digest/content before contrasting the outcomes: same input, different
-result points at the environment or the product, not the input.
+result rules out input drift; the cause is still environment, infra,
+product, or test timing/isolation.
 
 Classify the result as test isolation, test race, product race, infra, or
 environment — or "insufficient evidence" if it did not reproduce and CI
