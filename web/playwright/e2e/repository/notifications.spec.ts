@@ -55,13 +55,12 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       );
       await expect(pagination).toContainText('1 - 20 of 22');
 
-      await authenticatedPage
-        .getByRole('button', {name: 'Go to next page'})
-        .first()
-        .click();
+      await pagination.getByRole('button', {name: 'Go to next page'}).click();
       await expect(pagination).toContainText('21 - 22 of 22');
 
-      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Filter', exact: true})
+        .click();
       await authenticatedPage
         .getByTestId('notifications-filter-status')
         .hover();
@@ -79,18 +78,24 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByTestId('select-all-items-action'),
       ).toHaveText('Select all (0)');
 
-      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Filter', exact: true})
+        .click();
       await authenticatedPage
         .getByTestId('notifications-filter-status')
         .hover();
       await authenticatedPage
         .getByRole('checkbox', {name: 'Disabled'})
         .uncheck();
-      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Filter', exact: true})
+        .click();
 
       await expect(pagination).toContainText('1 - 20 of 22');
 
-      await authenticatedPage.getByRole('button', {name: 'Filter'}).click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Filter', exact: true})
+        .click();
       await authenticatedPage.getByRole('button', {name: 'Events'}).hover();
       await authenticatedPage.getByLabel('Push to Repository').check();
 
@@ -123,10 +128,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         notificationsTable.getByText('Filtered notification 21', {exact: true}),
       ).toBeVisible();
 
-      await authenticatedPage
-        .getByRole('button', {name: 'Go to next page'})
-        .first()
-        .click();
+      await pagination.getByRole('button', {name: 'Go to next page'}).click();
       await expect(pagination).toContainText('21 - 21 of 21');
       await expect(
         notificationsTable.getByText('Filtered notification 01', {exact: true}),

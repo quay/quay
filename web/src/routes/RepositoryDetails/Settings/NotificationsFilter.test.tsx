@@ -2,9 +2,14 @@ import {render, screen, userEvent} from 'src/test-utils';
 import {Table, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {NotificationEventType} from 'src/resources/NotificationResource';
-import type {NotificationFilter} from 'src/hooks/UseNotifications';
+import {
+  NotifiationStatus,
+  type NotificationFilter,
+} from 'src/hooks/UseNotifications';
 import {usePaginatedSortableTable} from 'src/hooks/usePaginatedSortableTable';
+import {DrawerContentType} from '../Types';
 import NotificationsFilter from './NotificationsFilter';
+import NotificationsToolbar from './NotificationsToolbar';
 
 const mockUseEvents = vi.hoisted(() => vi.fn());
 
@@ -35,6 +40,37 @@ function NotificationsFilterWithSortableStatusHeader() {
         </Thead>
       </Table>
     </>
+  );
+}
+
+function NotificationsToolbarWithActiveStatusFilter() {
+  const [filter, setFilter] = useState<NotificationFilter>({
+    event: [],
+    status: [NotifiationStatus.disabled],
+  });
+
+  return (
+    <NotificationsToolbar
+      allItems={[]}
+      deselectAll={() => undefined}
+      filter={filter}
+      onItemSelect={() => undefined}
+      org="test-org"
+      page={1}
+      paginatedItems={[]}
+      perPage={20}
+      repo="test-repo"
+      resetFilter={(field) =>
+        setFilter((previous) =>
+          field ? {...previous, [field]: []} : {event: [], status: []},
+        )
+      }
+      selectedItems={[]}
+      setDrawerContent={(_content: DrawerContentType) => undefined}
+      setFilter={(updateFilter) => setFilter(updateFilter)}
+      setPage={() => undefined}
+      setPerPage={() => undefined}
+    />
   );
 }
 
@@ -93,5 +129,17 @@ describe('NotificationsFilter', () => {
 
     await user.click(disabled);
     expect(disabled).not.toBeChecked();
+  });
+
+  it('keeps the Filter toggle uniquely addressable when the toolbar can clear active filters', () => {
+    render(<NotificationsToolbarWithActiveStatusFilter />);
+
+    expect(screen.getAllByRole('button', {name: /filter/i})).toHaveLength(2);
+    expect(
+      screen.getByRole('button', {name: 'Filter', exact: true}),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', {name: 'Clear all filters', exact: true}),
+    ).toBeVisible();
   });
 });
