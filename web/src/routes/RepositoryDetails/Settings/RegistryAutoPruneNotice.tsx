@@ -1,6 +1,9 @@
 import {Alert, Button, Tooltip} from '@patternfly/react-core';
 import {InfoCircleIcon} from '@patternfly/react-icons';
-import type {NamespaceAutoPrunePolicy} from 'src/resources/NamespaceAutoPruneResource';
+import {
+  getAutoPruneMethodLabel,
+  type NamespaceAutoPrunePolicy,
+} from 'src/resources/NamespaceAutoPruneResource';
 
 export default function RegistryAutoPruneNotice(
   props: RegistryAutoPruneNoticeProps,
@@ -9,7 +12,7 @@ export default function RegistryAutoPruneNotice(
     return null;
   }
 
-  const tooltipContent = `Tags will be pruned across eligible repositories with the policy method: ${props.policy.method} and value: ${props.policy.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`;
+  const tooltipContent = `Tags will be pruned across eligible repositories with the policy method: ${getAutoPruneMethodLabel(props.policy.method)} and value: ${props.policy.value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`;
 
   return (
     <Alert

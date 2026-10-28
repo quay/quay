@@ -7,6 +7,19 @@ const registryPolicy = {
   value: 20,
 };
 
+const policyScenarios = [
+  {
+    method: AutoPruneMethod.TAG_NUMBER,
+    value: 20,
+    label: 'Number of Tags',
+  },
+  {
+    method: AutoPruneMethod.TAG_CREATION_DATE,
+    value: '7d',
+    label: 'Age of Tags',
+  },
+];
+
 describe('RegistryAutoPruneNotice', () => {
   it.each([
     {
@@ -32,27 +45,30 @@ describe('RegistryAutoPruneNotice', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the policy details in a keyboard-focusable tooltip', async () => {
-    const user = userEvent.setup();
-    render(
-      <RegistryAutoPruneNotice
-        isAutoPruneEnabled={true}
-        policy={registryPolicy}
-      />,
-    );
+  it.each(policyScenarios)(
+    'shows $label policy details in a keyboard-focusable tooltip',
+    async ({method, value, label}) => {
+      const user = userEvent.setup();
+      render(
+        <RegistryAutoPruneNotice
+          isAutoPruneEnabled={true}
+          policy={{method, value}}
+        />,
+      );
 
-    expect(screen.getByTestId('registry-autoprune-notice')).toHaveTextContent(
-      'Registry wide autopruning is in effect',
-    );
+      expect(screen.getByTestId('registry-autoprune-notice')).toHaveTextContent(
+        'Registry wide autopruning is in effect',
+      );
 
-    await user.tab();
-    expect(
-      screen.getByRole('button', {
-        name: 'Registry-wide auto-prune policy details',
-      }),
-    ).toHaveFocus();
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Tags will be pruned across eligible repositories with the policy method: number_of_tags and value: 20. Read-only, mirrored, and marked-for-deletion repositories are excluded.',
-    );
-  });
+      await user.tab();
+      expect(
+        screen.getByRole('button', {
+          name: 'Registry-wide auto-prune policy details',
+        }),
+      ).toHaveFocus();
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        `Tags will be pruned across eligible repositories with the policy method: ${label} and value: ${value}. Read-only, mirrored, and marked-for-deletion repositories are excluded.`,
+      );
+    },
+  );
 });
