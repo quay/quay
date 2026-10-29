@@ -1,6 +1,5 @@
 import {type Page} from '@playwright/test';
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 const marketplaceOrgResponse = [
   {
@@ -159,8 +158,11 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     },
   );
 
-  test('lists user marketplace subscriptions', async ({authenticatedPage}) => {
-    const username = TEST_USERS.user.username;
+  test('lists user marketplace subscriptions', async ({
+    authenticatedPage,
+    quayConfig,
+  }) => {
+    const username = getTestUsers(quayConfig).user.username;
 
     await enableMarketplace(authenticatedPage);
     await mockCommonEndpoints(authenticatedPage);

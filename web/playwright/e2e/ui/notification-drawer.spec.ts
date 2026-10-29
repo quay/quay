@@ -1,6 +1,5 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   // Runs the two tests in this file in order on one worker: both push
@@ -12,8 +11,10 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   test('notification drawer e2e: create, display, read, delete', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
-    const namespace = TEST_USERS.user.username;
+    const users = getTestUsers(quayConfig);
+    const namespace = users.user.username;
 
     // 1. Create repository
     const repo = await api.repository(namespace, 'notif-repo');
@@ -34,8 +35,8 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
       namespace,
       repo.name,
       'latest',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      users.user.username,
+      users.user.password,
     );
 
     // Brief wait for notification processing
@@ -74,9 +75,10 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   test(
     'notification bell badge shows N+ when more than 5 notifications exist',
     {tag: ['@notification-drawer', '@PROJQUAY-9038']},
-    async ({authenticatedPage, api}) => {
+    async ({authenticatedPage, api, quayConfig}) => {
+      const users = getTestUsers(quayConfig);
       test.setTimeout(120_000);
-      const namespace = TEST_USERS.user.username;
+      const namespace = users.user.username;
 
       // 1. Create repository
       const repo = await api.repository(namespace, 'notif-repo-badge');
@@ -111,8 +113,8 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
             namespace,
             repo.name,
             `tag${i}`,
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
         }
 
