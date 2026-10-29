@@ -71,6 +71,45 @@ describe('UIContext', () => {
       });
       expect(result.current.isSidebarOpen).toBe(true);
     });
+
+    it('mobile toggle does not change localStorage', () => {
+      localStorage.setItem('quay-sidebar-open', 'false');
+      const {result} = renderHook(() => useUI(), {wrapper});
+
+      act(() => {
+        result.current.setIsMobileView(true);
+      });
+      expect(result.current.isSidebarOpen).toBe(false);
+
+      act(() => {
+        result.current.toggleSidebar();
+      });
+      expect(result.current.isSidebarOpen).toBe(true);
+      expect(localStorage.getItem('quay-sidebar-open')).toBe('false');
+    });
+
+    it('desktop state survives a mobile round-trip', () => {
+      const {result} = renderHook(() => useUI(), {wrapper});
+
+      act(() => {
+        result.current.toggleSidebar();
+      });
+      expect(result.current.isSidebarOpen).toBe(false);
+
+      act(() => {
+        result.current.setIsMobileView(true);
+      });
+      act(() => {
+        result.current.toggleSidebar();
+      });
+      expect(result.current.isSidebarOpen).toBe(true);
+
+      act(() => {
+        result.current.setIsMobileView(false);
+      });
+      expect(result.current.isSidebarOpen).toBe(false);
+      expect(localStorage.getItem('quay-sidebar-open')).toBe('false');
+    });
   });
 
   describe('alert management', () => {

@@ -24,6 +24,7 @@ interface UIContextType {
   // Sidebar state
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  setIsMobileView: (isMobileView: boolean) => void;
 
   // Alert state
   alerts: AlertDetails[];
@@ -40,22 +41,34 @@ interface UIProviderProps {
 
 export function UIProvider({children}: UIProviderProps) {
   // Sidebar state with localStorage persistence
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
-    const stored = localStorage.getItem('quay-sidebar-open');
-    return stored !== null ? stored === 'true' : true; // Default to open
-  });
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(
+    () => {
+      const stored = localStorage.getItem('quay-sidebar-open');
+      return stored !== null ? stored === 'true' : true; // Default to open
+    },
+  );
+  // Below PF's xl breakpoint the sidebar overlays content, so it starts
+  // closed and is not persisted.
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const isSidebarOpen = isMobileView
+    ? isMobileSidebarOpen
+    : isDesktopSidebarOpen;
 
   // Alert state
   const [alerts, setAlerts] = useState<AlertDetails[]>([]);
 
   // Persist sidebar state to localStorage
   useEffect(() => {
-    localStorage.setItem('quay-sidebar-open', String(isSidebarOpen));
-  }, [isSidebarOpen]);
+    localStorage.setItem('quay-sidebar-open', String(isDesktopSidebarOpen));
+  }, [isDesktopSidebarOpen]);
 
   const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
-  }, []);
+    const setOpen = isMobileView
+      ? setIsMobileSidebarOpen
+      : setIsDesktopSidebarOpen;
+    setOpen((prev) => !prev);
+  }, [isMobileView]);
 
   const addAlert = useCallback((alert: AlertDetails) => {
     const alertWithKey = {
@@ -77,6 +90,7 @@ export function UIProvider({children}: UIProviderProps) {
     () => ({
       isSidebarOpen,
       toggleSidebar,
+      setIsMobileView,
       alerts,
       addAlert,
       removeAlert,
