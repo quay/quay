@@ -58,16 +58,15 @@ def test_robot_api_token_operations_are_in_discovery():
 
     swagger = swagger_route_data()
     operations = {
-        path: {
-            method: swagger["paths"][path][method]["operationId"]
-            for method in methods
-        }
+        path: {method: swagger["paths"][path][method]["operationId"] for method in methods}
         for path, methods in ROBOT_TOKEN_OPERATIONS.items()
     }
 
     assert operations == ROBOT_TOKEN_OPERATIONS
 
-    operation_ids = [operation_id for methods in operations.values() for operation_id in methods.values()]
+    operation_ids = [
+        operation_id for methods in operations.values() for operation_id in methods.values()
+    ]
     assert len(operation_ids) == len(set(operation_ids)) == 8
 
     for path in (
