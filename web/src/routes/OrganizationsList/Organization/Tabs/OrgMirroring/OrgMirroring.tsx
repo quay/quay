@@ -37,12 +37,14 @@ import {useQueryClient} from '@tanstack/react-query';
 import {deleteOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
 import {CreateRobotModalWrapper} from './CreateRobotModalWrapper';
 import {useSearchParams} from 'react-router-dom';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface OrgMirroringProps {
   orgName: string;
 }
 
 export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const {addAlert} = useUI();
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
@@ -99,7 +101,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   // Create dropdown options for robot selector
   const robotOptions = [
     <React.Fragment key="dropdown-options">
-      {!robotsDisallowed && (
+      {!robotsDisallowed && !isReadOnlySuperUser && (
         <>
           <SelectOption
             key="create-robot"
@@ -200,39 +202,47 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           isSyncingNow={configHook.isSyncingNow}
           isCancellingSync={configHook.isCancellingSync}
           isOrgSyncing={configHook.isOrgSyncing}
-          onSyncNow={async () => {
-            try {
-              await configHook.handleSyncNow();
-              addAlert({
-                variant: AlertVariant.Success,
-                title: 'Organization sync scheduled successfully',
-              });
-            } catch (err: unknown) {
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error scheduling sync',
-                message: (err as Error).message,
-              });
-            }
-          }}
-          onToggleEnabled={async (checked, onChange) => {
-            try {
-              await configHook.handleToggleEnabled(checked);
-              onChange(checked);
-              addAlert({
-                variant: AlertVariant.Success,
-                title: `Organization mirror ${
-                  checked ? 'enabled' : 'disabled'
-                } successfully`,
-              });
-            } catch (err: unknown) {
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error toggling organization mirror',
-                message: (err as Error).message,
-              });
-            }
-          }}
+          onSyncNow={
+            isReadOnlySuperUser
+              ? undefined
+              : async () => {
+                  try {
+                    await configHook.handleSyncNow();
+                    addAlert({
+                      variant: AlertVariant.Success,
+                      title: 'Organization sync scheduled successfully',
+                    });
+                  } catch (err: unknown) {
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error scheduling sync',
+                      message: (err as Error).message,
+                    });
+                  }
+                }
+          }
+          onToggleEnabled={
+            isReadOnlySuperUser
+              ? undefined
+              : async (checked, onChange) => {
+                  try {
+                    await configHook.handleToggleEnabled(checked);
+                    onChange(checked);
+                    addAlert({
+                      variant: AlertVariant.Success,
+                      title: `Organization mirror ${
+                        checked ? 'enabled' : 'disabled'
+                      } successfully`,
+                    });
+                  } catch (err: unknown) {
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error toggling organization mirror',
+                      message: (err as Error).message,
+                    });
+                  }
+                }
+          }
           addAlert={addAlert}
         />
         <OrgMirroringFilters
@@ -253,45 +263,53 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           config={configHook.config}
           isVerifying={configHook.isVerifying}
           isCancellingSync={configHook.isCancellingSync}
-          onCancelSync={async () => {
-            try {
-              await configHook.handleCancelSync();
-              addAlert({
-                variant: AlertVariant.Success,
-                title: 'Sync cancelled successfully',
-              });
-            } catch (err: unknown) {
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error cancelling sync',
-                message: (err as Error).message,
-              });
-            }
-          }}
-          onVerifyConnection={async () => {
-            try {
-              const result = await configHook.handleVerifyConnection();
-              if (result.success) {
-                addAlert({
-                  variant: AlertVariant.Success,
-                  title: 'Connection verified successfully',
-                  message: result.message,
-                });
-              } else {
-                addAlert({
-                  variant: AlertVariant.Failure,
-                  title: 'Connection verification failed',
-                  message: result.message,
-                });
-              }
-            } catch (err: unknown) {
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error verifying connection',
-                message: (err as Error).message,
-              });
-            }
-          }}
+          onCancelSync={
+            isReadOnlySuperUser
+              ? undefined
+              : async () => {
+                  try {
+                    await configHook.handleCancelSync();
+                    addAlert({
+                      variant: AlertVariant.Success,
+                      title: 'Sync cancelled successfully',
+                    });
+                  } catch (err: unknown) {
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error cancelling sync',
+                      message: (err as Error).message,
+                    });
+                  }
+                }
+          }
+          onVerifyConnection={
+            isReadOnlySuperUser
+              ? undefined
+              : async () => {
+                  try {
+                    const result = await configHook.handleVerifyConnection();
+                    if (result.success) {
+                      addAlert({
+                        variant: AlertVariant.Success,
+                        title: 'Connection verified successfully',
+                        message: result.message,
+                      });
+                    } else {
+                      addAlert({
+                        variant: AlertVariant.Failure,
+                        title: 'Connection verification failed',
+                        message: result.message,
+                      });
+                    }
+                  } catch (err: unknown) {
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error verifying connection',
+                      message: (err as Error).message,
+                    });
+                  }
+                }
+          }
         />
         <OrgMirroringRepos
           config={configHook.config}
@@ -304,7 +322,9 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="submit"
             isDisabled={
-              !formHook.isValid || (configHook.config && !formHook.isDirty)
+              isReadOnlySuperUser ||
+              !formHook.isValid ||
+              (configHook.config && !formHook.isDirty)
             }
             data-testid="submit-button"
           >
@@ -318,6 +338,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
               data-testid="delete-mirror-button"
+              isDisabled={isReadOnlySuperUser}
             >
               Delete Mirror Configuration
             </Button>
