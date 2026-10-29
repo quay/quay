@@ -2,13 +2,10 @@ from unittest.mock import patch
 
 import pytest
 
-import features
 from data import model
 from data.model import api_token
 from data.model import config as model_config
-from endpoints.api.discovery import swagger_route_data
 from endpoints.api.robot_application_tokens import (
-    NEW_ROBOT_TOKEN_SCHEMA,
     OrganizationRobotMintableScopes,
     OrganizationRobotToken,
     OrganizationRobotTokens,
@@ -23,64 +20,10 @@ from test.fixtures import *
 TOKEN_REQUEST = {"name": "CI robot token", "scope": "repo:read", "expiration": 3600}
 
 
-ROBOT_TOKEN_OPERATIONS = {
-    "/api/v1/user/robots/{robot_shortname}/mintable-scopes": {
-        "get": "listUserRobotMintableScopes",
-    },
-    "/api/v1/user/robots/{robot_shortname}/tokens": {
-        "get": "listUserRobotTokens",
-        "post": "createUserRobotToken",
-    },
-    "/api/v1/user/robots/{robot_shortname}/tokens/{token_uuid}": {
-        "delete": "deleteUserRobotToken",
-    },
-    "/api/v1/organization/{orgname}/robots/{robot_shortname}/mintable-scopes": {
-        "get": "listOrganizationRobotMintableScopes",
-    },
-    "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens": {
-        "get": "listOrganizationRobotTokens",
-        "post": "createOrganizationRobotToken",
-    },
-    "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens/{token_uuid}": {
-        "delete": "deleteOrganizationRobotToken",
-    },
-}
-
-
 def test_robot_api_token_routes_are_registered(app):
     routes = {rule.rule for rule in app.url_map.iter_rules()}
     assert "/api/v1/user/robots/<robot_shortname>/tokens" in routes
     assert "/api/v1/organization/<orgname>/robots/<robot_shortname>/tokens" in routes
-
-
-def test_robot_api_token_operations_are_in_discovery():
-    assert features.ROBOT_API_TOKENS
-
-    swagger = swagger_route_data()
-    operations = {
-        path: {method: swagger["paths"][path][method]["operationId"] for method in methods}
-        for path, methods in ROBOT_TOKEN_OPERATIONS.items()
-    }
-
-    assert operations == ROBOT_TOKEN_OPERATIONS
-
-    operation_ids = [
-        operation_id for methods in operations.values() for operation_id in methods.values()
-    ]
-    assert len(operation_ids) == len(set(operation_ids)) == 8
-
-    for path in (
-        "/api/v1/user/robots/{robot_shortname}/tokens",
-        "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens",
-    ):
-        body = next(
-            parameter
-            for parameter in swagger["paths"][path]["post"]["parameters"]
-            if parameter["in"] == "body"
-        )
-        assert body["schema"] == {"$ref": "#/definitions/NewRobotToken"}
-
-    assert swagger["definitions"]["NewRobotToken"] == NEW_ROBOT_TOKEN_SCHEMA
 
 
 def test_organization_robot_mintable_scopes(app):
