@@ -493,11 +493,15 @@ test.describe(
         .locator('input[placeholder="key=value"]')
         .fill('testkey=testval');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert first label was committed before adding the second
+      await expect(mutableLabels).toContainText('testkey=testval');
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('foo=bar');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert second label was committed before saving
+      await expect(mutableLabels).toContainText('foo=bar');
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(
