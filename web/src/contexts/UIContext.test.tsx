@@ -7,8 +7,20 @@ function wrapper({children}: {children: React.ReactNode}) {
   return <UIProvider>{children}</UIProvider>;
 }
 
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    writable: true,
+    value: width,
+  });
+}
+
 describe('UIContext', () => {
   describe('sidebar state', () => {
+    beforeEach(() => {
+      setViewportWidth(1400);
+    });
+
     it('defaults to open when localStorage is empty', () => {
       const {result} = renderHook(() => useUI(), {wrapper});
       expect(result.current.isSidebarOpen).toBe(true);
@@ -76,6 +88,7 @@ describe('UIContext', () => {
       localStorage.setItem('quay-sidebar-open', 'false');
       const {result} = renderHook(() => useUI(), {wrapper});
 
+      setViewportWidth(1000);
       act(() => {
         result.current.setIsMobileView(true);
       });
@@ -96,6 +109,7 @@ describe('UIContext', () => {
       });
       expect(result.current.isSidebarOpen).toBe(false);
 
+      setViewportWidth(1000);
       act(() => {
         result.current.setIsMobileView(true);
       });
@@ -104,10 +118,23 @@ describe('UIContext', () => {
       });
       expect(result.current.isSidebarOpen).toBe(true);
 
+      setViewportWidth(1400);
       act(() => {
         result.current.setIsMobileView(false);
       });
       expect(result.current.isSidebarOpen).toBe(false);
+      expect(localStorage.getItem('quay-sidebar-open')).toBe('false');
+    });
+
+    it('toggle follows the viewport before the debounced resize lands', () => {
+      localStorage.setItem('quay-sidebar-open', 'false');
+      const {result} = renderHook(() => useUI(), {wrapper});
+
+      setViewportWidth(1000);
+      act(() => {
+        result.current.toggleSidebar();
+      });
+      expect(result.current.isSidebarOpen).toBe(true);
       expect(localStorage.getItem('quay-sidebar-open')).toBe('false');
     });
   });

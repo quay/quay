@@ -33,6 +33,8 @@ interface UIContextType {
   clearAllAlerts: () => void;
 }
 
+const XL_BREAKPOINT_PX = 1200;
+
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 interface UIProviderProps {
@@ -64,11 +66,15 @@ export function UIProvider({children}: UIProviderProps) {
   }, [isDesktopSidebarOpen]);
 
   const toggleSidebar = useCallback(() => {
-    const setOpen = isMobileView
+    // PF debounces onPageResize by 250ms but its CSS switches the sidebar
+    // layout at xl (75rem) at once, so read the viewport, not the flag.
+    const mobileView = window.innerWidth < XL_BREAKPOINT_PX;
+    setIsMobileView(mobileView);
+    const setOpen = mobileView
       ? setIsMobileSidebarOpen
       : setIsDesktopSidebarOpen;
     setOpen((prev) => !prev);
-  }, [isMobileView]);
+  }, []);
 
   const addAlert = useCallback((alert: AlertDetails) => {
     const alertWithKey = {
