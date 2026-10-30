@@ -85,7 +85,7 @@ def conduct_call(
     final_url = url_for(resource, **params)
 
     headers = headers or {}
-    headers.update({"Content-Type": "application/json"})
+    headers.setdefault("Content-Type", "application/json")
 
     if body is not None:
         body = json.dumps(body)

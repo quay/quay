@@ -3484,20 +3484,73 @@ def test_push_existing_blob_while_blob_delete_lock_held(
     registry_server_executor,
     app_reloader,
 ):
-    """Test: Committing a blob that already exists does not stall while another holder (e.g. GC)
-    has its BLOB_DELETE lock. The commit waits BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT, then links the
-    existing blob."""
+    """Test: Linking a blob that already exists (e.g. into a second repository) still requires the
+    BLOB_DELETE lock. While another holder (e.g. GC) has it, the commit fails with a retryable 503
+    within the bound instead of stalling or linking the existing blob unlocked, and a retry after
+    the lock is released succeeds."""
     credentials = ("devtable", "password")
     v22_protocol.push(
         liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
     )
 
     digest = "sha256:" + hashlib.sha256(basic_images[0].bytes).hexdigest()
+    repo_name = v22_protocol.repo_name("devtable", "anotherrepo")
+
+    token, _ = v22_protocol.auth(
+        liveserver_session,
+        credentials,
+        "devtable",
+        "anotherrepo",
+        scopes=["repository:%s:push,pull" % repo_name],
+    )
+    headers = {"Authorization": "Bearer " + token}
+
+    def upload_blob(expected_status):
+        response = v22_protocol.conduct(
+            liveserver_session,
+            "POST",
+            "/v2/%s/blobs/uploads/" % repo_name,
+            expected_status=202,
+            headers=headers,
+        )
+        location = response.headers["Location"][len("http://localhost:5000") :]
+        v22_protocol.conduct(
+            liveserver_session,
+            "PATCH",
+            location,
+            data=basic_images[0].bytes,
+            expected_status=202,
+            headers=headers,
+        )
+        return v22_protocol.conduct(
+            liveserver_session,
+            "PUT",
+            location,
+            params=dict(digest=digest),
+            expected_status=expected_status,
+            headers=headers,
+        )
+
     executor = registry_server_executor.on(liveserver)
     assert executor.hold_blob_lock(digest, 60).status_code == 200
 
-    # Before the fix the commit blocked until the holder's lock expired (here 60s).
     start = time.time()
+    response = upload_blob(503)
+    assert response.json()["errors"][0]["code"] == "UNAVAILABLE"
+    assert time.time() - start < 20
+
+    v22_protocol.conduct(
+        liveserver_session,
+        "HEAD",
+        "/v2/%s/blobs/%s" % (repo_name, digest),
+        expected_status=404,
+        headers=headers,
+    )
+
+    assert executor.release_blob_lock(digest).status_code == 200
+
+    # Retry the full push (blob commit now succeeds with 201), then confirm the linked blob is
+    # actually pullable from anotherrepo.
     v22_protocol.push(
         liveserver_session,
         "devtable",
@@ -3506,7 +3559,6 @@ def test_push_existing_blob_while_blob_delete_lock_held(
         basic_images,
         credentials=credentials,
     )
-    assert time.time() - start < 20
 
     v22_protocol.pull(
         liveserver_session,
