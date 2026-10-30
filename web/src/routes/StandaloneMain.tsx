@@ -230,7 +230,7 @@ export function StandaloneMain() {
   } = useQuayConfigWithLoading();
   const {user, loading: userLoading, error: userError} = useCurrentUser();
   const location = useLocation();
-  const {clearAllAlerts} = useUI();
+  const {clearAllAlerts, setIsMobileView} = useUI();
 
   // Load external scripts (Stripe, StatusPage) only when BILLING feature is enabled (PROJQUAY-9803)
   useExternalScripts();
@@ -281,8 +281,7 @@ export function StandaloneMain() {
       <Page
         masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
-        isManagedSidebar
-        defaultManagedSidebarIsOpen={true}
+        onPageResize={(_event, {mobileView}) => setIsMobileView(mobileView)}
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
         isContentFilled
