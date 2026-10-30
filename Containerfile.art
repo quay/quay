@@ -181,6 +181,7 @@ ENV QUAYRUN=/quay-registry/conf
 ENV QUAYPATH=$QUAYDIR
 ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages:$QUAYPATH
 ENV RED_HAT_QUAY=true
+ENV PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
@@ -244,4 +245,3 @@ VOLUME ["/datastorage", "/tmp", "/conf/stack"]
 USER 1001
 ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
-
