@@ -27,6 +27,7 @@ from endpoints.api import (
     allow_if_superuser_with_full_access,
     api,
     disallow_for_non_normal_repositories,
+    disallow_for_proxy_cache_org,
     disallow_for_user_namespace,
     internal_only,
     log_action,
@@ -123,6 +124,7 @@ class BuildTrigger(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("updateBuildTrigger")
     @validate_json_request("UpdateTrigger")
@@ -270,6 +272,7 @@ class BuildTriggerActivate(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("activateBuildTrigger")
     @validate_json_request("BuildTriggerActivateRequest")
@@ -451,6 +454,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("manuallyStartBuildTrigger")
     @validate_json_request("RunParameters")

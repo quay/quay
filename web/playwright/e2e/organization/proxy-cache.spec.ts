@@ -1,4 +1,6 @@
 import {test, expect, getTestUsers} from '../../fixtures';
+import {API_URL} from '../../utils/config';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Organization Proxy Cache',
@@ -236,6 +238,151 @@ test.describe(
         authenticatedPage.getByText('Proxy Cache'),
       ).not.toBeVisible();
     });
+
+    test(
+      'push to proxy cache organization is blocked',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        // Create organization and configure as proxy cache
+        const org = await api.organization('pushblock');
+        // Created first: the API refuses repo creation once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'testpush');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        // Proxy cache orgs are read-only, so the push token carries no push.
+        await expect(
+          pushImage(
+            org.name,
+            'testpush',
+            'latest',
+            user.username,
+            user.password,
+          ),
+        ).rejects.toThrow(
+          /unauthorized: access to the requested resource is not authorized/,
+        );
+      },
+    );
+
+    test(
+      'repository creation via push is blocked for proxy cache organizations',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, authenticatedRequest, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        // Create organization and configure as proxy cache
+        const org = await api.organization('repocreateblock');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        // A push to a non-existent repo would normally create it.
+        await expect(
+          pushImage(
+            org.name,
+            'newrepo',
+            'v1.0.0',
+            user.username,
+            user.password,
+          ),
+        ).rejects.toThrow(
+          /unauthorized: access to the requested resource is not authorized/,
+        );
+
+        const repoResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/repository/${org.name}/newrepo`,
+        );
+        expect(repoResponse.status()).toBe(404);
+      },
+    );
+
+    test(
+      'repository creation via API is blocked for proxy cache organizations',
+      {tag: ['@PROJQUAY-9516']},
+      async ({api, authenticatedRequest}) => {
+        const org = await api.organization('apicreateblock');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await expect(
+          api.raw.createRepository(org.name, 'newrepo'),
+        ).rejects.toThrow(/400 - .*organization is a proxy cache/);
+
+        const repoResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/repository/${org.name}/newrepo`,
+        );
+        expect(repoResponse.status()).toBe(404);
+      },
+    );
+
+    test(
+      'tag creation via API is blocked for proxy cache organizations',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        const org = await api.organization('tagblock');
+        // Pushed first: pushes are refused once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'cached');
+        await pushImage(
+          org.name,
+          'cached',
+          'latest',
+          user.username,
+          user.password,
+        );
+        const {tags} = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'latest',
+        });
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await expect(
+          api.raw.createTag(
+            org.name,
+            'cached',
+            'newtag',
+            tags[0].manifest_digest,
+          ),
+        ).rejects.toThrow(/400 - .*organization is a proxy cache/);
+
+        const after = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'newtag',
+        });
+        expect(after.tags).toHaveLength(0);
+      },
+    );
+
+    test(
+      'tag deletion via API is allowed for proxy cache organization admins',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api, quayConfig}) => {
+        const {user} = getTestUsers(quayConfig);
+        const org = await api.organization('tagdelete');
+        // Pushed first: pushes are refused once the org is a proxy cache.
+        await api.repositoryWithName(org.name, 'cached');
+        await pushImage(
+          org.name,
+          'cached',
+          'latest',
+          user.username,
+          user.password,
+        );
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        await api.raw.deleteTag(org.name, 'cached', 'latest');
+
+        const after = await api.raw.getTags(org.name, 'cached', {
+          specificTag: 'latest',
+        });
+        expect(after.tags).toHaveLength(0);
+      },
+    );
   },
 );
 

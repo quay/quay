@@ -277,6 +277,50 @@ def get_robot_password(username):
             "private",
             False,
         ),
+        # Proxy cache org: push should be blocked for org admin (devtable is proxyorg owner)
+        (
+            "repository:proxyorg/somerepo:push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: pull+push should only grant pull
+        (
+            "repository:proxyorg/somerepo:pull,push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:pull"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: admin scope should be blocked
+        (
+            "repository:proxyorg/somerepo:pull,push,*",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/somerepo:pull"],
+            True,
+            "private",
+            False,
+        ),
+        # Proxy cache org: new repo creation via push should be blocked
+        (
+            "repository:proxyorg/newrepo:push",
+            "devtable",
+            "password",
+            200,
+            ["proxyorg/newrepo:"],
+            True,
+            "private",
+            False,
+        ),
         # Organization repository, freshuser
         (
             "repository:buynlarge/orgrepo:pull,push,*",
@@ -391,6 +435,9 @@ def test_generate_registry_jwt(
     assert decoded["aud"] == original_app.config["SERVER_HOSTNAME"]
     assert decoded["sub"] == username if username else "(anonymous)"
 
+    if scope == "repository:proxyorg/newrepo:push":
+        assert model.repository.get_repository("proxyorg", "newrepo") is None
+
     expected_access = []
     for scope in expected_scopes:
         name, actions_str = scope.split(":")
@@ -412,3 +459,30 @@ def test_generate_registry_jwt(
         assert (
             model.repository.get_repository("devtable", "visibility").visibility.name == visibility
         )
+
+
+@pytest.mark.parametrize(
+    "actions, expected_actions",
+    [
+        ("push", []),
+        ("pull,push", ["pull"]),
+        ("pull,push,*", ["pull"]),
+    ],
+)
+def test_generate_registry_jwt_proxy_cache_existing_repo(actions, expected_actions, app, client):
+    # initdb seeds no repositories in proxyorg; devtable owns it.
+    model.repository.create_repository("proxyorg", "cachedrepo", get_user("devtable"))
+
+    params = {
+        "service": original_app.config["SERVER_HOSTNAME"],
+        "scope": "repository:proxyorg/cachedrepo:%s" % actions,
+    }
+    headers = {"Authorization": gen_basic_auth("devtable", "password")}
+    resp = conduct_call(
+        client, "v2.generate_registry_jwt", url_for, "GET", params, {}, 200, headers=headers
+    )
+
+    decoded = decode_bearer_token(resp.json["token"], instance_keys, original_app.config)
+    assert decoded["access"] == [
+        {"type": "repository", "name": "proxyorg/cachedrepo", "actions": expected_actions}
+    ]

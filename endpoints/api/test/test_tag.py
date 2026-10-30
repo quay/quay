@@ -4,11 +4,19 @@ from unittest.mock import patch
 import pytest
 from playhouse.test_utils import assert_query_count
 
+from data import model
 from data.database import Manifest
 from data.model import DataModelException, ImmutableTagException
 from data.model.oci.tag import change_tag_expiration, set_tag_immutable
+from data.model.repository import create_repository
+from data.model.user import get_user
 from data.registry_model import registry_model
-from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
+from endpoints.api.tag import (
+    ListRepositoryTags,
+    RepositoryTag,
+    RestoreTag,
+    TagTimeMachineDelete,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
@@ -872,3 +880,54 @@ def test_set_tag_immutable_allowed_when_config_permits():
         # Clean up
         set_tag_immutable(repo_ref.id, "latest", False)
         change_tag_expiration(tag_ref.id, None)
+
+
+@pytest.mark.parametrize("resource, method", [(RepositoryTag, "PUT"), (RestoreTag, "POST")])
+def test_tag_write_refused_in_proxy_cache_org(resource, method, app):
+    create_repository("proxyorg", "cached", get_user("devtable"))
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    digest = registry_model.get_repo_tag(repo_ref, "latest").manifest.digest
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached", "tag": "latest"}
+        body = {"manifest_digest": digest}
+        resp = conduct_api_call(cl, resource, method, params, body, expected_code=400)
+
+    assert "proxy cache" in resp.json["error_message"]
+
+
+@pytest.mark.parametrize(
+    "proxy_cache, role, expected_code",
+    [
+        (False, "write", 204),
+        (True, "write", 403),
+        (True, "admin", 204),
+    ],
+)
+def test_delete_tag_in_proxy_cache_org(proxy_cache, role, expected_code, app):
+    model.permission.set_user_repo_permission("reader", "buynlarge", "orgrepo", role)
+    if proxy_cache:
+        model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+    with client_with_identity("reader", app) as cl:
+        params = {"repository": "buynlarge/orgrepo", "tag": "latest"}
+        conduct_api_call(cl, RepositoryTag, "DELETE", params, None, expected_code)
+
+
+@pytest.mark.parametrize(
+    "proxy_cache, role, expected_code",
+    [
+        (False, "write", 200),
+        (True, "write", 403),
+        (True, "admin", 200),
+    ],
+)
+def test_expire_tag_from_timemachine_in_proxy_cache_org(proxy_cache, role, expected_code, app):
+    model.permission.set_user_repo_permission("reader", "buynlarge", "orgrepo", role)
+    if proxy_cache:
+        model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+    with client_with_identity("reader", app) as cl:
+        params = {"repository": "buynlarge/orgrepo", "tag": "latest"}
+        body = {"is_alive": True}
+        conduct_api_call(cl, TagTimeMachineDelete, "POST", params, body, expected_code)

@@ -45,6 +45,8 @@ def attach_gitlab_build_trigger():
             abort(404, message=msg)
         elif repo.kind.name != "image":
             abort(501)
+        elif features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
+            abort(400, message="Cannot modify repository: organization is a proxy cache")
 
         trigger = model.build.create_build_trigger(repo, "gitlab", token, current_user.db_user())
         repo_path = "%s/%s" % (namespace, repository)

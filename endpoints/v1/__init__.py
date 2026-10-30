@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, make_response
 
 import features
 from app import app
+from data.model import proxy_cache
 from data.readreplica import ReadOnlyModeException
 from endpoints.decorators import anon_allowed, anon_protect
 from util.http import abort
@@ -78,6 +79,18 @@ def check_v1_push_enabled(namespace_name_kwarg="namespace_name"):
         return decorated
 
     return wrapper
+
+
+def disallow_for_proxy_cache_org(func):
+    # A push session opened before the org became a proxy cache must not finish.
+    @wraps(func)
+    def wrapped(namespace_name, repo_name, *args, **kwargs):
+        if features.PROXY_CACHE and proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(403, message="Cannot modify content: organization is a proxy cache")
+
+        return func(namespace_name, repo_name, *args, **kwargs)
+
+    return wrapped
 
 
 from endpoints.v1 import index, registry, tag

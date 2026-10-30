@@ -10,6 +10,7 @@ from data.cache import cache_key
 from data.database import (
     OrgMirrorConfig,
     OrgMirrorStatus,
+    RepositoryState,
     SourceRegistryType,
     Visibility,
 )
@@ -729,6 +730,30 @@ def test_create_repository_blocked_in_org_mirror_org(app):
         config.delete_instance()
 
 
+@pytest.mark.parametrize(
+    "namespace, expected_code",
+    [
+        ("proxyorg", 400),
+        ("buynlarge", 201),
+    ],
+)
+def test_create_repository_in_proxy_cache_org(namespace, expected_code, app):
+    with client_with_identity("devtable", app) as cl:
+        body = {
+            "namespace": namespace,
+            "repository": "newrepo",
+            "visibility": "private",
+            "description": "",
+        }
+        resp = conduct_api_call(cl, RepositoryList, "POST", None, body, expected_code=expected_code)
+
+    if expected_code == 400:
+        assert "proxy cache" in resp.json["error_message"]
+        assert model.repository.get_repository(namespace, "newrepo") is None
+    else:
+        assert model.repository.get_repository(namespace, "newrepo") is not None
+
+
 def test_change_repo_state_blocked_in_org_mirror_org(app):
     """
     Verify that changing repository state is rejected when the organization
@@ -760,6 +785,18 @@ def test_change_repo_state_blocked_in_org_mirror_org(app):
                 assert "organization-level mirroring" in resp.json["detail"]
     finally:
         config.delete_instance()
+
+
+def test_change_repo_state_refused_in_proxy_cache_org(app):
+    model.repository.create_repository("proxyorg", "cached", model.user.get_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached"}
+        body = {"state": "READ_ONLY"}
+        resp = conduct_api_call(cl, RepositoryStateResource, "PUT", params, body, expected_code=400)
+
+    assert "proxy cache" in resp.json["error_message"]
+    assert model.repository.get_repository("proxyorg", "cached").state == RepositoryState.NORMAL
 
 
 def test_delete_repo_properly_invalidates_cache(initialized_db, app):

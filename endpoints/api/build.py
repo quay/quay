@@ -34,6 +34,7 @@ from endpoints.api import (
     allow_if_superuser_with_full_access,
     api,
     disallow_for_non_normal_repositories,
+    disallow_for_proxy_cache_org,
     disallow_for_user_namespace,
     format_date,
     internal_only,
@@ -263,6 +264,7 @@ class RepositoryBuildList(RepositoryParamResource):
     @require_repo_write(allow_for_superuser=True)
     @nickname("requestRepoBuild")
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @validate_json_request("RepositoryBuildRequest")
     def post(self, namespace, repository):
@@ -306,7 +308,7 @@ class RepositoryBuildList(RepositoryParamResource):
                     raise NotFound()
 
                 # Make sure the user has administer permissions for the robot's namespace.
-                (robot_namespace, _) = result
+                robot_namespace, _ = result
                 if (
                     not AdministerOrganizationPermission(robot_namespace).can()
                     and not allow_if_superuser_with_full_access()
@@ -561,7 +563,7 @@ class FileDropResource(ApiResource):
         Request a URL to which a file may be uploaded.
         """
         mime_type = request.get_json()["mimeType"]
-        (url, file_id) = user_files.prepare_for_drop(mime_type, requires_cors=True)
+        url, file_id = user_files.prepare_for_drop(mime_type, requires_cors=True)
         return {
             "url": url,
             "file_id": str(file_id),
