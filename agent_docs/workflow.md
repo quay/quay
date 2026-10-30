@@ -156,6 +156,110 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
+### Handling openshift-ci-robot Validation Errors
+
+When `openshift-ci-robot` posts a validation comment on a PR you created, act
+within the same review session — do not leave it for the human assignee unless
+the error type requires human involvement (see below). Parse the comment to
+determine the error type, then follow the procedure for that type.
+
+**Recognizing error types**
+
+| Phrase in bot comment | Error type |
+|-----------------------|------------|
+| "invalid Jira target version" / "target version" | Wrong Target Version |
+| "missing release notes" / "release note" | Missing release notes |
+| "parent.*MODIFIED" / "parent.*not VERIFIED" / "parent.*not CLOSED" | Dependent-ticket-state error |
+
+**Wrong Target Version**
+
+The ticket's `customfield_10855` (Target Version) is set to the wrong value.
+Correct it with a JIRA REST PATCH, then trigger re-validation:
+
+```bash
+# Determine expected value from the PR's target branch:
+#   master PR           → quay-v<next-minor>.0   (e.g. quay-v5.1.0)
+#   redhat-X.Y branch   → quay-vX.Y.<z>          (e.g. quay-v5.0.3)
+# The bot comment usually names the expected value explicitly.
+TICKET="PROJQUAY-12345"       # from bot comment or PR title
+CORRECT_VERSION="quay-v5.1.0" # from bot comment
+
+curl --silent --fail-with-body \
+  -X PUT "${JIRA_BASE_URL}/rest/api/2/issue/${TICKET}" \
+  -u "${JIRA_USER}:${JIRA_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"fields\":{\"customfield_10855\":{\"name\":\"${CORRECT_VERSION}\"}}}"
+
+# Re-validate:
+gh pr comment <PR_NUMBER> --body "/jira refresh"
+```
+
+If the PUT fails (non-2xx), fall through to the escalation step below.
+
+**Missing release notes**
+
+The ticket is missing release-note content required by the lifecycle plugin.
+Set both the release-note type and body fields on the ticket:
+
+```bash
+curl --silent --fail-with-body \
+  -X PUT "${JIRA_BASE_URL}/rest/api/2/issue/${TICKET}" \
+  -u "${JIRA_USER}:${JIRA_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fields": {
+      "customfield_10073": {"value": "Bug Fix"},
+      "customfield_10075": "Brief description of the fix for release notes."
+    }
+  }'
+
+gh pr comment <PR_NUMBER> --body "/jira refresh"
+```
+
+Verify the exact custom-field IDs in the Jira instance before relying on the
+values above — they can vary between Jira projects. Use
+`GET /rest/api/2/issue/{key}` and inspect the `fields` object to confirm.
+
+**Dependent-ticket-state errors**
+
+When the error states that a parent or blocking ticket is not yet in VERIFIED
+or CLOSED state, the agent cannot unilaterally transition it — that requires
+QE sign-off. Post a PR comment that names the exact ticket and expected state
+so the human assignee can act without inspecting the bot comment:
+
+```bash
+gh pr comment <PR_NUMBER> --body "$(cat <<'EOF'
+@<assignee> openshift-ci-robot flagged a dependent-ticket-state error:
+parent ticket PROJQUAY-XXXXX must be in VERIFIED or CLOSED state before this
+PR can be validated. Please work with the QE team to transition it, then
+comment \`/jira refresh\` here.
+EOF
+)"
+```
+
+**Jira API failure or missing token**
+
+If any `curl` call above fails, or if `JIRA_API_TOKEN` is absent, post a PR
+comment that names the exact field and expected value so a human can fix it
+without re-reading the bot comment:
+
+```bash
+gh pr comment <PR_NUMBER> --body "$(cat <<'EOF'
+openshift-ci-robot posted a Jira validation error that I could not fix
+automatically (Jira API unavailable or token absent).
+
+Manual fix required on PROJQUAY-XXXXX:
+- Field: Target Version (customfield_10855)
+- Expected value: quay-v5.1.0
+
+After updating, comment \`/jira refresh\` on this PR.
+EOF
+)"
+```
+
+Adjust the field name, customfield ID, and expected value to match the actual
+bot error. Tag the PR assignee if one is set.
+
 ## Session Setup
 
 All hooks are consolidated in `.claude/settings.json` — no manual setup required.
