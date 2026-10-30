@@ -197,6 +197,7 @@ jobs:
           with-repomirror: true
           with-georep: true
           with-builds: true
+          with-system-metrics: true
           use-gha-cache: false
           extra-config: |
             FEATURE_SECURITY_SCANNER: true
