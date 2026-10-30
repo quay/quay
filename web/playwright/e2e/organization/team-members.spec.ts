@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import type {Page} from '@playwright/test';
 
 async function navigateToManageTeamMembers(
@@ -20,10 +19,15 @@ async function navigateToManageTeamMembers(
 }
 
 test.describe('Manage Team Members', {tag: ['@organization']}, () => {
-  test('can search for member', async ({authenticatedPage, api}) => {
+  test('can search for member', async ({
+    authenticatedPage,
+    api,
+    quayConfig,
+  }) => {
+    const users = getTestUsers(quayConfig);
     const org = await api.organization('testorg');
     const team = await api.team(org.name, 'searchteam');
-    await api.teamMember(org.name, team.name, TEST_USERS.user.username);
+    await api.teamMember(org.name, team.name, users.user.username);
 
     await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
 
@@ -32,14 +36,19 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     );
     await expect(
       authenticatedPage.locator('[data-label="Team member"]'),
-    ).toContainText(TEST_USERS.user.username);
+    ).toContainText(users.user.username);
   });
 
-  test('team member filter toggle', async ({authenticatedPage, api}) => {
+  test('team member filter toggle', async ({
+    authenticatedPage,
+    api,
+    quayConfig,
+  }) => {
+    const users = getTestUsers(quayConfig);
     const org = await api.organization('testorg');
     const team = await api.team(org.name, 'filterteam');
     const robot = await api.robot(org.name, 'filterbot');
-    await api.teamMember(org.name, team.name, TEST_USERS.user.username);
+    await api.teamMember(org.name, team.name, users.user.username);
     await api.teamMember(org.name, team.name, robot.fullName);
 
     await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
@@ -52,7 +61,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
       .first();
 
     // Verify team member is shown
-    await searchInput.fill(TEST_USERS.user.username);
+    await searchInput.fill(users.user.username);
     await expect(paginationInfo).toContainText('1 - 1 of 1');
 
     // Verify robot account is not shown
@@ -60,11 +69,16 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     await expect(paginationInfo).toContainText('0 - 0 of 0');
   });
 
-  test('robot accounts filter toggle', async ({authenticatedPage, api}) => {
+  test('robot accounts filter toggle', async ({
+    authenticatedPage,
+    api,
+    quayConfig,
+  }) => {
+    const users = getTestUsers(quayConfig);
     const org = await api.organization('testorg');
     const team = await api.team(org.name, 'robotfilter');
     const robot = await api.robot(org.name, 'robotbot');
-    await api.teamMember(org.name, team.name, TEST_USERS.user.username);
+    await api.teamMember(org.name, team.name, users.user.username);
     await api.teamMember(org.name, team.name, robot.fullName);
 
     await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
@@ -81,7 +95,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     await expect(paginationInfo).toContainText('1 - 1 of 1');
 
     // Verify team member is not shown
-    await searchInput.fill(TEST_USERS.user.username);
+    await searchInput.fill(users.user.username);
     await expect(paginationInfo).toContainText('0 - 0 of 0');
   });
 
@@ -184,14 +198,15 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
   test(
     'pagination works with more than 20 members',
     {tag: '@superuser'},
-    async ({authenticatedPage, api, superuserApi}) => {
+    async ({authenticatedPage, api}) => {
       const org = await api.organization('testorg');
       const team = await api.team(org.name, 'paginationteam');
 
-      // Create 25 users (requires superuser) and add them to the team
+      // Robots count as team members and need no user accounts, so this
+      // runs under any auth type.
       for (let i = 0; i < 25; i++) {
-        const user = await superuserApi.user(`pguser${i}`);
-        await api.teamMember(org.name, team.name, user.username);
+        const robot = await api.robot(org.name, `pgbot${i}`);
+        await api.teamMember(org.name, team.name, robot.fullName);
       }
 
       await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
@@ -224,10 +239,10 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     },
   );
 
-  test('can add user to team', async ({authenticatedPage, api}) => {
+  test('can add user to team', async ({authenticatedPage, api, quayConfig}) => {
     const org = await api.organization('testorg');
     const team = await api.team(org.name, 'adduserteam');
-    const userToAdd = TEST_USERS.admin.username;
+    const userToAdd = getTestUsers(quayConfig).admin.username;
 
     await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
 

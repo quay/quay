@@ -120,7 +120,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'creates account with valid inputs and redirects to organization',
-    {tag: ['@critical', '@superuser']},
+    {tag: ['@critical', '@superuser', '@auth:Database']},
     async ({createAccountPage, cleanupUser, quayConfig}) => {
       const username = uniqueName('newuser');
       const email = `${username}@example.com`;
@@ -180,7 +180,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'shows error for existing username',
-    {tag: '@superuser'},
+    {tag: ['@superuser', '@auth:Database']},
     async ({createAccountPage, superuserApi, cleanupUser}) => {
       const username = uniqueName('existing');
       const email = `${username}@example.com`;
@@ -245,7 +245,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'shows verification message when email verification required',
-    {tag: ['@feature:MAILING', '@superuser']},
+    {tag: ['@feature:MAILING', '@superuser', '@auth:Database']},
     async ({createAccountPage, cleanupUser}) => {
       // This test only runs when FEATURE_MAILING is enabled
       // When enabled, new accounts require email verification
@@ -309,7 +309,7 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
   test(
     'redirects to updateuser when user has prompts',
-    {tag: ['@feature:QUOTA_MANAGEMENT', '@superuser']},
+    {tag: ['@feature:QUOTA_MANAGEMENT', '@superuser', '@auth:Database']},
     async ({createAccountPage, cleanupUser, quayConfig}) => {
       // This test only runs when FEATURE_QUOTA_MANAGEMENT is enabled
       // When enabled, new users may have prompts (enter_name, enter_company)

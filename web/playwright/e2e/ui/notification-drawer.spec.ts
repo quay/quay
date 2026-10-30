@@ -1,13 +1,14 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   test('notification drawer e2e: create, display, read, delete', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
-    const namespace = TEST_USERS.user.username;
+    const users = getTestUsers(quayConfig);
+    const namespace = users.user.username;
 
     // 1. Create repository
     const repo = await api.repository(namespace, 'notif-repo');
@@ -28,8 +29,8 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
       namespace,
       repo.name,
       'latest',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      users.user.username,
+      users.user.password,
     );
 
     // Brief wait for notification processing
