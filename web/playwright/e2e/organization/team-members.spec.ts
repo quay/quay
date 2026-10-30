@@ -1,4 +1,6 @@
 import {test, expect, getTestUsers} from '../../fixtures';
+import {RawApiClient} from '../../utils/api';
+import {API_URL} from '../../utils/config';
 import type {Page} from '@playwright/test';
 
 async function navigateToManageTeamMembers(
@@ -270,3 +272,99 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     );
   });
 });
+
+test.describe(
+  'Team invitations',
+  {
+    tag: [
+      '@organization',
+      '@auth:Database',
+      '@feature:MAILING',
+      '@feature:REQUIRE_TEAM_INVITE',
+      '@superuser',
+    ],
+  },
+  () => {
+    test('invite is bound to its user, single use, and can be declined', async ({
+      api,
+      userClient,
+      freshUser,
+      request,
+    }) => {
+      const org = await api.organization('invite');
+      const joinTeam = await api.team(org.name, 'join');
+      const declineTeam = await api.team(org.name, 'decline');
+      const invitee = freshUser.user.username;
+
+      for (const team of [joinTeam, declineTeam]) {
+        const r = await userClient.put(
+          `/api/v1/organization/${org.name}/team/${team.name}/members/${invitee}`,
+        );
+        expect(r.status()).toBe(200);
+        expect((await r.json()).invited).toBe(true);
+      }
+
+      const inviteeClient = new RawApiClient(request, API_URL);
+      await inviteeClient.signIn(invitee, freshUser.user.password);
+      const notifications = await inviteeClient.get(
+        '/api/v1/user/notifications?limit=20',
+      );
+      expect(notifications.status()).toBe(200);
+      const codes = new Map<string, string>(
+        (
+          (await notifications.json()).notifications as Array<{
+            kind: string;
+            metadata: {org?: string; team?: string; code?: string};
+          }>
+        )
+          .filter(
+            (n) => n.kind === 'org_team_invite' && n.metadata.org === org.name,
+          )
+          .map((n) => [n.metadata.team, n.metadata.code]),
+      );
+      const joinCode = codes.get(joinTeam.name);
+      const declineCode = codes.get(declineTeam.name);
+      expect(joinCode).toBeTruthy();
+      expect(declineCode).toBeTruthy();
+
+      const members = async (teamName: string) => {
+        const r = await userClient.get(
+          `/api/v1/organization/${org.name}/team/${teamName}/members?includePending=true`,
+        );
+        expect(r.status()).toBe(200);
+        return (
+          (await r.json()).members as Array<{name: string; invited: boolean}>
+        ).map(({name, invited}) => ({name, invited}));
+      };
+
+      const otherUser = await userClient.put(`/api/v1/teaminvite/${joinCode}`);
+      expect(otherUser.status()).toBe(400);
+      expect((await otherUser.json()).message).toContain(
+        `intended for user "${invitee}"`,
+      );
+      expect(await members(joinTeam.name)).toEqual([
+        {name: invitee, invited: true},
+      ]);
+
+      const decline = await inviteeClient.delete(
+        `/api/v1/teaminvite/${declineCode}`,
+      );
+      expect(decline.status()).toBe(204);
+      expect(await members(declineTeam.name)).toEqual([]);
+
+      const accept = await inviteeClient.put(`/api/v1/teaminvite/${joinCode}`);
+      expect(accept.status()).toBe(200);
+      expect(await accept.json()).toEqual({org: org.name, team: joinTeam.name});
+
+      const reuse = await inviteeClient.put(`/api/v1/teaminvite/${joinCode}`);
+      expect(reuse.status()).toBe(400);
+
+      expect(await members(joinTeam.name)).toEqual([
+        {name: invitee, invited: false},
+      ]);
+      // Accepting confirms every pending invite in the org, so a declined
+      // invite that survived would surface as a membership here.
+      expect(await members(declineTeam.name)).toEqual([]);
+    });
+  },
+);
