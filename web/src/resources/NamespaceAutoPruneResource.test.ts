@@ -2,6 +2,7 @@ import {AxiosResponse, InternalAxiosRequestConfig} from 'axios';
 import axios from 'src/libs/axios';
 import {
   AutoPruneMethod,
+  getAutoPruneMethodLabel,
   fetchNamespaceAutoPrunePolicies,
   createNamespaceAutoPrunePolicy,
   deleteNamespaceAutoPrunePolicy,
@@ -85,6 +86,16 @@ describe('NamespaceAutoPruneResource', () => {
       expect(AutoPruneMethod.NONE).toBe('none');
       expect(AutoPruneMethod.TAG_NUMBER).toBe('number_of_tags');
       expect(AutoPruneMethod.TAG_CREATION_DATE).toBe('creation_date');
+    });
+  });
+
+  describe('getAutoPruneMethodLabel', () => {
+    it.each([
+      [AutoPruneMethod.NONE, 'None'],
+      [AutoPruneMethod.TAG_NUMBER, 'Number of Tags'],
+      [AutoPruneMethod.TAG_CREATION_DATE, 'Age of Tags'],
+    ])('formats %s as %s', (method, label) => {
+      expect(getAutoPruneMethodLabel(method)).toBe(label);
     });
   });
 });
