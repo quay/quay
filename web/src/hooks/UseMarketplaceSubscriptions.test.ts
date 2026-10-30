@@ -89,6 +89,39 @@ describe('UseMarketplaceSubscriptions', () => {
       expect(result.current.userSubscriptions).toEqual(mockUserSubs);
       expect(result.current.orgSubscriptions).toEqual(mockOrgSubs);
     });
+
+    it('fetches org subscriptions again when the organization changes', async () => {
+      const subscriptionsByOrg: Record<string, Array<{id: string}>> = {
+        orga: [{id: 'sub-a'}],
+        orgb: [{id: 'sub-b'}],
+      };
+      vi.mocked(fetchMarketplaceSubscriptions).mockImplementation(
+        (org?: string) => Promise.resolve(subscriptionsByOrg[org] ?? []),
+      );
+
+      const {result, rerender} = renderHook(
+        ({org}) => useMarketplaceSubscriptions(org, 'testuser'),
+        {wrapper: TestWrapper, initialProps: {org: 'orga'}},
+      );
+
+      await waitFor(() =>
+        expect(result.current.orgSubscriptions).toEqual(
+          subscriptionsByOrg.orga,
+        ),
+      );
+
+      rerender({org: 'orgb'});
+      expect(result.current.orgSubscriptions).not.toEqual(
+        subscriptionsByOrg.orga,
+      );
+
+      await waitFor(() =>
+        expect(result.current.orgSubscriptions).toEqual(
+          subscriptionsByOrg.orgb,
+        ),
+      );
+      expect(fetchMarketplaceSubscriptions).toHaveBeenCalledWith('orgb');
+    });
   });
 
   describe('useManageOrgSubscriptions', () => {
