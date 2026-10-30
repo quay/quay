@@ -77,9 +77,21 @@ export default defineConfig({
 
   // Configure projects for different browsers
   projects: [
+    // The health gate is the setup project's teardown, not a dependent
+    // project: a teardown runs after its dependents even when they fail.
+    {
+      name: 'health-gate-setup',
+      testMatch: /health\/suite-start\.setup\.ts/,
+      teardown: 'health-gate',
+    },
+    {
+      name: 'health-gate',
+      testMatch: /health\/v2-health-gate\.teardown\.ts/,
+    },
     {
       name: 'chromium',
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
+      dependencies: ['health-gate-setup'],
     },
   ],
 
