@@ -16,8 +16,7 @@
  *   - Query parameters: namespace, detailed, limit, offset
  */
 
-import {test, expect} from '../../fixtures';
-import {TEST_USERS, TEST_USERS_OIDC} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 const HEALTH_URL = '/api/v1/repository/mirror/health';
 const SUPERUSER_HEALTH_URL = '/api/v1/superuser/mirror/health';
@@ -29,11 +28,7 @@ test.describe(
     let normalUsername: string;
 
     test.beforeAll(async ({cachedQuayConfig}) => {
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
-      normalUsername = users.user.username;
+      normalUsername = getTestUsers(cachedQuayConfig).user.username;
     });
 
     // ========================================================================

@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {
   pushImage,
@@ -11,6 +10,12 @@ test.describe(
   'Tags - Show/Hide Signatures',
   {tag: ['@tags', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
     let sigTagPrefix: string;
 
@@ -19,12 +24,12 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `signatures-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       // Push an image to get a manifest with a known digest
@@ -32,8 +37,8 @@ test.describe(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Poll for the tag to be indexed (push is sync but indexing may lag)
@@ -178,6 +183,12 @@ test.describe(
   'Tags - Cosign referrer shield',
   {tag: ['@tags', '@container', '@PROJQUAY-12113']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -188,20 +199,20 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = uniqueName('cosign-referrer');
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       let digest: string | undefined;
@@ -224,8 +235,8 @@ test.describe(
         testRepo.namespace,
         testRepo.name,
         digest,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Wait for tags API enrichment to surface the referrer signature

@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage} from '../../utils/container';
 
@@ -79,8 +78,10 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       authenticatedPage,
       authenticatedRequest,
       api,
+      quayConfig,
     }) => {
-      const testUser = TEST_USERS.user.username;
+      const users = getTestUsers(quayConfig);
+      const testUser = users.user.username;
       const org = await api.organization('repocreate');
 
       // Generate unique names for UI-created repos to avoid conflicts with parallel tests
@@ -541,15 +542,17 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       test('tag link stays correct from /repository/.../testrepository... path', async ({
         authenticatedPage,
         api,
+        quayConfig,
       }) => {
+        const users = getTestUsers(quayConfig);
         const org = await api.organization('kwrepo');
         const repo = await api.repository(org.name, 'testrepository');
         await pushImage(
           org.name,
           repo.name,
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
 
         const repoPath = `/repository/${org.name}/${repo.name}`;

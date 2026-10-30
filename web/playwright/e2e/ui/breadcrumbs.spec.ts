@@ -4,11 +4,16 @@
  * Verifies breadcrumb navigation is displayed correctly across different pages.
  */
 
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
+  let user: {username: string; password: string};
+
+  test.beforeAll(({cachedQuayConfig}) => {
+    user = getTestUsers(cachedQuayConfig).user;
+  });
+
   test.describe('List pages (no breadcrumbs)', () => {
     test('organization list page has no breadcrumbs', async ({
       authenticatedPage,
@@ -119,8 +124,8 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
         org.name,
         repo.name,
         tagName,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(
@@ -178,8 +183,8 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
             org.name,
             repo.name,
             tagName,
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            user.username,
+            user.password,
           );
 
           const tagPath = `/repository/${org.name}/${repo.name}/tag/${tagName}`;

@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Repository Details - Tag History',
   {tag: ['@tags', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let sharedRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -14,12 +19,12 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `tag-history-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       sharedRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       // Push initial image as 'latest'
@@ -27,8 +32,8 @@ test.describe(
         sharedRepo.namespace,
         sharedRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Poll for the tag to be indexed (push is sync but indexing may lag)
@@ -181,8 +186,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'revtag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Delete the tag to create a restorable history entry
@@ -229,8 +234,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'testdelete',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Delete the tag via API to create a dead history entry
@@ -272,8 +277,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // View history as readonly user

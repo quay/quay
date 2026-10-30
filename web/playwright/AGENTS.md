@@ -73,6 +73,7 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 | Container    | `@container`                       | `@container`           | Requires registry image tooling (auto-skip)                               |
 | Superuser    | `@superuser`                       | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
 | Webhook      | `@webhook`                         | `@webhook`             | Uses the webhook receiver fixture or helper                               |
+| LDAP smoke   | `@ldap-smoke`                      | `@ldap-smoke`          | Run in the GHA LDAP phase of ci-web.yaml; keep the set small              |
 | Upgrade      | `@upgrade-seed`, `@upgrade-verify` | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
 
 #### Operator-upgrade specs (`@upgrade-seed` / `@upgrade-verify`)
