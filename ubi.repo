@@ -40,14 +40,14 @@ enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-8-for-$basearch-codeready-builder-rpms]
+[codeready-builder-for-ubi-8-$basearch-rpms]
 name = Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder
 baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/$basearch/codeready-builder/os
 enabled = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-8-for-$basearch-codeready-builder]
+[codeready-builder-for-ubi-8-$basearch]
 name = Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder
 baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/$basearch/codeready-builder/os
 enabled = 0
@@ -55,14 +55,14 @@ gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
 
-[ubi-8-for-$basearch-codeready-builder-debug-rpms]
+[codeready-builder-for-ubi-8-$basearch-debug-rpms]
 name = Red Hat Universal Base Image 8 (Debug RPMs) - CodeReady Builder
 baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/$basearch/codeready-builder/debug
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-8-for-$basearch-codeready-builder-source]
+[codeready-builder-for-ubi-8-$basearch-source]
 name = Red Hat Universal Base Image 8 (Source RPMs) - CodeReady Builder
 baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/$basearch/codeready-builder/source/SRPMS
 enabled = 0
