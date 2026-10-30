@@ -1,5 +1,5 @@
 import {useQuery} from '@tanstack/react-query';
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {
   fetchNotifications,
   isNotificationDisabled,
@@ -18,8 +18,6 @@ export interface NotificationFilter {
 }
 
 export function useNotifications(org: string, repo: string) {
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
   const [filter, setFilter] = useState<NotificationFilter>({
     event: [],
     status: [],
@@ -49,45 +47,38 @@ export function useNotifications(org: string, repo: string) {
     },
   );
 
-  let filteredNotifications = notifications;
-  if (filter.event.length > 0) {
-    filteredNotifications = filteredNotifications.filter((n) =>
-      filter.event.includes(n.event),
-    );
-  }
-  const showEnabled = filter.status.includes(NotifiationStatus.enabled);
-  const showDisabled = filter.status.includes(NotifiationStatus.disabled);
-  if (!(showEnabled && showDisabled)) {
-    if (showEnabled) {
+  const filteredNotifications = useMemo(() => {
+    let filteredNotifications = notifications ?? [];
+    if (filter.event.length > 0) {
       filteredNotifications = filteredNotifications.filter((n) =>
-        isNotificationEnabled(n),
+        filter.event.includes(n.event),
       );
     }
-    if (showDisabled) {
-      filteredNotifications = filteredNotifications.filter((n) =>
-        isNotificationDisabled(n),
-      );
+    const showEnabled = filter.status.includes(NotifiationStatus.enabled);
+    const showDisabled = filter.status.includes(NotifiationStatus.disabled);
+    if (!(showEnabled && showDisabled)) {
+      if (showEnabled) {
+        filteredNotifications = filteredNotifications.filter((n) =>
+          isNotificationEnabled(n),
+        );
+      }
+      if (showDisabled) {
+        filteredNotifications = filteredNotifications.filter((n) =>
+          isNotificationDisabled(n),
+        );
+      }
     }
-  }
-
-  const paginatedNotifications = filteredNotifications?.slice(
-    page * perPage - perPage,
-    page * perPage - perPage + perPage,
-  );
+    return filteredNotifications;
+  }, [notifications, filter]);
 
   return {
-    notifications: notifications,
-    paginatedNotifications: paginatedNotifications,
+    notifications,
+    filteredNotifications,
     loading: loading || isPlaceholderData,
     error: error,
 
-    page: page,
-    setPage: setPage,
-    perPage: perPage,
-    setPerPage: setPerPage,
-
-    filter: filter,
-    setFilter: setFilter,
-    resetFilter: resetFilter,
+    filter,
+    setFilter,
+    resetFilter,
   };
 }
