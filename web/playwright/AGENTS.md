@@ -33,10 +33,18 @@ web/playwright/
 │   │   └── raw-client.ts         # ApiClient (raw, no auto-cleanup)
 │   ├── config.ts                 # API_URL, BASE_URL
 │   ├── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
+│   ├── failure-artifacts.ts      # W3C trace context helpers and on-failure Jaeger diagnostic attachments
+│   ├── failure-artifacts.test.ts # Tests for failure-artifacts
+│   ├── fetch-retry.ts            # fetchWithRetry/fetchJsonWithRetry with pluggable FetchImpl and setFetchImpl()
+│   ├── fetch-retry.test.ts       # Tests for fetch-retry
 │   ├── mailpit.ts                # Email testing utilities
+│   ├── namespace-notifications-ui.ts # Locator helpers for namespace notifications table (nsNotificationRow, etc.)
+│   ├── proxy.ts                  # Playwright proxy config from HTTP_PROXY/HTTPS_PROXY/NO_PROXY env vars
 │   ├── s3.ts                     # S3 storage utilities
+│   ├── s3.test.ts                # Tests for s3 utilities
 │   ├── security.ts               # Security scanning utilities
 │   ├── test-utils.ts             # General test helpers
+│   ├── upgrade-fixtures.ts       # Deterministic UPGRADE fixture constants for the operator-upgrade lane
 │   └── webhook.ts                # Webhook receiver utilities
 ├── fixtures/                     # Static test data (e.g., ORAS referrer JSON)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
@@ -121,6 +129,13 @@ PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE=allowlisted-host.example/ns/repo \
 PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL=https://allowlisted-host.example \
 npx playwright test --grep ambient
 ```
+
+### Proxy environment variables
+
+| Variable | Set by | Purpose |
+| -------- | ------ | ------- |
+| `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` | CI environment | Proxy server for browser and API request contexts (see `utils/proxy.ts`) |
+| `PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK` | `applyChromiumLoopbackBypass()` in `utils/proxy.ts` | Prevents Chromium from routing loopback (localhost) traffic through the proxy. Set automatically when a proxy is detected; CI services like the local web server and Mailpit run on localhost and must stay direct. Override by setting this variable to `1` before Playwright launches. |
 
 ### Running Tagged Tests
 
