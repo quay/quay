@@ -9,6 +9,7 @@
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "baseBranches": ["master", "/^redhat-\\d+\\.\\d+$/"],
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
