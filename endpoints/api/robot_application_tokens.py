@@ -23,6 +23,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser_with_full_access,
     log_action,
+    nickname,
     page_support,
     parse_args,
     path_param,
@@ -154,6 +155,7 @@ class UserRobotMintableScopes(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("listUserRobotMintableScopes")
     def get(self, robot_shortname):
         """List the scopes available when creating a token for a user's robot."""
         parent = get_authenticated_user()
@@ -172,6 +174,7 @@ class UserRobotTokens(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("listUserRobotTokens")
     @parse_args()
     @page_support()
     def get(self, robot_shortname, parsed_args, page_token):
@@ -184,6 +187,7 @@ class UserRobotTokens(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("createUserRobotToken")
     @validate_json_request("NewRobotToken")
     def post(self, robot_shortname):
         """Create a Management API token for a user's robot."""
@@ -200,6 +204,7 @@ class UserRobotToken(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("deleteUserRobotToken")
     def delete(self, robot_shortname, token_uuid):
         """Revoke a Management API token belonging to a user's robot."""
         parent = get_authenticated_user()
@@ -232,6 +237,7 @@ class OrganizationRobotMintableScopes(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("listOrganizationRobotMintableScopes")
     def get(self, orgname, robot_shortname):
         """List the scopes available when creating a token for an organization's robot."""
         _organization_robot(orgname, robot_shortname, allow_global_readonly_superuser=True)
@@ -252,6 +258,7 @@ class OrganizationRobotTokens(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("listOrganizationRobotTokens")
     @parse_args()
     @page_support()
     def get(self, orgname, robot_shortname, parsed_args, page_token):
@@ -263,6 +270,7 @@ class OrganizationRobotTokens(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("createOrganizationRobotToken")
     @validate_json_request("NewRobotToken")
     def post(self, orgname, robot_shortname):
         """Create a Management API token for an organization's robot."""
@@ -277,6 +285,7 @@ class OrganizationRobotToken(ApiResource):
     @require_session_login
     @require_fresh_login
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("deleteOrganizationRobotToken")
     def delete(self, orgname, robot_shortname, token_uuid):
         """Revoke a Management API token belonging to an organization's robot."""
         return _delete_token(_organization_robot(orgname, robot_shortname), orgname, token_uuid)
