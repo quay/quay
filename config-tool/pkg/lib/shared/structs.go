@@ -4,6 +4,10 @@ package shared
 type Options struct {
 	Mode         string // One of Online, Offline, Testing
 	Certificates map[string][]byte
+	// LDAPDialFunc, if non-nil, is called by ValidateLDAPServer instead of
+	// ldap.DialURL. Tests can set this field to inject an in-process stub
+	// LDAP server and avoid external network calls.
+	LDAPDialFunc LDAPDialFunc
 }
 
 // ValidationError is a struct that holds information about a failed field group policy
