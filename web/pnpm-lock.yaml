@@ -51,7 +51,7 @@ importers:
         specifier: ^4.4.1
         version: 4.10.0(webpack@5.106.2)
       '@tanstack/react-query':
-        specifier: ^4.13.5
+        specifier: ^4.42.1
         version: 4.44.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/node':
         specifier: ^20.6.5
