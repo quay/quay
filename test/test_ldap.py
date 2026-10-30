@@ -778,6 +778,23 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err_msg)
             self.assertTrue(response)
 
+    def test_verify_credentials_debug_log_masks_password_attributes(self):
+        with mock_ldap() as ldap:
+            with self.assertLogs("data.users.externalldap", level="DEBUG") as logs:
+                response, err_msg = ldap.verify_and_link_user("someuser", "somepass")
+
+        self.assertIsNone(err_msg)
+        self.assertEqual(response.username, "someuser")
+
+        # The debug log keeps all LDAP attributes for debugging, but the values of
+        # password-like attributes (e.g. userPassword) are masked.
+        found_logs = [line for line in logs.output if "DN uid=someuser,ou=employees" in line]
+        self.assertEqual(len(found_logs), 1)
+        self.assertIn("'uid': ['someuser']", found_logs[0])
+        self.assertIn("'mail': ['foo@bar.com']", found_logs[0])
+        self.assertIn("'userPassword': ['******']", found_logs[0])
+        self.assertNotIn("somepass", found_logs[0])
+
     def test_ldap_memberof_attr(self):
         base_dn = ["dc=quay", "dc=io"]
         admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
@@ -1692,6 +1709,119 @@ class TestLDAPPasswordRedaction(unittest.TestCase):
             output = buf.getvalue()
             self.assertNotIn(pw, output, f"Password leaked for DN={dn}, PW={pw}")
             self.assertIn("******", output, f"No redaction marker for DN={dn}, PW={pw}")
+
+    def _make_search_result_trace(self, result):
+        """Use real pprint.pformat to produce a search result trace, matching python-ldap."""
+        header = (
+            "*** <ldap.ldapobject.SimpleLDAPObject object at 0x3ff99b968d0> "
+            "ldap://10.250.64.5 - SimpleLDAPObject.result4"
+        )
+        return header + "\n=> result:\n" + pprint.pformat(result) + "\n"
+
+    def test_redacts_password_attribute_in_search_result(self):
+        """Search results may include userPassword hashes; they must be redacted."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        password_hash = (
+            b"{PBKDF2-SHA512}100000$ONCjgRfWvEhfL/+DIV23CIyBKfozw7jp$c"
+            b"/pkgmsLAoC0TnaWmG2bMgcPNB9xEsD93Oi+ylA9u6SNF56VdS06BpPbN"
+            b"83G45HXxXZATONCPqqWF+bRawIavA=="
+        )
+        result = [
+            (
+                "uid=testldap99,ou=users,dc=quay,dc=io",
+                {
+                    "uid": [b"testldap99"],
+                    "mail": [b"testldap99@quay.io"],
+                    "userPassword": [password_hash],
+                },
+            )
+        ]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn(password_hash.decode("utf-8"), output)
+        self.assertNotIn("PBKDF2", output)
+        self.assertIn("'userPassword': [b'******']", output)
+        # Non-sensitive attributes are preserved.
+        self.assertIn("testldap99", output)
+        self.assertIn("testldap99@quay.io", output)
+
+    def test_redacts_unicode_pwd_attribute_in_search_result(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("cn=user,dc=example", {"unicodePwd": [b"someadpassword"]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("someadpassword", output)
+        self.assertIn("'unicodePwd': [b'******']", output)
+
+    def test_redacts_password_attribute_with_quote_in_value(self):
+        """A value containing a quote is double-quoted by pprint."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        secret = "pa'ssword"
+        result = [("uid=user,dc=example", {"userPassword": [secret]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn(secret, output)
+        self.assertIn("'userPassword': [b'******']", output)
+
+    def test_redacts_multiple_password_attribute_values(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"userPassword": ["first", "second"], "uid": ["user"]})]
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("'first'", output)
+        self.assertNotIn("'second'", output)
+        self.assertIn("'userPassword': [b'******']", output)
+        self.assertIn("'uid': ['user']", output)
+
+    def test_search_result_without_password_attributes_unchanged(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"uid": [b"user"], "mail": [b"user@example.com"]})]
+        trace = self._make_search_result_trace(result)
+        redactor.write(trace)
+
+        self.assertEqual(buf.getvalue(), trace)
+
+    def test_redacts_password_attribute_across_search_and_bind(self):
+        """A trace containing both a bind and a search result redacts both."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        result = [("uid=user,dc=example", {"userPassword": [b"hashvalue"]})]
+        redactor.write(self._make_bind_trace_pprint("cn=admin,dc=quay,dc=io", "adminsecret"))
+        redactor.write(self._make_search_result_trace(result))
+        output = buf.getvalue()
+
+        self.assertNotIn("adminsecret", output)
+        self.assertNotIn("hashvalue", output)
+
+    def test_password_attribute_regex_no_exponential_backtracking(self):
+        """Regression test for CodeQL py/redos: many empty literals after a
+        password-like key, with no closing bracket, must not cause
+        exponential backtracking in the value pattern."""
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        # With an ambiguous separator this input takes ~4x longer per added
+        # repetition (11s at n=25, effectively a hang beyond n~30).
+        pathological = "'userPassword': [\"\" " + '"" ' * 1000
+        redactor.write(pathological)
+        output = buf.getvalue()
+
+        self.assertIn("userPassword", output)
 
     def test_redacts_split_write_header_then_args(self):
         buf = StringIO()
