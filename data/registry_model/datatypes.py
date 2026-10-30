@@ -6,6 +6,7 @@ from enum import Enum, unique
 from cachetools.func import lru_cache
 
 from data import model
+from data.database import IndexStatus
 from data.database import Manifest as ManifestTable
 from data.database import ManifestSecurityStatus
 from data.database import Tag as TagTable
@@ -376,18 +377,22 @@ class Manifest(
     @property
     def has_been_scanned(self):
         """
-        True if the manifest has been scanned the first time after a push, false otherwise
+        True if the manifest has completed a security scan, false otherwise.
+
+        ``index_status`` describes the current attempt and is changed to
+        ``IN_PROGRESS`` while a completed manifest is being reindexed. The
+        successful-scan marker keeps that history across a later failed
+        reindex. Completed rows written before the marker was introduced are
+        treated as successfully scanned for compatibility.
         """
-        # a new manifest that has not been scanned yet will not be present in the ManifestSecurityStatus table
         try:
-            query = ManifestSecurityStatus.get(
-                ManifestSecurityStatus.manifest_id == self.id
-            ).last_indexed
+            status = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest_id == self.id)
         except ManifestSecurityStatus.DoesNotExist:
             return False
-        if query is None:
-            return False
-        return True
+
+        return status.index_status == IndexStatus.COMPLETED or bool(
+            (status.metadata_json or {}).get("has_been_scanned")
+        )
 
     @property
     def is_manifest_list(self):
