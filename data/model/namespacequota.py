@@ -461,6 +461,8 @@ def get_repo_quota_for_view(namespace_name, repo_name):
 def get_quota_for_view(namespace_name):
 
     namespace_user = model.user.get_user_or_org(namespace_name)
+    if namespace_user is None:
+        return None
     quotas = get_namespace_quota_list(namespace_user.username)
 
     # Currently only one quota per namespace is supported
