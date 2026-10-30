@@ -394,6 +394,22 @@ func TestRunRejectsUnsafeDataDirBeforePurge(t *testing.T) {
 	require.ErrorContains(t, err, "is not an absolute non-root path")
 	// No service operations must have occurred before the guard fires.
 	assert.Empty(t, services.calls)
+
+	t.Run("home directory", func(t *testing.T) {
+		home, err := os.UserHomeDir()
+		require.NoError(t, err)
+		homeSvcs := &recordingServiceManager{}
+		homeU := &Uninstaller{
+			systemd: homeSvcs,
+			quadlet: system.NewQuadletManager(system.OSFS{}, env),
+			env:     env,
+			fs:      system.OSFS{},
+		}
+		err = homeU.Run(t.Context(), &Config{DataDir: home, Purge: true})
+		require.ErrorContains(t, err, "refusing to remove home directory")
+		// No service operations must have occurred before the home-directory guard fires.
+		assert.Empty(t, homeSvcs.calls)
+	})
 }
 
 type recordingServiceManager struct {
