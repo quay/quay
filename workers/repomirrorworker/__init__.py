@@ -50,6 +50,7 @@ from data.registry_model import registry_model
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from notifications import spawn_notification
 from util.audit import wrap_repository
+from util.names import conflicts_with_build_route
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from util.security.ssrf import (
@@ -1882,7 +1883,13 @@ def _ensure_local_repository(
     except Repository.DoesNotExist:
         pass
 
-    # Create new repository
+    # Only new repositories are subject to the build-route creation policy.
+    if conflicts_with_build_route(repo_name):
+        logger.warning(
+            "Skipping org mirror repository with build-route name %s/%s", org.username, repo_name
+        )
+        return None
+
     try:
         visibility_name = config.visibility.name
         new_repo = repository_model.create_repository(

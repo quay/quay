@@ -4,7 +4,12 @@ import re
 
 import pytest
 
-from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX, escape_tag
+from util.names import (
+    REPOSITORY_NAME_EXTENDED_REGEX,
+    REPOSITORY_NAME_REGEX,
+    conflicts_with_build_route,
+    escape_tag,
+)
 
 
 @pytest.mark.parametrize(
@@ -67,3 +72,24 @@ def test_repository_names_regex(name, extended_name, should_match):
         assert bool(result) == should_match and bool(result_extended) == should_match
     else:
         assert bool(result_extended) == should_match
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("foo/build", True),
+        ("foo/build/bar", True),
+        ("foo/bar/build/baz", True),
+        ("foo/build/bar/status", True),
+        ("foo/build/bar/logs", True),
+        ("build", False),
+        ("build/foo", False),
+        ("foo/building/bar", False),
+        ("foo/build/bar/extra", False),
+        ("foo/bar", False),
+        ("foo/tag/v1", False),
+        ("foo/logs", False),
+    ],
+)
+def test_build_route_creation_policy(name, expected):
+    assert conflicts_with_build_route(name) is expected

@@ -11,6 +11,26 @@ REPOSITORY_NAME_REGEX = re.compile(r"^[a-z0-9][\.a-z0-9_-]{0,254}$")
 REPOSITORY_NAME_EXTENDED_REGEX = re.compile(
     r"^(?=.{0,255}$)[a-z0-9][\.a-z0-9_-]*(?:\/[a-z0-9][\.a-z0-9_-]*)*$"
 )
+
+
+def conflicts_with_build_route(repository_name):
+    """Whether a new repository's detail URL can select a build API route.
+
+    Only complete build list, detail, status, and logs paths after a nonempty
+    repository prefix conflict. Existing names are not subject to this policy.
+    """
+    parts = repository_name.split("/")
+    for index in range(1, len(parts)):
+        if parts[index] != "build" or not all(parts[:index]):
+            continue
+        suffix = parts[index + 1 :]
+        if not suffix or (len(suffix) == 1 and suffix[0]):
+            return True
+        if len(suffix) == 2 and suffix[0] and suffix[1] in ("status", "logs"):
+            return True
+    return False
+
+
 VALID_TAG_PATTERN = r"[\w][\w.-]{0,127}"
 FULL_TAG_PATTERN = r"^[\w][\w.-]{0,127}$"
 
@@ -53,14 +73,14 @@ def parse_namespace_repository(
         if not allow_library:
             raise ImplicitLibraryNamespaceNotAllowed()
     else:
-        (namespace, repository) = parts
+        namespace, repository = parts
 
     if include_tag:
         parts = repository.split(":", 1)
         if len(parts) < 2:
             tag = "latest"
         else:
-            (repository, tag) = parts
+            repository, tag = parts
 
     repository = urllib.parse.quote_plus(repository, safe="/")
     if include_tag:
