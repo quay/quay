@@ -541,3 +541,64 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | **Network waits**   | Usually unnecessary - Playwright auto-waits for navigation and network idle                                                                                                                                                                                                                                                                            |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup                                                                                                                                                                                                                                                     |
+
+## Layout and CSS fixes
+
+When fixing a layout, CSS, or table-column bug, a test that only asserts element presence or
+visibility provides false confidence: the element can be visible while its rendered dimensions
+are wrong. Any fix targeting table layout, responsive column widths, flexbox/grid proportions,
+overflow behavior, or element sizing **must** include at least one geometry or CSS-property
+assertion alongside the usual presence check.
+
+### When to add geometry assertions
+
+Add geometry assertions whenever a fix involves:
+
+- Table column widths or `table-layout` changes
+- Flexbox or grid proportions (`flex`, `grid-template-columns`, etc.)
+- Responsive breakpoint behavior (column collapse, overflow, wrapping)
+- `overflow`, `min-width`, `max-width`, or `width` CSS properties
+
+### Preferred assertion patterns
+
+```typescript
+// 1. Non-zero rendered size — confirms the element occupies real space
+const box = await locator.boundingBox();
+expect(box).not.toBeNull();
+expect(box!.width).toBeGreaterThan(0);
+
+// 2. Viewport containment — confirms no horizontal overflow (1 px rounding tolerance)
+const viewport = page.viewportSize()!;
+expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
+
+// 3. Computed CSS property — stays within Playwright's auto-retry semantics;
+//    prefer this over document.querySelector + getComputedStyle
+await expect(locator).toHaveCSS('overflow', 'hidden');
+await expect(locator).toHaveCSS('table-layout', 'fixed');
+```
+
+Prefer `toHaveCSS()` over `page.evaluate(() => getComputedStyle(...))` because `toHaveCSS()`
+participates in Playwright's auto-retry loop and produces clearer failure messages.
+
+### Multi-viewport note
+
+If the fix targets a responsive breakpoint, run the assertion at the relevant viewport width —
+not just the default 1280 px. Set the viewport in a `beforeEach` or inline before the
+assertion:
+
+```typescript
+test('columns fit within narrow viewport', async ({superuserPage}) => {
+  await superuserPage.setViewportSize({width: 600, height: 800});
+  await superuserPage.goto('/superuser?tab=UsageLogs');
+
+  const descHeader = superuserPage.getByRole('columnheader', {name: 'Description'});
+  const box = await descHeader.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeGreaterThan(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(600 + 1);
+  await expect(descHeader).toHaveCSS('overflow', 'hidden');
+});
+```
+
+Restore the default viewport in `afterEach` when modifying it per-test, or scope the resize to
+a dedicated `test.describe` block so it does not affect unrelated tests.
