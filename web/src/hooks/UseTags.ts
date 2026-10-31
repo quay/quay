@@ -161,19 +161,40 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
   };
 }
 
+/**
+ * How long pull-stats responses stay "fresh" in React Query, and the poll
+ * interval when FEATURE_IMAGE_PULL_STATS_AUTO_REFRESH is enabled.
+ *
+ * Keep these equal: refetchInterval already drives updates while the page is
+ * open; staleTime: 0 would only cause extra refetches on row remounts
+ * (sort/filter/pagination) without making live updates any faster.
+ */
+export const PULL_STATS_STALE_TIME_MS = 60_000;
+export const PULL_STATS_REFETCH_INTERVAL_MS = PULL_STATS_STALE_TIME_MS;
+
 export function useTagPullStatistics(
   org: string,
   repo: string,
   tag: string,
   enabled = true,
+  autoRefresh = false,
 ) {
+  const shouldAutoRefresh = enabled && autoRefresh;
+  // Do not use keepPreviousData: when the query key's tag changes (row reuse on
+  // sort/filter/page), that would briefly show another tag's pull stats.
+  // Same-key refetches already retain `data` while isFetching; failed polls
+  // also keep the last successful `data` — prefer that over an Error flash.
   const {data, isLoading, isError, error} = useQuery(
     ['tagPullStatistics', org, repo, tag],
     () => getTagPullStatistics(org, repo, tag),
     {
       enabled: enabled,
       retry: false,
-      staleTime: 60000, // Consider data fresh for 60 seconds
+      staleTime: PULL_STATS_STALE_TIME_MS,
+      refetchInterval: shouldAutoRefresh
+        ? PULL_STATS_REFETCH_INTERVAL_MS
+        : false,
+      refetchIntervalInBackground: false,
     },
   );
 
@@ -185,13 +206,14 @@ export function useTagPullStatistics(
       ?.response?.status === 404;
 
   // For 404 (no data), return default values with 0 pulls
-  // For other errors, return null so components can show error state
+  // For other errors with no cached data, return null so UI can show error
   const pullStatistics = is404
     ? {
         tag_name: tag,
         tag_pull_count: 0,
         last_tag_pull_date: null,
         current_manifest_digest: '',
+        manifest_pull_count: 0,
         last_manifest_pull_date: null,
       }
     : data || null;
@@ -199,7 +221,8 @@ export function useTagPullStatistics(
   return {
     pullStatistics: pullStatistics,
     isLoading: isLoading,
-    isError: isError && !is404, // Only report error for non-404 errors
+    // Prefer last good stats over Error/- when a background poll fails
+    isError: isError && !is404 && !data,
     error: error,
   };
 }

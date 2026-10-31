@@ -995,7 +995,9 @@ export type QuayFeature =
   | 'SPAM_DETECTION'
   | 'SUPER_USERS'
   | 'ROBOT_API_TOKENS'
-  | 'ROBOT_API_TOKEN_EXCHANGE';
+  | 'ROBOT_API_TOKEN_EXCHANGE'
+  | 'IMAGE_PULL_STATS'
+  | 'IMAGE_PULL_STATS_AUTO_REFRESH';
 
 /**
  * Quay configuration from /config endpoint
