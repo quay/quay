@@ -1,5 +1,11 @@
-import React from 'react';
-import {Control, FieldErrors, Controller} from 'react-hook-form';
+import React, {useCallback} from 'react';
+import {Controller} from 'react-hook-form';
+import type {
+  Control,
+  FieldErrors,
+  UseFormGetValues,
+  UseFormReset,
+} from 'react-hook-form';
 import {
   FormGroup,
   FormHelperText,
@@ -51,6 +57,8 @@ interface MirroringConfigurationProps {
   }) => void;
   architectureFilter: string[];
   setArchitectureFilter: (archs: string[]) => void;
+  getValues: UseFormGetValues<MirroringFormData>;
+  reset: UseFormReset<MirroringFormData>;
 }
 
 export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
@@ -71,7 +79,33 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
   addAlert,
   architectureFilter,
   setArchitectureFilter,
+  getValues,
+  reset,
 }) => {
+  const handleToggleMirroring = useCallback(
+    async (checked: boolean, _onChange: (value: boolean) => void) => {
+      try {
+        await toggleMirroring(namespace, repoName, checked);
+        const currentValues = getValues();
+        reset({...currentValues, isEnabled: checked});
+        if (config) {
+          setConfig({...config, is_enabled: checked});
+        }
+        addAlert({
+          variant: AlertVariant.Success,
+          title: `Mirror ${checked ? 'enabled' : 'disabled'} successfully`,
+        });
+      } catch (err) {
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: 'Error toggling mirror',
+          message: err.message,
+        });
+      }
+    },
+    [namespace, repoName, getValues, reset, config, setConfig, addAlert],
+  );
+
   return (
     <>
       <Title headingLevel="h3">
@@ -90,24 +124,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
           }
           data-testid="mirror-enabled-checkbox"
-          customOnChange={async (checked, onChange) => {
-            try {
-              await toggleMirroring(namespace, repoName, checked);
-              onChange(checked);
-              addAlert({
-                variant: AlertVariant.Success,
-                title: `Mirror ${
-                  checked ? 'enabled' : 'disabled'
-                } successfully`,
-              });
-            } catch (err) {
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error toggling mirror',
-                message: err.message,
-              });
-            }
-          }}
+          customOnChange={handleToggleMirroring}
         />
       )}
 

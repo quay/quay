@@ -15,6 +15,7 @@ function TestWrapper({
   customValidation,
   disabled = false,
   showNoneWhenEmpty = false,
+  autoComplete,
 }: {
   required?: boolean;
   type?: 'text' | 'password';
@@ -23,6 +24,7 @@ function TestWrapper({
   customValidation?: (v: string) => string | boolean;
   disabled?: boolean;
   showNoneWhenEmpty?: boolean;
+  autoComplete?: string;
 }) {
   const {
     control,
@@ -41,6 +43,7 @@ function TestWrapper({
       customValidation={customValidation}
       disabled={disabled}
       showNoneWhenEmpty={showNoneWhenEmpty}
+      autoComplete={autoComplete}
     />
   );
 }
@@ -87,5 +90,16 @@ describe('FormTextInput', () => {
     const input = screen.getByRole('textbox');
     await userEvent.type(input, 'myuser');
     expect(input).toHaveValue('myuser');
+  });
+
+  it('applies autoComplete attribute when provided', () => {
+    render(<TestWrapper autoComplete="off" />);
+    expect(screen.getByRole('textbox')).toHaveAttribute('autocomplete', 'off');
+  });
+
+  it('applies autoComplete new-password when provided', () => {
+    render(<TestWrapper type="password" autoComplete="new-password" />);
+    const input = document.querySelector('input[type="password"]');
+    expect(input).toHaveAttribute('autocomplete', 'new-password');
   });
 });
