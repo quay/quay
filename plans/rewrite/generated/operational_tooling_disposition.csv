@@ -1,0 +1,17 @@
+script,category,disposition,go_migration_required,sunset_target,notes
+tools/emailinvoice.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/generatekeypair.py,crypto-config,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/invoices.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/migratebranchregex.py,data-admin,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/renameuser.py,data-admin,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/renderinvoice.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/sendconfirmemail.py,email-ops,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+tools/sendresetemail.py,email-ops,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/backfillreplication.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/config/configdocs/configdoc.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/disableabuser.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/fixuseradmin.py,data-admin,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/generatepresharedkey.py,crypto-config,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/migrate/delete_access_tokens.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/removelocation.py,data-admin,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
+util/verifyplacements.py,manual-cli,retire-approved,false,before-python-retirement,Per D-004 approval: scripts not critical for Go migration target.
