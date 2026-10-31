@@ -385,6 +385,19 @@ See `e2e/auth/logout.spec.ts` for a complete implementation.
 
 ## Test Consolidation Guidelines
 
+### Before Writing New Specs
+
+Before creating a new spec file, search for existing coverage:
+
+1. **Grep for the feature area** — search by feature name, component, and key `data-testid` values:
+   ```bash
+   grep -r 'security-scan\|securityScan\|scan-status' web/playwright/e2e/
+   ```
+2. **If matching describe blocks exist** — extend them in place rather than creating a parallel spec file.
+3. **New spec files are appropriate only when** the grep confirms no existing describe block covers the area, or when the new scenarios require an isolated setup that would conflict with existing describe scoping.
+
+See the [Directory Structure](#directory-structure) map above to identify which existing spec file to extend.
+
 ### When to Consolidate
 
 - Tests that share the same setup (create repo -> ...)
