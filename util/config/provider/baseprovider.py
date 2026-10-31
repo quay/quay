@@ -10,6 +10,12 @@ from util.config.schema import CONFIG_SCHEMA
 logger = logging.getLogger(__name__)
 
 
+class InvalidConfigException(Exception):
+    """Exception raised when an override configuration has an invalid value."""
+
+    pass
+
+
 class CannotWriteConfigException(Exception):
     """
     Exception raised when the config cannot be written.
@@ -36,9 +42,12 @@ def import_yaml(config_obj, config_file):
         if isinstance(c, str):
             raise Exception("Invalid YAML config file: " + str(c))
 
-        for key in c.keys():
-            if key.isupper():
-                config_obj[key] = c[key]
+        config_updates = {key: value for key, value in c.items() if key.isupper()}
+        bootstrap_scope = config_updates.get("BOOTSTRAP_TOKEN_SCOPE")
+        if "BOOTSTRAP_TOKEN_SCOPE" in config_updates and not isinstance(bootstrap_scope, str):
+            raise InvalidConfigException("BOOTSTRAP_TOKEN_SCOPE must be a space-separated string")
+
+        config_obj.update(config_updates)
 
     # if config_obj.get("SETUP_COMPLETE", True):
     #     try:
