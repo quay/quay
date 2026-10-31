@@ -535,9 +535,28 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Async/Await**     | Every Playwright interaction must be `await`ed - no implicit chaining                                                                                                                                                                                                                                                                                  |
 | **Auto-waiting**    | Locators auto-wait for elements; explicit waits are rarely needed                                                                                                                                                                                                                                                                                      |
-| **Timeouts**        | Configure via `timeout` in `playwright.config.ts`, not per-command                                                                                                                                                                                                                                                                                     |
+| **Timeouts**        | Three distinct patterns — choose based on context: (1) **Global defaults:** set `timeout` in `playwright.config.ts`; never hardcode arbitrary timeouts in `test()` bodies. (2) **Long-running `beforeAll` hooks:** call `test.setTimeout(ms)` at the **top** of the `beforeAll` callback to extend that hook's deadline — this IS the correct API for hooks that do backend polling (e.g., waiting for a security scan). (3) **Per-describe timeout (Playwright ≥ 1.33):** call `test.describe.configure({ timeout: ms })` at the top of the describe callback to apply a timeout to all tests in that block. **Never** pass `{ timeout: ms }` as the second argument to `test.describe()` — that three-argument form is silently ignored by Playwright and leaves the test running under the default timeout. See [Timeout Patterns](#timeout-patterns) below. |
 | **Screenshots**     | Configure capture-on-failure in `playwright.config.ts`                                                                                                                                                                                                                                                                                                 |
 | **Selectors**       | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors                                                                                                                                                                                                                                                                                |
 | **Network waits**   | Usually unnecessary - Playwright auto-waits for navigation and network idle                                                                                                                                                                                                                                                                            |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
 | **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup                                                                                                                                                                                                                                                     |
+
+### Timeout Patterns
+
+```typescript
+// ❌ Wrong — silently ignored by Playwright; the test runs under the default timeout
+test.describe('Security scan', { timeout: 120_000 }, () => { /* ... */ });
+
+// ✅ Long-running beforeAll hook: call test.setTimeout() at the top of the hook
+test.beforeAll(async () => {
+  test.setTimeout(120_000); // extends this hook's deadline to 2 minutes
+  await pollUntilScanComplete(/* ... */);
+});
+
+// ✅ Per-describe timeout (Playwright v1.33+): applies to all tests in the block
+test.describe('Security scan', () => {
+  test.describe.configure({ timeout: 120_000 });
+  // All tests in this describe block now run under the 2-minute timeout
+});
+```
