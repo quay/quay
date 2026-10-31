@@ -16,7 +16,11 @@ from data.database import (
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.secscan_model.interface import SecurityScannerIndexerInterface
-from data.secscan_model.secscan_v4_model import IndexReportState, _has_container_layers
+from data.secscan_model.secscan_v4_model import (
+    IndexReportState,
+    _has_container_layers,
+    _is_non_image_artifact_config,
+)
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import (
     secscan_v2_claim_status,
@@ -237,6 +241,13 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         manifest = ManifestDataType.for_manifest(candidate, None)
 
         if manifest.is_manifest_list:
+            self._mark_unsupported(manifest)
+            secscan_v2_scan_result.labels(result="unsupported").inc()
+            return None
+
+        # Skip non-image artifacts before listing layers or calling Clair; the backstop below
+        # misses them when they reuse standard tar layer types.
+        if _is_non_image_artifact_config(manifest.config_media_type):
             self._mark_unsupported(manifest)
             secscan_v2_scan_result.labels(result="unsupported").inc()
             return None

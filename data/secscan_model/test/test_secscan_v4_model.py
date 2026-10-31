@@ -40,18 +40,22 @@ from data.secscan_model.datatypes import (
     vulns_to_cves,
 )
 from data.secscan_model.secscan_v4_model import (
+    OCI_EMPTY_CONFIG_MEDIA_TYPE,
     IndexReportState,
     SecurityInformationLookupResult,
     V4SecurityScanner,
     _has_container_layers,
+    _is_non_image_artifact_config,
     features_for,
 )
 from image.docker.schema2 import (
+    DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
     DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
 from image.oci import (
+    OCI_IMAGE_CONFIG_CONTENT_TYPE,
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
 )
@@ -1102,6 +1106,148 @@ def test_has_container_layers_no_media_type():
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
     assert not _has_container_layers([layer])
+
+
+@pytest.mark.parametrize(
+    "config_media_type, expected",
+    [
+        # Only denylisted non-image sentinels are treated as artifacts.
+        (OCI_EMPTY_CONFIG_MEDIA_TYPE, True),
+        # Real container images -> indexable, not an artifact.
+        (OCI_IMAGE_CONFIG_CONTENT_TYPE, False),
+        (DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE, False),
+        # Custom-layer artifacts are handled by the `_has_container_layers` backstop, not here,
+        # so they are NOT denylisted by config type.
+        ("application/vnd.cncf.helm.config.v1+json", False),
+        ("application/vnd.cyclonedx+json", False),
+        ("application/vnd.in-toto+json", False),
+        # Non-standard / garbage config types belong to real, scannable images in production
+        # (e.g. the literal "a"); they must fall through to the layer backstop, not be gated.
+        ("a", False),
+        ("application/vnd.unknown.config.v1+json", False),
+        # Missing/empty config media type -> defer to the layer heuristic (not an artifact here).
+        (None, False),
+        ("", False),
+    ],
+)
+def test_is_non_image_artifact_config(config_media_type, expected):
+    assert _is_non_image_artifact_config(config_media_type) is expected
+
+
+def test_perform_indexing_skips_oci_artifact(initialized_db, set_secscan_config):
+    """
+    A non-image OCI artifact (identified by its config media type) is marked unsupported
+    before any layers are listed or any index request is sent to Clair.
+    """
+    user = model.user.get_user("devtable")
+    repo = model.repository.create_repository("devtable", "testociartifact", user)
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    tag_map = {}
+    structure = (3, [], ["latest"])
+    create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="oci")
+
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    # Force the stored manifest to look like an OCI artifact (empty config sentinel).
+    Manifest.update(config_media_type=OCI_EMPTY_CONFIG_MEDIA_TYPE).where(
+        Manifest.id == manifest._db_id
+    ).execute()
+
+    ManifestSecurityStatus.delete().execute()
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {
+            "err": None,
+            "state": IndexReportState.Index_Finished,
+        },
+        "abc",
+    )
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+
+    artifact_db_id = manifest._db_id
+
+    # perform_indexing() processes every manifest in the test DB, so we spy on the real
+    # list_manifest_layers and assert only that it was never invoked for the artifact.
+    real_list_manifest_layers = registry_model.list_manifest_layers
+    listed_manifest_ids = []
+
+    def _spy_list_manifest_layers(m, *args, **kwargs):
+        listed_manifest_ids.append(m._db_id)
+        return real_list_manifest_layers(m, *args, **kwargs)
+
+    with mock.patch(
+        "data.secscan_model.secscan_v4_model.registry_model.list_manifest_layers",
+        side_effect=_spy_list_manifest_layers,
+    ):
+        secscan.perform_indexing()
+
+    # The artifact must be filtered out before its layers are ever listed.
+    assert artifact_db_id not in listed_manifest_ids
+
+    mss = ManifestSecurityStatus.get(manifest=artifact_db_id)
+    assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+
+def test_perform_indexing_scans_image_with_nonstandard_config(initialized_db, set_secscan_config):
+    """
+    Regression guard: a real container image whose config media type is a non-standard/garbage
+    string (in production, many millions of scannable images carry the literal "a") must NOT be
+    treated as an artifact. Its layers must be listed and it must be indexed normally, because
+    the config-type gate is a denylist of known non-image sentinels, not an allowlist.
+    """
+    user = model.user.get_user("devtable")
+    repo = model.repository.create_repository("devtable", "testnonstdconfig", user)
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    tag_map = {}
+    structure = (3, [], ["latest"])
+    create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="oci")
+
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    # Force a garbage config media type on an otherwise-real image manifest.
+    Manifest.update(config_media_type="a").where(Manifest.id == manifest._db_id).execute()
+
+    ManifestSecurityStatus.delete().execute()
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {
+            "err": None,
+            "state": IndexReportState.Index_Finished,
+        },
+        "abc",
+    )
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+
+    image_db_id = manifest._db_id
+
+    real_list_manifest_layers = registry_model.list_manifest_layers
+    listed_manifest_ids = []
+
+    def _spy_list_manifest_layers(m, *args, **kwargs):
+        listed_manifest_ids.append(m._db_id)
+        return real_list_manifest_layers(m, *args, **kwargs)
+
+    with mock.patch(
+        "data.secscan_model.secscan_v4_model.registry_model.list_manifest_layers",
+        side_effect=_spy_list_manifest_layers,
+    ):
+        secscan.perform_indexing()
+
+    # The image must have had its layers listed and been indexed, not gated as an artifact.
+    assert image_db_id in listed_manifest_ids
+
+    mss = ManifestSecurityStatus.get(manifest=image_db_id)
+    assert mss.index_status == IndexStatus.COMPLETED
 
 
 def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
