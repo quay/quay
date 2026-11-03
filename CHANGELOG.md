@@ -3,8 +3,25 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.28"></a>
+## [v3.9.28] - 2026-11-03
+### [Redhat-3.9] PROJQUAY-13439: Fix(Deps)
+- [67eb09e53](https://github.com/quay/quay/commit/67eb09e53dc053ce226628bfbb755b0278c3e6a2): bump pypdf, urllib3 and other CVE pins ([#7620](https://github.com/quay/quay/issues/7620))
+### [Redhat-3.9] PROJQUAY-13456: Fix(Cve)
+- [f2ecbe54f](https://github.com/quay/quay/commit/f2ecbe54fa0ba4601fc1ea7417e4739dcc4ba2e9): CVE-2026-101918 - PyJWT ([#7604](https://github.com/quay/quay/issues/7604))
+### [Redhat-3.9] PROJQUAY-13541: Fix(Deps)
+- [9b0f54e45](https://github.com/quay/quay/commit/9b0f54e459b3ee2866d824000b8b235a58af29a3): bump cryptography to 50.0.0 and pyOpenSSL to 26.4.0 ([#7634](https://github.com/quay/quay/issues/7634))
+### [Redhat-3.9] PROJQUAY-13573: Fix(Deps)
+- [029e0d48b](https://github.com/quay/quay/commit/029e0d48b8892f6e43a5161521216b21669ed798): bump click to 8.3.3 ([#7659](https://github.com/quay/quay/issues/7659))
+### [Redhat-3.9] PROJQUAY-13749
+- [8c052ab04](https://github.com/quay/quay/commit/8c052ab04511efd565f0794f71e8d2a57c9df605): Fix for quay onboarding issue ([#7695](https://github.com/quay/quay/issues/7695))
+### [Redhat-3.9] PROJQUAY-13832: Fix(Cve)
+- [869c7aa75](https://github.com/quay/quay/commit/869c7aa757ded30a3f9bf107e2d5417e81bdfa5c): CVE-2026-112390 - bump pillow ([#7889](https://github.com/quay/quay/issues/7889))
+### [Redhat-3.9] PROJQUAY-14104: Fix(Deps)
+- [0979d944c](https://github.com/quay/quay/commit/0979d944cc75219633d7840fb05cd76004f46d2b): bump oauthlib to v4.0.0 ([#7927](https://github.com/quay/quay/issues/7927))
+
 <a name="v3.9.27"></a>
-## [v3.9.27] - 2026-09-22
+## [v3.9.27] - 2026-09-30
 ### PROJQUAY-12882: Fix(Cve)
 - [816b72d03](https://github.com/quay/quay/commit/816b72d03b4629def4623ded7901b61fbb16c37c): bump lxml to 6.1.3 for CVE-2026-49825 ([#7296](https://github.com/quay/quay/issues/7296))
 ### PROJQUAY-12966: Fix(Cve)
@@ -1795,7 +1812,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.27...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.28...HEAD
+[v3.9.28]: https://github.com/quay/quay/compare/v3.9.27...v3.9.28
 [v3.9.27]: https://github.com/quay/quay/compare/v3.9.26...v3.9.27
 [v3.9.26]: https://github.com/quay/quay/compare/v3.9.25...v3.9.26
 [v3.9.25]: https://github.com/quay/quay/compare/v3.9.24...v3.9.25
