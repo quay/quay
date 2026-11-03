@@ -36,6 +36,7 @@ reminders = 0
 
 
 def escape(value, property_value=False):
+    """Escape workflow command data and optional annotation properties."""
     value = str(value).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
     if property_value:
         value = value.replace(":", "%3A").replace(",", "%2C")
@@ -43,6 +44,7 @@ def escape(value, property_value=False):
 
 
 def warn(path, line, message):
+    """Report advisory findings only for files selected by pre-commit."""
     global reminders
     if path not in selected:
         return
@@ -69,6 +71,7 @@ for path in files:
             aliases.update({alias.asname or alias.name: alias.name for alias in node.names})
 
     def decorator_name(decorator):
+        """Resolve decorator names, including aliases imported from endpoints.api."""
         target = decorator.func if isinstance(decorator, ast.Call) else decorator
         if isinstance(target, ast.Name):
             return aliases.get(target.id, target.id)
@@ -76,11 +79,43 @@ for path in files:
             return target.attr
         return None
 
+    def route_count(decorators, method):
+        """Count declared URLs for a method, or return None for dynamic routing."""
+        count = 0
+        for decorator in decorators:
+            if not isinstance(decorator, ast.Call) or not decorator.args:
+                return None
+            if any(isinstance(arg, ast.Starred) for arg in decorator.args):
+                return None
+            if any(keyword.arg is None for keyword in decorator.keywords):
+                return None
+            methods = next((keyword.value for keyword in decorator.keywords
+                            if keyword.arg == "methods"), None)
+            if methods is not None:
+                try:
+                    allowed = ast.literal_eval(methods)
+                except (ValueError, TypeError):
+                    return None
+                if (not isinstance(allowed, (list, tuple, set))
+                        or any(not isinstance(item, str) for item in allowed)):
+                    return None
+                if method.upper() not in {item.upper() for item in allowed}:
+                    continue
+            count += len(decorator.args)
+        return count
+
     for resource in ast.walk(tree):
         if not isinstance(resource, ast.ClassDef):
             continue
-        if not any(decorator_name(d) == "resource" for d in resource.decorator_list):
+        routes = [d for d in resource.decorator_list if decorator_name(d) == "resource"]
+        if not routes:
             continue
+        custom_bases = [ast.unparse(base) for base in resource.bases
+                        if decorator_name(base) not in {"ApiResource", "RepositoryParamResource"}]
+        if custom_bases:
+            warn(path, resource.lineno,
+                 f"{resource.name} inherits from {', '.join(custom_bases)}; inherited HTTP "
+                 "handlers cannot be verified statically. Check their @nickname(...) metadata.")
         for handler in resource.body:
             if not isinstance(handler, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
@@ -116,6 +151,16 @@ for path in files:
                 warn(path, handler.lineno,
                      f"{label}: @nickname(...) needs a non-empty string or list of distinct "
                      "non-empty strings.")
+                continue
+            count = route_count(routes, handler.name)
+            if count is None:
+                warn(path, handler.lineno,
+                     f"{label}: could not determine the route count statically; verify that "
+                     "@nickname(...) provides a distinct operation ID for every route.")
+            elif len(values) < count:
+                warn(path, handler.lineno,
+                     f"{label} serves {count} routes but @nickname(...) provides only "
+                     f"{len(values)} operation ID(s); discovery needs a distinct ID per route.")
                 continue
             # Lists are alternative IDs allocated by discovery for multiple routes.
             # Only scalar/scalar collisions are unambiguous without running Quay.

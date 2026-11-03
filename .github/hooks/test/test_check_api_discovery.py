@@ -13,6 +13,7 @@ HOOK = Path(__file__).resolve().parents[1] / "check-api-discovery.sh"
 
 class TestAPIDiscoveryReminder(unittest.TestCase):
     def setUp(self):
+        """Build a standalone source tree so no Quay services are needed."""
         self.directory = tempfile.TemporaryDirectory(prefix="quay-discovery-hook-")
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
@@ -20,12 +21,14 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         self.api.mkdir(parents=True)
 
     def write(self, name, source):
+        """Create a source fixture and return its repository-relative path."""
         path = self.api / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(textwrap.dedent(source), encoding="utf-8")
         return str(path.relative_to(self.root))
 
     def run_hook(self, *filenames, environment=None):
+        """Run the real shell entry point and require advisory exit status zero."""
         env = dict(os.environ, GITHUB_ACTIONS="false")
         env.update(environment or {})
         result = subprocess.run(
@@ -66,7 +69,7 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
                 def get(self):
                     pass
 
-                @operation("createExample")
+                @operation(["createOne", "createTwo"])
                 def post(self):
                     pass
 
@@ -78,6 +81,113 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
             """,
         )
         self.assertIn("0 reminder(s)", self.run_hook(filename))
+
+    def test_multi_route_nickname_cardinality_warns_without_blocking(self):
+        """Both scalar IDs and undersized ID lists can break runtime discovery."""
+        for routes in ['"/v1/one", "/v1/two"', '*["/v1/one", "/v1/two"]']:
+            for nickname in ['"getExample"', '["getExample"]']:
+                with self.subTest(routes=routes, nickname=nickname):
+                    filename = self.write(
+                        "example.py",
+                        f"""\
+                        @resource({routes})
+                        class Example(ApiResource):
+                            @nickname({nickname})
+                            def get(self):
+                                pass
+                        """,
+                    )
+                    output = self.run_hook(filename)
+                    if routes.startswith("*"):
+                        self.assertIn("could not determine the route count", output)
+                    else:
+                        self.assertIn("serves 2 routes", output)
+                        self.assertIn("only 1 operation ID(s)", output)
+
+    def test_stacked_resource_decorators_need_distinct_ids(self):
+        filename = self.write(
+            "example.py",
+            """\
+            @resource("/v1/one")
+            @resource("/v1/two")
+            class Example(ApiResource):
+                @nickname("getExample")
+                def get(self):
+                    pass
+            """,
+        )
+        self.assertIn("serves 2 routes", self.run_hook(filename))
+
+    def test_method_specific_routes_do_not_require_extra_ids(self):
+        filename = self.write(
+            "example.py",
+            """\
+            @resource("/v1/one", methods=["get"])
+            @resource("/v1/two", methods=["POST"])
+            class Example(ApiResource):
+                @nickname("getExample")
+                def get(self):
+                    pass
+
+                @nickname("createExample")
+                def post(self):
+                    pass
+            """,
+        )
+        self.assertIn("0 reminder(s)", self.run_hook(filename))
+
+    def test_dynamic_methods_require_manual_route_count_verification(self):
+        filename = self.write(
+            "example.py",
+            """\
+            @resource("/v1/example", methods=ALLOWED_METHODS)
+            class Example(ApiResource):
+                @nickname("getExample")
+                def get(self):
+                    pass
+            """,
+        )
+        self.assertIn("could not determine the route count", self.run_hook(filename))
+
+    def test_inherited_handlers_require_manual_verification(self):
+        """Do not report a clean audit when handlers may come from custom bases."""
+        for parent in ["Base", "ImportedBase"]:
+            with self.subTest(parent=parent):
+                filename = self.write(
+                    "example.py",
+                    f"""\
+                    from another_module import ImportedBase
+
+                    class Base(ApiResource):
+                        def get(self):
+                            pass
+
+                    @resource("/v1/example")
+                    class Example({parent}):
+                        pass
+                    """,
+                )
+                output = self.run_hook(filename)
+                self.assertIn(f"Example inherits from {parent}", output)
+                self.assertIn("inherited HTTP handlers cannot be verified statically", output)
+
+    def test_standard_base_aliases_do_not_need_manual_verification(self):
+        """Known Quay bases keep their normal behavior even when imported as aliases."""
+        for parent in ["API", "RepoAPI"]:
+            with self.subTest(parent=parent):
+                filename = self.write(
+                    "example.py",
+                    f"""\
+                    from endpoints.api import ApiResource as API, RepositoryParamResource as RepoAPI
+
+                    @resource("/v1/example")
+                    class Example({parent}):
+                        @nickname("getExample")
+                        def get(self):
+                            pass
+                    """,
+                )
+                self.assertIn("0 reminder(s)", self.run_hook(filename))
 
     def test_empty_or_invalid_nicknames_warn(self):
         for value in ['""', '"  "', "[]", '["same", "same"]', "[123]", "None"]:
@@ -158,6 +268,7 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         self.assertNotIn("::error", output)
 
     def test_robot_token_negative_control(self):
+        """Reproduce all eight omitted robot-token operations and their annotations."""
         source = ""
         for account in ("User", "Organization"):
             for suffix, methods in (
