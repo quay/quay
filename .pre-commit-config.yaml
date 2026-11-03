@@ -58,6 +58,14 @@ repos:
         language: script
         files: ^web/playwright/.*\.spec\.tsx?$
         pass_filenames: false
+    -   id: check-api-discovery
+        name: Remind about API discovery annotations (non-blocking)
+        entry: .github/hooks/check-api-discovery.sh
+        language: script
+        files: ^(endpoints/api/.*\.py|\.github/hooks/check-api-discovery\.sh|\.pre-commit-config\.yaml)$
+        exclude: ^endpoints/api/(.*/)?tests?/
+        verbose: true
+        require_serial: true
 -   repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1-1
     hooks:
