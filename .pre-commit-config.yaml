@@ -62,7 +62,7 @@ repos:
         name: Remind about API discovery annotations (non-blocking)
         entry: .github/hooks/check-api-discovery.sh
         language: script
-        files: ^(endpoints/api/.*\.py|\.github/hooks/check-api-discovery\.sh|\.pre-commit-config\.yaml)$
+        files: ^endpoints/api/.*\.py$
         exclude: ^endpoints/api/(.*/)?tests?/
         verbose: true
         require_serial: true

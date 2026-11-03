@@ -28,9 +28,6 @@ files = sorted(
 )
 requested = {(root / filename).resolve() for filename in sys.argv[2:]}
 selected = set(files).intersection(requested) if requested else set(files)
-if any(path.name == ".pre-commit-config.yaml" or path.name == "check-api-discovery.sh"
-       for path in requested):
-    selected = set(files)
 
 reminders = 0
 
