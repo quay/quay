@@ -3,10 +3,33 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.28"></a>
+## [v3.10.28] - 2026-11-03
+### [Redhat-3.10] NO-ISSUE: Chore(Containerfile)
+- [fe1a9c208](https://github.com/quay/quay/commit/fe1a9c2081b4dd743c6b42368b2cbc99f568f5c6): align Containerfile.art with 3.14/3.15 standards ([#7706](https://github.com/quay/quay/issues/7706))
+### [Redhat-3.10] PROJQUAY-13346: Fix(Cve)
+- [ee74c0644](https://github.com/quay/quay/commit/ee74c0644ad749e808b90c6c7e09b834223bfdad): bump source-map-js for CVE-2026-93749 ([#7830](https://github.com/quay/quay/issues/7830))
+### [Redhat-3.10] PROJQUAY-13432: Fix(Deps)
+- [83e7d3c2f](https://github.com/quay/quay/commit/83e7d3c2f6867580058727ba2ffee228c04073c0): bump pypdf, urllib3 and other CVE pins ([#7618](https://github.com/quay/quay/issues/7618))
+### [Redhat-3.10] PROJQUAY-13449: Fix(Cve)
+- [92e98e345](https://github.com/quay/quay/commit/92e98e3454529cadf9126529ddd755fee72282b5): CVE-2026-101918 - PyJWT ([#7603](https://github.com/quay/quay/issues/7603))
+### [Redhat-3.10] PROJQUAY-13540: Fix(Deps)
+- [56da3469f](https://github.com/quay/quay/commit/56da3469faad04654cb28318d658727d831523b1): bump cryptography to 50.0.0 and pyOpenSSL to 26.4.0 ([#7633](https://github.com/quay/quay/issues/7633))
+### [Redhat-3.10] PROJQUAY-13572: Fix(Deps)
+- [3b794b888](https://github.com/quay/quay/commit/3b794b888f70fbb79a77e2e2e18fda2e29cda157): bump click to 8.3.3 ([#7658](https://github.com/quay/quay/issues/7658))
+### [Redhat-3.10] PROJQUAY-13748
+- [1f6ddc29b](https://github.com/quay/quay/commit/1f6ddc29b0dda9ec088799c27670d0070803c79c): Fix for quay onboarding issue ([#7694](https://github.com/quay/quay/issues/7694))
+### [Redhat-3.10] PROJQUAY-13829: Fix(Cve)
+- [0241054b6](https://github.com/quay/quay/commit/0241054b650a22b3e6d2e699368ed7a72082d074): CVE-2026-112390 - bump pillow ([#7890](https://github.com/quay/quay/issues/7890))
+### [Redhat-3.10] PROJQUAY-14097: Fix(Deps)
+- [5f9b0cbc0](https://github.com/quay/quay/commit/5f9b0cbc06b7f9d80d3cc42adf29b2f0d35105e3): bump oauthlib to v4.0.0 ([#7926](https://github.com/quay/quay/issues/7926))
+
 <a name="v3.10.27"></a>
-## [v3.10.27] - 2026-09-22
+## [v3.10.27] - 2026-10-08
 ### PROJQUAY-12875: Fix(Cve)
 - [06e4352a9](https://github.com/quay/quay/commit/06e4352a988c26ec3a3df46546c31b33a33795d4): bump lxml to 6.1.3 for CVE-2026-49825 ([#7295](https://github.com/quay/quay/issues/7295))
+### PROJQUAY-54770: Fix(Cve)
+- [aa2c74dce](https://github.com/quay/quay/commit/aa2c74dcefacc977d62a106dd0f5d22e69d6ff46): CVE-2026-54770 - bump WebOb ([#7590](https://github.com/quay/quay/issues/7590))
 ### [Redhat-3.10] PROJQUAY-12894: Fix(Cve): CVE-2026-59879
 - [368a59f2d](https://github.com/quay/quay/commit/368a59f2d08e8a3ad66d350a07a96562db25ab97): Bump immutable to 5.1.9 ([#7119](https://github.com/quay/quay/issues/7119))
 ### [Redhat-3.10] PROJQUAY-12991: Fix(Cve): CVE-2026-82417
@@ -695,6 +718,21 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.27"></a>
+## [v3.9.27] - 2026-09-30
+### PROJQUAY-12882: Fix(Cve)
+- [816b72d03](https://github.com/quay/quay/commit/816b72d03b4629def4623ded7901b61fbb16c37c): bump lxml to 6.1.3 for CVE-2026-49825 ([#7296](https://github.com/quay/quay/issues/7296))
+### PROJQUAY-12966: Fix(Cve)
+- [6dabe9975](https://github.com/quay/quay/commit/6dabe9975b13f28b964a849ac4aec9efacc863cd): CVE-2026-84292 - bump fast-uri ([#7125](https://github.com/quay/quay/issues/7125))
+### [Redhat-3.9] PROJQUAY-12832: Fix(Cve)
+- [0c26642cb](https://github.com/quay/quay/commit/0c26642cbcfb54f7f004bfbd124e3fcd6b167dab): CVE-2026-54770 - bump WebOb to 1.8.11 ([#7204](https://github.com/quay/quay/issues/7204))
+### [Redhat-3.9] PROJQUAY-12891: Fix(Cve): CVE-2026-59879
+- [9de074d6f](https://github.com/quay/quay/commit/9de074d6ff60a81cd72c9b2b4c319d4bc7ccca57): Bump immutable to 5.1.9 ([#7120](https://github.com/quay/quay/issues/7120))
+### [Redhat-3.9] PROJQUAY-12990: Fix(Cve): CVE-2026-82417
+- [2c2718d90](https://github.com/quay/quay/commit/2c2718d908c35610fdf96af0492e4ebb705175a3): Bump qs to 6.16.0 ([#7184](https://github.com/quay/quay/issues/7184))
+### [Redhat-3.9] PROJQUAY-13197: Fix(Cve)
+- [468b8fa83](https://github.com/quay/quay/commit/468b8fa8301cad4998af4e2420b68107775e14da): bump compression to 1.8.2 ([#7314](https://github.com/quay/quay/issues/7314))
 
 <a name="v3.9.26"></a>
 ## [v3.9.26] - 2026-09-04
@@ -2473,7 +2511,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.27...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.28...HEAD
+[v3.10.28]: https://github.com/quay/quay/compare/v3.10.27...v3.10.28
 [v3.10.27]: https://github.com/quay/quay/compare/v3.10.26...v3.10.27
 [v3.10.26]: https://github.com/quay/quay/compare/v3.10.25...v3.10.26
 [v3.10.25]: https://github.com/quay/quay/compare/v3.10.24...v3.10.25
@@ -2501,7 +2540,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.26...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.27...v3.10.0
+[v3.9.27]: https://github.com/quay/quay/compare/v3.9.26...v3.9.27
 [v3.9.26]: https://github.com/quay/quay/compare/v3.9.25...v3.9.26
 [v3.9.25]: https://github.com/quay/quay/compare/v3.9.24...v3.9.25
 [v3.9.24]: https://github.com/quay/quay/compare/v3.9.23...v3.9.24
