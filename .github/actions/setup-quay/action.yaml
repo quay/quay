@@ -401,11 +401,16 @@ runs:
         echo "Waiting for system-metrics-collector to push metrics..."
         timeout=60
         while [ $timeout -gt 0 ]; do
-          if docker exec quay-quay curl -sf localhost:9091/metrics \
-              | grep -q "gunicorn_socket_queue_depth"; then
+          if docker exec quay-quay python3 -c "
+        import urllib.request
+        data = urllib.request.urlopen('http://localhost:9091/metrics').read().decode()
+        lines = [l for l in data.splitlines() if 'gunicorn_socket' in l and not l.startswith('#')]
+        if lines:
+            for l in lines: print(l)
+            exit(0)
+        exit(1)
+        " 2>/dev/null; then
             echo "System metrics collector is running and pushing metrics!"
-            docker exec quay-quay curl -sf localhost:9091/metrics \
-              | grep "gunicorn_socket"
             break
           fi
           sleep 5
@@ -413,7 +418,7 @@ runs:
         done
         if [ $timeout -le 0 ]; then
           echo "::error::System metrics collector failed to produce metrics within 60 seconds"
-          docker exec quay-quay cat /tmp/supervisord.log 2>/dev/null || true
+          docker logs quay-quay 2>&1 | grep -i "system.metrics\|system_metrics\|error" | tail -20
           exit 1
         fi
 
