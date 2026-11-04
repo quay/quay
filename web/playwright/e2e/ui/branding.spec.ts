@@ -77,7 +77,10 @@ test.describe(
     test('header shows Red Hat logo in light theme', async ({
       authenticatedPage,
     }) => {
-      // The worker-scoped context can leak a previous test's theme preference
+      // The worker-scoped context can leak a previous test's theme preference.
+      // With no stored preference the app falls back to AUTO and follows
+      // prefers-color-scheme (ThemeContext.tsx), so pin the media preference too.
+      await authenticatedPage.emulateMedia({colorScheme: 'light'});
       await authenticatedPage.addInitScript(() =>
         localStorage.removeItem('theme-preference'),
       );
@@ -90,6 +93,7 @@ test.describe(
     test('header switches to dark logo variant', async ({
       authenticatedPage,
     }) => {
+      await authenticatedPage.emulateMedia({colorScheme: 'light'});
       await authenticatedPage.addInitScript(() =>
         localStorage.removeItem('theme-preference'),
       );
@@ -135,6 +139,9 @@ test.describe(
         'sign-in page auto-redirects to the single configured external login',
       );
 
+      // Same AUTO-theme caveat as the header test: the login page is rendered
+      // before any stored preference exists, so pin the media preference.
+      await unauthenticatedPage.emulateMedia({colorScheme: 'light'});
       await unauthenticatedPage.goto('/signin');
 
       // The login-page logo alt text is driven by REGISTRY_TITLE
