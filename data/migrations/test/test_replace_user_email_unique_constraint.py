@@ -11,6 +11,7 @@ organizationcontactemail table filled by migration 414c5e2fc487, and the deleted
 that mark_namespace_for_deletion() writes when an organization is deleted.
 """
 
+import logging
 import uuid
 
 import sqlalchemy as sa
@@ -211,3 +212,123 @@ def test_upgrade_and_downgrade_without_collision():
         assert "user_email" in indexes
         assert "user_email_unique_non_org" not in indexes
         assert "user_email_idx" not in indexes
+
+
+def test_upgrade_skips_organizations_that_share_a_contact_email():
+    """
+    Two organizations with placeholder emails and the same stored contact email, which no row
+    holds today, would both be given that address by one UPDATE and the second write would
+    violate user_email. No member of such a group is restored. An organization with a contact
+    email of its own is still restored.
+    """
+    placeholder_1 = str(uuid.uuid4())
+    placeholder_2 = str(uuid.uuid4())
+    engine = sa.create_engine("sqlite://")
+    with engine.begin() as connection:
+        _create_pre_migration_schema(connection)
+        _add_user(connection, 1, "acme", placeholder_1, True)
+        _add_user(connection, 2, "globex", placeholder_2, True)
+        _add_user(connection, 3, "initech", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 1, "dup@example.com")
+        _add_contact_email(connection, 2, "dup@example.com")
+        _add_contact_email(connection, 3, "initech@example.com")
+
+        migration.upgrade(_operations(connection), None, NoopTester())
+
+        _assert_index_swap_done(connection)
+        assert _email_of(connection, 1) == placeholder_1
+        assert _email_of(connection, 2) == placeholder_2
+        assert _email_of(connection, 3) == "initech@example.com"
+
+
+def test_upgrade_logs_the_organizations_it_skips(caplog):
+    """
+    Each filter's skipped organizations are logged by id, so an administrator can see why Step 0
+    restored some organizations and not others. Email addresses are never logged.
+    """
+    engine = sa.create_engine("sqlite://")
+    with engine.begin() as connection:
+        _create_pre_migration_schema(connection)
+        # 1: contact email held by a live account.
+        _add_user(connection, 1, "acme", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 1, "held@example.com")
+        _add_user(connection, 2, "alice", "held@example.com", False)
+        # 3 and 4: the same contact email, held by nobody.
+        _add_user(connection, 3, "globex", str(uuid.uuid4()), True)
+        _add_user(connection, 4, "hooli", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 3, "dup@example.com")
+        _add_contact_email(connection, 4, "dup@example.com")
+        # 5: deleted organization with a free contact email.
+        _add_user(connection, 5, str(uuid.uuid4()), str(uuid.uuid4()), True)
+        _add_contact_email(connection, 5, "gone@example.com")
+        _mark_deleted(connection, 5, "oldorg", "gone@example.com")
+        # 6: restored, so it must not be reported.
+        _add_user(connection, 6, "initech", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 6, "initech@example.com")
+
+        with caplog.at_level(logging.WARNING, logger=migration.__name__):
+            migration.upgrade(_operations(connection), None, NoopTester())
+
+    messages = [r.getMessage() for r in caplog.records if r.name == migration.__name__]
+    assert len(messages) == 3
+    by_reason = {}
+    for reason in ("already used", "share a contact email", "marked for deletion"):
+        matching = [m for m in messages if reason in m]
+        assert len(matching) == 1, (reason, messages)
+        by_reason[reason] = matching[0]
+    assert "1 organization" in by_reason["already used"] and "[1]" in by_reason["already used"]
+    assert "2 organization" in by_reason["share a contact email"]
+    assert "[3, 4]" in by_reason["share a contact email"]
+    assert "1 organization" in by_reason["marked for deletion"]
+    assert "[5]" in by_reason["marked for deletion"]
+    assert "@" not in " ".join(messages)
+
+
+def test_upgrade_logs_nothing_when_no_organization_is_skipped(caplog):
+    engine = sa.create_engine("sqlite://")
+    with engine.begin() as connection:
+        _create_pre_migration_schema(connection)
+        _add_user(connection, 1, "acme", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 1, "billing@example.com")
+
+        with caplog.at_level(logging.WARNING, logger=migration.__name__):
+            migration.upgrade(_operations(connection), None, NoopTester())
+
+        assert _email_of(connection, 1) == "billing@example.com"
+
+    assert [r for r in caplog.records if r.name == migration.__name__] == []
+
+
+def test_upgrade_rerun_after_step_three_failed():
+    """
+    Installation state 7: an earlier attempt committed Step 0 and both new indexes, then failed
+    at Step 3, so user_email_unique_non_org and user_email_idx exist next to user_email. The
+    rerun must skip Steps 1 and 2, drop user_email, and leave the restored emails alone.
+    """
+    engine = sa.create_engine("sqlite://")
+    with engine.begin() as connection:
+        _create_pre_migration_schema(connection)
+        connection.execute(
+            sa.text(
+                "CREATE UNIQUE INDEX user_email_unique_non_org "
+                'ON "user"(email) WHERE organization = false'
+            )
+        )
+        connection.execute(sa.text('CREATE INDEX user_email_idx ON "user"(email)'))
+        # Restored by the first attempt, still restored on the rerun.
+        _add_user(connection, 1, "acme", "billing@example.com", True)
+        _add_contact_email(connection, 1, "billing@example.com")
+        # Still a placeholder: restoring it would be allowed, and happens on the rerun.
+        _add_user(connection, 2, "globex", str(uuid.uuid4()), True)
+        _add_contact_email(connection, 2, "globex@example.com")
+        assert "user_email" in _index_names(connection)
+
+        migration.upgrade(_operations(connection), None, NoopTester())
+
+        _assert_index_swap_done(connection)
+        assert _email_of(connection, 1) == "billing@example.com"
+        assert _email_of(connection, 2) == "globex@example.com"
+
+        # A second rerun on the finished schema changes nothing.
+        migration.upgrade(_operations(connection), None, NoopTester())
+        _assert_index_swap_done(connection)
