@@ -401,15 +401,7 @@ runs:
         echo "Waiting for system-metrics-collector to push metrics..."
         timeout=60
         while [ $timeout -gt 0 ]; do
-          if docker exec quay-quay python3 -c "
-        import urllib.request
-        data = urllib.request.urlopen('http://localhost:9091/metrics').read().decode()
-        lines = [l for l in data.splitlines() if 'gunicorn_socket' in l and not l.startswith('#')]
-        if lines:
-            for l in lines: print(l)
-            exit(0)
-        exit(1)
-        " 2>/dev/null; then
+          if docker exec quay-quay python3 -c "import urllib.request, sys; data = urllib.request.urlopen('http://localhost:9091/metrics').read().decode(); lines = [l for l in data.splitlines() if 'gunicorn_socket' in l and not l.startswith('#')]; [print(l) for l in lines]; sys.exit(0 if lines else 1)" 2>/dev/null; then
             echo "System metrics collector is running and pushing metrics!"
             break
           fi
