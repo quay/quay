@@ -1,3 +1,5 @@
+import type {Locator} from '@playwright/test';
+
 import {test, expect} from '../../fixtures';
 
 /**
@@ -34,6 +36,20 @@ const brandingE2E = process.env.PLAYWRIGHT_BRANDING_E2E === '1';
  */
 const DOWNSTREAM_VERSION_PATTERN = /^Quay v\d+\.\d+\.\d+-nightly-\d{12}$/;
 
+/**
+ * A pinned src can still 404: the <img> keeps its alt text and stays "visible"
+ * even when the asset is missing. Assert the browser decoded it as well, so a
+ * renamed or dropped image fails here instead of passing on the config string.
+ * expect.poll waits for the load (and for a theme swap to swap the src).
+ */
+async function expectLoadedImage(image: Locator, src: string) {
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('src', src);
+  await expect
+    .poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+}
+
 test.describe(
   'Red Hat Quay branding (downstream image)',
   {tag: ['@ui', '@redhat-branding']},
@@ -69,8 +85,7 @@ test.describe(
       await authenticatedPage.goto('/organization');
 
       const logo = authenticatedPage.getByAltText('Red Hat Quay');
-      await expect(logo).toBeVisible();
-      await expect(logo).toHaveAttribute('src', RED_HAT_BRANDING.logo);
+      await expectLoadedImage(logo, RED_HAT_BRANDING.logo);
     });
 
     test('header switches to dark logo variant', async ({
@@ -82,7 +97,7 @@ test.describe(
       await authenticatedPage.goto('/organization');
 
       const logo = authenticatedPage.getByAltText('Red Hat Quay');
-      await expect(logo).toHaveAttribute('src', RED_HAT_BRANDING.logo);
+      await expectLoadedImage(logo, RED_HAT_BRANDING.logo);
 
       // Switch to dark theme (same flow as e2e/ui/theme-switcher.spec.ts)
       await authenticatedPage.getByTestId('user-menu-toggle').click();
@@ -90,7 +105,7 @@ test.describe(
       await expect(authenticatedPage.locator('html')).toHaveClass(
         /pf-v6-theme-dark/,
       );
-      await expect(logo).toHaveAttribute('src', RED_HAT_BRANDING.logo_dark);
+      await expectLoadedImage(logo, RED_HAT_BRANDING.logo_dark);
 
       // Reset so the shared worker context does not leak DARK to other tests.
       // Clear the stored preference and reload rather than driving the menu
@@ -103,7 +118,7 @@ test.describe(
       await expect(authenticatedPage.locator('html')).not.toHaveClass(
         /pf-v6-theme-dark/,
       );
-      await expect(logo).toHaveAttribute('src', RED_HAT_BRANDING.logo);
+      await expectLoadedImage(logo, RED_HAT_BRANDING.logo);
     });
 
     test('sign-in page shows Red Hat branding', async ({
@@ -125,21 +140,23 @@ test.describe(
 
       // The login-page logo alt text is driven by REGISTRY_TITLE
       const logo = unauthenticatedPage.getByAltText('Red Hat Quay');
-      await expect(logo).toBeVisible();
-      await expect(logo).toHaveAttribute('src', RED_HAT_BRANDING.logo);
+      await expectLoadedImage(logo, RED_HAT_BRANDING.logo);
 
       await expect(unauthenticatedPage).toHaveTitle(
         `${RED_HAT_BRANDING.registry_title} • Quay`,
       );
 
       // The database login form (whose button label embeds REGISTRY_TITLE)
-      // only renders when direct login is available; OIDC deployments show
-      // external login buttons instead.
+      // renders only when direct login is available — DIRECT_LOGIN enabled and
+      // a non-OIDC auth type (shouldShowDirectLogin() in UseExternalLogins.ts);
+      // OIDC deployments show external login buttons instead.
       const authType = quayConfig?.config?.AUTHENTICATION_TYPE;
-      if (authType !== 'OIDC') {
+      const directLogin = quayConfig?.features?.DIRECT_LOGIN === true;
+      if (directLogin && authType !== 'OIDC') {
         await expect(
           unauthenticatedPage.getByRole('button', {
             name: `Sign in to ${RED_HAT_BRANDING.registry_title}`,
+            exact: true,
           }),
         ).toBeVisible();
       }
@@ -151,11 +168,7 @@ test.describe(
       const footerLogo = authenticatedPage.locator(
         '#quay-footer img[alt="Footer branding"]',
       );
-      await expect(footerLogo).toBeVisible();
-      await expect(footerLogo).toHaveAttribute(
-        'src',
-        RED_HAT_BRANDING.footer_img,
-      );
+      await expectLoadedImage(footerLogo, RED_HAT_BRANDING.footer_img);
 
       // Downstream wraps the footer logo in a link to the Red Hat docs
       await expect(
