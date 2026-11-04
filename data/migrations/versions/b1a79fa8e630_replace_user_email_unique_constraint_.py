@@ -55,12 +55,24 @@ def upgrade(op, tables, tester):
                 user_indexes.discard(idx_name)
 
     # Step 0: If OrganizationContactEmail table exists and has data, copy contact
-    # NOTE: This UPDATE runs in the current transaction, which is unconditionally
-    # committed when autocommit_block() is entered in Step 1. The lock window
-    # is therefore limited to the UPDATE duration only.
     # emails back into User.email for any orgs that still have UUID placeholders.
     # This handles the case where the earlier migration (414c5e2fc487) populated
     # OrganizationContactEmail but User.email was replaced with a UUID.
+    #
+    # NOTE: This UPDATE runs in the current transaction, which is unconditionally
+    # committed when autocommit_block() is entered in Step 1. The lock window
+    # is therefore limited to the UPDATE duration only.
+    #
+    # The UPDATE runs while the old full unique index user_email still exists, so it
+    # must not write an address that another user row already holds, or the whole
+    # migration fails with a unique violation (PROJQUAY-14084). Two kinds of rows are
+    # skipped:
+    #   - organizations whose stored contact email is already used by another user row.
+    #     The contact email is a snapshot taken by 414c5e2fc487 and never updated, so
+    #     the address may have been reused since.
+    #   - organizations marked for deletion (they have a deletednamespace row). Their
+    #     email became a UUID when they were deleted and the namespace garbage collector
+    #     will remove them; restoring their old address would only duplicate it.
     tables_list = inspector.get_table_names()
     if "organizationcontactemail" in tables_list:
         # Use correlated subquery syntax (works on both PostgreSQL and SQLite).
@@ -77,6 +89,16 @@ def upgrade(op, tables, tester):
                 "  SELECT 1 FROM organizationcontactemail oce"
                 '  WHERE oce.organization_id = "user".id'
                 "  AND oce.contact_email IS NOT NULL"
+                ")"
+                " AND NOT EXISTS ("
+                '  SELECT 1 FROM organizationcontactemail oce, "user" other'
+                '  WHERE oce.organization_id = "user".id'
+                "  AND other.email = oce.contact_email"
+                '  AND other.id <> "user".id'
+                ")"
+                " AND NOT EXISTS ("
+                "  SELECT 1 FROM deletednamespace dn"
+                '  WHERE dn.namespace_id = "user".id'
                 ")"
             )
         )
