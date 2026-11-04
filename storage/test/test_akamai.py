@@ -2,7 +2,7 @@ import os
 
 import boto3
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 from app import config_provider
 from storage import AkamaiS3Storage, StorageContext
@@ -22,7 +22,7 @@ def ipranges_populated(request):
     return request.param
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, mock_ipresolver):
     ipresolver = mock_ipresolver
     if ipranges_populated:

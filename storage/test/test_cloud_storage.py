@@ -10,7 +10,7 @@ import botocore.exceptions
 import pytest
 from botocore.client import BaseClient
 from freezegun import freeze_time
-from moto import mock_s3
+from moto import mock_aws
 
 from storage import S3Storage, StorageContext
 from storage.cloud import (
@@ -32,7 +32,7 @@ _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 @pytest.fixture(scope="function")
 def storage_engine():
-    with mock_s3():
+    with mock_aws():
         # Create a test bucket and put some test content.
         boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
         engine = S3Storage(
@@ -86,7 +86,7 @@ def test_basicop(storage_engine):
 
 
 def test_remove_returns_version_id_on_versioned_bucket():
-    with mock_s3():
+    with mock_aws():
         client = boto3.client("s3", region_name=_TEST_REGION)
         client.create_bucket(
             Bucket=_TEST_BUCKET,
@@ -175,7 +175,7 @@ def test_stream_write(storage_engine):
 
 
 def test_stream_write_error():
-    with mock_s3():
+    with mock_aws():
         # Create an engine but not the bucket.
         engine = S3Storage(_TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD)
 
