@@ -10,6 +10,8 @@ test.describe(
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      // Covers the image push plus the 120s Clair poll below.
+      test.setTimeout(240000);
       if (!cachedContainerAvailable) return;
 
       const api = new ApiClient(userContext.request);
