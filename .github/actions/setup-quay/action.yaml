@@ -399,9 +399,22 @@ runs:
       shell: bash
       run: |
         echo "Waiting for system-metrics-collector to push metrics..."
+        cat > /tmp/check_metrics.py << 'PYEOF'
+        import urllib.request, sys
+        try:
+            data = urllib.request.urlopen("http://localhost:9091/metrics").read().decode()
+        except Exception as e:
+            print(f"Could not reach pushgateway: {e}", file=sys.stderr)
+            sys.exit(1)
+        lines = [l for l in data.splitlines() if "gunicorn_socket" in l and not l.startswith("#")]
+        for l in lines:
+            print(l)
+        sys.exit(0 if lines else 1)
+        PYEOF
         timeout=60
         while [ $timeout -gt 0 ]; do
-          if docker exec quay-quay python3 -c "import urllib.request, sys; data = urllib.request.urlopen('http://localhost:9091/metrics').read().decode(); lines = [l for l in data.splitlines() if 'gunicorn_socket' in l and not l.startswith('#')]; [print(l) for l in lines]; sys.exit(0 if lines else 1)" 2>/dev/null; then
+          if docker cp /tmp/check_metrics.py quay-quay:/tmp/check_metrics.py \
+              && docker exec quay-quay python3 /tmp/check_metrics.py 2>/dev/null; then
             echo "System metrics collector is running and pushing metrics!"
             break
           fi
