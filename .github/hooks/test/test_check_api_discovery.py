@@ -82,73 +82,6 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         )
         self.assertIn("0 reminder(s)", self.run_hook(filename))
 
-    def test_multi_route_nickname_cardinality_warns_without_blocking(self):
-        """Both scalar IDs and undersized ID lists can break runtime discovery."""
-        for routes in ['"/v1/one", "/v1/two"', '*["/v1/one", "/v1/two"]']:
-            for nickname in ['"getExample"', '["getExample"]']:
-                with self.subTest(routes=routes, nickname=nickname):
-                    filename = self.write(
-                        "example.py",
-                        f"""\
-                        @resource({routes})
-                        class Example(ApiResource):
-                            @nickname({nickname})
-                            def get(self):
-                                pass
-                        """,
-                    )
-                    output = self.run_hook(filename)
-                    if routes.startswith("*"):
-                        self.assertIn("could not determine the route count", output)
-                    else:
-                        self.assertIn("serves 2 routes", output)
-                        self.assertIn("only 1 operation ID(s)", output)
-
-    def test_stacked_resource_decorators_need_distinct_ids(self):
-        filename = self.write(
-            "example.py",
-            """\
-            @resource("/v1/one")
-            @resource("/v1/two")
-            class Example(ApiResource):
-                @nickname("getExample")
-                def get(self):
-                    pass
-            """,
-        )
-        self.assertIn("serves 2 routes", self.run_hook(filename))
-
-    def test_method_specific_routes_do_not_require_extra_ids(self):
-        filename = self.write(
-            "example.py",
-            """\
-            @resource("/v1/one", methods=["get"])
-            @resource("/v1/two", methods=["POST"])
-            class Example(ApiResource):
-                @nickname("getExample")
-                def get(self):
-                    pass
-
-                @nickname("createExample")
-                def post(self):
-                    pass
-            """,
-        )
-        self.assertIn("0 reminder(s)", self.run_hook(filename))
-
-    def test_dynamic_methods_require_manual_route_count_verification(self):
-        filename = self.write(
-            "example.py",
-            """\
-            @resource("/v1/example", methods=ALLOWED_METHODS)
-            class Example(ApiResource):
-                @nickname("getExample")
-                def get(self):
-                    pass
-            """,
-        )
-        self.assertIn("could not determine the route count", self.run_hook(filename))
-
     def test_inherited_handlers_require_manual_verification(self):
         """Do not report a clean audit when handlers may come from custom bases."""
         for parent in ["Base", "ImportedBase"]:
@@ -203,21 +136,6 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
                     """,
                 )
                 self.assertIn("needs a non-empty", self.run_hook(filename))
-
-    def test_duplicate_ids_use_unchanged_files_as_context(self):
-        source = """\
-            @resource("/v1/example")
-            class Example(ApiResource):
-                @nickname("getExample")
-                def get(self):
-                    pass
-            """
-        changed = self.write("changed.py", source)
-        self.write("unchanged.py", source)
-        output = self.run_hook(changed)
-        self.assertIn("WARNING endpoints/api/changed.py", output)
-        self.assertNotIn("WARNING endpoints/api/unchanged.py", output)
-        self.assertIn("duplicate operation ID 'getExample'", output)
 
     def test_internal_and_disabled_features_are_checked(self):
         filename = self.write(

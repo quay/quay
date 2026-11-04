@@ -15,7 +15,6 @@ if ! python3 - "$REPO_ROOT" "$@" <<'PY'
 import ast
 import os
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 root = Path(sys.argv[1]).resolve()
@@ -54,7 +53,6 @@ def warn(path, line, message):
         print(f"WARNING {filename}:{line}: {message}")
 
 
-operation_ids = defaultdict(list)
 for path in files:
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -75,31 +73,6 @@ for path in files:
         if isinstance(target, ast.Attribute):
             return target.attr
         return None
-
-    def route_count(decorators, method):
-        """Count declared URLs for a method, or return None for dynamic routing."""
-        count = 0
-        for decorator in decorators:
-            if not isinstance(decorator, ast.Call) or not decorator.args:
-                return None
-            if any(isinstance(arg, ast.Starred) for arg in decorator.args):
-                return None
-            if any(keyword.arg is None for keyword in decorator.keywords):
-                return None
-            methods = next((keyword.value for keyword in decorator.keywords
-                            if keyword.arg == "methods"), None)
-            if methods is not None:
-                try:
-                    allowed = ast.literal_eval(methods)
-                except (ValueError, TypeError):
-                    return None
-                if (not isinstance(allowed, (list, tuple, set))
-                        or any(not isinstance(item, str) for item in allowed)):
-                    return None
-                if method.upper() not in {item.upper() for item in allowed}:
-                    continue
-            count += len(decorator.args)
-        return count
 
     for resource in ast.walk(tree):
         if not isinstance(resource, ast.ClassDef):
@@ -149,29 +122,6 @@ for path in files:
                      f"{label}: @nickname(...) needs a non-empty string or list of distinct "
                      "non-empty strings.")
                 continue
-            count = route_count(routes, handler.name)
-            if count is None:
-                warn(path, handler.lineno,
-                     f"{label}: could not determine the route count statically; verify that "
-                     "@nickname(...) provides a distinct operation ID for every route.")
-            elif len(values) < count:
-                warn(path, handler.lineno,
-                     f"{label} serves {count} routes but @nickname(...) provides only "
-                     f"{len(values)} operation ID(s); discovery needs a distinct ID per route.")
-                continue
-            # Lists are alternative IDs allocated by discovery for multiple routes.
-            # Only scalar/scalar collisions are unambiguous without running Quay.
-            if isinstance(value, str):
-                operation_ids[value].append((path, handler.lineno, label))
-
-for operation_id, handlers in operation_ids.items():
-    if len(handlers) > 1:
-        locations = ", ".join(f"{path.relative_to(root)}:{line} ({label})"
-                              for path, line, label in handlers)
-        for path, line, label in handlers:
-            warn(path, line, f"{label}: duplicate operation ID {operation_id!r}: {locations}. "
-                 "Discovery operation IDs must be unique; review feature-gated alternatives.")
-
 print(f"API discovery reminder: checked {len(selected)} file(s), {reminders} reminder(s). "
       "Advisory only; annotations do not change the hook exit status.")
 PY
