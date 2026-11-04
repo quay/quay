@@ -104,13 +104,15 @@ version-tolerant and byte-identical across `master`, `redhat-3.18`, and
 `RED_HAT_QUAY=true`) serves Red Hat branding: the `/config` payload
 (`BRANDING.logo`/`logo_dark`/`footer_img`/`footer_url`, `REGISTRY_TITLE`) and
 the rendered UI (header logo in light and dark themes, sign-in page, footer).
-It also checks version reporting: `/config.version_number` must match the
-build-time schema — `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` from the top CHANGELOG
-heading plus the `BUILD_DATE` that `Dockerfile.downstream` always writes in its
-final stage — and the Help menu must render exactly that value. A source checkout
-without `BUILD_DATE` reports `Quay vX.Y.Z` and is rejected, as is an image built
-without the file; a runtime `QUAY_VERSION` override is a dev/local convenience,
-so the downstream lanes assert the built schema.
+It also checks version reporting: `/config.version_number` must be one of the two
+downstream shapes, and the Help menu must render exactly that value:
+
+- **Release form** `Quay vX.Y.Z` — the operator sets `QUAY_VERSION` on the Quay
+  pod from the installed release, replacing the built value entirely.
+- **Nightly form** `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` — top CHANGELOG heading
+  plus the `BUILD_DATE` that `Dockerfile.downstream` writes in its final stage.
+
+A versionless or malformed value fails the test.
 
 - The spec self-skips unless `PLAYWRIGHT_BRANDING_E2E=1`, so it never runs in
   GHA (which also grep-inverts `@redhat-branding` in ci-web.yaml) or in the
