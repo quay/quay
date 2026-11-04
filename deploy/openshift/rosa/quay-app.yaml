@@ -80,6 +80,19 @@ objects:
     type: NodePort
     selector:
       app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${NAME}-headless
+  spec:
+    clusterIP: None
+    ports:
+    - name: https
+      protocol: TCP
+      port: ${{HTTPS_SVC_PORT}}
+      targetPort: ${{HTTPS_SVC_TARGET_PORT}}
+    selector:
+      app.kubernetes.io/component: ${{QUAY_COMPONENT}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
