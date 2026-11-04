@@ -1,14 +1,18 @@
-"""Exercise the advisory shell hook without importing or starting Quay."""
+"""Exercise the advisory Python hook without importing or starting Quay."""
 
+import io
 import os
-import shutil
+import runpy
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
-HOOK = Path(__file__).resolve().parents[1] / "check-api-discovery.sh"
+HOOK = Path(__file__).resolve().parents[1] / "check-api-discovery.py"
 
 
 class TestAPIDiscoveryReminder(unittest.TestCase):
@@ -28,11 +32,11 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         return str(path.relative_to(self.root))
 
     def run_hook(self, *filenames, environment=None):
-        """Run the real shell entry point and require advisory exit status zero."""
+        """Run the Python entry point and require advisory exit status zero."""
         env = dict(os.environ, GITHUB_ACTIONS="false")
         env.update(environment or {})
         result = subprocess.run(
-            ["/bin/bash", str(HOOK), *filenames],
+            [sys.executable, str(HOOK), *filenames],
             cwd=self.root,
             env=env,
             capture_output=True,
@@ -218,23 +222,14 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         self.write("robot_application_tokens.py", source)
         self.assertIn("0 reminder(s)", self.run_hook(filename))
 
-    def test_missing_python_is_non_blocking(self):
-        binaries = self.root / "bin"
-        binaries.mkdir()
-        git = shutil.which("git")
-        if git:
-            (binaries / "git").symlink_to(git)
-        output = self.run_hook(environment={"PATH": str(binaries)})
-        self.assertIn("python3 is unavailable", output)
-
     def test_checker_failure_is_non_blocking(self):
-        binaries = self.root / "bin"
-        binaries.mkdir()
-        python = binaries / "python3"
-        python.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
-        python.chmod(0o755)
-        output = self.run_hook(environment={"PATH": str(binaries)})
-        self.assertIn("could not complete; continuing without blocking", output)
+        """Unexpected inspection failures remain advisory at the real entry point."""
+        output = io.StringIO()
+        with patch("pathlib.Path.rglob", side_effect=OSError("inspection failed")):
+            with redirect_stdout(output), self.assertRaises(SystemExit) as result:
+                runpy.run_path(str(HOOK), run_name="__main__")
+        self.assertEqual(result.exception.code, 0)
+        self.assertIn("could not complete; continuing without blocking", output.getvalue())
 
 
 if __name__ == "__main__":

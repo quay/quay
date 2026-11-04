@@ -60,7 +60,7 @@ repos:
         pass_filenames: false
     -   id: check-api-discovery
         name: Remind about API discovery annotations (non-blocking)
-        entry: .github/hooks/check-api-discovery.sh
+        entry: .github/hooks/check-api-discovery.py
         language: script
         files: ^endpoints/api/.*\.py$
         exclude: ^endpoints/api/(.*/)?tests?/
