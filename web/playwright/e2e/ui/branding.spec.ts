@@ -21,20 +21,19 @@ const RED_HAT_BRANDING = {
 const brandingE2E = process.env.PLAYWRIGHT_BRANDING_E2E === '1';
 
 /**
- * Version reported by a downstream image, produced by _init._get_version_number()
- * and exposed as /config.version_number = "Quay <version>" (endpoints/web.py):
+ * Version reported by /config.version_number = "Quay <version>" (endpoints/web.py),
+ * resolved by _init._get_version_number(). Both downstream shapes are valid:
  *
- *   top CHANGELOG heading ("## [vX.Y.Z]") plus the BUILD_DATE the Dockerfile
- *   writes ("date -u +%Y%m%d%H%M"): "Quay v3.18.0-nightly-202608031425"
+ *   - Release form: "Quay v3.18.1". The operator sets QUAY_VERSION on the Quay
+ *     pod from the installed release, and that value replaces the built one
+ *     entirely; release images also carry no BUILD_DATE.
+ *   - Nightly form: "Quay v3.18.0-nightly-202608031425" — top CHANGELOG heading
+ *     ("## [vX.Y.Z]") plus the BUILD_DATE the Dockerfile writes
+ *     ("date -u +%Y%m%d%H%M").
  *
- * Dockerfile.downstream always writes BUILD_DATE in its final stage, so the
- * timestamp is required: an image without it is a build defect. A source
- * checkout without BUILD_DATE reports "Quay vX.Y.Z" and is intentionally not
- * accepted here. A runtime QUAY_VERSION env var replaces the built value
- * entirely; that is a dev/local override (docker-compose.yaml uses "local-dev"),
- * so the downstream lanes assert the built schema.
+ * A versionless or malformed value is a defect either way.
  */
-const DOWNSTREAM_VERSION_PATTERN = /^Quay v\d+\.\d+\.\d+-nightly-\d{12}$/;
+const DOWNSTREAM_VERSION_PATTERN = /^Quay v\d+\.\d+\.\d+(-nightly-\d{12})?$/;
 
 /**
  * A pinned src can still 404: the <img> keeps its alt text and stays "visible"
@@ -182,8 +181,8 @@ test.describe(
       const versionNumber = quayConfig?.version_number;
 
       // /config returns "" when BILLING is enabled (endpoints/web.py), but a
-      // downstream image must carry a CHANGELOG version and BUILD_DATE, so an
-      // empty version here is a build defect.
+      // downstream image or operator deployment must report a version, so an
+      // empty or malformed value here is a defect.
       expect(
         versionNumber,
         `expected a version_number from /config, got ${JSON.stringify(versionNumber)}`,
