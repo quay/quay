@@ -106,8 +106,7 @@ def main():
                         path,
                         handler.lineno,
                         f"{label} is missing @nickname(...); its {handler.name.upper()} operation "
-                        "will be omitted from /api/v1/discovery "
-                        "(internal APIs require ?internal=true).",
+                        "will be omitted from /api/v1/discovery, including with ?internal=true.",
                     )
                     continue
                 if len(nicknames) != 1:

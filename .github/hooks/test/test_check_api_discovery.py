@@ -156,7 +156,9 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         )
         output = self.run_hook(filename)
         self.assertIn("Example.get is missing", output)
-        self.assertIn("?internal=true", output)
+        self.assertIn(
+            "will be omitted from /api/v1/discovery, including with ?internal=true.", output
+        )
 
     def test_helpers_and_test_files_are_ignored(self):
         filename = self.write(
