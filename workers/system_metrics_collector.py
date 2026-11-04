@@ -33,7 +33,7 @@ from prometheus_client import (
 
 logger = logging.getLogger(__name__)
 
-PUSHGATEWAY_URL = "localhost:9091"
+PUSHGATEWAY_URL = "http://localhost:9091"
 PUSH_JOB = "system_metrics_collector"
 SAMPLE_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_SAMPLE_INTERVAL", "5")))
 PUSH_INTERVAL_SECONDS = max(1, int(os.getenv("SYSTEM_METRICS_PUSH_INTERVAL", "30")))
