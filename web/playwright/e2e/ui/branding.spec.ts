@@ -19,19 +19,20 @@ const RED_HAT_BRANDING = {
 const brandingE2E = process.env.PLAYWRIGHT_BRANDING_E2E === '1';
 
 /**
- * Version shapes produced by _init._get_version_number(), which /config
- * exposes as version_number = "Quay <version>" (endpoints/web.py):
+ * Version reported by a downstream image, produced by _init._get_version_number()
+ * and exposed as /config.version_number = "Quay <version>" (endpoints/web.py):
  *
- *  - image build: the top CHANGELOG heading ("## [vX.Y.Z]") plus the
- *    BUILD_DATE the Dockerfile writes ("date -u +%Y%m%d%H%M"):
- *      "Quay v3.18.0-nightly-202608031425"
- *  - no BUILD_DATE (source checkout): "Quay v3.18.0"
+ *   top CHANGELOG heading ("## [vX.Y.Z]") plus the BUILD_DATE the Dockerfile
+ *   writes ("date -u +%Y%m%d%H%M"): "Quay v3.18.0-nightly-202608031425"
  *
- * A runtime QUAY_VERSION env var replaces the built value entirely; that is a
- * dev/local override (docker-compose.yaml uses "local-dev"), so the downstream
- * lanes assert the built schema.
+ * Dockerfile.downstream always writes BUILD_DATE in its final stage, so the
+ * timestamp is required: an image without it is a build defect. A source
+ * checkout without BUILD_DATE reports "Quay vX.Y.Z" and is intentionally not
+ * accepted here. A runtime QUAY_VERSION env var replaces the built value
+ * entirely; that is a dev/local override (docker-compose.yaml uses "local-dev"),
+ * so the downstream lanes assert the built schema.
  */
-const BUILT_VERSION_PATTERN = /^Quay v\d+\.\d+\.\d+(-nightly-\d{12})?$/;
+const DOWNSTREAM_VERSION_PATTERN = /^Quay v\d+\.\d+\.\d+-nightly-\d{12}$/;
 
 test.describe(
   'Red Hat Quay branding (downstream image)',
@@ -109,6 +110,17 @@ test.describe(
       unauthenticatedPage,
       quayConfig,
     }) => {
+      // Signin.tsx starts the external login on mount when exactly one provider
+      // is configured and DIRECT_LOGIN is off (hasSingleSignin() in
+      // UseExternalLogins.ts), for any provider type. The browser can leave
+      // /signin before the branding assertions settle, so the page is not a
+      // stable target in that configuration.
+      const externalLogins = quayConfig?.external_login ?? [];
+      test.skip(
+        externalLogins.length === 1 && !quayConfig?.features?.DIRECT_LOGIN,
+        'sign-in page auto-redirects to the single configured external login',
+      );
+
       await unauthenticatedPage.goto('/signin');
 
       // The login-page logo alt text is driven by REGISTRY_TITLE
@@ -162,7 +174,7 @@ test.describe(
       expect(
         versionNumber,
         `expected a version_number from /config, got ${JSON.stringify(versionNumber)}`,
-      ).toMatch(BUILT_VERSION_PATTERN);
+      ).toMatch(DOWNSTREAM_VERSION_PATTERN);
     });
 
     test('help menu shows the version reported by /config', async ({
