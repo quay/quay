@@ -106,10 +106,11 @@ version-tolerant and byte-identical across `master`, `redhat-3.18`, and
 the rendered UI (header logo in light and dark themes, sign-in page, footer).
 It also checks version reporting: `/config.version_number` must match the
 build-time schema — `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` from the top CHANGELOG
-heading plus the Dockerfile's `BUILD_DATE` (`-nightly-` segment optional for a
-source checkout without one) — and the Help menu must render exactly that value.
-A runtime `QUAY_VERSION` override is a dev/local convenience, so the downstream
-lanes assert the built schema and fail an image built without it.
+heading plus the `BUILD_DATE` that `Dockerfile.downstream` always writes in its
+final stage — and the Help menu must render exactly that value. A source checkout
+without `BUILD_DATE` reports `Quay vX.Y.Z` and is rejected, as is an image built
+without the file; a runtime `QUAY_VERSION` override is a dev/local convenience,
+so the downstream lanes assert the built schema.
 
 - The spec self-skips unless `PLAYWRIGHT_BRANDING_E2E=1`, so it never runs in
   GHA (which also grep-inverts `@redhat-branding` in ci-web.yaml) or in the
