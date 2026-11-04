@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from workers.systemmetricscollector import (
+from workers.system_metrics_collector import (
     _build_registry,
     _push,
     _read_proc_net_unix,
@@ -111,8 +111,8 @@ class TestBuildRegistry:
 
 
 class TestSample:
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector.os.path.exists")
     def test_sets_queue_depth(self, mock_exists, mock_read):
         mock_exists.return_value = True
         mock_read.return_value = {
@@ -126,8 +126,8 @@ class TestSample:
         assert metrics["queue_depth"].labels(host=hostname, socket="registry")._value.get() == 5.0
         assert metrics["queue_depth"].labels(host=hostname, socket="web")._value.get() == 0.0
 
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector.os.path.exists")
     def test_records_histogram_observation(self, mock_exists, mock_read):
         mock_exists.return_value = True
         mock_read.return_value = {
@@ -141,8 +141,8 @@ class TestSample:
         hist = metrics["queue_depth_hist"].labels(host=hostname, socket="registry")
         assert hist._sum.get() == 150.0  # 75 + 75
 
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector.os.path.exists")
     def test_sets_active_connections(self, mock_exists, mock_read):
         mock_exists.return_value = True
         mock_read.return_value = {
@@ -157,8 +157,8 @@ class TestSample:
             == 10.0
         )
 
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector.os.path.exists")
     def test_socket_not_present(self, mock_exists, mock_read):
         mock_exists.return_value = False
         mock_read.return_value = {}
@@ -169,8 +169,8 @@ class TestSample:
         assert metrics["socket_present"].labels(host=hostname, socket="registry")._value.get() == 0
         assert metrics["queue_depth"].labels(host=hostname, socket="registry")._value.get() == 0
 
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
-    @patch("workers.systemmetricscollector.os.path.exists")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector.os.path.exists")
     def test_updates_timestamp(self, mock_exists, mock_read):
         mock_exists.return_value = True
         mock_read.return_value = {}
@@ -183,7 +183,7 @@ class TestSample:
         ts = metrics["last_sample_timestamp"].labels(host=hostname)._value.get()
         assert before <= ts <= after
 
-    @patch("workers.systemmetricscollector._read_proc_net_unix")
+    @patch("workers.system_metrics_collector._read_proc_net_unix")
     def test_procfs_failure_increments_errors_and_skips_timestamp(self, mock_read):
         mock_read.side_effect = OSError("permission denied")
         _, metrics, hostname = _build_registry()
@@ -195,7 +195,7 @@ class TestSample:
 
 
 class TestPush:
-    @patch("workers.systemmetricscollector.push_to_gateway")
+    @patch("workers.system_metrics_collector.push_to_gateway")
     def test_successful_push(self, mock_push):
         _, metrics, hostname = _build_registry()
 
@@ -203,7 +203,7 @@ class TestPush:
 
         mock_push.assert_called_once()
 
-    @patch("workers.systemmetricscollector.push_to_gateway")
+    @patch("workers.system_metrics_collector.push_to_gateway")
     def test_pushgateway_failure_increments_errors(self, mock_push):
         mock_push.side_effect = Exception("connection refused")
         registry, metrics, hostname = _build_registry()

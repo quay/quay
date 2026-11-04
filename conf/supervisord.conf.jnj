@@ -421,7 +421,7 @@ stderr_events_enabled = true
 [program:system-metrics-collector]
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s
-command=python -m workers.systemmetricscollector
+command=python -m workers.system_metrics_collector
 autostart = {{ config['system-metrics-collector']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
