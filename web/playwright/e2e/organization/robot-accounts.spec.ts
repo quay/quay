@@ -1261,6 +1261,12 @@ test.describe(
           .locator('.pf-v6-c-pagination__total-items')
           .first();
         await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+        const page1RobotName = (
+          await tabPanel
+            .locator('td[data-label="Robot account name"] a')
+            .first()
+            .textContent()
+        ).trim();
 
         await tabPanel
           .getByRole('button', {name: 'Go to next page'})
@@ -1275,6 +1281,21 @@ test.describe(
           .first()
           .click();
         await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await tabPanel
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+        await authenticatedPage
+          .getByTestId('robot-account-search')
+          .fill(page1RobotName);
+        await expect(paginationInfo).toHaveText('1 - 1 of 1');
+        await expect(
+          tabPanel.getByRole('link', {name: page1RobotName, exact: true}),
+        ).toBeVisible();
       });
     });
 
