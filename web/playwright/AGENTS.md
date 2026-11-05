@@ -74,6 +74,7 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 | Superuser    | `@superuser`                       | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
 | Webhook      | `@webhook`                         | `@webhook`             | Uses the webhook receiver fixture or helper                               |
 | Upgrade      | `@upgrade-seed`, `@upgrade-verify` | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
+| Branding     | `@redhat-branding`                 | `@redhat-branding`     | Red Hat branding verification; downstream OCP lanes only (see below) |
 
 #### Operator-upgrade specs (`@upgrade-seed` / `@upgrade-verify`)
 
@@ -96,6 +97,31 @@ add them to ordinary specs: the daily functional e2e job grep-inverts them so th
 specs never run standalone (verify would fail with nothing seeded). Keep both files
 version-tolerant and byte-identical across `master`, `redhat-3.18`, and
 `redhat-3.17` so backport cherry-picks apply cleanly.
+
+### Red Hat branding downstream tests (`@redhat-branding`)
+
+`e2e/ui/branding.spec.ts` verifies that a **downstream** image (built with
+`RED_HAT_QUAY=true`) serves Red Hat branding: the `/config` payload
+(`BRANDING.logo`/`logo_dark`/`footer_img`/`footer_url`, `REGISTRY_TITLE`) and
+the rendered UI (header logo in light and dark themes, sign-in page, footer).
+It also checks version reporting: `/config.version_number` must be one of the two
+downstream shapes, and the Help menu must render exactly that value:
+
+- **Release form** `Quay vX.Y.Z` — the operator sets `QUAY_VERSION` on the Quay
+  pod from the installed release, replacing the built value entirely.
+- **Nightly form** `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` — top CHANGELOG heading
+  plus the `BUILD_DATE` that `Dockerfile.downstream` writes in its final stage.
+
+A versionless or malformed value fails the test.
+
+- The spec self-skips unless `PLAYWRIGHT_BRANDING_E2E=1`, so it never runs in
+  GHA (which also grep-inverts `@redhat-branding` in ci-web.yaml) or in the
+  functional Prow lanes.
+- The lane wiring — setting `PLAYWRIGHT_BRANDING_E2E=1` on the downstream
+  e2e-install jobs' `quay-test-e2e` step — lives in **openshift/release**
+  (`ci-operator/config/quay/quay/_generator/`), not this repo.
+- Expected asset paths are pinned in a constants block at the top of the spec;
+  update it in one place if the downstream defaults in `config.py` change.
 
 ### Proxy-route SSRF deployment tests
 
