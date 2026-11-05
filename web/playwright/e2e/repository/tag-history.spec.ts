@@ -139,8 +139,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         const rawApi = api.raw;
