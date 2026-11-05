@@ -18,6 +18,22 @@ def get_robot_password(username):
     return token
 
 
+def test_generate_registry_jwt_ignores_requested_audience(app, client):
+    resp = conduct_call(
+        client,
+        "v2.generate_registry_jwt",
+        url_for,
+        "GET",
+        {
+            "service": "https://attacker-controlled.example",
+            "scope": "repository:public/publicrepo:pull",
+        },
+    )
+
+    decoded = decode_bearer_token(resp.json["token"], instance_keys, original_app.config)
+    assert decoded["aud"] == original_app.config["SERVER_HOSTNAME"]
+
+
 @pytest.mark.parametrize(
     "scope, username, password, expected_code, expected_scopes, push_private, visibility, org_create",
     [
