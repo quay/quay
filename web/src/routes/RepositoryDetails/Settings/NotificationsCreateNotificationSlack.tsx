@@ -7,6 +7,7 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  TextArea,
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
@@ -19,6 +20,7 @@ export default function CreateSlackNotification(
 ) {
   const [url, setUrl] = useState<string>('');
   const [title, setTitle] = useState<string>('');
+  const [template, setTemplate] = useState<string>('');
   const {
     create,
     successCreatingNotification,
@@ -43,6 +45,7 @@ export default function CreateSlackNotification(
     create({
       config: {
         url: url,
+        ...(template && {template: template}),
       },
       event: props.event?.type,
       event_config: props.eventConfig,
@@ -86,6 +89,23 @@ export default function CreateSlackNotification(
             </HelperText>
           </FormHelperText>
         )}
+      </FormGroup>
+      <FormGroup fieldId="slack-template" label="Message template">
+        <TextArea
+          id="slack-template-field"
+          data-testid="slack-template-field"
+          value={template}
+          onChange={(_event, value) => setTemplate(value)}
+        />
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>
+              {
+                'Replaces the default message text. Use ${jsonPath} placeholders for event data, e.g. ${vulnerability.id} (${vulnerability.priority}) in ${repository}'
+              }
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
