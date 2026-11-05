@@ -24,10 +24,10 @@ const brandingE2E = process.env.PLAYWRIGHT_BRANDING_E2E === '1';
  * Version reported by /config.version_number = "Quay <version>" (endpoints/web.py),
  * resolved by _init._get_version_number(). Both downstream shapes are valid:
  *
- *   - Release form: "Quay v3.17.7". The operator sets QUAY_VERSION on the Quay
+ *   - Release form: "Quay vX.Y.Z". The operator sets QUAY_VERSION on the Quay
  *     pod from the installed release, and that value replaces the built one
  *     entirely; release images also carry no BUILD_DATE.
- *   - Nightly form: "Quay v3.17.7-nightly-202608031425" — top CHANGELOG heading
+ *   - Nightly form: "Quay vX.Y.Z-nightly-YYYYMMDDHHMM" — top CHANGELOG heading
  *     ("## [vX.Y.Z]") plus the BUILD_DATE the Containerfile.art writes
  *     ("date -u +%Y%m%d%H%M").
  *
@@ -192,7 +192,9 @@ test.describe(
       // empty or malformed value here is a defect.
       expect(
         versionNumber,
-        `expected a version_number from /config, got ${JSON.stringify(versionNumber)}`,
+        `expected a version_number from /config, got ${JSON.stringify(
+          versionNumber,
+        )}`,
       ).toMatch(DOWNSTREAM_VERSION_PATTERN);
     });
 
