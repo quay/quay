@@ -7,12 +7,6 @@ export function useLoginFooterItems() {
 
   const footerItems: React.ReactNode[] = [];
 
-  if (quayConfig?.version_number) {
-    footerItems.push(
-      <ListItem key="version">{quayConfig.version_number}</ListItem>,
-    );
-  }
-
   if (quayConfig?.config?.FOOTER_LINKS?.TERMS_OF_SERVICE_URL) {
     footerItems.push(
       <ListItem key="terms">
@@ -64,20 +58,6 @@ export function useLoginFooterItems() {
           rel="noopener noreferrer"
         >
           About
-        </a>
-      </ListItem>,
-    );
-  }
-
-  if (quayConfig?.config?.DOCUMENTATION_ROOT) {
-    footerItems.push(
-      <ListItem key="docs">
-        <a
-          href={quayConfig.config.DOCUMENTATION_ROOT}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Documentation
         </a>
       </ListItem>,
     );
