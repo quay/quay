@@ -212,6 +212,70 @@ test.describe(
       },
     );
 
+    test(
+      'search matches underscore literally, not as a wildcard',
+      {tag: '@PROJQUAY-8767'},
+      async ({authenticatedPage, api}) => {
+        test.setTimeout(120 * 1000);
+
+        const repo = await api.repository();
+        await pushImage(
+          repo.namespace,
+          repo.name,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const rawApi = api.raw;
+
+        let latestDigest: string | undefined;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const tags = await rawApi.getTags(repo.namespace, repo.name, {
+            specificTag: 'latest',
+          });
+          if (tags.tags.length > 0) {
+            latestDigest = tags.tags[0].manifest_digest;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!latestDigest) {
+          throw new Error('Pushed tag was not indexed after 10 attempts');
+        }
+
+        // Newer tags that match 'release_1' only if '_' is a wildcard,
+        // enough to fill the server's 50-row first page.
+        await rawApi.createTag(
+          repo.namespace,
+          repo.name,
+          'release_1',
+          latestDigest,
+        );
+        for (let i = 0; i < 55; i++) {
+          await rawApi.createTag(
+            repo.namespace,
+            repo.name,
+            `releaseA1-${i}`,
+            latestDigest,
+          );
+        }
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+        await authenticatedPage.getByText('Tag history').click();
+
+        const historyTable = authenticatedPage.getByRole('grid', {
+          name: 'Tag history table',
+        });
+        await expect(historyTable).toBeVisible();
+
+        await authenticatedPage
+          .getByPlaceholder('Search by tag name...')
+          .fill('release_1');
+        await expect(historyTable).toContainText('release_1');
+      },
+    );
+
     test('show future entries toggle', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
         `/repository/${sharedRepo.fullName}?tab=tags`,
