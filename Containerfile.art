@@ -1,4 +1,4 @@
-FROM registry.redhat.io/ubi8/ubi-minimal:8.10 AS base
+FROM registry.redhat.io/ubi8/ubi-minimal:8.10-1793069394 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -120,18 +120,18 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.redhat.io/ubi8/go-toolset:1.26 as pushgateway
+FROM registry.redhat.io/ubi8/go-toolset:1.26-1793118220 as pushgateway
 COPY --chown=1001:0 pushgateway /pushgateway
 WORKDIR /pushgateway
 RUN go mod vendor && GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.redhat.io/ubi8/go-toolset:1.26 AS config-tool
+FROM registry.redhat.io/ubi8/go-toolset:1.26-1793118220 AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
 
-FROM registry.redhat.io/ubi8/ubi-minimal AS build-quaydir
+FROM registry.redhat.io/ubi8/ubi-minimal:8.10-1793069394 AS build-quaydir
 WORKDIR /quaydir
 # Static assets: built JS from webpack, then built React/PatternFly UI.
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
