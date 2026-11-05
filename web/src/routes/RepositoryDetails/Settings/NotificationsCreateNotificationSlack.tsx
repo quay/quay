@@ -63,7 +63,7 @@ export default function CreateSlackNotification(
 
   useEffect(() => {
     if (errorCreatingNotification) {
-      props.setError('Unable to create notification');
+      props.setError(errorCreatingNotification as string);
       resetCreatingNotification();
     }
   }, [errorCreatingNotification]);
@@ -90,18 +90,19 @@ export default function CreateSlackNotification(
           </FormHelperText>
         )}
       </FormGroup>
-      <FormGroup fieldId="slack-template" label="Message template">
+      <FormGroup fieldId="slack-template-field" label="Message template">
         <TextArea
           id="slack-template-field"
           data-testid="slack-template-field"
+          aria-describedby="slack-template-helper"
           value={template}
           onChange={(_event, value) => setTemplate(value)}
         />
         <FormHelperText>
-          <HelperText>
+          <HelperText id="slack-template-helper">
             <HelperTextItem>
               {
-                'Replaces the default message text. Use ${jsonPath} placeholders for event data, e.g. ${vulnerability.id} (${vulnerability.priority}) in ${repository}'
+                'Replaces the default message text. Use ${jsonPath} placeholders for event data, e.g. ${repository} or ${docker_url}'
               }
             </HelperTextItem>
           </HelperText>

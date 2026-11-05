@@ -375,11 +375,12 @@ export default function NamespaceNotificationsCreateForm(
                 <TextArea
                   id="ns-notification-slack-template"
                   data-testid="ns-notification-slack-template"
+                  aria-describedby="ns-notification-slack-template-helper"
                   value={slackTemplate}
                   onChange={(_event, value) => setSlackTemplate(value)}
                 />
                 <FormHelperText>
-                  <HelperText>
+                  <HelperText id="ns-notification-slack-template-helper">
                     <HelperTextItem>
                       {
                         'Replaces the default message text. Use ${jsonPath} placeholders for event data, e.g. ${namespace} is at ${usage_percent}% of ${limit_bytes_formatted}'

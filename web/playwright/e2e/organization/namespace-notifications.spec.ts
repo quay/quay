@@ -224,10 +224,11 @@ test.describe(
         'Slack Template Warning',
         {method: 'Slack Notification'},
       );
-      const slackBody = authenticatedPage.locator('tbody', {
-        hasText: 'Slack Template Warning',
-      });
-      await slackBody.locator('button[aria-label="Details"]').click();
+      const slackBody = authenticatedPage
+        .getByTestId('ns-notifications-table')
+        .getByRole('rowgroup')
+        .filter({hasText: 'Slack Template Warning'});
+      await slackBody.getByRole('button', {name: 'Details'}).click();
       await expect(slackBody).toContainText('Message template');
 
       const response = await authenticatedRequest.get(
