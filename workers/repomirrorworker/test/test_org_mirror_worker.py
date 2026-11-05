@@ -231,6 +231,77 @@ class TestEnsureLocalRepository:
         assert org_mirror_repo.repository is not None
         assert org_mirror_repo.repository.id == result.id
 
+    @pytest.mark.parametrize("extended", [False, True])
+    def test_refuses_build_route_name_without_creating_repo(self, initialized_db, extended):
+        org, robot = _create_org_and_robot("ensure_build_conflict")
+        config = _create_org_mirror_config(org, robot)
+        name = "foo/build/bar"
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name=name,
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        with patch("workers.repomirrorworker.features.EXTENDED_REPOSITORY_NAMES", extended):
+            result = _ensure_local_repository(config, org_mirror_repo)
+        assert result is None
+        assert model.repository.get_repository(org.username, name) is None
+        assert org_mirror_repo.repository_id is None
+
+    @pytest.mark.parametrize("extended", [False, True])
+    def test_links_existing_build_route_name(self, initialized_db, extended):
+        org, robot = _create_org_and_robot("ensure_build_existing")
+        config = _create_org_mirror_config(org, robot)
+        name = "foo/build/bar"
+        from data.model import repository as repository_model
+
+        existing = repository_model.create_repository(
+            org.username, name, robot, visibility="private"
+        )
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name=name,
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        with patch("workers.repomirrorworker.features.EXTENDED_REPOSITORY_NAMES", extended):
+            result = _ensure_local_repository(config, org_mirror_repo)
+        assert result.id == existing.id
+        assert OrgMirrorRepository.get_by_id(org_mirror_repo.id).repository_id == existing.id
+
+    @patch("workers.repomirrorworker.release_org_mirror_repo")
+    @patch("workers.repomirrorworker.claim_org_mirror_repo")
+    def test_build_route_refusal_releases_claim_as_failure(
+        self, mock_claim, mock_release, initialized_db
+    ):
+        org, robot = _create_org_and_robot("ensure_build_release")
+        config = _create_org_mirror_config(org, robot)
+        name = "foo/build/bar"
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name=name,
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        mock_claim.return_value = repo
+        assert perform_org_mirror_repo(Mock(), repo) == OrgMirrorRepoStatus.FAIL
+        mock_release.assert_called_once_with(
+            repo,
+            OrgMirrorRepoStatus.FAIL,
+            status_message=f"Failed to create local repository for '{name}'",
+        )
+        assert model.repository.get_repository(org.username, name) is None
+
+    def test_creates_incomplete_build_route_name(self, initialized_db):
+        org, robot = _create_org_and_robot("ensure_build_allowed")
+        config = _create_org_mirror_config(org, robot)
+        name = "foo/build/bar/extra"
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name=name,
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        result = _ensure_local_repository(config, org_mirror_repo)
+        assert result is not None
+        assert result.name == name
+
     def test_creates_new_repo(self, initialized_db):
         """If repo doesn't exist, create it with ORG_MIRROR state."""
         org, robot = _create_org_and_robot("ensure_repo_test3")

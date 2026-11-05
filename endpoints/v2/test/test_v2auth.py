@@ -1,11 +1,15 @@
+from unittest.mock import patch
+
 import pytest
 from flask import url_for
 
 from app import app as original_app
 from app import instance_keys
 from data import model
+from data.database import RepositoryState
 from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
+from features import FeatureNameValue
 from test.fixtures import *
 from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
 
@@ -412,3 +416,103 @@ def test_generate_registry_jwt(
         assert (
             model.repository.get_repository("devtable", "visibility").visibility.name == visibility
         )
+
+
+@pytest.mark.parametrize("extended", [False, True])
+@pytest.mark.parametrize("name", ["foo/build", "foo/build/bar", "foo/build/bar/status"])
+def test_push_on_create_rejects_build_route_name(app, client, extended, name):
+    params = {
+        "service": original_app.config["SERVER_HOSTNAME"],
+        "scope": f"repository:devtable/{name}:push",
+    }
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", extended),
+    ):
+        response = conduct_call(
+            client,
+            "v2.generate_registry_jwt",
+            url_for,
+            "GET",
+            params,
+            {},
+            400,
+            headers={"Authorization": gen_basic_auth("devtable", "password")},
+        )
+    assert response.json["errors"][0]["code"] == "NAME_INVALID"
+    assert model.repository.get_repository("devtable", name) is None
+
+
+@pytest.mark.parametrize("actions", ["pull", "push", "pull,push"])
+def test_historical_build_route_name_keeps_registry_access(app, client, actions):
+    name = "historical/build/legacy"
+    model.repository.create_repository("devtable", name, get_user("devtable"))
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", True),
+    ):
+        response = conduct_call(
+            client,
+            "v2.generate_registry_jwt",
+            url_for,
+            "GET",
+            {
+                "service": original_app.config["SERVER_HOSTNAME"],
+                "scope": f"repository:devtable/{name}:{actions}",
+            },
+            {},
+            200,
+            headers={"Authorization": gen_basic_auth("devtable", "password")},
+        )
+    token = decode_bearer_token(response.json["token"], instance_keys, original_app.config)
+    assert set(token["access"][0]["actions"]) == set(actions.split(","))
+
+
+def test_historical_build_route_read_only_state_still_downscopes_push(app, client):
+    name = "historical/build/readonly"
+    repo = model.repository.create_repository("devtable", name, get_user("devtable"))
+    repo.state = RepositoryState.READ_ONLY
+    repo.save()
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", True),
+    ):
+        response = conduct_call(
+            client,
+            "v2.generate_registry_jwt",
+            url_for,
+            "GET",
+            {
+                "service": original_app.config["SERVER_HOSTNAME"],
+                "scope": f"repository:devtable/{name}:pull,push",
+            },
+            {},
+            200,
+            headers={"Authorization": gen_basic_auth("devtable", "password")},
+        )
+    token = decode_bearer_token(response.json["token"], instance_keys, original_app.config)
+    assert token["access"][0]["actions"] == ["pull"]
+
+
+def test_unauthorized_build_route_push_is_downscoped(app, client):
+    name = "foo/build/denied"
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", True),
+    ):
+        response = conduct_call(
+            client,
+            "v2.generate_registry_jwt",
+            url_for,
+            "GET",
+            {
+                "service": original_app.config["SERVER_HOSTNAME"],
+                "scope": f"repository:buynlarge/{name}:pull,push",
+            },
+            {},
+            200,
+            headers={"Authorization": gen_basic_auth("reader", "password")},
+        )
+    token = decode_bearer_token(response.json["token"], instance_keys, original_app.config)
+    assert "push" not in token["access"][0]["actions"]
+    assert model.repository.get_repository("buynlarge", name) is None

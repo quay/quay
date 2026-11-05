@@ -209,6 +209,18 @@ def test_list_repositories_last_modified(app):
         pytest.param("devtable/" + "x" * 246, True, 201, id="Slashes Allowed Max Allowed"),
         pytest.param("devtable/nested1/nested2", False, 400, id="Slashes Allowed Multiple Levels"),
         pytest.param("devtable/nested1/nested2", True, 201, id="Slashes Allowed Multiple Levels"),
+        pytest.param("foo/build", True, 400, id="Build list route"),
+        pytest.param("foo/build/bar", True, 400, id="Build detail route"),
+        pytest.param("foo/bar/build/baz", True, 400, id="Deep build detail route"),
+        pytest.param("foo/build/bar/status", True, 400, id="Build status route"),
+        pytest.param("foo/build/bar/logs", True, 400, id="Build logs route"),
+        pytest.param("foo/build", False, 400, id="Build list feature off"),
+        pytest.param("build", True, 201, id="Build at root allowed"),
+        pytest.param("build/foo", True, 201, id="Build first component allowed"),
+        pytest.param("foo/building/bar", True, 201, id="Building allowed"),
+        pytest.param("foo/build/bar/extra", True, 201, id="Incomplete build path allowed"),
+        pytest.param("foo/bar", True, 201, id="Ordinary nested name allowed"),
+        pytest.param("foo/tag/v1", True, 201, id="Non-build route allowed"),
     ],
 )
 def test_create_repository(repo_name, extended_repo_names, expected_status, app):
@@ -230,6 +242,35 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, app)
             if expected_status == 201:
                 assert result["name"] == repo_name
                 assert model.repository.get_repository("devtable", repo_name).name == repo_name
+            else:
+                assert model.repository.get_repository("devtable", repo_name) is None
+                if extended_repo_names and "/build" in repo_name:
+                    assert "build route" in result["error_message"]
+
+
+def test_existing_build_route_name_still_reports_duplicate(app):
+    name = "historical/build/legacy"
+    model.repository.create_repository("devtable", name, model.user.get_user("devtable"))
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", True),
+    ):
+        with client_with_identity("devtable", app) as cl:
+            response = conduct_api_call(
+                cl,
+                RepositoryList,
+                "post",
+                None,
+                {
+                    "namespace": "devtable",
+                    "repository": name,
+                    "visibility": "public",
+                    "description": "duplicate",
+                },
+                expected_code=400,
+            )
+    assert "already exists" in response.json["error_message"]
+    assert model.repository.get_repository("devtable", name) is not None
 
 
 def test_create_repository_spam_detection_disabled_does_not_evaluate(app):
