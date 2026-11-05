@@ -29,6 +29,7 @@ from endpoints.api.user import Signin
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
 from endpoints.keyserver import jwk_with_kid
 from endpoints.test.shared import gen_basic_auth, toggle_feature
+from endpoints.v2 import v2_bp
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
 from initdb import finished_database_for_testing, setup_database_for_testing
@@ -56,6 +57,12 @@ except ValueError:
 
 try:
     app.register_blueprint(api_bp, url_prefix="/api")
+except ValueError:
+    # This blueprint was already registered
+    pass
+
+try:
+    app.register_blueprint(v2_bp, url_prefix="/v2")
 except ValueError:
     # This blueprint was already registered
     pass
@@ -945,12 +952,27 @@ class KeyServerTestCase(EndpointTestCase):
             expected_code=400,
         )
 
-        # Publish a new key
+        # Keys created over HTTP must always expire.
+        self.putResponse(
+            "key_server.put_service_key",
+            service="sample_service",
+            kid="kid420",
+            headers={
+                "Authorization": "Bearer %s" % token,
+                "Content-Type": "application/json",
+            },
+            data=jwk.as_dict(),
+            expected_code=400,
+        )
+
+        # Publish a new key.
+        signer_expiration = int(time.time()) + 600
         with assert_action_logged("service_key_create"):
             self.putResponse(
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid420",
+                expiration=signer_expiration,
                 headers={
                     "Authorization": "Bearer %s" % token,
                     "Content-Type": "application/json",
@@ -970,6 +992,7 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
+            expiration=int(time.time()) + 300,
             headers={
                 "Authorization": "Bearer %s" % token,
                 "Content-Type": "application/json",
@@ -983,13 +1006,18 @@ class KeyServerTestCase(EndpointTestCase):
             "kid420", ServiceKeyApprovalType.SUPERUSER, approver=1
         )
 
-        # Rotate that new key
+        # Rotate that new key. The expiration is clamped to the signer's expiration.
         with assert_action_logged("service_key_rotate"):
-            token = jwt.encode(payload, private_pem, "RS256", headers={"kid": "kid420"})
+            rotation_payload = dict(payload)
+            rotation_payload[keyserver.KEY_ROTATION_CLAIM] = "kid6969"
+            token = jwt.encode(
+                rotation_payload, private_pem, "RS256", headers={"kid": "kid420"}
+            )
             self.putResponse(
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid6969",
+                expiration=int(time.time()) + 1200,
                 headers={
                     "Authorization": "Bearer %s" % token,
                     "Content-Type": "application/json",
@@ -998,7 +1026,18 @@ class KeyServerTestCase(EndpointTestCase):
                 expected_code=200,
             )
 
-        # Rotation should only work when signed by the previous key
+        self.getResponse(
+            "key_server.get_service_key",
+            service="sample_service",
+            kid="kid420",
+            expected_code=404,
+        )
+        rotated_key = model.service_keys.get_service_key("kid6969", service="sample_service")
+        self.assertEqual(
+            rotated_key.expiration_date, datetime.utcfromtimestamp(signer_expiration)
+        )
+
+        # Rotation should only work when signed by the previous key.
         jwk = JsonWebKey.generate_key("RSA", 2048, is_private=True)
         private_pem = jwk.get_private_key().private_bytes(
             encoding=serialization.Encoding.PEM,
@@ -1006,17 +1045,168 @@ class KeyServerTestCase(EndpointTestCase):
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        token = jwt.encode(payload, private_pem, "RS256", headers={"kid": "kid420"})
+        token = jwt.encode(rotation_payload, private_pem, "RS256", headers={"kid": "kid420"})
         self.putResponse(
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
+            expiration=int(time.time()) + 300,
             headers={
                 "Authorization": "Bearer %s" % token,
                 "Content-Type": "application/json",
             },
             data=jwk.as_dict(),
             expected_code=403,
+        )
+
+    def test_registry_jwt_cannot_rotate_or_delete_service_keys(self):
+        private_key, _ = model.service_keys.generate_service_key(
+            "sample_service", datetime.utcnow() + timedelta(minutes=10), kid="approved-signer"
+        )
+        model.service_keys.approve_service_key(
+            "approved-signer", ServiceKeyApprovalType.SUPERUSER, approver=1
+        )
+        proposed_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
+
+        payload = self._get_test_jwt_payload()
+        payload.update(
+            {
+                "access": [],
+                "context": {},
+                keyserver.KEY_ROTATION_CLAIM: "proposed-key",
+            }
+        )
+        token = jwt.encode(
+            payload,
+            private_key,
+            "RS256",
+            headers={"kid": "approved-signer"},
+        )
+        headers = {
+            "Authorization": "Bearer %s" % token,
+            "Content-Type": "application/json",
+        }
+
+        self.putResponse(
+            "key_server.put_service_key",
+            service="sample_service",
+            kid="proposed-key",
+            expiration=int(time.time()) + 300,
+            headers=headers,
+            data=proposed_key.as_dict(),
+            expected_code=403,
+        )
+        self.deleteResponse(
+            "key_server.delete_service_key",
+            service="sample_service",
+            kid="approved-signer",
+            headers=headers,
+            expected_code=403,
+        )
+
+    def test_v2_auth_token_cannot_install_service_key(self):
+        auth_response = self.app.get(
+            url_for(
+                "v2.generate_registry_jwt",
+                service=keyserver.JWT_AUDIENCE,
+                scope="repository:public/publicrepo:pull",
+            )
+        )
+        self.assertEqual(auth_response.status_code, 200)
+        token = auth_response.get_json()["token"]
+        proposed_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
+
+        self.putResponse(
+            "key_server.put_service_key",
+            service=app.config["INSTANCE_SERVICE_KEY_SERVICE"],
+            kid="attacker-key",
+            expiration=int(time.time()) + 300,
+            headers={
+                "Authorization": "Bearer %s" % token,
+                "Content-Type": "application/json",
+            },
+            data=proposed_key.as_dict(),
+            expected_code=400,
+        )
+        self.getResponse(
+            "key_server.get_service_key",
+            service=app.config["INSTANCE_SERVICE_KEY_SERVICE"],
+            kid="attacker-key",
+            expected_code=404,
+        )
+
+    def test_rotation_requires_bound_short_lived_credential(self):
+        private_key, _ = model.service_keys.generate_service_key(
+            "sample_service", datetime.utcnow() + timedelta(minutes=10), kid="rotation-signer"
+        )
+        model.service_keys.approve_service_key(
+            "rotation-signer", ServiceKeyApprovalType.SUPERUSER, approver=1
+        )
+        proposed_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
+        headers = {"kid": "rotation-signer"}
+
+        for rotation_claim, expected_code in ((None, 403), ("different-key", 403)):
+            payload = self._get_test_jwt_payload()
+            if rotation_claim is not None:
+                payload[keyserver.KEY_ROTATION_CLAIM] = rotation_claim
+            token = jwt.encode(payload, private_key, "RS256", headers=headers)
+            self.putResponse(
+                "key_server.put_service_key",
+                service="sample_service",
+                kid="proposed-key",
+                expiration=int(time.time()) + 300,
+                headers={
+                    "Authorization": "Bearer %s" % token,
+                    "Content-Type": "application/json",
+                },
+                data=proposed_key.as_dict(),
+                expected_code=expected_code,
+            )
+
+        payload = self._get_test_jwt_payload()
+        payload[keyserver.KEY_ROTATION_CLAIM] = "proposed-key"
+        payload["exp"] = payload["iat"] + keyserver.KEY_SERVER_TOKEN_MAX_AGE_S + 1
+        token = jwt.encode(payload, private_key, "RS256", headers=headers)
+        self.putResponse(
+            "key_server.put_service_key",
+            service="sample_service",
+            kid="proposed-key",
+            expiration=int(time.time()) + 300,
+            headers={
+                "Authorization": "Bearer %s" % token,
+                "Content-Type": "application/json",
+            },
+            data=proposed_key.as_dict(),
+            expected_code=400,
+        )
+
+    def test_delete_service_key_is_scoped_to_service(self):
+        private_key, _ = model.service_keys.generate_service_key(
+            "sample_service", None, kid="scoped-signer"
+        )
+        model.service_keys.approve_service_key(
+            "scoped-signer", ServiceKeyApprovalType.SUPERUSER, approver=1
+        )
+        model.service_keys.generate_service_key("other_service", None, kid="other-service-key")
+        token = jwt.encode(
+            self._get_test_jwt_payload(),
+            private_key,
+            "RS256",
+            headers={"kid": "scoped-signer"},
+        )
+
+        self.deleteResponse(
+            "key_server.delete_service_key",
+            service="sample_service",
+            kid="other-service-key",
+            headers={"Authorization": "Bearer %s" % token},
+            expected_code=404,
+        )
+        model.service_keys.get_service_key(
+            "other-service-key",
+            service="other_service",
+            alive_only=False,
+            approved_only=False,
         )
 
     def test_attempt_delete_service_key_with_no_kid_signer(self):
