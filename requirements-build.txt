@@ -616,6 +616,7 @@ setuptools==80.10.2 \
     #   bcrypt
     #   cachetools
     #   calver
+    #   certifi
     #   cffi
     #   chardet
     #   cryptography
