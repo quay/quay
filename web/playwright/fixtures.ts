@@ -920,6 +920,8 @@ export interface QuayConfig {
   config: Record<string, unknown>;
   external_login?: Array<{id: string; title: string; icon?: string}>;
   registry_state?: 'normal' | 'readonly';
+  /** "Quay <version>"; empty when BILLING is enabled (see endpoints/web.py). */
+  version_number?: string;
 }
 
 /**

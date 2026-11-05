@@ -35,21 +35,6 @@ export function QuayFooter() {
     );
   }
 
-  // Add Documentation link
-  if (quayConfig?.config?.DOCUMENTATION_ROOT) {
-    footerItems.push(
-      <li key="docs">
-        <a
-          href={quayConfig.config.DOCUMENTATION_ROOT}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Documentation
-        </a>
-      </li>,
-    );
-  }
-
   // For quay.io and stage.quay.io with BILLING feature
   const isQuayIO =
     quayConfig?.config?.SERVER_HOSTNAME === 'quay.io' ||
@@ -183,8 +168,8 @@ export function QuayFooter() {
     );
   }
 
-  // Don't render footer if there are no items and no version
-  if (footerItems.length === 0 && !quayConfig?.version_number) {
+  // Don't render footer if there are no items
+  if (footerItems.length === 0) {
     return null;
   }
 
@@ -193,11 +178,6 @@ export function QuayFooter() {
       <nav id="quay-footer" className="quay-footer">
         <div className="quay-footer-container">
           <ul className="quay-footer-list">{footerItems}</ul>
-          {quayConfig?.version_number && (
-            <div className="quay-footer-version">
-              {quayConfig.version_number}
-            </div>
-          )}
         </div>
       </nav>
       {isQuayIO && (

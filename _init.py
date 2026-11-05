@@ -1,6 +1,4 @@
 import os
-import re
-import subprocess
 
 try:
     from util.config.provider import get_config_provider
@@ -37,14 +35,15 @@ config_provider = get_config_provider(
 
 
 def _get_version_number():
-    # Try to get version from environment
     version = os.getenv("QUAY_VERSION", "")
+    if version:
+        return version
 
-    if not version:
-        # Fallback to getting version from changelog for standalone
-        version = _get_version_number_changelog()
-
-    return version
+    base = _get_version_number_changelog()
+    build_date = _get_build_date()
+    if base and build_date:
+        return f"{base}-nightly-{build_date}"
+    return base
 
 
 def _get_version_number_changelog():
@@ -54,6 +53,15 @@ def _get_version_number_changelog():
                 if line[0:5] == "## [v":
                     return line.split("[")[1].split("]")[0]
     except IOError:
+        pass
+    return ""
+
+
+def _get_build_date():
+    try:
+        with open(os.path.join(ROOT_DIR, "BUILD_DATE")) as f:
+            return f.read().strip()
+    except (IOError, OSError):
         return ""
 
 
