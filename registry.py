@@ -8,4 +8,8 @@ from endpoints.v2 import v2_bp
 
 
 application.register_blueprint(v1_bp, url_prefix="/v1")
-application.register_blueprint(v2_bp, url_prefix="/v2")
+
+try:
+    application.register_blueprint(v2_bp, url_prefix="/v2")
+except ValueError:
+    pass
