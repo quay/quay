@@ -72,6 +72,7 @@ from image.shared.interfaces import ManifestInterface
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy import REGISTRY_URLS, Proxy, UpstreamAuthError, UpstreamRegistryError
 from util.bytes import Bytes
+from util.names import conflicts_with_build_route
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class ProxyModel(OCIModel):
         # we only create a repository for images that exist upstream, and if
         # we're not given a manifest reference then we can't check whether the
         # image exists upstream or not, so we refuse to create the repo.
-        if manifest_ref is None:
+        if manifest_ref is None or conflicts_with_build_route(repo_name):
             return None
 
         try:
