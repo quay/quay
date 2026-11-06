@@ -1,6 +1,7 @@
-# Cypress to Playwright Migration Guide
+# Playwright E2E Testing Guide
 
-This guide provides instructions for migrating Quay's Cypress e2e tests to Playwright.
+Authoritative guidance for Quay's Playwright E2E suite, including the remaining
+Cypress-to-Playwright migration reference.
 
 ## Key Principles
 
@@ -33,7 +34,7 @@ web/playwright/
 │   └── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
 ├── global-setup.ts               # Creates admin, testuser, readonly users
-└── MIGRATION.md                  # This guide
+└── AGENTS.md                     # This guide
 ```
 
 ## Test Tagging System
@@ -62,6 +63,21 @@ test.describe('Feature Name', { tag: ['@critical', '@repository'] }, () => {
 | Config | `@config:BILLING` | `@config:OIDC` | Required config |
 | Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature |
 | Container | `@container` | `@container` | Requires registry image tooling (auto-skip) |
+| Branding | `@redhat-branding` | `@redhat-branding` | Red Hat branding verification; downstream OCP lanes only |
+
+### Red Hat branding downstream tests (`@redhat-branding`)
+
+`e2e/ui/branding.spec.ts` verifies that a downstream image built with
+`RED_HAT_QUAY=true` serves the Red Hat branding reported by `/config` and in
+the rendered UI. It also checks that the Help menu renders the
+`/config.version_number` value.
+
+- The spec self-skips unless `PLAYWRIGHT_BRANDING_E2E=1`, so it does not run
+  in the standard GitHub Actions or functional Prow lanes; `ci-web.yaml`
+  grep-inverts `@redhat-branding` for those runs.
+- Downstream lane wiring for `PLAYWRIGHT_BRANDING_E2E=1` lives outside this
+  repository. Keep the expected asset paths in the spec synchronized with
+  `config.py` if downstream defaults change.
 
 ### Running Tagged Tests
 
@@ -705,7 +721,7 @@ test.describe('Repository Delete', {tag: ['@critical', '@repository']}, () => {
 | `playwright/utils/api/team.ts` | Team utilities: `createTeam`, `deleteTeam` |
 | `playwright/utils/config.ts` | Global config: `API_URL`, `BASE_URL` |
 | `playwright/utils/container.ts` | Registry image utilities (`skopeo`, `crane`, `oras`, `regctl`): `pushImage`, `isContainerRuntimeAvailable` |
-| `playwright/MIGRATION.md` | This guide |
+| `playwright/AGENTS.md` | This guide |
 
 ## Migration Checklist
 

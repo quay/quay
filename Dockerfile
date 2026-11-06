@@ -214,6 +214,9 @@ COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
 
+ARG BUILD_TIMESTAMP
+RUN date -u +%Y%m%d%H%M > $QUAYDIR/BUILD_DATE
+
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
 # correctly above.
