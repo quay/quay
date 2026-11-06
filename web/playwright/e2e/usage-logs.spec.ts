@@ -215,7 +215,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       const pagination = tabPanel.locator(
         '#toolbar-pagination .pf-v6-c-menu-toggle',
       );
-      const nextPage = tabPanel.locator('button[aria-label="Go to next page"]');
+      const nextPage = tabPanel.getByRole('button', {name: 'Go to next page'});
       // The API returns 20 logs per page; scrolling to the footer loads the rest.
       await expect(pagination).toContainText(/1 - 20 of \d+/, {
         timeout: 15000,
@@ -225,9 +225,10 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         timeout: 15000,
       });
 
-      const page1Repo = (
-        await table.locator('td[data-label="Repository"]').first().textContent()
-      ).trim();
+      const repoCells = table.getByRole('gridcell', {
+        name: new RegExp(`^${org.name}/logpg-`),
+      });
+      const page1Repo = (await repoCells.first().textContent()).trim();
 
       await nextPage.click();
       await expect(pagination).toContainText(/21 - \d+ of \d+/);
@@ -235,9 +236,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       await authenticatedPage.getByPlaceholder('Filter logs').fill(page1Repo);
 
       await expect(pagination).toContainText('1 - 1 of 1');
-      await expect(table.locator('td[data-label="Repository"]')).toHaveText([
-        page1Repo,
-      ]);
+      await expect(repoCells).toHaveText([page1Repo]);
     },
   );
 

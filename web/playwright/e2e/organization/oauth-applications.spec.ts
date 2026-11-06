@@ -218,25 +218,23 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
         .first();
       await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
-      const page1AppName = (
-        await tabPanel
-          .locator('td[data-label="Application Name"]')
-          .first()
-          .textContent()
-      ).trim();
+      const appNameCells = tabPanel
+        .getByTestId('oauth-applications-table')
+        .getByRole('gridcell', {name: /^pgapp-/});
+      const page1AppName = (await appNameCells.first().textContent()).trim();
 
       await tabPanel
-        .locator('button[aria-label="Go to next page"]')
+        .getByRole('button', {name: 'Go to next page'})
         .first()
         .click();
       await expect(pagination).toHaveText('21 - 21 of 21');
 
-      await tabPanel.locator('#default-permissions-search').fill(page1AppName);
+      await tabPanel
+        .getByTestId('default-permissions-search')
+        .fill(page1AppName);
 
       await expect(pagination).toHaveText('1 - 1 of 1');
-      await expect(
-        tabPanel.locator('td[data-label="Application Name"]'),
-      ).toHaveText([page1AppName]);
+      await expect(appNameCells).toHaveText([page1AppName]);
     },
   );
 

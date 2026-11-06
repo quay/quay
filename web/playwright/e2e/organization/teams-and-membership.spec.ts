@@ -36,23 +36,25 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
         .first();
 
       await navigateToTeamsTab(authenticatedPage, org.name);
-      await authenticatedPage.locator('#teams-view-search').fill('pgteam');
+      await authenticatedPage.getByTestId('teams-view-search').fill('pgteam');
       await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
       const page1TeamName = (
         await authenticatedPage
-          .locator('td[data-label="Team name"] a')
+          .getByRole('link', {name: /^pgteam-/})
           .first()
           .textContent()
       ).trim();
 
       await authenticatedPage
-        .locator('button[aria-label="Go to next page"]')
+        .getByRole('button', {name: 'Go to next page'})
         .first()
         .click();
       await expect(pagination).toHaveText('21 - 21 of 21', {timeout: 15000});
 
-      await authenticatedPage.locator('#teams-view-search').fill(page1TeamName);
+      await authenticatedPage
+        .getByTestId('teams-view-search')
+        .fill(page1TeamName);
 
       await expect(pagination).toHaveText('1 - 1 of 1', {timeout: 15000});
       await expect(
@@ -344,27 +346,21 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
         .first();
       await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
-      const page1RepoName = (
-        await dialog
-          .locator('td[data-label="Repository"]')
-          .first()
-          .textContent()
-      ).trim();
+      const repoNameCells = dialog.getByRole('gridcell', {name: /^pgperm-/});
+      const page1RepoName = (await repoNameCells.first().textContent()).trim();
 
       await dialog
-        .locator('button[aria-label="Go to next page"]')
+        .getByRole('button', {name: 'Go to next page'})
         .first()
         .click();
       await expect(pagination).toHaveText('21 - 21 of 21');
 
       await dialog
-        .locator('#set-repo-perm-for-team-search')
+        .getByTestId('set-repo-perm-for-team-search')
         .fill(page1RepoName);
 
       await expect(pagination).toHaveText('1 - 1 of 1');
-      await expect(dialog.locator('td[data-label="Repository"]')).toHaveText([
-        page1RepoName,
-      ]);
+      await expect(repoNameCells).toHaveText([page1RepoName]);
     },
   );
 
