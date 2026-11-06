@@ -12,10 +12,26 @@
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "description": "Disable major version bumps for non-tekton managers",
+      "description": "Disable all managers on release branches",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "enabled": false
+    },
+    {
+      "description": "Re-enable manifest managers on release branches",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "matchManagers": ["pip_requirements", "npm", "gomod"],
+      "enabled": true
+    },
+    {
+      "description": "Disable major version bumps for manifest managers",
       "matchUpdateTypes": ["major"],
       "matchManagers": ["npm", "pip_requirements", "gomod"],
       "enabled": false
+    },
+    {
+      "description": "Use release branch title prefix",
+      "matchJsonata": ["$contains(baseBranch, /^redhat-/)"],
+      "commitMessagePrefix": "[{{baseBranch}}] NO-ISSUE: chore(deps):"
     }
   ],
   "semanticCommits": "disabled",
