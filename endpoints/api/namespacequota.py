@@ -373,7 +373,9 @@ class OrganizationQuotaLimitList(ApiResource):
             msg = "Quota limit already exists"
             raise request_error(message=msg)
 
-        if quota_limit_data["type"].lower() == "reject" and quota_limit:
+        if quota_type.lower() == "reject" and model.namespacequota.get_namespace_quota_limit_list(
+            quota, quota_type="Reject"
+        ):
             raise request_error(message="Only one quota limit of type 'Reject' allowed.")
 
         try:
@@ -457,6 +459,13 @@ class OrganizationQuotaLimit(ApiResource):
         # Capture previous values for audit logging
         previous_type = quota_limit.quota_type.name
         previous_threshold = quota_limit.percent_of_limit
+
+        if (
+            quota_limit_data.get("type", "").lower() == "reject"
+            and previous_type != "Reject"
+            and model.namespacequota.get_namespace_quota_limit_list(quota, quota_type="Reject")
+        ):
+            raise request_error(message="Only one quota limit of type 'Reject' allowed.")
 
         if "type" in quota_limit_data:
             new_type = quota_limit_data["type"]
