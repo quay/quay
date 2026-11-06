@@ -13,6 +13,11 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
 
 export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -26,7 +31,7 @@ export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
         />
         <SearchInput
           searchState={props.search}
-          onChange={props.setSearch}
+          onChange={handleSearchChange}
           id="robot-account-search"
         />
         {!props.hideCreateButton && (

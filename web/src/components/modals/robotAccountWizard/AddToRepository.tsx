@@ -50,6 +50,11 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const [updatedRepoPerms, setUpdatedRepoPerms] = useState({});
   const [isKebabOpen, setKebabOpen] = useState(false);
 
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    setPage(1);
+  };
+
   props.repos.sort((r1, r2) => {
     return r1.last_modified > r2.last_modified ? -1 : 1;
   });
@@ -239,7 +244,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
             />
             <SearchInput
               searchState={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
               id="robot-wizard-repo-search"
             />
             <ToolbarItem>

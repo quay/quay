@@ -1,4 +1,4 @@
-import {render, screen, within} from 'src/test-utils';
+import {render, screen, userEvent, within} from 'src/test-utils';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {UsageLogsTable} from './UsageLogsTable';
 
@@ -121,6 +121,28 @@ describe('UsageLogsTable', () => {
     const descriptionCell = within(table).getByText(description);
     expect(table).toHaveStyle({tableLayout: 'fixed', width: '100%'});
     expect(descriptionCell.closest('td')).toHaveClass('pf-m-break-word');
+  });
+
+  it('returns to page 1 when the filter changes', async () => {
+    const logs = Array.from({length: 21}, (_, i) => ({
+      ...log,
+      performer: {name: i === 0 ? 'needle-user' : `user-${i}`},
+    }));
+    logs[0] = {...logs[0], datetime: '2024-01-02T04:00:00.000Z'};
+    renderTable({}, logs);
+
+    const table = await screen.findByTestId('usage-logs-table');
+    await userEvent.click(
+      screen.getAllByRole('button', {name: 'Go to next page'})[0],
+    );
+    expect(within(table).queryByText('needle-user')).toBeNull();
+
+    await userEvent.type(
+      screen.getByRole('textbox', {name: /search input/i}),
+      'needle',
+    );
+
+    expect(within(table).getByText('needle-user')).toBeInTheDocument();
   });
 
   it('omits the repository column for repository logs', async () => {
