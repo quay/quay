@@ -64,6 +64,7 @@ def registry_services():
         "autopruneworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
         "pullstatsredisflushworker": {"autostart": "true"},
+        "system-metrics-collector": {"autostart": "false"},
     }
 
 
