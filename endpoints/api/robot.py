@@ -191,7 +191,7 @@ class UserRobot(ApiResource):
         """
         parent = get_authenticated_user()
         if parent.robot:
-            raise request_error(message="Robot accounts cannot create robot accounts")
+            raise request_error(message="Robot accounts cannot own robot accounts")
 
         create_data = request.get_json(silent=True) or {}
 

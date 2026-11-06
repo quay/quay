@@ -191,7 +191,7 @@ def test_robot_api_token_cannot_create_nested_robot(app):
             headers={"Authorization": "Bearer " + secret},
         )
 
-    assert response.json["error_message"] == "Robot accounts cannot create robot accounts"
+    assert response.json["error_message"] == "Robot accounts cannot own robot accounts"
     with pytest.raises(model.InvalidRobotException):
         model.user.lookup_robot("devtable+dtrobot+nested")
 
