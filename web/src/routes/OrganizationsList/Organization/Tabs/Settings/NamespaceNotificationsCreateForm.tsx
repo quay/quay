@@ -67,6 +67,7 @@ export default function NamespaceNotificationsCreateForm(
   const [error, setError] = useState('');
 
   const [slackUrl, setSlackUrl] = useState('');
+  const [slackTemplate, setSlackTemplate] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookTemplate, setWebhookTemplate] = useState('');
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
@@ -94,6 +95,7 @@ export default function NamespaceNotificationsCreateForm(
       setTitle('');
       setError('');
       setSlackUrl('');
+      setSlackTemplate('');
       setWebhookUrl('');
       setWebhookTemplate('');
       setSelectedEntity(null);
@@ -154,7 +156,7 @@ export default function NamespaceNotificationsCreateForm(
       case NamespaceNotificationMethodType.email:
         return {};
       case NamespaceNotificationMethodType.slack:
-        return {url: slackUrl};
+        return {url: slackUrl, ...(slackTemplate && {template: slackTemplate})};
       case NamespaceNotificationMethodType.webhook:
         return {url: webhookUrl, template: webhookTemplate};
       case NamespaceNotificationMethodType.quaynotification:
@@ -365,6 +367,27 @@ export default function NamespaceNotificationsCreateForm(
                     </HelperText>
                   </FormHelperText>
                 )}
+              </FormGroup>
+              <FormGroup
+                fieldId="ns-notification-slack-template"
+                label="Message template"
+              >
+                <TextArea
+                  id="ns-notification-slack-template"
+                  data-testid="ns-notification-slack-template"
+                  aria-describedby="ns-notification-slack-template-helper"
+                  value={slackTemplate}
+                  onChange={(_event, value) => setSlackTemplate(value)}
+                />
+                <FormHelperText>
+                  <HelperText id="ns-notification-slack-template-helper">
+                    <HelperTextItem>
+                      {
+                        'Replaces the default message text. Use ${jsonPath} placeholders for event data, e.g. ${namespace} is at ${usage_percent}% of ${limit_bytes_formatted}'
+                      }
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
               </FormGroup>
             </Conditional>
 
