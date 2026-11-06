@@ -107,6 +107,7 @@ var knownUnmapped = map[string]bool{
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
+	"FEATURE_ALB_HEALTH_CHECK":                      true,
 	"FEATURE_EXTENDED_ACTION_LOGGING":               true,
 	"FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL":        true,
 	"FEATURE_ACTION_LOG_ROTATION":                   true,

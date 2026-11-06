@@ -596,17 +596,13 @@ def test_delete_namespace_with_mixed_repo_states(initialized_db):
 
 
 def test_mark_namespace_for_deletion_with_grace_period(initialized_db):
-    """When available_after > 0, linked data (robots, teams, federated logins) is preserved."""
+    """When available_after > 0, repos are preserved for recovery during the grace window."""
     user = get_user("devtable")
     org = create_organization("graceorg", "grace@example.com", user)
 
     robot, _ = create_robot("bot", org)
     create_team("graceteam", org, "member")
     attach_federated_login(org, "google", "grace_oidc")
-
-    assert User.select().where(User.id == robot.id).count() == 1
-    assert Team.select().where(Team.organization == org).count() >= 1
-    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 1
 
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
     marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
@@ -620,10 +616,10 @@ def test_mark_namespace_for_deletion_with_grace_period(initialized_db):
     assert not org_after.enabled
     assert org_after.username != "graceorg"
 
-    # Linked data is still present (query by ID since username was renamed).
-    assert User.select().where(User.id == robot.id).count() == 1
-    assert Team.select().where(Team.organization == org_after).count() >= 1
-    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 1
+    # Linked data is deleted; user row preserved for repo recovery.
+    assert User.select().where(User.id == robot.id).count() == 0
+    assert Team.select().where(Team.organization == org_after).count() == 0
+    assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 0
 
     # Queue item has the grace period delay.
     qi = QueueItem.get(id=marker.queue_id)
@@ -645,11 +641,11 @@ def test_mark_namespace_grace_period_config_allowlist(initialized_db):
     }
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
 
-    # Listed namespace gets grace period — robot preserved.
+    # Listed namespace gets grace period — robot deleted.
     with patch("data.model.config.app_config", mock_config):
         mark_namespace_for_deletion(org, [], queue)
 
-    assert User.select().where(User.id == robot_listed.id).count() == 1
+    assert User.select().where(User.id == robot_listed.id).count() == 0
 
     # Unlisted namespace does NOT get grace period — robot deleted.
     with patch("data.model.config.app_config", mock_config):
@@ -677,8 +673,8 @@ def test_mark_namespace_for_deletion_without_grace_period(initialized_db):
     assert FederatedLogin.select().where(FederatedLogin.user == org_after).count() == 0
 
 
-def test_mark_namespace_gc_worker_cleans_deferred_linked_data(initialized_db):
-    """GC worker cleans up linked data that was deferred during grace period marking."""
+def test_mark_namespace_gc_worker_cleans_repos_after_grace_period(initialized_db):
+    """GC worker cleans up repos and the user row after linked data was eagerly deleted."""
     user = get_user("devtable")
     org = create_organization("deferorg", "defer@example.com", user)
 
@@ -689,18 +685,17 @@ def test_mark_namespace_gc_worker_cleans_deferred_linked_data(initialized_db):
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
     marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
 
-    # Linked data preserved at mark time.
-    assert User.select().where(User.id == robot.id).count() == 1
+    # Linked data deleted at mark time.
+    assert User.select().where(User.id == robot.id).count() == 0
+    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 0
 
     # Simulate GC worker running after grace period.
     with check_transitive_modifications():
         delete_namespace_via_marker(marker_id, [])
 
-    # Everything is cleaned up.
+    # User row is cleaned up.
     with pytest.raises(User.DoesNotExist):
         User.get(id=org.id)
-
-    assert User.select().where(User.id == robot.id).count() == 0
 
 
 def test_force_delete_bypasses_grace_period(initialized_db):
@@ -751,26 +746,16 @@ def test_grace_period_blocks_namespace_reregistration(initialized_db):
             create_organization("protectedorg", "new@example.com", user)
 
 
-def test_grace_period_allows_reregistration_after_deletion_completes(initialized_db):
-    """Once the GC worker fully purges the namespace, the name can be re-registered."""
+def test_no_grace_period_allows_immediate_reregistration(initialized_db):
+    """When deleted without a grace period, the name is immediately available for reuse."""
     user = get_user("devtable")
     org = create_organization("expiredorg", "expired@example.com", user)
 
     queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
-    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+    mark_namespace_for_deletion(org, [], queue, available_after=0)
 
     mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
 
-    # Still blocked before GC worker runs, even though grace period expired.
-    with patch("data.model.config.app_config", mock_config):
-        with pytest.raises(InvalidUsernameException, match="Username is not available"):
-            create_user_noverify("expiredorg", "new@example.com", email_required=False)
-
-    # GC worker purges the namespace (cascade-deletes the DeletedNamespace marker).
-    with check_transitive_modifications():
-        delete_namespace_via_marker(marker_id, [])
-
-    # Now the name is available.
     with patch("data.model.config.app_config", mock_config):
         new_user = create_user_noverify("expiredorg", "new@example.com", email_required=False)
         assert new_user.username == "expiredorg"
@@ -805,6 +790,66 @@ def test_reregistration_blocked_regardless_of_allowlist(initialized_db):
     ):
         new_user = create_user_noverify("unlistedorg", "new@example.com", email_required=False)
         assert new_user.username == "unlistedorg"
+
+
+def test_exhausted_retries_allows_reregistration(initialized_db):
+    """When GC exhausts retries (retries_remaining=0), the queue item is dead and the
+    namespace name should be available for reuse."""
+    user = get_user("devtable")
+    org = create_organization("stuckorg", "stuck@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    marker = DeletedNamespace.get(id=marker_id)
+    qi = QueueItem.get(id=marker.queue_id)
+    qi.retries_remaining = 0
+    qi.save()
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("stuckorg", "new@example.com", email_required=False)
+        assert new_user.username == "stuckorg"
+
+
+def test_exhausted_retries_with_future_available_allows_reregistration(initialized_db):
+    """When retries are exhausted but available_after is still in the future (grace period),
+    the queue item is dead and the namespace name should be available for reuse."""
+    user = get_user("devtable")
+    org = create_organization("futureorg", "future@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=86400)
+
+    marker = DeletedNamespace.get(id=marker_id)
+    qi = QueueItem.get(id=marker.queue_id)
+    assert qi.available_after > datetime.utcnow()
+    qi.retries_remaining = 0
+    qi.save()
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("futureorg", "new@example.com", email_required=False)
+        assert new_user.username == "futureorg"
+
+
+def test_missing_queue_item_allows_reregistration(initialized_db):
+    """When the queue item has been cleaned up but the DeletedNamespace marker
+    remains (e.g. QueueCleanupWorker ran but GC never completed), the name
+    should be available for reuse."""
+    user = get_user("devtable")
+    org = create_organization("cleanedorg", "cleaned@example.com", user)
+
+    queue = WorkQueue("testgcnamespace", lambda db: db.transaction())
+    marker_id = mark_namespace_for_deletion(org, [], queue, available_after=0)
+
+    marker = DeletedNamespace.get(id=marker_id)
+    QueueItem.delete().where(QueueItem.id == int(marker.queue_id)).execute()
+
+    mock_config = {"DEFAULT_TAG_EXPIRATION": "2w"}
+    with patch("data.model.config.app_config", mock_config):
+        new_user = create_user_noverify("cleanedorg", "new@example.com", email_required=False)
+        assert new_user.username == "cleanedorg"
 
 
 def test_delete_robot(initialized_db):

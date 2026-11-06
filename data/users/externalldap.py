@@ -52,9 +52,12 @@ class _LDAPTraceRedactor:
     """
     Wraps the LDAP output for password redaction when USERS_DEBUG is set.
 
-    python-ldap emits ``simple_bind`` traces via ``pprint.pformat``.  The
-    DN and password may be single- or double-quoted depending on their
-    content (e.g. a DN containing ``'`` is double-quoted by pprint).
+    python-ldap emits method traces via ``pprint.pformat``. The DN and
+    password of ``simple_bind`` calls may be single- or double-quoted
+    depending on their content (e.g. a DN containing ``'`` is double-quoted
+    by pprint), and at ``trace_level >= 2`` the library also pretty-prints
+    the full result payload of every operation, which can include
+    password-like attributes (e.g. ``userPassword``) returned by searches.
 
     To guard against split writes (where the header and argument tuple
     arrive in separate ``write()`` calls), this class buffers any data
@@ -71,6 +74,18 @@ class _LDAPTraceRedactor:
         r"(\s*,\s*None\s*,\s*None\))",
     )
 
+    # Matches password-like attribute keys (e.g. 'userPassword', 'unicodePwd')
+    # and their list-of-literals values in pprint'd search results, e.g.
+    #   'userPassword': [b'{PBKDF2-SHA512}...']
+    # Literals may be comma-separated or implicitly concatenated across lines.
+    # The separator is deliberately unambiguous (either comma-delimited or a
+    # whitespace run, never both) so that pathological inputs cannot cause
+    # exponential backtracking (CodeQL py/redos).
+    _PW_ATTR_RE = re.compile(
+        r"(?P<key>'(?:[^'\\]|\\.)*(?i:password|unicodepwd)(?:[^'\\]|\\.)*'\s*:\s*)"
+        r"(?P<value>\[\s*(?:b?(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')(?:\s*,\s*|\s+)?)*\s*\])"
+    )
+
     _BIND_HEADER_RE = re.compile(
         r"SimpleLDAPObject\.simple_bind",
     )
@@ -85,7 +100,8 @@ class _LDAPTraceRedactor:
 
     @classmethod
     def _redact(cls, data):
-        return cls._BIND_PW_RE.sub(r"\1'******'\3", data)
+        data = cls._BIND_PW_RE.sub(r"\1'******'\3", data)
+        return cls._PW_ATTR_RE.sub(r"\g<key>[b'******']", data)
 
     def write(self, data):
         data = self._buf + data
@@ -100,6 +116,18 @@ class _LDAPTraceRedactor:
             self._stream.write(self._redact(self._buf))
             self._buf = ""
         self._stream.flush()
+
+
+_PW_KEY_RE = re.compile(r"password|unicodepwd", re.IGNORECASE)
+
+
+def _redact_password_attributes(attrs):
+    """
+    Copy an LDAP attribute dict with the values of password-like keys
+    (e.g. userPassword, unicodePwd) redacted, leaving all other attributes
+    intact for debugging.
+    """
+    return {key: ["******"] if _PW_KEY_RE.search(key) else value for key, value in attrs.items()}
 
 
 class LDAPCache:
@@ -933,7 +961,7 @@ class LDAPUsers(FederatedUsers):
 
         found_dn, found_response = found_user
         logger.debug("Found user for LDAP username %s; validating password", username_or_email)
-        logger.debug("DN %s found: %s", found_dn, found_response)
+        logger.debug("DN %s found: %s", found_dn, _redact_password_attributes(found_response))
 
         # First validate the password by binding as the user
         if not self._verify_password(found_dn, password):
