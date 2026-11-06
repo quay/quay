@@ -202,42 +202,43 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     },
   );
 
-  test('search resets pagination to page 1', async ({
-    authenticatedPage: page,
-    api,
-  }) => {
-    const org = await api.organization('oauthpg');
-    await Promise.all(
-      Array.from({length: 21}, () => api.oauthApplication(org.name, 'pgapp')),
-    );
+  test(
+    'search resets pagination to page 1',
+    {tag: ['@PROJQUAY-14330']},
+    async ({authenticatedPage: page, api}) => {
+      const org = await api.organization('oauthpg');
+      await Promise.all(
+        Array.from({length: 21}, () => api.oauthApplication(org.name, 'pgapp')),
+      );
 
-    await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
-    const tabPanel = page.getByRole('tabpanel', {name: 'OAuth Applications'});
-    const pagination = tabPanel
-      .locator('.pf-v6-c-pagination__total-items')
-      .first();
-    await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      const tabPanel = page.getByRole('tabpanel', {name: 'OAuth Applications'});
+      const pagination = tabPanel
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
+      await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
-    const page1AppName = (
+      const page1AppName = (
+        await tabPanel
+          .locator('td[data-label="Application Name"]')
+          .first()
+          .textContent()
+      ).trim();
+
       await tabPanel
-        .locator('td[data-label="Application Name"]')
+        .locator('button[aria-label="Go to next page"]')
         .first()
-        .textContent()
-    ).trim();
+        .click();
+      await expect(pagination).toHaveText('21 - 21 of 21');
 
-    await tabPanel
-      .locator('button[aria-label="Go to next page"]')
-      .first()
-      .click();
-    await expect(pagination).toHaveText('21 - 21 of 21');
+      await tabPanel.locator('#default-permissions-search').fill(page1AppName);
 
-    await tabPanel.locator('#default-permissions-search').fill(page1AppName);
-
-    await expect(pagination).toHaveText('1 - 1 of 1');
-    await expect(
-      tabPanel.locator('td[data-label="Application Name"]'),
-    ).toHaveText([page1AppName]);
-  });
+      await expect(pagination).toHaveText('1 - 1 of 1');
+      await expect(
+        tabPanel.locator('td[data-label="Application Name"]'),
+      ).toHaveText([page1AppName]);
+    },
+  );
 
   test('bulk select and delete apps with the same name', async ({
     authenticatedPage: page,

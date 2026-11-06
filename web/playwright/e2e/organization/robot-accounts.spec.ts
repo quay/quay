@@ -1236,67 +1236,68 @@ test.describe(
         await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
       });
 
-      test('pagination in robot account table with >20 robots', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const org = await api.organization('paginaterobots');
+      test(
+        'pagination in robot account table with >20 robots',
+        {tag: ['@PROJQUAY-14330']},
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('paginaterobots');
 
-        for (let i = 0; i < ITEM_COUNT; i++) {
-          await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
-        }
+          for (let i = 0; i < ITEM_COUNT; i++) {
+            await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
+          }
 
-        await authenticatedPage.goto(
-          `/organization/${org.name}?tab=Robotaccounts`,
-        );
+          await authenticatedPage.goto(
+            `/organization/${org.name}?tab=Robotaccounts`,
+          );
 
-        await expect(
-          authenticatedPage.getByTestId('robot-accounts-table'),
-        ).toBeVisible();
+          await expect(
+            authenticatedPage.getByTestId('robot-accounts-table'),
+          ).toBeVisible();
 
-        const tabPanel = authenticatedPage.getByRole('tabpanel', {
-          name: 'Robot accounts',
-        });
-        const paginationInfo = tabPanel
-          .locator('.pf-v6-c-pagination__total-items')
-          .first();
-        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
-        const page1RobotName = (
+          const tabPanel = authenticatedPage.getByRole('tabpanel', {
+            name: 'Robot accounts',
+          });
+          const paginationInfo = tabPanel
+            .locator('.pf-v6-c-pagination__total-items')
+            .first();
+          await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+          const page1RobotName = (
+            await tabPanel
+              .locator('td[data-label="Robot account name"] a')
+              .first()
+              .textContent()
+          ).trim();
+
           await tabPanel
-            .locator('td[data-label="Robot account name"] a')
+            .getByRole('button', {name: 'Go to next page'})
             .first()
-            .textContent()
-        ).trim();
+            .click();
+          await expect(paginationInfo).toContainText(
+            `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+          );
 
-        await tabPanel
-          .getByRole('button', {name: 'Go to next page'})
-          .first()
-          .click();
-        await expect(paginationInfo).toContainText(
-          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
-        );
+          await tabPanel
+            .getByRole('button', {name: 'Go to previous page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
 
-        await tabPanel
-          .getByRole('button', {name: 'Go to previous page'})
-          .first()
-          .click();
-        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
-
-        await tabPanel
-          .getByRole('button', {name: 'Go to next page'})
-          .first()
-          .click();
-        await expect(paginationInfo).toContainText(
-          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
-        );
-        await authenticatedPage
-          .getByTestId('robot-account-search')
-          .fill(page1RobotName);
-        await expect(paginationInfo).toHaveText('1 - 1 of 1');
-        await expect(
-          tabPanel.getByRole('link', {name: page1RobotName, exact: true}),
-        ).toBeVisible();
-      });
+          await tabPanel
+            .getByRole('button', {name: 'Go to next page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(
+            `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+          );
+          await authenticatedPage
+            .getByTestId('robot-account-search')
+            .fill(page1RobotName);
+          await expect(paginationInfo).toHaveText('1 - 1 of 1');
+          await expect(
+            tabPanel.getByRole('link', {name: page1RobotName, exact: true}),
+          ).toBeVisible();
+        },
+      );
     });
 
     test.describe('robot credential execution', {tag: ['@container']}, () => {

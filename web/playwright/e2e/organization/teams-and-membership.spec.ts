@@ -23,42 +23,43 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     await searchForTeam(authenticatedPage, team.name);
   });
 
-  test('search resets pagination to page 1', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const org = await api.organization('tmorg');
-    await Promise.all(
-      Array.from({length: 21}, () => api.team(org.name, 'pgteam')),
-    );
-    const pagination = authenticatedPage
-      .locator('.pf-v6-c-pagination__total-items')
-      .first();
+  test(
+    'search resets pagination to page 1',
+    {tag: ['@PROJQUAY-14330']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('tmorg');
+      await Promise.all(
+        Array.from({length: 21}, () => api.team(org.name, 'pgteam')),
+      );
+      const pagination = authenticatedPage
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
 
-    await navigateToTeamsTab(authenticatedPage, org.name);
-    await authenticatedPage.locator('#teams-view-search').fill('pgteam');
-    await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
+      await navigateToTeamsTab(authenticatedPage, org.name);
+      await authenticatedPage.locator('#teams-view-search').fill('pgteam');
+      await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
-    const page1TeamName = (
+      const page1TeamName = (
+        await authenticatedPage
+          .locator('td[data-label="Team name"] a')
+          .first()
+          .textContent()
+      ).trim();
+
       await authenticatedPage
-        .locator('td[data-label="Team name"] a')
+        .locator('button[aria-label="Go to next page"]')
         .first()
-        .textContent()
-    ).trim();
+        .click();
+      await expect(pagination).toHaveText('21 - 21 of 21', {timeout: 15000});
 
-    await authenticatedPage
-      .locator('button[aria-label="Go to next page"]')
-      .first()
-      .click();
-    await expect(pagination).toHaveText('21 - 21 of 21', {timeout: 15000});
+      await authenticatedPage.locator('#teams-view-search').fill(page1TeamName);
 
-    await authenticatedPage.locator('#teams-view-search').fill(page1TeamName);
-
-    await expect(pagination).toHaveText('1 - 1 of 1', {timeout: 15000});
-    await expect(
-      authenticatedPage.getByRole('link', {name: page1TeamName, exact: true}),
-    ).toBeVisible();
-  });
+      await expect(pagination).toHaveText('1 - 1 of 1', {timeout: 15000});
+      await expect(
+        authenticatedPage.getByRole('link', {name: page1TeamName, exact: true}),
+      ).toBeVisible();
+    },
+  );
 
   test('member search filter', async ({authenticatedPage, api, quayConfig}) => {
     const users = getTestUsers(quayConfig);
@@ -321,45 +322,51 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     ).toContainText(`Updated repo perm for team: ${team.name} successfully`);
   });
 
-  test('set repository permissions search resets pagination to page 1', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const org = await api.organization('tmorg');
-    const team = await api.team(org.name, 'pgpermteam');
-    await Promise.all(
-      Array.from({length: 21}, () => api.repository(org.name, 'pgperm')),
-    );
+  test(
+    'set repository permissions search resets pagination to page 1',
+    {tag: ['@PROJQUAY-14330']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('tmorg');
+      const team = await api.team(org.name, 'pgpermteam');
+      await Promise.all(
+        Array.from({length: 21}, () => api.repository(org.name, 'pgperm')),
+      );
 
-    await navigateToTeamsTab(authenticatedPage, org.name);
-    await authenticatedPage.getByTestId(`${team.name}-toggle-kebab`).click();
-    await authenticatedPage
-      .getByTestId(`${team.name}-set-repo-perms-option`)
-      .click();
+      await navigateToTeamsTab(authenticatedPage, org.name);
+      await authenticatedPage.getByTestId(`${team.name}-toggle-kebab`).click();
+      await authenticatedPage
+        .getByTestId(`${team.name}-set-repo-perms-option`)
+        .click();
 
-    const dialog = authenticatedPage.getByRole('dialog');
-    const pagination = dialog
-      .locator('.pf-v6-c-pagination__total-items')
-      .first();
-    await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
+      const dialog = authenticatedPage.getByRole('dialog');
+      const pagination = dialog
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
+      await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
 
-    const page1RepoName = (
-      await dialog.locator('td[data-label="Repository"]').first().textContent()
-    ).trim();
+      const page1RepoName = (
+        await dialog
+          .locator('td[data-label="Repository"]')
+          .first()
+          .textContent()
+      ).trim();
 
-    await dialog
-      .locator('button[aria-label="Go to next page"]')
-      .first()
-      .click();
-    await expect(pagination).toHaveText('21 - 21 of 21');
+      await dialog
+        .locator('button[aria-label="Go to next page"]')
+        .first()
+        .click();
+      await expect(pagination).toHaveText('21 - 21 of 21');
 
-    await dialog.locator('#set-repo-perm-for-team-search').fill(page1RepoName);
+      await dialog
+        .locator('#set-repo-perm-for-team-search')
+        .fill(page1RepoName);
 
-    await expect(pagination).toHaveText('1 - 1 of 1');
-    await expect(dialog.locator('td[data-label="Repository"]')).toHaveText([
-      page1RepoName,
-    ]);
-  });
+      await expect(pagination).toHaveText('1 - 1 of 1');
+      await expect(dialog.locator('td[data-label="Repository"]')).toHaveText([
+        page1RepoName,
+      ]);
+    },
+  );
 
   test('bulk update repository permissions for team', async ({
     authenticatedPage,
