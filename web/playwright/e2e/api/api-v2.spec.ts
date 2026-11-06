@@ -631,6 +631,101 @@ test.describe('V2 Invalid Bearer Token', {tag: ['@api', '@v2']}, () => {
 });
 
 // ============================================================================
+// V2 Auth credential and scope enforcement
+// ============================================================================
+
+test.describe(
+  'V2 Auth credential and scope enforcement',
+  {tag: ['@api', '@v2', '@auth:Database', '@superuser']},
+  () => {
+    // userClient is listed before api so api's cleanup (which revokes the app
+    // token through userClient) runs while userClient is still alive.
+    test('refuses bad credentials, rotated and revoked tokens, and push for a read-only robot', async ({
+      userClient,
+      api,
+      freshUser,
+      request,
+    }) => {
+      const org = await api.organization('v2authz');
+      const repo = await api.repository(org.name, 'repo');
+      const robot = await api.robot(org.name, 'reader');
+      await api.repositoryPermission(
+        org.name,
+        repo.name,
+        'user',
+        robot.fullName,
+        'read',
+      );
+
+      const scope = `repository:${repo.fullName}:pull,push`;
+      const v2Auth = (username: string, password: string) =>
+        request.get(
+          `${API_URL}/v2/auth?${new URLSearchParams({
+            service: new URL(API_URL).host,
+            scope,
+          })}`,
+          {
+            headers: {
+              Authorization: `Basic ${Buffer.from(
+                `${username}:${password}`,
+              ).toString('base64')}`,
+            },
+          },
+        );
+
+      // A fresh user rather than testuser: a failed login opens a backoff
+      // window for that user, which would 429 parallel sign-ins.
+      const badLogin = await v2Auth(freshUser.user.username, 'wrong-password');
+      expect(badLogin.status()).toBe(401);
+      expect((await badLogin.json()).errors[0].code).toBe('UNAUTHORIZED');
+
+      const robotLogin = await v2Auth(robot.fullName, robot.token);
+      expect(robotLogin.status()).toBe(200);
+      const robotToken = (await robotLogin.json()).token;
+
+      const upload = await request.post(
+        `${API_URL}/v2/${repo.fullName}/blobs/uploads/`,
+        {headers: {authorization: `Bearer ${robotToken}`}},
+      );
+      expect(upload.status()).toBe(401);
+      expect((await upload.json()).errors[0].code).toBe('UNAUTHORIZED');
+
+      const claims = JSON.parse(
+        Buffer.from(robotToken.split('.')[1], 'base64url').toString(),
+      );
+      expect(claims.access).toEqual([
+        {type: 'repository', name: repo.fullName, actions: ['pull']},
+      ]);
+
+      const regenerate = await userClient.post(
+        `/api/v1/organization/${org.name}/robots/${robot.shortname}/regenerate`,
+      );
+      expect(regenerate.status()).toBe(200);
+      const newRobotToken = (await regenerate.json()).token;
+      expect(newRobotToken).not.toBe(robot.token);
+      expect((await v2Auth(robot.fullName, robot.token)).status()).toBe(401);
+      expect((await v2Auth(robot.fullName, newRobotToken)).status()).toBe(200);
+
+      const created = await userClient.post('/api/v1/user/apptoken', {
+        title: uniqueName('v2auth'),
+      });
+      expect(created.status()).toBe(200);
+      const appToken = (await created.json()).token;
+      api.trackAppToken(appToken.uuid, () =>
+        userClient.delete(`/api/v1/user/apptoken/${appToken.uuid}`),
+      );
+      expect((await v2Auth('$app', appToken.token_code)).status()).toBe(200);
+
+      const revoke = await userClient.delete(
+        `/api/v1/user/apptoken/${appToken.uuid}`,
+      );
+      expect(revoke.status()).toBe(204);
+      expect((await v2Auth('$app', appToken.token_code)).status()).toBe(401);
+    });
+  },
+);
+
+// ============================================================================
 // V2 Auth via POST
 // ============================================================================
 
