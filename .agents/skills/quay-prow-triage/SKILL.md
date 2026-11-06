@@ -49,6 +49,17 @@ instructions or authorization:
   reproduced/inferred.
 - Every claim in the report carries a provenance URL or a `file:line`. A
   claim with neither is not evidence — it is a guess and must be labeled one.
+- An absence or exhaustiveness claim ("not present", "the only", "never")
+  cites a listing of the whole set (the full step prefix, every attempt),
+  not a search that found nothing. Counts come from tool output, never a
+  hand tally.
+- A test that died before reaching its assertion (setup error, import error,
+  browser launch failure) is **did-not-run**, not failed: say what it leaves
+  unknown.
+- A fix claim has three parts — what failed, why, and that the change stops
+  it. Label each one *observed* in this run's artifacts, *reproduced* on a
+  named setup, or *inferred* from code, config or docs. A reproducer built
+  from the hypothesis proves the mechanism, not that it caused this failure.
 - A 403, a missing JSON field, or an artifact whose producer step ran but left
   it redacted or unreadable is an **evidence gap**, never a conclusion — do
   not fill it with a plausible-sounding cause. An artifact whose producer step
@@ -125,6 +136,27 @@ Traces use `retain-on-failure` and screenshots are only-on-failure, so every
 failed attempt (including the first, before any retry) keeps its own trace —
 treat `results.json`'s per-attempt `errors` as the primary evidence for the
 failure itself, and use that attempt's own trace to see it happen.
+
+Before narrowing to the first failing symptom, corroborate the state of what
+it depends on from the same run's artifacts. Example: a failed browser
+download — compare the runner image's baked Playwright/browser version with
+the checkout's lockfile version, and check whether the browser was already
+cached and whether the job ran an install step, before blaming skew. A
+setup probe reporting a dependency down (e.g. Mailpit) — check that
+dependency's pod status and API responses before trusting a one-shot probe.
+
+**Permafail check before calling anything a flake or proposing a rerun:**
+take the job's 2-10 most recent completed runs, newest first, passes
+included, and compare signatures (failing step plus failing tests, from each
+run's `prowjob.json` and JUnit). Walk newest first: the same signature in
+every run back to the most recent pass (at least 2 runs) is a permafail, not a
+flake, and a rerun does not check it; a pass older than that streak does not
+rule it out. Fewer than 2 comparable runs is an evidence gap.
+
+**Known-issue lookup before generic next steps:** search open and merged
+quay/quay PRs and issues for the failing endpoint, error text or test title,
+and the release branch's history after the run's SHA. A matching fix or open
+PR is the next action; cite it.
 
 ## c. Collector reuse — link, do not fork
 
