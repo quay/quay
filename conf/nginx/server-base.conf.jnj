@@ -118,7 +118,7 @@ location = /_storage_proxy_auth {
 location ~ ^/v2/_catalog(.*)$ {
     proxy_pass http://registry_app_server;
     proxy_read_timeout 10;
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 
     {% if enable_rate_limits %}
     limit_req zone=dynamicauth_heavy_http1 burst=1 nodelay;
@@ -146,7 +146,7 @@ location /api/ {
     limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 location /api/suconfig {
@@ -199,7 +199,7 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     limit_req zone=namespaced_dynamicauth_light_http2 burst=100 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 # This block handles tags endpoint requests, for which we want to restrict traffic due to how
@@ -226,7 +226,7 @@ location ~ /v2/([^/]+)\/[^/]+/tags/ {
     limit_req zone=namespaced_dynamicauth_heavy_http2 burst=2 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 # This block handles manifests endpoint requests, for which we want to restrict traffic heavier than
@@ -278,7 +278,7 @@ location = /v2/auth {
     limit_req zone=staticauth burst=2 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 # This block handles all other V2 requests, for which we can use a higher rate limit.
@@ -309,7 +309,7 @@ location ~ ^/v2 {
     limit_req zone=dynamicauth_very_light_http2 burst=80 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 location /v1/ {
@@ -334,7 +334,7 @@ location /v1/ {
     limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;
     {% endif %}
 
-    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. Configurable via NGINX_KEEPALIVE_TIMEOUT env var (default: 0).
+    keepalive_timeout {{ keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin. (default: 0).
 }
 
 location = /v1/_ping {
