@@ -41,15 +41,20 @@ test.describe(
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
       const deadline = Date.now() + 120000;
+      let scanCompleted = false;
       while (Date.now() < deadline) {
         const sec = await api.getManifestSecurity(
           testRepo.namespace,
           testRepo.name,
           digest,
         );
-        if (sec.status !== 'queued') break;
+        if (sec.status === 'scanned') {
+          scanCompleted = true;
+          break;
+        }
         await new Promise((r) => setTimeout(r, 5000));
       }
+      expect(scanCompleted).toBe(true);
     });
 
     test.afterAll(async ({userContext}) => {

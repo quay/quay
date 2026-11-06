@@ -14,6 +14,7 @@ from data.database import (
     IndexStatus,
     Manifest,
     ManifestSecurityStatus,
+    db_for_update,
     db_transaction,
     get_epoch_timestamp_ms,
 )
@@ -435,6 +436,17 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         def mark_manifest_unsupported(manifest):
             with db_transaction():
+                try:
+                    mss = db_for_update(
+                        ManifestSecurityStatus.select().where(
+                            ManifestSecurityStatus.manifest == manifest._db_id
+                        )
+                    ).get()
+                except ManifestSecurityStatus.DoesNotExist:
+                    mss = None
+                metadata = (mss.metadata_json or {}) if mss else {}
+                if mss and mss.index_status == IndexStatus.COMPLETED:
+                    metadata["has_been_scanned"] = True
                 ManifestSecurityStatus.delete().where(
                     ManifestSecurityStatus.manifest == manifest._db_id,
                     ManifestSecurityStatus.repository == manifest.repository._db_id,
@@ -445,11 +457,22 @@ class V4SecurityScanner(SecurityScannerInterface):
                     index_status=IndexStatus.MANIFEST_UNSUPPORTED,
                     indexer_hash="none",
                     indexer_version=IndexerVersion.V4,
-                    metadata_json={},
+                    metadata_json=metadata,
                 )
 
         def mark_manifest_layer_too_large(manifest):
             with db_transaction():
+                try:
+                    mss = db_for_update(
+                        ManifestSecurityStatus.select().where(
+                            ManifestSecurityStatus.manifest == manifest._db_id
+                        )
+                    ).get()
+                except ManifestSecurityStatus.DoesNotExist:
+                    mss = None
+                metadata = (mss.metadata_json or {}) if mss else {}
+                if mss and mss.index_status == IndexStatus.COMPLETED:
+                    metadata["has_been_scanned"] = True
                 ManifestSecurityStatus.delete().where(
                     ManifestSecurityStatus.manifest == manifest._db_id,
                     ManifestSecurityStatus.repository == manifest.repository._db_id,
@@ -460,7 +483,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     index_status=IndexStatus.MANIFEST_LAYER_TOO_LARGE,
                     indexer_hash="none",
                     indexer_version=IndexerVersion.V4,
-                    metadata_json={},
+                    metadata_json=metadata,
                 )
 
         def batch_preemption_check(candidate_ids):
@@ -613,48 +636,67 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
-            # Atomically claim manifest for indexing by marking as IN_PROGRESS.
-            # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
-            # Also allow reclaiming manifests stuck IN_PROGRESS for longer than the stale threshold.
+            # Lock the status row while claiming it so a COMPLETED row written before
+            # the durable success marker is introduced cannot lose that history when
+            # the claim changes its state to IN_PROGRESS.
             stale_in_progress_threshold = datetime.utcnow() - timedelta(
                 hours=STALE_IN_PROGRESS_HOURS
             )
-            rows_updated = (
-                ManifestSecurityStatus.update(
-                    index_status=IndexStatus.IN_PROGRESS,
-                    indexer_hash="in_progress",
-                    last_indexed=datetime.utcnow(),
-                )
-                .where(
-                    ManifestSecurityStatus.manifest == candidate,
-                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
-                    | (ManifestSecurityStatus.last_indexed < stale_in_progress_threshold),
-                )
-                .execute()
-            )
+            try:
+                with db_transaction():
+                    try:
+                        mss = db_for_update(
+                            ManifestSecurityStatus.select().where(
+                                ManifestSecurityStatus.manifest == candidate
+                            )
+                        ).get()
+                    except ManifestSecurityStatus.DoesNotExist:
+                        mss = None
+                    if mss is None:
+                        ManifestSecurityStatus.create(
+                            manifest=candidate,
+                            repository=candidate.repository,
+                            index_status=IndexStatus.IN_PROGRESS,
+                            indexer_hash="in_progress",
+                            indexer_version=IndexerVersion.V4,
+                            metadata_json={},
+                        )
+                        has_been_scanned = False
+                    else:
+                        if (
+                            mss.index_status == IndexStatus.IN_PROGRESS
+                            and mss.last_indexed >= stale_in_progress_threshold
+                        ):
+                            logger.debug(
+                                "Manifest %d already claimed by another worker", candidate.id
+                            )
+                            abt.set()
+                            continue
 
-            if rows_updated == 0:
-                # UPDATE missed: either row doesn't exist, or another worker owns it.
-                # Try to create the row; if it already exists, another worker has it.
-                try:
-                    ManifestSecurityStatus.create(
-                        manifest=candidate,
-                        repository=candidate.repository,
-                        index_status=IndexStatus.IN_PROGRESS,
-                        indexer_hash="in_progress",
-                        indexer_version=IndexerVersion.V4,
-                        metadata_json={},
-                    )
-                except IntegrityError:
-                    logger.debug("Manifest %d already claimed by another worker", candidate.id)
-                    abt.set()
-                    continue
-                except OperationalError:
-                    logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
-                    continue
+                        metadata = mss.metadata_json or {}
+                        has_been_scanned = mss.index_status == IndexStatus.COMPLETED or bool(
+                            metadata.get("has_been_scanned")
+                        )
+                        if has_been_scanned:
+                            metadata["has_been_scanned"] = True
+
+                        ManifestSecurityStatus.update(
+                            index_status=IndexStatus.IN_PROGRESS,
+                            indexer_hash="in_progress",
+                            metadata_json=metadata,
+                            last_indexed=datetime.utcnow(),
+                        ).where(ManifestSecurityStatus.id == mss.id).execute()
+            except IntegrityError:
+                # A concurrent create won the unique manifest row.
+                logger.debug("Manifest %d already claimed by another worker", candidate.id)
+                abt.set()
+                continue
+            except OperationalError:
+                logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
+                continue
 
             try:
-                (report, state) = self._secscan_api.index(manifest, layers)
+                report, state = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.warning("Failed to perform indexing, invalid content sent")
@@ -709,7 +751,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             if report["state"] == IndexReportState.Index_Finished:
                 index_status = IndexStatus.COMPLETED
                 # record time to get results if manifest has just been uploaded
-                if not manifest.has_been_scanned:
+                if not has_been_scanned:
                     created_at = manifest.created_at
 
                     if created_at is not None:
@@ -825,16 +867,27 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
 
             metadata = {}
+            try:
+                previous_metadata = (
+                    ManifestSecurityStatus.get(
+                        ManifestSecurityStatus.manifest == candidate
+                    ).metadata_json
+                    or {}
+                )
+            except ManifestSecurityStatus.DoesNotExist:
+                previous_metadata = {}
+
+            if previous_metadata.get("has_been_scanned"):
+                metadata["has_been_scanned"] = True
+
+            if index_status == IndexStatus.COMPLETED:
+                metadata["has_been_scanned"] = True
+
             if index_status == IndexStatus.FAILED:
-                try:
-                    mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
-                    old_metadata = mss.metadata_json or {}
-                    if old_metadata.get("last_failed_hash") != current_indexer_hash:
-                        metadata["retry_count"] = 1
-                    else:
-                        metadata["retry_count"] = old_metadata.get("retry_count", 0) + 1
-                except ManifestSecurityStatus.DoesNotExist:
+                if previous_metadata.get("last_failed_hash") != current_indexer_hash:
                     metadata["retry_count"] = 1
+                else:
+                    metadata["retry_count"] = previous_metadata.get("retry_count", 0) + 1
                 metadata["last_failed_hash"] = current_indexer_hash
 
             with db_transaction():
