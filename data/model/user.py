@@ -365,7 +365,7 @@ def robot_access_allowed(robot_username):
 
 def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
     if parent.robot:
-        raise InvalidRobotException("Robot accounts cannot create robot accounts")
+        raise InvalidRobotException("Robot accounts cannot own robot accounts")
 
     username_valid, username_issue = validate_username(robot_shortname)
     if robots_disallowed():
