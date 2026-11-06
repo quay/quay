@@ -6,7 +6,7 @@ from unittest.mock import patch
 import boto3
 import pytest
 from httmock import HTTMock, urlmatch
-from moto import mock_s3
+from moto import mock_aws
 
 from app import storage as test_storage
 from data import database, model
@@ -27,12 +27,12 @@ _TEST_PATH = "some/path"
 _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
-@pytest.fixture(params=["test", "mock_s3"])
+@pytest.fixture(params=["test", "mock_aws"])
 def storage_engine(request):
     if request.param == "test":
         yield test_storage
     else:
-        with mock_s3():
+        with mock_aws():
             # Create a test bucket and put some test content.
             boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
             engine = DistributedStorage(
