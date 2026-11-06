@@ -923,6 +923,28 @@ def test_robot(initialized_db):
         assert verify_robot("foobar+unknownbot", token, None)
 
 
+def test_robot_creation_rejects_robot_parent_without_persisting_nested_robot(initialized_db):
+    parent = create_user_noverify("robotparent", "robotparent@example.com", email_required=False)
+    robot, _ = create_robot("parent", parent)
+    nested_robot_name = "robotparent+parent+nested"
+
+    with pytest.raises(InvalidRobotException, match="Robot accounts cannot create robot accounts"):
+        create_robot("nested", robot)
+
+    assert User.select().where(User.username == nested_robot_name).count() == 0
+
+
+def test_robot_creation_allows_user_and_organization_parents(initialized_db):
+    user = create_user_noverify("robotuser", "robotuser@example.com", email_required=False)
+    organization = create_organization("robotorg", "robotorg@example.com", user)
+
+    user_robot, _ = create_robot("userrobot", user)
+    organization_robot, _ = create_robot("organizationrobot", organization)
+
+    assert user_robot.username == "robotuser+userrobot"
+    assert organization_robot.username == "robotorg+organizationrobot"
+
+
 def test_jwt_robot_token(initialized_db):
     user = get_user("devtable")
     org = create_organization("foobar", "foobar@devtable.com", user)
