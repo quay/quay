@@ -38,6 +38,7 @@ import {
   useUpdateQuotaLimit,
   useDeleteQuotaLimit,
 } from 'src/hooks/UseQuotaManagement';
+import {hasOtherRejectLimit} from 'src/libs/quotaUtils';
 import {
   IQuotaLimit,
   QuotaViewMode,
@@ -450,10 +451,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
 
     // Check for duplicate reject limits
     if (
-      updatedLimit.type === 'Reject' &&
-      organizationQuota.limits.some(
-        (limit) => limit.type === 'Reject' && limit.id !== limitId,
-      )
+      hasOtherRejectLimit(organizationQuota.limits, updatedLimit.type, limitId)
     ) {
       addAlert({
         variant: AlertVariantState.Failure,
