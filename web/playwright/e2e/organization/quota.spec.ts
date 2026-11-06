@@ -448,6 +448,31 @@ test.describe(
         ).toBeVisible();
       },
     );
+
+    test(
+      'superuser sees an error for an invalid quota threshold',
+      {tag: ['@PROJQUAY-9415', '@superuser']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('quotathreshold');
+        await superuserApi.quota(org.name, 104857600); // 100 MiB
+
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        const modal = superuserPage.getByTestId('configure-quota-modal');
+        await expect(modal).toBeVisible();
+
+        const input = modal.getByTestId('new-limit-percent-input');
+        const error = modal.getByText(
+          'Enter a whole number between 1 and 100.',
+        );
+        await input.fill('0');
+        await expect(error).toBeVisible();
+
+        await input.fill('50');
+        await expect(error).toBeHidden();
+      },
+    );
   },
 );
 

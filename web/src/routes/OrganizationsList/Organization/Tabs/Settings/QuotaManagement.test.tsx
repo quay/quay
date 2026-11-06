@@ -59,3 +59,50 @@ describe('QuotaManagement limit update', () => {
     expect(mockUpdateLimitMutation).not.toHaveBeenCalled();
   });
 });
+
+describe('QuotaManagement limit threshold validation', () => {
+  const message = 'Enter a whole number between 1 and 100.';
+
+  it('shows an error for an out-of-range new limit threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const input = screen.getByTestId('new-limit-percent-input');
+    await user.type(input, '0');
+    expect(screen.getByText(message)).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, '101');
+    expect(screen.getByText(message)).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, '50');
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+
+  it('shows an error for an out-of-range existing limit threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const warnRow = within(screen.getByTestId('quota-limit-warn'));
+    const input = warnRow.getByTestId('limit-percent-input');
+    await user.clear(input);
+    await user.type(input, '0');
+    expect(warnRow.getByText(message)).toBeInTheDocument();
+
+    await user.type(input, '5');
+    expect(warnRow.queryByText(message)).not.toBeInTheDocument();
+  });
+});
