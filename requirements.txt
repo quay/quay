@@ -152,7 +152,7 @@ pyhanko-certvalidator==0.27.0
 pypdf==6.19.0
 uritools==6.0.1
 arabic-reshaper==3.0.0
-cffi==2.0.0
+cffi==2.1.1
 cssselect2==0.7.0
 furl==2.1.4
 html5lib==1.1
