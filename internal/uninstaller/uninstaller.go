@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/quay/quay/internal/system"
 )
@@ -49,8 +50,10 @@ func New(stderr io.Writer) (*Uninstaller, error) {
 }
 
 // validateDataDir checks that dir is safe to pass to os.RemoveAll. It rejects
-// relative paths, the root filesystem, and the user's home directory, which
-// could cause catastrophic data loss if supplied by accident.
+// relative paths, the root filesystem, and the user's home directory or any
+// of its ancestors, which could cause catastrophic data loss if supplied by
+// accident. Both paths are compared as given and with symlinks resolved, since
+// /home is a symlink to /var/home on Fedora atomic and RHEL image mode.
 func validateDataDir(dir string) error {
 	if !filepath.IsAbs(dir) {
 		return fmt.Errorf("data directory must be an absolute path, got %q", dir)
@@ -63,11 +66,39 @@ func validateDataDir(dir string) error {
 	}
 
 	home, err := os.UserHomeDir()
-	if err == nil && abs == home {
-		return fmt.Errorf("refusing to remove home directory %q", abs)
+	if err != nil {
+		return nil //nolint:nilerr // no home directory, nothing further to protect
+	}
+	home = filepath.Clean(home)
+
+	// Resolve dir, not abs: Clean drops "x/.." before x is followed, while
+	// RemoveAll follows the symlink first.
+	for _, d := range []string{abs, resolveSymlinks(dir)} {
+		for _, h := range []string{home, resolveSymlinks(home)} {
+			rel, err := filepath.Rel(d, h)
+			if err != nil {
+				continue
+			}
+			if rel == "." {
+				return fmt.Errorf("refusing to remove home directory %q", abs)
+			}
+			if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("refusing to remove %q, an ancestor of home directory %q", abs, home)
+			}
+		}
 	}
 
 	return nil
+}
+
+// resolveSymlinks returns path with symlinks resolved, or path unchanged when
+// it cannot be resolved (e.g. it does not exist yet).
+func resolveSymlinks(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return path
+	}
+	return resolved
 }
 
 // ResolveDataDir fills cfg.DataDir from the installed Quadlet when it is
@@ -77,8 +108,8 @@ func validateDataDir(dir string) error {
 // the uninstall can proceed without it.
 func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 	if cfg.DataDir != "" {
-		if cfg.Purge && (!filepath.IsAbs(cfg.DataDir) || filepath.Clean(cfg.DataDir) == "/") {
-			return fmt.Errorf("data directory %q is not an absolute non-root path", cfg.DataDir)
+		if cfg.Purge {
+			return validateDataDir(cfg.DataDir)
 		}
 		return nil
 	}
@@ -90,12 +121,11 @@ func (u *Uninstaller) ResolveDataDir(cfg *Config) error {
 		slog.Debug("no installed data directory detected", "err", err)
 		return nil
 	}
-	// A relative or root path would make purge's RemoveAll resolve against
-	// the working directory or wipe the filesystem.
-	if !filepath.IsAbs(dir) || filepath.Clean(dir) == "/" {
-		if cfg.Purge {
-			return fmt.Errorf("installed data directory %q is not an absolute non-root path; provide -data-dir explicitly", dir)
+	if cfg.Purge {
+		if err := validateDataDir(dir); err != nil {
+			return fmt.Errorf("installed data directory: %w; provide -data-dir explicitly", err)
 		}
+	} else if !filepath.IsAbs(dir) || filepath.Clean(dir) == "/" {
 		slog.Debug("ignoring unsafe installed data directory", "data-dir", dir)
 		return nil
 	}
