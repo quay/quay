@@ -16,6 +16,7 @@ from data.database import (
 from endpoints.api.mirror import (
     RepoMirrorResource,
     RepoMirrorSyncCancelResource,
+    RepoMirrorSyncNowResource,
     _validate_external_reference,
 )
 from endpoints.api.test.shared import conduct_api_call
@@ -992,3 +993,22 @@ def test_create_repo_mirror_allowed_without_org_mirror(app):
         rule = mirror.root_rule
         mirror.delete_instance()
         rule.delete_instance()
+
+
+@pytest.mark.parametrize(
+    "resource, method",
+    [
+        (RepoMirrorResource, "POST"),
+        (RepoMirrorResource, "PUT"),
+        (RepoMirrorSyncNowResource, "POST"),
+    ],
+)
+def test_mirror_write_refused_in_proxy_cache_org(resource, method, app):
+    repo = model.repository.create_repository("proxyorg", "cached", model.user.get_user("devtable"))
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "proxyorg/cached"}
+        resp = conduct_api_call(cl, resource, method, params, {}, 400)
+
+    assert "proxy cache" in resp.json["error_message"]
+    assert model.repo_mirror.get_mirror(repo) is None

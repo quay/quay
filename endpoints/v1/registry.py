@@ -24,7 +24,7 @@ from data.registry_model.manifestbuilder import lookup_manifest_builder
 from digest import checksums
 from endpoints.decorators import anon_protect, check_readonly, check_repository_state
 from endpoints.metrics import image_pulled_bytes
-from endpoints.v1 import check_v1_push_enabled, v1_bp
+from endpoints.v1 import check_v1_push_enabled, disallow_for_proxy_cache_org, v1_bp
 from endpoints.v1.index import ensure_namespace_enabled
 from util.http import abort
 from util.registry.replication import queue_storage_replication
@@ -173,6 +173,7 @@ def get_image_layer(namespace, repository, image_id, headers):
 @check_repository_state
 @anon_protect
 @check_readonly
+@disallow_for_proxy_cache_org
 def put_image_layer(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)
@@ -278,6 +279,7 @@ def put_image_layer(namespace, repository, image_id):
 @check_repository_state
 @anon_protect
 @check_readonly
+@disallow_for_proxy_cache_org
 def put_image_checksum(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)
@@ -399,6 +401,7 @@ def get_image_ancestry(namespace, repository, image_id, headers):
 @check_repository_state
 @anon_protect
 @check_readonly
+@disallow_for_proxy_cache_org
 def put_image_json(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)

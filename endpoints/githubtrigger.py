@@ -31,6 +31,8 @@ def attach_github_build_trigger(namespace_name, repo_name):
             abort(404, message=msg)
         elif repo.kind.name != "image":
             abort(501)
+        elif features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(400, message="Cannot modify repository: organization is a proxy cache")
 
         trigger = model.build.create_build_trigger(repo, "github", token, current_user.db_user())
         repo_path = "%s/%s" % (namespace_name, repo_name)

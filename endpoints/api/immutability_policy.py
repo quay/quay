@@ -19,6 +19,8 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    check_proxy_cache_org,
+    disallow_for_proxy_cache_org,
     log_action,
     nickname,
     path_param,
@@ -92,6 +94,8 @@ class OrgImmutabilityPolicies(ApiResource):
         if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
+        check_proxy_cache_org(orgname)
+
         if features.ORG_MIRROR and is_namespace_org_mirrored(orgname):
             request_error(
                 message="Cannot create immutability policy: organization is managed "
@@ -141,6 +145,8 @@ class OrgImmutabilityPolicy(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
+
+        check_proxy_cache_org(orgname)
 
         policy_config = _parse_policy_config(request.get_json())
 
@@ -203,6 +209,7 @@ class RepositoryImmutabilityPolicies(RepositoryParamResource):
         return {"policies": [p.get_view() for p in policies]}
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @validate_json_request("ImmutabilityPolicyConfig")
     @nickname("createRepositoryImmutabilityPolicy")
     def post(self, namespace, repository):
@@ -259,6 +266,7 @@ class RepositoryImmutabilityPolicy(RepositoryParamResource):
         return policy.get_view()
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @validate_json_request("ImmutabilityPolicyConfig")
     @nickname("updateRepositoryImmutabilityPolicy")
     def put(self, namespace, repository, policy_uuid):
