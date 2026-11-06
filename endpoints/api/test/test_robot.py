@@ -6,6 +6,7 @@ import requests
 
 from data import model
 from data.database import FederatedLogin
+from data.model import api_token
 from endpoints.api import api
 from endpoints.api.robot import (
     OrgRobot,
@@ -170,6 +171,29 @@ def test_duplicate_robot_creation(app):
             expected_code=400,
         )
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
+
+
+def test_robot_api_token_cannot_create_nested_robot(app):
+    parent = model.user.lookup_robot("devtable+dtrobot")
+    creator = model.user.get_user("devtable")
+    _, secret = api_token.create_token_under_limit(
+        parent, creator, "user:admin", 3600, "Nested robot creation"
+    )
+
+    with app.test_client() as cl:
+        response = conduct_api_call(
+            cl,
+            UserRobot,
+            "PUT",
+            {"robot_shortname": "nested"},
+            {},
+            expected_code=400,
+            headers={"Authorization": "Bearer " + secret},
+        )
+
+    assert response.json["error_message"] == "Robot accounts cannot create robot accounts"
+    with pytest.raises(model.InvalidRobotException):
+        model.user.lookup_robot("devtable+dtrobot+nested")
 
 
 def test_globalreadonlysuperuser_org_robot_list_hides_token(app):
