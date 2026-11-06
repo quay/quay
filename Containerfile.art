@@ -142,10 +142,10 @@ COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 
 # Copy source tree. Most non-runtime files are excluded via .dockerignore.
-# Directories needed by earlier build stages (web/, config-tool/) cannot be
-# excluded from the build context, so we remove them here after copy.
+# Directories needed by earlier build stages (web/, config-tool/, pushgateway/)
+# cannot be excluded from the build context, so we remove them here after copy.
 COPY . .
-RUN rm -rf web/ config-tool/ node_modules/ .git \
+RUN rm -rf web/ config-tool/ pushgateway/ node_modules/ .git \
     package.json package-lock.json webpack.config.js \
     tsconfig.json tslint.json karma.conf.js \
     requirements.txt requirements-osbs.txt
