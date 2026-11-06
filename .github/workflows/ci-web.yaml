@@ -306,15 +306,28 @@ jobs:
         with:
           cosign-release: v3.0.2
 
+      - name: Start socket metrics collector
+        if: always()
+        run: |
+          echo "setup_complete" > /tmp/metrics-phase.txt
+          METRICS_OUTPUT=socket-metrics/metrics.txt \
+          PHASE_FILE=/tmp/metrics-phase.txt \
+            bash .github/scripts/collect-socket-metrics.sh &
+          echo $! > /tmp/metrics-collector.pid
+          echo "Background metrics collector started (PID: $(cat /tmp/metrics-collector.pid))"
+
       - name: Run Database auth tests (React + Legacy UI)
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP|@upgrade-seed|@upgrade-verify" --reporter=blob
+        run: |
+          echo "database_auth_tests" > /tmp/metrics-phase.txt
+          cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP|@upgrade-seed|@upgrade-verify" --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()
         run: |
+          echo "oidc_swap" > /tmp/metrics-phase.txt
           # Keycloak normally advertises localhost, which is unreachable from
           # Quay's container. Apply this override only for the OIDC test phase;
           # the default local-dev compose topology remains unchanged.
@@ -368,11 +381,14 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+        run: |
+          echo "oidc_auth_tests" > /tmp/metrics-phase.txt
+          cd web && npx playwright test --grep @auth:OIDC --reporter=blob
 
       - name: Swap to LDAP authentication
         if: always()
         run: |
+          echo "ldap_swap" > /tmp/metrics-phase.txt
           pip install pyyaml -q
           # Merge LDAP config (sets AUTHENTICATION_TYPE: LDAP + connection details)
           python3 .github/actions/setup-quay/merge-yaml.py \
@@ -405,7 +421,32 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
+        run: |
+          echo "ldap_auth_tests" > /tmp/metrics-phase.txt
+          cd web && npx playwright test --grep @auth:LDAP --reporter=blob
+
+      - name: Stop socket metrics collector
+        if: always()
+        run: |
+          echo "tests_complete" > /tmp/metrics-phase.txt
+          sleep 6
+          if [ -f /tmp/metrics-collector.pid ]; then
+            kill "$(cat /tmp/metrics-collector.pid)" 2>/dev/null || true
+            echo "Metrics collector stopped"
+          fi
+          if [ -f socket-metrics/metrics.txt ]; then
+            lines=$(wc -l < socket-metrics/metrics.txt)
+            snapshots=$(grep -c '^--- phase=' socket-metrics/metrics.txt || echo 0)
+            echo "Collected ${snapshots} snapshots (${lines} lines)"
+          fi
+
+      - name: Upload socket metrics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: socket-metrics
+          path: socket-metrics/
+          retention-days: 7
 
       - name: Merge test reports
         if: always()

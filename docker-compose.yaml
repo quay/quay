@@ -211,6 +211,7 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "9091:9091"
       - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
