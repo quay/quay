@@ -928,7 +928,7 @@ def test_robot_creation_rejects_robot_parent_without_persisting_nested_robot(ini
     robot, _ = create_robot("parent", parent)
     nested_robot_name = "robotparent+parent+nested"
 
-    with pytest.raises(InvalidRobotException, match="Robot accounts cannot create robot accounts"):
+    with pytest.raises(InvalidRobotException, match="Robot accounts cannot own robot accounts"):
         create_robot("nested", robot)
 
     assert User.select().where(User.username == nested_robot_name).count() == 0
