@@ -19,6 +19,8 @@ key_server = Blueprint("key_server", __name__)
 
 JWT_HEADER_NAME = "Authorization"
 JWT_AUDIENCE = app.config["PREFERRED_URL_SCHEME"] + "://" + app.config["SERVER_HOSTNAME"]
+KEY_ROTATION_CLAIM = "key_rotation"
+KEY_SERVER_TOKEN_MAX_AGE_S = 5 * 60
 
 
 def _validate_jwk(jwk):
@@ -39,12 +41,27 @@ def _validate_jwt(encoded_jwt, jwk, service):
     public_key = jwtutil.jwk_dict_to_public_key(jwk)
 
     try:
-        jwtutil.decode(
-            encoded_jwt, public_key, algorithms=["RS256"], audience=JWT_AUDIENCE, issuer=service
+        payload = jwtutil.decode(
+            encoded_jwt,
+            public_key,
+            algorithms=["RS256"],
+            audience=JWT_AUDIENCE,
+            issuer=service,
+            options=jwtutil.exp_max_s_option(KEY_SERVER_TOKEN_MAX_AGE_S),
         )
     except jwtutil.InvalidTokenError:
         logger.exception("JWT validation failure")
         abort(400)
+
+    if "access" in payload or "context" in payload:
+        abort(403)
+
+    return payload
+
+
+def _validate_rotation_claim(payload, kid):
+    if payload.get(KEY_ROTATION_CLAIM) != kid:
+        abort(403)
 
 
 def _signer_kid(encoded_jwt, allow_none=False):
@@ -100,12 +117,17 @@ def put_service_key(service, kid):
 
     rotation_duration = request.args.get("rotation", None)
     expiration_date = request.args.get("expiration", None)
-    if expiration_date is not None:
-        try:
-            expiration_date = datetime.utcfromtimestamp(float(expiration_date))
-        except ValueError:
-            logger.exception("Error parsing expiration date on key")
-            abort(400)
+    if expiration_date is None:
+        abort(400)
+
+    try:
+        expiration_date = datetime.utcfromtimestamp(float(expiration_date))
+    except (TypeError, ValueError, OverflowError):
+        logger.exception("Error parsing expiration date on key")
+        abort(400)
+
+    if expiration_date <= datetime.utcnow():
+        abort(400)
 
     try:
         jwk = request.get_json()
@@ -152,10 +174,16 @@ def put_service_key(service, kid):
     signer_key = _lookup_service_key(service, signer_kid)
     signer_jwk = signer_key.jwk
 
-    _validate_jwt(encoded_jwt, signer_jwk, service)
+    payload = _validate_jwt(encoded_jwt, signer_jwk, service)
+    _validate_rotation_claim(payload, kid)
+
+    if signer_key.expiration_date is not None:
+        expiration_date = min(expiration_date, signer_key.expiration_date)
 
     try:
-        model.replace_service_key(signer_key.kid, kid, jwk, metadata, expiration_date)
+        model.replace_service_key(
+            signer_key.kid, service, kid, jwk, metadata, expiration_date
+        )
     except ServiceKeyDoesNotExist:
         abort(404)
 
@@ -195,7 +223,7 @@ def delete_service_key(service, kid):
         _validate_jwt(encoded_jwt, signer_key.jwk, service)
 
         try:
-            model.delete_service_key(kid)
+            model.delete_service_key(kid, service)
         except ServiceKeyDoesNotExist:
             abort(404)
 

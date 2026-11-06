@@ -122,10 +122,14 @@ def generate_service_key(
     return (jwk.get_private_key(), key)
 
 
-def replace_service_key(old_kid, kid, jwk, metadata, expiration_date):
+def replace_service_key(old_kid, service, kid, jwk, metadata, expiration_date):
     try:
         with db_transaction():
-            key = db_for_update(ServiceKey.select().where(ServiceKey.kid == old_kid)).get()
+            key = db_for_update(
+                ServiceKey.select().where(
+                    (ServiceKey.kid == old_kid) & (ServiceKey.service == service)
+                )
+            ).get()
             key.metadata.update(metadata)
 
             ServiceKey.create(
@@ -162,10 +166,12 @@ def update_service_key(kid, name=None, metadata=None):
         raise ServiceKeyDoesNotExist
 
 
-def delete_service_key(kid):
+def delete_service_key(kid, service):
     try:
-        key = ServiceKey.get(kid=kid)
-        ServiceKey.delete().where(ServiceKey.kid == kid).execute()
+        key = ServiceKey.get((ServiceKey.kid == kid) & (ServiceKey.service == service))
+        ServiceKey.delete().where(
+            (ServiceKey.kid == kid) & (ServiceKey.service == service)
+        ).execute()
     except ServiceKey.DoesNotExist:
         raise ServiceKeyDoesNotExist
 
