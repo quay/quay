@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {
   pushImage,
@@ -16,8 +15,12 @@ test.describe(
     let orgName: string;
     let repoName: string;
     const tag = 'latest';
-    const username = TEST_USERS.user.username;
-    const password = TEST_USERS.user.password;
+    let username: string;
+    let password: string;
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      ({username, password} = getTestUsers(cachedQuayConfig).user);
+    });
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
       test.setTimeout(120000);

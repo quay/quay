@@ -1,7 +1,6 @@
-import {test, expect, mailpit} from '../fixtures';
+import {test, expect, mailpit, getTestUsers} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {pushImage} from '../utils/container';
-import {TEST_USERS} from '../global-setup';
 import {API_URL} from '../utils/config';
 
 async function assertChartLegend(
@@ -466,9 +465,11 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
             date.getUTCDate(),
           ).padStart(2, '0')}/${date.getUTCFullYear()}`;
         const logsResponse = await authenticatedRequest.get(
-          `${API_URL}/api/v1/organization/${org.name}/logs?starttime=${formatLogDate(
-            start,
-          )}&endtime=${formatLogDate(end)}`,
+          `${API_URL}/api/v1/organization/${
+            org.name
+          }/logs?starttime=${formatLogDate(start)}&endtime=${formatLogDate(
+            end,
+          )}`,
         );
         expect(logsResponse.status()).toBe(200);
         const logs = (await logsResponse.json()) as {
@@ -535,7 +536,8 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     test(
       'change_tag_immutability appears in the chart legend',
       {tag: ['@container']},
-      async ({authenticatedPage, api}) => {
+      async ({authenticatedPage, api, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const org = await api.organization('chartimmut');
         const repo = await api.repository(org.name, 'chartimmutrepo');
 
@@ -544,8 +546,8 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           org.name,
           repo.name,
           'v1.0.0',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
         // change_tag_immutability
         await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
@@ -678,9 +680,11 @@ test.describe(
     test(
       'superuser view shows only repo name in Repository column (not namespace/repo)',
       {tag: '@superuser'},
-      async ({superuserPage, superuserApi}) => {
+      async ({superuserPage, superuserApi, quayConfig}) => {
         // Creating a repo generates a real create_repo log with {namespace, repo} metadata
-        const repo = await superuserApi.repository();
+        const repo = await superuserApi.repository(
+          getTestUsers(quayConfig).user.username,
+        );
         const orgName = repo.fullName.split('/')[0];
         const repoName = repo.fullName.split('/')[1];
 

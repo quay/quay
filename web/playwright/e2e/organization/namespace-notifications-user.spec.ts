@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {mailpit} from '../../utils/mailpit';
 
 test.describe(
@@ -72,12 +72,14 @@ test.describe(
     test(
       'user email notification uses own email address',
       {tag: ['@feature:MAILING']},
-      async ({api}) => {
+      async ({api, quayConfig}) => {
+        const address = getTestUsers(quayConfig).user.email;
+
         // Create email notification for user namespace
         const notification = await api.userNamespaceNotification(
           'quota_warning',
           'email',
-          {email: 'testuser@example.com'},
+          {email: address},
           {},
           'User Email Test',
         );
@@ -88,7 +90,7 @@ test.describe(
 
         // Verify email delivered to user's address
         const email = await mailpit.waitForEmail(
-          (msg) => msg.To.some((to) => to.Address === 'testuser@example.com'),
+          (msg) => msg.To.some((to) => to.Address === address),
           15_000,
         );
         expect(email).not.toBeNull();

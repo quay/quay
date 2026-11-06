@@ -14,8 +14,7 @@
  * Migrated from: web/cypress/e2e/repository-autopruning.cy.ts (17 tests consolidated to 6)
  */
 
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {
   pushImage,
@@ -501,7 +500,11 @@ test.describe(
   'Repository Auto-Prune Functional Verification',
   {tag: ['@repository', '@feature:AUTO_PRUNE', '@container']},
   () => {
-    const user = TEST_USERS.user;
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
 
     test('repo-level tag-count pruning removes excess tags', async ({api}) => {
       test.slow();

@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
@@ -11,14 +10,16 @@ test.describe(
     test('can make a tag immutable via kebab menu', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -59,7 +60,9 @@ test.describe(
     test('displays lock icon for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       // Push and set immutable in parallel
@@ -67,8 +70,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -92,14 +95,16 @@ test.describe(
     test('delete action is disabled for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -129,14 +134,16 @@ test.describe(
     test('change expiration is disabled for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -165,7 +172,9 @@ test.describe(
     test('bulk delete shows warning for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       // Push both images in parallel
@@ -174,15 +183,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'immutable-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'mutable-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -240,7 +249,9 @@ test.describe(
     test('bulk remove is disabled when all selected tags are immutable', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       await Promise.all([
@@ -248,15 +259,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'immutable-1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'immutable-2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -316,14 +327,16 @@ test.describe(
     test('bulk make immutable is disabled when all selected tags are already immutable', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'already-immutable',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -355,14 +368,15 @@ test.describe(
     test(
       'superuser can remove immutability from a tag',
       {tag: '@superuser'},
-      async ({superuserPage, superuserApi}) => {
-        const repo = await superuserApi.repository();
+      async ({superuserPage, superuserApi, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
+        const repo = await superuserApi.repository(users.user.username);
         await pushImage(
           repo.namespace,
           repo.name,
           'immutable-tag',
-          TEST_USERS.admin.username,
-          TEST_USERS.admin.password,
+          users.admin.username,
+          users.admin.password,
         );
         await superuserApi.raw.setTagImmutability(
           repo.namespace,
@@ -412,7 +426,9 @@ test.describe(
     test('bulk set expiration shows warning for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       // Push both images
@@ -421,15 +437,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'immutable-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'mutable-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -490,14 +506,16 @@ test.describe(
     test('make immutable is disabled for tags with expiration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'expiring-tag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       // Set expiration to 30 days from now
@@ -536,7 +554,9 @@ test.describe(
     test('bulk make immutable shows warning for tags with expiration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       // Push both images
@@ -545,15 +565,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'expiring-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'non-expiring-tag',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -619,7 +639,9 @@ test.describe(
     test('bulk make immutable is disabled when all mutable tags have expiration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       // Push two images
@@ -628,15 +650,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'expiring-tag-1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'expiring-tag-2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -703,14 +725,16 @@ test.describe(
     test('immutable tags display Never for expiration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'immutable-tag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -742,14 +766,16 @@ test.describe(
     test('Never expiration is not clickable for immutable tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'immutable-tag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -786,7 +812,9 @@ test.describe(
     test('can bulk remove immutability from multiple tags', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
 
       await Promise.all([
@@ -794,15 +822,15 @@ test.describe(
           repo.namespace,
           repo.name,
           'immutable-1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
         pushImage(
           repo.namespace,
           repo.name,
           'immutable-2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         ),
       ]);
 
@@ -907,14 +935,16 @@ test.describe(
     test('bulk remove immutability is disabled when no immutable tags are selected', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'mutable-tag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -946,14 +976,16 @@ test.describe(
     test('logs tag immutability change in usage logs', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       // Set tag as immutable to generate a log entry
@@ -991,14 +1023,16 @@ test.describe(
     test('can add labels to an immutable tag without crashing', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
       await api.raw.setTagImmutability(
         repo.namespace,
@@ -1076,14 +1110,16 @@ test.describe(
     test('deleting an immutable tag shows server error message', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       const repo = await api.repository();
       await pushImage(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        users.user.username,
+        users.user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);

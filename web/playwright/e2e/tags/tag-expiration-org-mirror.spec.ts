@@ -7,8 +7,7 @@
  * worker setup.
  */
 
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 /**
@@ -42,6 +41,12 @@ test.describe(
   'Tag Expiration - Org Mirror Repositories',
   {tag: ['@tags', '@feature:ORG_MIRROR', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test('expiration column shows "Never" as non-clickable text for ORG_MIRROR repo', async ({
       authenticatedPage,
       api,
@@ -51,8 +56,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await mockOrgMirrorState(authenticatedPage, repo.namespace, repo.name);
@@ -83,8 +88,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await mockOrgMirrorState(authenticatedPage, repo.namespace, repo.name);
@@ -115,8 +120,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await mockOrgMirrorState(authenticatedPage, repo.namespace, repo.name);
@@ -151,8 +156,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Set expiration before mocking the state
@@ -194,8 +199,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1.0.0',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await mockOrgMirrorState(authenticatedPage, repo.namespace, repo.name);
