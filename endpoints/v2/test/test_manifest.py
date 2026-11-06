@@ -161,6 +161,69 @@ def test_push_malformed_manifest_docker_v2s2(client, app):
     )
 
 
+MISSING_CONFIG_BLOB_MANIFEST = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "config": {
+            "mediaType": "application/vnd.docker.container.image.v1+json",
+            "size": 100,
+            "digest": "sha256:" + "0" * 64,
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1234,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+    }
+).encode("utf-8")
+
+
+def test_push_manifest_missing_config_blob_returns_detail(client, app):
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+    params = {
+        "repository": "devtable/simple",
+        "manifest_ref": "sha256:" + hashlib.sha256(MISSING_CONFIG_BLOB_MANIFEST).hexdigest(),
+    }
+
+    user = model.user.get_user("devtable")
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+        "Content-Type": "application/vnd.docker.distribution.manifest.v2+json",
+    }
+
+    rv = conduct_call(
+        client,
+        "v2.write_manifest_by_digest",
+        url_for,
+        "PUT",
+        params,
+        expected_code=400,
+        headers=headers,
+        raw_body=MISSING_CONFIG_BLOB_MANIFEST,
+    )
+
+    error = json.loads(rv.data)["errors"][0]
+    assert error["code"] == "MANIFEST_INVALID"
+    assert "Could not load config blob for manifest" in error["detail"]["message"]
+
+
 INVALID_OCI_MANIFEST = json.dumps(
     {
         "schemaVersion": 2,
