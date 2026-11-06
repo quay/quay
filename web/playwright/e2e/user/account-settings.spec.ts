@@ -582,8 +582,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
       // Token should be removed from table
       await expect(
-        authenticatedPage.getByRole('button', {name: tokenTitle}),
-      ).not.toBeVisible();
+        authenticatedPage.locator('tr', {hasText: tokenTitle}),
+      ).toHaveCount(0);
     });
 
     test('shows empty state when no tokens exist', async ({
