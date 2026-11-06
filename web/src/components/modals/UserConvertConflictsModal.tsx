@@ -35,13 +35,14 @@ export const UserConvertConflictsModal = (
 
   const onSearch = (value: string) => {
     setSearchInput(value);
+    setBulkModalPage(1);
     if (value === '') {
       setItemsMarkedForDelete(props.items);
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.items.filter(
-        (item) => item.name?.toLowerCase().includes(value.toLowerCase()),
+      const filteredTableRow = props.items.filter((item) =>
+        item.name?.toLowerCase().includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }

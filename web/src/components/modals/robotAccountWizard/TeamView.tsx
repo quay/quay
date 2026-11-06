@@ -37,6 +37,11 @@ export default function TeamView(props: TeamViewProps) {
   });
   const [searchInputText, setSearchInputText] = useState('Search, create team');
 
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    setPage(1);
+  };
+
   useEffect(() => {
     if (tableMode == 'All') {
       setTableItems(props.items);
@@ -102,14 +107,14 @@ export default function TeamView(props: TeamViewProps) {
           {props.filterWithDropdown ? (
             <FilterWithDropdown
               searchState={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
               dropdownItems={props.dropdownItems}
               searchInputText={searchInputText}
             />
           ) : (
             <SearchInput
               searchState={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
               id="robot-wizard-team-search"
             />
           )}

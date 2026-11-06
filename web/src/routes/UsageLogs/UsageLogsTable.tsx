@@ -83,10 +83,6 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
 
   const [filterValue, setFilterValue] = useState('');
 
-  const filterOnChange = (value: string) => {
-    setFilterValue(value);
-  };
-
   const {
     data: logs,
     isLoading: loadingLogs,
@@ -169,6 +165,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     paginatedData: paginatedLogs,
     getSortableSort,
     paginationProps,
+    setPage,
   } = usePaginatedSortableTable(flattenedLogs, {
     columns: {
       0: (log: LogEntry) => new Date(log.datetime).getTime(), // Date & Time (sort by timestamp)
@@ -181,6 +178,11 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     initialPerPage: 20,
     initialSort: {columnIndex: 0, direction: 'desc'}, // Default sort: newest first
   });
+
+  const filterOnChange = (value: string) => {
+    setFilterValue(value);
+    setPage(1);
+  };
 
   // Add intersection observer ref for infinite scroll
   const loadMoreRef = useRef<HTMLDivElement>(null);

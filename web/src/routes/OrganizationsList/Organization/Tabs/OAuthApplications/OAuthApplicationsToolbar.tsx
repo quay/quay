@@ -20,6 +20,11 @@ import type {IOAuthApplication} from 'src/resources/OAuthApplicationTypes';
 const OAuthApplicationsToolbar: React.FC<OAuthApplicationsToolbarProps> = (
   props,
 ): React.ReactElement => {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -34,13 +39,13 @@ const OAuthApplicationsToolbar: React.FC<OAuthApplicationsToolbarProps> = (
         <SearchDropdown
           items={props.searchOptions}
           searchState={props.search}
-          setSearchState={props.setSearch}
+          setSearchState={handleSearchChange}
         />
         <Flex className="pf-v6-u-mr-md">
           <FlexItem>
             <SearchInput
               searchState={props.search}
-              onChange={props.setSearch}
+              onChange={handleSearchChange}
               id="default-permissions-search"
             />
           </FlexItem>

@@ -200,6 +200,46 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
+  test('filter resets pagination to page 1', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('logspage');
+    await Promise.all(
+      Array.from({length: 21}, () => api.repository(org.name, 'logpg')),
+    );
+
+    await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+    const tabPanel = authenticatedPage.getByRole('tabpanel', {name: 'Logs'});
+    const table = tabPanel.getByTestId('usage-logs-table');
+    const pagination = tabPanel.locator(
+      '#toolbar-pagination .pf-v6-c-menu-toggle',
+    );
+    const nextPage = tabPanel.locator('button[aria-label="Go to next page"]');
+    // The API returns 20 logs per page; scrolling to the footer loads the rest.
+    await expect(pagination).toContainText(/1 - 20 of \d+/, {
+      timeout: 15000,
+    });
+    await nextPage.scrollIntoViewIfNeeded();
+    await expect(pagination).toContainText(/1 - 20 of 2[1-9]/, {
+      timeout: 15000,
+    });
+
+    const page1Repo = (
+      await table.locator('td[data-label="Repository"]').first().textContent()
+    ).trim();
+
+    await nextPage.click();
+    await expect(pagination).toContainText(/21 - \d+ of \d+/);
+
+    await authenticatedPage.getByPlaceholder('Filter logs').fill(page1Repo);
+
+    await expect(pagination).toContainText('1 - 1 of 1');
+    await expect(table.locator('td[data-label="Repository"]')).toHaveText([
+      page1Repo,
+    ]);
+  });
+
   test('displays org mirror sync failure with stderr details', async ({
     authenticatedPage,
     api,

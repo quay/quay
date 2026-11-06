@@ -26,6 +26,11 @@ export default function SetRepoPermissionsForTeamModalToolbar(
     });
   };
 
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <>
       <Toolbar>
@@ -41,13 +46,13 @@ export default function SetRepoPermissionsForTeamModalToolbar(
           <SearchDropdown
             items={props.searchOptions}
             searchState={props.search}
-            setSearchState={props.setSearch}
+            setSearchState={handleSearchChange}
           />
           <Flex className="pf-v6-u-mr-md">
             <FlexItem>
               <SearchInput
                 searchState={props.search}
-                onChange={props.setSearch}
+                onChange={handleSearchChange}
                 id="set-repo-perm-for-team-search"
               />
             </FlexItem>
