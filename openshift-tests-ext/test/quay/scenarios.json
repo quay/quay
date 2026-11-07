@@ -1,0 +1,19 @@
+[
+  {
+    "name": "[sig-quay] Quay registry is operational",
+    "entrypoint": "/bin/bash",
+    "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-registry.sh"],
+    "tags": ["SMOKE", "quay"],
+    "envVars": {
+      "QUAY_NAMESPACE": "quay-enterprise"
+    },
+    "timeout": "5m"
+  },
+  {
+    "name": "[sig-quay] Quay Bridge operator is installed",
+    "entrypoint": "/bin/bash",
+    "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-bridge.sh"],
+    "tags": ["SMOKE", "quay"],
+    "timeout": "5m"
+  }
+]
