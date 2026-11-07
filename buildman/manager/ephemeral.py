@@ -491,6 +491,9 @@ class EphemeralBuilderManager(BuildStateInterface):
                 build_job.build_uuid, phase, self._build_logs.PHASE, phase_metadata
             )
 
+            if phase == BUILD_PHASE.BUILDING:
+                build_job.send_notification("build_start")
+
         # Check if on_job_complete needs to be called
         if updated and phase in EphemeralBuilderManager.COMPLETED_PHASES:
             executor_name = job_data_json.get("executor_name")
