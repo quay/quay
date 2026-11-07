@@ -11,6 +11,8 @@ import {
   useRestoreTag,
   usePermanentlyDeleteTag,
   useTagPullStatistics,
+  PULL_STATS_REFETCH_INTERVAL_MS,
+  PULL_STATS_STALE_TIME_MS,
 } from './UseTags';
 import {
   getTags,
@@ -22,7 +24,22 @@ import {
   permanentlyDeleteTag,
   getTagPullStatistics,
 } from 'src/resources/TagResource';
+import type {TagPullStatistics, TagsResponse} from 'src/resources/TagResource';
 import {ResourceError} from 'src/resources/ErrorHandling';
+
+function mockPullStats(
+  overrides: Partial<TagPullStatistics> = {},
+): TagPullStatistics {
+  return {
+    tag_name: 'latest',
+    tag_pull_count: 1,
+    last_tag_pull_date: '2024-01-01',
+    current_manifest_digest: 'sha256:abc',
+    manifest_pull_count: 1,
+    last_manifest_pull_date: '2024-01-01',
+    ...overrides,
+  };
+}
 
 vi.mock('src/resources/TagResource', () => ({
   getTags: vi.fn(),
@@ -67,7 +84,11 @@ describe('UseTags', () => {
   describe('useAllTags', () => {
     it('returns tags from successful query', async () => {
       const mockTags = [{name: 'latest'}, {name: 'v1.0'}];
-      vi.mocked(getTags).mockResolvedValueOnce({tags: mockTags} as any);
+      vi.mocked(getTags).mockResolvedValueOnce({
+        page: 1,
+        has_additional: false,
+        tags: mockTags,
+      } as TagsResponse);
       const {result} = renderHook(() => useAllTags('myorg', 'myrepo'), {
         wrapper,
       });
@@ -77,7 +98,11 @@ describe('UseTags', () => {
     });
 
     it('returns empty array when response has no tags', async () => {
-      vi.mocked(getTags).mockResolvedValueOnce({tags: null} as any);
+      vi.mocked(getTags).mockResolvedValueOnce({
+        page: 1,
+        has_additional: false,
+        tags: null,
+      } as unknown as TagsResponse);
       const {result} = renderHook(() => useAllTags('myorg', 'myrepo'), {
         wrapper,
       });
@@ -243,15 +268,52 @@ describe('UseTags', () => {
   });
 
   describe('useTagPullStatistics', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('exports matching stale-time and refetch-interval constants', () => {
+      expect(PULL_STATS_STALE_TIME_MS).toBe(60_000);
+      expect(PULL_STATS_REFETCH_INTERVAL_MS).toBe(PULL_STATS_STALE_TIME_MS);
+    });
+
+    it('does not refetch on remount within the stale window when autoRefresh is on', async () => {
+      const mockData = mockPullStats();
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData);
+
+      // Shared QueryClient so remount hits the same cache (like TagsTable row remounts).
+      const queryClient = createTestQueryClient();
+      // Override cacheTime: 0 from createTestQueryClient so remount can reuse cached data.
+      queryClient.setDefaultOptions({
+        queries: {retry: false, cacheTime: PULL_STATS_STALE_TIME_MS},
+      });
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      const {unmount} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      unmount();
+
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper: localWrapper},
+      );
+      // Still within staleTime — must not hit the network again.
+      expect(getTagPullStatistics).toHaveBeenCalledTimes(1);
+    });
+
     it('returns pull statistics data on success', async () => {
-      const mockData = {
-        tag_name: 'latest',
-        tag_pull_count: 42,
-        last_tag_pull_date: '2024-01-01',
-        current_manifest_digest: 'sha256:abc',
-        last_manifest_pull_date: '2024-01-01',
-      };
-      vi.mocked(getTagPullStatistics).mockResolvedValueOnce(mockData as any);
+      const mockData = mockPullStats({tag_pull_count: 42});
+      vi.mocked(getTagPullStatistics).mockResolvedValueOnce(mockData);
       const {result} = renderHook(
         () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
         {wrapper},
@@ -271,11 +333,9 @@ describe('UseTags', () => {
     });
 
     it('returns zero-pull defaults on 404 and does not report error', async () => {
-      const notFoundError = new (vi.mocked(ResourceError) as any)(
-        'Not found',
-        404,
-        {response: {status: 404}},
-      );
+      const notFoundError = new ResourceError('Not found', 404, {
+        response: {status: 404},
+      });
       vi.mocked(getTagPullStatistics).mockRejectedValueOnce(notFoundError);
       const {result} = renderHook(
         () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
@@ -284,6 +344,63 @@ describe('UseTags', () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       // 404 should not be reported as error
       expect(result.current.isError).toBe(false);
+      expect(result.current.pullStatistics).toEqual({
+        tag_name: 'latest',
+        tag_pull_count: 0,
+        last_tag_pull_date: null,
+        current_manifest_digest: '',
+        manifest_pull_count: 0,
+        last_manifest_pull_date: null,
+      });
+    });
+
+    it('keeps previous pull statistics while a refetch is in flight', async () => {
+      const first = mockPullStats({tag_pull_count: 1});
+      const second = mockPullStats({tag_pull_count: 2});
+      let resolveSecond: (value: TagPullStatistics) => void = () => undefined;
+      const secondPromise = new Promise<TagPullStatistics>((resolve) => {
+        resolveSecond = resolve;
+      });
+
+      const queryClient = createTestQueryClient();
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      vi.mocked(getTagPullStatistics)
+        .mockResolvedValueOnce(first)
+        .mockImplementationOnce(() => secondPromise);
+
+      const {result} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(first),
+      );
+
+      await act(async () => {
+        void queryClient.invalidateQueries([
+          'tagPullStatistics',
+          'myorg',
+          'myrepo',
+          'latest',
+        ]);
+      });
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
+      expect(result.current.pullStatistics).toEqual(first);
+
+      await act(async () => {
+        resolveSecond(second);
+      });
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(second),
+      );
     });
 
     it('reports isError for non-404 errors', async () => {
@@ -295,6 +412,89 @@ describe('UseTags', () => {
       );
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.isError).toBe(true);
+    });
+
+    it('keeps cached stats and does not report isError when a refetch fails', async () => {
+      const first = mockPullStats({tag_pull_count: 5, manifest_pull_count: 5});
+      const queryClient = createTestQueryClient();
+      const localWrapper = ({children}: {children: React.ReactNode}) =>
+        React.createElement(
+          QueryClientProvider,
+          {client: queryClient},
+          children,
+        );
+
+      vi.mocked(getTagPullStatistics)
+        .mockResolvedValueOnce(first)
+        .mockRejectedValueOnce(new Error('poll failed'));
+
+      const {result} = renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest'),
+        {wrapper: localWrapper},
+      );
+      await waitFor(() =>
+        expect(result.current.pullStatistics).toEqual(first),
+      );
+
+      await act(async () => {
+        void queryClient.invalidateQueries([
+          'tagPullStatistics',
+          'myorg',
+          'myrepo',
+          'latest',
+        ]);
+      });
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
+      expect(result.current.pullStatistics).toEqual(first);
+      expect(result.current.isError).toBe(false);
+    });
+
+    it('does not poll when autoRefresh is false', async () => {
+      vi.useFakeTimers({shouldAdvanceTime: true});
+      const mockData = mockPullStats();
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData);
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, false),
+        {wrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PULL_STATS_REFETCH_INTERVAL_MS * 2);
+      });
+      expect(getTagPullStatistics).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    it('polls when autoRefresh is true', async () => {
+      vi.useFakeTimers({shouldAdvanceTime: true});
+      const mockData = mockPullStats();
+      vi.mocked(getTagPullStatistics).mockResolvedValue(mockData);
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', true, true),
+        {wrapper},
+      );
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PULL_STATS_REFETCH_INTERVAL_MS);
+      });
+      await waitFor(() =>
+        expect(getTagPullStatistics).toHaveBeenCalledTimes(2),
+      );
+      vi.useRealTimers();
+    });
+
+    it('does not poll when enabled is false even if autoRefresh is true', () => {
+      renderHook(
+        () => useTagPullStatistics('myorg', 'myrepo', 'latest', false, true),
+        {wrapper},
+      );
+      expect(getTagPullStatistics).not.toHaveBeenCalled();
     });
   });
 });
