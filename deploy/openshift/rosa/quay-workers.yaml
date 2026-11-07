@@ -276,7 +276,7 @@ parameters:
   - name: STARTUP_PROBE_FAILURE_THRESHOLD
     value: "10"
   - name: STARTUP_PROBE_INITIAL_DELAY_SECONDS
-    value: "45"
+    value: "45"  # measured: observed live pod startup time; workers start later than app (PR #7352, 2026-09)
   - name: STARTUP_PROBE_PERIOD_SECONDS
     value: "15"
   - name: LIVENESS_PROBE_FAILURE_THRESHOLD
