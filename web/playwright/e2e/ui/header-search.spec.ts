@@ -20,7 +20,7 @@ test.describe('Header search bar', {tag: ['@ui', '@PROJQUAY-12269']}, () => {
       await authenticatedPage.setViewportSize({width: 1024, height: 768});
       await authenticatedPage.goto('/organization');
 
-      const logo = authenticatedPage.getByAltText('Red Hat Quay');
+      const logo = authenticatedPage.getByTestId('masthead-logo');
       const searchInput = authenticatedPage.getByRole('combobox', {
         name: SEARCH_LABEL,
       });
