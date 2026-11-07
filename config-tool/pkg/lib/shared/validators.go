@@ -850,6 +850,13 @@ func ValidateGoogleOAuth(clientID, clientSecret string) bool {
 
 }
 
+// LDAPDialFunc is the type of the function used by ValidateLDAPServer to
+// establish a connection to an LDAP server. The signature matches ldap.DialURL
+// from github.com/go-ldap/ldap/v3. Setting Options.LDAPDialFunc to a non-nil
+// value overrides the default ldap.DialURL behaviour, which is useful for
+// injecting an in-process stub server in tests.
+type LDAPDialFunc func(addr string, opts ...ldap.DialOpt) (*ldap.Conn, error)
+
 // ValidateLDAPServer validates that the provided ldap server is valid
 func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, ldapUidAttr, ldapEmailAttr, ldapUserFilter string, ldapBaseDn []interface{}, fgName string) (bool, ValidationError) {
 
@@ -875,8 +882,13 @@ func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, lda
 		}
 	}
 
-	// Dial ldap server
-	l, err := ldap.DialURL(ldapUri, ldap.DialWithTLSConfig(tlsConfig))
+	// Dial ldap server, using the injected dial function if one is provided
+	// (e.g. for tests that supply an in-process stub server).
+	dialFn := opts.LDAPDialFunc
+	if dialFn == nil {
+		dialFn = ldap.DialURL
+	}
+	l, err := dialFn(ldapUri, ldap.DialWithTLSConfig(tlsConfig))
 	if err != nil {
 		return false, ValidationError{
 			Tags:       []string{"LDAP_URI"},
