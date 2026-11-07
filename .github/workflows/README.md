@@ -63,3 +63,75 @@ Each reusable workflow appears as a single collapsible job. Click through to see
 ## Re-running failed jobs
 
 Use **"Re-run failed jobs"** (not "Re-run all jobs") to avoid re-running already-passed workflows.
+
+---
+
+## PR Labeling
+
+Three workflows automate PR labels for component tracking, review status, and backport provenance.
+
+### Workflow overview
+
+| File | Trigger | Purpose |
+|------|---------|---------|
+| `pr-labeler.yaml` | `pull_request_target`, `pull_request_review` | Area labels, community detection, PR data capture |
+| `pr-status-labeler.yaml` | `workflow_run` (after PR Auto-Labeler) | Review/merge status labels |
+| `label-backported-pr.yml` | PR merged to `redhat-*` | Back-label the original PR |
+
+### Data flow
+
+```text
+PR opened/updated ──► pr-labeler.yaml ──► saves PR number artifact
+review submitted  ──┘                          │
+                        workflow_run trigger ◄──┘
+                               │
+                               ▼
+                      pr-status-labeler.yaml ──► applies status labels
+```
+
+`pr-labeler.yaml` fires on both `pull_request_target` (opened, synchronize, reopened) and `pull_request_review` (submitted, dismissed) events. It captures the PR number as a build artifact, then `pr-status-labeler.yaml` consumes it via `workflow_run` completion to apply status labels downstream.
+
+### `pr-labeler.yaml` — PR Auto-Labeler
+
+Three jobs:
+
+- **label-components** — Runs `actions/labeler` with `.github/labeler.yml` to apply `area/*` labels based on changed file paths. Uses `sync-labels: true` so labels are removed when files no longer match.
+- **label-community** — Checks if the PR author is a `quay` org public member or listed in `OWNERS`. If neither, adds `community-contribution`. Skips known bots (`openshift-ci[bot]`, `openshift-merge-robot`, `openshift-cherrypick-robot`).
+- **capture-pr-data** — Saves the PR number as a build artifact for downstream `workflow_run` consumers.
+
+### `pr-status-labeler.yaml` — PR Event Handler
+
+Triggers on `workflow_run` completion of "PR Auto-Labeler". Single job applying status labels:
+
+| Condition | Label added | Label removed |
+|-----------|-------------|---------------|
+| `reviewDecision == APPROVED` | `approved` | — |
+| `reviewDecision != APPROVED` | — | `approved` |
+| `mergeable` non-null AND (`mergeable` is false OR `mergeStateStatus` is DIRTY) | `needs-rebase` | — |
+| Otherwise (mergeable and clean) | — | `needs-rebase` |
+| Base branch is `redhat-3.x` | `backport/redhat-3.x` | — |
+| Base branch changed away from `redhat-3.x` | — | stale `backport/*` |
+
+### `label-backported-pr.yml` — Label Original PR on Backport Merge
+
+Triggers when a PR merges to a `redhat-*` branch. Parses `cherry-pick of #NNNN` from the merged PR body, then adds a `backported/${targetBranch}` label (e.g. `backported/redhat-3.18`) to the original PR. Creates the label with green color if it doesn't exist. Note: these `backported/` labels track completed cherry-picks on the original PR, distinct from the `backport/` labels that `pr-status-labeler.yaml` applies to PRs targeting a release branch.
+
+### `.github/labeler.yml` — area label mappings
+
+| Label | Paths |
+|-------|-------|
+| `area/api` | `endpoints/api/**` |
+| `area/registry` | `endpoints/v1/**`, `endpoints/v2/**` |
+| `area/web-ui` | `web/**` |
+| `area/config-tool` | `config-tool/**` |
+| `area/workers` | `workers/**` |
+| `area/build-system` | `buildman/**` |
+| `area/storage` | `storage/**` |
+| `area/auth` | `auth/**` |
+| `area/database` | `data/**` |
+| `area/deployment` | `deploy/**` |
+| `area/ci` | `.github/workflows/**` |
+| `area/docs` | `docs/**`, `**/*.md` |
+| `area/tests` | `test/**`, `integration_tests/**` |
+
+To add a new area label, append an entry to `.github/labeler.yml` following the existing pattern.
