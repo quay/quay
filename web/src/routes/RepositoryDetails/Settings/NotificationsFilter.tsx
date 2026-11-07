@@ -68,6 +68,7 @@ export default function NotificationsFilter(props: NotificationsFilterProps) {
           Events
         </MenuItem>,
         <MenuItem
+          data-testid="notifications-filter-status"
           id="filter-status"
           key="filter-events"
           flyoutMenu={
