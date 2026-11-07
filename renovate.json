@@ -9,6 +9,22 @@
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "baseBranches": [
+    "master",
+    "redhat-3.9",
+    "redhat-3.10",
+    "redhat-3.11",
+    "redhat-3.12",
+    "redhat-3.14",
+    "redhat-3.15",
+    "redhat-3.16",
+    "redhat-3.17",
+    "redhat-3.18",
+    "redhat-5.0"
+  ],
+  "prConcurrentLimit": 4,
+  "branchConcurrentLimit": 4,
+  "prHourlyLimit": 1,
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
