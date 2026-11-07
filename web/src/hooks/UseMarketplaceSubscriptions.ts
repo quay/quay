@@ -39,7 +39,7 @@ export function useMarketplaceSubscriptions(
     error: errorFetchingOrgSubs,
     data: orgSubscriptions,
   } = useQuery(
-    ['subscriptions', {type: 'org'}],
+    ['subscriptions', {type: 'org', org: organizationName}],
     () => fetchMarketplaceSubscriptions(organizationName),
     {
       enabled: config?.features?.RH_MARKETPLACE && organizationName != userName,
