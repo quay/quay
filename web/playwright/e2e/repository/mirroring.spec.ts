@@ -128,6 +128,39 @@ test.describe(
       ).toContainText('Update Mirror');
     });
 
+    test(
+      'pre-fills the start date for a new mirror configuration',
+      {tag: '@PROJQUAY-9214'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('mirrordate');
+        const repo = await api.repository(org.name, 'daterepo');
+        const robot = await api.robot(org.name, 'datebot');
+        await api.setMirrorState(org.name, repo.name);
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=mirroring`,
+        );
+        await expect(
+          authenticatedPage.getByTestId('mirror-form'),
+        ).toBeVisible();
+
+        await expect(
+          authenticatedPage.getByRole('textbox', {name: 'Sync start date'}),
+        ).not.toHaveValue('');
+
+        await authenticatedPage
+          .getByTestId('registry-location-input')
+          .fill('quay.io/library/alpine');
+        await authenticatedPage.getByTestId('tags-input').fill('latest');
+        await authenticatedPage.locator('#robot-user-select').click();
+        await authenticatedPage.getByText(robot.fullName).click();
+
+        await expect(
+          authenticatedPage.getByTestId('submit-button'),
+        ).toBeEnabled();
+      },
+    );
+
     test('loads and manages existing mirror configuration', async ({
       authenticatedPage,
       api,

@@ -3,6 +3,7 @@ import {useForm} from 'react-hook-form';
 import {MirroringFormData} from 'src/routes/RepositoryDetails/Mirroring/types';
 import {Entity, EntityKind} from 'src/resources/UserResource';
 import {AlertVariant} from 'src/contexts/UIContext';
+import {toFormString} from 'src/libs/dateTimeUtils';
 
 // Default form values
 const defaultFormValues: MirroringFormData = {
@@ -35,7 +36,10 @@ export const useMirroringForm = (
 ) => {
   // Initialize react-hook-form
   const form = useForm<MirroringFormData>({
-    defaultValues: defaultFormValues,
+    defaultValues: {
+      ...defaultFormValues,
+      syncStartDate: toFormString(new Date()),
+    },
     mode: 'onChange',
   });
 
