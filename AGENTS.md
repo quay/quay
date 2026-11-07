@@ -83,11 +83,13 @@ make types-test                      # Type checking (mypy)
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - Scope should be a short descriptive name for the affected subsystem or area (e.g., `api`, `auth`, `mirroring`, `agents`, `gc`), not an issue or PR number
   - For backports to a `redhat-X.Y` or `mirror-registry-X.Y` release branch, prefix the title with the matching `[redhat-X.Y] ` or `[mirror-registry-X.Y] ` *before* the Jira key, not after. The `conventional commit check` job in `.github/workflows/ci-lint.yaml` enforces this exact order and fails CI if the bracket comes after the Jira key.
+  - When a backport PR bundles multiple related fixes sharing the same root cause, comma-separated Jira keys are accepted: `PROJQUAY-XXXXX, PROJQUAY-YYYYY: type(scope): description`.
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
   - `[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153`
   - `[mirror-registry-3.0] PROJQUAY-13482: fix(omr): roll back to previous image when upgrade health check fails`
+  - `[redhat-3.16] PROJQUAY-10656, PROJQUAY-10788: fix(conf): bundle related backport fixes`
 - **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
