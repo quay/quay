@@ -631,6 +631,40 @@ class TestResolveProxyConfigForSsrf:
             assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.DIRECT
             assert proxy_route_for_url("https://other.example.com", config) is ProxyRoute.PROXY
 
+    def test_all_proxy_only_env_routes_as_proxy(self):
+        """ALL_PROXY-only ambient env: SSRF classifies the connection as PROXY.
+
+        Python/requests honours ALL_PROXY, so SSRF validation is correct.
+        SkopeoMirror.setup_env compensates for Go's http.ProxyFromEnvironment
+        (which ignores ALL_PROXY) by materialising it into HTTP_PROXY/HTTPS_PROXY
+        before invoking the Skopeo child process — so sync operations still route
+        through the proxy even though ALL_PROXY is the only variable set.
+        """
+        with patch.dict(os.environ, {"ALL_PROXY": "http://proxy-host:3128"}, clear=True):
+            config = resolve_proxy_config_for_ssrf(None)
+            assert config is not None
+            assert config.get("all_proxy") == "http://proxy-host:3128"
+            assert config.get("http_proxy") is None
+            assert config.get("https_proxy") is None
+            assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.PROXY
+
+    def test_all_proxy_with_scheme_proxies_also_routes_as_proxy(self):
+        """ALL_PROXY alongside HTTP_PROXY/HTTPS_PROXY still routes as PROXY."""
+        with patch.dict(
+            os.environ,
+            {
+                "HTTP_PROXY": "http://proxy-host:3128",
+                "HTTPS_PROXY": "http://proxy-host:3128",
+                "ALL_PROXY": "http://proxy-host:3128",
+            },
+            clear=True,
+        ):
+            config = resolve_proxy_config_for_ssrf(None)
+            assert config is not None
+            assert config.get("http_proxy") == "http://proxy-host:3128"
+            assert config.get("https_proxy") == "http://proxy-host:3128"
+            assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.PROXY
+
 
 class TestProxyRouteForUrl:
     """Tests for proxy_route_for_url() routing contract."""
