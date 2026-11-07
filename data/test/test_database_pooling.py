@@ -4,7 +4,7 @@ import pytest
 from peewee import InterfaceError, OperationalError, SqliteDatabase
 from playhouse.pool import MaxConnectionsExceeded, PooledSqliteDatabase
 
-from data.database import ObservablePooledDatabase
+from data.database import ObservableDatabase, ObservablePooledDatabase
 
 
 # Create a concrete test database class combining the mixin with SQLite
@@ -127,6 +127,20 @@ class TestObservablePooledDatabase:
                 # Should still create and return fresh connection
                 assert result == fresh_conn
 
+    def test_connect_propagates_pool_exhaustion(self):
+        """
+        Verifies that db.connect() catches the propagated MaxConnectionsExceeded exception properly
+        and handles it.
+        """
+        db = _TestPooledDB(":memory:")
+        with patch.object(
+            PooledSqliteDatabase, "_connect", side_effect=MaxConnectionsExceeded("exhausted")
+        ):
+            with patch("data.database.time.sleep") as mock_sleep:
+                with pytest.raises(MaxConnectionsExceeded):
+                    db._connect()
+                mock_sleep.assert_not_called()
+
     def test_connect_handles_pool_exhaustion_with_backoff(self):
         """Test that MaxConnectionsExceeded triggers exponential backoff retry."""
         db = _TestPooledDB(":memory:")
@@ -140,7 +154,7 @@ class TestObservablePooledDatabase:
         # First two calls raise MaxConnectionsExceeded, third succeeds
         with patch.object(
             PooledSqliteDatabase,
-            "_connect",
+            "connect",
             side_effect=[
                 MaxConnectionsExceeded("Pool exhausted"),
                 MaxConnectionsExceeded("Pool exhausted"),
@@ -149,7 +163,7 @@ class TestObservablePooledDatabase:
         ):
             # Mock time.sleep to verify backoff is happening
             with patch("data.database.time.sleep") as mock_sleep:
-                result = db._connect()
+                result = db.connect()
 
                 # Verify sleep was called for backoff (2 times for 2 failures)
                 assert mock_sleep.call_count == 2
@@ -162,3 +176,17 @@ class TestObservablePooledDatabase:
 
                 # Verify fresh connection is eventually returned
                 assert result == fresh_conn
+
+    def test_connect_quits_after_exhausting_retries(self):
+        """
+        Verifies that db.connect() fails after 7 retries and does not go into an infinite
+        loop.
+        """
+        db = _TestPooledDB(":memory:")
+        with patch.object(
+            PooledSqliteDatabase, "connect", side_effect=MaxConnectionsExceeded("always full")
+        ):
+            with patch("data.database.time.sleep") as mock_sleep:
+                with pytest.raises(MaxConnectionsExceeded):
+                    db.connect()
+                assert mock_sleep.call_count == 6
