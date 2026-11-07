@@ -18,6 +18,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import RepositoryAutoPruning from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruning';
 import RepositoryImmutabilityPolicies from 'src/routes/RepositoryDetails/Settings/RepositoryImmutabilityPolicies';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import RegistryAutoPruneNotice from './RegistryAutoPruneNotice';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabKey, setActiveTabKey] = useState('userandrobotpermissions');
@@ -145,6 +146,10 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfFlexStart'}}
         style={{padding: '20px', width: '100%'}}
       >
+        <RegistryAutoPruneNotice
+          isAutoPruneEnabled={config?.features?.AUTO_PRUNE === true}
+          policy={config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY}
+        />
         {props.repoDetails?.state === 'ORG_MIRROR' && (
           <Alert
             isInline
