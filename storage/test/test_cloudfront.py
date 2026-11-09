@@ -7,7 +7,7 @@ import boto3
 import pytest
 from cryptography import exceptions as crypto_exceptions
 from mock import patch
-from moto import mock_s3
+from moto import mock_aws
 
 from app import config_provider
 from storage import CloudFlareS3Storage, CloudFrontedS3Storage, StorageContext
@@ -46,7 +46,7 @@ def empty_range_data():
     }
 
 
-@mock_s3
+@mock_aws
 def test_direct_download(
     test_aws_ip,
     test_empty_ip_range_cache,
@@ -149,7 +149,7 @@ def test_direct_download(
             )
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_no_ip(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
@@ -175,7 +175,7 @@ def test_direct_download_no_ip(mock_ipresolver):
     assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH)
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_with_username(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
@@ -201,7 +201,7 @@ def test_direct_download_with_username(mock_ipresolver):
     assert f"username={_TEST_USER}" in url
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_with_repo_name(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
@@ -227,7 +227,7 @@ def test_direct_download_with_repo_name(mock_ipresolver):
     assert f"repo_name={_TEST_REPO}" in url
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, mock_ipresolver):
     ipresolver = mock_ipresolver
     if ipranges_populated:
@@ -258,7 +258,7 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, m
         )
 
 
-@mock_s3
+@mock_aws
 def test_direct_download_regions(
     mock_ipresolver,
 ):
@@ -284,7 +284,7 @@ def test_direct_download_regions(
         assert region == region_name
 
 
-@mock_s3
+@mock_aws
 def test_rsa_sha1_fallback_when_crypto_policy_blocks_sha1(
     test_aws_ip, aws_ip_range_data, ipranges_populated, app
 ):
