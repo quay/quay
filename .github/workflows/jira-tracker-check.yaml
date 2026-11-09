@@ -83,7 +83,8 @@ jobs:
           echo ""
 
           # Check if PR title matches JIRA pattern: [optional-redhat-version] (PROJQUAY|QUAYIO)-####: description
-          if [[ "$PR_TITLE" =~ ^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\([^)]+\))?:\ .+$ ]]; then
+          title_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\ \([^)]+\))?:\ .+$'
+          if [[ "$PR_TITLE" =~ $title_regex ]]; then
             echo "✓ Valid JIRA ticket found in PR title: \"$PR_TITLE\""
             exit 0
           else
@@ -95,9 +96,9 @@ jobs:
             echo "(Changes to API, DB, or configuration must have JIRA tracker for release advisory)"
             echo ""
             echo "Valid examples:"
-            echo "  - PROJQUAY-1234: fix nginx keepalive config"
-            echo "  - QUAYIO-5678: add new API endpoint for user management"
-            echo "  - [redhat-3.13] PROJQUAY-9999: add database migration for audit logs"
+            echo "  - PROJQUAY-1234: fix(nginx): correct keepalive config"
+            echo "  - QUAYIO-5678: feat(api): add user management endpoint"
+            echo "  - [redhat-3.13] PROJQUAY-9999: feat(db): add audit log migration"
             echo ""
             exit 1
           fi
