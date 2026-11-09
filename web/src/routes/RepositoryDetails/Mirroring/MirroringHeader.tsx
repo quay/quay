@@ -1,5 +1,7 @@
 import React from 'react';
 import {Content, Title} from '@patternfly/react-core';
+import {Link, useLocation} from 'react-router-dom';
+import {getRepoDetailPath} from 'src/routes/NavigationPath';
 
 interface MirroringHeaderProps {
   namespace: string;
@@ -12,6 +14,7 @@ export const MirroringHeader: React.FC<MirroringHeaderProps> = ({
   repoName,
   isConfigured,
 }) => {
+  const location = useLocation();
   return (
     <>
       <Content>
@@ -28,9 +31,17 @@ export const MirroringHeader: React.FC<MirroringHeaderProps> = ({
         ) : (
           <Content component="p">
             This feature will convert{' '}
-            <strong>
-              {namespace}/{repoName}
-            </strong>{' '}
+            <Link
+              to={`${getRepoDetailPath(
+                location.pathname,
+                namespace,
+                repoName,
+              )}?tab=information`}
+            >
+              <strong>
+                {namespace}/{repoName}
+              </strong>
+            </Link>{' '}
             into a mirror. Changes to the external repository will be duplicated
             here. While enabled, users will be unable to push images to this
             repository.

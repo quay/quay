@@ -309,6 +309,32 @@ test.describe(
       ).toBeVisible();
     });
 
+    test(
+      'links the repository name to the repository page',
+      {tag: '@PROJQUAY-9267'},
+      async ({authenticatedPage, api}) => {
+        const repo = await api.repository(undefined, 'mirrorlink');
+        await api.setMirrorState(repo.namespace, repo.name);
+
+        await authenticatedPage.goto(
+          `/repository/${repo.fullName}?tab=mirroring`,
+        );
+        await authenticatedPage
+          .getByRole('link', {name: repo.fullName, exact: true})
+          .click();
+
+        await expect(authenticatedPage).toHaveURL(
+          new RegExp(`/repository/${repo.fullName}\\?tab=information$`),
+        );
+        await expect(
+          authenticatedPage.getByRole('tab', {name: 'Information'}),
+        ).toHaveAttribute('aria-selected', 'true');
+        await expect(
+          authenticatedPage.getByRole('tab', {name: 'Mirroring'}),
+        ).toHaveAttribute('aria-selected', 'false');
+      },
+    );
+
     test('displays architecture filter component with all architectures option', async ({
       authenticatedPage,
       api,
