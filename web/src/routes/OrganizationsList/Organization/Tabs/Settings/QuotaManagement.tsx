@@ -789,10 +789,9 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                   });
                                   setLimitPercentErrors({
                                     ...limitPercentErrors,
-                                    [limit.id]: isInvalidLimitPercent(
-                                      event,
-                                      value,
-                                    ),
+                                    [limit.id]:
+                                      value === '' ||
+                                      isInvalidLimitPercent(event, value),
                                   });
                                   const numValue = parseLimitPercent(value);
                                   if (numValue !== null) {
@@ -817,16 +816,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
-                          {limitPercentErrors[limit.id] && (
-                            <HelperText>
+                          <HelperText isLiveRegion>
+                            {limitPercentErrors[limit.id] && (
                               <HelperTextItem
                                 variant="error"
                                 id={`limit-percent-error-${limit.id}`}
                               >
                                 {LIMIT_PERCENT_ERROR}
                               </HelperTextItem>
-                            </HelperText>
-                          )}
+                            )}
+                          </HelperText>
                         </FlexItem>
                       </Flex>
                     </FlexItem>
@@ -977,16 +976,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
-                          {newLimitPercentError && (
-                            <HelperText>
+                          <HelperText isLiveRegion>
+                            {newLimitPercentError && (
                               <HelperTextItem
                                 variant="error"
                                 id="new-limit-percent-error"
                               >
                                 {LIMIT_PERCENT_ERROR}
                               </HelperTextItem>
-                            </HelperText>
-                          )}
+                            )}
+                          </HelperText>
                         </FlexItem>
                       </Flex>
                     </FlexItem>

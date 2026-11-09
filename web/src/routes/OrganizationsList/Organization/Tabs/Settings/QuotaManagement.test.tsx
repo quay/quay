@@ -1,3 +1,4 @@
+import {fireEvent} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {render, screen, within} from 'src/test-utils';
 import {QuotaManagement} from './QuotaManagement';
@@ -76,6 +77,9 @@ describe('QuotaManagement limit threshold validation', () => {
     const input = screen.getByTestId('new-limit-percent-input');
     await user.type(input, '0');
     expect(screen.getByText(message)).toBeInTheDocument();
+    expect(
+      screen.getByText(message).closest('.pf-v6-c-helper-text'),
+    ).toHaveAttribute('aria-live', 'polite');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription(expect.stringContaining(message));
 
@@ -104,6 +108,9 @@ describe('QuotaManagement limit threshold validation', () => {
     await user.clear(input);
     await user.type(input, '0');
     expect(warnRow.getByText(message)).toBeInTheDocument();
+    expect(
+      warnRow.getByText(message).closest('.pf-v6-c-helper-text'),
+    ).toHaveAttribute('aria-live', 'polite');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription(expect.stringContaining(message));
 
@@ -191,5 +198,43 @@ describe('QuotaManagement limit threshold validation', () => {
     await user.keyboard('5.5');
     expect(warnRow.getByText(message)).toBeInTheDocument();
     expect(warnRow.getByTestId('update-limit-button')).toBeDisabled();
+  });
+
+  it('flags a cleared existing limit threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const warnRow = within(screen.getByTestId('quota-limit-warn'));
+    await user.clear(warnRow.getByTestId('limit-percent-input'));
+    expect(warnRow.getByText(message)).toBeInTheDocument();
+    expect(warnRow.getByTestId('update-limit-button')).toBeDisabled();
+  });
+
+  it('flags unparseable text but not an empty new threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const input = screen.getByTestId('new-limit-percent-input');
+    await user.type(input, '1');
+    await user.clear(input);
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+
+    await user.type(input, '1');
+    // A number input reports text like "1e" as '' with validity.badInput.
+    Object.defineProperty(input, 'validity', {value: {badInput: true}});
+    fireEvent.change(input, {target: {value: ''}});
+    expect(screen.getByText(message)).toBeInTheDocument();
   });
 });
