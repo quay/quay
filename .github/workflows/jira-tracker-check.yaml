@@ -1,0 +1,104 @@
+name: JIRA Tracker Check
+
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize']
+
+jobs:
+  check-jira-tracker:
+    runs-on: ubuntu-latest
+    name: Verify JIRA tracker for API/DB/Config changes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Get changed files
+        id: changed-files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Get list of changed files compared to base branch
+          CHANGED_FILES=$(git diff origin/"$BASE_REF"...HEAD --name-only)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check for protected files
+        id: protected-files
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+        run: |
+          PROTECTED=()
+
+          # Check for API changes (endpoints/api/*.py, excluding tests)
+          while IFS= read -r file; do
+            if [[ $file =~ ^endpoints/api/.*\.py$ ]] && [[ ! $file =~ ^endpoints/api/test/ ]]; then
+              PROTECTED+=("$file")
+            fi
+          done <<< "$CHANGED_FILES"
+
+          # Check for database migrations
+          while IFS= read -r file; do
+            if [[ $file =~ ^data/migrations/versions/.*\.py$ ]]; then
+              PROTECTED+=("$file")
+            fi
+          done <<< "$CHANGED_FILES"
+
+          # Check for config schema changes
+          while IFS= read -r file; do
+            if [[ "$file" == "util/config/schema.py" ]] || [[ "$file" == "config.py" ]]; then
+              PROTECTED+=("$file")
+            fi
+          done <<< "$CHANGED_FILES"
+
+          # Output results
+          if [ ${#PROTECTED[@]} -eq 0 ]; then
+            echo "has_protected_files=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_protected_files=true" >> $GITHUB_OUTPUT
+            echo "protected_files<<EOF" >> $GITHUB_OUTPUT
+            printf '%s\n' "${PROTECTED[@]}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify JIRA tracker in PR title
+        if: steps.protected-files.outputs.has_protected_files == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PROTECTED_FILES: ${{ steps.protected-files.outputs.protected_files }}
+        run: |
+          # Print detected protected files for visibility
+          echo "Protected files detected (require JIRA tracker for release docs):"
+          echo "$PROTECTED_FILES" | while read -r file; do
+            [ -n "$file" ] && echo "  - $file"
+          done
+          echo ""
+          echo "Protected file categories:"
+          echo "  • API endpoints: endpoints/api/*.py"
+          echo "  • DB migrations: data/migrations/versions/*.py"
+          echo "  • Config schema: util/config/schema.py, config.py"
+          echo ""
+
+          # Check if PR title matches JIRA pattern: [optional-redhat-version] (PROJQUAY|QUAYIO)-####: description
+          title_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\([^)]+\))?:\ .+$'
+          if [[ "$PR_TITLE" =~ $title_regex ]]; then
+            echo "✓ Valid JIRA ticket found in PR title: \"$PR_TITLE\""
+            exit 0
+          else
+            echo "✗ JIRA tracker check failed"
+            echo ""
+            echo "PR title: \"$PR_TITLE\""
+            echo ""
+            echo "Required format: PROJQUAY-#### or QUAYIO-#### followed by colon and description"
+            echo "(Changes to API, DB, or configuration must have JIRA tracker for release advisory)"
+            echo ""
+            echo "Valid examples:"
+            echo "  - PROJQUAY-1234: fix(nginx): correct keepalive config"
+            echo "  - QUAYIO-5678: feat(api): add user management endpoint"
+            echo "  - [redhat-3.13] PROJQUAY-9999: feat(db): add audit log migration"
+            echo ""
+            exit 1
+          fi
