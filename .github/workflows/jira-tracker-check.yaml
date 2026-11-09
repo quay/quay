@@ -13,6 +13,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Get changed files
         id: changed-files
@@ -27,8 +28,9 @@ jobs:
 
       - name: Check for protected files
         id: protected-files
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
         run: |
-          CHANGED_FILES="${{ steps.changed-files.outputs.changed_files }}"
           PROTECTED=()
 
           # Check for API changes (endpoints/api/*.py, excluding tests)
@@ -64,12 +66,13 @@ jobs:
 
       - name: Verify JIRA tracker in PR title
         if: steps.protected-files.outputs.has_protected_files == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PROTECTED_FILES: ${{ steps.protected-files.outputs.protected_files }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-
           # Print detected protected files for visibility
           echo "Protected files detected (require JIRA tracker for release docs):"
-          echo "${{ steps.protected-files.outputs.protected_files }}" | while read -r file; do
+          echo "$PROTECTED_FILES" | while read -r file; do
             [ -n "$file" ] && echo "  - $file"
           done
           echo ""
@@ -80,13 +83,13 @@ jobs:
           echo ""
 
           # Check if PR title matches JIRA pattern: [optional-redhat-version] PROJQUAY-####: description
-          if [[ $PR_TITLE =~ ^(\[redhat-[0-9]+\.[0-9]+\]\ )?PROJQUAY-[0-9]+:\ [a-z]+(\([^)]+\))?:\ .+$ ]]; then
-            echo "✓ Valid PROJQUAY ticket found in PR title: '$PR_TITLE'"
+          if [[ "$PR_TITLE" =~ ^(\[redhat-[0-9]+\.[0-9]+\]\ )?PROJQUAY-[0-9]+:\ [a-z]+(\([^)]+\))?:\ .+$ ]]; then
+            echo "✓ Valid PROJQUAY ticket found in PR title: \"$PR_TITLE\""
             exit 0
           else
             echo "✗ JIRA tracker check failed"
             echo ""
-            echo "PR title: '$PR_TITLE'"
+            echo "PR title: \"$PR_TITLE\""
             echo ""
             echo "Required format: PROJQUAY-#### followed by colon and description"
             echo "(Changes to API, DB, or configuration must have JIRA tracker for release advisory)"
