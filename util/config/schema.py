@@ -2016,6 +2016,11 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "NGINX_KEEPALIVE_TIMEOUT": {
+            "type": "integer",
+            "description": "Nginx keepalive_timeout in seconds for registry and API location blocks. Set to 0 to disable HTTP/1.1 keep-alive (default). A non-zero value allows upstream proxies to reuse connections.",
+            "x-example": 60,
+        },
         "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
             "type": "string",
             "pattern": "^[0-9]+$",
