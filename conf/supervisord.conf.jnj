@@ -245,6 +245,19 @@ autostart = {{ config['dnsmasq']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+
+;;; Deliberately turn off pooling for the new worker because it is
+;;; not needed - validation requires a single cheap query
+[program:gunicorn-blobstream]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s,
+  DB_CONNECTION_POOLING=false
+;;; Timeout of 120 seconds matches get_blob's own request timeout
+command=nice -n 10 gunicorn --timeout=120 -c %(ENV_QUAYCONF)s/gunicorn_blobstream.py blobstream:application
+autostart = {{ config['gunicorn-blobstream']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:gunicorn-registry]
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s,

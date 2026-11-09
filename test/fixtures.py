@@ -31,6 +31,7 @@ from data.database import close_db_filter, configure, db
 from data.model.user import LoginWrappedDBUser
 from data.userfiles import Userfiles
 from endpoints.api import api_bp
+from endpoints.blobstream import blobstream_bp
 from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
 from endpoints.web import web
@@ -480,6 +481,7 @@ def app(appconfig, initialized_db):
     app.register_blueprint(web, url_prefix="/")
     app.register_blueprint(v1_bp, url_prefix="/v1")
     app.register_blueprint(v2_bp, url_prefix="/v2")
+    app.register_blueprint(blobstream_bp, url_prefix="/_upstream_proxy")
     app.register_blueprint(webhooks, url_prefix="/webhooks")
 
     app.config.update(appconfig)
