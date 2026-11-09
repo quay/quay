@@ -82,21 +82,21 @@ jobs:
           echo "  • Config schema: util/config/schema.py, config.py"
           echo ""
 
-          # Check if PR title matches JIRA pattern: [optional-redhat-version] PROJQUAY-####: description
-          if [[ "$PR_TITLE" =~ ^(\[redhat-[0-9]+\.[0-9]+\]\ )?PROJQUAY-[0-9]+:\ [a-z]+(\([^)]+\))?:\ .+$ ]]; then
-            echo "✓ Valid PROJQUAY ticket found in PR title: \"$PR_TITLE\""
+          # Check if PR title matches JIRA pattern: [optional-redhat-version] (PROJQUAY|QUAYIO)-####: description
+          if [[ "$PR_TITLE" =~ ^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\([^)]+\))?:\ .+$ ]]; then
+            echo "✓ Valid JIRA ticket found in PR title: \"$PR_TITLE\""
             exit 0
           else
             echo "✗ JIRA tracker check failed"
             echo ""
             echo "PR title: \"$PR_TITLE\""
             echo ""
-            echo "Required format: PROJQUAY-#### followed by colon and description"
+            echo "Required format: PROJQUAY-#### or QUAYIO-#### followed by colon and description"
             echo "(Changes to API, DB, or configuration must have JIRA tracker for release advisory)"
             echo ""
             echo "Valid examples:"
             echo "  - PROJQUAY-1234: fix nginx keepalive config"
-            echo "  - PROJQUAY-5678: add new API endpoint for user management"
+            echo "  - QUAYIO-5678: add new API endpoint for user management"
             echo "  - [redhat-3.13] PROJQUAY-9999: add database migration for audit logs"
             echo ""
             exit 1
