@@ -76,6 +76,8 @@ describe('QuotaManagement limit threshold validation', () => {
     const input = screen.getByTestId('new-limit-percent-input');
     await user.type(input, '0');
     expect(screen.getByText(message)).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAccessibleDescription(expect.stringContaining(message));
 
     await user.clear(input);
     await user.type(input, '101');
@@ -84,6 +86,7 @@ describe('QuotaManagement limit threshold validation', () => {
     await user.clear(input);
     await user.type(input, '50');
     expect(screen.queryByText(message)).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-describedby');
   });
 
   it('shows an error for an out-of-range existing limit threshold', async () => {
@@ -101,9 +104,12 @@ describe('QuotaManagement limit threshold validation', () => {
     await user.clear(input);
     await user.type(input, '0');
     expect(warnRow.getByText(message)).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAccessibleDescription(expect.stringContaining(message));
 
     await user.type(input, '5');
     expect(warnRow.queryByText(message)).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-describedby');
   });
 
   it('keeps an out-of-range existing threshold in the field', async () => {

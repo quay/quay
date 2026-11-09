@@ -772,6 +772,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                 max={100}
                                 data-testid="limit-percent-input"
                                 aria-label="Edit limit percentage"
+                                aria-describedby={
+                                  limitPercentErrors[limit.id]
+                                    ? `limit-percent-error-${limit.id}`
+                                    : undefined
+                                }
                                 validated={
                                   limitPercentErrors[limit.id]
                                     ? 'error'
@@ -814,7 +819,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           </Flex>
                           {limitPercentErrors[limit.id] && (
                             <HelperText>
-                              <HelperTextItem variant="error">
+                              <HelperTextItem
+                                variant="error"
+                                id={`limit-percent-error-${limit.id}`}
+                              >
                                 {LIMIT_PERCENT_ERROR}
                               </HelperTextItem>
                             </HelperText>
@@ -935,6 +943,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                 max={100}
                                 data-testid="new-limit-percent-input"
                                 aria-label="New limit percentage"
+                                aria-describedby={
+                                  newLimitPercentError
+                                    ? 'new-limit-percent-error'
+                                    : undefined
+                                }
                                 validated={
                                   newLimitPercentError ? 'error' : 'default'
                                 }
@@ -966,7 +979,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           </Flex>
                           {newLimitPercentError && (
                             <HelperText>
-                              <HelperTextItem variant="error">
+                              <HelperTextItem
+                                variant="error"
+                                id="new-limit-percent-error"
+                              >
                                 {LIMIT_PERCENT_ERROR}
                               </HelperTextItem>
                             </HelperText>
