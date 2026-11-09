@@ -83,7 +83,7 @@ jobs:
           echo ""
 
           # Check if PR title matches JIRA pattern: [optional-redhat-version] (PROJQUAY|QUAYIO)-####: description
-          title_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\ \([^)]+\))?:\ .+$'
+          title_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\]\ )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+):\ [a-z]+(\([^)]+\))?:\ .+$'
           if [[ "$PR_TITLE" =~ $title_regex ]]; then
             echo "✓ Valid JIRA ticket found in PR title: \"$PR_TITLE\""
             exit 0
