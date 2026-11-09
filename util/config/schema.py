@@ -1573,6 +1573,11 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "NGINX_KEEPALIVE_TIMEOUT": {
+            "type": "integer",
+            "description": "Nginx keepalive_timeout in seconds for registry and API location blocks. Set to 0 to disable HTTP/1.1 keep-alive (default). A non-zero value allows upstream proxies to reuse connections.",
+            "x-example": 60,
+        },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
             "description": "List of hostnames or CIDR ranges allowed to bypass URL validation for export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
