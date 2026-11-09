@@ -380,7 +380,9 @@ test('sets a user quota', {tag: '@superuser'}, async ({isolatedUser}) => {
 
 Slots are the `IsolatedUserSlot` type in `fixtures.ts`: `quota`, `prune-count`,
 `prune-age`, `prune-both`, `logout-success`, `logout-error`, `logout-access`,
-`metadata-submit`, `metadata-skip`.
+`metadata-submit`, `metadata-skip`. Each slot belongs to one test: a new test
+adds its own slot rather than reusing one, because under LDAP a slot is a single
+shared account.
 
 - **Database:** creates a unique user and deletes it after the test.
 - **LDAP:** signs in the slot's pre-seeded identity (`LDAP_ISOLATED_USERS`); it is
