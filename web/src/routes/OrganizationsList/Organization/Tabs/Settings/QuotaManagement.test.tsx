@@ -152,4 +152,38 @@ describe('QuotaManagement limit threshold validation', () => {
     expect(input).toHaveValue(0);
     expect(add).toBeDisabled();
   });
+
+  it('flags a decimal new limit threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    await user.click(screen.getByTestId('new-limit-type-select'));
+    await user.click(screen.getByRole('option', {name: 'Warning'}));
+    await user.type(screen.getByTestId('new-limit-percent-input'), '5.5');
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByTestId('add-limit-button')).toBeDisabled();
+  });
+
+  it('flags a decimal existing limit threshold', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const warnRow = within(screen.getByTestId('quota-limit-warn'));
+    await user.tripleClick(warnRow.getByTestId('limit-percent-input'));
+    await user.keyboard('5.5');
+    expect(warnRow.getByText(message)).toBeInTheDocument();
+    expect(warnRow.getByTestId('update-limit-button')).toBeDisabled();
+  });
 });

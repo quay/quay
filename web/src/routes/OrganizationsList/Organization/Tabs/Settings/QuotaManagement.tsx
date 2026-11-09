@@ -60,6 +60,14 @@ const QUOTA_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'];
 const QUOTA_LIMIT_TYPES = ['Warning', 'Reject'];
 const LIMIT_PERCENT_ERROR = 'Enter 1 to 100.';
 
+// Number() rather than parseInt, which reads 5.5 as 5 and 1e5 as 1.
+const parseLimitPercent = (value: string): number | null => {
+  const numValue = Number(value);
+  return Number.isInteger(numValue) && numValue >= 1 && numValue <= 100
+    ? numValue
+    : null;
+};
+
 // True when the limit percent onChange handlers drop the value. A number
 // input reports unparseable text as '', so badInput tells it from empty.
 const isInvalidLimitPercent = (
@@ -69,8 +77,7 @@ const isInvalidLimitPercent = (
   if (value === '') {
     return event.currentTarget.validity.badInput;
   }
-  const numValue = parseInt(value, 10);
-  return isNaN(numValue) || numValue < 1 || numValue > 100;
+  return parseLimitPercent(value) === null;
 };
 
 interface QuotaFormData {
@@ -782,12 +789,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                       value,
                                     ),
                                   });
-                                  const numValue = parseInt(value, 10);
-                                  if (
-                                    !isNaN(numValue) &&
-                                    numValue >= 1 &&
-                                    numValue <= 100
-                                  ) {
+                                  const numValue = parseLimitPercent(value);
+                                  if (numValue !== null) {
                                     handleLimitChange(
                                       limit.id,
                                       'limit_percent',
@@ -940,12 +943,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                   setNewLimitPercentError(
                                     isInvalidLimitPercent(event, value),
                                   );
-                                  const numValue = parseInt(value, 10);
-                                  if (
-                                    !isNaN(numValue) &&
-                                    numValue >= 1 &&
-                                    numValue <= 100
-                                  ) {
+                                  const numValue = parseLimitPercent(value);
+                                  if (numValue !== null) {
                                     setNewLimit({
                                       ...newLimit,
                                       limit_percent: numValue,
