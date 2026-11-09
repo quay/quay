@@ -10,15 +10,17 @@ jobs:
     name: Verify JIRA tracker for API/DB/Config changes
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
       - name: Get changed files
         id: changed-files
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # Get list of changed files compared to base branch
-          CHANGED_FILES=$(git diff origin/${{ github.base_ref }}...HEAD --name-only)
+          CHANGED_FILES=$(git diff origin/"$BASE_REF"...HEAD --name-only)
           echo "changed_files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
