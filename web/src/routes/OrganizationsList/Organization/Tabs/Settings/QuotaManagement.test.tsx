@@ -61,7 +61,7 @@ describe('QuotaManagement limit update', () => {
 });
 
 describe('QuotaManagement limit threshold validation', () => {
-  const message = 'Enter a whole number between 1 and 100.';
+  const message = 'Enter 1 to 100.';
 
   it('shows an error for an out-of-range new limit threshold', async () => {
     const user = userEvent.setup();
@@ -104,5 +104,52 @@ describe('QuotaManagement limit threshold validation', () => {
 
     await user.type(input, '5');
     expect(warnRow.queryByText(message)).not.toBeInTheDocument();
+  });
+
+  it('keeps an out-of-range existing threshold in the field', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    const warnRow = within(screen.getByTestId('quota-limit-warn'));
+    const input = warnRow.getByTestId('limit-percent-input');
+    const update = warnRow.getByTestId('update-limit-button');
+    await user.tripleClick(input);
+    await user.keyboard('50');
+    expect(update).toBeEnabled();
+
+    await user.tripleClick(input);
+    await user.keyboard('0');
+    expect(input).toHaveValue(0);
+    expect(warnRow.getByText(message)).toBeInTheDocument();
+    expect(update).toBeDisabled();
+  });
+
+  it('keeps an out-of-range new threshold in the field', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotaManagement
+        organizationName="myorg"
+        isUser={false}
+        view="super-user"
+      />,
+    );
+
+    await user.click(screen.getByTestId('new-limit-type-select'));
+    await user.click(screen.getByRole('option', {name: 'Warning'}));
+    const input = screen.getByTestId('new-limit-percent-input');
+    const add = screen.getByTestId('add-limit-button');
+    await user.type(input, '50');
+    expect(add).toBeEnabled();
+
+    await user.tripleClick(input);
+    await user.keyboard('0');
+    expect(input).toHaveValue(0);
+    expect(add).toBeDisabled();
   });
 });
