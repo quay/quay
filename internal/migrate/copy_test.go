@@ -252,19 +252,18 @@ func TestWriteRuntimeConfigRejectsMalformedSourceHostname(t *testing.T) {
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
-func TestWriteRuntimeConfigCarriesPushAndAnonymousSettings(t *testing.T) {
+func TestWriteRuntimeConfigCarriesAnonymousAccessOnly(t *testing.T) {
 	tests := []struct {
 		name               string
 		source             string
-		wantPrivate        bool
 		wantAnonymous      bool
 		wantAnonymousInCfg bool
 	}{
-		{name: "absent", wantPrivate: true, wantAnonymous: true},
+		{name: "absent", wantAnonymous: true},
 		{
-			name:        "set true",
-			source:      "CREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
-			wantPrivate: true, wantAnonymous: true,
+			name:          "set true",
+			source:        "CREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
+			wantAnonymous: true,
 		},
 		{
 			name:               "set false",
@@ -287,10 +286,11 @@ func TestWriteRuntimeConfigCarriesPushAndAnonymousSettings(t *testing.T) {
 			targetPath := filepath.Join(targetDir, runtimeConfigFile)
 			runtimeCfg, err := config.Load(targetPath)
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantPrivate, runtimeCfg.CreatePrivateOnPush)
+			assert.False(t, runtimeCfg.CreatePrivateOnPush)
 			assert.Equal(t, tt.wantAnonymous, runtimeCfg.FeatureAnonymousAccess)
 			data, err := os.ReadFile(targetPath)
 			require.NoError(t, err)
+			assert.NotContains(t, string(data), "CREATE_PRIVATE_REPO_ON_PUSH")
 			assert.Equal(t, tt.wantAnonymousInCfg, strings.Contains(string(data), "FEATURE_ANONYMOUS_ACCESS"))
 		})
 	}
