@@ -138,13 +138,15 @@ func (a *Authorizer) canCreateRepository(ctx context.Context, principal *auth.Pr
 			if isSuperUser {
 				return true, nil
 			}
+			// A pull token must not grant access to a namespace that another
+			// user creates while the token is still valid.
+			if !createNamespace {
+				return false, nil
+			}
 			// The token endpoint passes the raw scope name; 2.x validated it
 			// before creating the organization.
 			if principal.Kind != auth.PrincipalUser || !auth.ValidUsername(namespace) {
 				return false, nil
-			}
-			if !createNamespace {
-				return true, nil
 			}
 			if err := a.createOwnedNamespace(ctx, principal, namespace); err != nil {
 				return false, err

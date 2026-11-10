@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -199,5 +200,17 @@ func TestCleanup_DisableFailureNamesUnit(t *testing.T) {
 		if strings.HasPrefix(call, "podman ") {
 			t.Fatalf("cleanup removed podman objects after a failed disable: %v", runner.calls)
 		}
+	}
+}
+
+func TestCleanup_StopFailureStillDisablesUnits(t *testing.T) {
+	runner := &cleanupRunner{errs: map[string]error{"systemctl --user stop quay-app.service": exitError(5)}}
+	m := cleanupMigrator(t, scopeUser, runner)
+
+	if err := m.cleanup(t.Context()); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if !slices.Contains(runner.calls, "systemctl --user disable quay-app.service") {
+		t.Fatalf("cleanup did not disable quay-app.service after a failed stop: %v", runner.calls)
 	}
 }

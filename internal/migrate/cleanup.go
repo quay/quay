@@ -69,7 +69,7 @@ func (m *Migrator) stopAndDisableUnits(ctx context.Context) error {
 		unit := filepath.Base(path)
 		slog.Info("stopping service", "service", unit)
 		if err := m.runSourceService(ctx, "stop", unit); err != nil {
-			return fmt.Errorf("stop old OMR service: %w", err)
+			slog.Warn("failed to stop service (may already be stopped)", "service", unit, "err", err)
 		}
 		units = append(units, unit)
 	}
