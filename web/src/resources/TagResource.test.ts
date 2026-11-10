@@ -100,6 +100,17 @@ describe('TagResource', () => {
       );
     });
 
+    it('appends an encoded filterTagName', async () => {
+      vi.mocked(axios.get).mockResolvedValueOnce(
+        mockResponse({page: 1, has_additional: false, tags: []}),
+      );
+
+      await getTags('org', 'repo', 1, 50, null, false, 'like:early');
+      expect(vi.mocked(axios.get).mock.calls[0][0]).toContain(
+        '&filter_tag_name=like%3Aearly',
+      );
+    });
+
     it('appends filter_tag_name from URL search params', async () => {
       Object.defineProperty(window, 'location', {
         value: {
