@@ -61,7 +61,9 @@ def upgrade(op, tables, tester):
     # emails back into User.email for any orgs that still have UUID placeholders.
     # This handles the case where the earlier migration (414c5e2fc487) populated
     # OrganizationContactEmail but User.email was replaced with a UUID.
-    tables_list = inspector.get_table_names()
+    # Pin to the connection's default schema: SQLAlchemy 2.x otherwise lists every table visible on
+    # the search_path (e.g. leftovers in `public`), unlike 1.4 which used current_schema().
+    tables_list = inspector.get_table_names(schema=inspector.default_schema_name)
     if "organizationcontactemail" in tables_list:
         # Use correlated subquery syntax (works on both PostgreSQL and SQLite).
         # NOT LIKE '%%@%%' detects UUID placeholders (no @ sign).
