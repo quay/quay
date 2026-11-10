@@ -13,6 +13,8 @@ down_revision = "a0fc06d604a4"
 import sqlalchemy as sa
 from sqlalchemy import text
 
+from util.migrate import UTF8LongText
+
 
 def upgrade(op, tables, tester):
     op.execute(text("DROP TABLE IF EXISTS repositorysize"))

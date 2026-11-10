@@ -85,4 +85,15 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    pass
+    # Drop in reverse dependency order: quotalimits references quotatype and userorganizationquota.
+    op.drop_table("quotalimits")
+    op.drop_table("quotatype")
+    op.drop_table("userorganizationquota")
+    op.drop_table("repositorysize")
+
+    # Remove the notification kinds added by upgrade(), so that upgrading again does not collide.
+    op.execute(
+        tables.notificationkind.delete().where(
+            tables.notificationkind.c.name.in_(["quota_warning", "quota_error"])
+        )
+    )
