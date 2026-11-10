@@ -15,8 +15,10 @@ from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
+    # Pin to the connection's default schema: SQLAlchemy 2.x otherwise lists every table visible on
+    # the search_path (e.g. leftovers in `public`), unlike 1.4 which used current_schema().
     inspector = sa_inspect(op.get_bind())
-    table_names = inspector.get_table_names()
+    table_names = inspector.get_table_names(schema=inspector.default_schema_name)
 
     # Create OrgMirrorConfig table
     if "orgmirrorconfig" not in table_names:
@@ -114,7 +116,7 @@ def upgrade(op, tables, tester):
 
     # Create OrgMirrorRepository table
     # Refresh table_names in case orgmirrorconfig was just created
-    table_names = inspector.get_table_names()
+    table_names = inspector.get_table_names(schema=inspector.default_schema_name)
     if "orgmirrorrepository" not in table_names:
         op.create_table(
             "orgmirrorrepository",
@@ -245,8 +247,10 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
+    # Pin to the connection's default schema: SQLAlchemy 2.x otherwise lists every table visible on
+    # the search_path (e.g. leftovers in `public`), unlike 1.4 which used current_schema().
     inspector = sa_inspect(op.get_bind())
-    table_names = inspector.get_table_names()
+    table_names = inspector.get_table_names(schema=inspector.default_schema_name)
 
     # Drop tables in reverse order (child first)
     if "orgmirrorrepository" in table_names:

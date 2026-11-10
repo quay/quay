@@ -397,6 +397,8 @@ hatchling==1.33.0 \
     # via
     #   hatch-vcs
     #   opentelemetry-api
+    #   opentelemetry-exporter-http-transport
+    #   opentelemetry-exporter-otlp-common
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
