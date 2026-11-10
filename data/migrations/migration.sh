@@ -2,19 +2,34 @@ set -e
 
 PARSED_DOCKER_HOST=`echo $DOCKER_HOST | sed 's/tcp:\/\///' | sed 's/:.*//'`
 DOCKER_IP="${PARSED_DOCKER_HOST:-127.0.0.1}"
-MYSQL_CONFIG_OVERRIDE="{\"DB_URI\":\"mysql+pymysql://root:password@$DOCKER_IP/genschema\"}"
-PERCONA_CONFIG_OVERRIDE="{\"DB_URI\":\"mysql+pymysql://root:password@$DOCKER_IP/genschema\"}"
-PGSQL_CONFIG_OVERRIDE="{\"DB_URI\":\"postgresql://postgres@$DOCKER_IP/genschema\"}"
+# The data-backfill migrations encrypt values and need a database secret key (fixture value only).
+SECRET_KEY_OVERRIDE="\"DATABASE_SECRET_KEY\":\"QUAY_FIXTURE_ONLY-anothercrazykey!\""
+MYSQL_CONFIG_OVERRIDE="{\"DB_URI\":\"mysql+pymysql://root:password@$DOCKER_IP:3307/genschema\",$SECRET_KEY_OVERRIDE}"
+PERCONA_CONFIG_OVERRIDE="{\"DB_URI\":\"mysql+pymysql://root:password@$DOCKER_IP:3307/genschema\",$SECRET_KEY_OVERRIDE}"
+PGSQL_CONFIG_OVERRIDE="{\"DB_URI\":\"postgresql://postgres:password@$DOCKER_IP:5433/genschema\",$SECRET_KEY_OVERRIDE}"
+
+# Quay's schema needs latin1: e.g. image.ancestors is VARCHAR(60535), which only fits MySQL's
+# 65535-byte row limit at one byte per character. MySQL 8+/MariaDB/Percona default to utf8mb4.
+MYSQL_CHARSET_ARGS="--character-set-server=latin1 --collation-server=latin1_swedish_ci"
+
+# Wait until a container answers a readiness command (instead of a fixed sleep). Probes use TCP
+# (-h 127.0.0.1): the official images start a temporary init server that only listens on a
+# socket, so a TCP success means the real server is up.
+wait_for() {
+  name=$1; shift
+  for _ in $(seq 1 60); do
+    if docker exec "$name" "$@" >/dev/null 2>&1; then return 0; fi
+    sleep 2
+  done
+  echo "Timed out waiting for $name" >&2
+  return 1
+}
 
 up_mysql() {
-  # Run a SQL database on port 3306 inside of Docker.
-  docker run --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -d mysql:5.7
-
-  echo 'Sleeping for 25...'
-  sleep 25
-
-  # Add the database to mysql.
-  docker run --rm --link mysql:mysql mysql:5.7 sh -c 'echo "create database genschema" | mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -ppassword'
+  # Run a SQL database on port 3307 inside of Docker.
+  docker run --name mysql -p 3307:3306 \
+    -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=genschema -d mysql:8.0 $MYSQL_CHARSET_ARGS
+  wait_for mysql mysqladmin ping -h 127.0.0.1 -uroot -ppassword
 }
 
 down_mysql() {
@@ -23,14 +38,10 @@ down_mysql() {
 }
 
 up_mariadb() {
-  # Run a SQL database on port 3306 inside of Docker.
-  docker run --name mariadb -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -d mariadb
-
-  echo 'Sleeping for 25...'
-  sleep 25
-
-  # Add the database to mysql.
-  docker run --rm --link mariadb:mariadb mariadb sh -c 'echo "create database genschema" | mysql -h"$MARIADB_PORT_3306_TCP_ADDR" -P"$MARIADB_PORT_3306_TCP_PORT" -uroot -ppassword'
+  # Run a SQL database on port 3307 inside of Docker.
+  docker run --name mariadb -p 3307:3306 \
+    -e MARIADB_ROOT_PASSWORD=password -e MARIADB_DATABASE=genschema -d mariadb:11.4-ubi $MYSQL_CHARSET_ARGS
+  wait_for mariadb mariadb-admin ping -h 127.0.0.1 -uroot -ppassword
 }
 
 down_mariadb() {
@@ -39,14 +50,10 @@ down_mariadb() {
 }
 
 up_percona() {
-  # Run a SQL database on port 3306 inside of Docker.
-  docker run --name percona -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -d percona
-
-  echo 'Sleeping for 25...'
-  sleep 25
-
-  # Add the daabase to mysql.
-  docker run --rm --link percona:percona percona sh -c 'echo "create database genschema" | mysql -h $PERCONA_PORT_3306_TCP_ADDR -uroot -ppassword'
+  # Run a SQL database on port 3307 inside of Docker.
+  docker run --name percona -p 3307:3306 \
+    -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=genschema -d percona:8.0 $MYSQL_CHARSET_ARGS
+  wait_for percona mysqladmin ping -h 127.0.0.1 -uroot -ppassword
 }
 
 down_percona() {
@@ -55,17 +62,11 @@ down_percona() {
 }
 
 up_postgres() {
-  # Run a SQL database on port 5432 inside of Docker.
-  docker run --name postgres -p 5432:5432 -d postgres
-
-  # Sleep for 5s to get SQL get started.
-  echo 'Sleeping for 5...'
-  sleep 5
-
-  # Add the database to postgres.
-  docker run --rm --link postgres:postgres postgres sh -c 'echo "create database genschema" | psql -h "$POSTGRES_PORT_5432_TCP_ADDR" -p "$POSTGRES_PORT_5432_TCP_PORT" -U postgres'
-  docker run --rm --link postgres:postgres postgres sh -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm;" | psql -h "$POSTGRES_PORT_5432_TCP_ADDR" -p "$POSTGRES_PORT_5432_TCP_PORT" -U postgres -d genschema'
-
+  # Run a SQL database on port 5433 inside of Docker.
+  docker run --name postgres -p 5433:5432 \
+    -e POSTGRES_PASSWORD=password -e POSTGRES_DB=genschema -d postgres:18
+  wait_for postgres pg_isready -h 127.0.0.1 -U postgres -d genschema
+  docker exec postgres psql -U postgres -d genschema -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 }
 
 down_postgres() {
@@ -85,12 +86,24 @@ gen_migrate() {
 test_migrate() {
   # Generate a database with the schema as defined by the existing alembic model.
   echo '> Running upgrade'
-  TEST_MIGRATE=true QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic upgrade head
+  TEST_MIGRATE=true QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic upgrade head || return 1
 
   # Downgrade to verify it works in both directions.
   echo '> Running downgrade'
-  COUNT=`ls data/migrations/versions/*.py | wc -l | tr -d ' '`
-  TEST_MIGRATE=true QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic downgrade "-$COUNT"
+  TEST_MIGRATE=true QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic downgrade base || return 1
+}
+
+# Run one database's test without aborting the remaining ones, but remember any failure.
+FAILED=0
+run_test() {
+  set +e
+  test_migrate "$1"
+  rc=$?
+  set -e
+  if [ $rc -ne 0 ]; then
+    echo "> FAILED: $2" >&2
+    FAILED=1
+  fi
 }
 
 down_mysql
@@ -111,9 +124,7 @@ if [ ! -z "$@" ]
   fi
 
 echo '> Testing Migration (mysql)'
-set +e
-test_migrate $MYSQL_CONFIG_OVERRIDE
-set -e
+run_test "$MYSQL_CONFIG_OVERRIDE" mysql
 down_mysql
 
 # Test via Postgres.
@@ -121,9 +132,7 @@ echo '> Starting Postgres'
 up_postgres
 
 echo '> Testing Migration (postgres)'
-set +e
-test_migrate $PGSQL_CONFIG_OVERRIDE
-set -e
+run_test "$PGSQL_CONFIG_OVERRIDE" postgres
 down_postgres
 
 # Test via MariaDB.
@@ -131,9 +140,7 @@ echo '> Starting MariaDB'
 up_mariadb
 
 echo '> Testing Migration (mariadb)'
-set +e
-test_migrate $MYSQL_CONFIG_OVERRIDE
-set -e
+run_test "$MYSQL_CONFIG_OVERRIDE" mariadb
 down_mariadb
 
 # Test via Percona.
@@ -141,7 +148,7 @@ echo '> Starting Percona'
 up_percona
 
 echo '> Testing Migration (percona)'
-set +e
-test_migrate $PERCONA_CONFIG_OVERRIDE
-set -e
+run_test "$PERCONA_CONFIG_OVERRIDE" percona
 down_percona
+
+exit $FAILED

@@ -41,23 +41,26 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("org_create") | tables.logentrykind.name
-            == op.inline_literal("org_delete") | tables.logentrykind.name
-            == op.inline_literal("org_change_email") | tables.logentrykind.name
-            == op.inline_literal("org_change_invoicing") | tables.logentrykind.name
-            == op.inline_literal("org_change_tag_expiration") | tables.logentrykind.name
-            == op.inline_literal("org_change_name") | tables.logentrykind.name
-            == op.inline_literal("user_create") | tables.logentrykind.name
-            == op.inline_literal("user_delete") | tables.logentrykind.name
-            == op.inline_literal("user_disable") | tables.logentrykind.name
-            == op.inline_literal("user_enable") | tables.logentrykind.name
-            == op.inline_literal("user_change_email") | tables.logentrykind.name
-            == op.inline_literal("user_change_password") | tables.logentrykind.name
-            == op.inline_literal("user_change_name") | tables.logentrykind.name
-            == op.inline_literal("user_change_invoicing") | tables.logentrykind.name
-            == op.inline_literal("user_change_tag_expiration") | tables.logentrykind.name
-            == op.inline_literal("user_change_metadata") | tables.logentrykind.name
-            == op.inline_literal("user_generate_client_key")
+            tables.logentrykind.c.name.in_(
+                [
+                    "org_create",
+                    "org_delete",
+                    "org_change_email",
+                    "org_change_invoicing",
+                    "org_change_tag_expiration",
+                    "org_change_name",
+                    "user_create",
+                    "user_delete",
+                    "user_disable",
+                    "user_enable",
+                    "user_change_email",
+                    "user_change_password",
+                    "user_change_name",
+                    "user_change_invoicing",
+                    "user_change_tag_expiration",
+                    "user_change_metadata",
+                    "user_generate_client_key",
+                ]
+            )
         )
     )

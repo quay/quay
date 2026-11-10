@@ -172,10 +172,14 @@ def downgrade(op, tables, tester):
     op.add_column(
         "repomirrorconfig", sa.Column("external_repository", sa.String(length=255), nullable=True)
     )
+    # Same as in upgrade(): the ADD COLUMN statements hold a lock on the table that would block the
+    # separate peewee connection used below, so commit first.
+    if op.get_context().dialect.name != "sqlite":
+        op.execute(sa.text("COMMIT"))
 
     from app import app
 
-    if app.config.get("SETUP_COMPLETE", False):
+    if app.config.get("SETUP_COMPLETE", False) or tester.is_testing():
         logger.info("Restoring columns from external_reference")
         for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_registry >> None)):
             logger.info("Restoring %s" % repo_mirror.external_reference)

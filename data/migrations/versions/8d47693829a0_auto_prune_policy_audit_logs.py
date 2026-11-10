@@ -27,9 +27,12 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.c.name
-            == op.inline_literal("create_namespace_autoprune_policy") | tables.logentrykind.c.name
-            == op.inline_literal("update_namespace_autoprune_policy") | tables.logentrykind.c.name
-            == op.inline_literal("delete_namespace_autoprune_policy")
+            tables.logentrykind.c.name.in_(
+                [
+                    "create_namespace_autoprune_policy",
+                    "update_namespace_autoprune_policy",
+                    "delete_namespace_autoprune_policy",
+                ]
+            )
         )
     )

@@ -32,6 +32,8 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    op.execute(sa.text("ALTER TABLE manifestblob ALTER COLUMN id TYPE INTEGER;"))
-    op.execute(sa.text("ALTER SEQUENCE manifestblob_id_seq AS INTEGER;"))
-    op.execute(sa.text("ALTER SEQUENCE manifestblob_id_seq MAXVALUE 2147483647;"))
+    # upgrade() only changes anything on PostgreSQL, so there is nothing to revert elsewhere.
+    if op.get_bind().engine.name == "postgresql":
+        op.execute(sa.text("ALTER TABLE manifestblob ALTER COLUMN id TYPE INTEGER;"))
+        op.execute(sa.text("ALTER SEQUENCE manifestblob_id_seq AS INTEGER;"))
+        op.execute(sa.text("ALTER SEQUENCE manifestblob_id_seq MAXVALUE 2147483647;"))
