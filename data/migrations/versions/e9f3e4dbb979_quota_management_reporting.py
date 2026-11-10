@@ -85,15 +85,25 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
+    # Do the data cleanup first: MySQL DDL cannot be rolled back, so a failure after the table
+    # drops would leave the migration half-applied.
+    #
+    # Remove the notification kinds added by upgrade(), so that upgrading again does not collide.
+    # Quota enforcement can have created notifications of these kinds, and those reference the
+    # kinds through a foreign key, so they have to go first.
+    quota_kind_names = ["quota_warning", "quota_error"]
+    quota_kind_ids = sa.select(tables.notificationkind.c.id).where(
+        tables.notificationkind.c.name.in_(quota_kind_names)
+    )
+    op.execute(
+        tables.notification.delete().where(tables.notification.c.kind_id.in_(quota_kind_ids))
+    )
+    op.execute(
+        tables.notificationkind.delete().where(tables.notificationkind.c.name.in_(quota_kind_names))
+    )
+
     # Drop in reverse dependency order: quotalimits references quotatype and userorganizationquota.
     op.drop_table("quotalimits")
     op.drop_table("quotatype")
     op.drop_table("userorganizationquota")
     op.drop_table("repositorysize")
-
-    # Remove the notification kinds added by upgrade(), so that upgrading again does not collide.
-    op.execute(
-        tables.notificationkind.delete().where(
-            tables.notificationkind.c.name.in_(["quota_warning", "quota_error"])
-        )
-    )
