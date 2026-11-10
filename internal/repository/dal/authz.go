@@ -12,6 +12,10 @@ import (
 	"github.com/quay/quay/internal/repository"
 )
 
+// libraryNamespace receives repositories pushed without a namespace under the
+// default LIBRARY_NAMESPACE, so only a superuser may create it on push.
+const libraryNamespace = "library"
+
 // AuthorizerConfig configures repository permission checks.
 type AuthorizerConfig struct {
 	SuperUsers           []string
@@ -146,6 +150,9 @@ func (a *Authorizer) canCreateRepository(ctx context.Context, principal *auth.Pr
 			// The token endpoint passes the raw scope name; 2.x validated it
 			// before creating the organization.
 			if principal.Kind != auth.PrincipalUser || !auth.ValidUsername(namespace) {
+				return false, nil
+			}
+			if namespace == libraryNamespace {
 				return false, nil
 			}
 			if err := a.createOwnedNamespace(ctx, principal, namespace); err != nil {
