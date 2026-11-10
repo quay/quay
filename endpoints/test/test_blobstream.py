@@ -1,9 +1,11 @@
 import base64
+import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
+from endpoints.test.shared import toggle_feature
 from storage.upstreamproxy import UpstreamProxy
 from test.fixtures import *
 
@@ -409,3 +411,30 @@ class TestBlobstreamSuccess:
 
         assert len(downloaded) == total_len
         assert "sha256:" + hashlib.sha256(downloaded).hexdigest() == digest
+
+
+class TestBlobStreamFeatureFlag:
+    def test_feature_disabled_returns_404(self):
+        """
+        Verifies that we get a proper 404 back on the _upstream_proxy
+        endpoint if features.PROXY_CACHE is disabled. To do this, we
+        need to re-instantiate the app from scratch after configuration
+        change, run the test, and then restore the original setup
+        so other tests can run properly.
+        """
+        import endpoints.blobstream as blobstream_module
+
+        try:
+            with toggle_feature("PROXY_CACHE", False):
+                importlib.reload(blobstream_module)
+
+                isolated_app = Flask("test_blobstream_feature_disabled")
+                isolated_app.register_blueprint(
+                    blobstream_module.blobstream_bp, url_prefix="/_upstream_proxy"
+                )
+
+                resp = isolated_app.test_client().get("/_upstream_proxy/anything/at/all")
+                assert resp.status_code == 404
+
+        finally:
+            importlib.reload(blobstream_module)
