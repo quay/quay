@@ -14,7 +14,7 @@ func parseRobotUsername(username string) (owner, shortname string, ok bool) {
 	}
 
 	owner, shortname, ok = strings.Cut(username, "+")
-	if !ok || !validUsername(owner) || !validUsername(shortname) {
+	if !ok || !ValidUsername(owner) || !ValidUsername(shortname) {
 		return "", "", false
 	}
 
@@ -26,7 +26,8 @@ func isRobotUsername(username string) bool {
 	return ok
 }
 
-func validUsername(username string) bool {
+// ValidUsername reports whether username is a valid Quay user or namespace name.
+func ValidUsername(username string) bool {
 	if len(username) < 2 || len(username) > 255 {
 		return false
 	}

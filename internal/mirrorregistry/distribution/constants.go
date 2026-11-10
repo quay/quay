@@ -26,4 +26,5 @@ const (
 	authOptionPasswordCacheTTL     = "passwordCacheTTL"
 	authOptionSuperUsers           = "superUsers"
 	authOptionSuperUsersFullAccess = "superUsersFullAccess"
+	authOptionCreateNamespace      = "createNamespaceOnPush"
 )

@@ -157,6 +157,10 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	createPrivateOnPush, err := sourceCreatePrivateOnPush(sourcePath, sourceCfg)
+	if err != nil {
+		return err
+	}
 	publicHostname := net.JoinHostPort(m.Source.Hostname, configuredPort)
 	runtimeCfg := map[string]any{
 		"SERVER_HOSTNAME":      publicHostname,
@@ -180,6 +184,11 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 		"FEATURE_USER_LAST_ACCESSED":     sourceCfg.FeatureUserLastAccessed,
 		"INSTANCE_SERVICE_KEY_SERVICE":   sourceCfg.InstanceServiceKeyService,
 		"REGISTRY_JWT_AUTH_MAX_FRESH_S":  sourceCfg.RegistryJWTAuthMaxFreshS,
+		"CREATE_NAMESPACE_ON_PUSH":       sourceCfg.CreateNamespaceOnPush,
+		"CREATE_PRIVATE_REPO_ON_PUSH":    createPrivateOnPush,
+	}
+	if !sourceCfg.FeatureAnonymousAccess {
+		runtimeCfg["FEATURE_ANONYMOUS_ACCESS"] = false
 	}
 	data, err := yaml.Marshal(runtimeCfg)
 	if err != nil {
@@ -192,6 +201,23 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 	}
 	slog.Info("wrote runtime config", "src", sourcePath, "dst", targetPath)
 	return nil
+}
+
+// sourceCreatePrivateOnPush returns the 2.x effective CREATE_PRIVATE_REPO_ON_PUSH:
+// 2.x Quay defaults it to true, the Go config to false.
+func sourceCreatePrivateOnPush(sourcePath string, sourceCfg *config.Config) (bool, error) {
+	data, err := os.ReadFile(sourcePath) //nolint:gosec // source directory comes from detection or an explicit override
+	if err != nil {
+		return false, fmt.Errorf("read source config: %w", err)
+	}
+	var keys map[string]any
+	if err := yaml.Unmarshal(data, &keys); err != nil {
+		return false, fmt.Errorf("parse source config: %w", err)
+	}
+	if _, set := keys["CREATE_PRIVATE_REPO_ON_PUSH"]; !set {
+		return true, nil
+	}
+	return sourceCfg.CreatePrivateOnPush, nil
 }
 
 func (m *Migrator) checkpoint(ctx context.Context, dbPath string) error {

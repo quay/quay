@@ -2,10 +2,14 @@ package dal
 
 import (
 	"database/sql"
+	"path/filepath"
 	"testing"
 
 	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 	"github.com/quay/quay/internal/repository"
 
 	_ "modernc.org/sqlite"
@@ -414,5 +418,223 @@ func TestAuthorizerCanCreateRepository(t *testing.T) {
 				t.Fatalf("CanCreateRepository = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// setupCreateOnPushDB returns a database with the full Quay schema, users alice
+// and bob, and bob's own namespace.
+func setupCreateOnPushDB(t *testing.T) (db *sql.DB, alice, bob *auth.Principal) {
+	t.Helper()
+	db, err := dbcore.Setup(t.Context(), filepath.Join(t.TempDir(), "quay.db"))
+	if err != nil {
+		t.Fatalf("setup db: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	q := daldb.New(db)
+	aliceID, err := q.EnsureUser(t.Context(), "alice")
+	if err != nil {
+		t.Fatalf("create alice: %v", err)
+	}
+	bobID, err := q.EnsureUser(t.Context(), "bob")
+	if err != nil {
+		t.Fatalf("create bob: %v", err)
+	}
+	return db,
+		&auth.Principal{ID: aliceID, Username: "alice", Kind: auth.PrincipalUser},
+		&auth.Principal{ID: bobID, Username: "bob", Kind: auth.PrincipalUser}
+}
+
+func namespaceExists(t *testing.T, db *sql.DB, namespace string) bool {
+	t.Helper()
+	var n int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM "user" WHERE username = ?`, namespace).Scan(&n); err != nil {
+		t.Fatalf("count namespace %q: %v", namespace, err)
+	}
+	return n > 0
+}
+
+func TestAuthorizerCanCreateRepositoryOnPush(t *testing.T) {
+	tests := []struct {
+		name      string
+		flag      bool
+		principal func(alice, bob *auth.Principal) *auth.Principal
+		namespace string
+		want      bool
+	}{
+		{
+			name:      "flag off denies missing namespace",
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "newns",
+		},
+		{
+			name:      "flag on allows authenticated user",
+			flag:      true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "newns",
+			want:      true,
+		},
+		{
+			name:      "flag on denies anonymous",
+			flag:      true,
+			principal: func(_, _ *auth.Principal) *auth.Principal { return auth.AnonymousPrincipal() },
+			namespace: "newns",
+		},
+		{
+			name: "flag on denies robot",
+			flag: true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal {
+				return &auth.Principal{ID: alice.ID, Username: "alice+bot", Kind: auth.PrincipalRobot}
+			},
+			namespace: "newns",
+		},
+		{
+			name:      "flag on denies another user's namespace",
+			flag:      true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "bob",
+		},
+		{
+			name:      "flag on denies path name",
+			flag:      true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "..",
+		},
+		{
+			name:      "flag on denies uppercase name",
+			flag:      true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "UPPER",
+		},
+		{
+			name:      "flag on denies one-character name",
+			flag:      true,
+			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
+			namespace: "x",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, alice, bob := setupCreateOnPushDB(t)
+			authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: tt.flag})
+
+			got, err := authorizer.CanCreateRepositoryOnPush(t.Context(), tt.principal(alice, bob), tt.namespace)
+			if err != nil {
+				t.Fatalf("CanCreateRepositoryOnPush: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("CanCreateRepositoryOnPush = %v, want %v", got, tt.want)
+			}
+			if tt.namespace != "bob" && namespaceExists(t, db, tt.namespace) != tt.want {
+				t.Fatalf("namespace created = %v, want %v", !tt.want, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthorizerCanCreateRepositoryDoesNotCreateNamespace(t *testing.T) {
+	db, alice, _ := setupCreateOnPushDB(t)
+	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+
+	got, err := authorizer.CanCreateRepository(t.Context(), alice, "newns")
+	if err != nil {
+		t.Fatalf("CanCreateRepository: %v", err)
+	}
+	if !got {
+		t.Fatal("CanCreateRepository = false, want true")
+	}
+	if namespaceExists(t, db, "newns") {
+		t.Fatal("CanCreateRepository created the namespace")
+	}
+}
+
+func TestAuthorizerCreateNamespaceOnPushOwnership(t *testing.T) {
+	db, alice, bob := setupCreateOnPushDB(t)
+	ctx := t.Context()
+	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+	store, err := metastore.NewSQLiteStore(ctx, db)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	canCreate := func(p *auth.Principal) bool {
+		t.Helper()
+		got, err := authorizer.CanCreateRepositoryOnPush(ctx, p, "newns")
+		if err != nil {
+			t.Fatalf("CanCreateRepositoryOnPush(%s): %v", p.Username, err)
+		}
+		return got
+	}
+	push := func(name string) *repository.Repository {
+		t.Helper()
+		if _, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "newns", Name: name}); err != nil {
+			t.Fatalf("EnsureRepository(%s): %v", name, err)
+		}
+		row, err := daldb.New(db).GetRepositoryAccessByNamespaceName(ctx, daldb.GetRepositoryAccessByNamespaceNameParams{
+			Username: "newns",
+			Name:     name,
+		})
+		if err != nil {
+			t.Fatalf("load newns/%s: %v", name, err)
+		}
+		return &repository.Repository{
+			ID:               row.ID,
+			Visibility:       repository.Visibility(row.Visibility),
+			State:            row.State,
+			KindID:           row.KindID,
+			NamespaceEnabled: row.NamespaceEnabled,
+		}
+	}
+	canPush := func(p *auth.Principal, repo *repository.Repository) bool {
+		t.Helper()
+		got, err := authorizer.CanPushRepository(ctx, p, repo)
+		if err != nil {
+			t.Fatalf("CanPushRepository(%s): %v", p.Username, err)
+		}
+		return got
+	}
+
+	if !canCreate(alice) {
+		t.Fatal("first push: alice cannot create newns/app")
+	}
+	app := push("app")
+	if !canPush(alice, app) {
+		t.Fatal("repeat push: alice cannot push newns/app")
+	}
+	if !canCreate(alice) {
+		t.Fatal("second repository: alice cannot create newns/other")
+	}
+	push("other")
+	if canCreate(bob) {
+		t.Fatal("bob can create a repository in alice's namespace")
+	}
+	if canPush(bob, app) {
+		t.Fatal("bob can push newns/app")
+	}
+}
+
+func TestAuthorizerCreateNamespaceOnPushLosesRace(t *testing.T) {
+	db, alice, bob := setupCreateOnPushDB(t)
+	ctx := t.Context()
+	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+
+	// Both pushes saw newns missing; alice's commits first.
+	if err := authorizer.createOwnedNamespace(ctx, alice, "newns"); err != nil {
+		t.Fatalf("createOwnedNamespace(alice): %v", err)
+	}
+	if err := authorizer.createOwnedNamespace(ctx, bob, "newns"); err != nil {
+		t.Fatalf("createOwnedNamespace(bob): %v", err)
+	}
+
+	if got, err := authorizer.canCreateRepository(ctx, bob, "newns", false); err != nil || got {
+		t.Fatalf("bob canCreateRepository = %v, %v; want false, nil", got, err)
+	}
+	if got, err := authorizer.canCreateRepository(ctx, alice, "newns", false); err != nil || !got {
+		t.Fatalf("alice canCreateRepository = %v, %v; want true, nil", got, err)
+	}
+	var bobTeams int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM teammember WHERE user_id = ?`, bob.ID).Scan(&bobTeams); err != nil {
+		t.Fatalf("count bob's teams: %v", err)
+	}
+	if bobTeams != 0 {
+		t.Fatalf("bob is on %d teams, want 0", bobTeams)
 	}
 }
