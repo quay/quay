@@ -214,5 +214,58 @@ test.describe(
         expect(listedToken?.last_accessed).toEqual(expect.any(String));
       },
     );
+
+    test(
+      'robot API bearer token cannot create a nested personal robot',
+      {tag: '@PROJQUAY-14334'},
+      async ({authenticatedRequest, api, request}) => {
+        // The organization admin creates the first robot successfully. The
+        // scoped robot token below is then the authenticated parent for the
+        // personal-robot request.
+        const org = await api.organization('nestedrobot');
+        const robot = await api.robot(org.name, 'parentbot');
+        const csrfToken = await api.raw.getToken();
+        const tokensUrl = `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`;
+
+        const tokenResponse = await authenticatedRequest.post(tokensUrl, {
+          headers: {'X-CSRF-Token': csrfToken},
+          data: {
+            name: 'Nested robot rejection token',
+            scope: 'user:admin',
+            expiration: 3600,
+          },
+        });
+        expect(tokenResponse.status()).toBe(200);
+        const token = (await tokenResponse.json()) as RobotAPIToken;
+
+        // `request` has no session cookie, so this call authenticates only as
+        // the robot through its scoped bearer token.
+        const nestedShortname = 'nested';
+        const createResponse = await request.put(
+          `${API_URL}/api/v1/user/robots/${nestedShortname}`,
+          {headers: {Authorization: `Bearer ${token.token}`}},
+        );
+        expect(createResponse.status()).toBe(400);
+        await expect(createResponse.json()).resolves.toMatchObject({
+          error_message: 'Robot accounts cannot own robot accounts',
+        });
+
+        // Listing as the robot verifies that the rejected child account was
+        // not persisted under the robot parent.
+        const listResponse = await request.get(
+          `${API_URL}/api/v1/user/robots?token=false`,
+          {headers: {Authorization: `Bearer ${token.token}`}},
+        );
+        expect(listResponse.status()).toBe(200);
+        const listed = (await listResponse.json()) as {
+          robots: Array<{name: string}>;
+        };
+        expect(listed.robots).not.toContainEqual(
+          expect.objectContaining({
+            name: `${robot.fullName}+${nestedShortname}`,
+          }),
+        );
+      },
+    );
   },
 );
