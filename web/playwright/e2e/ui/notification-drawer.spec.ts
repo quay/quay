@@ -75,9 +75,10 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   test(
     'notification bell badge shows N+ when more than 5 notifications exist',
     {tag: ['@notification-drawer', '@PROJQUAY-9038']},
-    async ({authenticatedPage, api}) => {
+    async ({authenticatedPage, api, quayConfig}) => {
       test.setTimeout(120_000);
-      const namespace = TEST_USERS.user.username;
+      const users = getTestUsers(quayConfig);
+      const namespace = users.user.username;
 
       // 1. Create repository
       const repo = await api.repository(namespace, 'notif-repo-badge');
@@ -112,8 +113,8 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
             namespace,
             repo.name,
             `tag${i}`,
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
         }
 
