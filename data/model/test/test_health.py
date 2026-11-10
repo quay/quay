@@ -84,9 +84,18 @@ def test_sql_timeout_postgresql_integration(initialized_db, appconfig):
     if not appconfig["DB_URI"].startswith("postgresql"):
         pytest.skip("requires a real PostgreSQL backend")
 
-    with pytest.raises((OperationalError, DatabaseError)):
+    # record the original statement timeout
+    cursor = db.execute_sql("SHOW statement_timeout")
+    original_timeout = cursor.fetchone()[0]
+
+    with pytest.raises((OperationalError, DatabaseError)) as excinfo:
         with sql_timeout(appconfig, db, 100):
             db.execute_sql("SELECT pg_sleep(1)")
 
+    # verify that the timeout caused the error to occur
+    assert "statement timeout" in str(excinfo.value)
+
     cursor = db.execute_sql("SHOW statement_timeout")
-    assert cursor.fetchone()[0] in ("0", "0ms")
+
+    # assert that the statement timeout is back to the default value
+    assert cursor.fetchone()[0] == original_timeout

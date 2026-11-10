@@ -35,6 +35,7 @@ def check_health(app_config):
             app_config["DB_URI"], app_config["DB_CONNECTION_ARGS"], connect_timeout=3
         )
     except Exception as ex:
+        logger.warning("Database connection error: %s", str(ex))
         return (False, "Could not connect to the database: %s" % str(ex))
 
     # We will connect to the db, check that it contains some team role kinds
@@ -43,4 +44,5 @@ def check_health(app_config):
             okay = bool(list(TeamRole.select().limit(1)))
             return (okay, "Could not execute query, timeout reached" if not okay else None)
     except Exception as ex:
+        logger.warning("Database timeout error: %s", str(ex))
         return (False, f"Could not connect to the database: {ex}")
