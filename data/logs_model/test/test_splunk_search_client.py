@@ -115,7 +115,7 @@ class TestSplunkSearchClientConnection:
         """Test that _get_connection raises SplunkAuthenticationError on auth failure."""
         from io import BytesIO
 
-        from splunklib.binding import (  # type: ignore[import]
+        from splunklib.binding import (  # type: ignore[import-untyped]
             AuthenticationError,
             HTTPError,
         )
