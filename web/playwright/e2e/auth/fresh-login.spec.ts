@@ -5,6 +5,14 @@ test.describe(
   'Fresh Login - Database auth password modal',
   {tag: ['@auth', '@auth:Database']},
   () => {
+    // These tests drive the modal themselves, so drop the fixture's
+    // auto-verify handler.
+    test.beforeEach(async ({superuserPage}) => {
+      await superuserPage.removeLocatorHandler(
+        superuserPage.locator('#fresh-password'),
+      );
+    });
+
     test(
       'shows password modal (not redirect) on fresh_login_required',
       {tag: '@superuser'},
@@ -98,6 +106,44 @@ test.describe(
         await expect(page.getByTestId('usage-logs-table')).toBeVisible({
           timeout: 10000,
         });
+      },
+    );
+  },
+);
+
+test.describe(
+  'Fresh Login - page fixtures answer the modal',
+  {tag: ['@auth', '@auth:Database']},
+  () => {
+    test(
+      'superuserPage verifies the password and retries',
+      {tag: '@superuser'},
+      async ({superuserPage: page}) => {
+        let callCount = 0;
+        await page.route('**/api/v1/superuser/logs*', async (route) => {
+          callCount++;
+          if (callCount === 1) {
+            await route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                title: 'fresh_login_required',
+                error_type: 'fresh_login_required',
+                detail: 'The action requires a fresh login to succeed.',
+                status: 401,
+              }),
+            });
+          } else {
+            await route.continue();
+          }
+        });
+
+        await page.goto('/usage-logs');
+
+        await expect(page.getByTestId('usage-logs-table')).toBeVisible({
+          timeout: 10000,
+        });
+        expect(callCount).toBeGreaterThan(1);
       },
     );
   },

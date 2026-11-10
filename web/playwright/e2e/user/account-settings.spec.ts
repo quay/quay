@@ -1,4 +1,11 @@
-import {test, expect, uniqueName, mailpit, getTestUsers} from '../../fixtures';
+import {
+  test,
+  expect,
+  uniqueName,
+  mailpit,
+  getTestUsers,
+  setReactUICookie,
+} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 
 test.describe('Account Settings', {tag: ['@user']}, () => {
@@ -150,26 +157,41 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
   });
 
   test.describe('CLI Configuration', {tag: ['@auth:Database']}, () => {
-    test('shows error for wrong password', async ({authenticatedPage}) => {
-      await authenticatedPage.goto(`/user/${username}?tab=Settings`);
+    test(
+      'shows error for wrong password',
+      {tag: '@superuser'},
+      async ({browser, freshUser}) => {
+        // A wrong password starts a per-user login backoff, so use a
+        // throwaway user rather than the shared testuser.
+        const {username: freshName, password: freshPassword} = freshUser.user;
+        const context = await browser.newContext();
+        try {
+          await setReactUICookie(context);
+          await new ApiClient(context.request).signIn(freshName, freshPassword);
+          const page = await context.newPage();
+          await page.goto(`/user/${freshName}?tab=Settings`);
 
-      // Navigate to CLI tab
-      await authenticatedPage.getByText('CLI configuration').click();
+          // Navigate to CLI tab
+          await page.getByText('CLI configuration').click();
 
-      // Click generate password button
-      await authenticatedPage.locator('#cli-password-button').click();
+          // Click generate password button
+          await page.locator('#cli-password-button').click();
 
-      // Enter wrong password
-      await authenticatedPage
-        .locator('#delete-confirmation-input')
-        .fill('wrongpassword123');
-      await authenticatedPage.locator('#submit').click();
+          // Enter wrong password
+          await page
+            .locator('#delete-confirmation-input')
+            .fill('wrongpassword123');
+          await page.locator('#submit').click();
 
-      // Verify error message
-      await expect(
-        authenticatedPage.getByText('Invalid Username or Password'),
-      ).toBeVisible();
-    });
+          // Verify error message
+          await expect(
+            page.getByText('Invalid Username or Password'),
+          ).toBeVisible();
+        } finally {
+          await context.close();
+        }
+      },
+    );
 
     test('generates encrypted password with all credential formats', async ({
       authenticatedPage,
@@ -182,9 +204,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Click generate password button
       await authenticatedPage.locator('#cli-password-button').click();
 
-      // Submit password with retry — the previous wrong-password test
-      // increments invalid_login_attempts and Quay's exponential backoff
-      // can reject the next attempt with HTTP 429.
+      // Submit password with retry — Quay's login backoff can reject the
+      // attempt with HTTP 429.
       const credentialsHeading = authenticatedPage.getByRole('heading', {
         name: `Credentials for ${username}`,
       });
@@ -511,19 +532,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Submit
       await authenticatedPage.getByTestId('create-token-submit').click();
 
-      // Creating tokens requires @require_fresh_login (FRESH_LOGIN_TIMEOUT = 10m).
-      // Long-running test suites may trigger the "Please Verify" re-auth modal.
-      // Handle it by entering the known test password before proceeding.
       const credentialsModal =
         authenticatedPage.getByTestId('credentials-modal');
-      const freshPasswordInput = authenticatedPage.locator('#fresh-password');
-      await expect(credentialsModal.or(freshPasswordInput)).toBeVisible({
-        timeout: 15_000,
-      });
-      if (await freshPasswordInput.isVisible()) {
-        await freshPasswordInput.fill(password);
-        await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
-      }
 
       // Credentials modal should show with success
       await expect(credentialsModal).toBeVisible({timeout: 15_000});
