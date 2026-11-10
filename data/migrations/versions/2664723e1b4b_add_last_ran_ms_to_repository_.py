@@ -11,7 +11,7 @@ revision = "2664723e1b4b"
 down_revision = "f67fe4871771"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
@@ -19,7 +19,7 @@ def upgrade(op, tables, tester):
         "repositorynotification", sa.Column("last_ran_ms", sa.BigInteger(), nullable=True)
     )
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     repositorynotification_indexes = inspector.get_indexes("repositorynotification")
     if not "repositorynotification_last_ran_ms" in [
         i["name"] for i in repositorynotification_indexes

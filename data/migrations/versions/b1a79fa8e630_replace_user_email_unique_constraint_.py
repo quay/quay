@@ -24,7 +24,7 @@ revision = "b1a79fa8e630"
 down_revision = "c3d4e5f6a7b8"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def _drop_invalid_index(bind, index_name):
@@ -45,7 +45,7 @@ def _drop_invalid_index(bind, index_name):
 
 def upgrade(op, tables, tester):
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     user_indexes = {i["name"] for i in inspector.get_indexes("user")}
 
     # Clean up any invalid indexes left by a previous failed CONCURRENTLY attempt.
@@ -89,13 +89,17 @@ def upgrade(op, tables, tester):
         if bind.dialect.name == "postgresql":
             with op.get_context().autocommit_block():
                 op.execute(
-                    "CREATE UNIQUE INDEX CONCURRENTLY user_email_unique_non_org "
-                    'ON "user"(email) WHERE organization = false'
+                    sa.text(
+                        "CREATE UNIQUE INDEX CONCURRENTLY user_email_unique_non_org "
+                        'ON "user"(email) WHERE organization = false'
+                    )
                 )
         else:
             op.execute(
-                "CREATE UNIQUE INDEX user_email_unique_non_org "
-                'ON "user"(email) WHERE organization = false'
+                sa.text(
+                    "CREATE UNIQUE INDEX user_email_unique_non_org "
+                    'ON "user"(email) WHERE organization = false'
+                )
             )
 
     # Step 2: Create a regular (non-unique) index for general email lookups.
@@ -120,14 +124,14 @@ def upgrade(op, tables, tester):
 
 def downgrade(op, tables, tester):
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     user_indexes = {i["name"] for i in inspector.get_indexes("user")}
 
     if "user_email_idx" in user_indexes:
         op.drop_index("user_email_idx", table_name="user")
 
     if "user_email_unique_non_org" in user_indexes:
-        op.execute("DROP INDEX user_email_unique_non_org")
+        op.execute(sa.text("DROP INDEX user_email_unique_non_org"))
 
     if "user_email" not in user_indexes:
         if bind.dialect.name == "postgresql":

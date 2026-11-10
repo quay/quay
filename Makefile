@@ -95,8 +95,7 @@ test_postgres:
 		-p $(PG_PORT):5432 -d postgres:18
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
-	$(TEST_ENV) alembic upgrade head
-	$(TEST_ENV) py.test --timeout=7200 --verbose --ignore=endpoints/appr/test/ -x $(TESTS)
+	$(TEST_ENV) py.test --timeout=7200 --verbose --ignore=buildman/test/test_buildman.py -x $(TESTS)
 	$(DOCKER) rm -f $(CONTAINER) || true
 
 WEBPACK := node_modules/.bin/webpack

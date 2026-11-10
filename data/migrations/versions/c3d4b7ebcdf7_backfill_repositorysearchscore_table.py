@@ -17,8 +17,10 @@ def upgrade(op, tables, tester):
     # Add a 0 entry into the RepositorySearchScore table for each repository that isn't present
     conn = op.get_bind()
     conn.execute(
-        "insert into repositorysearchscore (repository_id, score) SELECT id, 0 FROM "
-        + "repository WHERE id not in (select repository_id from repositorysearchscore)"
+        sa.text(
+            "insert into repositorysearchscore (repository_id, score) SELECT id, 0 FROM "
+            "repository WHERE id not in (select repository_id from repositorysearchscore)"
+        )
     )
 
 
