@@ -448,6 +448,46 @@ test.describe(
         ).toBeVisible();
       },
     );
+
+    test(
+      'superuser sees an error for an invalid quota threshold',
+      {tag: ['@PROJQUAY-9415', '@superuser']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('quotathreshold');
+        const quota = await superuserApi.quota(org.name, 104857600); // 100 MiB
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          80,
+        );
+
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        const modal = superuserPage.getByTestId('configure-quota-modal');
+        await expect(modal).toBeVisible();
+
+        const input = modal.getByTestId('new-limit-percent-input');
+        const error = modal.getByText('Enter 1 to 100.');
+        await input.fill('0');
+        await expect(error).toBeVisible();
+
+        await input.fill('50');
+        await expect(error).toBeHidden();
+
+        const limitInput = modal.getByTestId('limit-percent-input');
+        const update = modal.getByTestId('update-limit-button');
+        await limitInput.fill('50');
+        await expect(update).toBeEnabled();
+
+        await limitInput.press('ControlOrMeta+a');
+        await limitInput.press('0');
+        await expect(limitInput).toHaveValue('0');
+        await expect(error).toBeVisible();
+        await expect(update).toBeDisabled();
+      },
+    );
   },
 );
 
