@@ -14,6 +14,13 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
+    if op.get_bind().dialect.name == "mysql":
+        # MySQL does not allow a literal DEFAULT on TEXT columns; use an expression default
+        # (accepted from MySQL 8.0.13 and by MariaDB).
+        event_config_default = sa.text("('{}')")
+    else:
+        event_config_default = "{}"
+
     op.create_table(
         "namespacenotification",
         sa.Column("id", sa.Integer, nullable=False),
@@ -23,7 +30,9 @@ def upgrade(op, tables, tester):
         sa.Column("method_id", sa.Integer, nullable=False),
         sa.Column("title", sa.String(length=255), nullable=True),
         sa.Column("config_json", sa.Text, nullable=False),
-        sa.Column("event_config_json", sa.Text, nullable=False, server_default="{}"),
+        sa.Column(
+            "event_config_json", sa.Text, nullable=False, server_default=event_config_default
+        ),
         sa.Column("number_of_failures", sa.Integer, nullable=False, server_default="0"),
         sa.Column("last_ran_ms", sa.BigInteger, nullable=True),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_namespacenotification")),

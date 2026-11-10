@@ -28,10 +28,13 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("login_failure") | tables.logentrykind.name
-            == op.inline_literal("push_repo_failed") | tables.logentrykind.name
-            == op.inline_literal("pull_repo_failed") | tables.logentrykind.name
-            == op.inline_literal("delete_tag_failed")
+            tables.logentrykind.c.name.in_(
+                [
+                    "login_failure",
+                    "push_repo_failed",
+                    "pull_repo_failed",
+                    "delete_tag_failed",
+                ]
+            )
         )
     )

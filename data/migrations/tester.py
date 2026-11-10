@@ -76,7 +76,7 @@ class DataTypes(object):
     def Foreign(table_name):
         def get_index():
             result = op.get_bind().execute(
-                "SELECT id FROM %s LIMIT 1" % escape_table_name(table_name)
+                text("SELECT id FROM %s LIMIT 1" % escape_table_name(table_name))
             )
             try:
                 return list(result)[0][0]
@@ -142,7 +142,7 @@ class PopulateTestDataTester(MigrationTester):
             % (table_name, ", ".join(field_names), ", ".join(field_name_vars))
         )
         logger.info("Executing test query %s with values %s", query, list(columns.values()))
-        op.get_bind().execute(query, **columns)
+        op.get_bind().execute(query, columns)
 
     def populate_column(self, table_name, col_name, field_type):
         col_value = field_type()
@@ -153,4 +153,4 @@ class PopulateTestDataTester(MigrationTester):
         logger.info(
             "Executing test query %s with value %s on row %s", update_text, col_value, row_id
         )
-        op.get_bind().execute(update_text, col_value=col_value, row_id=row_id)
+        op.get_bind().execute(update_text, {"col_value": col_value, "row_id": row_id})
