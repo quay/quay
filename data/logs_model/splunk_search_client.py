@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from splunklib import client, results
-from splunklib.binding import AuthenticationError  # type: ignore[import]
+from splunklib.binding import AuthenticationError  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 

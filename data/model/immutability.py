@@ -162,7 +162,7 @@ def _fetch_candidate_tags_batch(
             (Tag.lifetime_end_ms.is_null()) | (Tag.lifetime_end_ms > now_ms),
             Tag.id > last_id,
         )
-        query = query.order_by(Tag.id).limit(limit)  # type: ignore[func-returns-value]
+        query = query.order_by(Tag.id).limit(limit)
     else:
         # Namespace-scoped query - join with Repository to filter by namespace
         query = (
@@ -175,7 +175,7 @@ def _fetch_candidate_tags_batch(
                 Tag.id > last_id,
             )
         )
-        query = query.order_by(Tag.id).limit(limit)  # type: ignore[func-returns-value]
+        query = query.order_by(Tag.id).limit(limit)
 
     return list(query)
 

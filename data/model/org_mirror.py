@@ -473,7 +473,7 @@ def get_org_mirror_repos(
         query = query.where(OrgMirrorRepository.sync_status == status_filter)
 
     total = query.count()
-    ordered_query = query.order_by(OrgMirrorRepository.repository_name)  # type: ignore[func-returns-value]
+    ordered_query = query.order_by(OrgMirrorRepository.repository_name)
     repos = list(ordered_query.paginate(page, limit))
 
     return repos, total

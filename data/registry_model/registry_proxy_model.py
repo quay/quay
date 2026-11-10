@@ -554,8 +554,6 @@ class ProxyModel(OCIModel):
                     db_manifest = oci.manifest.create_manifest(
                         repository_ref.id, manifest, raise_on_error=True
                     )
-            if db_manifest is None:
-                return None, None
 
         created_blobs = []  # Track ManifestBlob rows created in this attempt
         try:
