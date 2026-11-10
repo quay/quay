@@ -10,7 +10,7 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
 
   test(
     'notification drawer e2e: create, display, open, read, delete',
-    {tag: ['@PROJQUAY-8990']},
+    {tag: ['@notification-drawer', '@PROJQUAY-8990']},
     async ({authenticatedPage, api, quayConfig}) => {
       const users = getTestUsers(quayConfig);
       const namespace = users.user.username;
