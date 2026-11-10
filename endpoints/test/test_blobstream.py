@@ -127,8 +127,19 @@ class TestBlobstreamFailures:
             lambda p: p.replace(f"/{TEST_SCHEME}/", "/http/", 1),
             lambda p: p.replace(TEST_UPSTREAM_HOSTNAME, "malicious.upstream.com"),
             lambda p: p.replace(f"/v2/{TEST_UPSTREAM_NAMESPACE}/", "/v2/evil_namespace/"),
+            lambda p: p.replace(
+                f"/v2/{TEST_UPSTREAM_NAMESPACE}/{TEST_UPSTREAM_REPO}",
+                "/v2/{TEST_UPSTREAM_NAMESPACE}/troublesome_repo/",
+            ),
+            lambda p: p.replace(f"{TEST_DIGEST}", "sha256:bad-digest"),
         ],
-        ids=["scheme_mismatch", "hostname_mismatch", "namespace_mismatch"],
+        ids=[
+            "scheme_mismatch",
+            "hostname_mismatch",
+            "namespace_mismatch",
+            "repo_mismatch",
+            "blob_sha_mismatch",
+        ],
     )
     def test_tampered_access_fields_return_401(self, client, url_proxy, tamper_fn):
         """
