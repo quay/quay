@@ -126,7 +126,7 @@ class TestBlobstreamFailures:
         [
             lambda p: p.replace(f"/{TEST_SCHEME}/", "/http/", 1),
             lambda p: p.replace(TEST_UPSTREAM_HOSTNAME, "malicious.upstream.com"),
-            lambda p: p.replace(f"/v2/{TEST_UPSTREAM_NAMESPACE}/", "/v2/evil_namespace"),
+            lambda p: p.replace(f"/v2/{TEST_UPSTREAM_NAMESPACE}/", "/v2/evil_namespace/"),
         ],
         ids=["scheme_mismatch", "hostname_mismatch", "namespace_mismatch"],
     )
