@@ -152,6 +152,12 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 			return fmt.Errorf("load source config: %w", err)
 		}
 	}
+	if v, ok := sourceCfg.Extra["CREATE_NAMESPACE_ON_PUSH"].(bool); ok && !v {
+		slog.Warn("ignoring CREATE_NAMESPACE_ON_PUSH: false; 3.0 creates a missing namespace when a user pushes to it")
+	}
+	if v, ok := sourceCfg.Extra["FEATURE_RESTRICTED_USERS"].(bool); ok && v {
+		slog.Warn("ignoring FEATURE_RESTRICTED_USERS: true; 3.0 has no restricted-user model")
+	}
 
 	configuredPort, err := runtimeServerHostnamePort(sourceCfg.ServerHostname)
 	if err != nil {

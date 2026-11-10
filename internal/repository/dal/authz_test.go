@@ -518,6 +518,44 @@ func TestAuthorizerCanCreateRepositoryOnPush(t *testing.T) {
 	}
 }
 
+func TestAuthorizerCreateOnPushReservesLibrary(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("denies regular user", func(t *testing.T) {
+		db, alice, _ := setupCreateOnPushDB(t)
+		got, err := NewAuthorizer(db, AuthorizerConfig{}).CanCreateRepositoryOnPush(ctx, alice, libraryNamespace)
+		if err != nil || got {
+			t.Fatalf("CanCreateRepositoryOnPush = %v, %v; want false, nil", got, err)
+		}
+		if namespaceExists(t, db, libraryNamespace) {
+			t.Fatal("library namespace was created")
+		}
+	})
+
+	t.Run("allows superuser", func(t *testing.T) {
+		db, alice, _ := setupCreateOnPushDB(t)
+		authorizer := NewAuthorizer(db, AuthorizerConfig{SuperUsers: []string{"alice"}, SuperUsersFullAccess: true})
+		got, err := authorizer.CanCreateRepositoryOnPush(ctx, alice, libraryNamespace)
+		if err != nil || !got {
+			t.Fatalf("CanCreateRepositoryOnPush = %v, %v; want true, nil", got, err)
+		}
+	})
+
+	t.Run("existing library keeps its owners", func(t *testing.T) {
+		db, alice, bob := setupCreateOnPushDB(t)
+		authorizer := NewAuthorizer(db, AuthorizerConfig{})
+		if err := authorizer.createOwnedNamespace(ctx, alice, libraryNamespace); err != nil {
+			t.Fatalf("createOwnedNamespace: %v", err)
+		}
+		if got, err := authorizer.CanCreateRepositoryOnPush(ctx, alice, libraryNamespace); err != nil || !got {
+			t.Fatalf("owner CanCreateRepositoryOnPush = %v, %v; want true, nil", got, err)
+		}
+		if got, err := authorizer.CanCreateRepositoryOnPush(ctx, bob, libraryNamespace); err != nil || got {
+			t.Fatalf("non-owner CanCreateRepositoryOnPush = %v, %v; want false, nil", got, err)
+		}
+	})
+}
+
 func TestAuthorizerCanCreateRepositoryDoesNotCreateNamespace(t *testing.T) {
 	db, alice, _ := setupCreateOnPushDB(t)
 	authorizer := NewAuthorizer(db, AuthorizerConfig{})
