@@ -46,6 +46,13 @@ repos:
         language: script
         files: ^web/package-lock\.json$
         stages: [pre-commit]
+    -   id: check-playwright-lock
+        name: Check package-lock and pnpm-lock agree on Playwright
+        entry: .github/hooks/check-playwright-lock.sh
+        language: script
+        files: ^web/(package-lock\.json|pnpm-lock\.yaml)$
+        pass_filenames: false
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: .github/hooks/run-eslint.sh
