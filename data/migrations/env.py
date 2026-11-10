@@ -1,17 +1,15 @@
 import logging
 import logging.config
 import os
-from urllib.parse import unquote
 
 from alembic import context
 from alembic import op as alembic_op
 from alembic.script.revision import ResolutionError
 from alembic.util import CommandError
-from peewee import SqliteDatabase
 from sqlalchemy import create_engine
 
 from app import app
-from data.database import LEGACY_INDEX_MAP, all_models, db
+from data.database import LEGACY_INDEX_MAP, all_models
 from data.migrations.tester import NoopTester, PopulateTestDataTester
 from data.model.sqlalchemybridge import gen_sqlalchemy_metadata
 from release import GIT_HEAD, REGION, SERVICE
@@ -38,6 +36,9 @@ def get_db_url():
     an environment variable or expected to default with a SQLite database for testing purposes.
     """
     db_url = app.config.get("DB_URI", "sqlite:///test/data/test.db")
+    if db_url.startswith("postgresql"):
+        correct_prefix = "postgresql+psycopg"
+        db_url = correct_prefix + ":" + db_url.split(":", 1)[1]
     return db_url
 
 
@@ -100,15 +101,14 @@ def run_migrations_online():
     """
 
     engine = get_engine()
-    connection = engine.connect()
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        transactional_ddl=False,
-        render_as_batch=True,
-    )
+    with engine.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            transactional_ddl=False,
+            render_as_batch=True,
+        )
 
-    try:
         with context.begin_transaction():
             try:
                 context.run_migrations(op=alembic_op, tables=tables, tester=get_tester())
@@ -127,8 +127,6 @@ def run_migrations_online():
                     logger.warning("Skipping database migration because revision not found")
                 else:
                     raise
-    finally:
-        connection.close()
 
 
 if context.is_offline_mode():

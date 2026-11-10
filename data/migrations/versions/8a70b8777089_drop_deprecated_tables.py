@@ -11,20 +11,21 @@ revision = "8a70b8777089"
 down_revision = "a0fc06d604a4"
 
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 def upgrade(op, tables, tester):
-    op.execute("DROP TABLE IF EXISTS repositorysize")
-    op.execute("DROP TABLE IF EXISTS image")
-    op.execute("DROP TABLE IF EXISTS derivedstorageforimage")
-    op.execute("DROP TABLE IF EXISTS repositorytag")
-    op.execute("DROP TABLE IF EXISTS torrentinfo")
-    op.execute("DROP TABLE IF EXISTS manifestlegacyimage")
-    op.execute("DROP TABLE IF EXISTS tagmanifest")
-    op.execute("DROP TABLE IF EXISTS tagmanifesttomanifest")
-    op.execute("DROP TABLE IF EXISTS tagmanifestlabel")
-    op.execute("DROP TABLE IF EXISTS tagmanifestlabelmap")
-    op.execute("DROP TABLE IF EXISTS tagtorepositorytag")
+    op.execute(text("DROP TABLE IF EXISTS repositorysize"))
+    op.execute(text("DROP TABLE IF EXISTS image"))
+    op.execute(text("DROP TABLE IF EXISTS derivedstorageforimage"))
+    op.execute(text("DROP TABLE IF EXISTS repositorytag"))
+    op.execute(text("DROP TABLE IF EXISTS torrentinfo"))
+    op.execute(text("DROP TABLE IF EXISTS manifestlegacyimage"))
+    op.execute(text("DROP TABLE IF EXISTS tagmanifest"))
+    op.execute(text("DROP TABLE IF EXISTS tagmanifesttomanifest"))
+    op.execute(text("DROP TABLE IF EXISTS tagmanifestlabel"))
+    op.execute(text("DROP TABLE IF EXISTS tagmanifestlabelmap"))
+    op.execute(text("DROP TABLE IF EXISTS tagtorepositorytag"))
 
 
 def downgrade(op, tables, tester):

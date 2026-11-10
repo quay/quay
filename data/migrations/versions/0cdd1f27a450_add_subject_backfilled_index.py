@@ -11,12 +11,12 @@ revision = "0cdd1f27a450"
 down_revision = "946f0e90f9c9"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     manifest_indexes = inspector.get_indexes("manifest")
     if not "manifest_subject_backfilled" in [i["name"] for i in manifest_indexes]:
         with op.get_context().autocommit_block():
