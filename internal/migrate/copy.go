@@ -184,7 +184,6 @@ func (m *Migrator) writeRuntimeConfig(sourceCfg *config.Config) error {
 		"FEATURE_USER_LAST_ACCESSED":     sourceCfg.FeatureUserLastAccessed,
 		"INSTANCE_SERVICE_KEY_SERVICE":   sourceCfg.InstanceServiceKeyService,
 		"REGISTRY_JWT_AUTH_MAX_FRESH_S":  sourceCfg.RegistryJWTAuthMaxFreshS,
-		"CREATE_NAMESPACE_ON_PUSH":       sourceCfg.CreateNamespaceOnPush,
 		"CREATE_PRIVATE_REPO_ON_PUSH":    createPrivateOnPush,
 	}
 	if !sourceCfg.FeatureAnonymousAccess {

@@ -256,20 +256,19 @@ func TestWriteRuntimeConfigCarriesPushAndAnonymousSettings(t *testing.T) {
 	tests := []struct {
 		name               string
 		source             string
-		wantNamespace      bool
 		wantPrivate        bool
 		wantAnonymous      bool
 		wantAnonymousInCfg bool
 	}{
 		{name: "absent", wantPrivate: true, wantAnonymous: true},
 		{
-			name:          "set true",
-			source:        "CREATE_NAMESPACE_ON_PUSH: true\nCREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
-			wantNamespace: true, wantPrivate: true, wantAnonymous: true,
+			name:        "set true",
+			source:      "CREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
+			wantPrivate: true, wantAnonymous: true,
 		},
 		{
 			name:               "set false",
-			source:             "CREATE_NAMESPACE_ON_PUSH: false\nCREATE_PRIVATE_REPO_ON_PUSH: false\nFEATURE_ANONYMOUS_ACCESS: false\n",
+			source:             "CREATE_PRIVATE_REPO_ON_PUSH: false\nFEATURE_ANONYMOUS_ACCESS: false\n",
 			wantAnonymousInCfg: true,
 		},
 	}
@@ -288,7 +287,6 @@ func TestWriteRuntimeConfigCarriesPushAndAnonymousSettings(t *testing.T) {
 			targetPath := filepath.Join(targetDir, runtimeConfigFile)
 			runtimeCfg, err := config.Load(targetPath)
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantNamespace, runtimeCfg.CreateNamespaceOnPush)
 			assert.Equal(t, tt.wantPrivate, runtimeCfg.CreatePrivateOnPush)
 			assert.Equal(t, tt.wantAnonymous, runtimeCfg.FeatureAnonymousAccess)
 			data, err := os.ReadFile(targetPath)

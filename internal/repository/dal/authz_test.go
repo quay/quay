@@ -395,9 +395,10 @@ func TestAuthorizerCanCreateRepository(t *testing.T) {
 			namespace: "acme",
 		},
 		{
-			name:      "missing namespace denies create without error",
+			name:      "user can create missing namespace",
 			principal: &auth.Principal{ID: 2, Username: "alice", Kind: auth.PrincipalUser},
 			namespace: "missing",
+			want:      true,
 		},
 		{
 			name:      "anonymous cannot create",
@@ -456,58 +457,45 @@ func namespaceExists(t *testing.T, db *sql.DB, namespace string) bool {
 func TestAuthorizerCanCreateRepositoryOnPush(t *testing.T) {
 	tests := []struct {
 		name      string
-		flag      bool
 		principal func(alice, bob *auth.Principal) *auth.Principal
 		namespace string
 		want      bool
 	}{
 		{
-			name:      "flag off denies missing namespace",
-			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
-			namespace: "newns",
-		},
-		{
-			name:      "flag on allows authenticated user",
-			flag:      true,
+			name:      "allows authenticated user",
 			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
 			namespace: "newns",
 			want:      true,
 		},
 		{
-			name:      "flag on denies anonymous",
-			flag:      true,
+			name:      "denies anonymous",
 			principal: func(_, _ *auth.Principal) *auth.Principal { return auth.AnonymousPrincipal() },
 			namespace: "newns",
 		},
 		{
-			name: "flag on denies robot",
-			flag: true,
+			name: "denies robot",
 			principal: func(alice, _ *auth.Principal) *auth.Principal {
 				return &auth.Principal{ID: alice.ID, Username: "alice+bot", Kind: auth.PrincipalRobot}
 			},
 			namespace: "newns",
 		},
 		{
-			name:      "flag on denies another user's namespace",
-			flag:      true,
+			name:      "denies another user's namespace",
 			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
 			namespace: "bob",
 		},
 		{
-			name:      "flag on denies path name",
-			flag:      true,
+			name:      "denies path name",
 			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
 			namespace: "..",
 		},
 		{
-			name:      "flag on denies uppercase name",
-			flag:      true,
+			name:      "denies uppercase name",
 			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
 			namespace: "UPPER",
 		},
 		{
-			name:      "flag on denies one-character name",
-			flag:      true,
+			name:      "denies one-character name",
 			principal: func(alice, _ *auth.Principal) *auth.Principal { return alice },
 			namespace: "x",
 		},
@@ -515,7 +503,7 @@ func TestAuthorizerCanCreateRepositoryOnPush(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, alice, bob := setupCreateOnPushDB(t)
-			authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: tt.flag})
+			authorizer := NewAuthorizer(db, AuthorizerConfig{})
 
 			got, err := authorizer.CanCreateRepositoryOnPush(t.Context(), tt.principal(alice, bob), tt.namespace)
 			if err != nil {
@@ -533,7 +521,7 @@ func TestAuthorizerCanCreateRepositoryOnPush(t *testing.T) {
 
 func TestAuthorizerCanCreateRepositoryDoesNotCreateNamespace(t *testing.T) {
 	db, alice, _ := setupCreateOnPushDB(t)
-	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+	authorizer := NewAuthorizer(db, AuthorizerConfig{})
 
 	got, err := authorizer.CanCreateRepository(t.Context(), alice, "newns")
 	if err != nil {
@@ -547,10 +535,10 @@ func TestAuthorizerCanCreateRepositoryDoesNotCreateNamespace(t *testing.T) {
 	}
 }
 
-func TestAuthorizerCreateNamespaceOnPushOwnership(t *testing.T) {
+func TestAuthorizerCreateOnPushOwnership(t *testing.T) {
 	db, alice, bob := setupCreateOnPushDB(t)
 	ctx := t.Context()
-	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+	authorizer := NewAuthorizer(db, AuthorizerConfig{})
 	store, err := metastore.NewSQLiteStore(ctx, db)
 	if err != nil {
 		t.Fatalf("NewSQLiteStore: %v", err)
@@ -611,10 +599,10 @@ func TestAuthorizerCreateNamespaceOnPushOwnership(t *testing.T) {
 	}
 }
 
-func TestAuthorizerCreateNamespaceOnPushLosesRace(t *testing.T) {
+func TestAuthorizerCreateOnPushLosesRace(t *testing.T) {
 	db, alice, bob := setupCreateOnPushDB(t)
 	ctx := t.Context()
-	authorizer := NewAuthorizer(db, AuthorizerConfig{CreateNamespaceOnPush: true})
+	authorizer := NewAuthorizer(db, AuthorizerConfig{})
 
 	// Both pushes saw newns missing; alice's commits first.
 	if err := authorizer.createOwnedNamespace(ctx, alice, "newns"); err != nil {

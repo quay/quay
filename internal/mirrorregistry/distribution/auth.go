@@ -94,7 +94,6 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 	passwordCacheTTL, _ := options[authOptionPasswordCacheTTL].(time.Duration)
 	superUsers, _ := options[authOptionSuperUsers].([]string)
 	superUsersFullAccess, _ := options[authOptionSuperUsersFullAccess].(bool)
-	createNamespaceOnPush, _ := options[authOptionCreateNamespace].(bool)
 
 	verifier := auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              databaseSecretKey,
@@ -109,9 +108,8 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 		authenticator: auth.NewBasicAuthenticator(verifier),
 		jwtService:    jwtService,
 		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
-			SuperUsers:            superUsers,
-			SuperUsersFullAccess:  superUsersFullAccess,
-			CreateNamespaceOnPush: createNamespaceOnPush,
+			SuperUsers:           superUsers,
+			SuperUsersFullAccess: superUsersFullAccess,
 		}),
 		queries:          daldb.New(db),
 		realm:            realm,

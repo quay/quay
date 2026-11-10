@@ -94,7 +94,6 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 		PasswordAuthCacheTTL:               passwordAuthCacheTTL,
 		SuperUsers:                         resolved.Config.SuperUsers,
 		SuperUsersFullAccess:               cfg.Features.HasFullSuperuserAccess(),
-		CreateNamespaceOnPush:              resolved.Config.CreateNamespaceOnPush,
 		JWTService:                         jwtService,
 		MetricsRegisterer:                  metricsCfg.registerer,
 	})

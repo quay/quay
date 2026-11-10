@@ -7,9 +7,6 @@ type Auth struct {
 	RobotsDisallow      bool     `yaml:"ROBOTS_DISALLOW"`
 	RobotsWhitelist     []string `yaml:"ROBOTS_WHITELIST"`
 	CreatePrivateOnPush bool     `yaml:"CREATE_PRIVATE_REPO_ON_PUSH"`
-	// CreateNamespaceOnPush lets an authenticated user push into a missing
-	// namespace, which is created as an organization the user owns.
-	CreateNamespaceOnPush bool `yaml:"CREATE_NAMESPACE_ON_PUSH"`
 	// PasswordAuthCacheTTLS is how many seconds a successful password
 	// verification is remembered so repeat logins with the same credentials
 	// skip the bcrypt comparison. 0 disables the cache.

@@ -16,17 +16,13 @@ import (
 type AuthorizerConfig struct {
 	SuperUsers           []string
 	SuperUsersFullAccess bool
-	// CreateNamespaceOnPush lets an authenticated user push into a missing
-	// namespace, which is created as an organization the user owns.
-	CreateNamespaceOnPush bool
 }
 
 // Authorizer checks repository permissions against Quay permission tables.
 type Authorizer struct {
-	db                    *sql.DB
-	queries               *daldb.Queries
-	superUsers            map[string]struct{}
-	createNamespaceOnPush bool
+	db         *sql.DB
+	queries    *daldb.Queries
+	superUsers map[string]struct{}
 }
 
 // NewAuthorizer returns a DB-backed repository authorizer.
@@ -42,10 +38,9 @@ func NewAuthorizer(db *sql.DB, cfg AuthorizerConfig) *Authorizer {
 		}
 	}
 	return &Authorizer{
-		db:                    db,
-		queries:               daldb.New(db),
-		superUsers:            superUsers,
-		createNamespaceOnPush: cfg.CreateNamespaceOnPush,
+		db:         db,
+		queries:    daldb.New(db),
+		superUsers: superUsers,
 	}
 }
 
@@ -124,10 +119,10 @@ func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Pr
 	return a.canCreateRepository(ctx, principal, namespace, false)
 }
 
-// CanCreateRepositoryOnPush is CanCreateRepository for a push. When
-// CREATE_NAMESPACE_ON_PUSH lets principal claim a missing namespace, it
-// creates the namespace as an organization whose owners team holds principal,
-// so later pushes pass the regular permission checks.
+// CanCreateRepositoryOnPush is CanCreateRepository for a push. When principal
+// is a user and namespace is missing, it creates the namespace as an
+// organization whose owners team holds principal, so later pushes pass the
+// regular permission checks.
 func (a *Authorizer) CanCreateRepositoryOnPush(ctx context.Context, principal *auth.Principal, namespace string) (bool, error) {
 	return a.canCreateRepository(ctx, principal, namespace, true)
 }
@@ -145,7 +140,7 @@ func (a *Authorizer) canCreateRepository(ctx context.Context, principal *auth.Pr
 			}
 			// The token endpoint passes the raw scope name; 2.x validated it
 			// before creating the organization.
-			if !a.createNamespaceOnPush || principal.Kind != auth.PrincipalUser || !auth.ValidUsername(namespace) {
+			if principal.Kind != auth.PrincipalUser || !auth.ValidUsername(namespace) {
 				return false, nil
 			}
 			if !createNamespace {
@@ -186,8 +181,8 @@ func (a *Authorizer) canCreateRepository(ctx context.Context, principal *auth.Pr
 }
 
 // createOwnedNamespace creates namespace as an organization whose owners team
-// holds principal, as 2.x Quay did for CREATE_NAMESPACE_ON_PUSH. It is a no-op
-// when the namespace already exists.
+// holds principal, as 2.x Quay did when creating a namespace on push. It is a
+// no-op when the namespace already exists.
 func (a *Authorizer) createOwnedNamespace(ctx context.Context, principal *auth.Principal, namespace string) error {
 	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
