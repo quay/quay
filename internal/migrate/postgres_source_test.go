@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/installer"
 )
 
 func TestPostgresLoopbackURI(t *testing.T) {
@@ -516,6 +517,50 @@ func TestRunPostgresMigrationInjectedFailureMarkerOutcome(t *testing.T) {
 				t.Errorf("marker kept = %v, want %v (stat: %v)", kept, tc.keepMarker, err)
 			}
 		})
+	}
+}
+
+func TestRunPostgresMigrationDisablesSourceServicesAfterCutover(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.DatabaseKind = databasePostgres
+	m.Source.SystemdScope = scopeUser
+	m.Source.PodSandboxKey = "/run/netns/quay"
+	sourceDB := m.Source.DBPath
+	runner := &sequenceRunner{namespaceHook: func() {
+		data, err := os.ReadFile(sourceDB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(m.postgresPartialDBPath(), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}}
+	m.Runner = runner
+	m.checkTargetInstallation = func() (bool, error) { return false, nil }
+	m.runInstall = func(context.Context, *installer.Config) error {
+		for _, call := range runner.calls {
+			if strings.Contains(call, " disable ") {
+				t.Errorf("old services disabled before the new registry was installed: %v", runner.calls)
+			}
+		}
+		return nil
+	}
+
+	if err := m.runPostgresMigration(t.Context()); err != nil {
+		t.Fatalf("runPostgresMigration: %v", err)
+	}
+	want := []string{
+		"systemctl --user disable quay-app.service",
+		"systemctl --user disable quay-redis.service",
+		"systemctl --user disable quay-postgres.service",
+		"systemctl --user disable quay-pod.service",
+	}
+	if len(runner.calls) < len(want) {
+		t.Fatalf("calls = %v, want trailing %v", runner.calls, want)
+	}
+	if got := runner.calls[len(runner.calls)-len(want):]; strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("calls = %v, want trailing %v", runner.calls, want)
 	}
 }
 
