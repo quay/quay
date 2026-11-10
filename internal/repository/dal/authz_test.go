@@ -395,10 +395,9 @@ func TestAuthorizerCanCreateRepository(t *testing.T) {
 			namespace: "acme",
 		},
 		{
-			name:      "user can create missing namespace",
+			name:      "missing namespace denies create without error",
 			principal: &auth.Principal{ID: 2, Username: "alice", Kind: auth.PrincipalUser},
 			namespace: "missing",
-			want:      true,
 		},
 		{
 			name:      "anonymous cannot create",
@@ -527,8 +526,8 @@ func TestAuthorizerCanCreateRepositoryDoesNotCreateNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CanCreateRepository: %v", err)
 	}
-	if !got {
-		t.Fatal("CanCreateRepository = false, want true")
+	if got {
+		t.Fatal("CanCreateRepository = true, want false")
 	}
 	if namespaceExists(t, db, "newns") {
 		t.Fatal("CanCreateRepository created the namespace")
