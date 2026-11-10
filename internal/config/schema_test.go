@@ -244,6 +244,7 @@ var knownUnmapped = map[string]bool{
 	"BLOB_UPLOAD_LINGERING_TIME":                     true,
 	"BLOB_UPLOAD_LINGERING_TIMEOUT":                  true,
 	"CLEAN_BLOB_UPLOAD_FOLDER":                       true,
+	"CREATE_NAMESPACE_ON_PUSH":                       true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
 	"DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT":          true,
 	"DISABLE_PUSHES":                                 true,
