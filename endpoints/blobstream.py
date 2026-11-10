@@ -4,9 +4,11 @@ import logging
 from flask import Blueprint, Response, abort, current_app, request, stream_with_context
 from jsonschema import ValidationError, validate
 
+import features
 from app import instance_keys
 from data.model import InvalidProxyCacheConfigException
 from data.model.proxy_cache import get_proxy_cache_config_for_org
+from endpoints.decorators import route_show_if
 from proxy import Proxy, UpstreamRegistryError
 from storage.upstreamproxy import UPSTREAM_ACCESS_SCHEMA, UPSTREAM_PROXY_SUBJECT
 from util.security.registry_jwt import InvalidBearerTokenException, decode_bearer_token
@@ -19,6 +21,7 @@ blobstream_bp = Blueprint("blobstream", __name__)
 
 
 @blobstream_bp.route("/<path:rest>")
+@route_show_if(features.PROXY_CACHE)
 def get_upstream_content(rest):
     """
     Fetches the upstream blob and streams it directly to the client. Parses
