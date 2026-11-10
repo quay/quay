@@ -60,11 +60,11 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
         await expect(ourNotification).toBeVisible();
       }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
 
-      // 7. Clicking the header opens the repository, closes the drawer and
+      // 7. Clicking the header opens the pushed tag, closes the drawer and
       // marks the notification read
       await ourNotification.getByTestId('notification-header').click();
       await expect(authenticatedPage).toHaveURL(
-        `/repository/${namespace}/${repo.name}`,
+        `/repository/${namespace}/${repo.name}/tag/latest`,
       );
       await expect(drawer).not.toBeVisible();
       await bell.click();

@@ -99,15 +99,13 @@ export function getNotificationMessage(notification: {
   return template;
 }
 
-const repositoryPageKinds = [
-  'repo_push',
+const mirrorKinds = [
   'repo_mirror_sync_started',
   'repo_mirror_sync_success',
   'repo_mirror_sync_failed',
-  'repo_image_expiry',
 ];
 
-const buildPageKinds = [
+const buildKinds = [
   'build_queued',
   'build_start',
   'build_success',
@@ -115,7 +113,8 @@ const buildPageKinds = [
   'build_cancelled',
 ];
 
-// Based on the 'page' entries of the Angular notification-service.
+// Links each kind to the most specific React page its stored metadata names,
+// falling back to the repository or namespace page.
 export function getNotificationLink(notification: {
   kind: string;
   metadata?: any;
@@ -126,22 +125,38 @@ export function getNotificationLink(notification: {
   }
   const {kind} = notification;
   if (kind === 'quota_warning' || kind === 'quota_error') {
-    return metadata.namespace ? `/organization/${metadata.namespace}` : null;
+    return metadata.namespace
+      ? `/organization/${metadata.namespace}?tab=Settings`
+      : null;
   }
   if (!metadata.repository) {
-    return null;
+    return metadata.namespace ? `/organization/${metadata.namespace}` : null;
   }
   const repositoryPage = `/repository/${metadata.repository}`;
-  if (repositoryPageKinds.includes(kind)) {
-    return repositoryPage;
+  const tagPage = (tag: string) => `${repositoryPage}/tag/${tag}`;
+  const tags: string[] = metadata.updated_tags ?? metadata.tags ?? [];
+  if (kind === 'repo_push') {
+    if (tags.length === 1) {
+      return tagPage(tags[0]);
+    }
+    return tags.length ? `${repositoryPage}?tab=history` : repositoryPage;
   }
   if (kind === 'vulnerability_found') {
+    // Every tag in the payload points at the one scanned manifest; a digest
+    // stands in for the tag when the manifest has none.
+    if (tags.length && !tags[0].includes(':')) {
+      return `${tagPage(tags[0])}?tab=securityreport`;
+    }
     return `${repositoryPage}?tab=tags`;
   }
-  if (buildPageKinds.includes(kind)) {
-    return metadata.build_id
-      ? `${repositoryPage}/build/${metadata.build_id}`
-      : repositoryPage;
+  if (kind === 'repo_image_expiry') {
+    return tags.length === 1 ? tagPage(tags[0]) : `${repositoryPage}?tab=tags`;
   }
-  return null;
+  if (mirrorKinds.includes(kind)) {
+    return `${repositoryPage}?tab=mirroring`;
+  }
+  if (buildKinds.includes(kind) && metadata.build_id) {
+    return `${repositoryPage}/build/${metadata.build_id}`;
+  }
+  return repositoryPage;
 }
