@@ -106,6 +106,18 @@ run_test() {
   fi
 }
 
+# Always remove the containers on exit, including when set -e aborts the script (for example when
+# a database never becomes ready). Set KEEP_CONTAINERS=1 to keep them for inspection.
+cleanup() {
+  if [ "${KEEP_CONTAINERS:-}" != "1" ]; then
+    down_mysql
+    down_postgres
+    down_mariadb
+    down_percona
+  fi
+}
+trap cleanup EXIT
+
 down_mysql
 down_postgres
 down_mariadb
