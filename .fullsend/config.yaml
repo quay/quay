@@ -21,8 +21,9 @@ allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
     - https://github.com/quay/ai-helpers/
-create_issues:
-    allow_targets:
-        repos:
-            - quay/quay
-            - fullsend-ai/fullsend
+tracker:
+    github:
+        allowed_targets:
+            repos:
+                - quay/quay
+                - fullsend-ai/fullsend
