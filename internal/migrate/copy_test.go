@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -249,6 +250,52 @@ func TestWriteRuntimeConfigRejectsMalformedSourceHostname(t *testing.T) {
 	require.ErrorContains(t, err, "parse runtime SERVER_HOSTNAME")
 	_, statErr := os.Stat(filepath.Join(targetDir, runtimeConfigFile))
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestWriteRuntimeConfigCarriesPushAndAnonymousSettings(t *testing.T) {
+	tests := []struct {
+		name               string
+		source             string
+		wantNamespace      bool
+		wantPrivate        bool
+		wantAnonymous      bool
+		wantAnonymousInCfg bool
+	}{
+		{name: "absent", wantPrivate: true, wantAnonymous: true},
+		{
+			name:          "set true",
+			source:        "CREATE_NAMESPACE_ON_PUSH: true\nCREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
+			wantNamespace: true, wantPrivate: true, wantAnonymous: true,
+		},
+		{
+			name:               "set false",
+			source:             "CREATE_NAMESPACE_ON_PUSH: false\nCREATE_PRIVATE_REPO_ON_PUSH: false\nFEATURE_ANONYMOUS_ACCESS: false\n",
+			wantAnonymousInCfg: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configDir := t.TempDir()
+			writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"+tt.source), 0o600)
+			targetDir := t.TempDir()
+			migrator := &Migrator{
+				DataDir: targetDir,
+				Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+			}
+
+			require.NoError(t, migrator.writeRuntimeConfig(nil))
+
+			targetPath := filepath.Join(targetDir, runtimeConfigFile)
+			runtimeCfg, err := config.Load(targetPath)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantNamespace, runtimeCfg.CreateNamespaceOnPush)
+			assert.Equal(t, tt.wantPrivate, runtimeCfg.CreatePrivateOnPush)
+			assert.Equal(t, tt.wantAnonymous, runtimeCfg.FeatureAnonymousAccess)
+			data, err := os.ReadFile(targetPath)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantAnonymousInCfg, strings.Contains(string(data), "FEATURE_ANONYMOUS_ACCESS"))
+		})
+	}
 }
 
 func TestCopyData_Idempotent(t *testing.T) {

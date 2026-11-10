@@ -94,6 +94,7 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 	passwordCacheTTL, _ := options[authOptionPasswordCacheTTL].(time.Duration)
 	superUsers, _ := options[authOptionSuperUsers].([]string)
 	superUsersFullAccess, _ := options[authOptionSuperUsersFullAccess].(bool)
+	createNamespaceOnPush, _ := options[authOptionCreateNamespace].(bool)
 
 	verifier := auth.NewDatabaseVerifier(db, auth.DatabaseVerifierConfig{
 		DatabaseSecretKey:              databaseSecretKey,
@@ -108,8 +109,9 @@ func newAccessController(options map[string]interface{}) (*accessController, err
 		authenticator: auth.NewBasicAuthenticator(verifier),
 		jwtService:    jwtService,
 		authorizer: repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
-			SuperUsers:           superUsers,
-			SuperUsersFullAccess: superUsersFullAccess,
+			SuperUsers:            superUsers,
+			SuperUsersFullAccess:  superUsersFullAccess,
+			CreateNamespaceOnPush: createNamespaceOnPush,
 		}),
 		queries:          daldb.New(db),
 		realm:            realm,
@@ -389,7 +391,7 @@ func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, 
 		if !ok {
 			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
 		}
-		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
+		allowed, err := ac.authorizer.CanCreateRepositoryOnPush(req.Context(), principal, namespace)
 		if err != nil {
 			return err
 		}

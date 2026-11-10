@@ -42,7 +42,10 @@ type Config struct {
 	PasswordAuthCacheTTL time.Duration
 	SuperUsers           []string
 	SuperUsersFullAccess bool
-	JWTService           registryTokenService
+	// CreateNamespaceOnPush lets an authenticated user push into a missing
+	// namespace, which is created as an organization the user owns.
+	CreateNamespaceOnPush bool
+	JWTService            registryTokenService
 	// MetricsRegisterer is the Prometheus registerer for middleware metrics.
 	// When nil, no metrics are recorded. Callers that want per-instance
 	// metrics must provide an explicit registerer (e.g. prometheus.NewRegistry()).
@@ -159,6 +162,7 @@ func newRegistry(ctx context.Context, cfg *Config, newApp appConstructor, afterA
 			authOptionPasswordCacheTTL:     cfg.PasswordAuthCacheTTL,
 			authOptionSuperUsers:           cfg.SuperUsers,
 			authOptionSuperUsersFullAccess: cfg.SuperUsersFullAccess,
+			authOptionCreateNamespace:      cfg.CreateNamespaceOnPush,
 		}
 		controller, err := newAccessController(authOptions)
 		if err != nil {

@@ -236,7 +236,6 @@ var knownUnmapped = map[string]bool{
 	"APP_SPECIFIC_TOKEN_EXPIRATION":                  true,
 	"AUTO_PRUNE_DEFAULT_POLICY":                      true,
 	"CLEAN_BLOB_UPLOAD_FOLDER":                       true,
-	"CREATE_NAMESPACE_ON_PUSH":                       true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
 	"DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT":          true,
 	"DISABLE_PUSHES":                                 true,
