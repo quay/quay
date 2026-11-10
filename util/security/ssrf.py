@@ -471,7 +471,7 @@ def validate_external_registry_url(
     if not addr_infos:
         raise ValueError(f"Cannot resolve hostname '{hostname}'")
 
-    resolved_ips = [addr_info[4][0] for addr_info in addr_infos]
+    resolved_ips = [str(addr_info[4][0]) for addr_info in addr_infos]
 
     # If the hostname was blocked by name but not allowlisted by hostname match,
     # check if any resolved IP matches a CIDR entry in the allowlist.

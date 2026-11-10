@@ -8,7 +8,7 @@ from collections import namedtuple
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import psycopg  # type: ignore[import]
+import psycopg
 import pytest
 from filelock import FileLock
 from flask import Flask, jsonify
