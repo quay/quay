@@ -2016,6 +2016,11 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "DEFAULT_NGINX_KEEPALIVE_TIMEOUT": {
+            "type": "integer",
+            "description": "Server-level nginx keepalive_timeout in seconds. Applies to all location blocks that do not set an explicit override. Defaults to 5.",
+            "x-example": 30,
+        },
         "NGINX_KEEPALIVE_TIMEOUT": {
             "type": "integer",
             "description": "Nginx keepalive_timeout in seconds for registry and API location blocks. Set to 0 to disable HTTP/1.1 keep-alive (default). A non-zero value allows upstream proxies to reuse connections.",
