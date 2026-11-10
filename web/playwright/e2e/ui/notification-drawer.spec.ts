@@ -8,69 +8,75 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
   // backend limit before it asserts on it.
   test.describe.configure({mode: 'default'});
 
-  test('notification drawer e2e: create, display, read, delete', async ({
-    authenticatedPage,
-    api,
-    quayConfig,
-  }) => {
-    const users = getTestUsers(quayConfig);
-    const namespace = users.user.username;
+  test(
+    'notification drawer e2e: create, display, open, read, delete',
+    {tag: ['@PROJQUAY-8990']},
+    async ({authenticatedPage, api, quayConfig}) => {
+      const users = getTestUsers(quayConfig);
+      const namespace = users.user.username;
 
-    // 1. Create repository
-    const repo = await api.repository(namespace, 'notif-repo');
+      // 1. Create repository
+      const repo = await api.repository(namespace, 'notif-repo');
 
-    // 2. Configure quay_notification for repo_push targeting the user
-    await api.raw.createRepositoryNotification(
-      namespace,
-      repo.name,
-      'repo_push',
-      'quay_notification',
-      {target: {name: namespace, kind: 'user'}},
-      {},
-      'Test push notification',
-    );
+      // 2. Configure quay_notification for repo_push targeting the user
+      await api.raw.createRepositoryNotification(
+        namespace,
+        repo.name,
+        'repo_push',
+        'quay_notification',
+        {target: {name: namespace, kind: 'user'}},
+        {},
+        'Test push notification',
+      );
 
-    // 3. Push image to trigger notification
-    await pushImage(
-      namespace,
-      repo.name,
-      'latest',
-      users.user.username,
-      users.user.password,
-    );
+      // 3. Push image to trigger notification
+      await pushImage(
+        namespace,
+        repo.name,
+        'latest',
+        users.user.username,
+        users.user.password,
+      );
 
-    // Brief wait for notification processing
-    await authenticatedPage.waitForTimeout(2000);
+      // Brief wait for notification processing
+      await authenticatedPage.waitForTimeout(2000);
 
-    // 4. Navigate and verify bell exists
-    await authenticatedPage.goto('/organization');
-    const bell = authenticatedPage.getByTestId('notification-bell');
-    await expect(bell).toBeVisible();
-
-    // 5. Click bell and wait for notification to appear (may need retries for backend processing)
-    const drawer = authenticatedPage.getByTestId('notification-drawer');
-    const ourNotification = authenticatedPage
-      .getByTestId('notification-item')
-      .filter({hasText: repo.name});
-
-    await expect(async () => {
-      await authenticatedPage.reload();
+      // 4. Navigate and verify bell exists
+      await authenticatedPage.goto('/organization');
+      const bell = authenticatedPage.getByTestId('notification-bell');
       await expect(bell).toBeVisible();
+
+      // 5. Click bell and wait for notification to appear (may need retries for backend processing)
+      const drawer = authenticatedPage.getByTestId('notification-drawer');
+      const ourNotification = authenticatedPage
+        .getByTestId('notification-item')
+        .filter({hasText: repo.name});
+
+      await expect(async () => {
+        await authenticatedPage.reload();
+        await expect(bell).toBeVisible();
+        await bell.click();
+        await expect(drawer).toBeVisible();
+        await expect(ourNotification).toBeVisible();
+      }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
+
+      // 7. Clicking the header opens the repository, closes the drawer and
+      // marks the notification read
+      await ourNotification.getByTestId('notification-header').click();
+      await expect(authenticatedPage).toHaveURL(
+        `/repository/${namespace}/${repo.name}`,
+      );
+      await expect(drawer).not.toBeVisible();
       await bell.click();
-      await expect(drawer).toBeVisible();
-      await expect(ourNotification).toBeVisible();
-    }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
+      await expect(ourNotification).toHaveClass(/pf-m-read/);
 
-    // 7. Mark our notification as read by clicking header
-    await ourNotification.getByTestId('notification-header').click();
-    await expect(ourNotification).toHaveClass(/pf-m-read/);
+      // 8. Delete our notification
+      await ourNotification.getByTestId('delete-notification').click();
 
-    // 8. Delete our notification
-    await ourNotification.getByTestId('delete-notification').click();
-
-    // 9. Verify our notification was removed
-    await expect(ourNotification).not.toBeVisible();
-  });
+      // 9. Verify our notification was removed
+      await expect(ourNotification).not.toBeVisible();
+    },
+  );
 
   test(
     'notification bell badge shows N+ when more than 5 notifications exist',

@@ -98,3 +98,50 @@ export function getNotificationMessage(notification: {
   }
   return template;
 }
+
+const repositoryPageKinds = [
+  'repo_push',
+  'repo_mirror_sync_started',
+  'repo_mirror_sync_success',
+  'repo_mirror_sync_failed',
+  'repo_image_expiry',
+];
+
+const buildPageKinds = [
+  'build_queued',
+  'build_start',
+  'build_success',
+  'build_failure',
+  'build_cancelled',
+];
+
+// Based on the 'page' entries of the Angular notification-service.
+export function getNotificationLink(notification: {
+  kind: string;
+  metadata?: any;
+}): string | null {
+  const metadata = notification.metadata;
+  if (!metadata) {
+    return null;
+  }
+  const {kind} = notification;
+  if (kind === 'quota_warning' || kind === 'quota_error') {
+    return metadata.namespace ? `/organization/${metadata.namespace}` : null;
+  }
+  if (!metadata.repository) {
+    return null;
+  }
+  const repositoryPage = `/repository/${metadata.repository}`;
+  if (repositoryPageKinds.includes(kind)) {
+    return repositoryPage;
+  }
+  if (kind === 'vulnerability_found') {
+    return `${repositoryPage}?tab=tags`;
+  }
+  if (buildPageKinds.includes(kind)) {
+    return metadata.build_id
+      ? `${repositoryPage}/build/${metadata.build_id}`
+      : repositoryPage;
+  }
+  return null;
+}
