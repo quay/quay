@@ -80,7 +80,7 @@ def get_upstream_content(rest):
 
     # verify the token for the upstream proxy
     if decoded["sub"] != UPSTREAM_PROXY_SUBJECT:
-        logger.exception("Invalid subject %s for upstream proxy auth token", decoded["sub"])
+        logger.error("Invalid subject %s for upstream proxy auth token", decoded["sub"])
         abort(401)
 
     # verify that access matches the scheme
@@ -93,19 +93,17 @@ def get_upstream_content(rest):
 
     # and that we only have one access field
     if len(access) != 1:
-        logger.exception("We should not be minting invalid credentials: %s", access)
+        logger.error("We should not be minting invalid credentials: %s", access)
         abort(401)
 
     # verify that all components from the JWT match the URL parameters
     granted_access = access[0]
     if granted_access["scheme"] != scheme:
-        logger.exception(
-            "Mismatch in scheme. %s expected, %s found", granted_access["scheme"], scheme
-        )
+        logger.error("Mismatch in scheme. %s expected, %s found", granted_access["scheme"], scheme)
         abort(401)
 
     if granted_access["hostname"] != upstream_hostname:
-        logger.exception(
+        logger.error(
             "Mismatch in host, %s expected, %s found",
             granted_access["hostname"],
             upstream_hostname,
@@ -113,7 +111,7 @@ def get_upstream_content(rest):
         abort(401)
 
     if granted_access["upstream_namespace"] != namespace:
-        logger.exception(
+        logger.error(
             "Mismatch in namespace, %s expected, %s found",
             granted_access["upstream_namespace"],
             namespace,
@@ -121,7 +119,7 @@ def get_upstream_content(rest):
         abort(401)
 
     if granted_access["upstream_repository"] != repository:
-        logger.exception(
+        logger.error(
             "Mismatch in repository. %s expected, %s found",
             granted_access["upstream_repository"],
             repository,
@@ -129,7 +127,7 @@ def get_upstream_content(rest):
         abort(401)
 
     if granted_access["blob_sha"] != blob_sha:
-        logger.exception(
+        logger.error(
             "Mismatch in blob SHA digest. %s expected, %s found",
             granted_access["blob_sha"],
             blob_sha,
