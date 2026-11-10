@@ -8,7 +8,7 @@ from collections import namedtuple
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import psycopg2  # type: ignore[import]
+import psycopg  # type: ignore[import]
 import pytest
 from filelock import FileLock
 from flask import Flask, jsonify
@@ -18,7 +18,7 @@ from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
 from peewee import InternalError, SqliteDatabase
-from psycopg2 import sql
+from psycopg import sql
 
 import features
 
@@ -126,7 +126,7 @@ def _database_uri_for_schema(db_uri, schema):
 
 def _create_test_schema(db_uri, schema):
     """Create a clean schema for one pytest-xdist worker."""
-    connection = psycopg2.connect(db_uri)
+    connection = psycopg.connect(db_uri)
     try:
         connection.autocommit = True
         with connection.cursor() as cursor:

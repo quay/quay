@@ -11,13 +11,13 @@ revision = "3f8d7acdf7f9"
 down_revision = "8a7ba94c2e84"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
     bind = op.get_bind()
 
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     manifest_columns = inspector.get_columns("manifest")
     manifest_indexes = inspector.get_indexes("manifest")
 

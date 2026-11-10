@@ -11,11 +11,11 @@ revision = "a1b2c3d4e5f6"
 down_revision = "27d0df099ac4"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
-    inspector = Inspector.from_engine(op.get_bind())
+    inspector = sa_inspect(op.get_bind())
     table_names = inspector.get_table_names()
 
     # Create OrgMirrorConfig table
@@ -245,7 +245,7 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    inspector = Inspector.from_engine(op.get_bind())
+    inspector = sa_inspect(op.get_bind())
     table_names = inspector.get_table_names()
 
     # Drop tables in reverse order (child first)

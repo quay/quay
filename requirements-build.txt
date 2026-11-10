@@ -283,7 +283,9 @@ cython==3.3.1 \
     --hash=sha256:fd81cfc6e94c43c5c0fe50439c11b90dc89cc6b323f92b37edc6a951d0a619d7
     # via
     #   PyYAML
+    #   SQLAlchemy
     #   gevent
+    #   peewee
     #   pyyaml
 flit-core==3.12.0 \
     --hash=sha256:18f63100d6f94385c6ed57a72073443e1a71a4acb4339491615d0f16d6ff01b2 \
@@ -401,7 +403,7 @@ hatchling==1.33.0 \
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-flask
-    #   opentelemetry-instrumentation-psycopg2
+    #   opentelemetry-instrumentation-psycopg
     #   opentelemetry-instrumentation-wsgi
     #   opentelemetry-proto
     #   opentelemetry-sdk
@@ -588,6 +590,7 @@ wheel==0.46.2 \
     #   cachetools
     #   jsonschema
     #   maxminddb
+    #   psycopg
     #   pyhanko-certvalidator
     #   pyrsistent
     #   python-dateutil
@@ -611,6 +614,7 @@ setuptools==80.10.2 \
     #   PyMySQL
     #   PyNaCl
     #   PyYAML
+    #   SQLAlchemy
     #   alembic
     #   attrs
     #   bcrypt
@@ -634,8 +638,10 @@ setuptools==80.10.2 \
     #   msgpack
     #   netaddr
     #   pathspec
+    #   peewee
     #   pillow
     #   pluggy
+    #   psycopg
     #   pyHanko
     #   pyasn1
     #   pyasn1_modules
@@ -659,3 +665,15 @@ setuptools==80.10.2 \
     #   wrapt
     #   xhtml2pdf
     #   zipp
+setuptools==82.0.1 \
+    --hash=sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9 \
+    --hash=sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb
+    # via
+    #   pyroscope-io
+    #   setuptools-rust
+setuptools==84.2.1 \
+    --hash=sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc \
+    --hash=sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2
+    # via
+    #   python-dateutil
+    #   setuptools-scm
