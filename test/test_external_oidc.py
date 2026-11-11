@@ -1,12 +1,16 @@
 import json
+import time
 import unittest
 import urllib.parse
 
+import jwt
 import pytest
+from authlib.jose import JsonWebKey
+from cryptography.hazmat.primitives import serialization
 from httmock import HTTMock, urlmatch
 from mock import patch
 
-from app import app as realapp
+import app as app_module
 from app import usermanager
 from data import model
 from data.database import TeamMember
@@ -65,6 +69,7 @@ def userinfo_content():
         "sub": "cooluser",
         "preferred_username": "someusername",
         "email": "foo@example.com",
+        "email_verified": True,
     }
 
 
@@ -78,6 +83,41 @@ def userinfo_handler(userinfo_content):
         return {"status_code": 200, "content": json.dumps(userinfo_content)}
 
     return handler
+
+
+def _generate_signing_key(kid):
+    """
+    Generates an RSA signing key for building id_tokens in tests, mirroring
+    the fixtures in oauth/test/test_oidc.py.
+    """
+    jwk = JsonWebKey.generate_key("RSA", 2048, is_private=True)
+    return {
+        "id": kid,
+        "private_key": jwk.get_private_key().private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ),
+        "jwk": jwk.as_dict(),
+    }
+
+
+def _sign_id_token(signing_key, sub):
+    """
+    Builds an RS256-signed id_token for the app's `testoidc` service
+    (CLIENT_ID `foo`, OIDC_SERVER `http://fakeoidc`).
+    """
+    token_data = {
+        "iss": "http://fakeoidc",
+        "aud": "foo",
+        "nbf": int(time.time()),
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 600,
+        "sub": sub,
+    }
+    return jwt.encode(
+        token_data, signing_key["private_key"], "RS256", headers={"kid": signing_key["id"]}
+    )
 
 
 class OIDCAuthTests(unittest.TestCase):
@@ -316,6 +356,322 @@ class OIDCAuthTests(unittest.TestCase):
         # Quay-local password and cannot complete password verification).
         assert self.oidc_instance.has_password_set("any_oidc_user") is False
         assert self.oidc_instance.has_password_set("another_user") is False
+
+    def _password_grant_mocks(
+        self,
+        email_verified=True,
+        userinfo_sub="cooluser",
+        impersonated=False,
+        id_token=None,
+        signing_key=None,
+    ):
+        """
+        Handlers for a successful ROPC login against the app's `testoidc`
+        service (registered from TESTOIDC_LOGIN_CONFIG): a token for
+        someusername/somepassword and userinfo with sub `cooluser` and email
+        `foo@example.com`. Mirrors the module-level fixtures, which unittest
+        methods cannot receive. Pass `email_verified=False` to exercise the
+        unverified-email path, `userinfo_sub` to vary the userinfo sub,
+        `impersonated=True` to mark the principal as impersonated, and
+        `id_token`/`signing_key` to include (and serve keys for) an id_token
+        in the grant response.
+        """
+
+        @urlmatch(netloc=r"fakeoidc", path=r".+openid.+")
+        def discovery(_, __):
+            return json.dumps(
+                {
+                    "scopes_supported": ["openid"],
+                    "authorization_endpoint": "http://fakeoidc/authorize",
+                    "token_endpoint": "http://fakeoidc/token",
+                    "jwks_uri": "http://fakeoidc/jwks",
+                    "userinfo_endpoint": "http://fakeoidc/userinfo",
+                }
+            )
+
+        @urlmatch(netloc=r"fakeoidc", path=r"/token")
+        def token(_, request):
+            params = urllib.parse.parse_qs(request.body)
+            if params.get("grant_type")[0] != "password":
+                return {"status_code": 400, "content": "Invalid authorization type"}
+            if params.get("username")[0] != "someusername":
+                return {"status_code": 401, "content": "Invalid login credentials"}
+            if params.get("password")[0] != "somepassword":
+                return {"status_code": 401, "content": "Invalid login credentials"}
+            content = {"access_token": "sometoken"}
+            if id_token is not None:
+                content["id_token"] = id_token
+            return {"status_code": 200, "content": json.dumps(content)}
+
+        @urlmatch(netloc=r"fakeoidc", path=r"/userinfo")
+        def userinfo(_, req):
+            if req.headers.get("Authorization") != "Bearer sometoken":
+                return {"status_code": 401, "content": "Missing expected header"}
+            return {
+                "status_code": 200,
+                "content": json.dumps(
+                    {
+                        "sub": userinfo_sub,
+                        "preferred_username": "someusername",
+                        "email": "foo@example.com",
+                        "email_verified": email_verified,
+                        "impersonated": impersonated,
+                    }
+                ),
+            }
+
+        handlers = [discovery, token, userinfo]
+
+        if signing_key is not None:
+
+            @urlmatch(netloc=r"fakeoidc", path=r"/jwks")
+            def jwks(_, __):
+                jwk = signing_key["jwk"].copy()
+                jwk.update({"kid": signing_key["id"]})
+                return {"status_code": 200, "content": json.dumps({"keys": [jwk]})}
+
+            handlers.append(jwks)
+
+        return tuple(handlers)
+
+    def test_verify_and_link_user_matches_browser_sub_binding(self):
+        # An account provisioned by the OIDC browser flow is bound to the
+        # provider's login service by sub; a password login must match that
+        # binding instead of trying to create a second account.
+        browser_user = model.user.create_federated_user(
+            "browseruser",
+            "foo@example.com",
+            "testoidc",
+            "cooluser",
+            set_password_notification=False,
+        )
+
+        with HTTMock(*self._password_grant_mocks()):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert error_msg is None
+        assert result is not None
+        assert result.id == browser_user.id
+
+    def test_verify_and_link_user_creates_account_bound_by_sub(self):
+        # No binding exists: the new account must be bound by (provider, sub),
+        # the same key the browser flow matches. The internal "oidc" binding
+        # by username is attached as well (matching the pre-fix password path)
+        # so confirm_existing_user keeps working for such accounts.
+        with HTTMock(*self._password_grant_mocks()):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert error_msg is None
+        assert result is not None
+        assert result.username == "someusername"
+
+        sub_binding = model.user.lookup_federated_login(result, "testoidc")
+        assert sub_binding is not None
+        assert sub_binding.service_ident == "cooluser"
+
+        legacy_binding = model.user.lookup_federated_login(result, "oidc")
+        assert legacy_binding is not None
+        assert legacy_binding.service_ident == "someusername"
+
+        # The internal binding must keep password confirmation working for the
+        # account created by the password flow (confirm_existing_user looks up
+        # the internal service by username).
+        with HTTMock(*self._password_grant_mocks()):
+            confirmed, confirm_error = self.oidc_instance.confirm_existing_user(
+                result.username, "somepassword"
+            )
+        assert confirm_error is None
+        assert confirmed is not None
+        assert confirmed.id == result.id
+
+    def test_verify_and_link_user_does_not_upgrade_legacy_binding_without_verified_email(self):
+        # An unverified (or absent) e-mail claim must not be used to satisfy
+        # the e-mail agreement required to attach the (provider, sub) binding
+        # to a legacy ("oidc", username) account: the password flow applies the
+        # same verified-e-mail rule as the browser flow.
+        legacy_user = model.user.create_federated_user(
+            "legacyuser",
+            "foo@example.com",
+            "oidc",
+            "someusername",
+            set_password_notification=False,
+        )
+
+        oidc_services = [
+            s for s in app_module.oauth_login.services if isinstance(s, OIDCLoginService)
+        ]
+        assert oidc_services
+
+        with (
+            patch.object(oidc_services[0], "_mailing", False),
+            patch("features.MAILING", FeatureNameValue("MAILING", False)),
+        ):
+            with HTTMock(*self._password_grant_mocks(email_verified=False)):
+                result, error_msg = self.oidc_instance.verify_and_link_user(
+                    "someusername", "somepassword"
+                )
+
+        # The legacy account is not upgraded: the unverified e-mail cannot
+        # establish the agreement, and the sub binding is not attached to it.
+        assert error_msg is None
+        assert result is not None
+        assert result.id != legacy_user.id
+        assert model.user.lookup_federated_login(legacy_user, "testoidc") is None
+
+        # A separate account, bound by (provider, sub) and created without an
+        # e-mail (a unique placeholder is assigned), is provisioned instead.
+        sub_binding = model.user.lookup_federated_login(result, "testoidc")
+        assert sub_binding is not None
+        assert sub_binding.service_ident == "cooluser"
+        assert result.email != "foo@example.com"
+
+    def test_verify_and_link_user_accepts_matching_id_token_sub(self):
+        # When the password grant returns an id_token, its sub must agree
+        # with the userinfo sub (browser-flow parity); matching subs log in
+        # normally.
+        signing_key = _generate_signing_key("matchingkey")
+        id_token = _sign_id_token(signing_key, sub="cooluser")
+
+        with HTTMock(*self._password_grant_mocks(id_token=id_token, signing_key=signing_key)):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert error_msg is None
+        assert result is not None
+        assert result.username == "someusername"
+
+    def test_verify_and_link_user_rejects_userinfo_sub_mismatch(self):
+        # A userinfo sub that differs from the signed id_token sub must be
+        # rejected before any account is selected or linked.
+        signing_key = _generate_signing_key("mismatchkey")
+        id_token = _sign_id_token(signing_key, sub="cooluser")
+
+        with HTTMock(
+            *self._password_grant_mocks(
+                userinfo_sub="someothersub", id_token=id_token, signing_key=signing_key
+            )
+        ):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert result is None
+        assert error_msg is not None
+        assert "Mismatch in `sub`" in str(error_msg)
+
+    def test_verify_and_link_user_email_collision_returns_error_with_mailing_disabled(self):
+        # With MAILING disabled, create_user_noverify skips the e-mail
+        # uniqueness check; the flow must still return the collision error
+        # for a verified e-mail owned by another user instead of failing
+        # with an unhandled database error.
+        model.user.create_user_noverify("unrelateduser2", "foo@example.com")
+
+        with patch("features.MAILING", FeatureNameValue("MAILING", False)):
+            with HTTMock(*self._password_grant_mocks()):
+                result, error_msg = self.oidc_instance.verify_and_link_user(
+                    "someusername", "somepassword"
+                )
+
+        assert result is None
+        assert error_msg is not None
+        assert "foo@example.com" in str(error_msg)
+
+        unrelated_user = model.user.get_user("unrelateduser2")
+        assert model.user.lookup_federated_login(unrelated_user, "testoidc") is None
+
+    def test_verify_and_link_user_rejects_impersonated_principal(self):
+        # Browser-flow parity: userinfo marking the principal as impersonated
+        # must be rejected before any account is selected or linked.
+        with HTTMock(*self._password_grant_mocks(impersonated=True)):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert result is None
+        assert error_msg is not None
+        assert "impersonated" in str(error_msg)
+
+    def test_verify_and_link_user_requires_email_when_mailing_enabled(self):
+        # Browser-flow parity: when the login service requires a verified
+        # e-mail (FEATURE_MAILING on its login config), a password login for
+        # an identity without one is rejected before any binding is matched.
+        browser_user = model.user.create_federated_user(
+            "browseruser",
+            "foo@example.com",
+            "testoidc",
+            "cooluser",
+            set_password_notification=False,
+        )
+
+        oidc_services = [
+            s for s in app_module.oauth_login.services if isinstance(s, OIDCLoginService)
+        ]
+        assert oidc_services
+
+        with patch.object(oidc_services[0], "_mailing", True):
+            with HTTMock(*self._password_grant_mocks(email_verified=False)):
+                result, error_msg = self.oidc_instance.verify_and_link_user(
+                    "someusername", "somepassword"
+                )
+
+        assert result is None
+        assert error_msg is not None
+        assert "verified email address is required" in str(error_msg)
+
+        # The existing (provider, sub) binding must not have been matched.
+        assert model.user.lookup_federated_login(browser_user, "testoidc") is not None
+
+    def test_verify_and_link_user_upgrades_legacy_username_binding(self):
+        # An account created by the pre-fix password-login path is bound to
+        # the internal "oidc" service by username. A password login must
+        # attach the (provider, sub) binding so the browser flow can match it
+        # too, while keeping the legacy binding intact.
+        legacy_user = model.user.create_federated_user(
+            "legacyuser",
+            "foo@example.com",
+            "oidc",
+            "someusername",
+            set_password_notification=False,
+        )
+
+        with HTTMock(*self._password_grant_mocks()):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert error_msg is None
+        assert result is not None
+        assert result.id == legacy_user.id
+
+        sub_binding = model.user.lookup_federated_login(result, "testoidc")
+        assert sub_binding is not None
+        assert sub_binding.service_ident == "cooluser"
+
+        legacy_binding = model.user.lookup_federated_login(result, "oidc")
+        assert legacy_binding is not None
+        assert legacy_binding.service_ident == "someusername"
+
+    def test_verify_and_link_user_email_collision_returns_error(self):
+        # The provider-verified email is owned by an unrelated account and no
+        # matching binding exists: linking must be refused with an error, not
+        # silently attached to the existing account.
+        model.user.create_user_noverify("unrelateduser", "foo@example.com")
+
+        with HTTMock(*self._password_grant_mocks()):
+            result, error_msg = self.oidc_instance.verify_and_link_user(
+                "someusername", "somepassword"
+            )
+
+        assert result is None
+        assert error_msg is not None
+
+        unrelated_user = model.user.get_user("unrelateduser")
+        assert model.user.lookup_federated_login(unrelated_user, "testoidc") is None
 
 
 class OIDCSuperuserSyncTests(unittest.TestCase):
