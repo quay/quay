@@ -103,6 +103,7 @@ WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
 ENV NODE_OPTIONS=--openssl-legacy-provider
 COPY --chown=1001:0 package.json package-lock.json  ./
+COPY --chown=1001:0 web/patches/uri-js ./web/patches/uri-js
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
@@ -113,6 +114,7 @@ FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fe289fffb6afcb
 RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
+COPY --chown=1001:0 web/patches/uri-js ./patches/uri-js
 RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
 RUN pnpm run --silent build
