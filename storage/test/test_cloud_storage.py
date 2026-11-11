@@ -8,7 +8,7 @@ import pytest
 import botocore.exceptions
 import boto3
 
-from moto import mock_s3
+from moto import mock_aws
 
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
@@ -29,7 +29,7 @@ _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 @pytest.fixture(scope="function")
 def storage_engine():
-    with mock_s3():
+    with mock_aws():
         # Create a test bucket and put some test content.
         boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
         engine = S3Storage(
@@ -145,7 +145,7 @@ def test_stream_write(storage_engine):
 
 
 def test_stream_write_error():
-    with mock_s3():
+    with mock_aws():
         # Create an engine but not the bucket.
         engine = S3Storage(_TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD)
 
