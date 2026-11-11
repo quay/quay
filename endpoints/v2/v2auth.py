@@ -184,7 +184,12 @@ def generate_registry_jwt(auth_result):
     }
     context, subject = build_context_and_subject(get_authenticated_context(), tuf_roots=tuf_roots)
     token = generate_bearer_token(
-        audience_param, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, instance_keys
+        app.config["SERVER_HOSTNAME"],
+        subject,
+        context,
+        access,
+        TOKEN_VALIDITY_LIFETIME_S,
+        instance_keys,
     )
     return jsonify({"token": token})
 
