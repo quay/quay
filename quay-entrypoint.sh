@@ -79,7 +79,7 @@ case "$QUAYENTRY" in
         : "${MIGRATION_VERSION:=$2}"
         : "${MIGRATION_VERSION:?Missing version argument}"
         echo "Entering migration mode to version: ${MIGRATION_VERSION}"
-        PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
+        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
     "registry-nomigrate")
         echo ""; echo "Startup timestamp: "; date; echo ""
