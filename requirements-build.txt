@@ -502,6 +502,7 @@ setuptools==80.10.2 \
     #   kafka-python
     #   lxml
     #   maturin
+    #   msgpack
     #   pathspec
     #   pillow
     #   pluggy
