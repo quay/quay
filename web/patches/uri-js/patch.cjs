@@ -50,7 +50,10 @@ function patchSource(source, file) {
     1,
     `Unexpected function in ${file}`,
   );
-  const replacement = removeDotSegments.toString().replaceAll('const ', 'var ');
+  const replacement = removeDotSegments
+    .toString()
+    .replaceAll('\r\n', '\n')
+    .replaceAll('const ', 'var ');
   return source
     .replace(expression, () =>
       file.endsWith('.min.js')

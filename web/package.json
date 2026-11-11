@@ -43,8 +43,8 @@
     "web-vitals": "^3.4.0"
   },
   "scripts": {
-    "postinstall": "node patches/uri-js/patch.cjs && node patches/uri-js/test.cjs",
-    "test:uri-js": "node patches/uri-js/test.cjs",
+    "postinstall": "node patches/uri-js/postinstall.cjs",
+    "test:uri-js": "node patches/uri-js/test.cjs && node patches/uri-js/install.test.cjs",
     "start": "webpack serve --color --progress --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
     "start-plugin": "NODE_ENV=development webpack serve --color --progress --config webpack.plugin.js",
