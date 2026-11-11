@@ -4,26 +4,19 @@ import "fmt"
 
 // Server holds hosting and presentation settings.
 type Server struct {
-	ServerHostname               string   `yaml:"SERVER_HOSTNAME"`
-	PreferredURLScheme           string   `yaml:"PREFERRED_URL_SCHEME"`
-	ExternalTLSTermination       *bool    `yaml:"EXTERNAL_TLS_TERMINATION"`
-	SSLProtocols                 []string `yaml:"SSL_PROTOCOLS"`
-	RegistryTitle                string   `yaml:"REGISTRY_TITLE"`
-	RegistryTitleShort           string   `yaml:"REGISTRY_TITLE_SHORT"`
-	RegistryState                string   `yaml:"REGISTRY_STATE"`
-	LibraryNamespace             string   `yaml:"LIBRARY_NAMESPACE"`
-	DefaultNginxKeepaliveTimeout int      `yaml:"DEFAULT_NGINX_KEEPALIVE_TIMEOUT"`
+	ServerHostname         string   `yaml:"SERVER_HOSTNAME"`
+	PreferredURLScheme     string   `yaml:"PREFERRED_URL_SCHEME"`
+	ExternalTLSTermination *bool    `yaml:"EXTERNAL_TLS_TERMINATION"`
+	SSLProtocols           []string `yaml:"SSL_PROTOCOLS"`
+	RegistryTitle          string   `yaml:"REGISTRY_TITLE"`
+	RegistryTitleShort     string   `yaml:"REGISTRY_TITLE_SHORT"`
+	RegistryState          string   `yaml:"REGISTRY_STATE"`
+	LibraryNamespace       string   `yaml:"LIBRARY_NAMESPACE"`
 }
 
 // validateServer checks server-related enum values and TLS consistency.
 func validateServer(cfg *Config, _ ValidateOptions) []ValidationError {
 	var errs []ValidationError
-	if cfg.DefaultNginxKeepaliveTimeout < 0 {
-		errs = append(errs, ValidationError{
-			Field: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT", Severity: SeverityError,
-			Message: "must be non-negative",
-		})
-	}
 
 	switch cfg.PreferredURLScheme {
 	case DefaultPreferredURLScheme, "https":

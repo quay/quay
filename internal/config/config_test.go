@@ -57,25 +57,6 @@ func TestParseDefaults(t *testing.T) {
 	assert.True(t, cfg.FeatureDirectLogin)
 }
 
-func TestParseDefaultNginxKeepaliveTimeout(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		yaml string
-		want int
-	}{
-		{name: "omitted", yaml: "{}", want: 5},
-		{name: "disabled", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 0", want: 0},
-		{name: "configured", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 30", want: 30},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			cfg, err := Parse([]byte(test.yaml))
-			require.NoError(t, err)
-			assert.Equal(t, test.want, cfg.DefaultNginxKeepaliveTimeout)
-			assert.NotContains(t, cfg.Extra, "DEFAULT_NGINX_KEEPALIVE_TIMEOUT")
-		})
-	}
-}
-
 func TestParseRobotAuthConfig(t *testing.T) {
 	cfg, err := Parse([]byte(`
 SERVER_HOSTNAME: test

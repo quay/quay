@@ -46,25 +46,6 @@ func TestValidateValidConfig(t *testing.T) {
 	assert.False(t, HasErrors(errs), "unexpected errors: %v", errs)
 }
 
-func TestValidateDefaultNginxKeepaliveTimeout(t *testing.T) {
-	for _, test := range []struct {
-		name      string
-		yaml      string
-		wantError bool
-	}{
-		{name: "negative", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: -1", wantError: true},
-		{name: "zero", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 0"},
-		{name: "positive", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 30"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			cfg, err := Parse([]byte(minimalValidYAML + test.yaml))
-			require.NoError(t, err)
-			errs := Validate(t.Context(), cfg, ValidateOptions{Mode: "offline"})
-			assert.Equal(t, test.wantError, hasFieldError(errs, "DEFAULT_NGINX_KEEPALIVE_TIMEOUT"))
-		})
-	}
-}
-
 func TestValidateInvalidEnums(t *testing.T) {
 	yaml := minimalValidYAML + `
 REGISTRY_STATE: broken

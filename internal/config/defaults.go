@@ -7,7 +7,6 @@ const (
 	DefaultAuthenticationType           = "Database"
 	DefaultTagExpiration                = "2w"
 	DefaultLibraryNamespace             = "library"
-	DefaultNginxKeepaliveTimeout        = 5
 	DefaultLastAccessedUpdateThresholdS = 60
 	DefaultInstanceServiceKeyService    = "quay"
 	DefaultRegistryJWTAuthMaxFreshS     = 3660
@@ -31,11 +30,10 @@ const (
 func newDefaultConfig() Config {
 	return Config{
 		Server: Server{
-			PreferredURLScheme:           DefaultPreferredURLScheme,
-			RegistryTitle:                DefaultRegistryTitle,
-			RegistryTitleShort:           DefaultRegistryTitle,
-			LibraryNamespace:             DefaultLibraryNamespace,
-			DefaultNginxKeepaliveTimeout: DefaultNginxKeepaliveTimeout,
+			PreferredURLScheme: DefaultPreferredURLScheme,
+			RegistryTitle:      DefaultRegistryTitle,
+			RegistryTitleShort: DefaultRegistryTitle,
+			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
 			AuthenticationType:    DefaultAuthenticationType,
