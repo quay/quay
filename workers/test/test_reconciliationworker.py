@@ -86,8 +86,8 @@ def test_create_for_stripe_user(initialized_db):
     with patch.object(marketplace_subscriptions, "create_entitlement") as mock:
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
-    # expect that entitlment is created with account number
-    mock.assert_called_with(11111, "FakeSKU", raise_exception=True)
+    # Expect the paid entitlement regardless of other users processed afterward.
+    mock.assert_any_call(11111, "FakeSKU", raise_exception=True)
 
 
 def test_empty_email(initialized_db):
