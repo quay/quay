@@ -4,6 +4,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "postinstall": "node web/patches/uri-js/patch.cjs && node web/patches/uri-js/test.cjs",
+    "test:uri-js": "node web/patches/uri-js/test.cjs",
     "dev": "karma start --browsers ChromeHeadless",
     "test": "karma start --single-run --browsers ChromeNoSandbox",
     "test:node": "JASMINE_CONFIG_PATH=static/test/jasmine.json jasmine-ts './static/js/**/*.spec.ts'",
