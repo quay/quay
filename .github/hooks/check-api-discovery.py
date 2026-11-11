@@ -10,8 +10,9 @@ handlers receive a reminder to check their metadata manually.
 Inspect non-test Python files under endpoints/api, including internal and
 feature-gated resources. Filename arguments restrict reported findings; no
 arguments audits all eligible files. This static audit does not establish
-runtime visibility or check cross-handler ID collisions or route-count/cardinality
-constraints; runtime discovery tests cover those for enabled routes.
+runtime visibility. Cross-handler ID collisions and route-count/cardinality
+checks are outside its scope. Runtime discovery detects duplicate or exhausted
+operation IDs for enabled routes.
 
 Findings and inspection failures are advisory: the entry point reports warnings
 and exits zero. This hook must not block commits or require a running Quay stack.
