@@ -1,6 +1,6 @@
 # vim: ft=nginx
 
-keepalive_timeout 5;
+keepalive_timeout {{ default_keepalive_timeout }};
 
 if ($host = "www.quay.io") {
     return 301 $proper_scheme://quay.io$request_uri;
