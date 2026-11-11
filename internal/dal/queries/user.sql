@@ -47,3 +47,22 @@ WHERE id = @user_id
     OR @threshold_seconds <= 0
     OR last_accessed <= datetime('now', '-' || @threshold_seconds || ' seconds')
   );
+
+-- name: CreateNamespaceOrganization :one
+-- Creates a namespace as an organization; returns no row when it exists.
+INSERT INTO "user" (username, email, verified, organization, robot,
+  invoice_email, invalid_login_attempts, last_invalid_login,
+  removed_tag_expiration_s, enabled)
+VALUES (@username, @username || '@namespace.local', 1, 1, 0, 0, 0, datetime('now'), 1209600, 1)
+ON CONFLICT (username) DO NOTHING
+RETURNING id;
+
+-- name: CreateOwnersTeam :one
+INSERT INTO team (name, organization_id, role_id, description)
+SELECT 'owners', @organization_id, id, ''
+FROM teamrole
+WHERE name = 'admin'
+RETURNING id;
+
+-- name: AddTeamMember :exec
+INSERT INTO teammember (user_id, team_id) VALUES (@user_id, @team_id);

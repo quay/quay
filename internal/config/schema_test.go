@@ -256,6 +256,7 @@ var knownUnmapped = map[string]bool{
 	"GLOBAL_READONLY_SUPER_USERS":                    true,
 	"IGNORE_UNKNOWN_MEDIATYPES":                      true,
 	"MANIFESTS_ENDPOINT_READ_TIMEOUT":                true,
+	"NGINX_KEEPALIVE_TIMEOUT":                        true,
 	"NON_RATE_LIMITED_NAMESPACES":                    true,
 	"NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX":         true,
 	"NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": true,
