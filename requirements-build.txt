@@ -620,6 +620,7 @@ setuptools==80.10.2 \
     #   greenlet
     #   gunicorn
     #   importlib-metadata
+    #   joserfc
     #   jsonschema
     #   kafka-python
     #   lxml
