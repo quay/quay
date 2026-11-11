@@ -66,12 +66,32 @@ func TestParseDefaultNginxKeepaliveTimeout(t *testing.T) {
 		{name: "omitted", yaml: "{}", want: 5},
 		{name: "disabled", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 0", want: 0},
 		{name: "configured", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 30", want: 30},
+		{name: "integral float", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 5.0", want: 5},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cfg, err := Parse([]byte(test.yaml))
 			require.NoError(t, err)
 			assert.Equal(t, test.want, cfg.DefaultNginxKeepaliveTimeout)
 			assert.NotContains(t, cfg.Extra, "DEFAULT_NGINX_KEEPALIVE_TIMEOUT")
+		})
+	}
+}
+
+func TestParseDefaultNginxKeepaliveTimeoutInvalidTypes(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		yaml string
+	}{
+		{name: "null", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: null"},
+		{name: "fraction", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: -0.5"},
+		{name: "positive fraction", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: 5.5"},
+		{name: "infinity", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: .inf"},
+		{name: "string", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: \"5\""},
+		{name: "boolean", yaml: "DEFAULT_NGINX_KEEPALIVE_TIMEOUT: true"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := Parse([]byte(test.yaml))
+			require.Error(t, err)
 		})
 	}
 }

@@ -8,6 +8,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -74,6 +75,19 @@ func Parse(data []byte) (*Config, error) {
 	var raw map[string]any
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("config: parse raw: %w", err)
+	}
+	if value, ok := raw["DEFAULT_NGINX_KEEPALIVE_TIMEOUT"]; ok {
+		// The typed pass can leave null at the default or truncate a fraction.
+		valid := false
+		switch v := value.(type) {
+		case int, int64, uint64:
+			valid = true
+		case float64:
+			valid = !math.IsInf(v, 0) && math.Trunc(v) == v
+		}
+		if !valid {
+			return nil, fmt.Errorf("config: DEFAULT_NGINX_KEEPALIVE_TIMEOUT must be an integer")
+		}
 	}
 
 	known := knownYAMLTags(cfg)
