@@ -301,9 +301,16 @@ func TestMigrator_RunSQLiteCleanupAfterSkipInstallDoesNotRecopy(t *testing.T) {
 	m := validInstallMigrator(t)
 	m.SkipInstall = true
 	m.Source.UnitFiles = []string{filepath.Join(t.TempDir(), "quay-app.service")}
-	m.Runner = &recordingRunner{}
+	skipRunner := &recordingRunner{}
+	m.Runner = skipRunner
 	if err := m.Run(t.Context()); err != nil {
 		t.Fatalf("skip-install run: %v", err)
+	}
+	// Without an installed target the old OMR stays the one that boots.
+	for _, call := range skipRunner.runCalls {
+		if strings.Contains(call, " disable ") {
+			t.Fatalf("skip-install disabled old services: %v", skipRunner.runCalls)
+		}
 	}
 
 	// The user installs by hand between the two runs; cleanup must keep that database.
@@ -316,11 +323,22 @@ func TestMigrator_RunSQLiteCleanupAfterSkipInstallDoesNotRecopy(t *testing.T) {
 	runner := &recordingRunner{}
 	m.Runner = runner
 	err := m.Run(t.Context())
-	for _, call := range runner.runCalls {
-		if strings.Contains(call, " stop ") {
-			t.Errorf("cleanup reran the migration: %v", runner.runCalls)
-			break
-		}
+	// Only cleanup runs: the old units stopped and disabled, the stale
+	// container and pod removed. A rerun migration would stop every unit.
+	want := []string{
+		"systemctl stop quay-app.service",
+		"systemctl disable quay-app.service",
+		"podman container exists quay-app",
+		"podman container stop quay-app",
+		"podman container rm quay-app",
+		"podman pod exists quay-pod",
+		"podman pod stop quay-pod",
+		"podman pod rm quay-pod",
+		"podman secret rm redis_pass",
+		"systemctl daemon-reload",
+	}
+	if strings.Join(runner.runCalls, "\n") != strings.Join(want, "\n") {
+		t.Errorf("cleanup calls = %v, want %v", runner.runCalls, want)
 	}
 	if got, readErr := os.ReadFile(dbPath); readErr != nil || string(got) != "installed by hand" {
 		t.Errorf("cleanup replaced the installed quay.db (read error %v)", readErr)
@@ -413,7 +431,73 @@ func TestMigrator_RunSQLiteInstallFailureRemovesOnlyOwnedInstall(t *testing.T) {
 			if strings.Join(starts, "\n") != strings.Join(want, "\n") {
 				t.Fatalf("rollback calls = %v, want %v", starts, want)
 			}
+			for _, call := range runner.runCalls {
+				if strings.Contains(call, " disable ") {
+					t.Fatalf("failed install disabled old services: %v", runner.runCalls)
+				}
+			}
 		})
+	}
+}
+
+func TestMigrator_RunSQLiteDisablesSourceServicesAfterCutover(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.SystemdScope = scopeSystem
+	m.Source.UnitFiles = []string{"/etc/systemd/system/quay-app.service"}
+	runner := &recordingRunner{}
+	m.Runner = runner
+	m.checkTargetInstallation = func() (bool, error) { return false, nil }
+	m.runInstall = func(context.Context, *installer.Config) error {
+		for _, call := range runner.runCalls {
+			if strings.Contains(call, " disable ") {
+				t.Errorf("old services disabled before the new registry was installed: %v", runner.runCalls)
+			}
+		}
+		return nil
+	}
+
+	if err := m.Run(t.Context()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := []string{
+		"systemctl stop quay-app.service",
+		"systemctl stop quay-redis.service",
+		"systemctl stop quay-pod.service",
+		"systemctl disable quay-app.service",
+		"systemctl disable quay-redis.service",
+		"systemctl disable quay-pod.service",
+	}
+	if strings.Join(runner.runCalls, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("calls = %v, want %v", runner.runCalls, want)
+	}
+}
+
+func TestMigrator_RunSQLiteDisableFailureKeepsNewRegistry(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := validInstallMigrator(t)
+	m.Source.SystemdScope = scopeUser
+	m.Source.UnitFiles = []string{"/home/quay/.config/systemd/user/quay-app.service"}
+	runner := &recordingRunner{runErrs: map[string]error{"quay-redis.service": errors.New("unit failed")}}
+	m.Runner = runner
+	m.checkTargetInstallation = func() (bool, error) { return false, nil }
+	m.removeTargetInstall = func(context.Context) error {
+		t.Error("disable failure removed the new registry")
+		return nil
+	}
+	m.runInstall = func(context.Context, *installer.Config) error { return nil }
+
+	err := m.Run(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "disable quay-redis.service: unit failed") {
+		t.Fatalf("Run error = %v, want the failed disable named", err)
+	}
+	for _, call := range runner.runCalls {
+		if strings.Contains(call, " start ") {
+			t.Fatalf("disable failure restarted old services: %v", runner.runCalls)
+		}
+	}
+	if got := runner.runCalls[len(runner.runCalls)-1]; got != "systemctl --user disable quay-pod.service" {
+		t.Fatalf("last call = %q, want every unit disabled; calls = %v", got, runner.runCalls)
 	}
 }
 

@@ -20,7 +20,17 @@ import (
 
 const partialDatabaseName = "quay.db.partial"
 
-func (m *Migrator) runPostgresMigration(ctx context.Context) (retErr error) {
+func (m *Migrator) runPostgresMigration(ctx context.Context) error {
+	if err := m.migratePostgresAndInstall(ctx); err != nil {
+		return err
+	}
+	if err := m.disableSourceServices(ctx, quayAppUnit, quayRedisUnit, quayPostgresUnit, quayPodUnit); err != nil {
+		return fmt.Errorf("new registry is running, but %w", err)
+	}
+	return nil
+}
+
+func (m *Migrator) migratePostgresAndInstall(ctx context.Context) (retErr error) {
 	if err := m.validatePostgresFlags(); err != nil {
 		return err
 	}
