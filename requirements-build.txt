@@ -508,6 +508,7 @@ setuptools==80.10.2 \
     #   lxml
     #   maturin
     #   maxminddb
+    #   msgpack
     #   netaddr
     #   pathspec
     #   pillow
