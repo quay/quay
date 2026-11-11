@@ -17,6 +17,11 @@ removed because the original maps no longer describe the patched function.
 Root npm and web npm/pnpm postinstall hooks apply the patch without fetching
 code or adding dependencies. Container builds copy this directory before
 installing, including the downstream npm build that excludes web/.npmrc.
+The postinstall entry point skips only npm's explicit `--package-lock-only`
+and `--dry-run` modes, which can run lifecycle hooks without installing files.
+An absent node_modules directory is not a reason to skip a real installation.
+Replacement function line endings are normalized to LF, so CRLF checkouts
+produce the same approved hashes without weakening content verification.
 The walker follows nested and pnpm-linked installations, deduplicates real
 paths, and checks every uri-js copy it finds. SHA-256 hashes in hashes.json
 identify the reviewed original and patched distributions from the published
@@ -37,6 +42,9 @@ in a separate child with a two-second timeout and a bounded heap, so the
 original infinite loop cannot hang the test runner. CommonJS and minified
 distributions also exercise serialize/resolve with IRI support. The ES module's
 patched function is exercised in isolation without changing module resolution.
+Additional offline npm fixtures cover metadata-only operations, real-install
+enforcement, and CRLF checkout hash stability. Postinstall runs only the
+installed-copy tests, not these nested npm lifecycle fixtures.
 
 Validation must cover root `npm clean-install`, web `pnpm@10 install
 --frozen-lockfile`, and an independent downstream-style web `npm clean-install
