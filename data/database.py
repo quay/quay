@@ -592,9 +592,19 @@ def _db_from_url(
     db_kwargs.pop("threadlocals", None)
     db_kwargs.pop("autorollback", None)
 
+    # pop the _driver_autocommit, if set, as Peewee 4+ sets this automatically on all connections.
+    # otherwise, ProgrammingError will be raised.
+    db_kwargs.pop("_driver_autocommit", None)
+
     # Note: sqlite does not support connect_timeout.
     if parsed_url.drivername != "sqlite":
         db_kwargs["connect_timeout"] = db_kwargs.get("connect_timeout", connect_timeout)
+
+    # raise an error if the driver is not supported
+    if parsed_url.drivername not in _SCHEME_DRIVERS:
+        raise ValueError(
+            f"Unsupported database scheme {parsed_url.drivername}. For PostgreSQL use postgresql:// as driver scheme."
+        )
 
     drivers = _SCHEME_DRIVERS[parsed_url.drivername]
     driver = drivers.driver
