@@ -179,9 +179,7 @@ def put_service_key(service, kid):
         expiration_date = min(expiration_date, signer_key.expiration_date)
 
     try:
-        model.replace_service_key(
-            signer_key.kid, service, kid, jwk, metadata, expiration_date
-        )
+        model.replace_service_key(signer_key.kid, service, kid, jwk, metadata, expiration_date)
     except ServiceKeyDoesNotExist:
         abort(404)
 
