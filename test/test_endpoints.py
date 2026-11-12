@@ -769,9 +769,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_rotate"):
             rotation_payload = dict(payload)
             rotation_payload[keyserver.KEY_ROTATION_CLAIM] = "kid6969"
-            token = jwt.encode(
-                rotation_payload, private_pem, "RS256", headers={"kid": "kid420"}
-            )
+            token = jwt.encode(rotation_payload, private_pem, "RS256", headers={"kid": "kid420"})
             self.putResponse(
                 "key_server.put_service_key",
                 service="sample_service",
@@ -792,9 +790,7 @@ class KeyServerTestCase(EndpointTestCase):
             expected_code=404,
         )
         rotated_key = model.service_keys.get_service_key("kid6969", service="sample_service")
-        self.assertEqual(
-            rotated_key.expiration_date, datetime.utcfromtimestamp(signer_expiration)
-        )
+        self.assertEqual(rotated_key.expiration_date, datetime.utcfromtimestamp(signer_expiration))
 
         # Rotation should only work when signed by the previous key.
         jwk = JsonWebKey.generate_key("RSA", 2048, is_private=True)
