@@ -1,5 +1,6 @@
 #!/bin/bash
 # RPM-lock install smoke test. It is not a replay of the Konflux build.
+#   arch:    the lock's arch sections match rpms.in.yaml's arches.
 #   fetch:   Hermeto downloads every locked RPM, checks size and checksum, and
 #            generates a local repo from them (fetch-deps + inject-files).
 #   install: rpms.in.yaml's modules and packages install offline with microdnf
@@ -29,12 +30,17 @@ cp "$ROOT/rpms.in.yaml" "$WORK/src/rpms.in.yaml"
 
 # Hermeto's own Python has PyYAML, so the host needs nothing beyond the engine.
 INPUT="$("$ENGINE" run --rm -v "$WORK/src:/src:z" --entrypoint /venv/bin/python "$HERMETO_IMAGE" -c '
-import yaml
+import sys, yaml
 spec = yaml.safe_load(open("/src/rpms.in.yaml"))
+want = sorted(spec["arches"])
+got = sorted(a["arch"] for a in yaml.safe_load(open("/src/rpms.lock.yaml"))["arches"])
+if got != want:
+    sys.exit(f"STAGE arch: FAILED lock arches {got} != rpms.in.yaml arches {want}")
 print(spec["context"]["image"])
 print(" ".join(spec.get("moduleEnable", [])))
 print(" ".join(spec["packages"]))
 ')"
+echo "STAGE arch: ok"
 IMAGE="$(sed -n 1p <<<"$INPUT")"
 MODULES="$(sed -n 2p <<<"$INPUT")"
 PACKAGES="$(sed -n 3p <<<"$INPUT")"
