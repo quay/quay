@@ -15,6 +15,7 @@ from moto import mock_aws
 from storage import S3Storage, StorageContext
 from storage.cloud import (
     _CHUNKS_KEY,
+    GoogleCloudStorage,
     _build_endpoint_url,
     _CloudStorage,
     _PartUploadMetadata,
@@ -683,3 +684,35 @@ def test_cleanup_handles_already_aborted_mpu(storage_engine, mock_mpu_dates):
         with freeze_time(now + timedelta(hours=1)):
             deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
             assert deleted == 1
+
+
+def test_gcs_disables_default_checksums():
+    engine = GoogleCloudStorage(
+        _TEST_CONTEXT, "some/path", _TEST_USER, _TEST_PASSWORD, _TEST_BUCKET
+    )
+    config = engine._connect_kwargs["config"]
+    assert config.request_checksum_calculation == "when_required"
+    assert config.response_checksum_validation == "when_required"
+
+
+def test_gcs_requests_carry_no_default_checksums():
+    sent = []
+
+    def record_headers(request, event_name, **kwargs):
+        sent.append((event_name, {k.lower() for k in request.headers}))
+
+    # moto only intercepts AWS endpoints; without this the requests would hit GCS.
+    with mock_aws(), patch.object(GoogleCloudStorage, "ENDPOINT_URL", "https://s3.amazonaws.com"):
+        boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
+        engine = GoogleCloudStorage(
+            _TEST_CONTEXT, "some/path", _TEST_USER, _TEST_PASSWORD, _TEST_BUCKET
+        )
+        engine._session.events.register("before-send.s3", record_headers)
+
+        engine.put_content(_TEST_PATH, _TEST_CONTENT)
+        engine.stream_write(_TEST_PATH, BytesIO(_TEST_CONTENT))
+
+    assert {"before-send.s3.PutObject", "before-send.s3.UploadPart"} <= {e for e, _ in sent}
+    for event_name, headers in sent:
+        assert not [h for h in headers if h.startswith("x-amz-checksum-")], event_name
+        assert "x-amz-sdk-checksum-algorithm" not in headers, event_name
