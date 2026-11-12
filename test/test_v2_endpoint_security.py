@@ -1,11 +1,11 @@
 import json
 import unittest
-from test.specs import build_v2_index_specs
 
 from registry import application as app
 
 import endpoints.decorated  # Register the various exceptions via decorators.
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.specs import build_v2_index_specs
 
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
