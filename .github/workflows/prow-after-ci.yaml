@@ -9,35 +9,30 @@ permissions: {}
 
 jobs:
   dispatch:
-    name: Dispatch Prow and wait for dependency checks
+    name: Comment /pipeline remaining
     runs-on: ubuntu-latest
     # The path pins sentinel.yaml: the legacy CI.yaml on release branches is also named CI.
     if: github.event.workflow_run.path == '.github/workflows/sentinel.yaml' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
-    # A newer CI success on the same branch supersedes this waiter.
     concurrency:
       group: prow-after-ci-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: true
-    # Above the script's TIMEOUT_MINUTES so it can conclude the check itself.
-    timeout-minutes: 320
+    timeout-minutes: 5
     permissions:
-      checks: write
-      contents: read
       issues: write
       pull-requests: read
-      statuses: read
     steps:
-      # Default branch only: this job holds a write token and must never run PR code.
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Comment /pipeline remaining and publish ci/quay-deps-prow
+      # The workflow_run event's pull_requests array is empty for fork heads, so look the PR up by head.
+      - name: Comment /pipeline remaining on the PR at this head
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
-          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
-        # exec: the runner signals only the step shell on cancel, so python must be that process to conclude the check.
-        run: exec python3 .github/scripts/prow-after-ci.py
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+        run: |
+          set -euo pipefail
+          gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f head="$OWNER:$BRANCH" --paginate |
+            jq -r --arg sha "$SHA" --arg repo "$REPO" '.[] | select(.head.sha == $sha and .head.repo.full_name == $repo) | .number' |
+            while read -r pr; do
+              gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
+            done

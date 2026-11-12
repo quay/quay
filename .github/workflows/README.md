@@ -58,12 +58,7 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 
 ## Prow after CI
 
-`prow-after-ci.yaml` runs when `CI` succeeds on a pull request to an enrolled base (`master`). It never checks out PR code. For the PR's current HEAD it:
-
-1. Comments `/pipeline remaining` once, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`.
-2. Publishes the `ci/quay-deps-prow` check: success when the PR changes none of `requirements.txt`, `requirements-build.txt`, `constraints.txt`, `pyproject.toml`; otherwise it waits for `ci/prow/gcp-gcs` and mirrors its result, failing after 5 hours without one. The check does not follow a later `/retest`: once `ci/prow/gcp-gcs` passes, re-run the `Prow After CI` workflow to update it.
-
-Logic and tests live in `.github/scripts/prow-after-ci.py` and `test_prow_after_ci.py`.
+`prow-after-ci.yaml` runs when `CI` succeeds on a pull request to `master`. It never checks out PR code. It comments `/pipeline remaining` on the open PR whose head still matches the CI run, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`. A CI re-run may post the comment again; the controller does not re-dispatch jobs already present at that head.
 
 ## GitHub UI
 
