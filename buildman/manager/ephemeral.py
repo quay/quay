@@ -576,20 +576,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         cancelled = model.build.update_phase_then_close(build_id, BUILD_PHASE.CANCELLED)
         if cancelled:
-            try:
-                job_data = self._orchestrator.get_key(self._job_key(build_id))
-                job_data_json = json.loads(job_data)
-                build_job = BuildJob(AttrDict(job_data_json["job_queue_item"]))
-                self.on_job_complete(
-                    build_job,
-                    BuildJobResult.CANCELLED,
-                    job_data_json.get("executor_name"),
-                    job_data_json.get("execution_id"),
-                )
-            except KeyError:
-                logger.warning(
-                    "Could not cleanup cancelled job %s. Job does not exist in orchestrator", job_id
-                )
+            self._complete_cancelled_job(build_id)
 
         return cancelled
 
@@ -742,13 +729,28 @@ class EphemeralBuilderManager(BuildStateInterface):
         if key_change.event not in (KeyEvent.CREATE, KeyEvent.SET):
             return
 
-        job_metadata = json.loads(key_change.value)
-        build_job = BuildJob(AttrDict(job_metadata["job_queue_item"]))
-        executor_name = job_metadata.get("executor_name")
-        execution_id = job_metadata.get("execution_id")
+        # OrchestratorCanceller writes the bare build uuid as the cancel key's value.
+        # An exception raised here kills the orchestrator's pubsub listener thread.
+        try:
+            self._complete_cancelled_job(key_change.value)
+        except Exception:
+            logger.exception("Could not complete cancelled build %s", key_change.value)
 
-        job_result = BuildJobResult.CANCELLED
-        self.on_job_complete(build_job, job_result, executor_name, execution_id)
+    def _complete_cancelled_job(self, build_id):
+        try:
+            job_data = self._orchestrator.get_key(self._job_key(build_id))
+            job_data_json = json.loads(job_data)
+            build_job = BuildJob(AttrDict(job_data_json["job_queue_item"]))
+            self.on_job_complete(
+                build_job,
+                BuildJobResult.CANCELLED,
+                job_data_json.get("executor_name"),
+                job_data_json.get("execution_id"),
+            )
+        except KeyError:
+            logger.warning(
+                "Could not cleanup cancelled job %s. Job does not exist in orchestrator", build_id
+            )
 
     def _cleanup_job_from_orchestrator(self, build_job):
         """Cleanup the given job from the orchestrator.
