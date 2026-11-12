@@ -1,4 +1,7 @@
-name: Prow After CI
+# Posts /pipeline remaining on the PR after the top-level CI workflow passes,
+# so the openshift-ci pipeline controller dispatches the second-stage Prow jobs
+# and completes ci/pipeline-gate.
+name: Pipeline Remaining
 on:
   workflow_run:
     workflows: ["CI"]
@@ -14,7 +17,7 @@ jobs:
     # The path pins sentinel.yaml: the legacy CI.yaml on release branches is also named CI.
     if: github.event.workflow_run.path == '.github/workflows/sentinel.yaml' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
     concurrency:
-      group: prow-after-ci-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+      group: pipeline-remaining-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
       cancel-in-progress: true
     timeout-minutes: 5
     permissions:
@@ -31,8 +34,8 @@ jobs:
           REPO: ${{ github.event.workflow_run.head_repository.full_name }}
         run: |
           set -euo pipefail
-          gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f head="$OWNER:$BRANCH" --paginate |
-            jq -r --arg sha "$SHA" --arg repo "$REPO" '.[] | select(.head.sha == $sha and .head.repo.full_name == $repo) | .number' |
-            while read -r pr; do
-              gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
-            done
+          pr=$(gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f head="$OWNER:$BRANCH" |
+            jq -r --arg sha "$SHA" --arg repo "$REPO" 'first(.[] | select(.head.sha == $sha and .head.repo.full_name == $repo) | .number) // empty')
+          if [ -n "$pr" ]; then
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
+          fi

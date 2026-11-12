@@ -56,9 +56,9 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 1. Add `is-pr` input to the reusable workflow if it doesn't have one
 2. Use `if: ${{ inputs.is-pr }}` on the job
 
-## Prow after CI
+## Pipeline remaining
 
-`prow-after-ci.yaml` runs when `CI` succeeds on a pull request to `master`. It never checks out PR code. It comments `/pipeline remaining` on the open PR whose head still matches the CI run, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`. A CI re-run may post the comment again; the controller does not re-dispatch jobs already present at that head.
+`pipeline-remaining.yaml` runs when `CI` succeeds on a pull request to `master`. It never checks out PR code. It comments `/pipeline remaining` on the open PR whose head still matches the CI run, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`. A CI re-run may post the comment again; the controller does not re-dispatch jobs already present at that head.
 
 ## GitHub UI
 
