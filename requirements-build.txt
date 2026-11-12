@@ -659,3 +659,4 @@ setuptools==80.10.2 \
     #   wrapt
     #   xhtml2pdf
     #   zipp
+# DNM: pipeline controller smoke test, not for merge
