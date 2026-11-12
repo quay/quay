@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       # The workflow_run event's pull_requests array is empty for fork heads, so look the PR up by head.
       - name: Comment /pipeline remaining on the PR at this head
