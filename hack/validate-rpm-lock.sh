@@ -1,18 +1,20 @@
 #!/bin/bash
-# Validate an RPM lockfile the way the Konflux hermetic build consumes it:
+# RPM-lock install smoke test. It is not a replay of the Konflux build.
 #   fetch:   Hermeto downloads every locked RPM, checks size and checksum, and
-#            generates a local repo from them.
-#   install: rpms.in.yaml's modules and packages install offline from that repo,
-#            with GPG checks, in rpms.in.yaml's context image.
+#            generates a local repo from them (fetch-deps + inject-files).
+#   install: rpms.in.yaml's modules and packages install offline with microdnf
+#            from that x86_64 repo, with GPG checks, in rpms.in.yaml's context
+#            image.
 # The lockfile is only read, never regenerated.
 #
 # Usage: hack/validate-rpm-lock.sh [LOCKFILE]   (default: rpms.lock.yaml)
 # Needs podman.
 set -euo pipefail
 
-# hermeto 0.64.0
-HERMETO_IMAGE="quay.io/konflux-ci/hermeto@sha256:3c7a8622981aec970c159e608500d75a01e6bb42564ec25a92369e178b6ace8f"
-OUT_DIR="/tmp/hermeto-output"
+# hermeto 0.61.0, from prefetch-dependencies-oci-ta 0.10.1 bundle
+HERMETO_IMAGE="quay.io/konflux-ci/hermeto@sha256:43596c6351cdf7188b09fd4dcf5c6b3bb8b57ea557e84a1aa624f60e74c624ce"
+# The prefetch task's output mount point (KBC_PD_OUTPUT_DIR_MOUNT_POINT).
+OUT_DIR="/cachi2/output"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK="$(realpath "${1:-$ROOT/rpms.lock.yaml}")"
@@ -51,7 +53,7 @@ fi
 echo "== install: $IMAGE, modules: $MODULES"
 # The generated x86_64 repo file replaces the image's repos.d, so nothing can
 # come from the network or from an unlocked repo.
-if "$ENGINE" run --rm --network=none \
+if "$ENGINE" run --rm --network=none --platform linux/amd64 \
         -v "$WORK/out:$OUT_DIR:z" \
         -v "$WORK/out/deps/rpm/x86_64/repos.d:/etc/yum.repos.d:z" \
         -e MODULES="$MODULES" -e PACKAGES="$PACKAGES" \
