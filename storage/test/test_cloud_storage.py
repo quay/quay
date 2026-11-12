@@ -15,6 +15,7 @@ from moto import mock_aws
 from storage import S3Storage, StorageContext
 from storage.cloud import (
     _CHUNKS_KEY,
+    GoogleCloudStorage,
     _build_endpoint_url,
     _CloudStorage,
     _PartUploadMetadata,
@@ -683,3 +684,12 @@ def test_cleanup_handles_already_aborted_mpu(storage_engine, mock_mpu_dates):
         with freeze_time(now + timedelta(hours=1)):
             deleted = storage_engine.clean_orphaned_multipart_uploads(timedelta(seconds=0))
             assert deleted == 1
+
+
+def test_gcs_disables_default_checksums():
+    engine = GoogleCloudStorage(
+        _TEST_CONTEXT, "some/path", _TEST_USER, _TEST_PASSWORD, _TEST_BUCKET
+    )
+    config = engine._connect_kwargs["config"]
+    assert config.request_checksum_calculation == "when_required"
+    assert config.response_checksum_validation == "when_required"
