@@ -1,4 +1,11 @@
-import {test, expect, getTestUsers, QuayConfig, TestApi} from '../../fixtures';
+import {
+  test,
+  expect,
+  getTestUsers,
+  QuayConfig,
+  TestApi,
+  uniqueName,
+} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 // A private base with a shell, plus a robot that can pull it, so the builder
@@ -109,6 +116,68 @@ test.describe(
 
       await expect(authenticatedPage.getByText(tagName)).toBeVisible();
     });
+
+    test(
+      'build from private base image runs RUN step and pushes output tag',
+      {tag: '@container'},
+      async ({authenticatedPage, api, quayConfig}) => {
+        // Seeding the base and the UI checks run outside waitForBuildPhase's
+        // own 180 s budget.
+        test.setTimeout(300_000);
+        const base = await seedPrivateBase(api, quayConfig, 'bldbase');
+        const repo = await api.repository(base.org, 'build-run');
+        const tagName = 'e2e-run';
+        const marker = uniqueName('e2e-run-marker');
+        // The logged RUN command keeps the arithmetic unexpanded, so only the
+        // step's output carries the -42 suffix.
+        const output = `${marker}-42`;
+        const build = await api.build(
+          base.org,
+          repo.name,
+          `FROM ${base.from}\nRUN echo ${marker}-$((6*7))\n`,
+          [tagName],
+          base.robot,
+        );
+
+        const result = await api.raw.waitForBuildPhase(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(result.phase, result.error).toBe('complete');
+
+        const logs = await api.raw.getBuildLogs(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(logs.logs.map((log) => log.message).join('\n')).toContain(
+          output,
+        );
+
+        await authenticatedPage.goto(
+          `/repository/${base.org}/${repo.name}/build/${build.buildId}`,
+        );
+        // The output nests under a command or a phase header depending on
+        // whether the builder's step lines match `Step N/M :`, so expand all.
+        const headers = authenticatedPage.getByTestId('build-log-header');
+        await expect(headers.first()).toBeVisible();
+        for (const header of await headers.all()) {
+          await header.click();
+        }
+        await expect(
+          authenticatedPage
+            .getByTestId('build-container-logs')
+            .getByText(output)
+            .first(),
+        ).toBeVisible();
+
+        const tags = await api.raw.getTags(base.org, repo.name, {
+          specificTag: tagName,
+        });
+        expect(tags.tags[0]?.manifest_digest).toMatch(/^sha256:/);
+      },
+    );
 
     test(
       'cancelling a running build ends in cancelled phase',
