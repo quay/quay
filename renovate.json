@@ -1,5 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "MintMaker (Konflux Renovate) config for quay/quay.",
+    "Each update type is grouped into one PR per base branch and runs once a week, on its own day, inside a 02:00-08:59 UTC window. MintMaker runs every few hours, so a window holds two runs: the first opens the PR, the second can merge it once CI has passed.",
+    "Automerge is on, but master and the redhat-* branches require the all-green check and one code-owner approval, so a PR merges only after review.",
+    "Vulnerability fixes ignore the weekly schedule, the grouping and the PR limits (Renovate vulnerabilityAlerts defaults: schedule [], groupName null, prConcurrentLimit 0), so CVE PRs stay immediate."
+  ],
   "vulnerabilityAlerts": {
     "enabled": true
   },
@@ -9,13 +15,69 @@
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "baseBranches": ["master", "redhat-3.9", "redhat-3.10", "redhat-3.12", "redhat-3.14", "redhat-3.15", "redhat-3.16", "redhat-3.17", "redhat-3.18", "redhat-3.19", "/^redhat-5\\.\\d+$/"],
+  "prConcurrentLimit": 4,
+  "branchConcurrentLimit": 4,
+  "prHourlyLimit": 1,
   "postUpdateOptions": ["gomodTidy"],
+  "timezone": "Etc/UTC",
+  "updateNotScheduled": false,
+  "rpm-lockfile": {
+    "lockFileMaintenance": {
+      "description": "RPM lockfile refreshes follow the rpm-lockfile weekly window below. MintMaker's global lockFileMaintenance schedule is applied after packageRules, so it has to be set here.",
+      "schedule": ["* 2-8 * * 6"]
+    }
+  },
   "packageRules": [
     {
       "description": "Disable major version bumps for non-tekton managers",
       "matchUpdateTypes": ["major"],
       "matchManagers": ["npm", "pip_requirements", "gomod"],
       "enabled": false
+    },
+    {
+      "description": "npm: one grouped PR per base branch, Monday 02:00-08:59 UTC. A separate groupName per manager keeps a PR left unmerged from one day from absorbing the next day's updates; group:all would put every manager in one branch.",
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "groupSlug": "npm",
+      "schedule": ["* 2-8 * * 1"],
+      "automerge": true
+    },
+    {
+      "description": "Python: one grouped PR per base branch, Tuesday 02:00-08:59 UTC.",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "Python dependencies",
+      "groupSlug": "python",
+      "schedule": ["* 2-8 * * 2"],
+      "automerge": true
+    },
+    {
+      "description": "Go: one grouped PR per base branch (go.mod and config-tool/go.mod), Wednesday 02:00-08:59 UTC.",
+      "matchManagers": ["gomod"],
+      "groupName": "Go dependencies",
+      "groupSlug": "go",
+      "schedule": ["* 2-8 * * 3"],
+      "automerge": true
+    },
+    {
+      "description": "Docker: one grouped PR per base branch for base image updates, Thursday 02:00-08:59 UTC.",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker base images",
+      "groupSlug": "docker",
+      "schedule": ["* 2-8 * * 4"],
+      "automerge": true
+    },
+    {
+      "description": "Tekton: Friday 02:00-08:59 UTC. No groupName here: MintMaker's global config already groups the tekton-catalog references into one PR per base branch.",
+      "matchManagers": ["tekton"],
+      "schedule": ["* 2-8 * * 5"],
+      "automerge": true
+    },
+    {
+      "description": "RPM lockfile: Saturday 02:00-08:59 UTC (see rpm-lockfile.lockFileMaintenance above). A lockfile refresh is already one PR per base branch.",
+      "matchManagers": ["rpm-lockfile"],
+      "schedule": ["* 2-8 * * 6"],
+      "automerge": true
     }
   ],
   "semanticCommits": "disabled",
