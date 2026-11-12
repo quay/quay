@@ -12,7 +12,15 @@ from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
-from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User, db
+from data.database import (
+    ImageStorageLocation,
+    Manifest,
+    ManifestChild,
+    Repository,
+    Tag,
+    User,
+    db,
+)
 from data.model import ImmutableTagException
 from data.model.blob import (
     store_blob_record_and_temp_link,
@@ -29,6 +37,7 @@ from data.model.oci.tag import (
     create_temporary_tag_outside_timemachine,
     delete_tag,
     delete_tags_for_manifest,
+    expire_orphaned_referrer_temp_tags,
     fetch_paginated_autoprune_repo_tags_by_number,
     fetch_paginated_autoprune_repo_tags_older_than_ms,
     filter_to_alive_tags,
@@ -49,7 +58,9 @@ from data.model.oci.tag import (
     lookup_alive_tags_shallow,
     lookup_unrecoverable_tags,
     remove_tag_from_timemachine,
+    reset_referrer_manifest_expiration,
     retarget_tag,
+    set_tag_end_ms,
     set_tag_expiration_for_manifest,
     set_tag_immutable,
     set_tags_immutability_for_manifest,
@@ -64,7 +75,8 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.bytes import Bytes
 
-# Cosign cascade acquires pg_advisory_xact_lock on PostgreSQL (+1 SQL); SQLite lock is a no-op.
+# Cosign cascade and referrer expiry each acquire pg_advisory_xact_lock on
+# PostgreSQL (+1 SQL per acquire); SQLite lock is a no-op.
 _ADVISORY_LOCK_QUERY = 1 if os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql") else 0
 
 
@@ -406,7 +418,7 @@ def test_delete_tag(initialized_db):
             assert get_tag(repo, tag.name) == tag
             assert tag.lifetime_end_ms is None
 
-            with assert_query_count(6 + _ADVISORY_LOCK_QUERY):
+            with assert_query_count(10 + 2 * _ADVISORY_LOCK_QUERY):
                 assert delete_tag(repo, tag.name) == tag
 
             assert get_tag(repo, tag.name) is None
@@ -428,7 +440,7 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.name.startswith("$temp-")
             assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
-        with assert_query_count(11 + _ADVISORY_LOCK_QUERY):
+        with assert_query_count(22 + 2 * _ADVISORY_LOCK_QUERY):
             assert delete_tag(repository.id, tag.name) == tag
 
         # Assert temporary tags pointing to child manifest are now expired
@@ -446,7 +458,7 @@ def test_delete_tags_for_manifest(initialized_db):
             repo = tag.repository
             assert get_tag(repo, tag.name) == tag
 
-            with assert_query_count(8 + _ADVISORY_LOCK_QUERY):
+            with assert_query_count(12 + 2 * _ADVISORY_LOCK_QUERY):
                 assert delete_tags_for_manifest(tag.manifest) == [tag]
 
             assert get_tag(repo, tag.name) is None
@@ -1969,3 +1981,372 @@ def test_cascade_serialized_with_concurrent_retarget(initialized_db):
             if repo_to_purge is not None:
                 model.gc.purge_repository(repo_to_purge, force=True)
             db.commit()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
+    reason="Advisory locks / multi-connection race coverage require PostgreSQL",
+)
+def test_referrer_expiry_serialized_with_concurrent_retarget(initialized_db):
+    """
+    Concurrent retarget that creates a new alive alias must prevent referrer
+    $temp-* expiry. The shared advisory lock serializes the paths.
+
+    Setup is committed so worker-thread connections can see the fixtures;
+    initialized_db's savepoint would otherwise hide them from other sessions.
+    Cleanup uses purge_repository (same as test_gc) so committed CAS rows do not
+    poison later assert_gc_integrity checks.
+    """
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        repo = create_repository("devtable", f"ref-race-{uuid.uuid4().hex[:12]}", None)
+        assert repo is not None
+        repo_id = repo.id
+        try:
+            subject_manifest, _ = _create_manifest_in_repo(repo, "img-ref-race")
+            assert retarget_tag("v1.0", subject_manifest.id) is not None
+            subject_manifest_id = subject_manifest.id
+
+            referrer_manifest, _ = _create_manifest_in_repo(repo, "ref-race")
+            Manifest.update(subject=subject_manifest.digest).where(
+                Manifest.id == referrer_manifest.id
+            ).execute()
+            temp_tag = create_temporary_tag_if_necessary(
+                referrer_manifest, 300, skip_expiration=True
+            )
+            assert temp_tag is not None
+            assert temp_tag.lifetime_end_ms is None
+            temp_tag_id = temp_tag.id
+
+            db.commit()
+
+            barrier = threading.Barrier(2, timeout=10)
+            retarget_done = threading.Event()
+            errors = []
+            results = {}
+            expire_tls = threading.local()
+            real_reset = reset_referrer_manifest_expiration
+
+            def reset_seam(*args, **kwargs):
+                if getattr(expire_tls, "wait_for_retarget", False):
+                    if not retarget_done.wait(timeout=10):
+                        raise TimeoutError("timed out waiting for concurrent retarget")
+                return real_reset(*args, **kwargs)
+
+            def thread_delete():
+                try:
+                    barrier.wait()
+                    expire_tls.wait_for_retarget = True
+                    with db.connection_context():
+                        results["deleted"] = delete_tag(repo_id, "v1.0")
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+
+            def thread_retarget():
+                try:
+                    barrier.wait()
+                    with db.connection_context():
+                        results["retarget"] = retarget_tag("v2.0", subject_manifest_id)
+                    retarget_done.set()
+                except Exception as exc:  # pragma: no cover - surfaced via errors list
+                    errors.append(exc)
+                    retarget_done.set()
+
+            with patch(
+                "data.model.oci.tag.reset_referrer_manifest_expiration",
+                side_effect=reset_seam,
+            ):
+                t_delete = threading.Thread(target=thread_delete)
+                t_retarget = threading.Thread(target=thread_retarget)
+                t_delete.start()
+                t_retarget.start()
+                t_delete.join(timeout=15)
+                t_retarget.join(timeout=15)
+                assert not t_delete.is_alive(), "delete worker did not finish within timeout"
+                assert not t_retarget.is_alive(), "retarget worker did not finish within timeout"
+
+            assert not errors, errors
+            assert results.get("deleted") is not None
+            assert results.get("retarget") is not None
+            assert get_tag(repo_id, "v2.0") is not None
+            refreshed = Tag.get_by_id(temp_tag_id)
+            assert refreshed.lifetime_end_ms is None
+        finally:
+            try:
+                repo_to_purge = Repository.get_by_id(repo_id)
+            except Repository.DoesNotExist:
+                repo_to_purge = None
+            if repo_to_purge is not None:
+                model.gc.purge_repository(repo_to_purge, force=True)
+            db.commit()
+
+
+def test_remove_tag_from_timemachine_expires_referrer_temp_tags(initialized_db):
+    """Permanently deleting the final visible subject tag via time-machine
+    removal should expire its referrer's $temp-* tag."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "tm_subject")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "tm_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+        result = remove_tag_from_timemachine(
+            repo.id, "v1.0", subject_manifest.id, include_submanifests=False, is_alive=False
+        )
+        assert result is True
+
+        expiration_ms = get_user("devtable").removed_tag_expiration_s * 1000
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms() - expiration_ms
+
+
+def test_delete_tag_expires_referrer_temp_tags(initialized_db):
+    """When the last tag on a subject manifest is deleted, $temp-* tags for
+    OCI 1.1 referrer manifests should be expired."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "subject1")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "referrer1")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.hidden is True
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_delete_tag_keeps_referrer_if_other_tags_exist(initialized_db):
+    """$temp-* referrer tags should NOT be expired if the subject manifest
+    still has other live tags."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "subject2")
+        tag1 = retarget_tag("v1.0", subject_manifest.id)
+        tag2 = retarget_tag("latest", subject_manifest.id)
+        assert tag1 is not None
+        assert tag2 is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "referrer2")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is None
+
+        delete_tag(repo.id, "latest")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_delete_tags_for_manifest_expires_referrer_temp_tags(initialized_db):
+    """Deleting all tags on a subject manifest via delete_tags_for_manifest
+    should expire referrer $temp-* tags."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "dtfm_subject")
+        tag = retarget_tag("v1.0", subject_manifest.id)
+        assert tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "dtfm_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.hidden is True
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tags_for_manifest(subject_manifest)
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_retarget_tag_expires_referrer_temp_tags(initialized_db):
+    """Overwriting the subject's last tag with a different manifest (e.g.
+    pushing a new :latest after cosign sign) must expire its referrers'
+    $temp-* tags, just like an explicit delete does."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "retarget_subject")
+        assert retarget_tag("latest", subject_manifest.id) is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "retarget_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        new_manifest, _ = create_manifest_for_testing(repo, "retarget_new")
+        assert retarget_tag("latest", new_manifest.id) is not None
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_retarget_tag_revives_referrer_temp_tags(initialized_db):
+    """Restoring a subject tag (time-machine restore, i.e. retarget with
+    is_reversion=True) must clear the referrer temp-tag expiry applied when
+    the tag was deleted, so GC does not drop signatures of re-tagged images."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(repo, "revive_subject")
+        assert retarget_tag("v1.0", subject_manifest.id) is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(repo, "revive_referrer")
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+
+        temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        delete_tag(repo.id, "v1.0")
+        assert Tag.get_by_id(temp_tag.id).lifetime_end_ms is not None
+
+        assert retarget_tag("v1.0", subject_manifest.id, is_reversion=True) is not None
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is None
+
+
+def _create_referrer_for_manifest(repo, subject_manifest, differentiation_field):
+    referrer_manifest, _ = create_manifest_for_testing(repo, differentiation_field)
+    Manifest.update(subject=subject_manifest.digest).where(
+        Manifest.id == referrer_manifest.id
+    ).execute()
+    temp_tag = create_temporary_tag_if_necessary(referrer_manifest, 300, skip_expiration=True)
+    assert temp_tag is not None
+    assert temp_tag.lifetime_end_ms is None
+    return temp_tag
+
+
+def test_delete_tag_keeps_referrer_when_manifest_is_child_of_tagged_index(initialized_db):
+    """A per-arch manifest that loses its own alias but is still served by a
+    tagged manifest index is still pullable: its referrers must be kept."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        index_tag = _create_manifest_list(repo)
+        assert index_tag is not None
+        index_manifest = index_tag.manifest
+
+        child_manifests = list(
+            ManifestChild.select(ManifestChild.child_manifest).where(
+                ManifestChild.manifest == index_manifest
+            )
+        )
+        assert len(child_manifests) == 2
+        child_manifest = child_manifests[0].child_manifest
+
+        # Give the child its own alias and attach a referrer to it.
+        assert retarget_tag("amd64", child_manifest.id) is not None
+        temp_tag = _create_referrer_for_manifest(repo, child_manifest, "index_child_ref")
+
+        # Delete the child's own alias; the index tag still serves the child.
+        delete_tag(repo.id, "amd64")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is None
+
+        # Deleting the index's tag as well makes the child unreachable, so
+        # its referrers are expired.
+        delete_tag(repo.id, "manifestlist")
+
+        refreshed = Tag.get_by_id(temp_tag.id)
+        assert refreshed.lifetime_end_ms is not None
+        assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_delete_tag_expires_referrers_of_child_manifests(initialized_db):
+    """Deleting the last tag on a manifest index must also expire referrers
+    attached to its per-arch children (cosign sign --recursive), not only
+    referrers of the index itself."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+        index_tag = _create_manifest_list(repo)
+        assert index_tag is not None
+        index_manifest = index_tag.manifest
+
+        child_manifests = list(
+            ManifestChild.select(ManifestChild.child_manifest).where(
+                ManifestChild.manifest == index_manifest
+            )
+        )
+        child_manifest = child_manifests[0].child_manifest
+
+        child_temp_tag = _create_referrer_for_manifest(repo, child_manifest, "recursive_child_ref")
+        index_temp_tag = _create_referrer_for_manifest(repo, index_manifest, "recursive_index_ref")
+
+        delete_tag(repo.id, "manifestlist")
+
+        for temp_tag in (child_temp_tag, index_temp_tag):
+            refreshed = Tag.get_by_id(temp_tag.id)
+            assert refreshed.lifetime_end_ms is not None
+            assert refreshed.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
+def test_expire_orphaned_referrer_temp_tags(initialized_db):
+    """The GC-time sweep expires referrer $temp-* tags for subjects that
+    lost their last alias without an explicit delete (e.g. a tag expiring on
+    its own), and leaves referrers of still-live subjects alone."""
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repo = create_repository("devtable", "newrepo", None)
+
+        # Live subject: keeps its referrer.
+        live_subject, _ = create_manifest_for_testing(repo, "sweep_live_subject")
+        assert retarget_tag("live", live_subject.id) is not None
+        live_temp_tag = _create_referrer_for_manifest(repo, live_subject, "sweep_live_ref")
+
+        # Dead subject: its only tag expired on its own.
+        dead_subject, _ = create_manifest_for_testing(repo, "sweep_dead_subject")
+        dead_tag = retarget_tag("dead", dead_subject.id)
+        assert dead_tag is not None
+        dead_temp_tag = _create_referrer_for_manifest(repo, dead_subject, "sweep_dead_ref")
+        set_tag_end_ms(dead_tag, get_epoch_timestamp_ms() - 1000)
+
+        # The dead subject's referrer has two alive hidden $temp-* tags (the
+        # non-expiring one from the referrers API and the short-lived one from
+        # its by-digest creation); both are expired.
+        assert expire_orphaned_referrer_temp_tags(repo.id) == 2
+
+        assert Tag.get_by_id(live_temp_tag.id).lifetime_end_ms is None
+        expired = Tag.get_by_id(dead_temp_tag.id)
+        assert expired.lifetime_end_ms is not None
+        assert expired.lifetime_end_ms <= get_epoch_timestamp_ms()
