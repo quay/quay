@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from buildman.interface import BuildJobResult
-from buildman.manager.ephemeral import CANCEL_PREFIX, EphemeralBuilderManager
+from buildman.manager.ephemeral import (
+    CANCEL_PREFIX,
+    EPHEMERAL_API_TIMEOUT,
+    EphemeralBuilderManager,
+)
 from util import slash_join
 
 
@@ -69,3 +73,42 @@ def test_cancel_does_not_raise_when_completion_fails(manager):
 
     with patch.object(manager, "on_job_complete", side_effect=RuntimeError("boom")):
         _cancel(manager, build_uuid)
+
+
+def _schedule_with_cancel_during_start(manager, build_uuid, stop_side_effect=None):
+    _set_job(manager, build_uuid)
+    job_key = manager._job_key(build_uuid)
+
+    executor = MagicMock(minimum_retry_threshold=0, setup_time=60, running_builders_count=0)
+    executor.name = "kubernetes"
+
+    def start_builder(*_):
+        manager._orchestrator.delete_key(job_key)  # cancel lands mid-start
+        return "builder-1"
+
+    executor.start_builder.side_effect = start_builder
+    executor.stop_builder.side_effect = stop_side_effect
+    manager._ordered_executors = [executor]
+
+    build_job = MagicMock(build_uuid=build_uuid, namespace="ns", retries_remaining=1)
+    with (
+        patch.object(manager, "_build_job_from_job_id", return_value=build_job),
+        patch.object(manager, "generate_build_token", return_value="token"),
+    ):
+        return manager.schedule(build_uuid), executor
+
+
+def test_schedule_stops_builder_when_job_cancelled_during_start(manager):
+    result, executor = _schedule_with_cancel_during_start(manager, str(uuid.uuid4()))
+
+    assert result == (False, EPHEMERAL_API_TIMEOUT)
+    executor.stop_builder.assert_called_once_with("builder-1")
+
+
+def test_schedule_returns_when_stopping_builder_fails(manager):
+    result, executor = _schedule_with_cancel_during_start(
+        manager, str(uuid.uuid4()), stop_side_effect=RuntimeError("boom")
+    )
+
+    assert result == (False, EPHEMERAL_API_TIMEOUT)
+    executor.stop_builder.assert_called_once_with("builder-1")

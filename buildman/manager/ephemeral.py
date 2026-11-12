@@ -700,6 +700,14 @@ class EphemeralBuilderManager(BuildStateInterface):
         # Mark the job as scheduled
         setup_time = started_with_executor.setup_time or EPHEMERAL_SETUP_TIMEOUT
         if not self.job_scheduled(job_id, started_with_executor.name, execution_id, setup_time):
+            # The job key can vanish (e.g. cancelled) while the builder starts; stop the
+            # builder so it does not run unowned until the executor's lifetime limit.
+            try:
+                started_with_executor.stop_builder(execution_id)
+            except Exception:
+                logger.exception(
+                    "Failed to stop builder %s for unscheduled job %s", execution_id, job_id
+                )
             return False, EPHEMERAL_API_TIMEOUT
 
         self._write_metric_spec(build_job.build_uuid, metric_spec)
