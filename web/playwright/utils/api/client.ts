@@ -1901,6 +1901,7 @@ export class ApiClient {
     repo: string,
     dockerfileContent = 'FROM scratch\n',
     dockerTags: string[] = [],
+    pullRobot?: string,
   ): Promise<{id: string}> {
     const token = await this.fetchToken();
 
@@ -1956,6 +1957,7 @@ export class ApiClient {
         data: {
           file_id: fileId,
           ...(dockerTags.length > 0 && {docker_tags: dockerTags}),
+          ...(pullRobot && {pull_robot: pullRobot}),
         },
       },
     );
