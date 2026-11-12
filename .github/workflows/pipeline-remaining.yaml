@@ -36,6 +36,8 @@ jobs:
           set -euo pipefail
           pr=$(gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f head="$OWNER:$BRANCH" |
             jq -r --arg sha "$SHA" --arg repo "$REPO" 'first(.[] | select(.head.sha == $sha and .head.repo.full_name == $repo) | .number) // empty')
-          if [ -n "$pr" ]; then
-            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
-          fi
+          [ -n "$pr" ] || exit 0
+          # The PR can be retargeted or pushed to after the list call; skip a stale head.
+          current=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")
+          jq -e --arg sha "$SHA" --arg repo "$REPO" '.state == "open" and .base.ref == "master" and .head.sha == $sha and .head.repo.full_name == $repo' <<<"$current" >/dev/null || exit 0
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
