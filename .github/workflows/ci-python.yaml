@@ -376,10 +376,12 @@ jobs:
         # Unfortunately, several trackbacks are logged immediately after the Quay
         # container is started, and extra one is generated during OCI tests.
         # Given that the OCI conformance test would report any failures anyway,
-        # we will simply log all the tracebacks and report their number, without explicitly
+        # we will simply log all the tracebacks, without explicitly
         # exiting.
         echo "Tracebacks:"
-        grep -A5 "Traceback" .logs/quay.log
+        # grep exits with 1 when nothing matches (a clean run); that is fine.
+        # Exit status 2 or higher (e.g. missing log file) is a real error.
+        grep -A5 "Traceback" .logs/quay.log || [ $? -eq 1 ]
       if: always()
 
     - name: Stop Quay
