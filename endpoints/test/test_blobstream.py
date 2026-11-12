@@ -220,6 +220,61 @@ class TestBlobstreamSuccess:
 
         assert resp.status_code == 502
 
+    @pytest.mark.parametrize("encoding", ["gzip", "GZIP", "deflate", "br", "zstd", "gzip, br"])
+    def test_encoded_upstream_response_returns_502(self, client, url_proxy, encoding):
+        """
+        Verifies that an upstream which ignores Accept-Encoding: identity and
+        applies a content encoding is rejected with a 502 instead of streaming
+        decoded bytes under the encoded Content-Length/Content-Range. No body
+        bytes may be sent and the upstream response must be closed.
+        """
+        path = _make_path(url_proxy)
+        fake_resp = FakeUpstreamResponse(
+            [b"should-never-be-sent"],
+            headers={
+                "content-length": "20",
+                "content-encoding": encoding,
+                "content-type": "application/octet-stream",
+            },
+        )
+        mock_proxy_instance = MagicMock()
+        mock_proxy_instance.get_blob.return_value = fake_resp
+
+        with (
+            patch("endpoints.blobstream.get_proxy_cache_config_for_org", return_value=MagicMock()),
+            patch("endpoints.blobstream.Proxy", return_value=mock_proxy_instance),
+        ):
+            resp = client.get(path)
+
+        assert resp.status_code == 502
+        assert b"should-never-be-sent" not in resp.get_data()
+        assert fake_resp.closed is True
+
+    @pytest.mark.parametrize("headers_extra", [{}, {"content-encoding": "identity"}])
+    def test_identity_or_missing_content_encoding_is_streamed(
+        self, client, url_proxy, headers_extra
+    ):
+        """
+        Verifies that a missing or explicit identity Content-Encoding does not
+        trigger the rejection.
+        """
+        path = _make_path(url_proxy)
+        fake_resp = FakeUpstreamResponse(
+            [b"hello ", b"world"],
+            headers={"content-length": "11", **headers_extra},
+        )
+        mock_proxy_instance = MagicMock()
+        mock_proxy_instance.get_blob.return_value = fake_resp
+
+        with (
+            patch("endpoints.blobstream.get_proxy_cache_config_for_org", return_value=MagicMock()),
+            patch("endpoints.blobstream.Proxy", return_value=mock_proxy_instance),
+        ):
+            resp = client.get(path)
+
+        assert resp.status_code == 200
+        assert resp.get_data() == b"hello world"
+
     def test_stream_failure_is_logged_and_reraised(self, client, url_proxy, caplog):
         """
         Verifies that the exception is re-raised and properly passed
