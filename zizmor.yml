@@ -3,7 +3,7 @@ rules:
   # triggers to access secrets for labeling, reporting, and deployments.
   # frozen-branch-check uses pull_request_target solely to read vars context
   # (no code checkout, no secret access).
-  # prow-after-ci reads PR metadata only and checks out no code.
+  # prow-after-ci checks out no code; it reads PR metadata and posts one comment.
   dangerous-triggers:
     ignore:
       - .github/workflows/frozen-branch-check.yaml

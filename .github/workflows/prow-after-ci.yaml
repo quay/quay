@@ -14,7 +14,7 @@ jobs:
     # The path pins sentinel.yaml: the legacy CI.yaml on release branches is also named CI.
     if: github.event.workflow_run.path == '.github/workflows/sentinel.yaml' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
     concurrency:
-      group: prow-after-ci-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+      group: prow-after-ci-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
       cancel-in-progress: true
     timeout-minutes: 5
     permissions:
