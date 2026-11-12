@@ -160,6 +160,22 @@ def get_upstream_content(rest):
         logger.exception("Failed to fetch blob from upstream registry: %s", e)
         abort(502)
 
+    # We ask the upstream for an identity encoding. If it applies a content encoding anyway,
+    # iter_content would decode it while Content-Length/Content-Range still describe the
+    # encoded bytes, so refuse rather than serve a corrupt blob.
+    content_encoding = upstream_resp.headers.get("content-encoding", "identity").strip().lower()
+    if content_encoding not in ("", "identity"):
+        logger.error(
+            "Upstream returned unexpected Content-Encoding %s, digest=%s repo=%s upstream=%s://%s",
+            content_encoding,
+            blob_sha,
+            upstream_repo,
+            scheme,
+            upstream_hostname,
+        )
+        upstream_resp.close()
+        abort(502)
+
     def generate():
         """
         Generator function that yields the upstream blob in chunks to
