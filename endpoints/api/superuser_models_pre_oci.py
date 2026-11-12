@@ -127,9 +127,7 @@ class PreOCIModel(SuperuserDataInterface):
 
     def delete_service_key(self, kid):
         try:
-            key = model.service_keys.get_service_key(
-                kid, alive_only=False, approved_only=False
-            )
+            key = model.service_keys.get_service_key(kid, alive_only=False, approved_only=False)
             key = model.service_keys.delete_service_key(kid, key.service)
         except model.ServiceKeyDoesNotExist:
             raise ServiceKeyDoesNotExist
