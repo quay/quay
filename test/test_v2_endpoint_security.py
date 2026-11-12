@@ -1,14 +1,12 @@
 import unittest
 import json
 
+from registry import application as app
+
 import endpoints.decorated  # Register the various exceptions via decorators.
 
-from app import app
-from endpoints.v2 import v2_bp
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.specs import build_v2_index_specs
-
-app.register_blueprint(v2_bp, url_prefix="/v2")
 
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
