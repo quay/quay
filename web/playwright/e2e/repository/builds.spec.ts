@@ -1,4 +1,5 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers, uniqueName} from '../../fixtures';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Repository Builds',
@@ -80,6 +81,89 @@ test.describe(
 
       await expect(authenticatedPage.getByText(tagName)).toBeVisible();
     });
+
+    test(
+      'build from private base image runs RUN step and pushes output tag',
+      {tag: '@container'},
+      async ({authenticatedPage, api, quayConfig}) => {
+        // Seeding the base and pulling it in the build add to the build time.
+        test.setTimeout(300_000);
+        const user = getTestUsers(quayConfig).user;
+        const org = await api.organization('bldbase');
+        const base = await api.repository(org.name, 'base', 'private');
+        await pushImage(
+          org.name,
+          base.name,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const robot = await api.robot(org.name, 'pullbot');
+        await api.repositoryPermission(
+          org.name,
+          base.name,
+          'user',
+          robot.fullName,
+          'read',
+        );
+
+        const repo = await api.repository(org.name, 'build-run');
+        const tagName = 'e2e-run';
+        const marker = uniqueName('e2e-run-marker');
+        // The builder pulls the base from Quay, so the reference uses the
+        // registry host Quay advertises, not the runner's API_URL host.
+        const registry = quayConfig.config.SERVER_HOSTNAME as string;
+        // The logged RUN command keeps the arithmetic unexpanded, so only the
+        // step's output carries the -42 suffix.
+        const output = `${marker}-42`;
+        const build = await api.build(
+          org.name,
+          repo.name,
+          `FROM ${registry}/${org.name}/${base.name}:latest\nRUN echo ${marker}-$((6*7))\n`,
+          [tagName],
+          robot.fullName,
+        );
+
+        const result = await api.raw.waitForBuildPhase(
+          org.name,
+          repo.name,
+          build.buildId,
+        );
+        expect(result.phase, result.error).toBe('complete');
+
+        const logs = await api.raw.getBuildLogs(
+          org.name,
+          repo.name,
+          build.buildId,
+        );
+        expect(logs.logs.map((log) => log.message).join('\n')).toContain(
+          output,
+        );
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}/build/${build.buildId}`,
+        );
+        // The output nests under a command or a phase header depending on
+        // whether the builder's step lines match `Step N/M :`, so expand all.
+        const headers = authenticatedPage.locator('.log-header');
+        await expect(headers.first()).toBeVisible();
+        for (const header of await headers.all()) {
+          await header.click();
+        }
+        await expect(
+          authenticatedPage
+            .locator('.container-logs')
+            .getByText(output)
+            .first(),
+        ).toBeVisible();
+
+        const tags = await api.raw.getTags(org.name, repo.name, {
+          specificTag: tagName,
+        });
+        expect(tags.tags[0]?.manifest_digest).toMatch(/^sha256:/);
+      },
+    );
 
     test('build logs are visible', async ({authenticatedPage, api}) => {
       const org = await api.organization('buildlogs');
