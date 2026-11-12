@@ -1,5 +1,40 @@
-import {test, expect, getTestUsers, uniqueName} from '../../fixtures';
+import {
+  test,
+  expect,
+  getTestUsers,
+  uniqueName,
+  QuayConfig,
+  TestApi,
+} from '../../fixtures';
 import {pushImage} from '../../utils/container';
+
+// A private base with a shell, plus a robot that can pull it, so the builder
+// runs real steps. The FROM host is SERVER_HOSTNAME, the host the builder can
+// reach.
+async function seedPrivateBase(
+  api: TestApi,
+  quayConfig: QuayConfig,
+  orgPrefix: string,
+) {
+  const user = getTestUsers(quayConfig).user;
+  const org = await api.organization(orgPrefix);
+  const base = await api.repository(org.name, 'base', 'private');
+  await pushImage(org.name, base.name, 'latest', user.username, user.password);
+  const robot = await api.robot(org.name, 'pullbot');
+  await api.repositoryPermission(
+    org.name,
+    base.name,
+    'user',
+    robot.fullName,
+    'read',
+  );
+  const registry = quayConfig.config.SERVER_HOSTNAME as string;
+  return {
+    org: org.name,
+    from: `${registry}/${org.name}/${base.name}:latest`,
+    robot: robot.fullName,
+  };
+}
 
 test.describe(
   'Repository Builds',
@@ -88,52 +123,30 @@ test.describe(
       async ({authenticatedPage, api, quayConfig}) => {
         // Seeding the base and pulling it in the build add to the build time.
         test.setTimeout(300_000);
-        const user = getTestUsers(quayConfig).user;
-        const org = await api.organization('bldbase');
-        const base = await api.repository(org.name, 'base', 'private');
-        await pushImage(
-          org.name,
-          base.name,
-          'latest',
-          user.username,
-          user.password,
-        );
-
-        const robot = await api.robot(org.name, 'pullbot');
-        await api.repositoryPermission(
-          org.name,
-          base.name,
-          'user',
-          robot.fullName,
-          'read',
-        );
-
-        const repo = await api.repository(org.name, 'build-run');
+        const base = await seedPrivateBase(api, quayConfig, 'bldbase');
+        const repo = await api.repository(base.org, 'build-run');
         const tagName = 'e2e-run';
         const marker = uniqueName('e2e-run-marker');
-        // The builder pulls the base from Quay, so the reference uses the
-        // registry host Quay advertises, not the runner's API_URL host.
-        const registry = quayConfig.config.SERVER_HOSTNAME as string;
         // The logged RUN command keeps the arithmetic unexpanded, so only the
         // step's output carries the -42 suffix.
         const output = `${marker}-42`;
         const build = await api.build(
-          org.name,
+          base.org,
           repo.name,
-          `FROM ${registry}/${org.name}/${base.name}:latest\nRUN echo ${marker}-$((6*7))\n`,
+          `FROM ${base.from}\nRUN echo ${marker}-$((6*7))\n`,
           [tagName],
-          robot.fullName,
+          base.robot,
         );
 
         const result = await api.raw.waitForBuildPhase(
-          org.name,
+          base.org,
           repo.name,
           build.buildId,
         );
         expect(result.phase, result.error).toBe('complete');
 
         const logs = await api.raw.getBuildLogs(
-          org.name,
+          base.org,
           repo.name,
           build.buildId,
         );
@@ -142,7 +155,7 @@ test.describe(
         );
 
         await authenticatedPage.goto(
-          `/repository/${org.name}/${repo.name}/build/${build.buildId}`,
+          `/repository/${base.org}/${repo.name}/build/${build.buildId}`,
         );
         // The output nests under a command or a phase header depending on
         // whether the builder's step lines match `Step N/M :`, so expand all.
@@ -158,10 +171,115 @@ test.describe(
             .first(),
         ).toBeVisible();
 
-        const tags = await api.raw.getTags(org.name, repo.name, {
+        const tags = await api.raw.getTags(base.org, repo.name, {
           specificTag: tagName,
         });
         expect(tags.tags[0]?.manifest_digest).toMatch(/^sha256:/);
+      },
+    );
+
+    test(
+      'failing Dockerfile build ends in error phase',
+      {tag: '@container'},
+      async ({authenticatedPage, api, quayConfig}) => {
+        test.setTimeout(300_000);
+        const base = await seedPrivateBase(api, quayConfig, 'bldfail');
+        const repo = await api.repository(base.org, 'build-fail');
+        const marker = uniqueName('e2e-fail-marker');
+        const build = await api.build(
+          base.org,
+          repo.name,
+          `FROM ${base.from}\nRUN echo ${marker}-$((6*7)) && exit 1\n`,
+          ['e2e-fail'],
+          base.robot,
+        );
+
+        const result = await api.raw.waitForBuildPhase(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(result.phase, result.error).toBe('error');
+
+        // The marker's output proves the RUN step ran, so the error came from
+        // the step and not from pulling the base.
+        const logs = await api.raw.getBuildLogs(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(logs.logs.map((log) => log.message).join('\n')).toContain(
+          `${marker}-42`,
+        );
+
+        await authenticatedPage.goto(
+          `/repository/${base.org}/${repo.name}/build/${build.buildId}`,
+        );
+        await expect(
+          authenticatedPage.getByText('Dockerfile build failed'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Cancel build'}),
+        ).not.toBeVisible();
+      },
+    );
+
+    test(
+      'cancelling a running build ends in cancelled phase',
+      {tag: '@container'},
+      async ({authenticatedPage, api, quayConfig}) => {
+        test.setTimeout(300_000);
+        const base = await seedPrivateBase(api, quayConfig, 'bldcancel');
+        const repo = await api.repository(base.org, 'build-cancel');
+        const build = await api.build(
+          base.org,
+          repo.name,
+          `FROM ${base.from}\nRUN sleep 600\n`,
+          ['e2e-cancel'],
+          base.robot,
+        );
+
+        // Stop polling at 'building' too; a terminal phase here means the
+        // build never got far enough to be cancelled mid-run.
+        const running = await api.raw.waitForBuildPhase(
+          base.org,
+          repo.name,
+          build.buildId,
+          [
+            'building',
+            'complete',
+            'error',
+            'internalerror',
+            'cancelled',
+            'expired',
+          ],
+        );
+        expect(running.phase, running.error).toBe('building');
+
+        const buildPage = `/repository/${base.org}/${repo.name}/build/${build.buildId}`;
+        await authenticatedPage.goto(buildPage);
+        await authenticatedPage
+          .getByRole('button', {name: 'Cancel build'})
+          .click();
+        await authenticatedPage
+          .getByRole('dialog')
+          .getByRole('button', {name: 'Cancel build'})
+          .click();
+        await expect(
+          authenticatedPage.getByText(`Build ${build.buildId} cancelled`),
+        ).toBeVisible();
+
+        const status = await api.raw.getBuildStatus(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(status.phase).toBe('cancelled');
+
+        await authenticatedPage.goto(buildPage);
+        await expect(
+          authenticatedPage.getByText('This build was previously cancelled.'),
+        ).toBeVisible();
       },
     );
 
