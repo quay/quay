@@ -45,16 +45,17 @@ var knownUnmapped = map[string]bool{
 	"USERFILES_PATH":                    true,
 
 	// Audit/Logging
-	"ACTION_LOG_AUDIT_LOGINS":          true,
-	"ACTION_LOG_AUDIT_LOGIN_FAILURES":  true,
-	"ACTION_LOG_AUDIT_PULL_FAILURES":   true,
-	"ACTION_LOG_AUDIT_PUSH_FAILURES":   true,
-	"ACTION_LOG_AUDIT_DELETE_FAILURES": true,
-	"ACTION_LOG_ARCHIVE_LOCATION":      true,
-	"ACTION_LOG_ARCHIVE_PATH":          true,
-	"ACTION_LOG_ROTATION_THRESHOLD":    true,
-	"LOG_ARCHIVE_LOCATION":             true,
-	"LOG_ARCHIVE_PATH":                 true,
+	"LOG_EXPORT_URL_SCHEME_REQUIRES_HTTPS": true,
+	"ACTION_LOG_AUDIT_LOGINS":              true,
+	"ACTION_LOG_AUDIT_LOGIN_FAILURES":      true,
+	"ACTION_LOG_AUDIT_PULL_FAILURES":       true,
+	"ACTION_LOG_AUDIT_PUSH_FAILURES":       true,
+	"ACTION_LOG_AUDIT_DELETE_FAILURES":     true,
+	"ACTION_LOG_ARCHIVE_LOCATION":          true,
+	"ACTION_LOG_ARCHIVE_PATH":              true,
+	"ACTION_LOG_ROTATION_THRESHOLD":        true,
+	"LOG_ARCHIVE_LOCATION":                 true,
+	"LOG_ARCHIVE_PATH":                     true,
 
 	// OAuth
 	"DIRECT_OAUTH_CLIENTID_WHITELIST":       true,
