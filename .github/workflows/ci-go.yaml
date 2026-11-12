@@ -380,10 +380,12 @@ jobs:
           echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
             > ~/.docker/config.json
 
+      # Temporary pin: ocp/latest (OCP 5.0.1) ships no oc-mirror.tar.gz. Return to
+      # latest, or bump the stream, once a newer stream publishes it.
       - name: Install oc-mirror
         run: |
           curl -fsSL -o /tmp/oc-mirror.tar.gz \
-            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.22/oc-mirror.tar.gz
           sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
           sudo chmod 755 /usr/local/bin/oc-mirror
           oc-mirror version
