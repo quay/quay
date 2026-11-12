@@ -378,10 +378,8 @@ jobs:
         # Given that the OCI conformance test would report any failures anyway,
         # we will simply log all the tracebacks and report their number, without explicitly
         # exiting.
-        TRACEBACKS=$(grep Traceback .logs/quay.log | wc -l)
-        if [ "$TRACEBACKS" -gt 4 ]; then
-          echo >&2 ERROR: Traceback detected, check Quay logs.
-        fi
+        echo "Tracebacks:"
+        grep -A5 "Traceback" .logs/quay.log
       if: always()
 
     - name: Stop Quay
