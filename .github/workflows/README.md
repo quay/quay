@@ -56,6 +56,15 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 1. Add `is-pr` input to the reusable workflow if it doesn't have one
 2. Use `if: ${{ inputs.is-pr }}` on the job
 
+## Prow after CI
+
+`prow-after-ci.yaml` runs when `CI` succeeds on a pull request to an enrolled base (`master`). It never checks out PR code. For the PR's current HEAD it:
+
+1. Comments `/pipeline remaining` once, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`.
+2. Publishes the `ci/quay-deps-prow` check: success when the PR changes none of `requirements.txt`, `requirements-build.txt`, `constraints.txt`, `pyproject.toml`; otherwise it waits for `ci/prow/gcp-gcs` and mirrors its result, failing after 5 hours without one. The check does not follow a later `/retest`: once `ci/prow/gcp-gcs` passes, re-run the `Prow After CI` workflow to update it.
+
+Logic and tests live in `.github/scripts/prow-after-ci.py` and `test_prow_after_ci.py`.
+
 ## GitHub UI
 
 Each reusable workflow appears as a single collapsible job. Click through to see individual sub-job results.
