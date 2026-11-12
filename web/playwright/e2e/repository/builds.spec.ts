@@ -151,8 +151,16 @@ test.describe(
           .getByRole('dialog')
           .getByRole('button', {name: 'Cancel build'})
           .click();
+        // The success alert is cleared by the redirect to the builds tab, so
+        // assert on the build's row there instead.
+        await expect(authenticatedPage).toHaveURL(/\?tab=builds/);
+        const buildRow = authenticatedPage.getByRole('row').filter({
+          has: authenticatedPage.getByRole('link', {
+            name: build.buildId.substring(0, 8),
+          }),
+        });
         await expect(
-          authenticatedPage.getByText(`Build ${build.buildId} cancelled`),
+          buildRow.getByRole('gridcell', {name: 'cancelled'}),
         ).toBeVisible();
 
         const status = await api.raw.getBuildStatus(
