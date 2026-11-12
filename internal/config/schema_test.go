@@ -247,6 +247,7 @@ var knownUnmapped = map[string]bool{
 	"CREATE_NAMESPACE_ON_PUSH":                       true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
 	"DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT":          true,
+	"DEFAULT_NGINX_KEEPALIVE_TIMEOUT":                true,
 	"DISABLE_PUSHES":                                 true,
 	"ENTERPRISE_LOGO_URL":                            true,
 	"EXPIRED_APP_SPECIFIC_TOKEN_GC":                  true,
