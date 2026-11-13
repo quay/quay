@@ -1,11 +1,51 @@
 #!/usr/bin/env python3
-"""Remind contributors about API discovery annotations without importing Quay."""
+"""Warn about API v1 discovery metadata omissions without importing Quay.
+
+Audit explicitly declared GET, POST, PUT, PATCH, and DELETE handlers on @resource
+classes for a single @nickname with a non-empty literal operation ID or a list
+of distinct non-empty IDs. Missing nicknames silently omit operations from
+/api/v1/discovery, including with ?internal=true. Unverifiable custom inherited
+handlers receive a reminder to check their metadata manually.
+
+Inspect non-test Python files under endpoints/api, including internal and
+feature-gated resources. Filename arguments restrict reported findings; no
+arguments audits all eligible files. This static audit does not establish
+runtime visibility. Cross-handler ID collisions and route-count/cardinality
+checks are outside its scope. Runtime discovery detects duplicate or exhausted
+operation IDs for enabled routes.
+
+Findings and inspection failures are advisory: the entry point reports warnings
+and exits zero. This hook must not block commits or require a running Quay stack.
+"""
 
 import ast
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+
+def escape(value, property_value=False):
+    """Escape workflow command data and optional annotation properties."""
+    value = str(value).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    if property_value:
+        value = value.replace(":", "%3A").replace(",", "%2C")
+    return value
+
+
+def warn(path, line, message, *, root, selected):
+    """Report a selected finding and return one, or zero when it is excluded."""
+    if path not in selected:
+        return 0
+    filename = str(path.relative_to(root))
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(
+            f"::warning file={escape(filename, True)},line={line},"
+            f"title=API discovery reminder::{escape(message)}"
+        )
+    else:
+        print(f"WARNING {filename}:{line}: {message}")
+    return 1
 
 
 def main():
@@ -31,34 +71,16 @@ def main():
 
     reminders = 0
 
-    def escape(value, property_value=False):
-        """Escape workflow command data and optional annotation properties."""
-        value = str(value).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-        if property_value:
-            value = value.replace(":", "%3A").replace(",", "%2C")
-        return value
-
-    def warn(path, line, message):
-        """Report advisory findings only for files selected by pre-commit."""
-        nonlocal reminders
-        if path not in selected:
-            return
-        reminders += 1
-        filename = str(path.relative_to(root))
-        if os.environ.get("GITHUB_ACTIONS") == "true":
-            print(
-                f"::warning file={escape(filename, True)},line={line},"
-                f"title=API discovery reminder::{escape(message)}"
-            )
-        else:
-            print(f"WARNING {filename}:{line}: {message}")
-
     for path in files:
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         except (OSError, UnicodeError, SyntaxError) as error:
-            warn(
-                path, getattr(error, "lineno", None) or 1, f"Could not inspect annotations: {error}"
+            reminders += warn(
+                path,
+                getattr(error, "lineno", None) or 1,
+                f"Could not inspect annotations: {error}",
+                root=root,
+                selected=selected,
             )
             continue
 
@@ -88,11 +110,13 @@ def main():
                 if decorator_name(base) not in {"ApiResource", "RepositoryParamResource"}
             ]
             if custom_bases:
-                warn(
+                reminders += warn(
                     path,
                     resource.lineno,
                     f"{resource.name} inherits from {', '.join(custom_bases)}; inherited HTTP "
                     "handlers cannot be verified statically. Check their @nickname(...) metadata.",
+                    root=root,
+                    selected=selected,
                 )
             for handler in resource.body:
                 if not isinstance(handler, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -102,18 +126,22 @@ def main():
                 label = f"{resource.name}.{handler.name}"
                 nicknames = [d for d in handler.decorator_list if decorator_name(d) == "nickname"]
                 if not nicknames:
-                    warn(
+                    reminders += warn(
                         path,
                         handler.lineno,
                         f"{label} is missing @nickname(...); its {handler.name.upper()} operation "
                         "will be omitted from /api/v1/discovery, including with ?internal=true.",
+                        root=root,
+                        selected=selected,
                     )
                     continue
                 if len(nicknames) != 1:
-                    warn(
+                    reminders += warn(
                         path,
                         handler.lineno,
                         f"{label} has multiple @nickname annotations; use one.",
+                        root=root,
+                        selected=selected,
                     )
                     continue
                 nickname = nicknames[0]
@@ -129,11 +157,13 @@ def main():
                     )
                     value = ast.literal_eval(value_node)
                 except (ValueError, TypeError, StopIteration):
-                    warn(
+                    reminders += warn(
                         path,
                         handler.lineno,
                         f"{label}: could not verify @nickname(...); use a non-empty literal "
                         "operation ID or a list of distinct IDs for multiple routes.",
+                        root=root,
+                        selected=selected,
                     )
                     continue
                 values = value if isinstance(value, list) else [value]
@@ -142,11 +172,13 @@ def main():
                     or any(not isinstance(item, str) or not item.strip() for item in values)
                     or len(set(values)) != len(values)
                 ):
-                    warn(
+                    reminders += warn(
                         path,
                         handler.lineno,
                         f"{label}: @nickname(...) needs a non-empty string or list of distinct "
                         "non-empty strings.",
+                        root=root,
+                        selected=selected,
                     )
                     continue
     print(
