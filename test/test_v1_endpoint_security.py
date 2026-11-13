@@ -2,14 +2,10 @@ import unittest
 import endpoints.decorated
 import json
 
-from app import app
+from registry import application as app
 from util.names import parse_namespace_repository
 from initdb import setup_database_for_testing, finished_database_for_testing
 from .specs import build_v1_index_specs
-
-from endpoints.v1 import v1_bp
-
-app.register_blueprint(v1_bp, url_prefix="/v1")
 
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
