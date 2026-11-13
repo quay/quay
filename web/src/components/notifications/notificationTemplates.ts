@@ -98,3 +98,65 @@ export function getNotificationMessage(notification: {
   }
   return template;
 }
+
+const mirrorKinds = [
+  'repo_mirror_sync_started',
+  'repo_mirror_sync_success',
+  'repo_mirror_sync_failed',
+];
+
+const buildKinds = [
+  'build_queued',
+  'build_start',
+  'build_success',
+  'build_failure',
+  'build_cancelled',
+];
+
+// Links each kind to the most specific React page its stored metadata names,
+// falling back to the repository or namespace page.
+export function getNotificationLink(notification: {
+  kind: string;
+  metadata?: any;
+}): string | null {
+  const metadata = notification.metadata;
+  if (!metadata) {
+    return null;
+  }
+  const {kind} = notification;
+  if (kind === 'quota_warning' || kind === 'quota_error') {
+    return metadata.namespace
+      ? `/organization/${metadata.namespace}?tab=Settings`
+      : null;
+  }
+  if (!metadata.repository) {
+    return metadata.namespace ? `/organization/${metadata.namespace}` : null;
+  }
+  const repositoryPage = `/repository/${metadata.repository}`;
+  const tagPage = (tag: string) => `${repositoryPage}/tag/${tag}`;
+  const tags: string[] = metadata.updated_tags ?? metadata.tags ?? [];
+  if (kind === 'repo_push') {
+    if (tags.length === 1) {
+      return tagPage(tags[0]);
+    }
+    return tags.length ? `${repositoryPage}?tab=history` : repositoryPage;
+  }
+  if (kind === 'vulnerability_found') {
+    // Every tag in the payload points at the one scanned manifest; a digest
+    // stands in for the tag when the manifest has none.
+    if (tags.length && !tags[0].includes(':')) {
+      return `${tagPage(tags[0])}?tab=securityreport`;
+    }
+    return `${repositoryPage}?tab=tags`;
+  }
+  if (kind === 'repo_image_expiry') {
+    return tags.length === 1 ? tagPage(tags[0]) : `${repositoryPage}?tab=tags`;
+  }
+  if (mirrorKinds.includes(kind)) {
+    return `${repositoryPage}?tab=mirroring`;
+  }
+  if (buildKinds.includes(kind) && metadata.build_id) {
+    return `${repositoryPage}/build/${metadata.build_id}`;
+  }
+  return repositoryPage;
+}
