@@ -16,8 +16,7 @@ function isProgrammaticBootstrapEnabled(features: unknown): boolean {
   return featureMap.PROGRAMMATIC_BOOTSTRAP === true;
 }
 
-// Keep these tests outside the feature-gated suite: the loop also happens
-// when PROGRAMMATIC_BOOTSTRAP is disabled.
+// Execute these tests whether PROGRAMMATIC_BOOTSTRAP is enabled or disabled.
 test.describe(
   'Bootstrap token renewal method handling',
   {tag: ['@api', '@PROJQUAY-12443']},
