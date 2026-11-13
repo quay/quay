@@ -241,7 +241,18 @@ test.describe(
         await expect(
           authenticatedPage.locator('th').filter({hasText: 'Security'}),
         ).toBeVisible();
-        await expect(authenticatedPage.getByText('Queued')).toBeVisible();
+        // The scan may finish before the page renders, so the UI check accepts
+        // a resolved state; the queued-at-push contract is asserted via the API.
+        await expect(
+          authenticatedPage
+            .getByRole('row')
+            .filter({
+              has: authenticatedPage.getByRole('link', {name: 'latest'}),
+            })
+            .locator('td[data-label="Security"]'),
+        ).toHaveText(
+          /^(Queued|Failed|Unsupported|None Detected|\d+ (Critical|High|Medium|Low|Negligible|Unknown))$/,
+        );
       } finally {
         try {
           await api.deleteRepository(user.username, repoName);
