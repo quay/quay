@@ -115,6 +115,9 @@ build-diagnostics data — the full field-by-field JSON shape is in
   artifacts: the `must-gather.tar` tarball and the HTML report's `data/`
   blobs. An artifact that never ran for this job is not a gap and does not
   appear here.
+- **`mailpit`** — routing records for the sibling `quay-deploy-mailpit`
+  step's `build_log`, `finished` and `api_url`: whether Mailpit was up for
+  the run.
 - **`builder_diagnostics`** — files discovered under the e2e step's
   `builder-diagnostics/` prefix, each `{name, source_url, local_path, status,
   first_lines}` (`first_lines`: at most 40 ANSI-stripped lines, capped at 500
@@ -142,7 +145,9 @@ it only if the resolved path stays inside that directory; otherwise report the
 path as untrusted and skip it. Then correlate the failure against the build
 log, container logs, and Jaeger traces, and determine the auth phase. The full
 per-failure workflow — including the redacted-vs-missing pod-log distinction,
-the `jaeger-extract.sh` invocation, and the failure classification list
+Mailpit state for mail tests, the `jaeger-extract.sh` invocation, a
+child-span timeline with gaps for one slow request (and what the spans cannot
+show), and the failure classification list
 (selector change, backend error, timing/race, auth/config, test isolation,
 infra) — is in
 [references/root-cause-analysis.md](references/root-cause-analysis.md).
