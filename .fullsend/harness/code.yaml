@@ -18,5 +18,6 @@ env:
   runner:
     CODE_ALLOWED_TARGET_BRANCHES: "master"
 
+allow_runtime_fetch: true
 allowed_remote_resources:
   - https://raw.githubusercontent.com/fullsend-ai/agents/
