@@ -72,6 +72,44 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       // Verify we have 2 repos
       await expect(reposPanel.locator('tbody tr')).toHaveCount(2);
     });
+
+    test(
+      'lists the new organization repositories after in-app organization switch',
+      {tag: ['@PROJQUAY-14331']},
+      async ({authenticatedPage, api}) => {
+        const orgA = await api.organization('switcha');
+        await api.repository(orgA.name, 'repo-a');
+        const orgB = await api.organization('switchb');
+        // Header search only suggests organizations with a visible repository.
+        const repoB = await api.repository(orgB.name, 'repo-b', 'public');
+
+        await authenticatedPage.goto(`/organization/${orgA.name}`);
+        const reposPanel = authenticatedPage.getByRole('tabpanel', {
+          name: 'Repositories',
+        });
+        await expect(reposPanel.locator('tbody tr')).toHaveCount(1);
+
+        // Navigates within the same route, so the repository list stays mounted.
+        await authenticatedPage
+          .getByRole('combobox', {
+            name: 'Search repositories and organizations',
+          })
+          .pressSequentially(orgB.name, {delay: 20});
+        await authenticatedPage
+          .getByRole('option')
+          .filter({hasText: orgB.name})
+          .filter({hasNotText: repoB.name})
+          .click();
+        await expect(authenticatedPage.getByTestId('repo-title')).toHaveText(
+          orgB.name,
+        );
+
+        await expect(
+          reposPanel.locator(`a[href$="/repository/${repoB.fullName}"]`),
+        ).toBeVisible();
+        await expect(reposPanel.locator('tbody tr')).toHaveCount(1);
+      },
+    );
   });
 
   test.describe('CRUD operations', () => {
