@@ -41,4 +41,4 @@ contentOrigin:
   repofiles: ["./ubi.repo"]
 arches: [x86_64]
 context:
-  image: registry.access.redhat.com/ubi9/ubi-minimal:9.7
+  image: registry.access.redhat.com/ubi9/ubi-minimal:9.9-1794467051
