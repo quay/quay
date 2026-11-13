@@ -118,12 +118,10 @@ jobs:
       - name: Check for E2E tests on significant changes
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
-          REPO=${{ github.repository }}
-
           # Get list of changed files in the PR
-          CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --name-only)
+          CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --name-only)
 
           # Skip check for dependency-only updates
           NON_DEP_FILES=$(echo "$CHANGED_FILES" | grep -cvE \
@@ -139,8 +137,10 @@ jobs:
           # Excludes: tests, docs, config, CI, static assets, agent docs.
           # The Python config schema is covered by backend and schema-drift tests;
           # it has no browser-facing seam for meaningful Playwright coverage.
+          # Alembic revisions are covered by migration tests and run on Quay startup.
           SOURCE_CHANGES=$(echo "$CHANGED_FILES" \
             | grep -vE '^util/config/schema\.py$' \
+            | grep -vE '^data/migrations/versions/[^/]+\.py$' \
             | grep -cE '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers|web/src)/' \
             || true)
 
