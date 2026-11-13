@@ -95,6 +95,55 @@ def test_create_repo_notification(namespace, repository, body, expected_code, au
     )
 
 
+def test_create_vulnerability_notification_with_tag_regex(authd_client):
+    params = {"repository": "devtable/simple"}
+    body = {
+        "config": {"url": "http://example.com"},
+        "event": "vulnerability_found",
+        "method": "webhook",
+        "eventConfig": {"level": "1", "tag-regex": "v2"},
+        "title": "v2 vulnerabilities",
+    }
+
+    response = conduct_api_call(
+        authd_client, RepositoryNotificationList, "POST", params, body, expected_code=201
+    ).json
+
+    assert response["event_config"] == {"level": "1", "tag-regex": "v2"}
+
+
+@pytest.mark.parametrize("tag_regex", [None, "", "   "])
+def test_create_vulnerability_notification_accepts_empty_tag_regex(authd_client, tag_regex):
+    params = {"repository": "devtable/simple"}
+    body = {
+        "config": {"url": "http://example.com"},
+        "event": "vulnerability_found",
+        "method": "webhook",
+        "eventConfig": {"level": "1", "tag-regex": tag_regex},
+        "title": "all tag vulnerabilities",
+    }
+
+    conduct_api_call(
+        authd_client, RepositoryNotificationList, "POST", params, body, expected_code=201
+    )
+
+
+@pytest.mark.parametrize("tag_regex", ["[v2", 123])
+def test_create_vulnerability_notification_rejects_invalid_tag_regex(authd_client, tag_regex):
+    params = {"repository": "devtable/simple"}
+    body = {
+        "config": {"url": "http://example.com"},
+        "event": "vulnerability_found",
+        "method": "webhook",
+        "eventConfig": {"level": "1", "tag-regex": tag_regex},
+        "title": "invalid tag regex",
+    }
+
+    conduct_api_call(
+        authd_client, RepositoryNotificationList, "POST", params, body, expected_code=400
+    )
+
+
 @pytest.mark.parametrize("namespace,repository,expected_code", [("devtable", "simple", 200)])
 def test_list_repo_notifications(namespace, repository, expected_code, authd_client):
     params = {"repository": namespace + "/" + repository}

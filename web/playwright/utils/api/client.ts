@@ -707,6 +707,7 @@ export class ApiClient {
       title: string;
       event: string;
       method: string;
+      event_config: Record<string, unknown>;
       number_of_failures: number;
     }>;
   }> {
