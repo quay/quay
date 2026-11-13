@@ -26,6 +26,7 @@ jobs:
       config-tool: ${{ steps.filter.outputs.config-tool }}
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
+      rpm-lock: ${{ steps.filter.outputs.rpm-lock }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,6 +50,8 @@ jobs:
               - '!web/**'
               - '!internal/**'
               - '!cmd/**'
+            rpm-lock:
+              - '{rpms.in.yaml,rpms.lock.yaml,ubi.repo,hack/validate-rpm-lock.sh,.github/workflows/ci-rpm-lock.yaml}'
             web:
               - '**'
               - '!**/*.md'
@@ -59,6 +62,7 @@ jobs:
               - '!agent_docs/**'
               - '!.tekton/**'
               - '!scripts/**'
+              - '!hack/validate-rpm-lock.sh'
               - '!deploy/**'
               - '!.chglog/**'
               - '!LICENSE'
@@ -73,6 +77,7 @@ jobs:
               - '!.github/workflows/ci-go.yaml'
               - '!.github/workflows/ci-python.yaml'
               - '!.github/workflows/ci-lint.yaml'
+              - '!.github/workflows/ci-rpm-lock.yaml'
               - '!.github/workflows/sentinel.yaml'
               - '!.github/workflows/build-and-publish.yaml'
               - '!.github/workflows/zizmor.yaml'
@@ -130,9 +135,15 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  rpm-lock-ci:
+    name: RPM Lockfile
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.rpm-lock == 'true' }}
+    uses: ./.github/workflows/ci-rpm-lock.yaml
+
   all-green:
     name: all-green
-    needs: [detect-changes, lint-ci, python-ci, go-ci, config-tool-ci, web-ci]
+    needs: [detect-changes, lint-ci, python-ci, go-ci, config-tool-ci, web-ci, rpm-lock-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -150,5 +161,7 @@ jobs:
               needs.python-ci.result == 'skipped' && 'python-ci,' || ''
             }}${{
               needs.web-ci.result == 'skipped' && 'web-ci,' || ''
+            }}${{
+              needs.rpm-lock-ci.result == 'skipped' && 'rpm-lock-ci,' || ''
             }}
           jobs: ${{ toJSON(needs) }}
