@@ -3,7 +3,8 @@ rules:
   # triggers to access secrets for labeling, reporting, and deployments.
   # frozen-branch-check uses pull_request_target solely to read vars context
   # (no code checkout, no secret access).
-  # pipeline-remaining checks out no code; it reads PR metadata and posts one comment.
+  # pipeline-remaining checks out only the default branch's .github/scripts, never PR code;
+  # it comments /pipeline remaining and posts the "CI / Prow / E2E" commit status.
   dangerous-triggers:
     ignore:
       - .github/workflows/frozen-branch-check.yaml
