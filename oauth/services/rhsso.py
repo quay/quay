@@ -37,7 +37,7 @@ class RHSSOOAuthService(OIDCLoginService):
                     timeout=5,
                 )
                 logger.debug(
-                    f"Got result from export compliance service: {result.json()} "
+                    f"Got result from export compliance service: {result.text} "
                     f"for sub: {sub}, lusername: {lusername}"
                 )
 
