@@ -699,9 +699,16 @@ test.describe(
       ).toBeVisible();
 
       // Enable regex mode
+      await expect(
+        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+      ).not.toBeVisible();
       await authenticatedPage
         .locator('[aria-label="Open advanced search"]')
         .click();
+      // Wait for the advanced search panel to open before interacting
+      await expect(
+        authenticatedPage.locator('[id="filter-input-advanced-search"]'),
+      ).toBeVisible();
       await authenticatedPage
         .locator('[id="filter-input-regex-checker"]')
         .click();
