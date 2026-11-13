@@ -116,13 +116,19 @@ class Proxy:
         resp = self.head(url, headers=headers, allow_redirects=True)
         return resp.headers.get("docker-content-digest")
 
-    def get_blob(self, digest: str):
+    def get_blob(self, digest: str, additional_headers: dict | None = None):
         url = f"{self.base_url}/v2/{self._repo}/blobs/{digest}"
+
+        headers = {
+            "Accept-Encoding": "identity",
+        }
+
+        if additional_headers:
+            headers.update(additional_headers)
+
         resp = self.get(
             url,
-            headers={
-                "Accept-Encoding": "identity",
-            },
+            headers=headers,
             allow_redirects=True,
             stream=True,
             timeout=(5, 120),
