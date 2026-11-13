@@ -837,7 +837,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await authenticatedPage.getByTestId('notification-submit-btn').click();
 
       await expect(
-        authenticatedPage.locator('tbody', {hasText: title}),
+        authenticatedPage.getByRole('row', {name: title}),
       ).toBeVisible();
 
       const notifications = await api.getRepositoryNotifications(

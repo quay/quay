@@ -3,6 +3,8 @@ import re
 import time
 from datetime import datetime
 
+import regex
+
 from digest.digest_tools import Digest, InvalidDigestException
 from notifications import build_namespace_event_data, build_repository_event_data
 from util.jinjautil import get_template_env
@@ -183,6 +185,7 @@ def _build_summary(event_data):
 class VulnerabilityFoundEvent(NotificationEvent):
     CONFIG_LEVEL = "level"
     CONFIG_TAG_REGEX = "tag-regex"
+    TAG_REGEX_TIMEOUT_SECONDS = 0.1
     PRIORITY_KEY = "priority"
     VULNERABILITY_KEY = "vulnerability"
     MULTIPLE_VULNERABILITY_KEY = "vulnerabilities"
@@ -232,8 +235,8 @@ class VulnerabilityFoundEvent(NotificationEvent):
             return
 
         try:
-            re.compile(tag_regex)
-        except re.error as exc:
+            regex.compile(tag_regex)
+        except regex.error as exc:
             raise InvalidNotificationEventConfigException("Invalid tag regular expression") from exc
 
     def _tag_filter_matches(self, event_data, event_config):
@@ -246,8 +249,8 @@ class VulnerabilityFoundEvent(NotificationEvent):
             return False
 
         try:
-            compiled_regex = re.compile(tag_regex)
-        except re.error:
+            compiled_regex = regex.compile(tag_regex)
+        except regex.error:
             logger.warning("Regular expression error for vulnerability tag filter: %s", tag_regex)
             return False
 
@@ -265,8 +268,14 @@ class VulnerabilityFoundEvent(NotificationEvent):
             except InvalidDigestException:
                 pass
 
-            if compiled_regex.search(tag):
-                return True
+            try:
+                if compiled_regex.search(
+                    tag, timeout=VulnerabilityFoundEvent.TAG_REGEX_TIMEOUT_SECONDS
+                ):
+                    return True
+            except TimeoutError:
+                logger.warning("Vulnerability tag regular expression timed out: %s", tag_regex)
+                return False
 
         return False
 
