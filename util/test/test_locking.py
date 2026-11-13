@@ -10,7 +10,13 @@ import time
 import fakeredis
 import pytest
 import redis_lock
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode
+from redis import RedisError
 
+from util import locking
 from util.locking import GlobalLock, LockAcquireTimeout
 
 
@@ -324,3 +330,56 @@ def test_lock_acquire_timeout_holder_is_none_when_lock_released_before_check(
             pass
 
     assert exc_info.value.holder is None
+
+
+@pytest.fixture
+def acquire_spans(monkeypatch):
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(locking, "_tracer", provider.get_tracer(__name__))
+    return exporter
+
+
+def test_acquire_span_records_acquired_lock(fake_lock_server, acquire_spans):
+    lock = GlobalLock("BLOB_DELETE_sha256:s01", lock_ttl=30, blocking_timeout=1)
+    assert lock.acquire() is True
+    lock.release()
+
+    (span,) = acquire_spans.get_finished_spans()
+    assert span.name == "GlobalLock.acquire"
+    assert dict(span.attributes) == {
+        "lock.name": "BLOB_DELETE_sha256:s01",
+        "lock.ttl": 30,
+        "lock.blocking_timeout": 1,
+        "lock.outcome": "acquired",
+        "lock.holder": lock._holder_id,
+    }
+
+
+def test_acquire_span_records_timeout_and_holder(fake_lock_server, acquire_spans):
+    _hold_lock(fake_lock_server, "BLOB_DELETE_sha256:s02", holder_id="registry-9:4242:c0ffee42")
+
+    lock = GlobalLock("BLOB_DELETE_sha256:s02", lock_ttl=30, blocking_timeout=0.2)
+    assert lock.acquire() is False
+
+    (span,) = acquire_spans.get_finished_spans()
+    assert span.attributes["lock.outcome"] == "timed_out"
+    assert span.attributes["lock.holder"] == "registry-9:4242:c0ffee42"
+    assert span.attributes["lock.blocking_timeout"] == 0.2
+    assert (span.end_time - span.start_time) / 1e9 >= 0.2
+
+
+def test_acquire_span_records_redis_error(monkeypatch, acquire_spans):
+    def unavailable(*args, **kwargs):
+        raise RedisError("connection refused")
+
+    monkeypatch.setattr(GlobalLock, "lock_factory", unavailable)
+
+    lock = GlobalLock("BLOB_DELETE_sha256:s03", lock_ttl=30, blocking_timeout=1)
+    assert lock.acquire() is False
+
+    (span,) = acquire_spans.get_finished_spans()
+    assert span.attributes["lock.outcome"] == "error"
+    assert "lock.holder" not in span.attributes
+    assert span.status.status_code == StatusCode.ERROR
