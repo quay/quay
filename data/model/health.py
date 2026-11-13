@@ -12,7 +12,9 @@ def sql_timeout(app_config, database, timeout):
     if "postgresql" in app_config["DB_URI"]:
         logger.debug("Checking for existence of team roles, timeout 5000 ms.")
         with database.atomic():
-            database.execute_sql("SET LOCAL statement_timeout=%s;", (timeout,))
+            database.execute_sql(
+                "SELECT set_config('statement_timeout', %s, true);", (str(int(timeout)),)
+            )
             yield database
     else:
         logger.debug("Checking for existence of team roles.")
@@ -33,6 +35,7 @@ def check_health(app_config):
             app_config["DB_URI"], app_config["DB_CONNECTION_ARGS"], connect_timeout=3
         )
     except Exception as ex:
+        logger.warning("Database connection error: %s", str(ex))
         return (False, "Could not connect to the database: %s" % str(ex))
 
     # We will connect to the db, check that it contains some team role kinds
@@ -41,4 +44,5 @@ def check_health(app_config):
             okay = bool(list(TeamRole.select().limit(1)))
             return (okay, "Could not execute query, timeout reached" if not okay else None)
     except Exception as ex:
-        return (False, "Could not connect to the database: %s" % str(ex))
+        logger.warning("Database connection error: %s", str(ex))
+        return (False, f"Could not connect to the database: {ex}")

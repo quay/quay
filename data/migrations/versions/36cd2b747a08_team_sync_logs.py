@@ -26,8 +26,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.c.name
-            == op.inline_literal("enable_team_sync") | tables.logentrykind.c.name
-            == op.inline_literal("disable_team_sync") | tables.logentrykind.c.name
+            tables.logentrykind.c.name.in_(
+                [
+                    "enable_team_sync",
+                    "disable_team_sync",
+                ]
+            )
         )
     )

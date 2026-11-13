@@ -28,7 +28,7 @@ from playhouse.pool import (
     PooledPostgresqlDatabase,
     PooledSqliteDatabase,
 )
-from sqlalchemy.engine.url import make_url
+from sqlalchemy import make_url
 
 from data.encryption import FieldEncrypter
 from data.estimate import mysql_estimate_row_count, normal_row_count
@@ -79,16 +79,15 @@ _SCHEME_DRIVERS = {
     "mysql+pymysql": schemedriver(MySQLDatabase, PooledMySQLDatabase),
     "sqlite": schemedriver(SqliteDatabase, PooledSqliteDatabase),
     "postgresql": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
-    "postgresql+psycopg2": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
+    "postgresql+psycopg": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
 }
-
 
 SCHEME_MATCH_FUNCTION = {
     "mysql": match_mysql,
     "mysql+pymysql": match_mysql,
     "sqlite": match_like,
     "postgresql": match_like,
-    "postgresql+psycopg2": match_like,
+    "postgresql+psycopg": match_like,
 }
 
 SCHEME_REGEX_FUNCTION = {
@@ -101,7 +100,7 @@ SCHEME_RANDOM_FUNCTION = {
     "mysql+pymysql": fn.Rand,
     "sqlite": fn.Random,
     "postgresql": fn.Random,
-    "postgresql+psycopg2": fn.Random,
+    "postgresql+psycopg": fn.Random,
 }
 
 
@@ -110,13 +109,13 @@ SCHEME_ESTIMATOR_FUNCTION = {
     "mysql+pymysql": mysql_estimate_row_count,
     "sqlite": normal_row_count,
     "postgresql": normal_row_count,
-    "postgresql+psycopg2": normal_row_count,
+    "postgresql+psycopg": normal_row_count,
 }
 
 
 PRECONDITION_VALIDATION = {
     "postgresql": validate_postgres_precondition,
-    "postgresql+psycopg2": validate_postgres_precondition,
+    "postgresql+psycopg": validate_postgres_precondition,
 }
 
 
@@ -259,17 +258,17 @@ class CallableProxy(Proxy):
         return self.obj(*args, **kwargs)
 
 
-class RetryOperationalError(object):
-    def execute_sql(self, sql, params=None, commit=True):
+class RetryOperationalError:
+    def execute_sql(self, sql, params=None):
         """Execute SQL with SQLite-specific retry logic for database locks."""
         # SQLite-specific retry logic with exponential backoff
         if isinstance(self, (SqliteDatabase, PooledSqliteDatabase)):
-            return self._execute_sql_sqlite_retry(sql, params, commit)
-        else:
-            # retain original logic for non-SQLite databases
-            return self._execute_sql_original(sql, params, commit)
+            return self._execute_sql_sqlite_retry(sql, params)
 
-    def _execute_sql_sqlite_retry(self, sql, params=None, commit=True):
+        # retain original logic for non-SQLite databases
+        return self._execute_sql_original(sql, params)
+
+    def _execute_sql_sqlite_retry(self, sql, params=None):
         """SQLite-specific retry logic with exponential backoff for database locks."""
         MAX_RETRIES = 5
         BASE_DELAY = 0.1
@@ -277,7 +276,7 @@ class RetryOperationalError(object):
 
         for attempt in range(MAX_RETRIES):
             try:
-                return super(RetryOperationalError, self).execute_sql(sql, params, commit)
+                return super(RetryOperationalError, self).execute_sql(sql, params)
             except (OperationalError, InterfaceError) as pe:
                 if isinstance(pe, InterfaceError) and not str(pe) == "(0, '')":
                     raise
@@ -297,19 +296,19 @@ class RetryOperationalError(object):
                     )
                     time.sleep(delay)
                     continue
-                else:
-                    # Fall back to original retry logic for non-lock errors
-                    return self._execute_sql_original(sql, params, commit)
+
+                # Fall back to original retry logic for non-lock errors
+                return self._execute_sql_original(sql, params)
 
         # If all retries exhausted, raise the last exception
         raise
 
-    def _execute_sql_original(self, sql, params=None, commit=True):
+    def _execute_sql_original(self, sql, params=None):
         """Original retry logic for non-SQLite databases"""
         try:
-            cursor = super(RetryOperationalError, self).execute_sql(sql, params, commit)
+            cursor = super(RetryOperationalError, self).execute_sql(sql, params)
         except (OperationalError, InterfaceError) as pe:
-            if isinstance(pe, InterfaceError) and not str(pe) == "(0, '')":
+            if isinstance(pe, InterfaceError) and str(pe) != "(0, '')":
                 # InterfaceError("(0, '')") is raised by PyMySQL after a connection has been idle for longer
                 # than the MySQL database's interactive_timeout setting.
                 # This can happen on some workers without work to be done for a long time.
@@ -327,13 +326,11 @@ class RetryOperationalError(object):
             with __exception_wrapper__:
                 cursor = self.cursor()
                 cursor.execute(sql, params or ())
-                if commit and not self.in_transaction():
-                    self.commit()
 
         return cursor
 
 
-class CloseForLongOperation(object):
+class CloseForLongOperation:
     """
     Helper object which disconnects the database then reconnects after the nested operation
     completes.
@@ -353,7 +350,7 @@ class CloseForLongOperation(object):
         pass
 
 
-class UseThenDisconnect(object):
+class UseThenDisconnect:
     """
     Helper object for conducting work with a database and then tearing it down.
     """
@@ -371,13 +368,13 @@ class UseThenDisconnect(object):
         close_db_filter(None)
 
 
-class TupleSelector(object):
+class TupleSelector:
     """
     Helper class for selecting tuples from a peewee query and easily accessing them as if they were
     objects.
     """
 
-    class _TupleWrapper(object):
+    class _TupleWrapper:
         def __init__(self, data, fields):
             self._data = data
             self._fields = fields
@@ -472,7 +469,7 @@ def _wrap_for_retry(driver):
     return type("Retrying" + driver.__name__, (RetryOperationalError, driver), {})
 
 
-class ObservableDatabase(object):
+class ObservableDatabase:
     """Wrapper around Peewee's non-pooled database class for observability."""
 
     def connect(self, reuse_if_open=False):
@@ -491,8 +488,11 @@ class ObservablePooledDatabase(ObservableDatabase):
 
     def _connect(self, _retry_count=0):
         """
-        Override internal connection method to validate connection availability from the connection pool.
-        This acts like SQLAlchemy's pool_pre_ping with exponential backoff for high concurrency.
+        Override internal connection method to validate connection availability
+        from the connection pool.
+        Liveness of reused connections is provided through Peewee's
+        PooledDatabase._is_closed(), so the connection is not probed again here. This
+        saves us one round trip towards the database.
         """
         # Limit retries to prevent long delays in high-concurrency scenarios
         # With 50+ concurrent requests, we want individual requests to fail faster
@@ -504,11 +504,12 @@ class ObservablePooledDatabase(ObservableDatabase):
             )
 
         try:
-            conn = super(ObservablePooledDatabase, self)._connect()
+            return super(ObservablePooledDatabase, self)._connect()
         except MaxConnectionsExceeded:
             # Pool exhausted - wait with exponential backoff before retrying
             # Base delay: 10ms, max delay: 200ms to prevent long waits
             delay = min(0.01 * (2**_retry_count), 0.2)
+
             # Add jitter to prevent thundering herd (±25% randomization)
             jitter = delay * (0.75 + uniform(0, 0.5))
             logger.debug(
@@ -518,39 +519,6 @@ class ObservablePooledDatabase(ObservableDatabase):
                 jitter,
             )
             time.sleep(jitter)
-            return self._connect(_retry_count=_retry_count + 1)
-
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT 1")
-            return conn  # Connection is healthy
-        except Exception as e:
-            # Catch ALL exceptions during liveness check - includes ProtocolViolation,
-            # OperationalError, InterfaceError, and any other DB-related errors
-            logger.warning(
-                "Pooled connection failed liveness check (attempt %d/%d), discarding: %s",
-                _retry_count + 1,
-                max_retries,
-                e,
-            )
-
-            # Manually remove from _in_use tracking and close the connection
-            try:
-                # Remove from pool's _in_use dict to prevent connection leak
-                key = self.conn_key(conn)
-                self._in_use.pop(key, None)
-
-                # Close the actual connection (bypassing pool return logic)
-                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)
-            except Exception as ex:
-                logger.debug("Error closing stale connection: %s", ex)
-
-            # Small delay before retry to allow other requests to complete
-            if _retry_count > 0:
-                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
-                time.sleep(delay)
-
-            # Recursively retry - pool will provide another connection (or create new one)
             return self._connect(_retry_count=_retry_count + 1)
 
     def connect(self, reuse_if_open=False):
@@ -590,12 +558,23 @@ def _db_from_url(
     if parsed_url.password:
         db_kwargs["password"] = parsed_url.password
 
-    # Remove threadlocals. It used to be required.
+    # Remove psycopg2-specific kwargs no longer accepted by psycopg3/peewee 4.
     db_kwargs.pop("threadlocals", None)
+    db_kwargs.pop("autorollback", None)
+
+    # pop the _driver_autocommit, if set, as Peewee 4+ sets this automatically on all connections.
+    # otherwise, ProgrammingError will be raised.
+    db_kwargs.pop("_driver_autocommit", None)
 
     # Note: sqlite does not support connect_timeout.
     if parsed_url.drivername != "sqlite":
         db_kwargs["connect_timeout"] = db_kwargs.get("connect_timeout", connect_timeout)
+
+    # raise an error if the driver is not supported
+    if parsed_url.drivername not in _SCHEME_DRIVERS:
+        raise ValueError(
+            f"Unsupported database scheme {parsed_url.drivername}. For PostgreSQL use postgresql:// as driver scheme."
+        )
 
     drivers = _SCHEME_DRIVERS[parsed_url.drivername]
     driver = drivers.driver
@@ -632,12 +611,6 @@ def _db_from_url(
     else:
         driver = type("Observable" + driver.__name__, (ObservableDatabase, driver), {})
 
-    driver_autocommit = False
-    if db_kwargs.get("_driver_autocommit"):
-        assert is_read_replica, "_driver_autocommit can only be set for a read replica"
-        driver_autocommit = db_kwargs["_driver_autocommit"]
-        db_kwargs.pop("_driver_autocommit", None)
-
     # For SQLite, configure PRAGMAs using peewee's built-in mechanism.
     # This is applied during _add_conn_hooks() before connect() returns,
     # using the raw cursor, which avoids recursion issues (PROJQUAY-9799).
@@ -657,8 +630,6 @@ def _db_from_url(
         )
 
     created = driver(parsed_url.database, **db_kwargs)
-    if driver_autocommit:
-        created.connect_params["autocommit"] = driver_autocommit
 
     # Revert the behavior "fixed" in:
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
@@ -1496,9 +1467,9 @@ class LogEntry2(BaseModel):
     """
 
     kind = ForeignKeyField(LogEntryKind)
-    account = IntegerField(index=True, db_column="account_id")
-    performer = IntegerField(index=True, null=True, db_column="performer_id")
-    repository = IntegerField(index=True, null=True, db_column="repository_id")
+    account = IntegerField(index=True, column_name="account_id")
+    performer = IntegerField(index=True, null=True, column_name="performer_id")
+    repository = IntegerField(index=True, null=True, column_name="repository_id")
     datetime = DateTimeField(default=datetime.now, index=True)
     ip = CharField(null=True)
     metadata_json = TextField(default="{}")
@@ -1516,10 +1487,10 @@ class LogEntry2(BaseModel):
 
 class LogEntry3(BaseModel):
     id = BigAutoField()
-    kind = IntegerField(db_column="kind_id")
-    account = IntegerField(db_column="account_id")
-    performer = IntegerField(null=True, db_column="performer_id")
-    repository = IntegerField(null=True, db_column="repository_id")
+    kind = IntegerField(column_name="kind_id")
+    account = IntegerField(column_name="account_id")
+    performer = IntegerField(null=True, column_name="performer_id")
+    repository = IntegerField(null=True, column_name="repository_id")
     datetime = DateTimeField(default=datetime.now, index=True)
     ip = CharField(null=True)
     metadata_json = TextField(default="{}")

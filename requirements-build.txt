@@ -283,7 +283,9 @@ cython==3.3.1 \
     --hash=sha256:fd81cfc6e94c43c5c0fe50439c11b90dc89cc6b323f92b37edc6a951d0a619d7
     # via
     #   PyYAML
+    #   SQLAlchemy
     #   gevent
+    #   peewee
     #   pyyaml
 flit-core==3.12.0 \
     --hash=sha256:18f63100d6f94385c6ed57a72073443e1a71a4acb4339491615d0f16d6ff01b2 \
@@ -395,13 +397,15 @@ hatchling==1.33.0 \
     # via
     #   hatch-vcs
     #   opentelemetry-api
+    #   opentelemetry-exporter-http-transport
+    #   opentelemetry-exporter-otlp-common
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-flask
-    #   opentelemetry-instrumentation-psycopg2
+    #   opentelemetry-instrumentation-psycopg
     #   opentelemetry-instrumentation-wsgi
     #   opentelemetry-proto
     #   opentelemetry-sdk
@@ -588,6 +592,7 @@ wheel==0.46.2 \
     #   cachetools
     #   jsonschema
     #   maxminddb
+    #   psycopg
     #   pyhanko-certvalidator
     #   pyrsistent
     #   python-dateutil
@@ -611,6 +616,7 @@ setuptools==80.10.2 \
     #   PyMySQL
     #   PyNaCl
     #   PyYAML
+    #   SQLAlchemy
     #   alembic
     #   attrs
     #   bcrypt
@@ -634,8 +640,10 @@ setuptools==80.10.2 \
     #   msgpack
     #   netaddr
     #   pathspec
+    #   peewee
     #   pillow
     #   pluggy
+    #   psycopg
     #   pyHanko
     #   pyasn1
     #   pyasn1_modules

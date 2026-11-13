@@ -26,8 +26,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("login_success") | tables.logentrykind.name
-            == op.inline_literal("logout_success")
+            tables.logentrykind.c.name.in_(
+                [
+                    "login_success",
+                    "logout_success",
+                ]
+            )
         )
     )

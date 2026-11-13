@@ -31,7 +31,7 @@
 import collections
 import collections.abc
 import json
-from json.encoder import (  # type: ignore
+from json.encoder import (
     INFINITY,
     encode_basestring,
     encode_basestring_ascii,

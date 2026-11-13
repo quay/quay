@@ -10,7 +10,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -408,7 +408,7 @@ if features.OTEL_TRACING:
         app,
         excluded_urls=app.config.get("OTEL_TRACING_EXCLUDED_URLS", None),
     )
-    Psycopg2Instrumentor().instrument()
+    PsycopgInstrumentor().instrument()
     # Detect if running under gunicorn with preload_app
     # When QUAY_HOTRELOAD is false, gunicorn configs set preload_app=True
     is_preload = os.getenv("QUAY_HOTRELOAD", "false") == "false"

@@ -63,18 +63,18 @@ class AutomaticFailoverWrapper(object):
 
         return getattr(self, attribute)
 
-    def execute(self, query, commit=SENTINEL, **context_options):
+    def execute(self, query, **context_options):
         ctx = self.get_sql_context(**context_options)
         sql, params = ctx.sql(query).query()
-        return self.execute_sql(sql, params, commit=commit)
+        return self.execute_sql(sql, params)
 
-    def execute_sql(self, sql, params=None, commit=SENTINEL):
+    def execute_sql(self, sql, params=None):
         try:
-            return self._primary_db.execute_sql(sql, params, commit)
+            return self._primary_db.execute_sql(sql, params)
         except OperationalError:
             if self._fallback_db is not None:
                 try:
-                    return self._fallback_db.execute_sql(sql, params, commit)
+                    return self._fallback_db.execute_sql(sql, params)
                 except OperationalError:
                     raise
 

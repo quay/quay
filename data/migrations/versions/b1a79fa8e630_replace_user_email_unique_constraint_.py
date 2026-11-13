@@ -24,7 +24,7 @@ revision = "b1a79fa8e630"
 down_revision = "c3d4e5f6a7b8"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def _drop_invalid_index(bind, index_name):
@@ -45,7 +45,7 @@ def _drop_invalid_index(bind, index_name):
 
 def upgrade(op, tables, tester):
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     user_indexes = {i["name"] for i in inspector.get_indexes("user")}
 
     # Clean up any invalid indexes left by a previous failed CONCURRENTLY attempt.
@@ -61,25 +61,45 @@ def upgrade(op, tables, tester):
     # emails back into User.email for any orgs that still have UUID placeholders.
     # This handles the case where the earlier migration (414c5e2fc487) populated
     # OrganizationContactEmail but User.email was replaced with a UUID.
-    tables_list = inspector.get_table_names()
+    # Pin to the connection's default schema: SQLAlchemy 2.x otherwise lists every table visible on
+    # the search_path (e.g. leftovers in `public`), unlike 1.4 which used current_schema().
+    tables_list = inspector.get_table_names(schema=inspector.default_schema_name)
     if "organizationcontactemail" in tables_list:
-        # Use correlated subquery syntax (works on both PostgreSQL and SQLite).
-        # NOT LIKE '%%@%%' detects UUID placeholders (no @ sign).
-        op.execute(
-            sa.text(
-                'UPDATE "user" SET email = ('
-                "  SELECT oce.contact_email FROM organizationcontactemail oce"
-                '  WHERE oce.organization_id = "user".id'
-                "  AND oce.contact_email IS NOT NULL"
-                ") WHERE organization = true"
-                " AND email NOT LIKE '%%@%%'"
-                " AND EXISTS ("
-                "  SELECT 1 FROM organizationcontactemail oce"
-                '  WHERE oce.organization_id = "user".id'
-                "  AND oce.contact_email IS NOT NULL"
-                ")"
+        if bind.dialect.name == "mysql":
+            # MySQL/MariaDB quote identifiers with backticks.
+            op.execute(
+                sa.text(
+                    "UPDATE `user` SET email = ("
+                    "  SELECT oce.contact_email FROM organizationcontactemail oce"
+                    "  WHERE oce.organization_id = `user`.id"
+                    "  AND oce.contact_email IS NOT NULL"
+                    ") WHERE organization = true"
+                    " AND email NOT LIKE '%%@%%'"
+                    " AND EXISTS ("
+                    "  SELECT 1 FROM organizationcontactemail oce"
+                    "  WHERE oce.organization_id = `user`.id"
+                    "  AND oce.contact_email IS NOT NULL"
+                    ")"
+                )
             )
-        )
+        else:
+            # Use correlated subquery syntax (works on both PostgreSQL and SQLite).
+            # NOT LIKE '%%@%%' detects UUID placeholders (no @ sign).
+            op.execute(
+                sa.text(
+                    'UPDATE "user" SET email = ('
+                    "  SELECT oce.contact_email FROM organizationcontactemail oce"
+                    '  WHERE oce.organization_id = "user".id'
+                    "  AND oce.contact_email IS NOT NULL"
+                    ") WHERE organization = true"
+                    " AND email NOT LIKE '%%@%%'"
+                    " AND EXISTS ("
+                    "  SELECT 1 FROM organizationcontactemail oce"
+                    '  WHERE oce.organization_id = "user".id'
+                    "  AND oce.contact_email IS NOT NULL"
+                    ")"
+                )
+            )
 
     # Step 1: Create the new partial unique index.
     # On PostgreSQL use CONCURRENTLY (no write locks); on SQLite use plain CREATE INDEX.
@@ -89,13 +109,29 @@ def upgrade(op, tables, tester):
         if bind.dialect.name == "postgresql":
             with op.get_context().autocommit_block():
                 op.execute(
-                    "CREATE UNIQUE INDEX CONCURRENTLY user_email_unique_non_org "
-                    'ON "user"(email) WHERE organization = false'
+                    sa.text(
+                        "CREATE UNIQUE INDEX CONCURRENTLY user_email_unique_non_org "
+                        'ON "user"(email) WHERE organization = false'
+                    )
                 )
+        elif bind.dialect.name == "mysql":
+            # MySQL/MariaDB have no partial indexes. A virtual generated column that is the
+            # email for non-org users and NULL for orgs gives the same uniqueness: NULLs do not
+            # collide in a unique index.
+            op.execute(
+                sa.text(
+                    "ALTER TABLE `user` "
+                    "ADD COLUMN email_non_org VARCHAR(255) "
+                    "GENERATED ALWAYS AS (IF(organization = 0, email, NULL)) VIRTUAL, "
+                    "ADD UNIQUE INDEX user_email_unique_non_org (email_non_org)"
+                )
+            )
         else:
             op.execute(
-                "CREATE UNIQUE INDEX user_email_unique_non_org "
-                'ON "user"(email) WHERE organization = false'
+                sa.text(
+                    "CREATE UNIQUE INDEX user_email_unique_non_org "
+                    'ON "user"(email) WHERE organization = false'
+                )
             )
 
     # Step 2: Create a regular (non-unique) index for general email lookups.
@@ -120,14 +156,20 @@ def upgrade(op, tables, tester):
 
 def downgrade(op, tables, tester):
     bind = op.get_bind()
-    inspector = Inspector.from_engine(bind)
+    inspector = sa_inspect(bind)
     user_indexes = {i["name"] for i in inspector.get_indexes("user")}
 
     if "user_email_idx" in user_indexes:
         op.drop_index("user_email_idx", table_name="user")
 
     if "user_email_unique_non_org" in user_indexes:
-        op.execute("DROP INDEX user_email_unique_non_org")
+        if bind.dialect.name == "mysql":
+            # DROP INDEX needs ON <table> in MySQL/MariaDB, and the generated helper column
+            # added by upgrade() goes with it.
+            op.execute(sa.text("DROP INDEX user_email_unique_non_org ON `user`"))
+            op.execute(sa.text("ALTER TABLE `user` DROP COLUMN email_non_org"))
+        else:
+            op.execute(sa.text("DROP INDEX user_email_unique_non_org"))
 
     if "user_email" not in user_indexes:
         if bind.dialect.name == "postgresql":

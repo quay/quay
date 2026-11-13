@@ -70,9 +70,12 @@ def downgrade(op, tables, tester):
 
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.c.name
-            == op.inline_literal("create_repository_autoprune_policy") | tables.logentrykind.c.name
-            == op.inline_literal("update_repository_autoprune_policy") | tables.logentrykind.c.name
-            == op.inline_literal("delete_repository_autoprune_policy")
+            tables.logentrykind.c.name.in_(
+                [
+                    "create_repository_autoprune_policy",
+                    "update_repository_autoprune_policy",
+                    "delete_repository_autoprune_policy",
+                ]
+            )
         )
     )

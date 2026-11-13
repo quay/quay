@@ -43,9 +43,21 @@ def upgrade(op, tables, tester):
     # Add architecture_filter column to orgmirrorconfig
     # Stores a JSON list of architectures to mirror (e.g., ["amd64", "arm64"])
     # Empty list means mirror all architectures
+    if op.get_bind().dialect.name == "mysql":
+        # MySQL does not allow a literal DEFAULT on TEXT columns; an expression default
+        # (parenthesised) is accepted from MySQL 8.0.13 and by MariaDB.
+        architecture_filter_default = sa.text("('[]')")
+    else:
+        architecture_filter_default = "[]"
+
     op.add_column(
         "orgmirrorconfig",
-        sa.Column("architecture_filter", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column(
+            "architecture_filter",
+            sa.Text(),
+            nullable=False,
+            server_default=architecture_filter_default,
+        ),
     )
 
     tester.populate_column(
