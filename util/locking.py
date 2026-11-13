@@ -6,12 +6,17 @@ import time
 import uuid
 
 import redis_lock
+from opentelemetry import trace
 from redis import Redis, RedisError
 
 logger = logging.getLogger(__name__)
 
 # How often a GlobalLock with a blocking_timeout retries a lock held by someone else.
 _BOUNDED_ACQUIRE_POLL_INTERVAL = 0.05
+
+# A no-op tracer until util.metrics.otel installs a TracerProvider (FEATURE_OTEL_TRACING).
+# Web, registry and secscan do in post_fork; background workers do only under QUAY_HOTRELOAD.
+_tracer = trace.get_tracer(__name__)
 
 
 class _SkipFailedAcquireWarning(logging.Filter):
@@ -118,6 +123,25 @@ class GlobalLock(object):
         self.release()
 
     def acquire(self):
+        with _tracer.start_as_current_span("GlobalLock.acquire") as span:
+            span.set_attribute("lock.name", self._lock_name)
+            span.set_attribute("lock.ttl", self._lock_ttl)
+            if self._blocking_timeout is not None:
+                span.set_attribute("lock.blocking_timeout", self._blocking_timeout)
+            acquired = self._acquire()
+            if acquired:
+                span.set_attribute("lock.outcome", "acquired")
+                span.set_attribute("lock.holder", self._holder_id)
+            elif self._timed_out:
+                span.set_attribute("lock.outcome", "timed_out")
+                if self._timed_out_holder is not None:
+                    span.set_attribute("lock.holder", self._timed_out_holder)
+            else:
+                span.set_attribute("lock.outcome", "error")
+                span.set_status(trace.Status(trace.StatusCode.ERROR))
+            return acquired
+
+    def _acquire(self):
         logger.debug("Acquiring global lock %s", self._lock_name)
         try:
             self._lock = GlobalLock.lock_factory(
