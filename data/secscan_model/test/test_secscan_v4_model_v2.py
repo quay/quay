@@ -701,6 +701,9 @@ class TestPerformIndexingCycle:
             mock_manifest = mock.Mock()
             mock_manifest.is_manifest_list = False
             mock_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+            # A valid image config so the artifact config gate passes and we exercise the
+            # layer-based `_has_container_layers` backstop specifically.
+            mock_manifest.config_media_type = "application/vnd.oci.image.config.v1+json"
             mock_manifest._db_id = manifest_id
             mock_manifest.repository._db_id = repository_id
             mock_for_manifest.return_value = mock_manifest
@@ -720,6 +723,84 @@ class TestPerformIndexingCycle:
             ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
         )
         assert updated.indexer_hash == "none"
+
+    def test_handles_oci_artifact_by_config(self, initialized_db, scanner):
+        """
+        A non-image OCI artifact (identified by its config media type) is marked unsupported
+        before layers are listed or Clair is called, even if its layers would otherwise pass
+        the `_has_container_layers` backstop.
+        """
+        mss = ManifestSecurityStatus.select().first()
+        manifest_id = mss.manifest_id
+        repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
+
+        ManifestSecurityStatus.update(
+            index_status=IndexStatus.IN_PROGRESS,
+        ).where(ManifestSecurityStatus.id == mss.id).execute()
+
+        with mock.patch(
+            "data.secscan_model.secscan_v4_model_v2.ManifestDataType.for_manifest"
+        ) as mock_for_manifest:
+            mock_manifest = mock.Mock()
+            mock_manifest.is_manifest_list = False
+            mock_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+            mock_manifest.config_media_type = "application/vnd.oci.empty.v1+json"
+            mock_manifest._db_id = manifest_id
+            mock_manifest.repository._db_id = repository_id
+            mock_for_manifest.return_value = mock_manifest
+
+            with mock.patch.object(registry_model, "list_manifest_layers") as list_layers:
+                result = scanner._prepare_for_indexing(candidate)
+                # Filtered out before any layers are listed.
+                list_layers.assert_not_called()
+
+        assert result is None
+        updated = ManifestSecurityStatus.get(
+            ManifestSecurityStatus.manifest == manifest_id,
+            ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
+        )
+        assert updated.indexer_hash == "none"
+
+    def test_indexes_image_with_nonstandard_config(self, initialized_db, scanner):
+        """
+        Regression guard: a real image whose config media type is a non-standard/garbage string
+        (in production, many millions of scannable images carry the literal "a") must NOT be
+        gated as an artifact. Its layers are listed and it proceeds to indexing, because the
+        config-type gate is a denylist of known non-image sentinels, not an allowlist.
+        """
+        mss = ManifestSecurityStatus.select().first()
+        manifest_id = mss.manifest_id
+        repository_id = mss.repository_id
+        candidate = Manifest.get(Manifest.id == manifest_id)
+
+        fake_layer = mock.Mock()
+
+        with mock.patch(
+            "data.secscan_model.secscan_v4_model_v2.ManifestDataType.for_manifest"
+        ) as mock_for_manifest:
+            mock_manifest = mock.Mock()
+            mock_manifest.is_manifest_list = False
+            mock_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+            mock_manifest.config_media_type = "a"
+            mock_manifest._db_id = manifest_id
+            mock_manifest.repository._db_id = repository_id
+            mock_for_manifest.return_value = mock_manifest
+
+            with mock.patch.object(
+                registry_model, "list_manifest_layers", return_value=[fake_layer]
+            ) as list_layers:
+                with mock.patch(
+                    "data.secscan_model.secscan_v4_model_v2._has_container_layers",
+                    return_value=True,
+                ):
+                    result = scanner._prepare_for_indexing(candidate)
+
+                # The image's layers must have been listed (not gated by config type).
+                list_layers.assert_called_once()
+
+        # Proceeds to indexing: returns (manifest, layers), not None.
+        assert result == (mock_manifest, [fake_layer])
 
     def test_scan_success_emits_notifications(self, initialized_db, scanner):
         from data.registry_model.datatypes import Manifest as ManifestDataType
