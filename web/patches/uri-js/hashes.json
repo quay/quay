@@ -1,0 +1,30 @@
+{
+  "4.2.2": {
+    "dist/es5/uri.all.js": {
+      "original": "7d965489073a8417f4475a5ce1d164c0e9a752077c6ecad7acbf1acd903a0f8a",
+      "patched": "48435d7168ff235facb6803f96d118a00ffaa664f8940125730ccdc27db32c48"
+    },
+    "dist/es5/uri.all.min.js": {
+      "original": "aa5676929a90c865ac478706e57a580ba5c44abdcde91f9648197742cf6bc285",
+      "patched": "42a27b5357fcaea497161dff1f1bfc71dac8cd69d22336d1c693986df0ac2d96"
+    },
+    "dist/esnext/uri.js": {
+      "original": "bf56b551fdaaab64c5b9c971ab406363efdb4d827595c903f5710b5b8db731d0",
+      "patched": "fa9e839a16fd0d0a5873182aaf7709a3c3589c1343fd099db51bba9c79b7f944"
+    }
+  },
+  "4.4.1": {
+    "dist/es5/uri.all.js": {
+      "original": "a0fcc6110f1154fd197a8ce056e2008dbc7d1750f8dd3ba77c3910af928ed3a1",
+      "patched": "18bab216e63214ed00dedf5c41ede443f5f29fdef84a755dccab573732d41486"
+    },
+    "dist/es5/uri.all.min.js": {
+      "original": "22c94f97e8d8721959de2cf631e67364804146bf506d211c4f4d7e5cab704552",
+      "patched": "492d5221517e7f8c64ebe90a605aa4971bda258e6fc006bce279d599f40716f0"
+    },
+    "dist/esnext/uri.js": {
+      "original": "5cd295b97e271e53f11eded4a844cb6678b2dd5c3ed32ed670109368a9c81cc3",
+      "patched": "929906fd3ab51386f67f45ab1b1f8c6bdf029577e5fa19b943013372d06b941d"
+    }
+  }
+}
