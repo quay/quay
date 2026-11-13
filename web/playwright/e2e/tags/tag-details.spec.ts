@@ -1,9 +1,14 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushMultiArchImage} from '../../utils/container';
 
 test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
+  let user: {username: string; password: string};
+
+  test.beforeAll(({cachedQuayConfig}) => {
+    user = getTestUsers(cachedQuayConfig).user;
+  });
+
   let testRepo: {namespace: string; name: string; fullName: string};
   let latestDigest: string;
 
@@ -13,12 +18,12 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
 
     const api = new ApiClient(userContext.request);
     const repoName = `tag-details-${Date.now()}`;
-    await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+    await api.createRepository(user.username, repoName, 'private');
 
     testRepo = {
-      namespace: TEST_USERS.user.username,
+      namespace: user.username,
       name: repoName,
-      fullName: `${TEST_USERS.user.username}/${repoName}`,
+      fullName: `${user.username}/${repoName}`,
     };
 
     // Push single-arch and multi-arch images
@@ -26,15 +31,15 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
       testRepo.namespace,
       testRepo.name,
       'latest',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      user.username,
+      user.password,
     );
     await pushMultiArchImage(
       testRepo.namespace,
       testRepo.name,
       'manifestlist',
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
+      user.username,
+      user.password,
     );
 
     // Fetch the latest tag digest for assertions
@@ -151,6 +156,12 @@ test.describe(
   'Tag Details - Vulnerability Badge',
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
     let scanStatus = 'queued';
 
@@ -161,20 +172,20 @@ test.describe(
       const api = new ApiClient(userContext.request);
       const repoName = `tag-vuln-badge-${Date.now()}`;
       // Public so Clair can pull and scan the image
-      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+      await api.createRepository(user.username, repoName, 'public');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         testRepo.namespace,
         testRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Wait for Clair to scan the image (poll until status != queued)

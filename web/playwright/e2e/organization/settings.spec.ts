@@ -1,6 +1,5 @@
 import {type Page} from '@playwright/test';
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe('Organization Settings', {tag: ['@organization']}, () => {
   test.describe('General Settings', {tag: ['@feature:USER_METADATA']}, () => {
@@ -492,8 +491,9 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     () => {
       test('shows Auto-Prune tab and hides org-only tabs for user namespace', async ({
         authenticatedPage,
+        quayConfig,
       }) => {
-        const username = TEST_USERS.user.username;
+        const username = getTestUsers(quayConfig).user.username;
 
         // Regression: React Query v4 keeps disabled queries in isLoading=true.
         // useOrgMirrorExists and useFetchProxyCacheConfig are disabled for user

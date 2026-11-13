@@ -26,7 +26,7 @@ test.describe(
 
     test(
       'superuser sees navigation items and can expand section',
-      {tag: '@superuser'},
+      {tag: ['@superuser', '@ldap-smoke']},
       async ({superuserPage}) => {
         await superuserPage.goto('/organization');
 

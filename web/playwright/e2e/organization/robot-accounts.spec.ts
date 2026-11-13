@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage, pullImage} from '../../utils/container';
 
@@ -212,7 +211,7 @@ test.describe(
     test(
       'organization manager retains robot API token mutation controls',
       {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
-      async ({authenticatedPage, api, userClient}) => {
+      async ({authenticatedPage, api, userClient, quayConfig}) => {
         const org = await api.organization('robotapitokenmanager');
         const robot = await api.robot(org.name, 'tokenbot');
         const tokenName = uniqueName('manager-token');
@@ -239,7 +238,7 @@ test.describe(
           timeout: 15_000,
         });
         if (await freshPasswordInput.isVisible()) {
-          await freshPasswordInput.fill(TEST_USERS.user.password);
+          await freshPasswordInput.fill(getTestUsers(quayConfig).user.password);
           await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
         }
         await expect(tokensTable).toBeVisible();
@@ -266,7 +265,7 @@ test.describe(
     test(
       'global readonly superuser can list robot API tokens without mutation controls',
       {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS', '@superuser']},
-      async ({api, readonlyPage, userClient}) => {
+      async ({api, readonlyPage, userClient, quayConfig}) => {
         const org = await api.organization('robotapitokenreadonly');
         const robot = await api.robot(org.name, 'tokenbot');
         const tokenName = uniqueName('readonly-token');
@@ -286,7 +285,9 @@ test.describe(
           timeout: 15_000,
         });
         if (await freshPasswordInput.isVisible()) {
-          await freshPasswordInput.fill(TEST_USERS.readonly.password);
+          await freshPasswordInput.fill(
+            getTestUsers(quayConfig).readonly.password,
+          );
           await readonlyPage.getByRole('button', {name: 'Verify'}).click();
         }
         await expect(tokensTable).toBeVisible();
@@ -765,6 +766,7 @@ test.describe(
     test('robot wizard: org has 5 steps, user namespace has 3 steps', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
       // Part A: Verify org wizard has 5 steps
       const org = await api.organization('wizardorg');
@@ -806,7 +808,7 @@ test.describe(
       await authenticatedPage.getByTestId('create-robot-cancel').click();
 
       // Part B: Verify user namespace wizard has 3 steps
-      const userNamespace = TEST_USERS.user.username;
+      const userNamespace = getTestUsers(quayConfig).user.username;
       await authenticatedPage.goto(
         `/organization/${userNamespace}?tab=Robotaccounts`,
       );

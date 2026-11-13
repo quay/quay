@@ -1,11 +1,16 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
   'Repository Details - Information Tab',
   {tag: ['@repository']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test('defaults to Information tab', async ({authenticatedPage, api}) => {
       const repo = await api.repository();
       await authenticatedPage.goto(`/repository/${repo.fullName}`);
@@ -139,8 +144,8 @@ test.describe(
           repo.namespace,
           repo.name,
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // View as readonly user — should not see tag action kebabs

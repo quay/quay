@@ -1254,12 +1254,13 @@ export class ApiClient {
     return response.ok();
   }
 
-  async clearUserPrompts(): Promise<void> {
+  // Re-submitting the unchanged username clears confirm_username.
+  async clearUserPrompts(username: string): Promise<void> {
     const token = await this.getToken();
     const response = await this.request.put(`${API_URL}/api/v1/user/`, {
       timeout: 5000,
       headers: {'X-CSRF-Token': token},
-      data: {given_name: 'Test', family_name: 'User'},
+      data: {username, given_name: 'Test', family_name: 'User'},
     });
     if (!response.ok()) {
       const body = await response.text();
