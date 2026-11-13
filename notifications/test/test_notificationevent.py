@@ -340,6 +340,22 @@ def test_vulnerability_notification_invalid_stored_tag_filter(caplog):
     assert "Regular expression error for vulnerability tag filter" in caplog.text
 
 
+def test_vulnerability_notification_tag_filter_timeout_fails_closed(monkeypatch, caplog):
+    class TimedOutRegex:
+        def search(self, tag, timeout):
+            raise TimeoutError
+
+    monkeypatch.setattr(
+        "notifications.notificationevent.regex.compile", lambda pattern: TimedOutRegex()
+    )
+
+    info = {"tags": ["v2.0"], "vulnerability": {"priority": "Critical"}}
+    assert not VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "v2"})
+    )
+    assert "Vulnerability tag regular expression timed out" in caplog.text
+
+
 @pytest.mark.parametrize("event_config", [{"tag-regex": None}, {"tag-regex": ""}, {}])
 def test_vulnerability_notification_validates_empty_tag_filter(event_config):
     VulnerabilityFoundEvent().validate_config(event_config)
