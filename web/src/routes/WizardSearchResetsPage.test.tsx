@@ -1,4 +1,5 @@
-import {fireEvent} from '@testing-library/react';
+import {fireEvent, within} from '@testing-library/react';
+import {useState} from 'react';
 import {render, screen} from 'src/test-utils';
 import AddToRepository from 'src/components/modals/robotAccountWizard/AddToRepository';
 import TeamView from 'src/components/modals/robotAccountWizard/TeamView';
@@ -180,5 +181,64 @@ describe.each(surfaces)('%s', (_name, searchInput, renderSurface) => {
     });
 
     expect(screen.getByText('item00')).toBeInTheDocument();
+  });
+});
+
+function TeamViewWithSelection() {
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [items] = useState(() =>
+    names.map((name) => ({name, role: 'member', member_count: 1})),
+  );
+  return (
+    <TeamView
+      items={items}
+      selectedTeams={selectedTeams}
+      setSelectedTeams={setSelectedTeams}
+      showCheckbox={true}
+      showToggleGroup={true}
+      filterWithDropdown={false}
+    />
+  );
+}
+
+function AddToRepositoryWithSelection() {
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  return (
+    <AddToRepository
+      namespace="org"
+      dropdownItems={[]}
+      selectedRepos={selectedRepos}
+      repos={names.map(
+        (name, i) => ({name, last_modified: names.length - i}) as never,
+      )}
+      setSelectedRepos={setSelectedRepos}
+      selectedRepoPerms={[]}
+      setSelectedRepoPerms={vi.fn()}
+      setShowRepoModalSave={vi.fn()}
+    />
+  );
+}
+
+describe.each([
+  ['TeamView', TeamViewWithSelection],
+  ['AddToRepository', AddToRepositoryWithSelection],
+])('%s Selected toggle', (_name, Surface) => {
+  it('shows rows selected on other pages after switching from page 2', () => {
+    render(<Surface />);
+    const selectRow = (name: string) =>
+      fireEvent.click(
+        within(screen.getByTestId(`checkbox-row-${name}`)).getByRole(
+          'checkbox',
+        ),
+      );
+
+    selectRow('item00');
+    fireEvent.click(screen.getAllByLabelText('Go to next page')[0]);
+    selectRow('item20');
+
+    fireEvent.click(screen.getByRole('button', {name: 'Selected'}));
+
+    expect(screen.getByText('item00')).toBeInTheDocument();
+    expect(screen.getByText('item20')).toBeInTheDocument();
   });
 });
