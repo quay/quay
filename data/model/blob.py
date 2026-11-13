@@ -105,12 +105,27 @@ def store_blob_record_and_temp_link_in_repo(
     byte_count,
     link_expiration_s,
     uncompressed_byte_count=None,
+    already_locked=False,
 ):
     """
     Store a record of the blob and temporarily link it to the specified repository.
+
+    If already_locked is True, the caller already holds the BLOB_DELETE_<digest> GlobalLock (e.g.
+    across a preceding storage finalize), so this skips its own nested acquisition of that lock.
     """
     assert blob_digest
     assert byte_count is not None
+
+    if already_locked:
+        return _store_blob_record_and_temp_link_in_repo(
+            repository_id=repository_id,
+            blob_digest=blob_digest,
+            location_obj=location_obj,
+            byte_count=byte_count,
+            link_expiration_s=link_expiration_s,
+            uncompressed_byte_count=uncompressed_byte_count,
+            skip_lock=True,
+        )
 
     return with_blob_lock_or_fallback(
         blob_digest,
