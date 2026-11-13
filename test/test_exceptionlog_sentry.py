@@ -407,6 +407,16 @@ class TestSentryBeforeSendFilter:
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
 
+    def test_filter_basic_auth_parsing_exception(self):
+        """Basic auth header parsing exceptions should be filtered."""
+        event = {
+            "logentry": {
+                "formatted": "Exception when parsing basic auth header: Basic dXNlcjpwYXNz"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
     def test_keep_actual_redis_error(self):
         """Actual Redis errors should NOT be filtered."""
         event = {"logentry": {"formatted": "Redis connection refused: ECONNREFUSED 127.0.0.1:6379"}}
