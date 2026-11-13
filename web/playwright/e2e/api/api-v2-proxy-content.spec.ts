@@ -2,7 +2,7 @@
  * v2 registry tests for proxied organizations
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {getV2Token} from '../../utils/api/auth';
@@ -12,6 +12,47 @@ import {proxyOptionFromEnv} from '../../utils/proxy';
 // Standalone APIRequestContexts don't inherit `use.proxy`; set it explicitly so
 // registry calls work when Quay is reachable only via a proxy. undefined locally.
 const REQUEST_PROXY = proxyOptionFromEnv();
+
+test.describe(
+  'Rejected proxy cache repository names',
+  {tag: ['@api', '@v2', '@feature:PROXY_CACHE', '@auth:Database']},
+  () => {
+    test('manifest requests return NAME_UNKNOWN for rejected new names', async ({
+      api,
+      userContext,
+      quayConfig,
+    }) => {
+      const org = await api.organization('rejectedproxy');
+      await api.raw.createProxyCacheConfig(org.name, {
+        upstream_registry: 'quay.io',
+        expiration_s: 3600,
+        insecure: false,
+      });
+      const user = getTestUsers(quayConfig).user;
+      for (const name of ['library/build', 'library/build/ambiguous']) {
+        const repository = `${org.name}/${name}`;
+        const token = await getV2Token(
+          userContext.request,
+          API_URL,
+          user.username,
+          user.password,
+          `repository:${repository}:pull`,
+        );
+        const headers = {Authorization: `Bearer ${token}`};
+        for (const ref of ['latest', `sha256:${'a'.repeat(64)}`]) {
+          const url = `${API_URL}/v2/${repository}/manifests/${ref}`;
+          const response = await userContext.request.get(url, {headers});
+          expect(response.status()).toBe(404);
+          const body = await response.json();
+          expect(body.errors[0].code).toBe('NAME_UNKNOWN');
+          const head = await userContext.request.head(url, {headers});
+          expect(head.status()).toBe(404);
+          expect((await head.body()).length).toBe(0);
+        }
+      }
+    });
+  },
+);
 
 test.describe(
   'V2 registry tests for proxied organizations',
