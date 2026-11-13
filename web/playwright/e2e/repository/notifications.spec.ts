@@ -779,6 +779,78 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     ).toBeDisabled();
   });
 
+  test(
+    'configures vulnerability notification severity and tag matching',
+    {tag: ['@feature:SECURITY_SCANNER']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('vulnnotif');
+      const repo = await api.repository(org.name, 'vulnrepo');
+      const title = 'V2 high vulnerabilities';
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Package Vulnerability Found'})
+        .click();
+
+      await expect(
+        authenticatedPage.getByTestId('vulnerability-severity'),
+      ).toHaveValue('');
+      await expect(
+        authenticatedPage.getByTestId('notification-submit-btn'),
+      ).toBeDisabled();
+
+      await authenticatedPage
+        .getByTestId('vulnerability-severity')
+        .selectOption('1');
+      await authenticatedPage
+        .getByTestId('vulnerability-tag-regex')
+        .fill('[v2');
+      await expect(
+        authenticatedPage.getByText('Invalid regular expression'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('notification-submit-btn'),
+      ).toBeDisabled();
+
+      await authenticatedPage.getByTestId('vulnerability-tag-regex').fill('v2');
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Webhook POST'})
+        .click();
+      await authenticatedPage
+        .getByTestId('webhook-url-field')
+        .fill('https://example.com/hook');
+      await authenticatedPage.getByTestId('notification-title').fill(title);
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: title}),
+      ).toBeVisible();
+
+      const notifications = await api.getRepositoryNotifications(
+        org.name,
+        repo.name,
+      );
+      const saved = notifications.notifications.find(
+        (notification) => notification.title === title,
+      );
+      expect(saved?.event_config).toEqual({level: '1', 'tag-regex': 'v2'});
+    },
+  );
+
   test('creates notifications for each event type', async ({
     authenticatedPage,
     api,
@@ -825,6 +897,12 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         continue;
       }
       await menuItem.click();
+
+      if (eventName === 'Package Vulnerability Found') {
+        await authenticatedPage
+          .getByTestId('vulnerability-severity')
+          .selectOption('0');
+      }
 
       await authenticatedPage
         .getByTestId('notification-method-dropdown')

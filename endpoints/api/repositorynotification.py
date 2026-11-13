@@ -20,7 +20,10 @@ from endpoints.api import (
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model as model
 from endpoints.exception import NotFound
 from notifications.models_interface import Repository
-from notifications.notificationevent import NotificationEvent
+from notifications.notificationevent import (
+    InvalidNotificationEventConfigException,
+    NotificationEvent,
+)
 from notifications.notificationmethod import (
     CannotValidateNotificationMethodException,
     NotificationMethod,
@@ -77,10 +80,15 @@ class RepositoryNotificationList(RepositoryParamResource):
     def post(self, namespace_name, repository_name):
         parsed = request.get_json()
 
+        event_handler = NotificationEvent.get_event(parsed["event"])
         method_handler = NotificationMethod.get_method(parsed["method"])
         try:
+            event_handler.validate_config(parsed["eventConfig"])
             method_handler.validate(namespace_name, repository_name, parsed["config"])
-        except CannotValidateNotificationMethodException as ex:
+        except (
+            InvalidNotificationEventConfigException,
+            CannotValidateNotificationMethodException,
+        ) as ex:
             raise request_error(message=str(ex))
 
         new_notification = model.create_repo_notification(
