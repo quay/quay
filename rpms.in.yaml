@@ -32,4 +32,6 @@ packages: [
 ]
 contentOrigin:
   repofiles: ["./ubi.repo"]
-arches: [x86_64]
+arches: [x86_64, aarch64, ppc64le, s390x]
+context:
+  image: registry.access.redhat.com/ubi8/ubi-minimal:8.10-1793069394
