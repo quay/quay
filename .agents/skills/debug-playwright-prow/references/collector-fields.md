@@ -144,6 +144,19 @@ found) produces `[]`, not a gap record.
   workflow's `quay-gather-jaeger-traces` prefix, downloaded under
   `$ARTIFACTS_DIR/jaeger-traces/` only after JSON validation.
 
+## Mailpit
+
+`mailpit` holds three `{source_url, local_path, status}` records (same shape
+as the routing records) from the workflow's sibling `quay-deploy-mailpit`
+step, downloaded under `$ARTIFACTS_DIR/mailpit/`:
+
+- `build_log` — the step's `build-log.txt` (rollout and the
+  `Mailpit API reachable (HTTP 200)` line).
+- `finished` — the step's `finished.json` (its own `result`/`passed`).
+- `api_url` — `artifacts/mailpit_api`, the Mailpit API URL the tests used.
+
+A job without that step reports all three `unavailable`.
+
 ## Test outcome arrays and stats
 
 - `stats` — `total`, `passed`, `failed`, `flaky`, `skipped`, `duration_s`,
