@@ -38,6 +38,7 @@ import {
   useUpdateQuotaLimit,
   useDeleteQuotaLimit,
 } from 'src/hooks/UseQuotaManagement';
+import {hasOtherRejectLimit} from 'src/libs/quotaUtils';
 import {
   IQuotaLimit,
   QuotaViewMode,
@@ -444,6 +445,18 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       addAlert({
         variant: AlertVariantState.Failure,
         title: limitError,
+      });
+      return;
+    }
+
+    // Check for duplicate reject limits
+    if (
+      hasOtherRejectLimit(organizationQuota.limits, updatedLimit.type, limitId)
+    ) {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Error: A quota policy should only have a single reject threshold.',
       });
       return;
     }
