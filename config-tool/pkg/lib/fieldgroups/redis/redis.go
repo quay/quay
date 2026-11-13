@@ -13,12 +13,28 @@ type RedisFieldGroup struct {
 	PullMetricsRedis *PullMetricsRedisStruct `default:"" validate:"" json:"PULL_METRICS_REDIS,omitempty" yaml:"PULL_METRICS_REDIS,omitempty"`
 }
 
+// StartupNodeStruct represents a single Redis Cluster startup node
+type StartupNodeStruct struct {
+	Host string `json:"host,omitempty" yaml:"host,omitempty"`
+	Port int    `json:"port,omitempty" yaml:"port,omitempty"`
+}
+
+// RedisConfigStruct holds the redis_config block used with engine: rediscluster
+type RedisConfigStruct struct {
+	StartupNodes        []StartupNodeStruct `json:"startup_nodes,omitempty" yaml:"startup_nodes,omitempty"`
+	Password            string              `json:"password,omitempty" yaml:"password,omitempty"`
+	RequireFullCoverage bool                `json:"require_full_coverage,omitempty" yaml:"require_full_coverage,omitempty"`
+	Ssl                 bool                `json:"ssl,omitempty" yaml:"ssl,omitempty"`
+}
+
 // UserEventsRedisStruct represents the UserEventsRedisStruct config fields
 type UserEventsRedisStruct struct {
-	Password string `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
-	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
-	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
-	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Password    string             `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
+	Port        int                `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
+	Host        string             `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
+	Ssl         bool               `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Engine      string             `default:"" validate:"" json:"engine,omitempty" yaml:"engine,omitempty"`
+	RedisConfig *RedisConfigStruct `default:"" validate:"" json:"redis_config,omitempty" yaml:"redis_config,omitempty"`
 }
 
 // BuildlogsRedisStruct represents the BuildlogsRedisStruct config fields
@@ -31,11 +47,13 @@ type BuildlogsRedisStruct struct {
 
 // PullMetricsRedisStruct represents the PullMetricsRedisStruct config fields
 type PullMetricsRedisStruct struct {
-	Password string `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
-	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
-	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
-	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
-	Db       int    `default:"1" validate:"" json:"db,omitempty" yaml:"db,omitempty"`
+	Password    string             `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
+	Port        int                `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
+	Host        string             `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
+	Ssl         bool               `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Db          int                `default:"0" validate:"" json:"db,omitempty" yaml:"db,omitempty"`
+	Engine      string             `default:"" validate:"" json:"engine,omitempty" yaml:"engine,omitempty"`
+	RedisConfig *RedisConfigStruct `default:"" validate:"" json:"redis_config,omitempty" yaml:"redis_config,omitempty"`
 }
 
 // NewRedisFieldGroup creates a new RedisFieldGroup
@@ -100,6 +118,24 @@ func NewUserEventsRedisStruct(fullConfig map[string]interface{}) (*UserEventsRed
 		if !ok {
 			return newUserEventsRedisStruct, errors.New("ssl must be of type bool")
 		}
+	}
+
+	if value, ok := fullConfig["engine"]; ok {
+		newUserEventsRedisStruct.Engine, ok = value.(string)
+		if !ok {
+			return newUserEventsRedisStruct, errors.New("engine must be of type string")
+		}
+	}
+	if value, ok := fullConfig["redis_config"]; ok {
+		configMap, ok := value.(map[string]interface{})
+		if !ok {
+			return newUserEventsRedisStruct, errors.New("redis_config must be of type map")
+		}
+		rc, err := NewRedisConfigStruct(configMap)
+		if err != nil {
+			return newUserEventsRedisStruct, err
+		}
+		newUserEventsRedisStruct.RedisConfig = rc
 	}
 
 	return newUserEventsRedisStruct, nil
@@ -175,5 +211,75 @@ func NewPullMetricsRedisStruct(fullConfig map[string]interface{}) (*PullMetricsR
 		}
 	}
 
+	if value, ok := fullConfig["engine"]; ok {
+		newPullMetricsRedisStruct.Engine, ok = value.(string)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("engine must be of type string")
+		}
+	}
+	if value, ok := fullConfig["redis_config"]; ok {
+		configMap, ok := value.(map[string]interface{})
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("redis_config must be of type map")
+		}
+		rc, err := NewRedisConfigStruct(configMap)
+		if err != nil {
+			return newPullMetricsRedisStruct, err
+		}
+		newPullMetricsRedisStruct.RedisConfig = rc
+	}
+
 	return newPullMetricsRedisStruct, nil
+}
+
+// NewRedisConfigStruct creates a new RedisConfigStruct from a config map
+func NewRedisConfigStruct(fullConfig map[string]interface{}) (*RedisConfigStruct, error) {
+	rc := &RedisConfigStruct{}
+
+	if value, ok := fullConfig["password"]; ok {
+		rc.Password, ok = value.(string)
+		if !ok {
+			return rc, errors.New("redis_config.password must be of type string")
+		}
+	}
+	if value, ok := fullConfig["require_full_coverage"]; ok {
+		rc.RequireFullCoverage, ok = value.(bool)
+		if !ok {
+			return rc, errors.New("redis_config.require_full_coverage must be of type bool")
+		}
+	}
+	if value, ok := fullConfig["ssl"]; ok {
+		rc.Ssl, ok = value.(bool)
+		if !ok {
+			return rc, errors.New("redis_config.ssl must be of type bool")
+		}
+	}
+	if value, ok := fullConfig["startup_nodes"]; ok {
+		nodeList, ok := value.([]interface{})
+		if !ok {
+			return rc, errors.New("redis_config.startup_nodes must be of type list")
+		}
+		for _, nodeRaw := range nodeList {
+			nodeMap, ok := nodeRaw.(map[string]interface{})
+			if !ok {
+				return rc, errors.New("redis_config.startup_nodes entries must be maps")
+			}
+			node := StartupNodeStruct{}
+			if h, ok := nodeMap["host"]; ok {
+				node.Host, ok = h.(string)
+				if !ok {
+					return rc, errors.New("startup_node host must be of type string")
+				}
+			}
+			if p, ok := nodeMap["port"]; ok {
+				node.Port, ok = p.(int)
+				if !ok {
+					return rc, errors.New("startup_node port must be of type int")
+				}
+			}
+			rc.StartupNodes = append(rc.StartupNodes, node)
+		}
+	}
+
+	return rc, nil
 }
