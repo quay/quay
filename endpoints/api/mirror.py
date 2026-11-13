@@ -15,6 +15,7 @@ from endpoints.api import (
     RepositoryParamResource,
     allow_if_global_readonly_superuser,
     define_json_response,
+    disallow_for_proxy_cache_org,
     format_date,
     nickname,
     path_param,
@@ -183,6 +184,7 @@ class RepoMirrorSyncNowResource(RepositoryParamResource):
     """
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @nickname("syncNow")
     def post(self, namespace_name, repository_name):
         """
@@ -346,6 +348,7 @@ class RepoMirrorResource(RepositoryParamResource):
         }
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
     def post(self, namespace_name, repository_name):
@@ -436,6 +439,7 @@ class RepoMirrorResource(RepositoryParamResource):
             return {"detail": "RepoMirrorConfig already exists for this repository."}, 409
 
     @require_repo_admin(allow_for_superuser=True)
+    @disallow_for_proxy_cache_org
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
     def put(self, namespace_name, repository_name):

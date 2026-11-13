@@ -2,6 +2,7 @@ import logging
 
 from flask import Blueprint, make_response, request
 
+import features
 from app import app
 from app import billing as stripe
 from auth.decorators import process_auth
@@ -199,6 +200,9 @@ def build_trigger_webhook(trigger_uuid, **kwargs):
 
         if trigger.repository.state != RepositoryState.NORMAL:
             abort(503, "Repository is currently in read only or mirror mode")
+
+        if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
+            abort(400, message="Cannot modify repository: organization is a proxy cache")
 
         logger.debug("Passing webhook request to handler %s", handler)
         try:
