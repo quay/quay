@@ -5,11 +5,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/dal/daldb"
 	"github.com/quay/quay/internal/repository"
 )
+
+// libraryNamespace receives repositories pushed without a namespace under the
+// default LIBRARY_NAMESPACE, so only a superuser may create it on push.
+const libraryNamespace = "library"
 
 // AuthorizerConfig configures repository permission checks.
 type AuthorizerConfig struct {
@@ -19,6 +24,7 @@ type AuthorizerConfig struct {
 
 // Authorizer checks repository permissions against Quay permission tables.
 type Authorizer struct {
+	db         *sql.DB
 	queries    *daldb.Queries
 	superUsers map[string]struct{}
 }
@@ -35,7 +41,11 @@ func NewAuthorizer(db *sql.DB, cfg AuthorizerConfig) *Authorizer {
 			superUsers[username] = struct{}{}
 		}
 	}
-	return &Authorizer{queries: daldb.New(db), superUsers: superUsers}
+	return &Authorizer{
+		db:         db,
+		queries:    daldb.New(db),
+		superUsers: superUsers,
+	}
 }
 
 // CanPullRepository reports whether principal can pull repo contents.
@@ -110,6 +120,18 @@ func (a *Authorizer) CanPushRepository(ctx context.Context, principal *auth.Prin
 
 // CanCreateRepository reports whether principal can create repos in namespace.
 func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Principal, namespace string) (bool, error) {
+	return a.canCreateRepository(ctx, principal, namespace, false)
+}
+
+// CanCreateRepositoryOnPush is CanCreateRepository for a push. When principal
+// is a user and namespace is missing, it creates the namespace as an
+// organization whose owners team holds principal, so later pushes pass the
+// regular permission checks.
+func (a *Authorizer) CanCreateRepositoryOnPush(ctx context.Context, principal *auth.Principal, namespace string) (bool, error) {
+	return a.canCreateRepository(ctx, principal, namespace, true)
+}
+
+func (a *Authorizer) canCreateRepository(ctx context.Context, principal *auth.Principal, namespace string, createNamespace bool) (bool, error) {
 	if principal.IsAnonymous() {
 		return false, nil
 	}
@@ -120,7 +142,25 @@ func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Pr
 			if isSuperUser {
 				return true, nil
 			}
-			return false, nil
+			// A pull token must not grant access to a namespace that another
+			// user creates while the token is still valid.
+			if !createNamespace {
+				return false, nil
+			}
+			// The token endpoint passes the raw scope name; 2.x validated it
+			// before creating the organization.
+			if principal.Kind != auth.PrincipalUser || !auth.ValidUsername(namespace) {
+				return false, nil
+			}
+			if namespace == libraryNamespace {
+				return false, nil
+			}
+			if err := a.createOwnedNamespace(ctx, principal, namespace); err != nil {
+				return false, err
+			}
+			// Re-check against the stored ACL: a concurrent push may have
+			// claimed the namespace first.
+			return a.canCreateRepository(ctx, principal, namespace, false)
 		}
 		return false, err
 	}
@@ -147,6 +187,34 @@ func (a *Authorizer) CanCreateRepository(ctx context.Context, principal *auth.Pr
 		return false, err
 	}
 	return allowed, nil
+}
+
+// createOwnedNamespace creates namespace as an organization whose owners team
+// holds principal, as 2.x Quay did when creating a namespace on push. It is a
+// no-op when the namespace already exists.
+func (a *Authorizer) createOwnedNamespace(ctx context.Context, principal *auth.Principal, namespace string) error {
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := a.queries.WithTx(tx)
+
+	orgID, err := q.CreateNamespaceOrganization(ctx, namespace)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("create namespace %q: %w", namespace, err)
+	}
+	teamID, err := q.CreateOwnersTeam(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("create owners team for %q: %w", namespace, err)
+	}
+	if err := q.AddTeamMember(ctx, daldb.AddTeamMemberParams{UserID: principal.ID, TeamID: teamID}); err != nil {
+		return fmt.Errorf("add %q to owners of %q: %w", principal.Username, namespace, err)
+	}
+	return tx.Commit()
 }
 
 func (a *Authorizer) canPushMirrorRepository(ctx context.Context, principal *auth.Principal, repositoryID int64) (bool, error) {

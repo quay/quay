@@ -16,6 +16,8 @@ import {
   CardBody,
   Content,
   FlexItem,
+  HelperText,
+  HelperTextItem,
   Modal,
   ModalVariant,
   ModalHeader,
@@ -23,7 +25,7 @@ import {
   ModalFooter,
 } from '@patternfly/react-core';
 import {PlusIcon} from '@patternfly/react-icons';
-import {useEffect, useState} from 'react';
+import {FormEvent, useEffect, useState} from 'react';
 import {useForm, Controller} from 'react-hook-form';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {AlertVariant as AlertVariantState, useUI} from 'src/contexts/UIContext';
@@ -38,6 +40,7 @@ import {
   useUpdateQuotaLimit,
   useDeleteQuotaLimit,
 } from 'src/hooks/UseQuotaManagement';
+import {hasOtherRejectLimit} from 'src/libs/quotaUtils';
 import {
   IQuotaLimit,
   QuotaViewMode,
@@ -55,6 +58,27 @@ type QuotaManagementProps = {
 
 const QUOTA_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'];
 const QUOTA_LIMIT_TYPES = ['Warning', 'Reject'];
+const LIMIT_PERCENT_ERROR = 'Enter 1 to 100.';
+
+// Number() rather than parseInt, which reads 5.5 as 5 and 1e5 as 1.
+const parseLimitPercent = (value: string): number | null => {
+  const numValue = Number(value);
+  return Number.isInteger(numValue) && numValue >= 1 && numValue <= 100
+    ? numValue
+    : null;
+};
+
+// True when the limit percent onChange handlers drop the value. A number
+// input reports unparseable text as '', so badInput tells it from empty.
+const isInvalidLimitPercent = (
+  event: FormEvent<HTMLInputElement>,
+  value: string,
+) => {
+  if (value === '') {
+    return event.currentTarget.validity.badInput;
+  }
+  return parseLimitPercent(value) === null;
+};
 
 interface QuotaFormData {
   quotaValue: string;
@@ -131,6 +155,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   });
   const [isNewLimitTypeSelectOpen, setIsNewLimitTypeSelectOpen] =
     useState(false);
+  const [newLimitPercentError, setNewLimitPercentError] = useState(false);
+  const [limitPercentErrors, setLimitPercentErrors] = useState<{
+    [key: string]: boolean;
+  }>({});
+  // Typed threshold text, shown while it is invalid: limit state only takes
+  // valid values, so the controlled input would otherwise snap back to it.
+  const [newLimitPercentInput, setNewLimitPercentInput] = useState('');
+  const [limitPercentInputs, setLimitPercentInputs] = useState<{
+    [key: string]: string;
+  }>({});
   const [editingLimits, setEditingLimits] = useState<{[key: string]: boolean}>(
     {},
   );
@@ -448,6 +482,18 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       return;
     }
 
+    // Check for duplicate reject limits
+    if (
+      hasOtherRejectLimit(organizationQuota.limits, updatedLimit.type, limitId)
+    ) {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Error: A quota policy should only have a single reject threshold.',
+      });
+      return;
+    }
+
     updateLimitMutation({
       quotaId: organizationQuota.id,
       limitId: limitId,
@@ -655,12 +701,12 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                 <CardBody>
                   <Flex
                     justifyContent={{default: 'justifyContentFlexStart'}}
-                    alignItems={{default: 'alignItemsCenter'}}
+                    alignItems={{default: 'alignItemsBaseline'}}
                     spaceItems={{default: 'spaceItemsLg'}}
                   >
                     <FlexItem>
                       <Flex
-                        alignItems={{default: 'alignItemsCenter'}}
+                        alignItems={{default: 'alignItemsBaseline'}}
                         spaceItems={{default: 'spaceItemsSm'}}
                       >
                         <FlexItem style={{minWidth: '140px'}}>
@@ -708,26 +754,47 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                             ))}
                           </Select>
                         </FlexItem>
-                        <FlexItem style={{minWidth: '140px'}}>
+                        <FlexItem style={{width: '140px', flex: 'none'}}>
                           <Flex
                             alignItems={{default: 'alignItemsCenter'}}
                             spaceItems={{default: 'spaceItemsXs'}}
+                            flexWrap={{default: 'nowrap'}}
                           >
                             <FlexItem>
                               <TextInput
                                 type="number"
-                                value={limit.limit_percent}
+                                value={
+                                  limitPercentErrors[limit.id]
+                                    ? limitPercentInputs[limit.id]
+                                    : limit.limit_percent
+                                }
                                 min={1}
                                 max={100}
                                 data-testid="limit-percent-input"
                                 aria-label="Edit limit percentage"
-                                onChange={(_event, value) => {
-                                  const numValue = parseInt(value, 10);
-                                  if (
-                                    !isNaN(numValue) &&
-                                    numValue >= 1 &&
-                                    numValue <= 100
-                                  ) {
+                                aria-describedby={
+                                  limitPercentErrors[limit.id]
+                                    ? `limit-percent-error-${limit.id}`
+                                    : undefined
+                                }
+                                validated={
+                                  limitPercentErrors[limit.id]
+                                    ? 'error'
+                                    : 'default'
+                                }
+                                onChange={(event, value) => {
+                                  setLimitPercentInputs({
+                                    ...limitPercentInputs,
+                                    [limit.id]: value,
+                                  });
+                                  setLimitPercentErrors({
+                                    ...limitPercentErrors,
+                                    [limit.id]:
+                                      value === '' ||
+                                      isInvalidLimitPercent(event, value),
+                                  });
+                                  const numValue = parseLimitPercent(value);
+                                  if (numValue !== null) {
                                     handleLimitChange(
                                       limit.id,
                                       'limit_percent',
@@ -749,6 +816,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
+                          <HelperText isLiveRegion>
+                            {limitPercentErrors[limit.id] && (
+                              <HelperTextItem
+                                variant="error"
+                                id={`limit-percent-error-${limit.id}`}
+                              >
+                                {LIMIT_PERCENT_ERROR}
+                              </HelperTextItem>
+                            )}
+                          </HelperText>
                         </FlexItem>
                       </Flex>
                     </FlexItem>
@@ -758,7 +835,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           variant="primary"
                           size="sm"
                           onClick={() => handleUpdateLimit(limit.id, limit)}
-                          isDisabled={isReadOnly || !hasLimitChanged(limit.id)}
+                          isDisabled={
+                            isReadOnly ||
+                            !hasLimitChanged(limit.id) ||
+                            limitPercentErrors[limit.id]
+                          }
                           data-testid="update-limit-button"
                         >
                           Update
@@ -790,12 +871,12 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                 <CardBody>
                   <Flex
                     justifyContent={{default: 'justifyContentFlexStart'}}
-                    alignItems={{default: 'alignItemsCenter'}}
+                    alignItems={{default: 'alignItemsBaseline'}}
                     spaceItems={{default: 'spaceItemsLg'}}
                   >
                     <FlexItem>
                       <Flex
-                        alignItems={{default: 'alignItemsCenter'}}
+                        alignItems={{default: 'alignItemsBaseline'}}
                         spaceItems={{default: 'spaceItemsSm'}}
                       >
                         <FlexItem style={{minWidth: '140px'}}>
@@ -843,26 +924,39 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                             ))}
                           </Select>
                         </FlexItem>
-                        <FlexItem style={{minWidth: '140px'}}>
+                        <FlexItem style={{width: '140px', flex: 'none'}}>
                           <Flex
                             alignItems={{default: 'alignItemsCenter'}}
                             spaceItems={{default: 'spaceItemsXs'}}
+                            flexWrap={{default: 'nowrap'}}
                           >
                             <FlexItem>
                               <TextInput
                                 type="number"
-                                value={newLimit.limit_percent}
+                                value={
+                                  newLimitPercentError
+                                    ? newLimitPercentInput
+                                    : newLimit.limit_percent
+                                }
                                 min={1}
                                 max={100}
                                 data-testid="new-limit-percent-input"
                                 aria-label="New limit percentage"
-                                onChange={(_event, value) => {
-                                  const numValue = parseInt(value, 10);
-                                  if (
-                                    !isNaN(numValue) &&
-                                    numValue >= 1 &&
-                                    numValue <= 100
-                                  ) {
+                                aria-describedby={
+                                  newLimitPercentError
+                                    ? 'new-limit-percent-error'
+                                    : undefined
+                                }
+                                validated={
+                                  newLimitPercentError ? 'error' : 'default'
+                                }
+                                onChange={(event, value) => {
+                                  setNewLimitPercentInput(value);
+                                  setNewLimitPercentError(
+                                    isInvalidLimitPercent(event, value),
+                                  );
+                                  const numValue = parseLimitPercent(value);
+                                  if (numValue !== null) {
                                     setNewLimit({
                                       ...newLimit,
                                       limit_percent: numValue,
@@ -882,6 +976,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
+                          <HelperText isLiveRegion>
+                            {newLimitPercentError && (
+                              <HelperTextItem
+                                variant="error"
+                                id="new-limit-percent-error"
+                              >
+                                {LIMIT_PERCENT_ERROR}
+                              </HelperTextItem>
+                            )}
+                          </HelperText>
                         </FlexItem>
                       </Flex>
                     </FlexItem>
@@ -896,7 +1000,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           isReadOnly ||
                           !newLimit.type ||
                           newLimit.limit_percent === '' ||
-                          newLimit.limit_percent === 0
+                          newLimit.limit_percent === 0 ||
+                          newLimitPercentError
                         }
                       >
                         Add Limit

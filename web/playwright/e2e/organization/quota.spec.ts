@@ -365,6 +365,129 @@ test.describe(
         ).not.toBeVisible();
       },
     );
+
+    test(
+      'superuser cannot update a limit to Reject when another Reject limit already exists',
+      {tag: ['@PROJQUAY-9416', '@superuser']},
+      async ({superuserPage, superuserApi}) => {
+        // Setup: Create organization with quota, a Warning limit at 60% and a Reject limit at 80%
+        const org = await superuserApi.organization('quotadupreject');
+        const quota = await superuserApi.quota(org.name, 104857600); // 100 MiB
+
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          60,
+        );
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Reject',
+          80,
+        );
+
+        const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
+        const warningLimit = quotas[0].limits.find(
+          (limit) => limit.type === 'Warning',
+        );
+        const rejectLimit = quotas[0].limits.find(
+          (limit) => limit.type === 'Reject',
+        );
+        if (!warningLimit || !rejectLimit) {
+          throw new Error('Warning or Reject limit not found after setup');
+        }
+
+        // Open Configure Quota modal
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+
+        // Change the Warning row's type to Reject
+        const warningRow = superuserPage.getByTestId(
+          `quota-limit-${warningLimit.id}`,
+        );
+        await warningRow.getByRole('button', {name: 'Warning'}).click();
+        await superuserPage.getByRole('option', {name: 'Reject'}).click();
+
+        // Attempt to update the Warning row (now set to Reject)
+        await warningRow.getByTestId('update-limit-button').click();
+
+        // Should show the duplicate-reject error instead of succeeding.
+        // The modal stays open on this validation error (same as the
+        // existing Add Limit check), so both the modal-local and the
+        // page-level Alerts renderers show the same alert; scope to one.
+        await expect(
+          superuserPage
+            .getByText(
+              'Error: A quota policy should only have a single reject threshold.',
+            )
+            .first(),
+        ).toBeVisible();
+
+        // The persisted limits must still have exactly one Reject limit
+        const quotasAfter = await superuserApi.raw.getOrganizationQuota(
+          org.name,
+        );
+        const rejectLimits = quotasAfter[0].limits.filter(
+          (limit) => limit.type === 'Reject',
+        );
+        expect(rejectLimits).toHaveLength(1);
+
+        // Updating the existing Reject row itself must still be allowed
+        const rejectRow = superuserPage.getByTestId(
+          `quota-limit-${rejectLimit.id}`,
+        );
+        await rejectRow.getByTestId('limit-percent-input').fill('90');
+        await rejectRow.getByTestId('update-limit-button').click();
+        await expect(
+          superuserPage.getByText('Successfully updated quota limit'),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'superuser sees an error for an invalid quota threshold',
+      {tag: ['@PROJQUAY-9415', '@superuser']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('quotathreshold');
+        const quota = await superuserApi.quota(org.name, 104857600); // 100 MiB
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          80,
+        );
+
+        await superuserPage.goto('/organization');
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        const modal = superuserPage.getByTestId('configure-quota-modal');
+        await expect(modal).toBeVisible();
+
+        const input = modal.getByTestId('new-limit-percent-input');
+        const error = modal.getByText('Enter 1 to 100.');
+        await input.fill('0');
+        await expect(error).toBeVisible();
+
+        await input.fill('50');
+        await expect(error).toBeHidden();
+
+        const limitInput = modal.getByTestId('limit-percent-input');
+        const update = modal.getByTestId('update-limit-button');
+        await limitInput.fill('50');
+        await expect(update).toBeEnabled();
+
+        await limitInput.press('ControlOrMeta+a');
+        await limitInput.press('0');
+        await expect(limitInput).toHaveValue('0');
+        await expect(error).toBeVisible();
+        await expect(update).toBeDisabled();
+      },
+    );
   },
 );
 

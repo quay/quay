@@ -126,6 +126,8 @@ def generate_server_config(config):
     blob_upload_lingering_timeout = config.get("BLOB_UPLOAD_LINGERING_TIMEOUT", None)
 
     enable_alb_health_check = config.get("FEATURE_ALB_HEALTH_CHECK", False)
+    default_keepalive_timeout = int(config.get("DEFAULT_NGINX_KEEPALIVE_TIMEOUT", 5))
+    keepalive_timeout = int(config.get("NGINX_KEEPALIVE_TIMEOUT", 0))
 
     # Get default UI setting from config
     default_ui = config.get("DEFAULT_UI", "react").lower()
@@ -148,6 +150,8 @@ def generate_server_config(config):
         blob_upload_lingering_timeout=blob_upload_lingering_timeout,
         default_ui=default_ui,
         enable_alb_health_check=enable_alb_health_check,
+        default_keepalive_timeout=default_keepalive_timeout,
+        keepalive_timeout=keepalive_timeout,
     )
 
 
