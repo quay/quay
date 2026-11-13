@@ -200,6 +200,8 @@ EDIT_QUOTA: FeatureNameValue
 
 IMAGE_PULL_STATS: FeatureNameValue
 
+IMAGE_PULL_STATS_AUTO_REFRESH: FeatureNameValue
+
 QUOTA_SUPPRESS_FAILURES: FeatureNameValue
 
 HELM_OCI_SUPPORT: FeatureNameValue

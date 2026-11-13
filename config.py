@@ -394,6 +394,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to track and display image pull statistics
     FEATURE_IMAGE_PULL_STATS = False
 
+    # Feature Flag: Whether the UI polls pull statistics while the Tags page is open.
+    # Default false (e.g. quay.io). Downstream can enable for live-ish column updates.
+    FEATURE_IMAGE_PULL_STATS_AUTO_REFRESH = False
+
     # Pull metrics thread pool configuration
     PULL_METRICS_WORKER_COUNT = 5
 
