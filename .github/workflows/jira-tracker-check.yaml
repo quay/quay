@@ -1,4 +1,4 @@
-name: JIRA Tracker Check
+name: Lint
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
 jobs:
   check-jira-tracker:
     runs-on: ubuntu-latest
-    name: Verify JIRA tracker for API/DB/Config changes
+    name: Require Jira ticket
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
