@@ -855,7 +855,15 @@ class GoogleCloudStorage(_CloudStorage):
         # GCS does not support ListObjectV2
         self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
-        connect_kwargs = {"endpoint_url": GoogleCloudStorage.ENDPOINT_URL}
+        connect_kwargs = {
+            "endpoint_url": GoogleCloudStorage.ENDPOINT_URL,
+            "config": Config(
+                # Send checksums only when an operation requires them: botocore 1.36.0
+                # made S3 clients add CRC32 checksums to PutObject/UploadPart by default.
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
+        }
         super(GoogleCloudStorage, self).__init__(
             context,
             boto3.session.Session,
