@@ -13,12 +13,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useRef, useState} from 'react';
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from 'react-router-dom';
+import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Conditional from 'src/components/empty/Conditional';
@@ -170,6 +165,17 @@ export default function RepositoryDetails() {
     setActiveTabKey(requestedTabIndex);
   }
 
+  const isMirroringTabHidden =
+    !config?.features?.REPO_MIRROR ||
+    !repoDetails?.can_admin ||
+    repoDetails?.state !== 'MIRROR';
+  // PatternFly renders no panel for a hidden activeKey; wait for repoDetails
+  // so a mirror repo's ?tab=mirroring deep link doesn't show Information first.
+  const visibleTabKey =
+    repoDetails && activeTabKey === TabIndex.Mirroring && isMirroringTabHidden
+      ? TabIndex.Information
+      : activeTabKey;
+
   function tabsOnSelect(e, tabIndex) {
     navigate(`${location.pathname}?tab=${tabIndex}`);
   }
@@ -249,7 +255,7 @@ export default function RepositoryDetails() {
                 <Tabs
                   mountOnEnter
                   unmountOnExit
-                  activeKey={activeTabKey}
+                  activeKey={visibleTabKey}
                   onSelect={tabsOnSelect}
                   usePageInsets={true}
                 >
@@ -304,45 +310,10 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Mirroring}
                     title={<TabTitleText>Mirroring</TabTitleText>}
                     data-testid="mirroring-tab"
-                    isHidden={
-                      !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
-                    }
+                    isHidden={isMirroringTabHidden}
                     {...({} as any)}
                   >
-                    {repoDetails?.state !== 'MIRROR' ? (
-                      <div>
-                        This repository&apos;s state is{' '}
-                        <strong>{repoDetails?.state}</strong>.{' '}
-                        {repoDetails?.state === 'ORG_MIRROR' ? (
-                          <>
-                            Mirroring is managed at the organization level. Use
-                            the{' '}
-                            <Link
-                              to={`/organization/${repoDetails?.namespace}?tab=Mirroring`}
-                            >
-                              organization mirroring settings
-                            </Link>{' '}
-                            to manage mirroring configuration.
-                          </>
-                        ) : (
-                          <>
-                            Use the{' '}
-                            <Link
-                              to={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
-                            >
-                              Settings tab
-                            </Link>{' '}
-                            and change it to <strong>Mirror</strong> to manage
-                            its mirroring configuration.
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <Mirroring
-                        namespace={organization}
-                        repoName={repository}
-                      />
-                    )}
+                    <Mirroring namespace={organization} repoName={repository} />
                   </Tab>
                   <Tab
                     eventKey={TabIndex.Builds}
