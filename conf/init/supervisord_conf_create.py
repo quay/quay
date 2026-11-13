@@ -6,6 +6,11 @@ from typing import List
 import jinja2
 import yaml
 
+try:
+    from . import service_gating
+except ImportError:
+    import service_gating
+
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")
 QUAYCONF_DIR = os.getenv("QUAYCONF", os.path.join(QUAYDIR, QUAYPATH, "conf"))
@@ -111,10 +116,17 @@ def override_services(config, override_services):
 
 if __name__ == "__main__":
     config = registry_services()
+    app_config = load_app_config()
+
+    skipped = service_gating.gate_services(
+        config, service_gating.resolve_effective_config(app_config)
+    )
+
+    if skipped:
+        print("Not starting services with no enabled feature: %s" % ", ".join(sorted(skipped)))
+
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
-
-    app_config = load_app_config()
 
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),

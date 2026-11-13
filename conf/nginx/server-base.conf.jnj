@@ -180,7 +180,7 @@ location ~ ^/v2/_catalog(.*)$ {
 }
 
 location /secscan/ {
-    proxy_pass http://secscan_app_server;
+    proxy_pass http://{{ 'secscan_app_server' if secscan_enabled else 'web_app_server' }};
     proxy_http_version 1.1;
 }
 

@@ -4,6 +4,11 @@ import os.path
 import jinja2
 import yaml
 
+try:
+    from . import service_gating
+except ImportError:
+    import service_gating
+
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")
 QUAYCONF_DIR = os.getenv("QUAYCONF", os.path.join(QUAYDIR, QUAYPATH, "conf"))
@@ -129,6 +134,9 @@ def generate_server_config(config):
     default_keepalive_timeout = int(config.get("DEFAULT_NGINX_KEEPALIVE_TIMEOUT", 5))
     keepalive_timeout = int(config.get("NGINX_KEEPALIVE_TIMEOUT", 0))
 
+    effective = service_gating.resolve_effective_config(config)
+    secscan_enabled = service_gating.secscan_enabled(effective) if effective is not None else True
+
     # Get default UI setting from config
     default_ui = config.get("DEFAULT_UI", "react").lower()
     # Validate against allowed values
@@ -152,6 +160,7 @@ def generate_server_config(config):
         enable_alb_health_check=enable_alb_health_check,
         default_keepalive_timeout=default_keepalive_timeout,
         keepalive_timeout=keepalive_timeout,
+        secscan_enabled=secscan_enabled,
     )
 
 

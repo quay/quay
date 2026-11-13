@@ -8,6 +8,7 @@ from endpoints.keyserver import key_server
 from endpoints.oauth.login import oauthlogin
 from endpoints.oauth.robot_identity_federation import federation_bp, sts_bp
 from endpoints.realtime import realtime
+from endpoints.secscan import secscan
 from endpoints.web import web
 from endpoints.webhooks import webhooks
 from endpoints.wellknown import wellknown
@@ -25,3 +26,6 @@ application.register_blueprint(webhooks, url_prefix="/webhooks")
 application.register_blueprint(realtime, url_prefix="/realtime")
 application.register_blueprint(key_server, url_prefix="/keys")
 application.register_blueprint(wellknown, url_prefix="/.well-known")
+
+if not application.config.get("ACCOUNT_RECOVERY_MODE", False):
+    application.register_blueprint(secscan, url_prefix="/secscan")
