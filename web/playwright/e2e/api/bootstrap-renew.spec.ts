@@ -16,7 +16,8 @@ function isProgrammaticBootstrapEnabled(features: unknown): boolean {
   return featureMap.PROGRAMMATIC_BOOTSTRAP === true;
 }
 
-// Nginx rejects GET/HEAD even when the bootstrap feature is disabled.
+// Keep these tests outside the feature-gated suite: the loop also happens
+// when PROGRAMMATIC_BOOTSTRAP is disabled.
 test.describe(
   'Bootstrap token renewal method handling',
   {tag: ['@api', '@PROJQUAY-12443']},
