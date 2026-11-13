@@ -8,6 +8,16 @@ export enum AutoPruneMethod {
   TAG_CREATION_DATE = 'creation_date',
 }
 
+const autoPruneMethodLabels: Record<AutoPruneMethod, string> = {
+  [AutoPruneMethod.NONE]: 'None',
+  [AutoPruneMethod.TAG_NUMBER]: 'Number of Tags',
+  [AutoPruneMethod.TAG_CREATION_DATE]: 'Age of Tags',
+};
+
+export function getAutoPruneMethodLabel(method: AutoPruneMethod): string {
+  return autoPruneMethodLabels[method];
+}
+
 export interface NamespaceAutoPrunePolicy {
   method: AutoPruneMethod;
   uuid?: string;
