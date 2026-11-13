@@ -380,7 +380,8 @@ def test_gcs_requests_carry_no_default_checksums():
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
         engine.stream_write(_TEST_PATH, BytesIO(_TEST_CONTENT))
 
-    assert {"before-send.s3.PutObject", "before-send.s3.UploadPart"} <= {e for e, _ in sent}
+    # This branch's GCS stream_write uses Object.put rather than multipart upload.
+    assert [event_name for event_name, _ in sent].count("before-send.s3.PutObject") == 2
     for event_name, headers in sent:
         assert not [h for h in headers if h.startswith("x-amz-checksum-")], event_name
         assert "x-amz-sdk-checksum-algorithm" not in headers, event_name
