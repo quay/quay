@@ -922,6 +922,10 @@ class GoogleCloudStorage(_CloudStorage):
                 connect_timeout=boto_timeout,
                 read_timeout=boto_timeout,
                 signature_version=signature_version,
+                # Send checksums only when an operation requires them: botocore 1.36.0
+                # made S3 clients add CRC32 checksums to PutObject/UploadPart by default.
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
             ),
         }
         super(GoogleCloudStorage, self).__init__(
