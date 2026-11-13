@@ -5,7 +5,7 @@ export function getBuildMessage(phase: string): string {
   switch (phase as RepositoryBuildPhase) {
     case null:
     case undefined:
-      message = '';
+      message = 'Unknown';
       break;
 
     case RepositoryBuildPhase.CANNOT_LOAD:
@@ -77,7 +77,7 @@ export function getBuildMessage(phase: string): string {
       break;
 
     default:
-      throw new Error(`Invalid build phase: ${phase.toString()}`);
+      message = phase || 'Unknown';
   }
 
   return message;
