@@ -265,10 +265,22 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
 {% endif %}
 
 location = /api/v1/bootstrap/renew/ {
+    # GET/HEAD otherwise loop between this redirect and Flask's web fallback.
+    if ($request_method ~ ^(GET|HEAD)$) {
+        add_header Allow "POST, OPTIONS" always;
+        return 405;
+    }
+
     return 307 /api/v1/bootstrap/renew;
 }
 
 location = /api/v1/bootstrap/renew {
+    # Reject reads before Flask's web fallback adds the trailing slash again.
+    if ($request_method ~ ^(GET|HEAD)$) {
+        add_header Allow "POST, OPTIONS" always;
+        return 405;
+    }
+
     proxy_pass   http://web_app_server;
 
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
