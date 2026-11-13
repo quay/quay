@@ -93,6 +93,20 @@ Request → Flask → Middleware → Endpoint Decorator → Handler → Registry
                      └── Auth validation (auth/credentials.py)
 ```
 
+## Reserved Organization and Repository Names
+
+Quay reserves certain names that conflict with route prefixes and API paths. Using these names as organization or repository identifiers causes routing ambiguity and API behavior issues.
+
+**Reserved names include:**
+- Frontend navigation routes (defined in `web/src/routes/NavigationPath.tsx` and `StandaloneMain.tsx`): `overview`, `organization`, `repository`, `signin`, `build`, `tag`, `user`, `about`, `security`, `service-keys`, `change-log`, `usage-logs`, `messages`, `build-logs`
+- Backend API path prefixes (defined in `path_converters.py` as `RESERVED_PREFIXES`): `v1`, `v2`, `cnr`, `repository`, `customtrigger`, `bitbucket`, `github`, `push`
+
+**Why this is enforced:** Without this restriction, a repository named `repository` would create a path collision: `/repository/<repo-name>` could mean "the repository view" OR "a repository literally named 'repository'". Similar conflicts exist for `v1`, `v2` (API versioning), `organization`, `build`, `tag`, etc.
+
+**Implementation:** The backend path converter (`RepositoryPathRedirectConverter` in `path_converters.py`) uses a negative lookahead regex to exclude reserved prefixes. The frontend `domainRoute` function in `NavigationPath.tsx` strips these reserved route segments when constructing navigation paths. Attempting to create or access an organization or repository with a reserved name results in 404 errors.
+
+**Policy:** This behavior is intentional. Pull requests that attempt to modify routing logic to support reserved names will be rejected. The API ambiguity introduced by allowing these names creates more problems than it solves.
+
 ## Key Patterns
 
 ### Permission Decorators
