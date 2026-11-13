@@ -1,4 +1,5 @@
 import {test, expect, uniqueName} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 import {
   closeNotificationModal,
   expectNsNotificationRow,
@@ -185,6 +186,60 @@ test.describe(
         event: 'Quota Warning',
         method: 'Slack Notification',
       });
+    });
+
+    test('can create a Slack notification with a message template', async ({
+      authenticatedPage,
+      authenticatedRequest,
+      api,
+    }) => {
+      const org = await api.organization('nsnotifsltpl');
+      const template =
+        '${vulnerability.id} (${vulnerability.priority}) in ${repository}';
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Notifications').click();
+      await authenticatedPage.getByTestId('create-ns-notification-btn').click();
+      await authenticatedPage
+        .getByTestId('ns-notification-event-dropdown')
+        .click();
+      await authenticatedPage.getByTestId('ns-event-quota_warning').click();
+      await authenticatedPage
+        .getByTestId('ns-notification-method-dropdown')
+        .click();
+      await authenticatedPage.getByTestId('ns-method-slack').click();
+      await authenticatedPage
+        .getByTestId('ns-notification-slack-url')
+        .fill('https://hooks.slack.com/services/T00/B00/xxxx');
+      await authenticatedPage
+        .getByTestId('ns-notification-slack-template')
+        .fill(template);
+      await authenticatedPage
+        .getByTestId('ns-notification-title')
+        .fill('Slack Template Warning');
+      await authenticatedPage.getByTestId('ns-notification-submit-btn').click();
+
+      await expectNsNotificationRow(
+        authenticatedPage,
+        'Slack Template Warning',
+        {method: 'Slack Notification'},
+      );
+      const slackBody = authenticatedPage
+        .getByTestId('ns-notifications-table')
+        .getByRole('rowgroup')
+        .filter({hasText: 'Slack Template Warning'});
+      await slackBody.getByRole('button', {name: 'Details'}).click();
+      await expect(slackBody).toContainText('Message template');
+
+      const response = await authenticatedRequest.get(
+        `${API_URL}/api/v1/organization/${org.name}/notifications`,
+      );
+      expect(response.ok()).toBe(true);
+      const {notifications} = await response.json();
+      const created = notifications.find(
+        (n) => n.title === 'Slack Template Warning',
+      );
+      expect(created.config.template).toBe(template);
     });
 
     test('can create a Quay notification with team recipient', async ({
