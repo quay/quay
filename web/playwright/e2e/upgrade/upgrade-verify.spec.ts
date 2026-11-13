@@ -86,11 +86,11 @@ test.describe(
         `/api/v1/organization/${UPGRADE.org}/team/${UPGRADE.team}/members`,
       );
       expect(team.status()).toBe(200);
-      // The user<->team membership join seeded on n-1 must survive.
+      // The confirmed robot<->team membership seeded on n-1 must survive.
       const memberNames = (
         (await team.json()).members as Array<{name: string}>
       ).map((m) => m.name);
-      expect(memberNames).toContain(UPGRADE.user.username);
+      expect(memberNames).toContain(`${UPGRADE.org}+${UPGRADE.robotShortname}`);
 
       // The team<->repo permission join seeded on n-1 must survive, role intact.
       const perm = await adminClient.get(
