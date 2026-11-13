@@ -44,14 +44,21 @@ export default function Notifications({
     RepoNotification[]
   >([]);
   const [expandedUuids, setExpandedUuids] = useState<string[]>([]);
-  const {notifications, loading, error, filter, setFilter, resetFilter} =
-    useNotifications(org, repo);
+  const {
+    notifications,
+    filteredNotifications,
+    loading,
+    error,
+    filter,
+    setFilter,
+    resetFilter,
+  } = useNotifications(org, repo);
 
   const {
     paginatedData: paginatedNotifications,
     getSortableSort,
     paginationProps,
-  } = usePaginatedSortableTable(notifications || [], {
+  } = usePaginatedSortableTable(filteredNotifications || [], {
     columns: {
       2: (item: RepoNotification) => item.title || '(Untitled)', // Title
       3: (item: RepoNotification) => item.event, // Event
@@ -82,6 +89,28 @@ export default function Notifications({
       return isSelecting ? [...others, notification] : others;
     });
   };
+
+  useEffect(() => {
+    paginationProps.setPage(1);
+  }, [filter, paginationProps.setPage]);
+
+  useEffect(() => {
+    const filteredUuids = new Set(
+      filteredNotifications.map((notification) => notification.uuid),
+    );
+    if (
+      selectedNotifications.every((notification) =>
+        filteredUuids.has(notification.uuid),
+      )
+    ) {
+      return;
+    }
+    setSelectedNotifications((prevSelected) =>
+      prevSelected.filter((notification) =>
+        filteredUuids.has(notification.uuid),
+      ),
+    );
+  }, [filteredNotifications, selectedNotifications]);
 
   // Close drawer if navigating away from notification settings
   useEffect(() => {
@@ -122,7 +151,7 @@ export default function Notifications({
       <NotificationsToolbar
         org={org}
         repo={repo}
-        allItems={notifications}
+        allItems={filteredNotifications}
         paginatedItems={paginatedNotifications}
         selectedItems={selectedNotifications}
         page={paginationProps.page}
@@ -136,7 +165,11 @@ export default function Notifications({
         setFilter={setFilter}
         resetFilter={resetFilter}
       />
-      <Table aria-label="Repository notifications table" variant="compact">
+      <Table
+        aria-label="Repository notifications table"
+        data-testid="notifications-table"
+        variant="compact"
+      >
         <Thead>
           <Tr>
             <Th />
