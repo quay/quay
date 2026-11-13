@@ -122,9 +122,13 @@ jobs:
       - name: Verify JIRA tracker in PR title
         if: steps.protected-files.outputs.has_protected_files == 'true'
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PROTECTED_FILES: ${{ steps.protected-files.outputs.protected_files }}
         run: |
+          # A re-run replays the original event, so fetch the current title.
+          PR_TITLE="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .title)"
+
           # Print detected protected files for visibility
           echo "Protected files detected (require JIRA tracker for release docs):"
           echo "$PROTECTED_FILES" | while read -r file; do
