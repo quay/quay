@@ -1,8 +1,124 @@
 package shared
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+// TestIsSafeHost verifies that private and reserved addresses are rejected.
+func TestIsSafeHost(t *testing.T) {
+	blocked := []string{
+		"0.0.0.0",
+		"127.0.0.1",
+		"localhost",
+		"10.0.0.1",
+		"10.255.255.255",
+		"172.16.0.1",
+		"172.31.255.255",
+		"192.168.0.1",
+		"192.168.255.255",
+		"169.254.169.254", // AWS metadata
+		"[::1]",
+		"::1",
+	}
+	for _, host := range blocked {
+		if err := isSafeHost(host); err == nil {
+			t.Errorf("isSafeHost(%q) should have returned an error but did not", host)
+		}
+	}
+}
+
+// TestValidateEmailServerRejectsPrivateHost ensures the SMTP validator refuses
+// connections to private/internal addresses (SSRF guard — PROJQUAY-11645).
+func TestValidateEmailServerRejectsPrivateHost(t *testing.T) {
+	privateHosts := []string{
+		"127.0.0.1",
+		"10.0.0.1",
+		"192.168.1.1",
+		"169.254.169.254",
+	}
+	opts := Options{}
+	for _, host := range privateHosts {
+		ok, verr := ValidateEmailServer(opts, host, 25, false, false, "", "", "Email")
+		if ok {
+			t.Errorf("ValidateEmailServer(%q) should fail for private host", host)
+		}
+		if !strings.Contains(verr.Message, "private or reserved") {
+			t.Errorf("ValidateEmailServer(%q): unexpected error message: %s", host, verr.Message)
+		}
+	}
+}
+
+// TestValidateLDAPServerRejectsPrivateHost ensures the LDAP validator refuses
+// connections to private/internal addresses (SSRF guard — PROJQUAY-11645).
+func TestValidateLDAPServerRejectsPrivateHost(t *testing.T) {
+	privateURIs := []string{
+		"ldap://127.0.0.1:389",
+		"ldap://10.0.0.1:389",
+		"ldap://192.168.1.100:389",
+		"ldap://169.254.169.254:389",
+	}
+	opts := Options{}
+	for _, uri := range privateURIs {
+		ok, verr := ValidateLDAPServer(opts, uri, "cn=admin,dc=example,dc=com", "password", "uid", "mail", "", []interface{}{}, "LDAP")
+		if ok {
+			t.Errorf("ValidateLDAPServer(%q) should fail for private host", uri)
+		}
+		if !strings.Contains(verr.Message, "private or reserved") {
+			t.Errorf("ValidateLDAPServer(%q): unexpected error message: %s", uri, verr.Message)
+		}
+	}
+}
+
+// TestValidateGitLabOAuthCredentialsInBody verifies that client_secret is NOT
+// present in the request URL (CWE-598 fix — PROJQUAY-11645) and IS present in
+// the POST body.
+func TestValidateGitLabOAuthCredentialsInBody(t *testing.T) {
+	type capture struct {
+		rawQuery    string
+		contentType string
+		clientID    string
+		secret      string
+	}
+	var got capture
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("handler: ParseForm error: %v", err)
+		}
+		got = capture{
+			rawQuery:    r.URL.RawQuery,
+			contentType: r.Header.Get("Content-Type"),
+			clientID:    r.FormValue("client_id"),
+			secret:      r.FormValue("client_secret"),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"error":"invalid_grant"}`))
+	}))
+	defer ts.Close()
+
+	result := ValidateGitLabOAuth("test-client-id", "super-secret", ts.URL+"/")
+	if !result {
+		t.Fatal("ValidateGitLabOAuth should return true for invalid_grant response")
+	}
+	if strings.Contains(got.rawQuery, "client_secret") {
+		t.Errorf("client_secret must not appear in the URL query string; got: %s", got.rawQuery)
+	}
+	if strings.Contains(got.rawQuery, "super-secret") {
+		t.Errorf("client_secret value must not appear in the URL; got: %s", got.rawQuery)
+	}
+	if got.contentType != "application/x-www-form-urlencoded" {
+		t.Errorf("expected Content-Type application/x-www-form-urlencoded, got %s", got.contentType)
+	}
+	if got.secret != "super-secret" {
+		t.Errorf("client_secret not found in POST body; got %q", got.secret)
+	}
+	if got.clientID != "test-client-id" {
+		t.Errorf("client_id not found in POST body; got %q", got.clientID)
+	}
+}
 
 func TestValidateIsHostname(t *testing.T) {
 	var tests = []struct {
