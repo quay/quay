@@ -3,6 +3,9 @@ import re
 import time
 from datetime import datetime
 
+import regex
+
+from digest.digest_tools import Digest, InvalidDigestException
 from notifications import build_namespace_event_data, build_repository_event_data
 from util.jinjautil import get_template_env
 from util.secscan import PRIORITY_LEVELS, get_priority_for_index
@@ -13,6 +16,10 @@ TEMPLATE_ENV = get_template_env("events")
 
 
 class InvalidNotificationEventException(Exception):
+    pass
+
+
+class InvalidNotificationEventConfigException(Exception):
     pass
 
 
@@ -56,6 +63,13 @@ class NotificationEvent(object):
         By default returns True.
         """
         return True
+
+    def validate_config(self, event_config):
+        """
+        Validates event-specific notification configuration.
+
+        By default accepts all configuration.
+        """
 
     @classmethod
     def event_name(cls):
@@ -170,6 +184,8 @@ def _build_summary(event_data):
 
 class VulnerabilityFoundEvent(NotificationEvent):
     CONFIG_LEVEL = "level"
+    CONFIG_TAG_REGEX = "tag-regex"
+    TAG_REGEX_TIMEOUT_SECONDS = 0.1
     PRIORITY_KEY = "priority"
     VULNERABILITY_KEY = "vulnerability"
     MULTIPLE_VULNERABILITY_KEY = "vulnerabilities"
@@ -207,8 +223,67 @@ class VulnerabilityFoundEvent(NotificationEvent):
             },
         )
 
+    def validate_config(self, event_config):
+        tag_regex = (event_config or {}).get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if tag_regex is None:
+            return
+
+        if not isinstance(tag_regex, str):
+            raise InvalidNotificationEventConfigException("Tag regular expression must be a string")
+
+        if not tag_regex.strip():
+            return
+
+        try:
+            regex.compile(tag_regex)
+        except regex.error as exc:
+            raise InvalidNotificationEventConfigException("Invalid tag regular expression") from exc
+
+    def _tag_filter_matches(self, event_data, event_config):
+        tag_regex = event_config.get(VulnerabilityFoundEvent.CONFIG_TAG_REGEX)
+        if tag_regex is None or (isinstance(tag_regex, str) and not tag_regex.strip()):
+            return True
+
+        if not isinstance(tag_regex, str):
+            logger.warning("Invalid tag regular expression type: %s", type(tag_regex).__name__)
+            return False
+
+        try:
+            compiled_regex = regex.compile(tag_regex)
+        except regex.error:
+            logger.warning("Regular expression error for vulnerability tag filter: %s", tag_regex)
+            return False
+
+        tags = event_data.get("tags") or []
+        if not isinstance(tags, (list, tuple)):
+            return False
+
+        for tag in tags:
+            if not isinstance(tag, str):
+                continue
+
+            try:
+                Digest.parse_digest(tag)
+                continue
+            except InvalidDigestException:
+                pass
+
+            try:
+                if compiled_regex.search(
+                    tag, timeout=VulnerabilityFoundEvent.TAG_REGEX_TIMEOUT_SECONDS
+                ):
+                    return True
+            except TimeoutError:
+                logger.warning("Vulnerability tag regular expression timed out: %s", tag_regex)
+                return False
+
+        return False
+
     def should_perform(self, event_data, notification_data):
-        event_config = notification_data.event_config_dict
+        event_config = notification_data.event_config_dict or {}
+        if not self._tag_filter_matches(event_data, event_config):
+            return False
+
         if VulnerabilityFoundEvent.CONFIG_LEVEL not in event_config:
             return True
 

@@ -2,6 +2,7 @@ import pytest
 
 from notifications.notificationevent import (
     BuildSuccessEvent,
+    InvalidNotificationEventConfigException,
     NotificationEvent,
     QuotaErrorEvent,
     QuotaWarningEvent,
@@ -218,37 +219,157 @@ def test_build_withwildcardfilter():
     )
 
 
-def test_vulnerability_notification_nolevel():
-    notification_data = AttrDict(
-        {
-            "event_config_dict": {},
-        }
-    )
+def vulnerability_notification_data(event_config):
+    return AttrDict({"event_config_dict": event_config})
 
-    # No level specified.
-    assert VulnerabilityFoundEvent().should_perform({}, notification_data)
+
+def test_vulnerability_notification_nolevel():
+    assert VulnerabilityFoundEvent().should_perform({}, vulnerability_notification_data({}))
 
 
 def test_vulnerability_notification_nopvulninfo():
-    notification_data = AttrDict(
-        {
-            "event_config_dict": {"level": 3},
-        }
+    assert not VulnerabilityFoundEvent().should_perform(
+        {}, vulnerability_notification_data({"level": 3})
     )
-
-    # No vuln info.
-    assert not VulnerabilityFoundEvent().should_perform({}, notification_data)
 
 
 def test_vulnerability_notification_normal():
-    notification_data = AttrDict(
-        {
-            "event_config_dict": {"level": 3},
-        }
+    info = {"vulnerability": {"priority": "Critical"}}
+    assert VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"level": 3})
     )
 
+
+@pytest.mark.parametrize("tag_regex", [None, "", "   "])
+def test_vulnerability_notification_empty_tag_filter(tag_regex):
+    info = {"tags": ["v1.0"], "vulnerability": {"priority": "Critical"}}
+    assert VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": tag_regex})
+    )
+
+
+@pytest.mark.parametrize("tag", ["v2.0", "release-v2.0", "test-v2-build"])
+def test_vulnerability_notification_tag_filter_searches_anywhere(tag):
+    info = {"tags": [tag], "vulnerability": {"priority": "Critical"}}
+    assert VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "v2"})
+    )
+
+
+def test_vulnerability_notification_tag_filter_is_case_sensitive():
+    info = {"tags": ["Release-v2.0"], "vulnerability": {"priority": "Critical"}}
+    assert not VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "release"})
+    )
+
+
+def test_vulnerability_notification_tag_filter_matches_any_tag():
+    info = {
+        "tags": ["v1.0", "release-v2.0", "latest"],
+        "vulnerability": {"priority": "Critical"},
+    }
+    assert VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "v2"})
+    )
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        ["v1.0", "latest"],
+        [],
+        None,
+        ["sha256:abcdef1234567890"],
+    ],
+)
+def test_vulnerability_notification_tag_filter_without_matching_tag(tags):
     info = {"vulnerability": {"priority": "Critical"}}
-    assert VulnerabilityFoundEvent().should_perform(info, notification_data)
+    if tags is not None:
+        info["tags"] = tags
+
+    assert not VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "v2"})
+    )
+
+
+def test_vulnerability_notification_tag_filter_applies_to_initial_report():
+    info = {
+        "tags": ["v1.0"],
+        "vulnerable_index_report_created": "true",
+        "vulnerability": {"priority": "Critical"},
+    }
+    assert not VulnerabilityFoundEvent().should_perform(
+        info,
+        vulnerability_notification_data({"level": 0, "tag-regex": "v2"}),
+    )
+
+
+def test_vulnerability_notification_matching_initial_report_preserves_severity_shortcut():
+    info = {
+        "tags": ["v2.0"],
+        "vulnerable_index_report_created": "true",
+        "vulnerability": {"priority": "Medium"},
+    }
+    assert VulnerabilityFoundEvent().should_perform(
+        info,
+        vulnerability_notification_data({"level": 0, "tag-regex": "v2"}),
+    )
+
+
+def test_vulnerability_notification_requires_severity_and_tag_to_match():
+    info = {"tags": ["v2.0"], "vulnerability": {"priority": "Medium"}}
+    assert not VulnerabilityFoundEvent().should_perform(
+        info,
+        vulnerability_notification_data({"level": 1, "tag-regex": "v2"}),
+    )
+
+
+def test_vulnerability_notification_matching_severity_and_tag():
+    info = {"tags": ["v2.0"], "vulnerability": {"priority": "High"}}
+    assert VulnerabilityFoundEvent().should_perform(
+        info,
+        vulnerability_notification_data({"level": 1, "tag-regex": "v2"}),
+    )
+
+
+def test_vulnerability_notification_invalid_stored_tag_filter(caplog):
+    info = {"tags": ["v2.0"], "vulnerability": {"priority": "Critical"}}
+    assert not VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "[v2"})
+    )
+    assert "Regular expression error for vulnerability tag filter" in caplog.text
+
+
+def test_vulnerability_notification_tag_filter_timeout_fails_closed(monkeypatch, caplog):
+    class TimedOutRegex:
+        def search(self, tag, timeout):
+            raise TimeoutError
+
+    monkeypatch.setattr(
+        "notifications.notificationevent.regex.compile", lambda pattern: TimedOutRegex()
+    )
+
+    info = {"tags": ["v2.0"], "vulnerability": {"priority": "Critical"}}
+    assert not VulnerabilityFoundEvent().should_perform(
+        info, vulnerability_notification_data({"tag-regex": "v2"})
+    )
+    assert "Vulnerability tag regular expression timed out" in caplog.text
+
+
+@pytest.mark.parametrize("event_config", [{"tag-regex": None}, {"tag-regex": ""}, {}])
+def test_vulnerability_notification_validates_empty_tag_filter(event_config):
+    VulnerabilityFoundEvent().validate_config(event_config)
+
+
+@pytest.mark.parametrize("tag_regex", ["v2", "^v2\\.", "v1|v2"])
+def test_vulnerability_notification_validates_tag_filter(tag_regex):
+    VulnerabilityFoundEvent().validate_config({"tag-regex": tag_regex})
+
+
+@pytest.mark.parametrize("tag_regex", [123, "[v2"])
+def test_vulnerability_notification_rejects_invalid_tag_filter(tag_regex):
+    with pytest.raises(InvalidNotificationEventConfigException):
+        VulnerabilityFoundEvent().validate_config({"tag-regex": tag_regex})
 
 
 class TestQuotaWarningEvent:
