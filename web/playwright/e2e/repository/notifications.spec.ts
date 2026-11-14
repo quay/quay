@@ -806,6 +806,17 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await expect(
         authenticatedPage.getByTestId('vulnerability-severity'),
       ).toHaveValue('');
+
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Webhook POST'})
+        .click();
+      await authenticatedPage
+        .getByTestId('webhook-url-field')
+        .fill('https://example.com/hook');
+      await authenticatedPage.getByTestId('notification-title').fill(title);
       await expect(
         authenticatedPage.getByTestId('notification-submit-btn'),
       ).toBeDisabled();
@@ -824,16 +835,9 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).toBeDisabled();
 
       await authenticatedPage.getByTestId('vulnerability-tag-regex').fill('v2');
-      await authenticatedPage
-        .getByTestId('notification-method-dropdown')
-        .click();
-      await authenticatedPage
-        .getByRole('menuitem', {name: 'Webhook POST'})
-        .click();
-      await authenticatedPage
-        .getByTestId('webhook-url-field')
-        .fill('https://example.com/hook');
-      await authenticatedPage.getByTestId('notification-title').fill(title);
+      await expect(
+        authenticatedPage.getByTestId('notification-submit-btn'),
+      ).toBeEnabled();
       await authenticatedPage.getByTestId('notification-submit-btn').click();
 
       await expect(
