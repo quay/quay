@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 script="$script_dir/check-pr-title.sh"
 
 # The PCRE equivalent of the CI script's ERE. Equivalence is asserted per case below.
-expected_pcre='^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
+expected_pcre='^(?:\[(?:redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(?:(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+)(?:,\s*(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+))*|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
 
 failures=0
 
@@ -26,6 +26,12 @@ cases=(
   'PROJQUAY-1: Fix: x|0|no conventional'
   'NO-ISSUE: é: x|0|no conventional'
   'PROJQUAY-1: fix: |0|expected shape'
+  'PROJQUAY-10656, PROJQUAY-10788: fix(conf): preserve site-packages in PYTHONPATH|1|'
+  '[redhat-3.16] PROJQUAY-10656, PROJQUAY-10788: fix(conf): preserve site-packages in PYTHONPATH|1|'
+  'PROJQUAY-10656, QUAYIO-10788: fix(conf): mixed prefix keys|1|'
+  'PROJQUAY-10656 PROJQUAY-10788: fix(conf): space instead of comma|0|no ticket prefix'
+  'PROJQUAY-10656,PROJQUAY-10788: fix(conf): comma without space|1|'
+  'PROJQUAY-10656,,PROJQUAY-10788: fix(conf): double comma|0|no ticket prefix'
 )
 
 for case in "${cases[@]}"; do
