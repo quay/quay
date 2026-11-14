@@ -269,6 +269,14 @@ def garbage_collect_repo(repo):
     """
     Performs garbage collection over the contents of a repository.
     """
+    # Expire referrer $temp-* tags whose subject is no longer pullable. This
+    # covers subjects that lose their last alias without an explicit tag
+    # deletion (e.g. a tag expiring on its own), which the eager expiry on
+    # the delete paths never sees; without it both the subject and its
+    # referrers leak forever (the subject is kept alive by the referrer, and
+    # the referrer by its non-expiring temp tag).
+    oci_tag.expire_orphaned_referrer_temp_tags(repo)
+
     # Purge expired tags.
     had_changes = False
 

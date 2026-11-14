@@ -555,6 +555,15 @@ def retarget_tag(
                     exclude_tag_id=existing_tag.id,
                 )
 
+                # Cascade referrer temp-tag expiry for the displaced subject:
+                # overwriting its last alias must expire its referrers' $temp-*
+                # tags just like an explicit delete does, or both the subject
+                # and its referrers leak. Safe under the advisory lock already
+                # held here (pg_advisory_xact_lock is re-entrant).
+                reset_referrer_manifest_expiration(
+                    existing_tag.repository, displaced_manifest, now_ms
+                )
+
         # Check if tag should be immutable based on manifest label or policies
         immutable = False
         immutable_from_policy = False
@@ -583,6 +592,13 @@ def retarget_tag(
             tag_kind=Tag.tag_kind.get_id("tag"),
             immutable=immutable,
         )
+
+        # The new alias makes the manifest (and its children) pullable again:
+        # restore any referrer $temp-* tags expired when the subject previously
+        # lost its last live reference (e.g. a time-machine restore of a
+        # deleted tag), so GC does not drop signatures of re-tagged images.
+        # Safe under the advisory lock already held here.
+        revive_referrer_manifest_expiration(manifest.repository_id, manifest)
 
         # Capture values for logging and tracking outside the transaction
         namespace_name = repo.namespace_user.username
@@ -715,7 +731,10 @@ def delete_tag(repository_id, tag_name):
     if features.IMMUTABLE_TAGS and tag.immutable:
         raise ImmutableTagException(tag_name, "delete", repository_id)
 
-    return _delete_tag(tag, get_epoch_timestamp_ms())
+    deleted = _delete_tag(tag, get_epoch_timestamp_ms())
+    if deleted is not None:
+        reset_referrer_manifest_expiration(deleted.repository, deleted.manifest)
+    return deleted
 
 
 def _delete_tag(tag, now_ms, expire_cosign=True):
@@ -794,6 +813,9 @@ def delete_tags_for_manifest(manifest):
                 now_ms,
                 subject_manifest=subject_tag.manifest,
             )
+
+    if tags:
+        reset_referrer_manifest_expiration(tags[0].repository, tags[0].manifest)
 
     return tags
 
@@ -1121,7 +1143,266 @@ def remove_tag_from_timemachine(
     if updated and include_submanifests:
         reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
+    if updated:
+        reset_referrer_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
+
     return updated
+
+
+def _manifest_has_live_reference(repo_id, manifest_id, now_ms=None):
+    """
+    Returns True if the manifest has a remaining live reference: an alive
+    visible tag of its own, or an alive visible tag on a manifest that
+    references it as a child.
+
+    The child-of-parent check mirrors oci.manifest._lookup_manifest, which
+    resolves a per-arch manifest through its tagged manifest index, so that
+    referrer expiry never drops signatures of images that are still served
+    (e.g. a per-arch manifest that lost its own alias but is still pulled
+    through a tagged index). Hidden tags are intentionally excluded: the
+    short-lived $temp-* tags created for by-digest pushes must not keep
+    referrers of an otherwise untagged subject alive.
+    """
+    if now_ms is None:
+        now_ms = get_epoch_timestamp_ms()
+
+    alive_clause = (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms)
+
+    if (
+        Tag.select(Tag.id)
+        .where(
+            Tag.repository == repo_id,
+            Tag.manifest == manifest_id,
+            Tag.hidden == False,  # noqa: E712
+            alive_clause,
+        )
+        .exists()
+    ):
+        return True
+
+    # Alive visible tag on a manifest that references this manifest as a child.
+    return (
+        Tag.select(Tag.id)
+        .join(ManifestChild, on=(ManifestChild.manifest == Tag.manifest))
+        .where(
+            Tag.repository == repo_id,
+            ManifestChild.repository == repo_id,
+            ManifestChild.child_manifest == manifest_id,
+            Tag.hidden == False,  # noqa: E712
+            alive_clause,
+        )
+        .exists()
+    )
+
+
+def _collect_referrer_subject_targets(repo_id, manifest_id, manifest_digest):
+    """
+    Returns (manifest_id, digest) pairs for the given manifest and its
+    transitive children (members of manifest lists/indexes).
+
+    Referrers of children are expired alongside the subject itself because a
+    child manifest is only pullable through a tagged parent: when the parent
+    loses its last tag, the children (and their referrers, e.g. from
+    `cosign sign --recursive`) become unreachable too. Each target is still
+    guarded by its own liveness check, so a child that keeps another live
+    reference (its own alias, or another alive parent) is not affected.
+    """
+    targets = [(manifest_id, manifest_digest)]
+    seen = {manifest_id}
+    frontier = [manifest_id]
+    while frontier:
+        child_rows = (
+            Manifest.select(Manifest.id, Manifest.digest)
+            .join(ManifestChild, on=(ManifestChild.child_manifest == Manifest.id))
+            .where(ManifestChild.repository == repo_id, ManifestChild.manifest << frontier)
+        )
+        frontier = []
+        for child in child_rows:
+            if child.id in seen:
+                continue
+            seen.add(child.id)
+            targets.append((child.id, child.digest))
+            frontier.append(child.id)
+    return targets
+
+
+def _lookup_referrer_ids(repo_id, subject_digest):
+    """
+    Returns the IDs of the manifests in the repository whose subject is the
+    given digest. Materialized as a list to avoid IN (SELECT ...) inside an
+    UPDATE, which triggers the transitive-modification guard in GC tests and
+    is rejected by MySQL (error 1093) when the subquery reads the table being
+    updated.
+    """
+    return [
+        row.id
+        for row in Manifest.select(Manifest.id).where(
+            Manifest.repository == repo_id,
+            Manifest.subject == subject_digest,
+        )
+    ]
+
+
+def _resolve_manifest_id_and_digest(manifest):
+    """
+    Normalizes a manifest argument that is either a Manifest row or a raw
+    manifest ID into (id, digest), or None if the manifest no longer exists.
+    """
+    try:
+        return (manifest.id, manifest.digest)
+    except AttributeError:
+        row = Manifest.select(Manifest.id, Manifest.digest).where(Manifest.id == manifest)
+        try:
+            found = row.get()
+        except Manifest.DoesNotExist:
+            return None
+        return (found.id, found.digest)
+
+
+def reset_referrer_manifest_expiration(repository_id, manifest, expiration=None):
+    """
+    Expires $temp-* hidden tags on referrer manifests whose subject is the
+    given manifest (or one of its transitive children), allowing GC to
+    reclaim them.
+
+    A target's referrers are only expired when the target is no longer
+    pullable, per _manifest_has_live_reference. Must use the same
+    ("retarget_tag", repository_id) advisory lock as retarget_tag so the
+    liveness check cannot race with a concurrent push that creates a new
+    alive alias on this manifest. Re-acquiring from a caller that already
+    holds the lock is safe (pg_advisory_xact_lock is re-entrant within a
+    transaction).
+    """
+    now_ms = get_epoch_timestamp_ms()
+    expiry_ms = now_ms if expiration is None else expiration
+    repo_id = getattr(repository_id, "id", repository_id)
+
+    resolved = _resolve_manifest_id_and_digest(manifest)
+    if resolved is None:
+        return
+
+    with db_transaction():
+        # Serialize with retarget_tag: same namespace+key closes the check-then-act race.
+        lock_id = compute_advisory_lock_id("retarget_tag", repo_id)
+        db_advisory_xact_lock(lock_id)
+
+        for target_id, target_digest in _collect_referrer_subject_targets(repo_id, *resolved):
+            if _manifest_has_live_reference(repo_id, target_id, now_ms):
+                continue
+
+            referrer_ids = _lookup_referrer_ids(repo_id, target_digest)
+            if not referrer_ids:
+                continue
+
+            Tag.update(lifetime_end_ms=expiry_ms).where(
+                Tag.repository == repo_id,
+                Tag.manifest.in_(referrer_ids),
+                Tag.name.startswith("$temp-"),
+                Tag.hidden == True,
+                (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > expiry_ms),
+            ).execute()
+
+
+def revive_referrer_manifest_expiration(repository_id, manifest):
+    """
+    Clears the expiration of $temp-* hidden tags on referrer manifests whose
+    subject is the given manifest (or one of its transitive children).
+
+    retarget_tag calls this whenever it creates a new alive tag, so referrers
+    expired when the subject previously lost its last live reference (e.g. a
+    time-machine restore of a deleted tag) are kept once the subject is
+    pullable again. Restoring NULL is the original state: subject-bearing
+    referrers are created with non-expiring hidden temp tags
+    (get_or_create_manifest passes skip_expiration for manifests with a
+    subject). Expiry is re-applied whenever the subject loses its last live
+    reference again.
+
+    Uses the same ("retarget_tag", repository_id) advisory lock as
+    reset_referrer_manifest_expiration to serialize against concurrent
+    expiry.
+    """
+    repo_id = getattr(repository_id, "id", repository_id)
+
+    resolved = _resolve_manifest_id_and_digest(manifest)
+    if resolved is None:
+        return
+
+    with db_transaction():
+        lock_id = compute_advisory_lock_id("retarget_tag", repo_id)
+        db_advisory_xact_lock(lock_id)
+
+        for _target_id, target_digest in _collect_referrer_subject_targets(repo_id, *resolved):
+            referrer_ids = _lookup_referrer_ids(repo_id, target_digest)
+            if not referrer_ids:
+                continue
+
+            Tag.update(lifetime_end_ms=None).where(
+                Tag.repository == repo_id,
+                Tag.manifest.in_(referrer_ids),
+                Tag.name.startswith("$temp-"),
+                Tag.hidden == True,
+                ~(Tag.lifetime_end_ms >> None),
+            ).execute()
+
+
+def expire_orphaned_referrer_temp_tags(repository_id):
+    """
+    GC-time sweep: expires $temp-* hidden tags on referrer manifests whose
+    subject is no longer pullable, and returns the number of tags expired.
+
+    This covers subjects that lose their last alias without an explicit tag
+    deletion, which the eager expiry in reset_referrer_manifest_expiration
+    never sees (e.g. a tag expiring on its own after a user-configured tag
+    expiration).
+
+    Uses the same ("retarget_tag", repository_id) advisory lock as
+    reset_referrer_manifest_expiration so the liveness check cannot race
+    with a concurrent push.
+    """
+    repo_id = getattr(repository_id, "id", repository_id)
+    now_ms = get_epoch_timestamp_ms()
+    expired = 0
+
+    with db_transaction():
+        lock_id = compute_advisory_lock_id("retarget_tag", repo_id)
+        db_advisory_xact_lock(lock_id)
+
+        referrers_by_subject = {}
+        for row in Manifest.select(Manifest.id, Manifest.subject).where(
+            Manifest.repository == repo_id,
+            ~(Manifest.subject >> None),
+        ):
+            referrers_by_subject.setdefault(row.subject, []).append(row.id)
+
+        if not referrers_by_subject:
+            return 0
+
+        subject_ids = {
+            row.digest: row.id
+            for row in Manifest.select(Manifest.id, Manifest.digest).where(
+                Manifest.repository == repo_id,
+                Manifest.digest << list(referrers_by_subject.keys()),
+            )
+        }
+
+        for subject_digest, referrer_ids in referrers_by_subject.items():
+            subject_id = subject_ids.get(subject_digest)
+            if subject_id is not None and _manifest_has_live_reference(repo_id, subject_id, now_ms):
+                continue
+
+            expired += (
+                Tag.update(lifetime_end_ms=now_ms)
+                .where(
+                    Tag.repository == repo_id,
+                    Tag.manifest.in_(referrer_ids),
+                    Tag.name.startswith("$temp-"),
+                    Tag.hidden == True,
+                    (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+                )
+                .execute()
+            )
+
+    return expired
 
 
 def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
