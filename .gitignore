@@ -134,3 +134,4 @@ bin/
 .claude/implementation
 .claude/poll-state/
 .claude/session-state/
+openshift-tests-ext/quay-tests
