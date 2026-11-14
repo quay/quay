@@ -844,7 +844,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByRole('row', {name: title}),
       ).toBeVisible();
 
-      const notifications = await api.getRepositoryNotifications(
+      const notifications = await api.raw.getRepositoryNotifications(
         org.name,
         repo.name,
       );
