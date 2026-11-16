@@ -181,9 +181,9 @@ def gate_services(config, effective_config):
             logger.warning("Unable to evaluate startup rule for %s: %s", service, exc)
             continue
 
-        # if the registry is in recovery mode and the service in question is not the builder service,
-        # mark the service as not required
-        if recovery and service != "builder":
+        # if the registry is in recovery mode, none of the gated services are required, since they
+        # all idle in that mode
+        if recovery:
             required = False
 
         # if the service is marked as not required, skip startup of selected service
