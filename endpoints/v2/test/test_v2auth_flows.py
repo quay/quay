@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from flask import url_for
 
 from app import app as original_app
@@ -78,7 +79,7 @@ def _bearer(client, repository, credentials, username, actions):
     return token
 
 
-def _build_id_token(sub, email, username, expires_in=600):
+def _build_id_token(sub, email, username, expires_in=600, key=MOCK_PRIVATE_KEY):
     """Sign a provider JWT whose claims are validated by the real OIDC decoder."""
     now = int(time.time())
     return jwt.encode(
@@ -92,7 +93,7 @@ def _build_id_token(sub, email, username, expires_in=600):
             "iat": now - 7200,
             "exp": now + expires_in,
         },
-        MOCK_PRIVATE_KEY,
+        key,
         algorithm="RS256",
         headers={"kid": "mock-key-id"},
     )
@@ -294,6 +295,14 @@ class TestOIDCAuthIntegration:
         with pytest.raises(jwt.ExpiredSignatureError):
             oidc_provider.decode_user_jwt(expired)
         _generate_registry_token(client, "", (OAUTH_TOKEN_USERNAME, expired), expected_code=401)
+
+    def test_oidc_token_with_wrong_signature_rejected(self, app, client, oidc_provider):
+        """A token signed by a key the provider does not publish creates no user."""
+        username = "forgedoidcuser"
+        other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        forged = _build_id_token("oidc-forged", "forged-oidc@example.com", username, key=other_key)
+        _generate_registry_token(client, "", (OAUTH_TOKEN_USERNAME, forged), expected_code=401)
+        assert model.user.get_user(username) is None
 
     def test_oidc_first_login_creates_user(self, app, client, oidc_provider):
         """The first signed OIDC token creates and links a Quay user through V2 auth."""
