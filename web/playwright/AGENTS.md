@@ -108,8 +108,9 @@ the rendered UI (header logo in light and dark themes, sign-in page, footer).
 It also checks version reporting: `/config.version_number` must be one of the two
 downstream shapes, and the Help menu must render exactly that value:
 
-- **Release form** `Quay vX.Y.Z` — the operator sets `QUAY_VERSION` on the Quay
-  pod from the installed release, replacing the built value entirely.
+- **Release form** `Quay vX.Y.Z` — Containerfile.art writes a `QUAY_VERSION`
+  file from the ART x/y/z build args for standalone installs. The operator can
+  still replace that by setting `QUAY_VERSION` on the pod.
 - **Nightly form** `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` — top CHANGELOG heading
   plus the `BUILD_DATE` that `Dockerfile.downstream` writes in its final stage.
 
