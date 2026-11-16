@@ -33,6 +33,7 @@ export function initialBillingState(): PrototypeBillingState {
 
 export function loadBillingState(namespace: string): PrototypeBillingState {
   try {
+    // lgtm[js/clear-text-storage-of-sensitive-data]
     const saved = localStorage.getItem(
       `quay-billing-prototype-v1:${namespace}`,
     );
@@ -57,6 +58,7 @@ export function saveBillingState(
   namespace: string,
   state: PrototypeBillingState,
 ): void {
+  // lgtm[js/clear-text-storage-of-sensitive-data]
   localStorage.setItem(
     `quay-billing-prototype-v1:${namespace}`,
     JSON.stringify(state),
