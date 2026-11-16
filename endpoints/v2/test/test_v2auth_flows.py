@@ -1,4 +1,4 @@
-"""
+"""Authentication flows through /v2/auth to registry push and pull.
 
 Provider HTTP responses, the LDAP directory, and storage use test doubles.
 Credential validation, identity linking, team sync, bearer issuance, and registry
@@ -24,7 +24,7 @@ from app import instance_keys
 from auth.credential_consts import APP_SPECIFIC_TOKEN_USERNAME, OAUTH_TOKEN_USERNAME
 from auth.test.mock_oidc_server import MOCK_PRIVATE_KEY, mock_get, mock_request
 from data import model
-from data.database import RepositoryState, db
+from data.database import db
 from data.model.appspecifictoken import (
     create_token,
     get_full_token_string,
@@ -135,7 +135,7 @@ def auth_image(request):
     """Build a small image whose blobs and manifest are absent from the seed DB."""
     # Manifest caches outlive individual database fixtures. Give each case
     # distinct content so a cached digest cannot mask a missing upload.
-    content = ("Tier 1 authentication flow: %s\n" % request.node.nodeid).encode("utf-8")
+    content = ("auth flow: %s\n" % request.node.nodeid).encode("utf-8")
     tar_buffer = BytesIO()
     with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
         entry = tarfile.TarInfo("auth-flow.txt")
@@ -375,7 +375,7 @@ class TestAppSpecificTokenAuth:
         """Create an app token through the API and use it to push and pull an image."""
         with client_with_identity("devtable", app) as api_client:
             response = conduct_api_call(
-                api_client, AppTokens, "POST", None, {"title": "Tier 1 registry flow"}, 200
+                api_client, AppTokens, "POST", None, {"title": "registry flow"}, 200
             )
             token_code = response.json["token"]["token_code"]
         repository = _create_repository("devtable", "auth-app-token")
