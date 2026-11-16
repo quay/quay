@@ -109,7 +109,7 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
       // Navigate to billing tab
-      await authenticatedPage.getByText('Billing information').click();
+      await authenticatedPage.getByText('Plan information').click();
 
       // Invoice email input should exist
       await expect(

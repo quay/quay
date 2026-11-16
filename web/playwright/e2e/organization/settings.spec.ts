@@ -53,7 +53,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
       // Navigate to billing tab
-      await authenticatedPage.getByText('Billing information').click();
+      await authenticatedPage.getByText('Plan information').click();
 
       // Wait for billing form to load
       const invoiceEmailInput = authenticatedPage.locator(
@@ -89,7 +89,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
 
       // Refresh page, navigate to billing tab and check if settings are saved
       await authenticatedPage.reload();
-      await authenticatedPage.getByText('Billing information').click();
+      await authenticatedPage.getByText('Plan information').click();
       await expect(invoiceEmailInput).toHaveValue('invoice-email@redhat.com');
       await expect(checkbox).toBeChecked();
     });
