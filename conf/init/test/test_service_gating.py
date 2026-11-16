@@ -456,3 +456,22 @@ def test_resolve_effective_config_returns_none_without_default_config(monkeypatc
     monkeypatch.setattr(service_gating, "load_default_config", lambda: None)
 
     assert resolve_effective_config({}) is None
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        '"abc"',
+        "[1, 2]",
+        "5",
+    ],
+)
+def test_resolve_effective_config_returns_none_when_override_is_not_an_object(
+    monkeypatch, no_override_config, config
+):
+    """
+    Verifies that on bad json provided via QUAY_OVERRIDE_CONFIG,
+    resolve_effective_config returns a None object.
+    """
+    monkeypatch.setenv("QUAY_OVERRIDE_CONFIG", config)
+    assert resolve_effective_config({}) is None

@@ -151,8 +151,14 @@ def resolve_effective_config(app_config):
         logger.warning("Starting all services.")
         return None
 
-    effective_config.update(overrides or {})
+    if overrides is not None and not isinstance(overrides, dict):
+        logger.warning(
+            "QUAY_OVERRIDE_CONFIG must be a proper JSON object, got %s", type(overrides).__name__
+        )
+        logger.warning("Starting all services.")
+        return None
 
+    effective_config.update(overrides or {})
     return effective_config
 
 
