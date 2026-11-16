@@ -122,6 +122,9 @@ def oidc_provider(app):
         # production validation options only in that module: blob operations
         # need TESTING=True to preserve the database fixture's open transaction.
         patch("auth.oauth.app", Mock(config={**original_app.config, "TESTING": False})),
+        # PostgreSQL fixtures hold a transaction open for test isolation. Exercise
+        # the same constraint on SQLite so blob operations cannot close it.
+        db.atomic(),
     ):
         yield manager.get_service("testoidc")
 
@@ -261,10 +264,7 @@ class TestOIDCAuthIntegration:
         token = _bearer(
             client, repository, (OAUTH_TOKEN_USERNAME, id_token), "devtable", ["pull", "push", "*"]
         )
-        # PostgreSQL fixtures hold a transaction open for test isolation. Exercise
-        # the same constraint on SQLite so blob operations cannot close it.
-        with db.atomic():
-            _push_pull_image(client, repository, token, auth_image)
+        _push_pull_image(client, repository, token, auth_image)
 
     def test_oidc_org_membership_grants_repository_access(
         self, app, client, oidc_provider, auth_image
