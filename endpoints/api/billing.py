@@ -589,6 +589,9 @@ class UserPlan(ApiResource):
         """
         Create the user's subscription. Returns a Stripe checkout session.
         """
+        if app.config.get("BILLING_TYPE") == "FakeStripe" and not app.config.get("BILLING_DEV"):
+            abort(400, message="Checkout is unavailable: set BILLING_DEV=true to use FakeStripe.")
+
         request_data = request.get_json()
         plan = request_data["plan"]
         success_url = request_data.get("success_url")
@@ -598,15 +601,18 @@ class UserPlan(ApiResource):
             raise InvalidRequest()
 
         user = get_authenticated_user()
-        if not user.stripe_id:
-            try:
-                cus = billing.Customer.create(
-                    email=user.email,
-                )
+        try:
+            if not user.stripe_id:
+                cus = billing.Customer.create(email=user.email)
                 user.stripe_id = cus.id
                 user.save()
-            except stripe.error.APIConnectionError as e:
-                return connection_response(e)
+            else:
+                cus = billing.Customer.retrieve(user.stripe_id)
+        except stripe.error.APIConnectionError as e:
+            return connection_response(e)
+
+        if cus.subscription is not None:
+            abort(409, message="An active subscription already exists. Use PUT to update it.")
 
         try:
             price = get_price(plan, False)
@@ -730,6 +736,9 @@ class OrganizationPlan(ApiResource):
         """
         Create the org's subscription. Returns a Stripe checkout session.
         """
+        if app.config.get("BILLING_TYPE") == "FakeStripe" and not app.config.get("BILLING_DEV"):
+            abort(400, message="Checkout is unavailable: set BILLING_DEV=true to use FakeStripe.")
+
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             request_data = request.get_json()
@@ -741,15 +750,18 @@ class OrganizationPlan(ApiResource):
                 raise InvalidRequest()
 
             organization = model.organization.get_organization(orgname)
-            if not organization.stripe_id:
-                try:
-                    cus = billing.Customer.create(
-                        email=organization.email,
-                    )
+            try:
+                if not organization.stripe_id:
+                    cus = billing.Customer.create(email=organization.email)
                     organization.stripe_id = cus.id
                     organization.save()
-                except stripe.error.APIConnectionError as e:
-                    return connection_response(e)
+                else:
+                    cus = billing.Customer.retrieve(organization.stripe_id)
+            except stripe.error.APIConnectionError as e:
+                return connection_response(e)
+
+            if cus.subscription is not None:
+                abort(409, message="An active subscription already exists. Use PUT to update it.")
 
             try:
                 price = get_price(plan, True)
