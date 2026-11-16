@@ -220,6 +220,12 @@ EOF
   mkdir -p "$jaeger_dir"
   printf '{"data":[]}' >"$jaeger_dir/traces.json"
 
+  local mailpit_dir="$root/$GCS_BASE_REL/artifacts/quay-deploy-mailpit"
+  mkdir -p "$mailpit_dir/artifacts"
+  printf 'Mailpit API reachable (HTTP 200)\n' >"$mailpit_dir/build-log.txt"
+  printf '{"passed":true,"result":"SUCCESS"}' >"$mailpit_dir/finished.json"
+  printf 'https://mailpit.example/api/v1' >"$mailpit_dir/artifacts/mailpit_api"
+
   run_collector "$root"
   artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
 
@@ -230,6 +236,10 @@ EOF
     assert_eq "quay-app-1_quay-app.log" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.container_log_files[0]')" "container_log_files" &&
     assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_jaeger_traces')" "has_jaeger_traces" &&
     assert_eq "traces.json" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.jaeger_trace_files[0]')" "jaeger_trace_files" &&
+    assert_eq "downloaded downloaded downloaded" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '[.mailpit.build_log, .mailpit.finished, .mailpit.api_url] | map(.status) | join(" ")')" "mailpit records" &&
+    assert_eq "https://mailpit.example/api/v1" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.api_url.local_path' | xargs cat)" "mailpit_api downloaded" &&
     assert_eq "${REPO_ROOT}/tmp" "$(dirname "$artifacts_dir")" "artifacts_dir lives under repo tmp/" &&
     [ -d "$artifacts_dir" ]
 }
@@ -259,7 +269,9 @@ EOF
     assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/quay-test-e2e" \
       "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "artifact_base_url (flat)" &&
     assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_build_log')" "has_build_log (flat step-local log)" &&
-    assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_container_logs')" "has_container_logs (flat siblings still resolve)"
+    assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_container_logs')" "has_container_logs (flat siblings still resolve)" &&
+    assert_eq "unavailable null" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.finished | "\(.status) \(.local_path)"')" "mailpit step absent"
 }
 
 # --- T3: nested workflow/step discovery, surviving a non-matching candidate ---
@@ -280,13 +292,18 @@ test_nested_workflow_discovery_survives_unrelated() {
   cat >"$step_dir/results.json" <<'EOF'
 {"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
 EOF
+  local mailpit_dir="$root/$GCS_BASE_REL/artifacts/e2e/quay-deploy-mailpit"
+  mkdir -p "$mailpit_dir"
+  printf 'not json' >"$mailpit_dir/finished.json"
 
   run_collector "$root"
   artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
 
   assert_eq "0" "$COLLECTOR_RC" "exit code" &&
     assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/e2e/quay-test-playwright/artifacts" \
-      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "discovers nested quay-test-playwright step"
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "discovers nested quay-test-playwright step" &&
+    assert_eq "unavailable null" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.finished | "\(.status) \(.local_path)"')" "invalid mailpit finished.json"
 }
 
 # --- T4: actual_workers project value / root fallback / both missing ---

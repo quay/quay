@@ -151,7 +151,6 @@ PRs modifying the following files are accepted only from `quay` org members:
 - `.coderabbit.yaml` — CodeRabbit review configuration
 - `.github/workflows/` — CI/CD workflow definitions
 - `.github/CODEOWNERS` — code ownership rules
-- `.fullsend/` — agent and automation configuration
 
 External contributors: if an issue involves these files, comment on the issue and a maintainer will arrange an internal PR. Do not open a PR for these files — it will be closed.
 

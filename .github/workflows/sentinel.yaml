@@ -84,7 +84,6 @@ jobs:
               - '!.github/workflows/CI-nightly.yaml'
               - '!.github/workflows/cut-release.yml'
               - '!.github/workflows/frozen-branch-check.yaml'
-              - '!.github/workflows/fullsend.yaml'
               - '!.github/workflows/playwright-report-cleanup.yaml'
               - '!.github/workflows/playwright-report-deploy.yaml'
               - '!.github/workflows/pr-labeler.yaml'
