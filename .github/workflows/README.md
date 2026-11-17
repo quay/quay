@@ -58,7 +58,7 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 
 ## Pipeline remaining
 
-`pipeline-remaining.yaml` runs when `CI` succeeds on a pull request to `master`. It never checks out PR code. It comments `/pipeline remaining` on the open PR whose head still matches the CI run, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`. A CI re-run may post the comment again; the controller does not re-dispatch jobs already present at that head.
+`pipeline-remaining.yaml` runs when `CI` succeeds on a pull request to `master`. It never checks out PR code. It comments `/pipeline remaining` on the open PR whose head still matches the CI run, so the openshift-ci pipeline controller dispatches second-stage Prow jobs and completes `ci/pipeline-gate`. A CI re-run may post the comment again; the controller does not re-dispatch jobs already present at that head. It then reports the storage Prow jobs (`ci/prow/aws-s3`, `ci/prow/gcp-gcs`, `ci/prow/azure-blob`) as one `CI / Prow / E2E` commit status, waiting up to 5h, and its `status` job refreshes that status whenever one of those contexts changes; a PR that changes none of the manifests that select them gets success.
 
 ## GitHub UI
 
