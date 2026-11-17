@@ -56,6 +56,9 @@ revision_head
 supervisord.log
 supervisord.pid
 
+# Rust build dependencies output
+rust-builddeps/target/
+
 # Logs
 logs
 *.log
@@ -134,3 +137,4 @@ bin/
 .claude/implementation
 .claude/poll-state/
 .claude/session-state/
+.venv-rfe/

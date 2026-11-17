@@ -78,6 +78,21 @@ install-pre-commit-hook:
 	pip install pre-commit==4.5.0
 	pre-commit install
 
+# Python formatters/linters (same tools as .pre-commit-config.yaml).
+# Run `make lint-python` before committing Python changes; prefer
+# `make install-pre-commit-hook` so black/isort/flake8 always run on commit.
+.PHONY: isort flake8 lint-python
+isort:
+	pre-commit run isort --all-files
+
+flake8:
+	pre-commit run flake8 --all-files
+
+lint-python:
+	pre-commit run black --all-files
+	pre-commit run isort --all-files
+	pre-commit run flake8 --all-files
+
 PG_PASSWORD := quay
 PG_USER := quay
 PG_PORT := 5433

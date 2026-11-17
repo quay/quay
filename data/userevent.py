@@ -4,6 +4,8 @@ import threading
 
 import redis
 
+from util.redis_utils import create_redis_client, has_engine_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,8 +21,19 @@ class UserEventBuilder(object):
     """
 
     def __init__(self, redis_config):
-        self._client = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
+        """Initialise the builder with a Redis connection.
+
+        Routes engine-based configs through :func:`create_redis_client`;
+        legacy flat configs are passed directly to ``redis.StrictRedis``.
+        """
         self._redis_config = redis_config
+
+        if has_engine_config(redis_config):
+            self._client = create_redis_client(redis_config, default_timeout=2)
+        else:
+            self._client = redis.StrictRedis(
+                socket_connect_timeout=2, socket_timeout=2, **redis_config
+            )
 
     @property
     def client(self):
@@ -35,6 +48,7 @@ class UserEventBuilder(object):
 
 class UserEventsBuilderModule(object):
     def __init__(self, app=None):
+        """Initialise the Flask extension, optionally binding to *app*."""
         self.app = app
         if app is not None:
             self.state = self.init_app(app)
@@ -66,6 +80,7 @@ class UserEvent(object):
     """
 
     def __init__(self, client, username):
+        """Create a publisher for *username* backed by the given Redis *client*."""
         self._redis = client
         self._username = username
 
@@ -102,14 +117,22 @@ class UserEventListener(object):
     """
 
     def __init__(self, redis_config, username, events=None):
+        """Subscribe to realtime user events over Redis Pub/Sub.
+
+        Supports engine-based configs via :func:`create_redis_client` and
+        legacy flat configs via direct ``redis.StrictRedis`` instantiation.
+        """
         events = events or set([])
         channels = [self._user_event_key(username, e) for e in events]
 
-        args = dict(redis_config)
-        args.update({"socket_connect_timeout": 5, "single_connection_client": True})
-
         try:
-            self._redis = redis.StrictRedis(**args)
+            if has_engine_config(redis_config):
+                self._redis = create_redis_client(redis_config, default_timeout=5)
+            else:
+                args = dict(redis_config)
+                args.update({"socket_connect_timeout": 5, "single_connection_client": True})
+                self._redis = redis.StrictRedis(**args)
+
             self._pubsub = self._redis.pubsub(ignore_subscribe_messages=True)
             self._pubsub.subscribe(channels)
         except redis.RedisError as re:

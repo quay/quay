@@ -6,12 +6,13 @@ import subprocess
 import sys
 import textwrap
 import time
+from unittest.mock import MagicMock, patch
 
 import fakeredis
 import pytest
 import redis_lock
 
-from util.locking import GlobalLock, LockAcquireTimeout
+from util.locking import GlobalLock, LockAcquireTimeout, _redis_lock_factory
 
 
 @pytest.fixture
@@ -236,6 +237,59 @@ def test_bounded_waiter_deadline_is_total_across_lost_wakeups(gevent_scenarios):
 
     assert acquired is False
     assert deadline <= elapsed < deadline + 0.5, elapsed
+
+
+class TestRedisLockFactoryEngineConfig:
+    """Tests for engine-config routing in _redis_lock_factory."""
+
+    @patch("util.locking.Redis")
+    def test_legacy_config_uses_redis_directly(self, mock_redis_class):
+        """Legacy config (no engine) should instantiate Redis directly."""
+        mock_conn = MagicMock()
+        mock_redis_class.return_value = mock_conn
+
+        config = {"USER_EVENTS_REDIS": {"host": "localhost", "port": 6379}}
+        factory = _redis_lock_factory(config)
+
+        mock_redis_class.assert_called_once()
+        call_kwargs = mock_redis_class.call_args[1]
+        assert call_kwargs["host"] == "localhost"
+        assert call_kwargs["socket_connect_timeout"] == 5
+        assert isinstance(factory, functools.partial)
+
+    @patch("util.locking.create_redis_client")
+    def test_engine_config_uses_factory(self, mock_create_client):
+        """Engine-based config should route through create_redis_client."""
+        mock_conn = MagicMock()
+        mock_create_client.return_value = mock_conn
+
+        engine_config = {
+            "engine": "redis",
+            "redis_config": {"host": "redis.example.com", "port": 6379},
+        }
+        config = {"USER_EVENTS_REDIS": engine_config}
+        factory = _redis_lock_factory(config)
+
+        mock_create_client.assert_called_once_with(engine_config, default_timeout=5)
+        assert isinstance(factory, functools.partial)
+
+    @patch("util.locking.create_redis_client")
+    def test_cluster_config_uses_factory(self, mock_create_client):
+        """Cluster config should also route through create_redis_client."""
+        mock_conn = MagicMock()
+        mock_create_client.return_value = mock_conn
+
+        cluster_config = {
+            "engine": "rediscluster",
+            "redis_config": {
+                "startup_nodes": [{"host": "node1", "port": 6379}],
+            },
+        }
+        config = {"USER_EVENTS_REDIS": cluster_config}
+        factory = _redis_lock_factory(config)
+
+        mock_create_client.assert_called_once_with(cluster_config, default_timeout=5)
+        assert isinstance(factory, functools.partial)
 
 
 # ---------------------------------------------------------------------------

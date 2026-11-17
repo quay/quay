@@ -6,6 +6,13 @@ from datetime import datetime, timezone
 
 import redis
 
+from util.redis_utils import (
+    create_redis_client,
+    has_engine_config,
+    is_cluster_config,
+    resolve_pull_metrics_redis_config,
+)
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PULL_METRICS_WORKER_COUNT = 5
@@ -30,6 +37,7 @@ class PullMetricsBuilder(object):
     """
 
     def __init__(self, redis_config, max_workers=None):
+        """Wrap a :class:`PullMetrics` instance for builder access."""
         self._instance = PullMetrics(redis_config, max_workers)
         self._redis_config = redis_config
         self._max_workers = max_workers
@@ -44,6 +52,7 @@ class PullMetricsBuilder(object):
 
 class PullMetricsBuilderModule(object):
     def __init__(self, app=None):
+        """Initialise the Flask extension, optionally binding to *app*."""
         self.app = app
         if app is not None:
             self.state = self.init_app(app)
@@ -51,12 +60,7 @@ class PullMetricsBuilderModule(object):
             self.state = None
 
     def init_app(self, app):
-        redis_config = app.config.get("PULL_METRICS_REDIS")
-        if not redis_config:
-            # This is the old key name.
-            redis_config = {
-                "host": app.config.get("PULL_METRICS_REDIS_HOSTNAME"),
-            }
+        redis_config = resolve_pull_metrics_redis_config(app.config)
 
         # Add testing flag to redis config to disable thread pool during tests
         if app.config.get("TESTING", False):
@@ -165,6 +169,11 @@ class PullMetrics(object):
     """
 
     def __init__(self, redis_config, max_workers=None):
+        """Initialise PullMetrics with Redis connection config.
+
+        Extracts internal flags, detects engine-based configs, and sets up
+        lazy connection and optional async executor.
+        """
         redis_config = (redis_config.copy() if redis_config else {}) or {}
 
         # Extract internal flags and connection settings (not passed to Redis)
@@ -175,6 +184,10 @@ class PullMetrics(object):
         self._socket_timeout = redis_config.pop("socket_timeout", DEFAULT_REDIS_CONNECTION_TIMEOUT)
         self._retry_attempts = redis_config.pop("retry_attempts", DEFAULT_REDIS_RETRY_ATTEMPTS)
         self._retry_delay = redis_config.pop("retry_delay", DEFAULT_REDIS_RETRY_DELAY)
+
+        # Detect engine-based config before stripping internal flags
+        self._has_engine = has_engine_config(redis_config)
+        self._is_cluster = is_cluster_config(redis_config)
 
         # Store only Redis connection parameters
         self._redis_config = redis_config
@@ -232,11 +245,21 @@ class PullMetrics(object):
             last_exception = None
             for attempt in range(1, self._retry_attempts + 1):
                 try:
-                    self._redis = redis.StrictRedis(
-                        socket_connect_timeout=self._connection_timeout,
-                        socket_timeout=self._socket_timeout,
-                        **self._redis_config,
-                    )
+                    if self._has_engine:
+                        self._redis = create_redis_client(
+                            self._redis_config,
+                            default_timeout=self._connection_timeout,
+                            extra_kwargs={
+                                "socket_connect_timeout": self._connection_timeout,
+                                "socket_timeout": self._socket_timeout,
+                            },
+                        )
+                    else:
+                        self._redis = redis.StrictRedis(
+                            socket_connect_timeout=self._connection_timeout,
+                            socket_timeout=self._socket_timeout,
+                            **self._redis_config,
+                        )
                     self._redis.ping()
                     if attempt > 1:
                         logger.info(
@@ -274,23 +297,29 @@ class PullMetrics(object):
     def _tag_pull_key(repository_id, tag_name, manifest_digest):
         """
         Generate Redis key for tag pull events.
+
         Pattern: pull_events:repo:{repository_id}:tag:{tag_name}:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:tag:*:*
 
-        Note: Uses repository_id for consistent key naming.
+        The ``{repository_id}`` braces form a Redis Cluster hash tag so that
+        the original key and any derived processing key (appended by the flush
+        worker) always hash to the same slot, preventing ``CROSSSLOT`` errors
+        on ``RENAME``.  On single-node Redis the braces are treated as literal
+        characters and have no effect.
         """
-        return "pull_events:repo:%s:tag:%s:%s" % (repository_id, tag_name, manifest_digest)
+        return "pull_events:repo:{%s}:tag:%s:%s" % (repository_id, tag_name, manifest_digest)
 
     @staticmethod
     def _manifest_pull_key(repository_id, manifest_digest):
         """
         Generate Redis key for manifest/digest pull events.
+
         Pattern: pull_events:repo:{repository_id}:digest:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:digest:*
 
-        Note: Uses repository_id for consistent key naming.
+        See :meth:`_tag_pull_key` for hash-tag rationale.
         """
-        return "pull_events:repo:%s:digest:%s" % (repository_id, manifest_digest)
+        return "pull_events:repo:{%s}:digest:%s" % (repository_id, manifest_digest)
 
     def track_tag_pull_sync(self, repository_ref, tag_name, manifest_digest):
         """
