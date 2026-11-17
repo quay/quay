@@ -157,6 +157,11 @@ def get_upstream_content(rest):
             blob_sha, additional_headers=upstream_headers
         )
     except UpstreamRegistryError as e:
+        if e.status_code == 416:
+            headers = {}
+            if "content-range" in e.headers:
+                headers["Content-Range"] = e.headers["content-range"]
+            return Response(status=416, headers=headers)
         logger.exception("Failed to fetch blob from upstream registry: %s", e)
         abort(502)
 

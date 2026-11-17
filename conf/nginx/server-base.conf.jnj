@@ -131,14 +131,15 @@ location ~ ^/_upstream_proxy/[^/]+/[^/]+/[^/]+/.+ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
-    # turn on buffering but use memory instead of the disk
-    proxy_buffering on;
-    proxy_max_temp_file_size 0;
+    # buffering often stalls fast upstreams because there's no temporary file,
+    # stream content directly to the caller
+    proxy_buffering off;
     proxy_buffer_size 128k;
-    proxy_buffers 16 1m;
-    proxy_busy_buffers_size 4m;
 
     proxy_read_timeout 300s;
+
+    # Blobs must keep Content-Length; http-base gzips application/octet-stream with gzip_proxied any.
+    gzip off;
 }
 
 location ~ ^/v2/_catalog(.*)$ {

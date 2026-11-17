@@ -6,6 +6,7 @@ import pytest
 from flask import Flask
 
 from endpoints.test.shared import toggle_feature
+from proxy import UpstreamRegistryError
 from storage.upstreamproxy import UpstreamProxy
 from test.fixtures import *
 
@@ -477,6 +478,59 @@ class TestBlobstreamSuccess:
 
         assert len(downloaded) == total_len
         assert "sha256:" + hashlib.sha256(downloaded).hexdigest() == digest
+
+    def test_upstream_returns_proper_range_header_on_416(self, client, url_proxy):
+        """
+        Verifies that on a malformed request header we return a proper 416 to the
+        client instead of a generic 502 breaking the download.
+        """
+        path = _make_path(url_proxy)
+
+        mock_proxy_instance = MagicMock()
+        mock_proxy_instance.get_blob.side_effect = UpstreamRegistryError(
+            416, status_code=416, headers={"content-range": "bytes */100"}
+        )
+
+        with (
+            patch("endpoints.blobstream.get_proxy_cache_config_for_org", return_value=MagicMock()),
+            patch("endpoints.blobstream.Proxy", return_value=mock_proxy_instance),
+        ):
+            resp = client.get(
+                path,
+                headers={
+                    "Range": "bytes=100-",
+                },
+            )
+
+        assert resp.status_code == 416
+        assert resp.headers["Content-Range"] == "bytes */100"
+
+    def test_test_non_416_upstream_error_returns_502_without_content_range(self, client, url_proxy):
+        """
+        Verifies that on a non-416 upstream error we still return a 502 back to the client.
+        """
+        path = _make_path(url_proxy)
+
+        mock_proxy_instance = MagicMock()
+        mock_proxy_instance.get_blob.side_effect = UpstreamRegistryError(
+            500,
+            status_code=500,
+            headers={
+                "content-range": "bytes */100",
+            },
+        )
+
+        with (
+            patch("endpoints.blobstream.get_proxy_cache_config_for_org", return_value=MagicMock()),
+            patch("endpoints.blobstream.Proxy", return_value=mock_proxy_instance),
+        ):
+            resp = client.get(
+                path,
+                headers={"Range": "bytes=100-"},
+            )
+
+        assert resp.status_code == 502
+        assert "content-range" not in resp.headers
 
 
 class TestBlobStreamFeatureFlag:
