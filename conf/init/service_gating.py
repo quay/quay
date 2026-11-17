@@ -34,11 +34,11 @@ def _registry_read_only(cfg):
 
 
 def secscan_enabled(cfg):
-    return (
-        _feature(cfg, "FEATURE_SECURITY_SCANNER")
-        and _feature(cfg, "FEATURE_SECURITY_NOTIFICATIONS")
-        and not cfg.get("ACCOUNT_RECOVERY_MODE", False)
-    )
+    return _feature(cfg, "FEATURE_SECURITY_SCANNER") and not cfg.get("ACCOUNT_RECOVERY_MODE", False)
+
+
+def secscan_notifications_enabled(cfg):
+    return secscan_enabled(cfg) and _feature(cfg, "FEATURE_SECURITY_NOTIFICATIONS")
 
 
 def _log_archive_configured(cfg):
@@ -79,8 +79,7 @@ SERVICE_REQUIREMENTS = {
     and _pushes_enabled(c),
     "namespacegcworker": lambda c: _feature(c, "FEATURE_NAMESPACE_GARBAGE_COLLECTION")
     and _pushes_enabled(c),
-    "securityscanningnotificationworker": lambda c: _feature(c, "FEATURE_SECURITY_SCANNER")
-    and _feature(c, "FEATURE_SECURITY_NOTIFICATIONS"),
+    "securityscanningnotificationworker": lambda c: secscan_notifications_enabled(c),
     "gunicorn-secscan": lambda c: secscan_enabled(c),
     "proxycacheblobworker": lambda c: _feature(c, "FEATURE_PROXY_CACHE")
     and _feature(c, "FEATURE_PROXY_CACHE_BLOB_DOWNLOAD"),

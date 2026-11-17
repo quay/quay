@@ -226,6 +226,16 @@ def _cfg(**overrides):
             id="secnotification-scanner-off",
         ),
         pytest.param(
+            "securityscanningnotificationworker",
+            {
+                "FEATURE_SECURITY_SCANNER": True,
+                "FEATURE_SECURITY_NOTIFICATIONS": True,
+                "ACCOUNT_RECOVERY_MODE": True,
+            },
+            False,
+            id="notification-worker-recovery-mode",
+        ),
+        pytest.param(
             "gunicorn-secscan",
             {
                 "FEATURE_SECURITY_SCANNER": True,
@@ -234,6 +244,34 @@ def _cfg(**overrides):
             },
             False,
             id="secscan-recovery-mode",
+        ),
+        pytest.param(
+            "gunicorn-secscan",
+            {
+                "FEATURE_SECURITY_SCANNER": True,
+                "FEATURE_SECURITY_NOTIFICATIONS": False,
+            },
+            True,
+            id="secscan-on-notifications-off",
+        ),
+        pytest.param(
+            "gunicorn-secscan",
+            {
+                "FEATURE_SECURITY_SCANNER": True,
+                "FEATURE_SECURITY_NOTIFICATIONS": True,
+            },
+            True,
+            id="secscan-on-notifications-on",
+        ),
+        # if secscan is turned off, turning on security notifications makes no sense
+        pytest.param(
+            "gunicorn-secscan",
+            {
+                "FEATURE_SECURITY_SCANNER": False,
+                "FEATURE_SECURITY_NOTIFICATIONS": True,
+            },
+            False,
+            id="secscan-off-notifications-on",
         ),
         pytest.param(
             "quotatotalworker",

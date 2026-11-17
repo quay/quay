@@ -179,17 +179,29 @@ location ~ ^/v2/_catalog(.*)$ {
     {% endif %}
 }
 
-# gate /secscan/notification based on running workers
+# /secscan/ is served by gunicorn-secscan which only starts if security features are enabled
+# if not, return 404
 {% if not secscan_enabled %}
+location = /secscan {
+    return 404;
+}
+
+location /secscan/ {
+    return 404;
+}
+{% else %}
+{% if not secscan_notifications_enabled %}
+# if security features are enabled but notifications are not, then serve /secscan but return 404 for
+# the security notification endpoint
 location = /secscan/notification {
     return 404;
 }
 {% endif %}
-
 location /secscan/ {
-    proxy_pass http://{{ 'secscan_app_server' if secscan_enabled else 'web_app_server' }};
+    proxy_pass http://secscan_app_server;
     proxy_http_version 1.1;
 }
+{% endif %}
 
 {% if signing_enabled %}
 location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {

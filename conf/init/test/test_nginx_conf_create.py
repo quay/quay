@@ -31,6 +31,7 @@ def render_server_base_conf(**kwargs):
         blob_upload_lingering_timeout=None,
         enable_alb_health_check=False,
         secscan_enabled=True,
+        secscan_notifications_enabled=True,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -85,29 +86,41 @@ class TestSecscanLocationDirective:
         assert match is not None
         assert "proxy_pass http://secscan_app_server;" in match
 
-    def test_secscan_points_to_web_app_server_when_secscan_enabled_false(self):
+    def test_secscan_returns_404_when_secscan_enabled_false(self):
         """
         Verifies that when secscan is turned off, the endpoint points to web_app_server.
         """
         rendered = render_server_base_conf(secscan_enabled=False)
         match = _secscan_location(rendered)
         assert match is not None
-        assert "proxy_pass http://web_app_server;" in match
+        assert "return 404;" in match
+        assert "proxy_pass" not in match
 
-    def test_sescan_notification_is_not_present_in_generated_config(self):
+    def test_secscan_notification_is_not_present_in_generated_config(self):
         """
-        Verifies that /secscan/notification is not present in the config if secscan is enabled.
+        Verifies that /secscan/notification is not present in the config if secscan and
+        security notifications are enabled.
         """
         rendered = render_server_base_conf()
         match = _secscan_notifications_location_present(rendered)
         assert match is None
 
-    def test_sescan_notification_is_present_in_generated_config(self):
+    def test_sescan_notification_is_not_present_in_generated_config_if_secscan_is_disabled(self):
         """
-        Verifies that /secscan/notification is present in the config if secscan is disabled and
-        that it contains a return 404 statement.
+        Verifies that /secscan/notification is not present in the config if secscan is disabled.
         """
         rendered = render_server_base_conf(secscan_enabled=False)
+        match = _secscan_notifications_location_present(rendered)
+        assert match is None
+
+    def test_secscan_notification_is_present_in_generated_config_if_notifications_are_disabled(
+        self,
+    ):
+        """
+        Verifies that /secscan/notification is present in the config if secscan is enabled, but
+        security notifications are disabled and that it returns a 404.
+        """
+        rendered = render_server_base_conf(secscan_notifications_enabled=False)
         match = _secscan_notifications_location_present(rendered)
         assert match is not None
         assert "return 404;" in match
@@ -316,36 +329,36 @@ class TestHostedHttpBaseListen:
 
 class TestServerBaseConfCreation:
     @pytest.mark.parametrize(
-        ("config", "env", "upstream"),
+        ("config", "env", "state"),
         [
             pytest.param(
                 {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": True},
                 None,
-                "proxy_pass http://secscan_app_server;",
+                "enabled",
                 id="scanner-and-notifications-on",
             ),
             pytest.param(
                 {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": False},
                 None,
-                "proxy_pass http://web_app_server;",
+                "notifications-blocked",
                 id="scanner-on-notifications-off",
             ),
             pytest.param(
                 {"FEATURE_SECURITY_SCANNER": False, "FEATURE_SECURITY_NOTIFICATIONS": True},
                 None,
-                "proxy_pass http://web_app_server;",
+                "disabled",
                 id="scanner-off-notifications-on",
             ),
             pytest.param(
                 {},
                 None,
-                "proxy_pass http://web_app_server;",
+                "disabled",
                 id="empty-config",
             ),
             pytest.param(
                 None,
                 None,
-                "proxy_pass http://web_app_server;",
+                "disabled",
                 id="config-not-provided",
             ),
             pytest.param(
@@ -355,7 +368,7 @@ class TestServerBaseConfCreation:
                     "ACCOUNT_RECOVERY_MODE": True,
                 },
                 None,
-                "proxy_pass http://web_app_server;",
+                "disabled",
                 id="both-on-but-account-recovery-mode-set",
             ),
             pytest.param(
@@ -363,7 +376,7 @@ class TestServerBaseConfCreation:
                 {
                     "QUAY_OVERRIDES": json.dumps({}),
                 },
-                "proxy_pass http://web_app_server;",
+                "disabled",
                 id="empty-quay-override-provided",
             ),
             pytest.param(
@@ -373,15 +386,25 @@ class TestServerBaseConfCreation:
                         {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": True},
                     ),
                 },
-                "proxy_pass http://secscan_app_server;",
+                "enabled",
                 id="scanner-and-notifier-turned-on-through-override",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps(
+                        {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": False},
+                    ),
+                },
+                "notifications-blocked",
+                id="scanner-on-notifications-off-via-quay-override",
             ),
             pytest.param(
                 {},
                 {
                     "QUAY_OVERRIDE_CONFIG": "{this is not a valid json",
                 },
-                "proxy_pass http://secscan_app_server;",
+                "enabled",
                 id="wrong-json-override",
             ),
             pytest.param(
@@ -389,21 +412,42 @@ class TestServerBaseConfCreation:
                 {
                     "QUAY_OVERRIDE_CONFIG": json.dumps("{this is not a valid json"),
                 },
-                "proxy_pass http://secscan_app_server;",
+                "enabled",
                 id="override-is-json-string-not-object",
             ),
         ],
     )
-    def test_config_rendering(self, tmp_path, monkeypatch, config, upstream, env):
+    def test_config_rendering(self, tmp_path, monkeypatch, config, env, state):
         """
         Verifies that the correct server-base.conf is created with provided parameters.
         """
+        # the combination of secscan and secscan_notifications can yield three different states.
+        # based on the enabled workers, these states need to be verified against the
+        # generated configuration.
+        EXPECTED = {
+            "disabled": ("return 404;", False),
+            "notifications-blocked": ("proxy_pass http://secscan_app_server;", True),
+            "enabled": ("proxy_pass http://secscan_app_server;", False),
+        }
+
         rendered = render_server_base_conf_through_nginx_conf_create(
             tmp_path, monkeypatch, config, env
         )
-        match = _secscan_location(rendered)
-        assert upstream in match
+        prefix_expected, notifications_blocked = EXPECTED[state]
 
-        blocked = upstream == "proxy_pass http://web_app_server;"
-        assert (_secscan_notifications_location_present(rendered) is not None) == blocked
+        exact = re.search(r"location = /secscan \{([^}]*)\}", rendered, re.DOTALL)
+        prefix = _secscan_location(rendered)
+        assert prefix_expected in prefix
+
+        if state == "disabled":
+            assert "proxy_pass" not in prefix
+            assert exact is not None and "return 404;" in exact.group(0)
+        else:
+            assert "proxy_pass" in prefix
+            assert "return 404;" not in prefix
+            assert exact is None
+
+        assert (
+            _secscan_notifications_location_present(rendered) is not None
+        ) == notifications_blocked
         assert "{%" not in rendered and "{ %" not in rendered

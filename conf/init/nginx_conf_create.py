@@ -135,7 +135,13 @@ def generate_server_config(config):
     keepalive_timeout = int(config.get("NGINX_KEEPALIVE_TIMEOUT", 0))
 
     effective = service_gating.resolve_effective_config(config)
-    secscan_enabled = service_gating.secscan_enabled(effective) if effective is not None else True
+    if effective is None:
+        # gating failed, so start all workers as a safe fallback
+        secscan_enabled = True
+        secscan_notifications_enabled = True
+    else:
+        secscan_enabled = service_gating.secscan_enabled(effective)
+        secscan_notifications_enabled = service_gating.secscan_notifications_enabled(effective)
 
     # Get default UI setting from config
     default_ui = config.get("DEFAULT_UI", "react").lower()
@@ -161,6 +167,7 @@ def generate_server_config(config):
         default_keepalive_timeout=default_keepalive_timeout,
         keepalive_timeout=keepalive_timeout,
         secscan_enabled=secscan_enabled,
+        secscan_notifications_enabled=secscan_notifications_enabled,
     )
 
 

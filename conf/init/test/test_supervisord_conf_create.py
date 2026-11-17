@@ -238,8 +238,13 @@ class TestRenderSupervisorDConf:
             pytest.param(
                 "FEATURE_SECURITY_SCANNER: true\n",
                 {},
-                {"securityworker": "true", "nginx": "true"},
-                id="feature-on",
+                {
+                    "securityworker": "true",
+                    "nginx": "true",
+                    "gunicorn-secscan": "true",
+                    "securityscanningnotificationworker": "false",
+                },
+                id="scanner-feature-on",
             ),
             pytest.param(
                 "FEATURE_SECURITY_SCANNER: true\nFEATURE_AUTO_PRUNE: true\n",
@@ -282,6 +287,28 @@ class TestRenderSupervisorDConf:
                 {"QUAY_OVERRIDE_CONFIG": "{not json"},
                 {"securityworker": "true"},
                 id="invalid-override-config-enables-all-workers",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\nFEATURE_SECURITY_NOTIFICATIONS: true\n",
+                {},
+                {
+                    "securityworker": "true",
+                    "gunicorn-secscan": "true",
+                    "nginx": "true",
+                    "securityscanningnotificationworker": "true",
+                },
+                id="both-security-scanner-and-notifications-enabled",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: false\nFEATURE_SECURITY_NOTIFICATIONS: true\n",
+                {},
+                {
+                    "securityworker": "false",
+                    "securityscanningnotificationworker": "false",
+                    "gunicorn-secscan": "false",
+                    "nginx": "true",
+                },
+                id="security-scanner-feature-off-turns-off-notifications",
             ),
         ],
     )
