@@ -423,7 +423,9 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
-        manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
+        manifest = registry_model.lookup_manifest_by_digest(
+            repository_ref, manifest_ref, allow_hidden=True
+        )
         if manifest is None:
             raise ManifestUnknown()
 
