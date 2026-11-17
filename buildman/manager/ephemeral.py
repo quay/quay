@@ -922,8 +922,8 @@ class EphemeralBuilderManager(BuildStateInterface):
             # schedule() and job_unschedulable() can delete the job key, so read it first.
             try:
                 created_at = json.loads(self._orchestrator.get_key(job_id))["created_at"]
-            except KeyError:
-                logger.warning("Job %s not found; skipping queue duration metric", job_id)
+            except (KeyError, OrchestratorError) as e:
+                logger.warning("Could not read job %s for queue duration metric: %s", job_id, e)
                 created_at = None
 
             try:

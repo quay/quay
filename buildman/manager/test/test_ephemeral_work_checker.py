@@ -6,7 +6,7 @@ import pytest
 from buildman.jobutil.buildjob import BuildJob
 from buildman.manager import ephemeral
 from buildman.manager.ephemeral import EphemeralBuilderManager
-from buildman.orchestrator import MemoryOrchestrator
+from buildman.orchestrator import MemoryOrchestrator, OrchestratorConnectionError
 from util.morecollections import AttrDict
 
 BUILD_UUID = "deadbeef-dead-beef-dead-beefdeadbeef"
@@ -88,4 +88,17 @@ def test_work_checker_skips_queue_duration_when_job_key_missing(manager, job_ite
             manager._work_checker()
 
     manager._queue.incomplete.assert_called_once_with(job_item, restore_retry=False, retry_after=30)
+    queue_duration.labels.assert_not_called()
+
+
+def test_work_checker_schedules_when_job_key_read_fails(manager, job_item):
+    with (
+        patch.object(manager._orchestrator, "get_key", side_effect=OrchestratorConnectionError()),
+        patch.object(manager, "schedule", return_value=(True, None)) as schedule,
+        patch.object(ephemeral, "build_queue_duration") as queue_duration,
+    ):
+        with pytest.raises(StopWorkChecker):
+            manager._work_checker()
+
+    schedule.assert_called_once_with(BUILD_UUID)
     queue_duration.labels.assert_not_called()
