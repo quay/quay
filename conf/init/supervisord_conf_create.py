@@ -9,7 +9,7 @@ import yaml
 try:
     from . import service_gating
 except ImportError:
-    import service_gating
+    import service_gating  # type: ignore[import,no-redef]
 
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")

@@ -2033,7 +2033,11 @@ test.describe(
       const r = await userClient.get('/secscan/_backfill_status');
       // gunicorn-secscan only runs when the scanner is enabled, otherwise
       // nginx returns a 404 to the caller for anything under /secscan endpoint
-      const scannerEnabled = quayConfig?.features?.SECURITY_SCANNER ?? false;
+      const rawScanner: unknown = quayConfig?.features?.SECURITY_SCANNER;
+      const scannerEnabled =
+        typeof rawScanner === 'string'
+          ? rawScanner.toLowerCase() === 'true'
+          : Boolean(rawScanner);
       expect(r.status()).toBe(scannerEnabled ? 200 : 404);
     });
   },
