@@ -899,6 +899,38 @@ EOF
     esac
 }
 
+# --- a public-bucket URL whose HEAD probe fails transiently keeps the public
+# bucket when the status.url bucket it names is not readable ---
+test_public_bucket_head_failure_keeps_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/${BUCKET}/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"https://prow.ci.openshift.org/view/gs/test-platform-results/${GCS_BASE_REL}\"}}"
+  printf '503' >"$root/$GCS_BASE_REL/prowjob.json.http_code"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url keeps the public bucket" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/${BUCKET} not readable anonymously; default public bucket)"*) : ;;
+      *)
+        echo "  expected the default public bucket line, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
 for t in $(declare -F | awk '{print $3}' | grep '^test_'); do
   run_test "$t"
 done

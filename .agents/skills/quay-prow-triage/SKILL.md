@@ -88,7 +88,8 @@ Derive the GCS base the same way `debug-playwright-prow`'s collector does.
 (`https://prow.ci.openshift.org/view/gs/<bucket>/<path>/<build_id>`) or a
 GCSWeb URL. Use the URL's `<bucket>` only if its `prowjob.json` reads
 anonymously; otherwise take the bucket from the public copy's `status.url`
-(`.../view/gs/<bucket>/...`), falling back to `test-platform-results-public`.
+(`.../view/gs/<bucket>/...`) when that bucket reads anonymously, falling back
+to `test-platform-results-public`.
 Fetch steps 1-3 directly (the collector's own routing-record fetch is
 internal to its Playwright-specific run and never runs, and never emits its
 output JSON, when it cannot find `results.json`):
@@ -98,7 +99,8 @@ RUN="<path>/<build_id>"   # from $ARGUMENTS
 BUCKET="<bucket>"         # from $ARGUMENTS
 if ! curl -sfL --head "https://storage.googleapis.com/$BUCKET/$RUN/prowjob.json" >/dev/null; then
   STATUS_URL=$(curl -sfL "https://storage.googleapis.com/test-platform-results-public/$RUN/prowjob.json" | jq -r '.status.url // empty')
-  if [[ "$STATUS_URL" =~ /view/gs/([^/]+)/ && "${BASH_REMATCH[1]}" != "$BUCKET" ]]; then
+  if [[ "$STATUS_URL" =~ /view/gs/([^/]+)/ && "${BASH_REMATCH[1]}" != "$BUCKET" ]] &&
+    curl -sfL --head "https://storage.googleapis.com/${BASH_REMATCH[1]}/$RUN/prowjob.json" >/dev/null; then
     BUCKET="${BASH_REMATCH[1]}"
   else
     BUCKET=test-platform-results-public
