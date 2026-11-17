@@ -62,6 +62,25 @@ fi
 # Extract the job name (last path component before build ID)
 JOB_NAME=$(basename "$GCS_JOB_PATH")
 
+# --- Bucket Resolution ---
+# Prow links still name gs/test-platform-results, which refuses anonymous
+# reads; the run's artifacts are served from the bucket its public
+# prowjob.json status.url names, else test-platform-results-public.
+PUBLIC_BUCKET="test-platform-results-public"
+if curl -sfL "${CURL_TIMEOUT[@]}" --head "https://storage.googleapis.com/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}/prowjob.json" >/dev/null 2>&1; then
+  echo "Bucket: gs/${GCS_BUCKET} (readable as given)" >&2
+else
+  RESOLVED_BUCKET="$PUBLIC_BUCKET"
+  RESOLVED_REASON="default public bucket"
+  STATUS_URL=$(curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "https://storage.googleapis.com/${PUBLIC_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}/prowjob.json" 2>/dev/null | jq -r '.status.url // empty' 2>/dev/null || true)
+  if [[ "$STATUS_URL" =~ /view/gs/([^/]+)/ && "${BASH_REMATCH[1]}" != "$GCS_BUCKET" ]]; then
+    RESOLVED_BUCKET="${BASH_REMATCH[1]}"
+    RESOLVED_REASON="named by prowjob.json status.url"
+  fi
+  echo "Bucket: gs/${RESOLVED_BUCKET} (gs/${GCS_BUCKET} not readable anonymously; ${RESOLVED_REASON})" >&2
+  GCS_BUCKET="$RESOLVED_BUCKET"
+fi
+
 GCS_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 PROW_URL="https://prow.ci.openshift.org/view/gs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"

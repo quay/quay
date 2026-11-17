@@ -131,6 +131,16 @@ if [ "$url" = "$BUCKET_URL" ]; then
   exit 0
 fi
 
+# --- Any other bucket refuses anonymous reads (403), as
+# gs/test-platform-results does.
+if [[ "$url" == https://storage.googleapis.com/* && "$url" != "$BUCKET_URL"/* ]]; then
+  if [ "$have_w" = "true" ]; then
+    printf '403'
+    exit 0
+  fi
+  exit 22
+fi
+
 # --- Object HEAD/GET, backed by a single fixture file. A sibling
 # "$file.http_code" overrides the HEAD status (e.g. "403", "500") so a
 # fixture can force classify_object_head's head_failed path without the
@@ -818,6 +828,72 @@ EOF
       *"skipping builder-diagnostics key with unexpected name: sub/evil.txt"*) : ;;
       *)
         echo "  expected the unsafe-name skip warning, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
+# --- a Prow URL naming the private bucket (403 to anonymous reads) falls
+# back to the bucket the public prowjob.json status.url names ---
+test_private_bucket_falls_back_to_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/test-platform-results/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}\"}}"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+  printf 'top-level log\n' >"$root/$GCS_BASE_REL/build-log.txt"
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/quay-test-e2e/artifacts" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "artifact_base_url uses the public bucket" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url uses the public bucket" &&
+    assert_eq "downloaded" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.top_level_build_log.status')" "top-level build log fetched" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/test-platform-results not readable anonymously; named by prowjob.json status.url)"*) : ;;
+      *)
+        echo "  expected the bucket fallback line, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
+# --- a status.url naming the same unreadable bucket still falls back to
+# the public bucket ---
+test_status_url_naming_private_bucket_falls_back_to_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/test-platform-results/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"${PROW_URL}\"}}"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url uses the public bucket" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/test-platform-results not readable anonymously; default public bucket)"*) : ;;
+      *)
+        echo "  expected the default public bucket line, got: $COLLECTOR_STDERR" >&2
         return 1
         ;;
     esac
