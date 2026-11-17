@@ -32,7 +32,7 @@ from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
-from data.model.repository import create_repository
+from data.model.repository import create_repository, get_repository
 from data.model.storage import get_layer_path
 from data.model.user import get_user
 from data.registry_model import registry_model
@@ -168,6 +168,47 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
             self.upstream_repository,
             self.user,
         )
+
+    @pytest.mark.parametrize("extended", [False, True])
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_build_route_name_not_created_or_fetched_upstream(self, extended):
+        name = "library/build/ambiguous"
+        with patch.object(self.proxy_model._proxy, "manifest_exists") as manifest_exists:
+            with patch(
+                "data.registry_model.registry_proxy_model.features.EXTENDED_REPOSITORY_NAMES",
+                extended,
+            ):
+                repo_ref = self.proxy_model.lookup_repository(
+                    self.orgname, name, manifest_ref=self.tag
+                )
+            manifest_exists.assert_not_called()
+        assert repo_ref is None
+        assert get_repository(self.orgname, name) is None
+
+    @pytest.mark.parametrize("extended", [False, True])
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_existing_build_route_name_remains_readable(self, extended):
+        name = "library/build/existing"
+        create_repository(self.orgname, name, self.user)
+        with patch.object(self.proxy_model._proxy, "manifest_exists") as manifest_exists:
+            with patch(
+                "data.registry_model.registry_proxy_model.features.EXTENDED_REPOSITORY_NAMES",
+                extended,
+            ):
+                repo_ref = self.proxy_model.lookup_repository(
+                    self.orgname, name, manifest_ref=self.tag
+                )
+            manifest_exists.assert_not_called()
+        assert repo_ref is not None
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_incomplete_build_route_name_still_created(self):
+        name = "library/build/bar/extra"
+        with patch.object(self.proxy_model._proxy, "manifest_exists") as manifest_exists:
+            repo_ref = self.proxy_model.lookup_repository(self.orgname, name, manifest_ref=self.tag)
+            manifest_exists.assert_called_once()
+        assert repo_ref is not None
+        assert get_repository(self.orgname, name) is not None
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_lookup_repository_creates_private_repo_when_enabled(self):

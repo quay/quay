@@ -31,6 +31,11 @@ export default function SelectOrganization(props: SelectOrganizationProps) {
   });
   const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
+
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    setPage(1);
+  };
   const {gitNamespaces, isLoading, isError, error} = useGitNamespaces(
     org,
     repo,
@@ -69,7 +74,7 @@ export default function SelectOrganization(props: SelectOrganizationProps) {
             <SearchInput
               id="gitnamespaces-search-input"
               searchState={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
             />
           </ToolbarItem>
           <ToolbarItem>

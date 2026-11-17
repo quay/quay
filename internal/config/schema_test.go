@@ -107,6 +107,7 @@ var knownUnmapped = map[string]bool{
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
+	"FEATURE_ALB_HEALTH_CHECK":                      true,
 	"FEATURE_EXTENDED_ACTION_LOGGING":               true,
 	"FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL":        true,
 	"FEATURE_ACTION_LOG_ROTATION":                   true,
@@ -246,6 +247,7 @@ var knownUnmapped = map[string]bool{
 	"CREATE_NAMESPACE_ON_PUSH":                       true,
 	"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY":             true,
 	"DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT":          true,
+	"DEFAULT_NGINX_KEEPALIVE_TIMEOUT":                true,
 	"DISABLE_PUSHES":                                 true,
 	"ENTERPRISE_LOGO_URL":                            true,
 	"EXPIRED_APP_SPECIFIC_TOKEN_GC":                  true,
@@ -255,6 +257,7 @@ var knownUnmapped = map[string]bool{
 	"GLOBAL_READONLY_SUPER_USERS":                    true,
 	"IGNORE_UNKNOWN_MEDIATYPES":                      true,
 	"MANIFESTS_ENDPOINT_READ_TIMEOUT":                true,
+	"NGINX_KEEPALIVE_TIMEOUT":                        true,
 	"NON_RATE_LIMITED_NAMESPACES":                    true,
 	"NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX":         true,
 	"NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": true,

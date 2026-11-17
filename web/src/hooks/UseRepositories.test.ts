@@ -15,6 +15,10 @@ const mockFetchRepositories = vi.hoisted(() =>
   vi.fn(() => Promise.resolve([])),
 );
 
+const mockFetchRepositoriesForNamespace = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve([])),
+);
+
 vi.mock('./UseCurrentUser', () => ({
   useCurrentUser: mockUseCurrentUser,
 }));
@@ -25,7 +29,7 @@ vi.mock('src/resources/RepositoryResource', () => ({
     Promise.resolve({repos: [], truncated: false}),
   ),
   fetchRepositories: mockFetchRepositories,
-  fetchRepositoriesForNamespace: vi.fn(() => Promise.resolve([])),
+  fetchRepositoriesForNamespace: mockFetchRepositoriesForNamespace,
 }));
 
 function createWrapper() {
@@ -85,5 +89,27 @@ describe('useRepositories', () => {
     });
 
     expect(result.current).toBeDefined();
+  });
+
+  it('fetches the current organization after the organization changes', async () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {username: 'user1', anonymous: false, organizations: []},
+      isSuperUser: false,
+    });
+
+    const {result, rerender} = renderHook(({org}) => useRepositories(org), {
+      wrapper: createWrapper(),
+      initialProps: {org: 'orga'},
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    rerender({org: 'orgb'});
+    await waitFor(() =>
+      expect(mockFetchRepositoriesForNamespace).toHaveBeenLastCalledWith(
+        'orgb',
+        expect.anything(),
+        undefined,
+      ),
+    );
   });
 });

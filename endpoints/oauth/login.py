@@ -3,7 +3,7 @@ import os
 import re
 import time
 from collections import namedtuple
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import recaptcha2
 from flask import Blueprint, abort, redirect, request, session, url_for
@@ -169,17 +169,10 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
 
         params = urlencode(params_dict)
 
-        # Use the Referer header to determine the correct origin to redirect to
-        referer = request.headers.get("Referer")
-
-        if referer:
-            # Parse the origin from the referer
-            parsed = urlparse(referer)
-            origin = f"{parsed.scheme}://{parsed.netloc}"
-            return redirect(f"{origin}/oauth-error?{params}")
-        else:
-            # Fallback to relative redirect
-            return redirect(f"/oauth-error?{params}")
+        # Use the configured app URL to construct the redirect, never trust
+        # client-supplied headers (Host, Referer) for redirect targets.
+        app_url = get_app_url()
+        return redirect(f"{app_url}/oauth-error?{params}")
 
     # Angular UI: render error in template
     resp = index("", error_info=error_info)

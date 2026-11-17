@@ -19,6 +19,11 @@ import Delete from './PermissionsActionsDelete';
 
 export default function PermissionsToolbar(props: PermissionsToolbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -33,12 +38,12 @@ export default function PermissionsToolbar(props: PermissionsToolbarProps) {
         <SearchDropdown
           items={props.searchOptions}
           searchState={props.search}
-          setSearchState={props.setSearch}
+          setSearchState={handleSearchChange}
         />
         <SearchInput
           id="permissions-search-input"
           searchState={props.search}
-          onChange={props.setSearch}
+          onChange={handleSearchChange}
         />
         <ToolbarItem>
           <Button

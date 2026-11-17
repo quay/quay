@@ -1,0 +1,96 @@
+# Posts /pipeline remaining on the PR after the top-level CI workflow passes,
+# so the openshift-ci pipeline controller dispatches the second-stage Prow jobs
+# and completes ci/pipeline-gate. ci/pipeline-gate goes green at dispatch, so the
+# storage Prow job results are reported as the "CI / Prow / E2E" commit status.
+name: Pipeline Remaining
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+  status:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    name: Comment /pipeline remaining
+    runs-on: ubuntu-latest
+    # The path pins sentinel.yaml: the legacy CI.yaml on release branches is also named CI.
+    if: github.event.workflow_run.path == '.github/workflows/sentinel.yaml' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    concurrency:
+      group: pipeline-remaining-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+      cancel-in-progress: true
+    # Covers the status script's 5h deadline, under the 6h hosted-runner cap.
+    timeout-minutes: 320
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    steps:
+      # The workflow_run event's pull_requests array is empty for fork heads, so look the PR up by head.
+      - name: Comment /pipeline remaining on the PR at this head
+        id: comment
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f head="$OWNER:$BRANCH" |
+            jq -r --arg sha "$SHA" --arg repo "$REPO" 'first(.[] | select(.head.sha == $sha and .head.repo.full_name == $repo) | .number) // empty')
+          [ -n "$pr" ] || exit 0
+          # The PR can be retargeted or pushed to after the list call; skip a stale head.
+          current=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")
+          jq -e --arg sha "$SHA" --arg repo "$REPO" '.state == "open" and .base.ref == "master" and .head.sha == $sha and .head.repo.full_name == $repo' <<<"$current" >/dev/null || exit 0
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body='/pipeline remaining'
+          echo "pr=$pr" >>"$GITHUB_OUTPUT"
+      # workflow_run checks out the default branch, never PR code.
+      - name: Check out status script
+        if: steps.comment.outputs.pr != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Wait for storage Prow job results
+        if: steps.comment.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.comment.outputs.pr }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: .github/scripts/prow-storage-status.sh "$PR" "$SHA" --wait
+
+  status:
+    name: Report storage Prow job results
+    runs-on: ubuntu-latest
+    if: github.event_name == 'status' && contains(fromJSON('["ci/prow/aws-s3", "ci/prow/gcp-gcs", "ci/prow/azure-blob"]'), github.event.context)
+    concurrency:
+      group: pipeline-remaining-status-${{ github.event.sha }}
+      cancel-in-progress: true
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      # status checks out the default branch, never PR code.
+      - name: Check out status script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      # The commit's associated-pulls endpoint returns no PRs for fork heads, so match open PRs by head.
+      - name: Report storage Prow job results on the PR at this head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.sha }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api --paginate -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=master -f per_page=100 |
+            jq -rn --arg sha "$SHA" 'first(inputs[] | select(.head.sha == $sha) | .number) // empty')
+          [ -n "$pr" ] || exit 0
+          .github/scripts/prow-storage-status.sh "$pr" "$SHA"
