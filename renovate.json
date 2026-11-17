@@ -15,6 +15,20 @@
   "extends": [
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update the ART runtime base and public RPM lock context from the same UBI tag",
+      "managerFilePatterns": ["/^(Containerfile\\.art|rpms\\.in\\.yaml)$/"],
+      "matchStrings": [
+        "(?<registry>registry\\.(?:redhat\\.io|access\\.redhat\\.com)/ubi9/ubi-minimal):(?<currentValue>9\\.[0-9]+-[0-9]+)"
+      ],
+      "depNameTemplate": "registry.access.redhat.com/ubi9/ubi-minimal",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "redhat",
+      "autoReplaceStringTemplate": "{{{registry}}}:{{{newValue}}}"
+    }
+  ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "baseBranchPatterns": [
     "master",
@@ -78,6 +92,38 @@
       "groupSlug": "docker",
       "schedule": ["* 2-8 * * 4"],
       "automerge": true
+    },
+    {
+      "description": "Do not apply the ART runtime manager to master's standalone RPM lock context",
+      "matchManagers": ["custom.regex"],
+      "matchBaseBranches": ["master"],
+      "matchPackageNames": ["registry.access.redhat.com/ubi9/ubi-minimal"],
+      "enabled": false
+    },
+    {
+      "description": "Let the custom manager synchronize the pinned ART runtime base on release branches",
+      "matchManagers": ["dockerfile"],
+      "matchBaseBranches": ["/^redhat-/"],
+      "matchFileNames": ["Containerfile.art"],
+      "matchPackageNames": ["registry.redhat.io/ubi9/ubi-minimal"],
+      "enabled": false
+    },
+    {
+      "description": "Update the ART runtime base and RPM lock context together, regenerate the lockfile, and follow the Thursday Docker schedule",
+      "matchManagers": ["custom.regex"],
+      "matchBaseBranches": ["/^redhat-/"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.access.redhat.com/ubi9/ubi-minimal"],
+      "versioning": "redhat",
+      "groupName": "Quay UBI runtime base image",
+      "groupSlug": "quay-ubi-runtime",
+      "schedule": ["* 2-8 * * 4"],
+      "automerge": true,
+      "postUpgradeTasks": {
+        "commands": ["rpm-lockfile-prototype rpms.in.yaml"],
+        "fileFilters": ["rpms.lock.yaml"],
+        "executionMode": "branch"
+      }
     },
     {
       "description": "Tekton: Friday 02:00-08:59 UTC. No groupName here: MintMaker's global config already groups the tekton-catalog references into one PR per base branch.",
