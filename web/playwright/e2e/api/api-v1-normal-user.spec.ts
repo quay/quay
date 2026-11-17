@@ -14,6 +14,8 @@
 import {test, expect, uniqueName} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 import {TEST_USERS} from '../../global-setup';
+import {RawApiClient} from '../../utils/api/raw-client';
+import {API_URL} from '../../utils/config';
 
 // ---------------------------------------------------------------------------
 // Organization CRUD
@@ -2051,5 +2053,58 @@ test.describe(
       const body = await r.json();
       expect(body.success).toBe(true);
     });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Convert Account to Organization (internal API)
+// ---------------------------------------------------------------------------
+
+test.describe(
+  'Normal User - Convert to Organization',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test(
+      'converts the account and rejects itself as the admin',
+      {tag: '@superuser'},
+      async ({freshUser, request, userClient, anonClient}) => {
+        const {username, password} = freshUser.user;
+        const client = new RawApiClient(request, API_URL);
+        await client.signIn(username, password);
+
+        const selfAdmin = await client.post('/api/v1/user/convert', {
+          adminUser: username,
+          adminPassword: password,
+        });
+        expect(selfAdmin.status()).toBe(400);
+        expect((await selfAdmin.json()).error_message).toBe(
+          'The admin user is not valid',
+        );
+
+        const convert = await client.post('/api/v1/user/convert', {
+          adminUser: TEST_USERS.user.username,
+          adminPassword: TEST_USERS.user.password,
+        });
+        try {
+          expect(convert.status()).toBe(200);
+
+          const org = await userClient.get(`/api/v1/organization/${username}`);
+          expect(org.status()).toBe(200);
+          expect(await org.json()).toMatchObject({
+            name: username,
+            is_admin: true,
+          });
+
+          const signin = await anonClient.post('/api/v1/signin', {
+            username,
+            password,
+          });
+          expect(signin.status()).toBe(403);
+          expect((await signin.json()).invalidCredentials).toBe(true);
+        } finally {
+          await userClient.delete(`/api/v1/organization/${username}`);
+        }
+      },
+    );
   },
 );
