@@ -28,7 +28,11 @@ if [ "$method" = POST ]; then
   exit 0
 fi
 case $path in
-*/files) body=$(cat "$STUB/files.json") ;;
+*/check-runs*)
+  n=$(($(cat "$STUB/gate-calls" 2>/dev/null || echo 0) + 1))
+  echo "$n" >"$STUB/gate-calls"
+  if [ -f "$STUB/gate.$n.json" ]; then body=$(cat "$STUB/gate.$n.json"); else body=$(cat "$STUB/gate.json"); fi
+  ;;
 */status*)
   n=$(($(cat "$STUB/status-calls" 2>/dev/null || echo 0) + 1))
   echo "$n" >"$STUB/status-calls"
@@ -45,6 +49,13 @@ if [ -n "$filter" ]; then jq -r "$filter" <<<"$body"; else echo "$body"; fi
 EOF
 chmod +x "$work/bin/gh"
 
+# Stub sleep: logs each nap to $STUB/sleeps.
+cat >"$work/bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+echo "$1" >>"$STUB/sleeps"
+EOF
+chmod +x "$work/bin/sleep"
+
 export PATH="$work/bin:$PATH"
 export GITHUB_REPOSITORY=quay/quay GITHUB_SERVER_URL=https://github.com GITHUB_RUN_ID=1
 export PROW_STATUS_POLL_SECONDS=0
@@ -58,13 +69,24 @@ statuses() { # context=state ...
   (IFS=,; echo "{\"statuses\":[${args[*]}]}")
 }
 
-# setup <file> <head-sha>
+gate() { # in_progress | completed <completed_at>
+  if [ "$1" = completed ]; then
+    echo "{\"check_runs\":[{\"status\":\"completed\",\"completed_at\":\"$2\"}]}"
+  else
+    echo "{\"check_runs\":[{\"status\":\"$1\",\"completed_at\":null}]}"
+  fi
+}
+
+long_ago=2020-01-01T00:00:00Z
+now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# setup <head-sha>: gate completed long ago, no storage statuses.
 setup() {
   export STUB="$work/case"
   rm -rf -- "$STUB"
   mkdir "$STUB"
-  echo "[{\"filename\":\"$1\"},{\"filename\":\"web/package.json\"}]" >"$STUB/files.json"
-  echo "{\"state\":\"open\",\"base\":{\"ref\":\"master\"},\"head\":{\"sha\":\"$2\"}}" >"$STUB/pr.json"
+  echo "{\"state\":\"open\",\"base\":{\"ref\":\"master\"},\"head\":{\"sha\":\"$1\"}}" >"$STUB/pr.json"
+  gate completed "$long_ago" >"$STUB/gate.json"
   statuses >"$STUB/status.json"
 }
 
@@ -92,70 +114,65 @@ check() {
 
 all_success=(ci/prow/aws-s3=success ci/prow/gcp-gcs=success ci/prow/azure-blob=success)
 
-setup README.md "$sha"
-check "no manifest touched" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+setup "$sha"
+gate in_progress >"$STUB/gate.json"
+check "gate in progress" "pending|CI / Prow / E2E|waiting for pipeline dispatch|$url" "$sha"
 
-setup docs/README.md "$sha"
-check "docs path not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+setup "$sha"
+check "gate long done, no storage jobs" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
 
-setup web/src/routes/RepositoriesList/RepositoriesList.tsx "$sha"
-check "react source not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+setup "$sha"
+gate completed "$now" >"$STUB/gate.json"
+check "gate just done, no storage jobs yet" "pending|CI / Prow / E2E|waiting for ci/prow/aws-s3 ci/prow/gcp-gcs ci/prow/azure-blob|$url" "$sha"
 
-setup test/data/test.pem "$sha"
-check "nested data/ not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
-
-setup requirements.txt.orig "$sha"
-check "suffix-extended manifest not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
-
-setup web/playwright/e2e/api/api-v1-immutability.spec.ts "$sha"
+setup "$sha"
+gate in_progress >"$STUB/gate.1.json"
+gate completed "$now" >"$STUB/gate.json"
+statuses >"$STUB/status.1.json"
 statuses "${all_success[@]}" >"$STUB/status.json"
-check "playwright spec selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
+check "wait: gate completes, then storage jobs pass" "pending|CI / Prow / E2E|waiting for storage jobs|$url
+success|CI / Prow / E2E|storage jobs passed|$url" "$sha" --wait
 
-setup data/model/user.py "$sha"
-statuses "${all_success[@]}" >"$STUB/status.json"
-check "data path selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
-
-setup endpoints/api/user.py "$sha"
-statuses "${all_success[@]}" >"$STUB/status.json"
-check "endpoints path selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
-
-setup requirements.txt "$sha"
+setup "$sha"
 statuses "${all_success[@]}" ci/prow/other=failure >"$STUB/status.json"
 check "all storage jobs passed" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
 
-setup pyproject.toml "$sha"
+setup "$sha"
 statuses ci/prow/aws-s3=success ci/prow/gcp-gcs=failure ci/prow/azure-blob=pending >"$STUB/status.json"
 check "one storage job failed" "failure|CI / Prow / E2E|ci/prow/gcp-gcs failed|$url" "$sha"
 
-setup pyproject.toml "$sha"
+setup "$sha"
 statuses ci/prow/aws-s3=success ci/prow/gcp-gcs=error ci/prow/azure-blob=pending >"$STUB/status.json"
 check "one storage job errored" "failure|CI / Prow / E2E|ci/prow/gcp-gcs failed|$url" "$sha"
 
-setup constraints.txt "$sha"
+setup "$sha"
+gate completed "$now" >"$STUB/gate.json"
 statuses ci/prow/aws-s3=success ci/prow/gcp-gcs=success >"$STUB/status.json"
-check "one storage job missing" "pending|CI / Prow / E2E|waiting for ci/prow/azure-blob|$url" "$sha"
+check "one storage job missing within grace" "pending|CI / Prow / E2E|waiting for ci/prow/azure-blob|$url" "$sha"
 
-setup requirements.txt other
+setup "$sha"
+statuses ci/prow/aws-s3=success ci/prow/gcp-gcs=success >"$STUB/status.json"
+check "one storage job missing after grace" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
+
+setup "$sha"
+statuses ci/prow/aws-s3=pending ci/prow/gcp-gcs=success ci/prow/azure-blob=success >"$STUB/status.json"
+check "storage job running after grace" "pending|CI / Prow / E2E|waiting for ci/prow/aws-s3|$url" "$sha"
+
+setup other
 statuses "${all_success[@]}" >"$STUB/status.json"
 check "stale head posts nothing" "" "$sha"
 
-setup requirements-build.txt "$sha"
-statuses ci/prow/aws-s3=pending >"$STUB/status.1.json"
-statuses "${all_success[@]}" >"$STUB/status.2.json"
-check "wait: pending then success" "pending|CI / Prow / E2E|waiting for storage jobs|$url
-success|CI / Prow / E2E|storage jobs passed|$url" "$sha" --wait
-
-# The head goes stale after the pending post: the loop stops before polling statuses.
-setup requirements.txt "$sha"
+# The head goes stale after the pending post: the loop stops before polling the gate.
+setup "$sha"
 sed "s/$sha/other/" "$STUB/pr.json" >"$STUB/pr.2.json"
 statuses "${all_success[@]}" >"$STUB/status.json"
 check "wait: stale head stops polling" "pending|CI / Prow / E2E|waiting for storage jobs|$url" "$sha" --wait
-if [ -f "$STUB/status-calls" ]; then
-  echo "FAIL (wait: stale head stops polling): polled statuses"
+if [ -f "$STUB/gate-calls" ]; then
+  echo "FAIL (wait: stale head stops polling): polled the gate"
   failures=$((failures + 1))
 fi
 
-setup requirements.txt "$sha"
+setup "$sha"
 rm -- "$STUB/pr.json"
 if "$script" 7 "$sha" >"$STUB/out" 2>&1; then
   echo "FAIL (pull API error): script exited zero"
@@ -164,10 +181,21 @@ else
   echo "PASS: pull API error"
 fi
 
-setup requirements.txt "$sha"
+setup "$sha"
+gate completed "$now" >"$STUB/gate.json"
 statuses ci/prow/aws-s3=success >"$STUB/status.json"
 PROW_STATUS_DEADLINE_SECONDS=0 check "wait: deadline fails" "pending|CI / Prow / E2E|waiting for storage jobs|$url
 failure|CI / Prow / E2E|timed out waiting for ci/prow/gcp-gcs ci/prow/azure-blob|$url" "$sha" --wait
+
+setup "$sha"
+gate completed "$now" >"$STUB/gate.json"
+statuses "${all_success[@]}" >"$STUB/status.2.json"
+PROW_STATUS_POLL_SECONDS=600 check "wait: sleep stops at the grace" "pending|CI / Prow / E2E|waiting for storage jobs|$url
+success|CI / Prow / E2E|storage jobs passed|$url" "$sha" --wait
+if [ "$(cat "$STUB/sleeps")" -gt 300 ]; then
+  echo "FAIL (wait: sleep stops at the grace): slept $(cat "$STUB/sleeps")"
+  failures=$((failures + 1))
+fi
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures case(s) failed"

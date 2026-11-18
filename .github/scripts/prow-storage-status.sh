@@ -11,6 +11,7 @@ repo=$GITHUB_REPOSITORY
 status_context="CI / Prow / E2E"
 storage_contexts=(ci/prow/aws-s3 ci/prow/gcp-gcs ci/prow/azure-blob)
 interval=${PROW_STATUS_POLL_SECONDS:-300}
+grace=${PROW_STATUS_GRACE_SECONDS:-300}
 # Past the 4h Prow pod timeout, under the 6h hosted-runner cap.
 deadline=$(($(date +%s) + ${PROW_STATUS_DEADLINE_SECONDS:-18000}))
 target_url="$GITHUB_SERVER_URL/$repo/actions/runs/$GITHUB_RUN_ID"
@@ -28,9 +29,23 @@ post() {
     -f description="$2" -f target_url="$target_url" >/dev/null
 }
 
-# Sets state (success|failure|pending) and description from the latest storage statuses.
+# Sets state (success|failure|pending), description, and nap (the next poll's sleep).
+# The pipeline controller completes ci/pipeline-gate when it dispatches the second-stage jobs
+# and creates a storage context only for a job it dispatched. A context missing within the
+# grace after the gate may still be on its way; after it, the job was not selected.
 aggregate() {
-  local statuses s c waiting=()
+  local completed_at grace_left statuses s c present=0 waiting=()
+  nap=$interval
+  completed_at=$(gh api "repos/$repo/commits/$sha/check-runs?check_name=ci/pipeline-gate" \
+    --jq '.check_runs[0] | select(.status == "completed") | .completed_at')
+  if [ -z "$completed_at" ]; then
+    state=pending description="waiting for pipeline dispatch"
+    return
+  fi
+  grace_left=$(($(date -d "$completed_at" +%s) + grace - $(date +%s)))
+  if [ "$grace_left" -gt 0 ] && [ "$grace_left" -lt "$nap" ]; then
+    nap=$grace_left
+  fi
   statuses=$(gh api --paginate "repos/$repo/commits/$sha/status?per_page=100" \
     --jq '.statuses[] | "\(.context) \(.state)"')
   for c in "${storage_contexts[@]}"; do
@@ -40,26 +55,19 @@ aggregate() {
       state=failure description="$c failed"
       return
       ;;
-    success) ;;
+    success) present=$((present + 1)) ;;
+    "") if [ "$grace_left" -gt 0 ]; then waiting+=("$c"); fi ;;
     *) waiting+=("$c") ;;
     esac
   done
-  if [ ${#waiting[@]} -eq 0 ]; then
-    state=success description="storage jobs passed"
-  else
+  if [ ${#waiting[@]} -ne 0 ]; then
     state=pending description="waiting for ${waiting[*]}"
+  elif [ "$present" -eq 0 ]; then
+    state=success description="no storage jobs selected"
+  else
+    state=success description="storage jobs passed"
   fi
 }
-
-# The pipeline controller creates the storage contexts only when the PR changes a matching path.
-# Mirrors pipeline_run_if_changed of aws-s3, gcp-gcs and azure-blob in openshift/release
-# ci-operator/config/quay/quay/quay-quay-master.yaml, as ERE; keep the two in sync.
-storage_paths='^(requirements(-build)?\.txt|constraints\.txt|pyproject\.toml|(_init|active_migration|app|config|path_converters|registry|web)\.py|alembic\.ini|quay-entrypoint\.sh|conf/init/(d_validate_config_bundle\.sh|data_migration\.py|runmigration\.sh)|config-tool/(go\.mod|go\.sum|(cmd/config-tool|commands|pkg/lib)/.*)|(data|endpoints|util/config)/.*|web/playwright(\.config\.ts|/.*))$'
-files=$(gh api --paginate "repos/$repo/pulls/$pr/files" --jq '.[].filename')
-if ! grep -qE "$storage_paths" <<<"$files"; then
-  post success "no storage jobs selected"
-  exit 0
-fi
 
 if [ "$wait" != --wait ]; then
   aggregate
@@ -80,5 +88,5 @@ while :; do
     post failure "timed out ${description}"
     exit 0
   fi
-  sleep "$interval"
+  sleep "$nap"
 done
