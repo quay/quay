@@ -47,13 +47,25 @@ def validate_bearer_auth(auth_header):
 def validate_oauth_token(token):
     robot_result = validate_robot_api_token(token)
     if robot_result is not None:
-        return robot_result
+        return mark_robot_api_credential_used(robot_result)
     if is_jwt(token):
         robot_result = validate_robot_api_jwt(token)
         if robot_result is not None:
-            return robot_result
+            return mark_robot_api_credential_used(robot_result)
         return validate_sso_oauth_token(token)
     return validate_app_oauth_token(token)
+
+
+def mark_robot_api_credential_used(result):
+    """Record robot use once a robot API token or federated JWT result is final.
+
+    Callers invoke this only after every check on the credential has passed, so a login
+    that is rejected later (for example a token presented under another robot's name)
+    never moves the robot's last_accessed (PROJQUAY-13785).
+    """
+    if result.auth_valid and result.context.robot is not None:
+        model.user.update_robot_last_accessed(result.context.robot)
+    return result
 
 
 def validate_robot_api_token(token):

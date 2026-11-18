@@ -16,6 +16,11 @@ import {IMembers} from 'src/resources/MembersResource';
 export default function CollaboratorsViewToolbar(
   props: CollaboratorsViewToolbarProps,
 ) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -29,13 +34,13 @@ export default function CollaboratorsViewToolbar(
         <SearchDropdown
           items={props.searchOptions}
           searchState={props.search}
-          setSearchState={props.setSearch}
+          setSearchState={handleSearchChange}
         />
         <Flex className="pf-v6-u-mr-md">
           <FlexItem>
             <SearchInput
               searchState={props.search}
-              onChange={props.setSearch}
+              onChange={handleSearchChange}
               id="collaborators-view-search"
             />
           </FlexItem>

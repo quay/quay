@@ -345,6 +345,34 @@ class TestRepositoryWriteOperationsBlocking:
                 # Should return 403 Unauthorized for write operations
                 resp = conduct_api_call(cl, RepositoryList, "POST", None, repo_data, 403)
 
+    def test_repository_creation_allowed_with_explicit_organization_permission(self, app):
+        """Global readonly status does not override an explicitly granted create permission."""
+        owner = model.user.get_user("randomuser")
+        readonly_user = model.user.get_user("globalreadonlysuperuser")
+        org = model.organization.create_organization(
+            "readonlyscopedrepo", "readonlyscopedrepo@example.com", owner
+        )
+        admins = model.team.create_team("readonlyadmins", org, "admin")
+        model.team.add_user_to_team(readonly_user, admins)
+
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            response = conduct_api_call(
+                cl,
+                RepositoryList,
+                "POST",
+                None,
+                {
+                    "namespace": org.username,
+                    "repository": "scoped-repository",
+                    "visibility": "public",
+                    "description": "",
+                },
+                201,
+            )
+
+        assert response.json["namespace"] == org.username
+        assert response.json["name"] == "scoped-repository"
+
 
 class TestOrganizationReadOperations:
     """Test that organization read operations work correctly for superusers."""

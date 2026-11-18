@@ -28,7 +28,6 @@ export interface UseRepositoriesReturn {
   perPage: number;
   setPerPage: (perPage: number) => void;
   organization: string | undefined;
-  setCurrentOrganization: (org: string | undefined) => void;
   totalResults: number;
   truncated: boolean;
 }
@@ -44,12 +43,11 @@ export function useRepositories(
   const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useRecoilState<OrgSearchState>(searchReposState);
   const searchFilter = useRecoilValue(searchReposFilterState);
-  const [currentOrganization, setCurrentOrganization] = useState(organization);
   const [partialResults, setPartialResults] = useState<IRepository[]>([]);
   const [truncated, setTruncated] = useState(false);
 
-  const listOfOrgNames: string[] = currentOrganization
-    ? [currentOrganization]
+  const listOfOrgNames: string[] = organization
+    ? [organization]
     : user?.anonymous
       ? [] // Anonymous users have no namespaces to fetch
       : user?.organizations?.map((org) => org.name).concat(user.username) || [];
@@ -79,16 +77,16 @@ export function useRepositories(
       setTruncated(false);
 
       // Anonymous users without a specific org: show all public repos
-      if (user?.anonymous && !currentOrganization) {
+      if (user?.anonymous && !organization) {
         return fetchRepositories({
           signal,
           onPartialResult: handlePartialResults,
         });
       }
 
-      if (currentOrganization) {
+      if (organization) {
         return fetchRepositoriesForNamespace(
-          currentOrganization,
+          organization,
           {
             signal,
             onPartialResult: handlePartialResults,
@@ -137,7 +135,6 @@ export function useRepositories(
     perPage,
     setPerPage,
     organization,
-    setCurrentOrganization,
 
     // Useful Metadata
     totalResults: displayedRepos?.length || 0,

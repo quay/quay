@@ -205,3 +205,78 @@ class TestQuotaAuditLogging:
                 assert metadata["limit_id"] == limit_id
                 assert metadata["type"] == "Reject"
                 assert metadata["threshold_percent"] == 100
+
+
+class TestSingleRejectQuotaLimit:
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        import features
+
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_QUOTA_MANAGEMENT": True,
+                "FEATURE_EDIT_QUOTA": True,
+            }
+        )
+        org = model.organization.create_organization(
+            "rejectlimitorg", "rejectlimitorg@test.com", model.user.get_user("randomuser")
+        )
+        self.quota = model.namespacequota.create_namespace_quota(org, 1073741824)
+        self.reject = model.namespacequota.create_namespace_quota_limit(self.quota, "Reject", 90)
+        yield
+        model.namespacequota.delete_namespace_quota(self.quota)
+
+    def test_create_second_reject_refused(self, app):
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "rejectlimitorg", "quota_id": self.quota.id}
+            body = {"type": "Reject", "threshold_percent": 80}
+            resp = conduct_api_call(cl, OrganizationQuotaLimitList, "POST", params, body, 400)
+
+        assert resp.json["error_message"] == "Only one quota limit of type 'Reject' allowed."
+        assert len(model.namespacequota.get_namespace_quota_limit_list(self.quota)) == 1
+
+    def test_update_to_second_reject_refused(self, app):
+        warning = model.namespacequota.create_namespace_quota_limit(self.quota, "Warning", 70)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "orgname": "rejectlimitorg",
+                "quota_id": self.quota.id,
+                "limit_id": warning.id,
+            }
+            body = {"type": "reject", "threshold_percent": 75}
+            resp = conduct_api_call(cl, OrganizationQuotaLimit, "PUT", params, body, 400)
+
+        assert resp.json["error_message"] == "Only one quota limit of type 'Reject' allowed."
+        limit = model.namespacequota.get_namespace_quota_limit(self.quota, warning.id)
+        assert limit.quota_type.name == "Warning"
+        assert limit.percent_of_limit == 70
+
+    def test_update_own_reject_allowed(self, app):
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "orgname": "rejectlimitorg",
+                "quota_id": self.quota.id,
+                "limit_id": self.reject.id,
+            }
+            body = {"type": "Reject", "threshold_percent": 95}
+            conduct_api_call(cl, OrganizationQuotaLimit, "PUT", params, body, 200)
+
+        limit = model.namespacequota.get_namespace_quota_limit(self.quota, self.reject.id)
+        assert limit.percent_of_limit == 95
+
+    def test_update_existing_reject_with_legacy_duplicate_allowed(self, app):
+        model.namespacequota.create_namespace_quota_limit(self.quota, "Reject", 80)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "orgname": "rejectlimitorg",
+                "quota_id": self.quota.id,
+                "limit_id": self.reject.id,
+            }
+            body = {"type": "Reject", "threshold_percent": 95}
+            conduct_api_call(cl, OrganizationQuotaLimit, "PUT", params, body, 200)
+
+        limit = model.namespacequota.get_namespace_quota_limit(self.quota, self.reject.id)
+        assert limit.percent_of_limit == 95

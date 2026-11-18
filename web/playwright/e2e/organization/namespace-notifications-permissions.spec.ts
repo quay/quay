@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Namespace Notifications — Permissions',
@@ -59,17 +58,14 @@ test.describe(
     test(
       'non-admin org member cannot access notification management',
       {tag: '@superuser'},
-      async ({authenticatedPage, superuserApi}) => {
+      async ({authenticatedPage, superuserApi, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         // Create org as superuser — testuser is NOT an admin
         const org = await superuserApi.organization('nsnotifnoadmin');
 
         // Add testuser as a member via a team with 'member' role
         const team = await superuserApi.team(org.name, 'members', 'member');
-        await superuserApi.teamMember(
-          org.name,
-          team.name,
-          TEST_USERS.user.username,
-        );
+        await superuserApi.teamMember(org.name, team.name, users.user.username);
 
         // Navigate to org settings as non-admin testuser
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);

@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {
   closeNotificationModal,
   expectNsNotificationRow,
@@ -10,7 +9,11 @@ test.describe(
   'User Namespace Notifications',
   {tag: ['@user', '@feature:QUOTA_NOTIFICATIONS']},
   () => {
-    const username = TEST_USERS.user.username;
+    let username: string;
+
+    test.beforeAll(async ({cachedQuayConfig}) => {
+      username = getTestUsers(cachedQuayConfig).user.username;
+    });
 
     test('can create a webhook notification, verify in list, test it, and delete it', async ({
       authenticatedPage,

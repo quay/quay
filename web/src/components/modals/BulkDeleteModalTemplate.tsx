@@ -42,6 +42,7 @@ export const BulkDeleteModalTemplate = <T,>(
     value: string,
   ) => {
     setSearchInput(value);
+    setBulkModalPage(1);
     if (value === '') {
       setItemsMarkedForDelete(props.selectedItems);
     } else {

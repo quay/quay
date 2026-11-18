@@ -1,10 +1,13 @@
-import {test, expect, uniqueName, mailpit} from '../../fixtures';
+import {test, expect, uniqueName, mailpit, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Account Settings', {tag: ['@user']}, () => {
-  const username = TEST_USERS.user.username;
-  const password = TEST_USERS.user.password;
+  let username: string;
+  let password: string;
+
+  test.beforeAll(({cachedQuayConfig}) => {
+    ({username, password} = getTestUsers(cachedQuayConfig).user);
+  });
 
   test.describe('General Settings', () => {
     test(
@@ -579,8 +582,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
       // Token should be removed from table
       await expect(
-        authenticatedPage.getByRole('button', {name: tokenTitle}),
-      ).not.toBeVisible();
+        authenticatedPage.locator('tr', {hasText: tokenTitle}),
+      ).toHaveCount(0);
     });
 
     test('shows empty state when no tokens exist', async ({

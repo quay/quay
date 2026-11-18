@@ -60,7 +60,7 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
           searchState={props.search}
           onChange={handleSearchChange}
         />
-        {props.showPageButton && (
+        {props.showCreateButton && (
           <ToolbarButton
             id="create-repository-button"
             buttonValue={props.buttonText}
@@ -119,6 +119,7 @@ type RepositoryToolBarProps = {
   total: number;
   currentOrg: string;
   showPageButton: boolean;
+  showCreateButton: boolean;
   buttonText: string;
   pageModal: object;
   isModalOpen: boolean;

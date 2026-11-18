@@ -61,4 +61,21 @@ describe('DropdownCheckbox', () => {
     // Badge renders selectedItems.length only when > 0; '0' must not appear
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
+
+  it('renders the selected count in the split checkbox, separate from the menu button', () => {
+    const allItems = Array.from({length: 21}, (_, index) => `item-${index}`);
+    render(
+      <DropdownCheckbox
+        {...makeProps({
+          selectedItems: allItems,
+          allItemsList: allItems,
+          'data-testid': 'selection-dropdown',
+          selectedCountTestId: 'selected-count',
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('21');
+    expect(screen.getByRole('checkbox', {name: /select all/i})).toBeChecked();
+  });
 });

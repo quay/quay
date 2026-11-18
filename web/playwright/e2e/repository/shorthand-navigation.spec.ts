@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 
 test.describe('Shorthand URL Navigation', {tag: ['@repository']}, () => {
   test('redirects shorthand URL /:org/:repo to /repository/:org/:repo', async ({
@@ -19,9 +18,10 @@ test.describe('Shorthand URL Navigation', {tag: ['@repository']}, () => {
   test('redirects multi-segment repository names correctly', async ({
     authenticatedPage,
     api,
+    quayConfig,
   }) => {
     // Create repo with / in name (e.g., "release/installer")
-    const namespace = TEST_USERS.user.username;
+    const namespace = getTestUsers(quayConfig).user.username;
     const basePrefix = uniqueName('release');
     const repo = await api.repositoryWithName(
       namespace,
@@ -38,8 +38,9 @@ test.describe('Shorthand URL Navigation', {tag: ['@repository']}, () => {
 
   test('does not redirect reserved route prefixes', async ({
     authenticatedPage,
+    quayConfig,
   }) => {
-    const testUser = TEST_USERS.user.username;
+    const testUser = getTestUsers(quayConfig).user.username;
 
     await authenticatedPage.goto(`/user/${testUser}`);
 

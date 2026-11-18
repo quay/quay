@@ -269,6 +269,95 @@ describe('APIAccessTokensTab', () => {
     },
   );
 
+  it('allows a global readonly superuser to manage tokens in an organization they administer', () => {
+    mockDefaultHooks([listedToken]);
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: buildUser({
+        username: 'auditor',
+        global_readonly_super_user: true,
+        organizations: [
+          {
+            name: 'managedorg',
+            can_create_repo: true,
+            is_org_admin: true,
+            tag_expiration_s: 0,
+            email: '',
+          },
+        ],
+      }),
+      loading: false,
+      error: null,
+      isSuperUser: true,
+    });
+
+    render(
+      <APIAccessTokensTab application={application} orgName="managedorg" />,
+    );
+
+    expect(screen.getByTestId('generate-new-api-token-button')).toBeVisible();
+    expect(screen.getByTestId('api-token-actions-token1')).toBeVisible();
+  });
+
+  it('preserves token controls for a full superuser without organization membership', () => {
+    mockDefaultHooks([listedToken]);
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: buildUser({
+        username: 'fullsuperuser',
+        super_user: true,
+        global_readonly_super_user: false,
+        organizations: [],
+      }),
+      loading: false,
+      error: null,
+      isSuperUser: true,
+    });
+
+    render(
+      <APIAccessTokensTab application={application} orgName="unmanagedorg" />,
+    );
+
+    expect(screen.getByTestId('generate-new-api-token-button')).toBeVisible();
+    expect(screen.getByTestId('api-token-actions-token1')).toBeVisible();
+  });
+
+  it('keeps token controls hidden in registry read-only mode even with organization admin permission', () => {
+    mockDefaultHooks([listedToken]);
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: buildUser({
+        username: 'auditor',
+        global_readonly_super_user: true,
+        organizations: [
+          {
+            name: 'managedorg',
+            can_create_repo: true,
+            is_org_admin: true,
+            tag_expiration_s: 0,
+            email: '',
+          },
+        ],
+      }),
+      loading: false,
+      error: null,
+      isSuperUser: true,
+    });
+    vi.mocked(useQuayConfig).mockReturnValue({
+      features: {ASSIGN_OAUTH_TOKEN: true},
+      config: {LOCAL_OAUTH_HANDLER: '/oauth/localapp'},
+      registry_state: 'readonly',
+    });
+
+    render(
+      <APIAccessTokensTab application={application} orgName="managedorg" />,
+    );
+
+    expect(
+      screen.queryByTestId('generate-new-api-token-button'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('api-token-actions-token1'),
+    ).not.toBeInTheDocument();
+  });
+
   it('uses the fixed expiration dropdown options when generating a token', async () => {
     const user = userEvent.setup();
     mockDefaultHooks();

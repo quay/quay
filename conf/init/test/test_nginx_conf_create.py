@@ -27,6 +27,7 @@ def render_server_base_conf(**kwargs):
         blob_upload_lingering_close=None,
         blob_upload_lingering_time=None,
         blob_upload_lingering_timeout=None,
+        enable_alb_health_check=False,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -166,6 +167,23 @@ class TestBlobUploadClientBodyTimeout:
         rendered = render_server_base_conf(blob_upload_lingering_timeout="30")
         blob_block = _blob_location(rendered)
         assert "lingering_timeout 30;" in blob_block
+
+
+def _alb_location(rendered):
+    match = re.search(r"location = /health/alb \{(.*?)\n\}", rendered, re.DOTALL)
+    return match.group(1) if match else None
+
+
+class TestAlbHealthCheck:
+    def test_omitted_when_disabled(self):
+        assert _alb_location(render_server_base_conf(enable_alb_health_check=False)) is None
+
+    def test_rendered_when_enabled(self):
+        block = _alb_location(render_server_base_conf(enable_alb_health_check=True))
+        assert block is not None
+        assert "if (-f /tmp/quay-drain) {" in block
+        assert "return 503;" in block
+        assert "proxy_pass http://web_app_server/_internal_ping;" in block
 
 
 def render_hosted_http_base_conf(tmp_path, monkeypatch, config):

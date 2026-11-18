@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 import {pushImage, pullImage} from '../../utils/container';
 
@@ -82,7 +81,7 @@ test.describe(
     test(
       'robot API token list paginates, filters and bulk revokes',
       {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
-      async ({authenticatedPage, userClient}) => {
+      async ({authenticatedPage, userClient, quayConfig}) => {
         const robotShortname = uniqueName('api-token-list').replace(/-/g, '_');
 
         try {
@@ -137,7 +136,9 @@ test.describe(
             timeout: 15_000,
           });
           if (await freshPasswordInput.isVisible()) {
-            await freshPasswordInput.fill(TEST_USERS.user.password);
+            await freshPasswordInput.fill(
+              getTestUsers(quayConfig).user.password,
+            );
             await authenticatedPage
               .getByRole('button', {name: 'Verify'})
               .click();
@@ -202,6 +203,108 @@ test.describe(
         } finally {
           await userClient.delete(`/api/v1/user/robots/${robotShortname}`);
         }
+      },
+    );
+
+    test(
+      'organization manager retains robot API token mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
+      async ({authenticatedPage, api, userClient, quayConfig}) => {
+        const org = await api.organization('robotapitokenmanager');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = uniqueName('manager-token');
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+        await authenticatedPage
+          .getByText(robot.fullName, {exact: true})
+          .click();
+        await authenticatedPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = authenticatedPage.getByTestId(
+          'robot-api-tokens-table',
+        );
+        const freshPasswordInput =
+          authenticatedPage.getByLabel('Current Password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(getTestUsers(quayConfig).user.password);
+          await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Create API token'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('checkbox', {name: 'Select row 0'}),
+        ).toBeVisible();
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toBeVisible();
+
+        await tokensTable.getByRole('checkbox', {name: 'Select row 0'}).check();
+        await expect(
+          authenticatedPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'global readonly superuser can list robot API tokens without mutation controls',
+      {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS', '@superuser']},
+      async ({api, readonlyPage, userClient, quayConfig}) => {
+        const org = await api.organization('robotapitokenreadonly');
+        const robot = await api.robot(org.name, 'tokenbot');
+        const tokenName = uniqueName('readonly-token');
+        const createResponse = await userClient.post(
+          `/api/v1/organization/${org.name}/robots/${robot.shortname}/tokens`,
+          {name: tokenName, scope: 'repo:read'},
+        );
+        expect(createResponse.status()).toBe(200);
+
+        await readonlyPage.goto(`/organization/${org.name}?tab=Robotaccounts`);
+        await readonlyPage.getByText(robot.fullName, {exact: true}).click();
+        await readonlyPage.getByRole('tab', {name: 'API Tokens'}).click();
+
+        const tokensTable = readonlyPage.getByTestId('robot-api-tokens-table');
+        const freshPasswordInput = readonlyPage.getByLabel('Current Password');
+        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
+          timeout: 15_000,
+        });
+        if (await freshPasswordInput.isVisible()) {
+          await freshPasswordInput.fill(
+            getTestUsers(quayConfig).readonly.password,
+          );
+          await readonlyPage.getByRole('button', {name: 'Verify'}).click();
+        }
+        await expect(tokensTable).toBeVisible();
+        await expect(
+          tokensTable.getByText(tokenName, {exact: true}),
+        ).toBeVisible();
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Create API token'}),
+        ).toHaveCount(0);
+        await expect(
+          readonlyPage.getByTestId('robot-api-token-dropdown-checkbox'),
+        ).toHaveCount(0);
+        await expect(tokensTable.getByRole('checkbox')).toHaveCount(0);
+        await expect(
+          readonlyPage.getByRole('button', {name: 'Revoke selected'}),
+        ).toHaveCount(0);
+        await expect(
+          tokensTable.getByRole('button', {name: 'Revoke'}),
+        ).toHaveCount(0);
       },
     );
 
@@ -661,6 +764,7 @@ test.describe(
     test('robot wizard: org has 5 steps, user namespace has 3 steps', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
       // Part A: Verify org wizard has 5 steps
       const org = await api.organization('wizardorg');
@@ -702,7 +806,7 @@ test.describe(
       await authenticatedPage.getByTestId('create-robot-cancel').click();
 
       // Part B: Verify user namespace wizard has 3 steps
-      const userNamespace = TEST_USERS.user.username;
+      const userNamespace = getTestUsers(quayConfig).user.username;
       await authenticatedPage.goto(
         `/organization/${userNamespace}?tab=Robotaccounts`,
       );
@@ -1132,46 +1236,68 @@ test.describe(
         await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
       });
 
-      test('pagination in robot account table with >20 robots', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const org = await api.organization('paginaterobots');
+      test(
+        'pagination in robot account table with >20 robots',
+        {tag: ['@PROJQUAY-14330']},
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('paginaterobots');
 
-        for (let i = 0; i < ITEM_COUNT; i++) {
-          await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
-        }
+          for (let i = 0; i < ITEM_COUNT; i++) {
+            await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
+          }
 
-        await authenticatedPage.goto(
-          `/organization/${org.name}?tab=Robotaccounts`,
-        );
+          await authenticatedPage.goto(
+            `/organization/${org.name}?tab=Robotaccounts`,
+          );
 
-        await expect(
-          authenticatedPage.getByTestId('robot-accounts-table'),
-        ).toBeVisible();
+          await expect(
+            authenticatedPage.getByTestId('robot-accounts-table'),
+          ).toBeVisible();
 
-        const tabPanel = authenticatedPage.getByRole('tabpanel', {
-          name: 'Robot accounts',
-        });
-        const paginationInfo = tabPanel
-          .locator('.pf-v6-c-pagination__total-items')
-          .first();
-        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+          const tabPanel = authenticatedPage.getByRole('tabpanel', {
+            name: 'Robot accounts',
+          });
+          const paginationInfo = tabPanel
+            .locator('.pf-v6-c-pagination__total-items')
+            .first();
+          await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+          const page1RobotName = (
+            await tabPanel
+              .locator('td[data-label="Robot account name"] a')
+              .first()
+              .textContent()
+          ).trim();
 
-        await tabPanel
-          .getByRole('button', {name: 'Go to next page'})
-          .first()
-          .click();
-        await expect(paginationInfo).toContainText(
-          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
-        );
+          await tabPanel
+            .getByRole('button', {name: 'Go to next page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(
+            `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+          );
 
-        await tabPanel
-          .getByRole('button', {name: 'Go to previous page'})
-          .first()
-          .click();
-        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
-      });
+          await tabPanel
+            .getByRole('button', {name: 'Go to previous page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+          await tabPanel
+            .getByRole('button', {name: 'Go to next page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(
+            `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+          );
+          await authenticatedPage
+            .getByTestId('robot-account-search')
+            .fill(page1RobotName);
+          await expect(paginationInfo).toHaveText('1 - 1 of 1');
+          await expect(
+            tabPanel.getByRole('link', {name: page1RobotName, exact: true}),
+          ).toBeVisible();
+        },
+      );
     });
 
     test.describe('robot credential execution', {tag: ['@container']}, () => {

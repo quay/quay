@@ -1026,6 +1026,12 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable rate limits on API and registry endpoints. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: ALB health check with drain file support.
+        "FEATURE_ALB_HEALTH_CHECK": {
+            "type": "boolean",
+            "description": "Whether to enable the /health/alb endpoint for ALB health checks with drain file support. Defaults to False",
+            "x-example": True,
+        },
         # Feature Flag: Aggregated log retrieval.
         "FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL": {
             "type": "boolean",
@@ -2009,6 +2015,18 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
+        },
+        "DEFAULT_NGINX_KEEPALIVE_TIMEOUT": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Server-level nginx keepalive_timeout in seconds. Applies to all location blocks that do not set an explicit override. Defaults to 5.",
+            "x-example": 30,
+        },
+        "NGINX_KEEPALIVE_TIMEOUT": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Nginx keepalive_timeout in seconds for registry and API location blocks. Set to 0 to disable HTTP/1.1 keep-alive (default). A non-zero value allows upstream proxies to reuse connections.",
+            "x-example": 60,
         },
         "BLOB_UPLOAD_CLIENT_BODY_TIMEOUT": {
             "type": "string",

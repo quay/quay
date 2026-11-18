@@ -16,6 +16,11 @@ import {ITeamMember, ITeamMembersCanSyncResponse} from 'src/hooks/UseMembers';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 
 export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <>
       <Toolbar id="team-members-toolbar">
@@ -30,14 +35,14 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
           <SearchDropdown
             items={props.searchOptions}
             searchState={props.search}
-            setSearchState={props.setSearch}
+            setSearchState={handleSearchChange}
           />
           <Flex className="pf-v6-u-mr-md">
             <FlexItem>
               <SearchInput
                 id="team-member-search-input"
                 searchState={props.search}
-                onChange={props.setSearch}
+                onChange={handleSearchChange}
               />
             </FlexItem>
           </Flex>

@@ -1,4 +1,4 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Organization Members and Collaborators Views',
@@ -7,10 +7,15 @@ test.describe(
     test('members view shows org members with correct columns', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
       const org = await api.organization('memview');
       const team = await api.team(org.name, 'testteam');
-      await api.teamMember(org.name, team.name, 'testuser');
+      await api.teamMember(
+        org.name,
+        team.name,
+        getTestUsers(quayConfig).user.username,
+      );
 
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Teamsandmembership`,

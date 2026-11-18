@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -10,13 +10,14 @@ from auth.auth_context_type import ValidatedAuthContext
 from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
-from data.database import FederatedLogin
+from data.database import APIToken, FederatedLogin, User
 from data.model import api_token
 from data.model import config as model_config
 from data.model.user import (
     TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S,
     generate_federated_robot_jwt_token,
 )
+from data.readreplica import ReadOnlyModeException
 from test.fixtures import *
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
@@ -292,3 +293,81 @@ def test_expired_token(app):
     assert result.authed_user is None
     assert not result.auth_valid
     assert result.error_message == "OAuth access token has expired"
+
+
+def _reload_robot(robot):
+    return User.get(User.id == robot.id)
+
+
+def test_robot_api_token_bearer_auth_updates_robot_last_accessed(app):
+    # PROJQUAY-13785: the robot user's last_accessed must move when its API token is used,
+    # not only the token's own last_accessed.
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("token-last-accessed", creator)
+    token, secret = api_token.create_token_under_limit(
+        robot, creator, "repo:read", 3600, "CI token"
+    )
+    assert _reload_robot(robot).last_accessed is None
+
+    before = datetime.utcnow()
+    result = validate_bearer_auth("Bearer " + secret)
+
+    assert result.auth_valid
+    assert result.authed_user == robot
+    refreshed = _reload_robot(robot)
+    assert refreshed.last_accessed is not None
+    assert refreshed.last_accessed >= before.replace(microsecond=0)
+    assert APIToken.get(APIToken.id == token.id).last_accessed is not None
+
+
+def test_federated_robot_jwt_updates_robot_last_accessed(app):
+    # PROJQUAY-13785: a Quay-signed robot JWT (federation token exchange) is also a robot
+    # credential and must record robot use.
+    robot, _ = model.user.create_robot("jwt-last-accessed", model.user.get_user("devtable"))
+    _store_legacy_federation_config(robot, [dict(b) for b in LEGACY_FEDERATION_BINDINGS])
+    saved = model.user.create_robot_federation_config(
+        robot, model.user.get_robot_federation_config(robot)
+    )
+    jwt_token = generate_federated_robot_jwt_token(instance_keys, robot, "repo:read", saved[0])
+    assert _reload_robot(robot).last_accessed is None
+
+    result = validate_bearer_auth("Bearer " + jwt_token)
+
+    assert result.auth_valid
+    assert _reload_robot(robot).last_accessed is not None
+
+
+def test_robot_api_token_last_accessed_is_throttled_like_password_auth(app):
+    # PROJQUAY-13785: reuse the user last_accessed throttle, so a busy robot does not write
+    # the user row on every request.
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("token-throttle", creator)
+    _, secret = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+
+    recent = datetime.utcnow().replace(microsecond=0) - timedelta(seconds=5)
+    User.update(last_accessed=recent).where(User.id == robot.id).execute()
+    with patch.dict(model_config.app_config, {"LAST_ACCESSED_UPDATE_THRESHOLD_S": 60}):
+        assert validate_bearer_auth("Bearer " + secret).auth_valid
+    assert _reload_robot(robot).last_accessed == recent
+
+    stale = datetime.utcnow().replace(microsecond=0) - timedelta(days=1)
+    User.update(last_accessed=stale).where(User.id == robot.id).execute()
+    with patch.dict(model_config.app_config, {"LAST_ACCESSED_UPDATE_THRESHOLD_S": 60}):
+        assert validate_bearer_auth("Bearer " + secret).auth_valid
+    assert _reload_robot(robot).last_accessed > stale
+
+
+def test_robot_api_token_auth_survives_read_only_user_update(app):
+    # PROJQUAY-13785: in read-only mode the robot row cannot be written; auth must still pass.
+    creator = model.user.get_user("devtable")
+    robot, _ = model.user.create_robot("token-readonly", creator)
+    _, secret = api_token.create_token_under_limit(robot, creator, "repo:read", 3600, "CI token")
+
+    with (
+        patch.object(User, "update", side_effect=ReadOnlyModeException("read only")),
+        patch.object(APIToken, "update", side_effect=ReadOnlyModeException("read only")),
+    ):
+        result = validate_bearer_auth("Bearer " + secret)
+
+    assert result.auth_valid
+    assert _reload_robot(robot).last_accessed is None

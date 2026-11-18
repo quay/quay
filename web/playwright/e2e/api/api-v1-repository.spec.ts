@@ -72,6 +72,59 @@ test.describe('Repository CRUD', {tag: ['@api', '@auth:Database']}, () => {
   );
 
   test(
+    'reject new build-route names but allow non-colliding nested names',
+    {
+      tag: [
+        '@PROJQUAY-11582',
+        '@superuser',
+        '@feature:EXTENDED_REPOSITORY_NAMES',
+      ],
+    },
+    async ({adminClient, superuserApi}) => {
+      const org = await superuserApi.organization('buildpolicy');
+      const prefix = uniqueName('nested');
+      const rejected = [
+        `${prefix}/build`,
+        `${prefix}/build/detail`,
+        `${prefix}/deep/build/detail`,
+        `${prefix}/build/detail/status`,
+        `${prefix}/build/detail/logs`,
+      ];
+      for (const name of rejected) {
+        const response = await adminClient.post('/api/v1/repository', {
+          repo_kind: 'image',
+          namespace: org.name,
+          visibility: 'public',
+          repository: name,
+          description: 'build route collision',
+        });
+        expect(response.status()).toBe(400);
+        expect((await response.json()).error_message).toContain('build route');
+      }
+
+      const list = await adminClient.get(
+        `/api/v1/repository?namespace=${org.name}`,
+      );
+      expect(list.status()).toBe(200);
+      expect((await list.json()).repositories).toHaveLength(0);
+
+      for (const name of [
+        `build/${uniqueName('child')}`,
+        `${prefix}/building/child`,
+        `${prefix}/build/detail/extra`,
+        `${prefix}/tag/child`,
+      ]) {
+        const repo = await superuserApi.repositoryWithName(
+          org.name,
+          name,
+          'public',
+        );
+        expect(repo.name).toBe(name);
+      }
+    },
+  );
+
+  test(
     'get existing repository',
     {tag: '@superuser'},
     async ({adminClient, superuserApi}) => {

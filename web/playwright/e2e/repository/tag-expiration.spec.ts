@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 // PatternFly TimePicker labels 1 AM "1:00 AM" in a 12h locale and "01:00" in 24h.
@@ -34,6 +33,12 @@ test.describe(
     ],
   },
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test('change expiration via kebab and reset to never', async ({
       authenticatedPage,
       api,
@@ -43,8 +48,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -122,8 +127,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -181,15 +186,15 @@ test.describe(
         repo.namespace,
         repo.name,
         'tag1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
       await pushImage(
         repo.namespace,
         repo.name,
         'tag2',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -267,8 +272,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Mock error for tag expiration update

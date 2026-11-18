@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Repository Details - Tag History',
   {tag: ['@tags', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let sharedRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -14,12 +19,12 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `tag-history-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       sharedRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       // Push initial image as 'latest'
@@ -27,8 +32,8 @@ test.describe(
         sharedRepo.namespace,
         sharedRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Poll for the tag to be indexed (push is sync but indexing may lag)
@@ -123,6 +128,154 @@ test.describe(
       }
     });
 
+    test(
+      'search and load more reach a history entry beyond the first page',
+      {tag: '@PROJQUAY-8767'},
+      async ({authenticatedPage, api}) => {
+        test.setTimeout(120 * 1000);
+
+        const repo = await api.repository();
+        await pushImage(
+          repo.namespace,
+          repo.name,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const rawApi = api.raw;
+
+        // Poll for the tag to be indexed (push is sync but indexing may lag)
+        let latestDigest: string | undefined;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const tags = await rawApi.getTags(repo.namespace, repo.name, {
+            specificTag: 'latest',
+          });
+          if (tags.tags.length > 0) {
+            latestDigest = tags.tags[0].manifest_digest;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!latestDigest) {
+          throw new Error('Pushed tag was not indexed after 10 attempts');
+        }
+
+        // Create and delete an early history entry, then flood in enough
+        // newer tag events to push it past the raw API's page-1 cap.
+        // Isolated to its own repo so the flood does not disturb the
+        // other tests' assumptions about sharedRepo.
+        await rawApi.createTag(
+          repo.namespace,
+          repo.name,
+          'earlydeleted',
+          latestDigest,
+        );
+        await rawApi.deleteTag(repo.namespace, repo.name, 'earlydeleted');
+
+        const floodCount = 60;
+        for (let i = 0; i < floodCount; i++) {
+          await rawApi.createTag(
+            repo.namespace,
+            repo.name,
+            `floodtag${i}`,
+            latestDigest,
+          );
+        }
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+        await authenticatedPage.getByText('Tag history').click();
+
+        const historyTable = authenticatedPage.getByRole('grid', {
+          name: 'Tag history table',
+        });
+        await expect(historyTable).toBeVisible();
+
+        const search = authenticatedPage.getByPlaceholder(
+          'Search by tag name...',
+        );
+        await search.fill('earlydeleted');
+        await expect(historyTable).toContainText('earlydeleted was deleted');
+
+        // Without a search, the oldest entries appear only after "Load more".
+        // Sort by name: the flood shares timestamps, so time order can tie.
+        await search.fill('');
+        await historyTable.getByRole('button', {name: 'Tag change'}).click();
+        await expect(historyTable).toContainText('floodtag');
+        await expect(historyTable).not.toContainText('earlydeleted');
+        const loadMore = authenticatedPage.getByRole('button', {
+          name: 'Load more',
+        });
+        await loadMore.click();
+        await expect(historyTable).toContainText('earlydeleted was deleted');
+        await expect(loadMore).toBeHidden();
+      },
+    );
+
+    test(
+      'search matches underscore literally, not as a wildcard',
+      {tag: '@PROJQUAY-8767'},
+      async ({authenticatedPage, api}) => {
+        test.setTimeout(120 * 1000);
+
+        const repo = await api.repository();
+        await pushImage(
+          repo.namespace,
+          repo.name,
+          'latest',
+          user.username,
+          user.password,
+        );
+
+        const rawApi = api.raw;
+
+        let latestDigest: string | undefined;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const tags = await rawApi.getTags(repo.namespace, repo.name, {
+            specificTag: 'latest',
+          });
+          if (tags.tags.length > 0) {
+            latestDigest = tags.tags[0].manifest_digest;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!latestDigest) {
+          throw new Error('Pushed tag was not indexed after 10 attempts');
+        }
+
+        // Newer tags that match 'release_1' only if '_' is a wildcard,
+        // enough to fill the server's 50-row first page.
+        await rawApi.createTag(
+          repo.namespace,
+          repo.name,
+          'release_1',
+          latestDigest,
+        );
+        for (let i = 0; i < 55; i++) {
+          await rawApi.createTag(
+            repo.namespace,
+            repo.name,
+            `releaseA1-${i}`,
+            latestDigest,
+          );
+        }
+
+        await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+        await authenticatedPage.getByText('Tag history').click();
+
+        const historyTable = authenticatedPage.getByRole('grid', {
+          name: 'Tag history table',
+        });
+        await expect(historyTable).toBeVisible();
+
+        await authenticatedPage
+          .getByPlaceholder('Search by tag name...')
+          .fill('release_1');
+        await expect(historyTable).toContainText('release_1');
+      },
+    );
+
     test('show future entries toggle', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
         `/repository/${sharedRepo.fullName}?tab=tags`,
@@ -181,8 +334,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'revtag',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Delete the tag to create a restorable history entry
@@ -229,8 +382,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'testdelete',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // Delete the tag via API to create a dead history entry
@@ -272,8 +425,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       // View history as readonly user

@@ -1,4 +1,33 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, getTestUsers, QuayConfig, TestApi} from '../../fixtures';
+import {pushImage} from '../../utils/container';
+
+// A private base with a shell, plus a robot that can pull it, so the builder
+// runs real steps. The FROM host is SERVER_HOSTNAME, the host the builder can
+// reach.
+async function seedPrivateBase(
+  api: TestApi,
+  quayConfig: QuayConfig,
+  orgPrefix: string,
+) {
+  const user = getTestUsers(quayConfig).user;
+  const org = await api.organization(orgPrefix);
+  const base = await api.repository(org.name, 'base', 'private');
+  await pushImage(org.name, base.name, 'latest', user.username, user.password);
+  const robot = await api.robot(org.name, 'pullbot');
+  await api.repositoryPermission(
+    org.name,
+    base.name,
+    'user',
+    robot.fullName,
+    'read',
+  );
+  const registry = quayConfig.config.SERVER_HOSTNAME as string;
+  return {
+    org: org.name,
+    from: `${registry}/${org.name}/${base.name}:latest`,
+    robot: robot.fullName,
+  };
+}
 
 test.describe(
   'Repository Builds',
@@ -80,6 +109,73 @@ test.describe(
 
       await expect(authenticatedPage.getByText(tagName)).toBeVisible();
     });
+
+    test(
+      'cancelling a running build ends in cancelled phase',
+      {tag: '@container'},
+      async ({authenticatedPage, api, quayConfig}) => {
+        test.setTimeout(300_000);
+        const base = await seedPrivateBase(api, quayConfig, 'bldcancel');
+        const repo = await api.repository(base.org, 'build-cancel');
+        const build = await api.build(
+          base.org,
+          repo.name,
+          `FROM ${base.from}\nRUN sleep 600\n`,
+          ['e2e-cancel'],
+          base.robot,
+        );
+
+        // Stop polling at 'building' too; a terminal phase here means the
+        // build never got far enough to be cancelled mid-run.
+        const running = await api.raw.waitForBuildPhase(
+          base.org,
+          repo.name,
+          build.buildId,
+          [
+            'building',
+            'complete',
+            'error',
+            'internalerror',
+            'cancelled',
+            'expired',
+          ],
+        );
+        expect(running.phase, running.error).toBe('building');
+
+        const buildPage = `/repository/${base.org}/${repo.name}/build/${build.buildId}`;
+        await authenticatedPage.goto(buildPage);
+        await authenticatedPage
+          .getByRole('button', {name: 'Cancel build'})
+          .click();
+        await authenticatedPage
+          .getByRole('dialog')
+          .getByRole('button', {name: 'Cancel build'})
+          .click();
+        // The success alert is cleared by the redirect to the builds tab, so
+        // assert on the build's row there instead.
+        await expect(authenticatedPage).toHaveURL(/\?tab=builds/);
+        const buildRow = authenticatedPage.getByRole('row').filter({
+          has: authenticatedPage.getByRole('link', {
+            name: build.buildId.substring(0, 8),
+          }),
+        });
+        await expect(
+          buildRow.getByRole('gridcell', {name: 'cancelled'}),
+        ).toBeVisible();
+
+        const status = await api.raw.getBuildStatus(
+          base.org,
+          repo.name,
+          build.buildId,
+        );
+        expect(status.phase).toBe('cancelled');
+
+        await authenticatedPage.goto(buildPage);
+        await expect(
+          authenticatedPage.getByText('This build was previously cancelled.'),
+        ).toBeVisible();
+      },
+    );
 
     test('build logs are visible', async ({authenticatedPage, api}) => {
       const org = await api.organization('buildlogs');

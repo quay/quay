@@ -1,5 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, uniqueName, getTestUsers} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 
 test.describe(
@@ -407,8 +406,9 @@ test.describe(
 
         test('user account settings show "Email" label', async ({
           authenticatedPage,
+          quayConfig,
         }) => {
-          const username = TEST_USERS.user.username;
+          const username = getTestUsers(quayConfig).user.username;
           await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
           // User settings should show an "Email" label (not "Contact Email")
@@ -648,7 +648,7 @@ test.describe(
 
     test.describe(
       'Recovery — Email Lookup',
-      {tag: ['@feature:MAILING']},
+      {tag: ['@feature:MAILING', '@auth:Database']},
       () => {
         const GENERIC_RECOVERY_MESSAGE =
           'Recovery instructions have been sent to';

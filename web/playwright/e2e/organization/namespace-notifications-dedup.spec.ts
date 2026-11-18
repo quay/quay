@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushQuotaNotificationImage} from '../../utils/container';
 import {WebhookReceiver} from '../../utils/webhook';
 
@@ -18,8 +17,9 @@ test.describe(
     test(
       'duplicate push within cooldown does not fire second notification',
       {tag: ['@superuser', '@webhook']},
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(300_000);
+        const users = getTestUsers(quayConfig);
 
         const org = await api.organization('nsdedup');
 
@@ -53,15 +53,15 @@ test.describe(
             org.name,
             'deduprepo1',
             'v1',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
           await pushQuotaNotificationImage(
             org.name,
             'deduprepo2',
             'v2',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
 
           // Wait for first webhook
@@ -74,8 +74,8 @@ test.describe(
             org.name,
             'deduprepo3',
             'v3',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
 
           // Wait 5 seconds — no additional webhook should arrive

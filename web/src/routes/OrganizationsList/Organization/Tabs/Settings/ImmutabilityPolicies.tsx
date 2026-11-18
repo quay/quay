@@ -15,6 +15,7 @@ import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import RequestError from 'src/components/errors/RequestError';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
 import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   useCreateNamespaceImmutabilityPolicy,
   useDeleteNamespaceImmutabilityPolicy,
@@ -68,11 +69,17 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
     isLoading: isOrgMirrorLoading,
     isError: isOrgMirrorError,
   } = useOrgMirrorExists(props.org);
-  const {
-    isProxyCacheConfigured,
-    isLoadingProxyCacheConfig: isProxyCacheLoading,
-    isErrorProxyCacheConfig: isProxyCacheError,
-  } = useFetchProxyCacheConfig(props.org);
+  const quayConfig = useQuayConfig();
+  const isProxyCacheEnabled = !!quayConfig?.features?.PROXY_CACHE;
+  const proxyCache = useFetchProxyCacheConfig(props.org, isProxyCacheEnabled);
+  // A disabled query stays isLoading in React Query v4, so gate each state on
+  // the feature: with it off no proxy cache can be configured.
+  const isProxyCacheLoading =
+    isProxyCacheEnabled && proxyCache.isLoadingProxyCacheConfig;
+  const isProxyCacheError =
+    isProxyCacheEnabled && proxyCache.isErrorProxyCacheConfig;
+  const isProxyCacheConfigured =
+    isProxyCacheEnabled && proxyCache.isProxyCacheConfigured;
 
   const {
     error,
