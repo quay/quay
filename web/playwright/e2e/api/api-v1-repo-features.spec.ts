@@ -336,12 +336,15 @@ test.describe(
       }) => {
         const shortname = uniqueName('fedbot').replace(/-/g, '_');
         const fedPath = `/api/v1/user/robots/${shortname}/federation`;
-        const robot = await userClient.put(`/api/v1/user/robots/${shortname}`, {
-          description: 'user robot federation',
-        });
-        expect(robot.status()).toBe(201);
-
+        let created = false;
         try {
+          const robot = await userClient.put(
+            `/api/v1/user/robots/${shortname}`,
+            {description: 'user robot federation'},
+          );
+          created = robot.status() === 201;
+          expect(robot.status()).toBe(201);
+
           const create = await userClient.post(fedPath, [
             {
               issuer:
@@ -372,7 +375,20 @@ test.describe(
           expect(afterDelete.status()).toBe(200);
           expect(await afterDelete.json()).toEqual([]);
         } finally {
-          await userClient.delete(`/api/v1/user/robots/${shortname}`);
+          const del = await userClient.delete(
+            `/api/v1/user/robots/${shortname}`,
+          );
+          // Quay answers a missing robot with 400 "Could not find robot".
+          const missing =
+            del.status() === 400 &&
+            (await del.text()).includes('Could not find robot');
+          // Soft, so a cleanup failure never replaces the test body's error.
+          expect
+            .soft(
+              del.status() === 204 || (!created && missing),
+              `delete robot ${shortname} returned ${del.status()}`,
+            )
+            .toBe(true);
         }
       });
     });

@@ -653,7 +653,9 @@ test.describe('V2 Auth POST', {tag: ['@api', '@v2']}, () => {
       },
     });
     expect(resp.status()).toBe(405);
-    const allow = resp.headers()['allow'].split(/,\s*/);
+    const allow = (resp.headers()['allow'] ?? '')
+      .split(',')
+      .map((m) => m.trim());
     expect(allow).toContain('GET');
     expect(allow).not.toContain('POST');
   });

@@ -2060,32 +2060,65 @@ test.describe(
 // Convert Account to Organization (internal API)
 // ---------------------------------------------------------------------------
 
+// A converted account is an organization the freshUser fixture cannot delete,
+// so remove it through the superuser endpoint whichever account owns it.
+async function deleteConvertedOrg(
+  adminClient: RawApiClient,
+  name: string,
+  converted: boolean,
+) {
+  const del = await adminClient.delete(
+    `/api/v1/superuser/organizations/${name}`,
+  );
+  // 404: no organization exists, so the freshUser fixture deletes the user.
+  // Soft, so a cleanup failure never replaces the test body's error.
+  expect
+    .soft(converted ? [204] : [204, 404], `delete organization ${name}`)
+    .toContain(del.status());
+}
+
 test.describe(
   'Normal User - Convert to Organization',
   {tag: ['@api', '@auth:Database']},
   () => {
     test(
-      'converts the account and rejects itself as the admin',
+      'rejects the account itself as the admin',
       {tag: '@superuser'},
-      async ({freshUser, request, userClient, anonClient}) => {
+      async ({freshUser, request, adminClient}) => {
         const {username, password} = freshUser.user;
         const client = new RawApiClient(request, API_URL);
         await client.signIn(username, password);
 
-        const selfAdmin = await client.post('/api/v1/user/convert', {
-          adminUser: username,
-          adminPassword: password,
-        });
-        expect(selfAdmin.status()).toBe(400);
-        expect((await selfAdmin.json()).error_message).toBe(
-          'The admin user is not valid',
-        );
-
-        const convert = await client.post('/api/v1/user/convert', {
-          adminUser: TEST_USERS.user.username,
-          adminPassword: TEST_USERS.user.password,
-        });
         try {
+          const selfAdmin = await client.post('/api/v1/user/convert', {
+            adminUser: username,
+            adminPassword: password,
+          });
+          expect(selfAdmin.status()).toBe(400);
+          expect((await selfAdmin.json()).error_message).toBe(
+            'The admin user is not valid',
+          );
+        } finally {
+          await deleteConvertedOrg(adminClient, username, false);
+        }
+      },
+    );
+
+    test(
+      'converts the account to an organization',
+      {tag: '@superuser'},
+      async ({freshUser, request, userClient, anonClient, adminClient}) => {
+        const {username, password} = freshUser.user;
+        const client = new RawApiClient(request, API_URL);
+        await client.signIn(username, password);
+
+        let converted = false;
+        try {
+          const convert = await client.post('/api/v1/user/convert', {
+            adminUser: TEST_USERS.user.username,
+            adminPassword: TEST_USERS.user.password,
+          });
+          converted = convert.status() === 200;
           expect(convert.status()).toBe(200);
 
           const org = await userClient.get(`/api/v1/organization/${username}`);
@@ -2102,7 +2135,7 @@ test.describe(
           expect(signin.status()).toBe(403);
           expect((await signin.json()).invalidCredentials).toBe(true);
         } finally {
-          await userClient.delete(`/api/v1/organization/${username}`);
+          await deleteConvertedOrg(adminClient, username, converted);
         }
       },
     );

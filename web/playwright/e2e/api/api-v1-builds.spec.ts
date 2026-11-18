@@ -5,20 +5,63 @@
  * the custom-git trigger webhook (POST /webhooks/push/trigger/<uuid>).
  */
 
-import {test, expect, getTestUsers} from '../../fixtures';
+import {test, expect, getTestUsers, TestApi} from '../../fixtures';
 import {API_URL} from '../../utils/config';
+
+const basic = (user: string, pass: string) => ({
+  Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`,
+});
+
+const payload = {
+  commit: '1c002dd3a9f84a8b3c7e5e2a9d5f1e0b4c6d8e7f',
+  ref: 'refs/heads/master',
+  default_branch: 'master',
+};
+
+async function customGitWebhook(superuserApi: TestApi) {
+  const org = await superuserApi.organization('webhook');
+  const repo = await superuserApi.repository(org.name, 'customgit');
+  const triggerUuid = await superuserApi.raw.createCustomGitTrigger(
+    org.name,
+    repo.name,
+  );
+  await superuserApi.raw.activateTrigger(org.name, repo.name, triggerUuid, {
+    build_source: 'https://github.com/quay/quay',
+    dockerfile_path: '/Dockerfile',
+    context: '/',
+  });
+
+  const {triggers} = await superuserApi.raw.listTriggers(org.name, repo.name);
+  const trigger = triggers.find((t) => t.id === triggerUuid) as {
+    config: {credentials: {name: string; value: string}[]};
+  };
+  const hook = trigger.config.credentials.find(
+    (c) => c.name === 'Webhook Endpoint URL',
+  );
+  expect(hook).toBeDefined();
+  const webhook = new URL(hook?.value ?? '');
+  return {
+    org,
+    repo,
+    triggerUuid,
+    url: `${API_URL}${webhook.pathname}`,
+    valid: basic(
+      decodeURIComponent(webhook.username),
+      decodeURIComponent(webhook.password),
+    ),
+  };
+}
 
 test.describe(
   'Build API Guards',
   {tag: ['@api', '@auth:Database', '@feature:BUILD_SUPPORT']},
   () => {
     test(
-      'cancel build rejects a uuid from another repo and a non-admin writer',
+      'cancel build rejects a non-admin writer',
       {tag: '@superuser'},
       async ({superuserApi, adminClient, userClient, cachedQuayConfig}) => {
         const org = await superuserApi.organization('buildcancel');
         const repo = await superuserApi.repository(org.name, 'owner');
-        const other = await superuserApi.repository(org.name, 'other');
         const build = await superuserApi.build(org.name, repo.name);
         const writer = getTestUsers(cachedQuayConfig).user.username;
         await superuserApi.repositoryPermission(
@@ -28,16 +71,29 @@ test.describe(
           writer,
           'write',
         );
+        const buildPath = `/api/v1/repository/${repo.fullName}/build/${build.buildId}`;
 
         // Cancel requires repo admin; write is not enough.
-        const writerGet = await userClient.get(
-          `/api/v1/repository/${repo.fullName}/build/${build.buildId}`,
-        );
+        const writerGet = await userClient.get(buildPath);
         expect(writerGet.status()).toBe(200);
-        const writerCancel = await userClient.delete(
-          `/api/v1/repository/${repo.fullName}/build/${build.buildId}`,
-        );
+        expect((await writerGet.json()).is_writer).toBe(true);
+        const writerCancel = await userClient.delete(buildPath);
         expect(writerCancel.status()).toBe(403);
+
+        const stillThere = await adminClient.get(buildPath);
+        expect(stillThere.status()).toBe(200);
+        expect((await stillThere.json()).phase).not.toBe('cancelled');
+      },
+    );
+
+    test(
+      'cancel build rejects a build uuid from another repo',
+      {tag: '@superuser'},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('buildcancel');
+        const repo = await superuserApi.repository(org.name, 'owner');
+        const other = await superuserApi.repository(org.name, 'other');
+        const build = await superuserApi.build(org.name, repo.name);
 
         // An admin of both repos still cannot cancel the build through the
         // repo that does not own it.
@@ -55,69 +111,47 @@ test.describe(
     );
 
     test(
-      'custom-git webhook checks credentials and payload, then queues a build',
+      'custom-git webhook rejects missing credentials',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const org = await superuserApi.organization('webhook');
-        const repo = await superuserApi.repository(org.name, 'customgit');
-        const triggerUuid = await superuserApi.raw.createCustomGitTrigger(
-          org.name,
-          repo.name,
-        );
-        await superuserApi.raw.activateTrigger(
-          org.name,
-          repo.name,
-          triggerUuid,
-          {
-            build_source: 'https://github.com/quay/quay',
-            dockerfile_path: '/Dockerfile',
-            context: '/',
-          },
-        );
+        const {url} = await customGitWebhook(superuserApi);
+        const resp = await request.post(url, {data: payload});
+        expect(resp.status()).toBe(403);
+      },
+    );
 
-        const {triggers} = await superuserApi.raw.listTriggers(
-          org.name,
-          repo.name,
-        );
-        const trigger = triggers.find((t) => t.id === triggerUuid) as {
-          config: {credentials: {name: string; value: string}[]};
-        };
-        const hook = trigger.config.credentials.find(
-          (c) => c.name === 'Webhook Endpoint URL',
-        );
-        expect(hook).toBeDefined();
-        const webhook = new URL(hook?.value ?? '');
-        const url = `${API_URL}${webhook.pathname}`;
-        const basic = (user: string, pass: string) => ({
-          Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString(
-            'base64',
-          )}`,
-        });
-        const valid = basic(
-          decodeURIComponent(webhook.username),
-          decodeURIComponent(webhook.password),
-        );
-        const payload = {
-          commit: '1c002dd3a9f84a8b3c7e5e2a9d5f1e0b4c6d8e7f',
-          ref: 'refs/heads/master',
-          default_branch: 'master',
-        };
-
-        const noAuth = await request.post(url, {data: payload});
-        expect(noAuth.status()).toBe(403);
-
-        const wrongAuth = await request.post(url, {
+    test(
+      'custom-git webhook rejects wrong credentials',
+      {tag: '@superuser'},
+      async ({superuserApi, request}) => {
+        const {url} = await customGitWebhook(superuserApi);
+        const resp = await request.post(url, {
           headers: basic('$token', 'not-the-trigger-token'),
           data: payload,
         });
-        expect(wrongAuth.status()).toBe(403);
+        expect(resp.status()).toBe(403);
+      },
+    );
 
-        const badPayload = await request.post(url, {
+    test(
+      'custom-git webhook rejects an invalid payload',
+      {tag: '@superuser'},
+      async ({superuserApi, request}) => {
+        const {url, valid} = await customGitWebhook(superuserApi);
+        const resp = await request.post(url, {
           headers: valid,
           data: {commit: 'not-a-sha', ref: 'main'},
         });
-        expect(badPayload.status()).toBe(400);
+        expect(resp.status()).toBe(400);
+      },
+    );
 
+    test(
+      'custom-git webhook queues a build',
+      {tag: '@superuser'},
+      async ({superuserApi, request}) => {
+        const {org, repo, triggerUuid, url, valid} =
+          await customGitWebhook(superuserApi);
         const ok = await request.post(url, {headers: valid, data: payload});
         expect(ok.status()).toBe(200);
 
