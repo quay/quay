@@ -375,18 +375,22 @@ test.describe(
           expect(afterDelete.status()).toBe(200);
           expect(await afterDelete.json()).toEqual([]);
         } finally {
-          const del = await userClient.delete(
-            `/api/v1/user/robots/${shortname}`,
-          );
           // Quay answers a missing robot with 400 "Could not find robot".
-          const missing =
-            del.status() === 400 &&
-            (await del.text()).includes('Could not find robot');
-          // Soft, so a cleanup failure never replaces the test body's error.
+          // A rejected request or body read is caught and the result checked
+          // soft, so a cleanup failure never replaces the test body's error.
+          const {status, missing} = await userClient
+            .delete(`/api/v1/user/robots/${shortname}`)
+            .then(async (del) => ({
+              status: del.status(),
+              missing:
+                del.status() === 400 &&
+                (await del.text()).includes('Could not find robot'),
+            }))
+            .catch((err) => ({status: String(err), missing: false}));
           expect
             .soft(
-              del.status() === 204 || (!created && missing),
-              `delete robot ${shortname} returned ${del.status()}`,
+              status === 204 || (!created && missing),
+              `delete robot ${shortname} returned ${status}`,
             )
             .toBe(true);
         }

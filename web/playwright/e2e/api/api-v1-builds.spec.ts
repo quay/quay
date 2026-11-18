@@ -40,15 +40,18 @@ async function customGitWebhook(superuserApi: TestApi) {
   );
   expect(hook).toBeDefined();
   const webhook = new URL(hook?.value ?? '');
+  const user = decodeURIComponent(webhook.username);
+  const token = decodeURIComponent(webhook.password);
+  // The token is a 32-char lookup name then the secret (data/model/token.py),
+  // so this one finds the trigger's token and fails only the secret check.
+  const wrongSecret = token.slice(0, 32) + 'x'.repeat(token.length - 32);
   return {
     org,
     repo,
     triggerUuid,
     url: `${API_URL}${webhook.pathname}`,
-    valid: basic(
-      decodeURIComponent(webhook.username),
-      decodeURIComponent(webhook.password),
-    ),
+    valid: basic(user, token),
+    wrong: basic(user, wrongSecret),
   };
 }
 
@@ -82,7 +85,9 @@ test.describe(
 
         const stillThere = await adminClient.get(buildPath);
         expect(stillThere.status()).toBe(200);
-        expect((await stillThere.json()).phase).not.toBe('cancelled');
+        const {phase} = await stillThere.json();
+        expect(typeof phase).toBe('string');
+        expect(phase).not.toBe('cancelled');
       },
     );
 
@@ -106,7 +111,9 @@ test.describe(
           `/api/v1/repository/${repo.fullName}/build/${build.buildId}`,
         );
         expect(stillThere.status()).toBe(200);
-        expect((await stillThere.json()).phase).not.toBe('cancelled');
+        const {phase} = await stillThere.json();
+        expect(typeof phase).toBe('string');
+        expect(phase).not.toBe('cancelled');
       },
     );
 
@@ -124,23 +131,33 @@ test.describe(
       'custom-git webhook rejects wrong credentials',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const {url} = await customGitWebhook(superuserApi);
-        const resp = await request.post(url, {
-          headers: basic('$token', 'not-the-trigger-token'),
-          data: payload,
-        });
+        const {url, wrong} = await customGitWebhook(superuserApi);
+        const resp = await request.post(url, {headers: wrong, data: payload});
         expect(resp.status()).toBe(403);
       },
     );
 
     test(
-      'custom-git webhook rejects an invalid payload',
+      'custom-git webhook rejects an invalid commit',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
         const {url, valid} = await customGitWebhook(superuserApi);
         const resp = await request.post(url, {
           headers: valid,
-          data: {commit: 'not-a-sha', ref: 'main'},
+          data: {...payload, commit: 'not-a-sha'},
+        });
+        expect(resp.status()).toBe(400);
+      },
+    );
+
+    test(
+      'custom-git webhook rejects an invalid ref',
+      {tag: '@superuser'},
+      async ({superuserApi, request}) => {
+        const {url, valid} = await customGitWebhook(superuserApi);
+        const resp = await request.post(url, {
+          headers: valid,
+          data: {...payload, ref: 'main'},
         });
         expect(resp.status()).toBe(400);
       },

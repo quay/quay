@@ -2065,16 +2065,18 @@ test.describe(
 async function deleteConvertedOrg(
   adminClient: RawApiClient,
   name: string,
-  converted: boolean,
+  expected: number[],
 ) {
-  const del = await adminClient.delete(
-    `/api/v1/superuser/organizations/${name}`,
-  );
   // 404: no organization exists, so the freshUser fixture deletes the user.
-  // Soft, so a cleanup failure never replaces the test body's error.
-  expect
-    .soft(converted ? [204] : [204, 404], `delete organization ${name}`)
-    .toContain(del.status());
+  // A rejected request is caught and every result is checked soft, so a
+  // cleanup failure never replaces the test body's error.
+  const status = await adminClient
+    .delete(`/api/v1/superuser/organizations/${name}`)
+    .then(
+      (del) => del.status(),
+      (err) => String(err),
+    );
+  expect.soft(expected, `delete organization ${name}`).toContain(status);
 }
 
 test.describe(
@@ -2099,7 +2101,7 @@ test.describe(
             'The admin user is not valid',
           );
         } finally {
-          await deleteConvertedOrg(adminClient, username, false);
+          await deleteConvertedOrg(adminClient, username, [404]);
         }
       },
     );
@@ -2135,7 +2137,11 @@ test.describe(
           expect(signin.status()).toBe(403);
           expect((await signin.json()).invalidCredentials).toBe(true);
         } finally {
-          await deleteConvertedOrg(adminClient, username, converted);
+          await deleteConvertedOrg(
+            adminClient,
+            username,
+            converted ? [204] : [204, 404],
+          );
         }
       },
     );
