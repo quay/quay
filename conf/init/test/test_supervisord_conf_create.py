@@ -310,6 +310,24 @@ class TestRenderSupervisorDConf:
                 },
                 id="security-scanner-feature-off-turns-off-notifications",
             ),
+            pytest.param(
+                "",
+                {},
+                {"buildlogsarchiver": "true", "gunicorn-blobstream": "false"},
+                id="defaults-for-buildlogsarchiver-and-gunicorn-blobstream",
+            ),
+            pytest.param(
+                "FEATURE_BUILD_SUPPORT: false\n",
+                {},
+                {"buildlogsarchiver": "false"},
+                id="skip-buildlogsarchiver-if-builders-arent-enabled",
+            ),
+            pytest.param(
+                "FEATURE_PROXY_CACHE: true\n",
+                {},
+                {"gunicorn-blobstream": "true"},
+                id="start-blobstream-if-proxy-cache-enabled",
+            ),
         ],
     )
     def test_autostart(self, tmp_path, config_yaml, env, expected):

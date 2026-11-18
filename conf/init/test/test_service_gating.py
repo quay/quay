@@ -303,6 +303,44 @@ def _cfg(**overrides):
             False,
             id="pullstats-redis-missing",
         ),
+        pytest.param(
+            "buildlogsarchiver",
+            {},
+            True,
+            id="buildlogsarchiver-enabled-by-default",
+        ),
+        pytest.param(
+            "buildlogsarchiver",
+            {"FEATURE_BUILD_SUPPORT": False},
+            False,
+            id="buildlogsarchiver-build-support-off",
+        ),
+        pytest.param(
+            "gunicorn-blobstream",
+            {},
+            False,
+            id="gunicorn-blobstream-proxy-cache-default-disabled",
+        ),
+        pytest.param(
+            "gunicorn-blobstream",
+            {"FEATURE_PROXY_CACHE": True},
+            True,
+            id="gunicorn-blobstream-proxy-cache-enabled",
+        ),
+        pytest.param(
+            "gunicorn-blobstream",
+            {"FEATURE_PROXY_CACHE": True, "ACCOUNT_RECOVERY_MODE": True},
+            False,
+            id="gunicorn-blobstream-account-recovery-mode",
+        ),
+        pytest.param(
+            "gunicorn-blobstream",
+            # the worker should run when registry state is read only because it does not change
+            # registry content, merely allows blobs to be streamed from upstream
+            {"FEATURE_PROXY_CACHE": True, "REGISTRY_STATE": "readonly"},
+            True,
+            id="gunicorn-blobstream-registry-state-readonly",
+        ),
     ],
 )
 def test_rule(service, overrides, expected):

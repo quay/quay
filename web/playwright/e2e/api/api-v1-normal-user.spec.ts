@@ -2024,21 +2024,13 @@ test.describe(
 
 test.describe(
   'Normal User - Security Scanner',
-  {tag: ['@api', '@auth:Database']},
+  {tag: ['@api', '@auth:Database', '@feature:SECURITY_SCANNER']},
   () => {
-    test('can check security scanner backfill status', async ({
-      userClient,
-      quayConfig,
-    }) => {
+    test('can check security scanner backfill status', async ({userClient}) => {
+      // gunicorn-secscan only runs when the scanner is enabled; the
+      // @feature:SECURITY_SCANNER tag skips this test otherwise
       const r = await userClient.get('/secscan/_backfill_status');
-      // gunicorn-secscan only runs when the scanner is enabled, otherwise
-      // nginx returns a 404 to the caller for anything under /secscan endpoint
-      const rawScanner: unknown = quayConfig?.features?.SECURITY_SCANNER;
-      const scannerEnabled =
-        typeof rawScanner === 'string'
-          ? rawScanner.toLowerCase() === 'true'
-          : Boolean(rawScanner);
-      expect(r.status()).toBe(scannerEnabled ? 200 : 404);
+      expect(r.status()).toBe(200);
     });
   },
 );

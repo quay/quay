@@ -1,6 +1,5 @@
 import os
 import os.path
-import sys
 from typing import List
 
 import jinja2
@@ -93,6 +92,7 @@ def generate_supervisord_config(filename, config, logdriver, hotreload, **extra_
 
 
 def limit_services(config, enabled_services):
+    service_list = []
     if not enabled_services:
         return
 
@@ -101,6 +101,9 @@ def limit_services(config, enabled_services):
             config[service]["autostart"] = "true"
         else:
             config[service]["autostart"] = "false"
+            service_list.append(service)
+
+    return service_list
 
 
 def override_services(config, override_services):
@@ -117,16 +120,19 @@ def override_services(config, override_services):
 if __name__ == "__main__":
     config = registry_services()
     app_config = load_app_config()
+    skipped = []
 
-    skipped = service_gating.gate_services(
-        config, service_gating.resolve_effective_config(app_config)
-    )
-
-    if skipped:
-        print("Not starting services with no enabled feature: %s" % ", ".join(sorted(skipped)))
+    service_gating.gate_services(config, service_gating.resolve_effective_config(app_config))
 
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
+
+    for service in list(config.keys()):
+        if config[service]["autostart"] == "false":
+            skipped.append(service)
+
+    if skipped:
+        print("Services skipped during startup: %s" % ", ".join(sorted(skipped)))
 
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),

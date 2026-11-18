@@ -41,6 +41,10 @@ def secscan_notifications_enabled(cfg):
     return secscan_enabled(cfg) and _feature(cfg, "FEATURE_SECURITY_NOTIFICATIONS")
 
 
+def proxy_cache_enabled(cfg):
+    return _feature(cfg, "FEATURE_PROXY_CACHE") and not cfg.get("ACCOUNT_RECOVERY_MODE", False)
+
+
 def _log_archive_configured(cfg):
     return bool(
         cfg.get("ACTION_LOG_ARCHIVE_PATH", None) is not None
@@ -100,6 +104,8 @@ SERVICE_REQUIREMENTS = {
     "notificationworker": lambda c: True,
     "queuecleanupworker": lambda c: True,
     "builder": lambda c: _builder_needed(c),
+    "buildlogsarchiver": lambda c: _feature(c, "FEATURE_BUILD_SUPPORT"),
+    "gunicorn-blobstream": lambda c: proxy_cache_enabled(c),
 }
 
 

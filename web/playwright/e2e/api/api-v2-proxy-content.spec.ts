@@ -15,7 +15,17 @@ const REQUEST_PROXY = proxyOptionFromEnv();
 
 test.describe(
   'V2 registry tests for proxied organizations',
-  {tag: ['@api', '@v2', '@container', '@auth:Database']},
+  {
+    tag: [
+      '@api',
+      '@v2',
+      '@container',
+      '@auth:Database',
+      '@feature.PROXY_CACHE',
+    ],
+  },
+  // gunicorn-blobstream only runs when the proxy cache feature is turned on. The tag
+  // @feature.PROXY_CACHE skips the test otherwise.
   () => {
     // Tests share same state (orgName, repoName, manifestDigest) and must
     // run sequentially.

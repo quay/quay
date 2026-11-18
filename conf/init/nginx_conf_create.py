@@ -139,9 +139,11 @@ def generate_server_config(config):
         # gating failed, so start all workers as a safe fallback
         secscan_enabled = True
         secscan_notifications_enabled = True
+        proxy_cache_enabled = True
     else:
         secscan_enabled = service_gating.secscan_enabled(effective)
         secscan_notifications_enabled = service_gating.secscan_notifications_enabled(effective)
+        proxy_cache_enabled = service_gating.proxy_cache_enabled(effective)
 
     # Get default UI setting from config
     default_ui = config.get("DEFAULT_UI", "react").lower()
@@ -168,6 +170,7 @@ def generate_server_config(config):
         keepalive_timeout=keepalive_timeout,
         secscan_enabled=secscan_enabled,
         secscan_notifications_enabled=secscan_notifications_enabled,
+        proxy_cache_enabled=proxy_cache_enabled,
     )
 
 

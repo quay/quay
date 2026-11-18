@@ -147,6 +147,13 @@ location = /_storage_proxy_auth {
 }
 
 # handles blob upstream proxy requests
+# endpoint is serveb by blobstream_app_server which is enabled only if the feature is enabled.
+# if the feature is offline, we return an explicit 404
+{% if not proxy_cache_enabled %}
+location ~ ^/_upstream_proxy/[^/]+/[^/]+/[^/]+/.+ {
+    return 404;
+}
+{% else %}
 location ~ ^/_upstream_proxy/[^/]+/[^/]+/[^/]+/.+ {
     proxy_pass http://blobstream_app_server;
     proxy_http_version 1.1;
@@ -167,6 +174,7 @@ location ~ ^/_upstream_proxy/[^/]+/[^/]+/[^/]+/.+ {
     # Blobs must keep Content-Length; http-base gzips application/octet-stream with gzip_proxied any.
     gzip off;
 }
+{% endif %}
 
 location ~ ^/v2/_catalog(.*)$ {
     proxy_pass http://registry_app_server;
@@ -186,7 +194,7 @@ location = /secscan {
     return 404;
 }
 
-location /secscan/ {
+location ^~ /secscan/ {
     return 404;
 }
 {% else %}

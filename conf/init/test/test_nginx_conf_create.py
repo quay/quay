@@ -32,6 +32,7 @@ def render_server_base_conf(**kwargs):
         enable_alb_health_check=False,
         secscan_enabled=True,
         secscan_notifications_enabled=True,
+        proxy_cache_enabled=True,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -43,6 +44,12 @@ def _sts_token_location(rendered):
 
 def _secscan_location(rendered):
     return re.search(r"location /secscan/\s*\{[^}]*\}", rendered, re.DOTALL).group(0)
+
+
+def _upstream_proxy_location(rendered):
+    return re.search(r"location ~ \^/_upstream_proxy/[^{]*\{([^}]*)\}", rendered, re.DOTALL).group(
+        0
+    )
 
 
 def _secscan_notifications_location_present(rendered):
@@ -372,9 +379,9 @@ class TestServerBaseConfCreation:
                 id="both-on-but-account-recovery-mode-set",
             ),
             pytest.param(
-                None,
+                {},
                 {
-                    "QUAY_OVERRIDES": json.dumps({}),
+                    "QUAY_OVERRIDE_CONFIG": json.dumps({}),
                 },
                 "disabled",
                 id="empty-quay-override-provided",
@@ -451,3 +458,73 @@ class TestServerBaseConfCreation:
             _secscan_notifications_location_present(rendered) is not None
         ) == notifications_blocked
         assert "{%" not in rendered and "{ %" not in rendered
+
+    @pytest.mark.parametrize(
+        ("config", "env", "expected"),
+        [
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": True},
+                None,
+                True,
+                id="proxy-cache-enabled",
+            ),
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": False},
+                None,
+                False,
+                id="proxy-cache-disabled",
+            ),
+            pytest.param(
+                {},
+                None,
+                False,
+                id="empty-config-and-no-overrides",
+            ),
+            pytest.param(
+                None,
+                None,
+                False,
+                id="no-config-provided-and-no-overrides",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps({"FEATURE_PROXY_CACHE": True}),
+                },
+                True,
+                id="proxy-cache-enabled-through-override",
+            ),
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": True, "ACCOUNT_RECOVERY_MODE": True},
+                {},
+                False,
+                id="proxy-cache-enabled-account-recovery-mode-enabled",
+            ),
+            pytest.param(
+                {},
+                {"QUAY_OVERRIDE_CONFIG": "{this is not a valid json"},
+                True,
+                id="invalid-override-enables-proxy-cache",
+            ),
+        ],
+    )
+    def test_upstream_proxy_rendering(self, tmp_path, monkeypatch, config, env, expected):
+        """
+        Verifies that the _upstream_proxy endpoint is properly rendered based on
+        feature flags and command line overrides.
+        """
+        rendered = render_server_base_conf_through_nginx_conf_create(
+            tmp_path, monkeypatch, config, env
+        )
+        location = _upstream_proxy_location(rendered)
+
+        if expected:
+            assert "proxy_pass http://blobstream_app_server;" in location
+            assert "return 404;" not in location
+        else:
+            assert "proxy_pass http://blobstream_app_server;" not in location
+            assert "return 404;" in location
+
+        # we cannot have multiple _upstream_proxy definitions
+        num_locations = re.findall(r"location ~ \^/_upstream_proxy/", rendered)
+        assert len(num_locations) == 1
