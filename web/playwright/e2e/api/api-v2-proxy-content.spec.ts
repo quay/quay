@@ -21,7 +21,7 @@ test.describe(
       '@v2',
       '@container',
       '@auth:Database',
-      '@feature.PROXY_CACHE',
+      '@feature:PROXY_CACHE',
     ],
   },
   // gunicorn-blobstream only runs when the proxy cache feature is turned on. The tag

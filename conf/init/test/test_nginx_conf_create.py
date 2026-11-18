@@ -43,7 +43,7 @@ def _sts_token_location(rendered):
 
 
 def _secscan_location(rendered):
-    return re.search(r"location /secscan/\s*\{[^}]*\}", rendered, re.DOTALL).group(0)
+    return re.search(r"location (?:\^~ )?/secscan/\s*\{[^}]*\}", rendered, re.DOTALL).group(0)
 
 
 def _upstream_proxy_location(rendered):
