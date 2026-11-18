@@ -83,16 +83,30 @@ Work the pipeline in this fixed order; do not jump straight to
    result to skip. Route it through the build log and pod logs the same as
    a test failure; it still gets a full report entry.
 
-Derive the GCS base the same way `debug-playwright-prow`'s collector does —
+Derive the GCS base the same way `debug-playwright-prow`'s collector does.
 `$ARGUMENTS` is either a Prow view URL
 (`https://prow.ci.openshift.org/view/gs/<bucket>/<path>/<build_id>`) or a
-GCSWeb URL — giving
-`GCS_BASE=https://storage.googleapis.com/<bucket>/<path>/<build_id>`. Fetch
-steps 1-3 directly (the collector's own routing-record fetch is internal to
-its Playwright-specific run and never runs, and never emits its output JSON,
-when it cannot find `results.json`):
+GCSWeb URL. Use the URL's `<bucket>` only if its `prowjob.json` reads
+anonymously; otherwise take the bucket from the public copy's `status.url`
+(`.../view/gs/<bucket>/...`) when that bucket reads anonymously, falling back
+to `test-platform-results-public`.
+Fetch steps 1-3 directly (the collector's own routing-record fetch is
+internal to its Playwright-specific run and never runs, and never emits its
+output JSON, when it cannot find `results.json`):
 
 ```bash
+RUN="<path>/<build_id>"   # from $ARGUMENTS
+BUCKET="<bucket>"         # from $ARGUMENTS
+if ! curl -sfL --head "https://storage.googleapis.com/$BUCKET/$RUN/prowjob.json" >/dev/null; then
+  STATUS_URL=$(curl -sfL "https://storage.googleapis.com/test-platform-results-public/$RUN/prowjob.json" | jq -r '.status.url // empty')
+  if [[ "$STATUS_URL" =~ /view/gs/([^/]+)/ && "${BASH_REMATCH[1]}" != "$BUCKET" ]] &&
+    curl -sfL --head "https://storage.googleapis.com/${BASH_REMATCH[1]}/$RUN/prowjob.json" >/dev/null; then
+    BUCKET="${BASH_REMATCH[1]}"
+  else
+    BUCKET=test-platform-results-public
+  fi
+fi
+GCS_BASE="https://storage.googleapis.com/$BUCKET/$RUN"
 curl -sfL "$GCS_BASE/prowjob.json" -o "$SCRATCH/prowjob.json"
 curl -sfL "$GCS_BASE/build-log.txt" -o "$SCRATCH/build-log.txt"
 curl -sfL "$GCS_BASE/artifacts/junit_operator.xml" -o "$SCRATCH/junit_operator.xml"
@@ -142,12 +156,13 @@ described in their own files; do not copy their steps into this one.
   (`scripts/playwright-debug.sh`) fetches GitHub Actions runs, not Prow URLs;
   treat anything it returns as GHA companion evidence, never as Prow data.
 - **`.agents/skills/triage-flaky-test/SKILL.md`** — the Sippy -> artifacts ->
-  proposal spine, and the bucket/object-path facts: object paths are derived
-  from job name and build id, new runs live in the public, anonymous
-  `test-platform-results-public` bucket, and old runs need authenticated
-  access to the private `test-platform-results` bucket. Both bucket names are
-  in scope here — check which one the run URL names before assuming a
-  401/403 is a real access gap.
+  proposal spine, and the object-path facts: object paths are derived from
+  job name and build id. Prow links still name the private
+  `test-platform-results` bucket, which refuses anonymous reads; the run's
+  artifacts are served from the bucket its public `prowjob.json` `status.url`
+  names (today `test-platform-results-public`). Retry a 401/403 under the
+  resolved bucket before reporting it as an access gap; old (pre-rename) runs
+  exist only in the private bucket and need authenticated access.
 
 ## d. Overrides and additions to the referenced skills
 
