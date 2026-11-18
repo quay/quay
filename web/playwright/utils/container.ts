@@ -21,6 +21,10 @@ const execFileAsync = promisify(execFile);
 // Extract registry host from API_URL (e.g., 'localhost:8080')
 const REGISTRY_HOST = new URL(API_URL).host;
 
+// Unverified TLS for https registries, matching --tls-verify=false elsewhere.
+const REGCTL_TLS =
+  new URL(API_URL).protocol === 'https:' ? 'insecure' : 'disabled';
+
 const BUSYBOX_IMAGE = 'quay.io/prometheus/busybox:latest';
 
 /**
@@ -108,7 +112,7 @@ async function withRegctlConfig<T>(
   try {
     await execFileAsync(
       'regctl',
-      ['registry', 'set', REGISTRY_HOST, '--tls', 'disabled', '--skip-check'],
+      ['registry', 'set', REGISTRY_HOST, '--tls', REGCTL_TLS, '--skip-check'],
       {env},
     );
     await execFileWithInput(
