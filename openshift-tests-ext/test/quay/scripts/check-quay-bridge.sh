@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
 if [[ -z "${KUBECONFIG:-}" ]]; then
@@ -8,7 +8,7 @@ if [[ -z "${KUBECONFIG:-}" ]]; then
 fi
 
 declare csvName
-csvName=$(oc get csv --all-namespaces --no-headers 2>/dev/null | grep "quay-bridge-operator" | head -1 | awk '{print $2}')
+csvName=$(oc get csv --all-namespaces --no-headers 2>/dev/null | grep "quay-bridge-operator" | head -1 | awk '{print $2}' || true)
 if [[ -z "${csvName}" ]]; then
     echo "WARN: Quay Bridge operator CSV not found — bridge may not be deployed" >&2
     exit 2
@@ -23,4 +23,3 @@ fi
 
 echo "PASS: Quay Bridge operator is installed (${csvName})"
 exit 0
-true

@@ -12,8 +12,10 @@ The `quay-tests` binary implements the OTE v1.1 protocol to enable Quay testing 
 openshift-tests-ext/
 ├── cmd/quay-tests/      # Binary entry point
 ├── pkg/adapter/         # Generic test execution adapter
-├── test/quay/           # Test scenarios (JSON)
-├── scripts/             # Test scripts
+├── test/quay/           # Test scenarios (JSON) and scripts
+│   ├── scripts/         # Test scripts (embedded in binary)
+│   ├── scenarios.json   # Test definitions
+│   └── embed.go         # Embed directives
 ├── go.mod               # Go module definition
 └── Makefile             # Build automation
 ```
@@ -30,10 +32,10 @@ make build
 
 ```bash
 # Run all Quay tests
-./quay-tests run-suite quay/all
+INTEROP_SCRIPTS_DIR=./test/quay/scripts ./quay-tests run-suite quay/all
 
 # Run smoke tests only
-./quay-tests run-suite quay/smoke
+INTEROP_SCRIPTS_DIR=./test/quay/scripts ./quay-tests run-suite quay/smoke
 
 # List available tests
 ./quay-tests list tests
@@ -59,8 +61,8 @@ openshift-tests run-suite quay/all \
 
 Tests are defined in `test/quay/scenarios.json`. To add a new test:
 
-1. Create a test script in `scripts/`
-2. Add a scenario entry to `scenarios.json`
+1. Create a test script in `test/quay/scripts/`
+2. Add a scenario entry to `test/quay/scenarios.json`
 3. Rebuild the binary with `make build`
 
 ## CI Integration

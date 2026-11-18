@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
 if [[ -z "${KUBECONFIG:-}" ]]; then
@@ -19,6 +19,12 @@ if ! oc get namespace "${namespace}" &>/dev/null; then
     fi
 fi
 
+# Check if QuayRegistry CR exists
+if ! oc get quayregistry -n "${namespace}" --no-headers 2>/dev/null | grep -q .; then
+    echo "No QuayRegistry CR found in ${namespace}" >&2
+    exit 2
+fi
+
 declare quayStatus
 quayStatus=$(oc get quayregistry -n "${namespace}" -o jsonpath='{.items[0].status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "NotFound")
 
@@ -34,4 +40,3 @@ fi
 
 echo "PASS: Quay registry is operational in ${namespace}"
 exit 0
-true

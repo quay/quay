@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -92,6 +93,7 @@ func BuildExtensionTestSpecsFromQuayScenarios(metadata []byte, scriptFS fs.FS) (
 	return specs, nil
 }
 
+// validateScenarioSpec checks that the scenario has required fields populated.
 func validateScenarioSpec(sc ScenarioSpec) error {
 	if sc.Name == "" {
 		return fmt.Errorf("scenario spec is missing name")
@@ -102,6 +104,7 @@ func validateScenarioSpec(sc ScenarioSpec) error {
 	return nil
 }
 
+// codeLocation builds a code location string from the scenario's workdir and entrypoint.
 func codeLocation(sc ScenarioSpec) string {
 	if sc.Entrypoint != "" {
 		if sc.WorkDir != "" {
@@ -112,6 +115,7 @@ func codeLocation(sc ScenarioSpec) string {
 	return ""
 }
 
+// getComponent extracts the component name from scenario tags, defaulting to "quay".
 func getComponent(tags []string) string {
 	// Extract component from tags
 	for _, tag := range tags {
@@ -122,6 +126,7 @@ func getComponent(tags []string) string {
 	return "quay"
 }
 
+// resolveTimeout parses a duration string and returns it, falling back to the given duration if parsing fails.
 func resolveTimeout(timeoutStr string, fallback time.Duration) time.Duration {
 	if timeoutStr == "" {
 		return fallback
@@ -133,6 +138,7 @@ func resolveTimeout(timeoutStr string, fallback time.Duration) time.Duration {
 	return d
 }
 
+// resolveTimeoutStr validates and returns the timeout string, falling back to the default if invalid.
 func resolveTimeoutStr(timeoutStr string) string {
 	if timeoutStr == "" {
 		return quayDefaultTimeoutStr
@@ -144,7 +150,8 @@ func resolveTimeoutStr(timeoutStr string) string {
 	return timeoutStr
 }
 
-// runQuayScenario execs the spec's command.
+// runQuayScenario executes a single test scenario by running its entrypoint command with a timeout.
+// It returns an ExtensionTestResult indicating pass, fail, or error with captured output.
 func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeout time.Duration) *ext.ExtensionTestResult {
 	result := &ext.ExtensionTestResult{
 		Name: sc.Name,
@@ -155,14 +162,35 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// Materialize embedded scripts if scriptFS provided and INTEROP_SCRIPTS_DIR not set
+	scriptsDir := os.Getenv("INTEROP_SCRIPTS_DIR")
+	var cleanupFunc func()
+	if scriptsDir == "" && scriptFS != nil {
+		tmpDir, err := os.MkdirTemp("", "quay-scripts-*")
+		if err == nil {
+			if materializeErr := materializeFS(scriptFS, tmpDir); materializeErr == nil {
+				scriptsDir = filepath.Join(tmpDir, "scripts")
+				cleanupFunc = func() { os.RemoveAll(tmpDir) }
+			}
+		}
+	}
+	if cleanupFunc != nil {
+		defer cleanupFunc()
+	}
+
 	out := newBoundedBuffer(maxCapturedOutputBytes)
 
-	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Env = buildEnv(sc.EnvVars, sc.EnvFrom)
+	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
+	env := buildEnv(sc.EnvVars, sc.EnvFrom)
+	if scriptsDir != "" {
+		env = append(env, "INTEROP_SCRIPTS_DIR="+scriptsDir)
+	}
+	cmd.Env = env
 	cmd.Dir = sc.WorkDir
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.WaitDelay = quayShutdownGracePeriod + 1*time.Second
 
 	if err := cmd.Start(); err != nil {
 		result.Result = ext.ResultFailed
@@ -175,6 +203,13 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	result.Output = out.String()
 
 	if waitErr != nil {
+		// Exit code 2 means resource not deployed (intentional skip)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			result.Result = ext.ResultSkipped
+			result.Error = "resource not deployed"
+			return result
+		}
+
 		result.Result = ext.ResultFailed
 		switch {
 		case errors.Is(runCtx.Err(), context.DeadlineExceeded):
@@ -191,6 +226,8 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	return result
 }
 
+// waitWithGracefulCancel waits for a command to complete or terminates it gracefully on context cancellation.
+// It sends SIGTERM first, waits gracePeriod, then sends SIGKILL if the process hasn't exited.
 func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time.Duration) error {
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -210,6 +247,7 @@ func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time
 	}
 }
 
+// signalProcessGroup sends a signal to the process group of the given command.
 func signalProcessGroup(cmd *exec.Cmd, sig syscall.Signal) {
 	if cmd.Process == nil {
 		return
@@ -224,10 +262,12 @@ type boundedBuffer struct {
 	truncated bool
 }
 
+// newBoundedBuffer creates a buffer that caps output at maxBytes, discarding oldest data when full.
 func newBoundedBuffer(maxBytes int) *boundedBuffer {
 	return &boundedBuffer{maxBytes: maxBytes}
 }
 
+// Write implements io.Writer, appending data to the buffer and discarding excess from the front.
 func (b *boundedBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -243,6 +283,7 @@ func (b *boundedBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// String returns the buffered output, with a truncation notice if data was discarded.
 func (b *boundedBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -253,6 +294,7 @@ func (b *boundedBuffer) String() string {
 	return b.buf.String()
 }
 
+// buildEnv constructs an environment slice by merging os.Environ, envFrom mappings, and override values.
 func buildEnv(overrides, envFrom map[string]string) []string {
 	env := make(map[string]string)
 
@@ -282,6 +324,7 @@ func buildEnv(overrides, envFrom map[string]string) []string {
 	return result
 }
 
+// splitEnv splits a KEY=VALUE environment string into its components.
 func splitEnv(kv string) (key, value string, ok bool) {
 	for i := 0; i < len(kv); i++ {
 		if kv[i] == '=' {
@@ -289,4 +332,30 @@ func splitEnv(kv string) (key, value string, ok bool) {
 		}
 	}
 	return "", "", false
+}
+
+// materializeFS walks the filesystem and writes all files to targetDir,
+// setting execute permissions on shell scripts.
+func materializeFS(fsys fs.FS, targetDir string) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return os.MkdirAll(filepath.Join(targetDir, path), 0755)
+		}
+
+		content, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return err
+		}
+
+		targetPath := filepath.Join(targetDir, path)
+		perm := os.FileMode(0644)
+		if filepath.Ext(path) == ".sh" {
+			perm = 0755
+		}
+
+		return os.WriteFile(targetPath, content, perm)
+	})
 }

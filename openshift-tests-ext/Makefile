@@ -11,7 +11,7 @@ build:
 	go build -o $(BINARY) ./cmd/quay-tests/...
 
 test: build
-	./$(BINARY) run-suite quay/all
+	INTEROP_SCRIPTS_DIR="$(CURDIR)/test/quay/scripts" ./$(BINARY) run-suite quay/all
 
 validate: build
 	@echo "==> Validating extension info..."
