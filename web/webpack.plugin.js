@@ -207,7 +207,7 @@ module.exports = {
   devServer: {
     static: pathTo('dist'),
     port: 1337,
-    https: true,
+    server: 'https',
     host: '0.0.0.0',
     allowedHosts: 'all',
     // https://github.com/bripkens/connect-history-api-fallback
