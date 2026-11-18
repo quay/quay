@@ -19,6 +19,7 @@ export function ConfigureQuotaModal(props: ConfigureQuotaModalProps) {
       variant={ModalVariant.large}
       isOpen={props.isOpen}
       onClose={props.onClose}
+      position="top"
       data-testid="configure-quota-modal"
     >
       <ModalHeader title={`Configure Quota for ${props.organizationName}`} />

@@ -69,6 +69,9 @@ upstream web_app_server {
 upstream registry_app_server {
     server unix:/tmp/gunicorn_registry.sock fail_timeout=0;
 }
+upstream blobstream_app_server {
+  server unix:/tmp/gunicorn_blobstream.sock fail_timeout=0;
+}
 
 # NOTE: Exposed for the _internal_ping *only*.
 upstream secscan_app_server {

@@ -190,6 +190,9 @@ class UserRobot(ApiResource):
         Create a new user robot with the specified name.
         """
         parent = get_authenticated_user()
+        if parent.robot:
+            raise request_error(message="Robot accounts cannot own robot accounts")
+
         create_data = request.get_json(silent=True) or {}
 
         try:

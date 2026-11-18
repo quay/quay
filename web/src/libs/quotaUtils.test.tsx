@@ -1,4 +1,9 @@
-import {renderQuotaConsumed, IQuotaReport} from './quotaUtils';
+import {
+  hasOtherRejectLimit,
+  renderQuotaConsumed,
+  IQuotaReport,
+} from './quotaUtils';
+import {IQuotaLimit} from 'src/resources/QuotaResource';
 import {render, screen} from 'src/test-utils';
 
 describe('renderQuotaConsumed', () => {
@@ -65,5 +70,28 @@ describe('renderQuotaConsumed', () => {
     });
     render(<>{result}</>);
     expect(screen.getByText('0.00 KiB')).toBeInTheDocument();
+  });
+});
+
+describe('hasOtherRejectLimit', () => {
+  const limits: IQuotaLimit[] = [
+    {id: 'warn', type: 'Warning', limit_percent: 70},
+    {id: 'reject', type: 'Reject', limit_percent: 90},
+  ];
+
+  it('is true when updating to Reject while another Reject exists', () => {
+    expect(hasOtherRejectLimit(limits, 'Reject', 'warn')).toBe(true);
+  });
+
+  it('is false when updating the only Reject limit itself', () => {
+    expect(hasOtherRejectLimit(limits, 'Reject', 'reject')).toBe(false);
+  });
+
+  it('is false when updating to Warning while a Reject exists', () => {
+    expect(hasOtherRejectLimit(limits, 'Warning', 'warn')).toBe(false);
+  });
+
+  it('is false when there are no limits', () => {
+    expect(hasOtherRejectLimit([], 'Reject', 'any')).toBe(false);
   });
 });

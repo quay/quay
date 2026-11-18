@@ -7,8 +7,10 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -249,6 +251,93 @@ func TestWriteRuntimeConfigRejectsMalformedSourceHostname(t *testing.T) {
 	require.ErrorContains(t, err, "parse runtime SERVER_HOSTNAME")
 	_, statErr := os.Stat(filepath.Join(targetDir, runtimeConfigFile))
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestWriteRuntimeConfigCarriesAnonymousAccessOnly(t *testing.T) {
+	tests := []struct {
+		name               string
+		source             string
+		wantAnonymous      bool
+		wantAnonymousInCfg bool
+	}{
+		{name: "absent", wantAnonymous: true},
+		{
+			name:          "set true",
+			source:        "CREATE_PRIVATE_REPO_ON_PUSH: true\nFEATURE_ANONYMOUS_ACCESS: true\n",
+			wantAnonymous: true,
+		},
+		{
+			name:               "set false",
+			source:             "CREATE_PRIVATE_REPO_ON_PUSH: false\nFEATURE_ANONYMOUS_ACCESS: false\n",
+			wantAnonymousInCfg: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configDir := t.TempDir()
+			writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"+tt.source), 0o600)
+			targetDir := t.TempDir()
+			migrator := &Migrator{
+				DataDir: targetDir,
+				Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+			}
+
+			require.NoError(t, migrator.writeRuntimeConfig(nil))
+
+			targetPath := filepath.Join(targetDir, runtimeConfigFile)
+			runtimeCfg, err := config.Load(targetPath)
+			require.NoError(t, err)
+			assert.False(t, runtimeCfg.CreatePrivateOnPush)
+			assert.Equal(t, tt.wantAnonymous, runtimeCfg.FeatureAnonymousAccess)
+			data, err := os.ReadFile(targetPath)
+			require.NoError(t, err)
+			assert.NotContains(t, string(data), "CREATE_PRIVATE_REPO_ON_PUSH")
+			assert.Equal(t, tt.wantAnonymousInCfg, strings.Contains(string(data), "FEATURE_ANONYMOUS_ACCESS"))
+		})
+	}
+}
+
+func TestWriteRuntimeConfigWarnsOnIgnoredPushSettings(t *testing.T) {
+	writeRuntime := func(t *testing.T, source string) (cfg []byte, logs string) {
+		t.Helper()
+		configDir := t.TempDir()
+		writeCopyTestFile(t, filepath.Join(configDir, runtimeConfigFile), []byte("SERVER_HOSTNAME: old.example.com\n"+source), 0o600)
+		targetDir := t.TempDir()
+		migrator := &Migrator{
+			DataDir: targetDir,
+			Source:  OMRSource{ConfigDir: configDir, Hostname: "registry.example.com"},
+		}
+		var buf bytes.Buffer
+		previousLogger := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+		t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+		require.NoError(t, migrator.writeRuntimeConfig(nil))
+		data, err := os.ReadFile(filepath.Join(targetDir, runtimeConfigFile))
+		require.NoError(t, err)
+		return data, buf.String()
+	}
+	baseline, _ := writeRuntime(t, "")
+
+	tests := []struct {
+		name, source, wantWarning string
+	}{
+		{name: "create namespace false", source: "CREATE_NAMESPACE_ON_PUSH: false\n", wantWarning: "CREATE_NAMESPACE_ON_PUSH"},
+		{name: "create namespace true", source: "CREATE_NAMESPACE_ON_PUSH: true\n"},
+		{name: "restricted users true", source: "FEATURE_RESTRICTED_USERS: true\n", wantWarning: "FEATURE_RESTRICTED_USERS"},
+		{name: "restricted users false", source: "FEATURE_RESTRICTED_USERS: false\n"},
+		{name: "absent"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, logs := writeRuntime(t, tt.source)
+
+			assert.Equal(t, string(baseline), string(data))
+			for _, key := range []string{"CREATE_NAMESPACE_ON_PUSH", "FEATURE_RESTRICTED_USERS"} {
+				assert.Equal(t, key == tt.wantWarning, strings.Contains(logs, "level=WARN msg=\"ignoring "+key), logs)
+			}
+		})
+	}
 }
 
 func TestCopyData_Idempotent(t *testing.T) {

@@ -213,6 +213,22 @@ func (m *Migrator) startSourceServices(ctx context.Context, services ...string) 
 	return errors.Join(errs...)
 }
 
+// disableSourceServices keeps the stopped old OMR from starting again at boot.
+// It runs only outside the rollback path, so a failure here never restarts
+// the old OMR against the new registry.
+func (m *Migrator) disableSourceServices(ctx context.Context, services ...string) error {
+	var errs []error
+	for _, service := range services {
+		if err := m.runSourceService(ctx, "disable", service); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return fmt.Errorf("disable old OMR services: %w", err)
+	}
+	return nil
+}
+
 func withRollbackTimeout(ctx context.Context, step func(context.Context) error) error {
 	stepCtx, cancel := context.WithTimeout(ctx, rollbackStepTimeout)
 	defer cancel()

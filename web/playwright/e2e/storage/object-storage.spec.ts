@@ -294,7 +294,9 @@ test.describe(
       ).toBe(true);
 
       const body = await directResp.body();
-      const actualDigest = `sha256:${createHash('sha256').update(body).digest('hex')}`;
+      const actualDigest = `sha256:${createHash('sha256')
+        .update(body)
+        .digest('hex')}`;
       expect(
         actualDigest,
         'sha256 of body from storage URL must equal the layer digest',
@@ -352,7 +354,9 @@ test.describe(
             return checks.every((r) => r !== null);
           },
           {
-            message: `waiting for blob ${key} to replicate to all buckets: ${buckets.join(', ')}`,
+            message: `waiting for blob ${key} to replicate to all buckets: ${buckets.join(
+              ', ',
+            )}`,
             timeout: 60_000,
             intervals: [2_000, 5_000, 10_000],
           },

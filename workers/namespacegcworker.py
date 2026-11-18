@@ -37,7 +37,8 @@ class NamespaceGCWorker(QueueWorker):
         logger.debug("Got namespace GC queue item: %s", job_details)
         marker_id = job_details["marker_id"]
         if not model.user.delete_namespace_via_marker(marker_id, all_queues):
-            raise Exception("GC interrupted; will retry")
+            logger.error("Namespace GC incomplete for marker %s; will retry", marker_id)
+            raise WorkerSleepException
 
         gc_namespaces_purged.inc()
 

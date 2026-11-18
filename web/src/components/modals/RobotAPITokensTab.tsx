@@ -334,7 +334,13 @@ const RobotAPITokensTab: React.FC<RobotAPITokensTabProps> = ({
           <Alert
             variant="danger"
             isInline
-            title={`Unable to revoke ${bulkRevokeFailure.failedNames.length} of ${bulkRevokeFailure.total} selected tokens; they remain active: ${bulkRevokeFailure.failedNames.join(', ')}`}
+            title={`Unable to revoke ${
+              bulkRevokeFailure.failedNames.length
+            } of ${
+              bulkRevokeFailure.total
+            } selected tokens; they remain active: ${bulkRevokeFailure.failedNames.join(
+              ', ',
+            )}`}
           />
         )}
         {!isLoading && !isError && tokens.length === 0 && (

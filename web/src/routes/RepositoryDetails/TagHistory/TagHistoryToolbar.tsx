@@ -33,9 +33,11 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
             value={query}
             onChange={(_, value) => {
               setQuery(value);
+              setPage(1);
             }}
             onClear={() => {
               setQuery('');
+              setPage(1);
             }}
           />
         </ToolbarItem>

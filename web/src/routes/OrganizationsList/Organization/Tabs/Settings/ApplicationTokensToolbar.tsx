@@ -7,13 +7,18 @@ import {IApplicationToken} from 'src/resources/UserResource';
 export default function ApplicationTokensToolbar(
   props: ApplicationTokensToolbarProps,
 ) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
         <SearchInput
           id="application-tokens-search"
           searchState={props.search}
-          onChange={props.setSearch}
+          onChange={handleSearchChange}
           allowSpaces={true}
         />
         <ToolbarPagination

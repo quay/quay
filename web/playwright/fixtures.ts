@@ -731,12 +731,14 @@ export class TestApi {
     repoName: string,
     dockerfileContent = 'FROM scratch\n',
     dockerTags: string[] = [],
+    pullRobot?: string,
   ): Promise<CreatedBuild> {
     const result = await this.client.startDockerfileBuild(
       namespace,
       repoName,
       dockerfileContent,
       dockerTags,
+      pullRobot,
     );
 
     // No cleanup needed - builds are deleted when the repository is deleted
@@ -971,6 +973,7 @@ export class TestApi {
  * Known Quay feature flags that can be enabled/disabled
  */
 export type QuayFeature =
+  | 'EXTENDED_REPOSITORY_NAMES'
   | 'ANONYMOUS_ACCESS'
   | 'BILLING'
   | 'QUOTA_MANAGEMENT'
@@ -1005,6 +1008,8 @@ export interface QuayConfig {
   config: Record<string, unknown>;
   external_login?: Array<{id: string; title: string; icon?: string}>;
   registry_state?: 'normal' | 'readonly';
+  /** "Quay <version>"; empty when BILLING is enabled (see endpoints/web.py). */
+  version_number?: string;
 }
 
 /**
