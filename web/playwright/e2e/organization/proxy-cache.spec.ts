@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 
 test.describe(
   'Organization Proxy Cache',
@@ -224,10 +223,12 @@ test.describe(
 
     test('proxy cache tab not visible for user namespaces', async ({
       authenticatedPage,
+      quayConfig,
     }) => {
+      const users = getTestUsers(quayConfig);
       // Navigate to user settings (the authenticated test user is a user namespace, not org)
       await authenticatedPage.goto(
-        `/organization/${TEST_USERS.user.username}?tab=Settings`,
+        `/organization/${users.user.username}?tab=Settings`,
       );
 
       // Proxy Cache tab should not exist for user namespaces

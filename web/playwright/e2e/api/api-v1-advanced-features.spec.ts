@@ -7,8 +7,7 @@
  * service keys, organization mirror, and registry capabilities.
  */
 
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {RawApiClient} from '../../utils/api/raw-client';
 import {API_URL} from '../../utils/config';
 
@@ -270,10 +269,9 @@ test.describe(
     test(
       'admin can get user quota by ID and list its limits',
       {tag: '@superuser'},
-      async ({superuserApi, adminClient, request}) => {
-        const user = await superuserApi.user('quotauser');
-
-        await superuserApi.raw.createUserQuotaSuperuser(
+      async ({superuserApi, adminClient, isolatedUser, request}) => {
+        const {user} = await isolatedUser('quota');
+        const {quotaId} = await superuserApi.userQuota(
           user.username,
           2048000000,
         );
@@ -283,20 +281,10 @@ test.describe(
         );
         expect(quotasResp.status()).toBe(200);
         const quotas = await quotasResp.json();
-        const quota = quotas.find(
-          (q: {limit_bytes: number}) => q.limit_bytes === 2048000000,
-        );
-        expect(quota).toBeTruthy();
-        const quotaId = quota.id;
+        const quota = quotas.find((q: {id: string}) => q.id === quotaId);
+        expect(quota.limit_bytes).toBe(2048000000);
 
-        // Verify the user's email via superuser API (auto_verify=True on the backend)
-        const verifyEmailResp = await adminClient.put(
-          `/api/v1/superuser/users/${user.username}`,
-          {email: user.email},
-        );
-        expect(verifyEmailResp.status()).toBe(200);
-
-        // Sign in as the created user for user-scoped quota endpoints
+        // Sign in as the isolated user for user-scoped quota endpoints
         const userClient = new RawApiClient(request, API_URL);
         await userClient.signIn(user.username, user.password);
 
@@ -309,26 +297,20 @@ test.describe(
         expect(limitsResp.status()).toBe(200);
 
         // Superuser update and verify
-        try {
-          const updateResp = await adminClient.put(
-            `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
-            {limit_bytes: 4096000000},
-          );
-          expect(updateResp.status()).toBe(200);
+        const updateResp = await adminClient.put(
+          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+          {limit_bytes: 4096000000},
+        );
+        expect(updateResp.status()).toBe(200);
 
-          const verifyResp = await adminClient.get(
-            `/api/v1/superuser/users/${user.username}/quota`,
-          );
-          const verifiedQuotas = await verifyResp.json();
-          const updated = verifiedQuotas.find(
-            (q: {id: number}) => q.id === quotaId,
-          );
-          expect(updated.limit_bytes).toBe(4096000000);
-        } finally {
-          await adminClient.delete(
-            `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
-          );
-        }
+        const verifyResp = await adminClient.get(
+          `/api/v1/superuser/users/${user.username}/quota`,
+        );
+        const verifiedQuotas = await verifyResp.json();
+        const updated = verifiedQuotas.find(
+          (q: {id: string}) => q.id === quotaId,
+        );
+        expect(updated.limit_bytes).toBe(4096000000);
       },
     );
   },
@@ -549,14 +531,15 @@ test.describe(
     test(
       'invalid payload returns 400',
       {tag: '@superuser'},
-      async ({superuserApi, adminClient}) => {
+      async ({superuserApi, adminClient, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const repo = await superuserApi.repository(
-          TEST_USERS.admin.username,
+          users.admin.username,
           'apuserrepo',
         );
 
         const resp = await adminClient.post(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/`,
           {method: 'number_of_times', value: 10},
         );
         expect(resp.status()).toBe(400);
@@ -568,15 +551,16 @@ test.describe(
     test(
       'CRUD autoprune policy for user namespace repo',
       {tag: '@superuser'},
-      async ({superuserApi, adminClient}) => {
+      async ({superuserApi, adminClient, quayConfig}) => {
+        const users = getTestUsers(quayConfig);
         const repo = await superuserApi.repository(
-          TEST_USERS.admin.username,
+          users.admin.username,
           'apuserrepo',
         );
 
         // Create
         const createResp = await adminClient.post(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/`,
           {method: 'number_of_tags', value: 6},
         );
         expect(createResp.status()).toBe(201);
@@ -586,14 +570,14 @@ test.describe(
 
         // Update
         const updateResp = await adminClient.put(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
           {method: 'number_of_tags', uuid, value: 30},
         );
         expect(updateResp.status()).toBe(204);
 
         // Get
         const getResp = await adminClient.get(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
         );
         expect(getResp.status()).toBe(200);
         const fetched = await getResp.json();
@@ -601,7 +585,7 @@ test.describe(
 
         // Delete
         const deleteResp = await adminClient.delete(
-          `/api/v1/repository/${TEST_USERS.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
+          `/api/v1/repository/${users.admin.username}/${repo.name}/autoprunepolicy/${uuid}`,
         );
         expect(deleteResp.status()).toBe(200);
       },

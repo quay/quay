@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Tags - Copy to Clipboard Functionality',
   {tag: ['@tags', '@copy', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let testRepo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -15,12 +20,12 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `copy-test-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       testRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       // Push two test images to verify persistence and state switching
@@ -28,16 +33,16 @@ test.describe(
         testRepo.namespace,
         testRepo.name,
         'tag1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await pushImage(
         testRepo.namespace,
         testRepo.name,
         'tag2',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
     });
 

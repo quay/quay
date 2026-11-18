@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {pushImage} from '../../utils/container';
 
 test.describe(
@@ -380,6 +379,12 @@ test.describe(
     ],
   },
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     test(
       'displays quota usage in organization dashboard',
       {tag: '@superuser'},
@@ -394,8 +399,8 @@ test.describe(
           org.name,
           'testrepo',
           'latest',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Verify quota usage appears in Settings > Quota tab
@@ -436,20 +441,8 @@ test.describe(
         await api.repositoryWithName(org.name, 'repo2');
 
         // Push images to exceed 80% warning threshold (2 x ~1.2 MiB)
-        await pushImage(
-          org.name,
-          'repo1',
-          'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushImage(
-          org.name,
-          'repo2',
-          'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
+        await pushImage(org.name, 'repo1', 'v1', user.username, user.password);
+        await pushImage(org.name, 'repo2', 'v2', user.username, user.password);
 
         // Verify quota form and policy section in Settings > Quota tab
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -490,8 +483,8 @@ test.describe(
           org.name,
           'fillrepo',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          user.username,
+          user.password,
         );
 
         // Second push should be rejected (total ~2.4 MiB > 2 MiB limit)
@@ -501,8 +494,8 @@ test.describe(
             org.name,
             'fillrepo',
             'v2',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            user.username,
+            user.password,
           );
         } catch {
           secondPushFailed = true;
@@ -543,20 +536,8 @@ test.describe(
         await api.repositoryWithName(org.name, 'repo2');
 
         // Push images to trigger warning threshold
-        await pushImage(
-          org.name,
-          'repo1',
-          'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-        await pushImage(
-          org.name,
-          'repo2',
-          'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
+        await pushImage(org.name, 'repo1', 'v1', user.username, user.password);
+        await pushImage(org.name, 'repo2', 'v2', user.username, user.password);
 
         // Verify quota configuration and warning limit in Settings > Quota tab
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);

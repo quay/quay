@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {
   pushImage,
   pushQuotaNotificationImage,
@@ -23,8 +22,9 @@ test.describe(
           '@webhook',
         ],
       },
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(300_000);
+        const users = getTestUsers(quayConfig);
 
         const org = await api.organization('nsdelivwarn');
 
@@ -58,15 +58,15 @@ test.describe(
             org.name,
             'repo1',
             'v1',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
           await pushQuotaNotificationImage(
             org.name,
             'repo2',
             'v2',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
 
           // Wait for webhook
@@ -98,8 +98,9 @@ test.describe(
           '@webhook',
         ],
       },
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(120_000);
+        const users = getTestUsers(quayConfig);
 
         const org = await api.organization('nsdeliverr');
 
@@ -132,8 +133,8 @@ test.describe(
             org.name,
             'fillrepo',
             'v1',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
+            users.user.username,
+            users.user.password,
           );
 
           // Second push must upload new blob bytes (not mount busybox layers) so
@@ -144,8 +145,8 @@ test.describe(
               org.name,
               'fillrepo',
               'v2',
-              TEST_USERS.user.username,
-              TEST_USERS.user.password,
+              users.user.username,
+              users.user.password,
               1_100_000,
             );
           } catch {
@@ -174,8 +175,9 @@ test.describe(
           '@superuser',
         ],
       },
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(300_000);
+        const users = getTestUsers(quayConfig);
 
         const contactEmail = 'quota-warn-test@example.com';
         const org = await api.organization('nsdelivemail', contactEmail);
@@ -209,15 +211,15 @@ test.describe(
           org.name,
           'emailrepo1',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
         await pushQuotaNotificationImage(
           org.name,
           'emailrepo2',
           'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
 
         // Wait for email
@@ -245,8 +247,9 @@ test.describe(
           '@superuser',
         ],
       },
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(300_000);
+        const users = getTestUsers(quayConfig);
 
         // Create org WITHOUT explicit email (UUID placeholder used)
         const org = await api.organization('nsdelivfb');
@@ -265,7 +268,7 @@ test.describe(
           org.name,
           'quota_warning',
           'email',
-          {email: TEST_USERS.user.email},
+          {email: users.user.email},
           {},
           'Fallback Email',
         );
@@ -280,21 +283,21 @@ test.describe(
           org.name,
           'fbrepo1',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
         await pushQuotaNotificationImage(
           org.name,
           'fbrepo2',
           'v2',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
 
         // Email should be delivered to org admin (testuser) email
         const email = await mailpit.waitForEmail(
           (msg) =>
-            msg.To.some((to) => to.Address === TEST_USERS.user.email) &&
+            msg.To.some((to) => to.Address === users.user.email) &&
             (msg.Subject.includes('quota') || msg.Subject.includes('Quota')),
           30_000,
         );
@@ -381,8 +384,9 @@ test.describe(
           '@webhook',
         ],
       },
-      async ({api, superuserApi}) => {
+      async ({api, superuserApi, quayConfig}) => {
         test.setTimeout(300_000);
+        const users = getTestUsers(quayConfig);
 
         const org = await api.organization('nsdelivretro');
 
@@ -392,8 +396,8 @@ test.describe(
           org.name,
           'retrorepo1',
           'v1',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
+          users.user.username,
+          users.user.password,
         );
 
         // Start webhook receiver

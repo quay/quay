@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {API_URL} from '../../utils/config';
 import {pushImage, pushUniqueImage} from '../../utils/container';
@@ -188,7 +187,11 @@ test.describe(
   'Cosign tag cascade on delete and retarget',
   {tag: ['@repository', '@container']},
   () => {
-    const user = TEST_USERS.user;
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
 
     test(
       'deleting subject image tag cascades to cosign .sig tag',
