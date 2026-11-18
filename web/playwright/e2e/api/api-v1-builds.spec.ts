@@ -121,9 +121,11 @@ test.describe(
       'custom-git webhook rejects missing credentials',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const {url} = await customGitWebhook(superuserApi);
+        const {org, repo, url} = await customGitWebhook(superuserApi);
         const resp = await request.post(url, {data: payload});
         expect(resp.status()).toBe(403);
+        const {builds} = await superuserApi.raw.getBuilds(org.name, repo.name);
+        expect(builds).toHaveLength(0);
       },
     );
 
@@ -131,9 +133,11 @@ test.describe(
       'custom-git webhook rejects wrong credentials',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const {url, wrong} = await customGitWebhook(superuserApi);
+        const {org, repo, url, wrong} = await customGitWebhook(superuserApi);
         const resp = await request.post(url, {headers: wrong, data: payload});
         expect(resp.status()).toBe(403);
+        const {builds} = await superuserApi.raw.getBuilds(org.name, repo.name);
+        expect(builds).toHaveLength(0);
       },
     );
 
@@ -141,12 +145,14 @@ test.describe(
       'custom-git webhook rejects an invalid commit',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const {url, valid} = await customGitWebhook(superuserApi);
+        const {org, repo, url, valid} = await customGitWebhook(superuserApi);
         const resp = await request.post(url, {
           headers: valid,
           data: {...payload, commit: 'not-a-sha'},
         });
         expect(resp.status()).toBe(400);
+        const {builds} = await superuserApi.raw.getBuilds(org.name, repo.name);
+        expect(builds).toHaveLength(0);
       },
     );
 
@@ -154,12 +160,14 @@ test.describe(
       'custom-git webhook rejects an invalid ref',
       {tag: '@superuser'},
       async ({superuserApi, request}) => {
-        const {url, valid} = await customGitWebhook(superuserApi);
+        const {org, repo, url, valid} = await customGitWebhook(superuserApi);
         const resp = await request.post(url, {
           headers: valid,
           data: {...payload, ref: 'main'},
         });
         expect(resp.status()).toBe(400);
+        const {builds} = await superuserApi.raw.getBuilds(org.name, repo.name);
+        expect(builds).toHaveLength(0);
       },
     );
 
