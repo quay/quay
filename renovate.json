@@ -4,7 +4,8 @@
     "MintMaker (Konflux Renovate) config for quay/quay.",
     "Each update type is grouped into one PR per base branch and runs once a week, on its own day, inside a 02:00-08:59 UTC window. MintMaker runs every few hours, so a window holds two runs: the first opens the PR, the second can merge it once CI has passed.",
     "Automerge is on, but master and the redhat-* branches require the all-green check and one code-owner approval, so a PR merges only after review.",
-    "Vulnerability fixes ignore the weekly schedule, the grouping and the PR limits (Renovate vulnerabilityAlerts defaults: schedule [], groupName null, prConcurrentLimit 0), so CVE PRs stay immediate."
+    "Vulnerability fixes ignore the weekly schedule, the grouping and the PR limits (Renovate vulnerabilityAlerts defaults: schedule [], groupName null, prConcurrentLimit 0), so CVE PRs stay immediate.",
+    "Do not set branchConcurrentLimit. Renovate counts existing branches across every base branch, so a small limit stops all new branches, including vulnerability fixes. MintMaker sets it to 0 and its docs advise against changing it."
   ],
   "vulnerabilityAlerts": {
     "enabled": true
@@ -29,7 +30,6 @@
     "/^redhat-5\\.\\d+$/"
   ],
   "prConcurrentLimit": 4,
-  "branchConcurrentLimit": 4,
   "prHourlyLimit": 1,
   "postUpdateOptions": ["gomodTidy"],
   "timezone": "Etc/UTC",
