@@ -95,6 +95,30 @@ all_success=(ci/prow/aws-s3=success ci/prow/gcp-gcs=success ci/prow/azure-blob=s
 setup README.md "$sha"
 check "no manifest touched" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
 
+setup docs/README.md "$sha"
+check "docs path not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+
+setup web/src/routes/RepositoriesList/RepositoriesList.tsx "$sha"
+check "react source not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+
+setup test/data/test.pem "$sha"
+check "nested data/ not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+
+setup requirements.txt.orig "$sha"
+check "suffix-extended manifest not selected" "success|CI / Prow / E2E|no storage jobs selected|$url" "$sha"
+
+setup web/playwright/e2e/api/api-v1-immutability.spec.ts "$sha"
+statuses "${all_success[@]}" >"$STUB/status.json"
+check "playwright spec selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
+
+setup data/model/user.py "$sha"
+statuses "${all_success[@]}" >"$STUB/status.json"
+check "data path selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
+
+setup endpoints/api/user.py "$sha"
+statuses "${all_success[@]}" >"$STUB/status.json"
+check "endpoints path selected" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"
+
 setup requirements.txt "$sha"
 statuses "${all_success[@]}" ci/prow/other=failure >"$STUB/status.json"
 check "all storage jobs passed" "success|CI / Prow / E2E|storage jobs passed|$url" "$sha"

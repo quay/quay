@@ -51,9 +51,12 @@ aggregate() {
   fi
 }
 
-# The pipeline controller creates the storage contexts only when the PR changes one of these files.
+# The pipeline controller creates the storage contexts only when the PR changes a matching path.
+# Mirrors pipeline_run_if_changed of aws-s3, gcp-gcs and azure-blob in openshift/release
+# ci-operator/config/quay/quay/quay-quay-master.yaml, as ERE; keep the two in sync.
+storage_paths='^(requirements(-build)?\.txt|constraints\.txt|pyproject\.toml|(_init|active_migration|app|config|path_converters|registry|web)\.py|alembic\.ini|quay-entrypoint\.sh|conf/init/(d_validate_config_bundle\.sh|data_migration\.py|runmigration\.sh)|config-tool/(go\.mod|go\.sum|(cmd/config-tool|commands|pkg/lib)/.*)|(data|endpoints|util/config)/.*|web/playwright(\.config\.ts|/.*))$'
 files=$(gh api --paginate "repos/$repo/pulls/$pr/files" --jq '.[].filename')
-if ! grep -qxE 'requirements\.txt|requirements-build\.txt|constraints\.txt|pyproject\.toml' <<<"$files"; then
+if ! grep -qE "$storage_paths" <<<"$files"; then
   post success "no storage jobs selected"
   exit 0
 fi
