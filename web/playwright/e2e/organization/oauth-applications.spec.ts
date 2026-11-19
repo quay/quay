@@ -153,6 +153,42 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   );
 
   test(
+    'shows token generation for global readonly superusers who administer the organization',
+    {tag: ['@PROJQUAY-13943', '@superuser']},
+    async ({readonlyPage: page, readonlyApi, superuserApi}) => {
+      const org = await superuserApi.organization('readonly-oauth');
+      const admins = await superuserApi.team(
+        org.name,
+        'readonly-admins',
+        'admin',
+      );
+      await superuserApi.teamMember(org.name, admins.name, 'readonly');
+      await readonlyApi.acceptTeamInviteForOrganization(org.name);
+      const currentUser = await readonlyApi.raw.getCurrentUser();
+      expect(currentUser.organizations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({name: org.name, is_org_admin: true}),
+        ]),
+      );
+      const app = await superuserApi.oauthApplication(
+        org.name,
+        'readonly-token',
+      );
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      await page
+        .getByTestId('oauth-applications-table')
+        .getByRole('button', {name: app.name, exact: true})
+        .click();
+      await page.getByRole('tab', {name: 'API Access Tokens'}).click();
+
+      await expect(
+        page.getByTestId('generate-new-api-token-button'),
+      ).toBeVisible();
+    },
+  );
+
+  test(
     'non-admin users cannot see OAuth Applications tab',
     {tag: '@superuser'},
     async ({authenticatedPage: page, superuserApi}) => {
@@ -163,6 +199,42 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
 
       // OAuth Applications tab should not be visible
       await expect(page.getByText('OAuth Applications')).not.toBeVisible();
+    },
+  );
+
+  test(
+    'search resets pagination to page 1',
+    {tag: ['@PROJQUAY-14330']},
+    async ({authenticatedPage: page, api}) => {
+      const org = await api.organization('oauthpg');
+      await Promise.all(
+        Array.from({length: 21}, () => api.oauthApplication(org.name, 'pgapp')),
+      );
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      const tabPanel = page.getByRole('tabpanel', {name: 'OAuth Applications'});
+      const pagination = tabPanel
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
+      await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
+
+      const appNameCells = tabPanel
+        .getByTestId('oauth-applications-table')
+        .getByRole('gridcell', {name: /^pgapp-/});
+      const page1AppName = (await appNameCells.first().textContent()).trim();
+
+      await tabPanel
+        .getByRole('button', {name: 'Go to next page'})
+        .first()
+        .click();
+      await expect(pagination).toHaveText('21 - 21 of 21');
+
+      await tabPanel
+        .getByTestId('default-permissions-search')
+        .fill(page1AppName);
+
+      await expect(pagination).toHaveText('1 - 1 of 1');
+      await expect(appNameCells).toHaveText([page1AppName]);
     },
   );
 

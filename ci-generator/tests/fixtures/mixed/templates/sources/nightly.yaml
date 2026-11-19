@@ -1,4 +1,0 @@
-tests:
-- steps:
-    env:
-      QUAY_OPERATOR_SOURCE: fbc-operator-catalog

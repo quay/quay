@@ -39,6 +39,11 @@ export default function RobotAccounts(props: RobotAccountsProps) {
   });
   const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
+
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    setPage(1);
+  };
   const {analysis, isError, error, isLoading, isSuccess} =
     useAnalyzeBuildTrigger(
       namespace,
@@ -165,7 +170,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
               <SearchInput
                 id="robotaccounts-search-input"
                 searchState={search}
-                onChange={setSearch}
+                onChange={handleSearchChange}
               />
             </ToolbarItem>
             <ToolbarItem>

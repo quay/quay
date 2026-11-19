@@ -38,6 +38,11 @@ export default function HostedRepository(props: HostedRepositoryProps) {
   const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
 
+  const handleSearchChange = (searchState) => {
+    setSearch(searchState);
+    setPage(1);
+  };
+
   if (isLoading) {
     return <Spinner />;
   }
@@ -85,7 +90,7 @@ export default function HostedRepository(props: HostedRepositoryProps) {
             <SearchInput
               id="hostedrepositories-search-input"
               searchState={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
             />
           </ToolbarItem>
           <ToolbarItem>

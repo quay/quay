@@ -14,6 +14,11 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {IMembers} from 'src/resources/MembersResource';
 
 export default function MembersViewToolbar(props: MembersViewToolbarProps) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -27,13 +32,13 @@ export default function MembersViewToolbar(props: MembersViewToolbarProps) {
         <SearchDropdown
           items={props.searchOptions}
           searchState={props.search}
-          setSearchState={props.setSearch}
+          setSearchState={handleSearchChange}
         />
         <Flex className="pf-v6-u-mr-md">
           <FlexItem>
             <SearchInput
               searchState={props.search}
-              onChange={props.setSearch}
+              onChange={handleSearchChange}
               id="members-view-search"
             />
           </FlexItem>

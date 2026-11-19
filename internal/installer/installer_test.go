@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/quay/quay/internal/certs"
 	"github.com/quay/quay/internal/dal/daldb"
@@ -67,14 +69,12 @@ func TestInitializeIsIdempotentForExistingDatabase(t *testing.T) {
 	}))
 	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
 
-	err := Initialize(t.Context(), &Config{
+	require.NoError(t, Initialize(t.Context(), &Config{
 		DataDir:         dataDir,
 		InitUser:        "first-admin",
 		InitPassword:    "replacement-password",
 		InitPasswordSet: true,
-	})
-	require.ErrorContains(t, err, "registry is already initialized")
-	require.ErrorContains(t, err, "supplied password was not applied")
+	}))
 	assert.Equal(t, originalCredential, mustReadFile(t, passwordPath))
 
 	db, err := dbcore.OpenSQLite(filepath.Join(dataDir, "quay.db"))
@@ -111,6 +111,321 @@ func TestUpgradePreservesConfigBasedServeCommand(t *testing.T) {
 	assert.Contains(t, content, "Exec=serve --config /data/config.yaml --hostname registry.example.com")
 	assert.Contains(t, content, "Image=localhost/quay:new")
 	assert.Contains(t, content, "PublishPort=9443:8443")
+}
+
+func TestSnapshotUpgradeCapturesQuadletState(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	inst := &Installer{
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{imageID: "sha256:abc123"},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+	assert.Equal(t, "8443", snap.port)
+	assert.Equal(t, "registry.example.com", snap.hostname)
+	assert.Equal(t, "sha256:abc123", snap.imageID)
+	assert.Contains(t, string(snap.quadletData), "Image=localhost/quay:v3.0.0")
+	assert.Contains(t, snap.healthURL, ":8443/healthz")
+}
+
+func TestRollbackUpgradeRestoresFullQuadlet(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+
+	originalData := mustReadFile(t, env.QuadletPath(quadletServiceName))
+
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "9443"))
+	services.calls = nil
+
+	require.NoError(t, inst.rollbackUpgrade(t.Context(), snap))
+
+	restoredData := mustReadFile(t, env.QuadletPath(quadletServiceName))
+	assert.Equal(t, string(originalData), string(restoredData))
+	assert.Equal(t, []string{"stop:quay", "daemon-reload", "start:quay"}, services.calls)
+}
+
+func TestRollbackPinsImageIDWhenAvailable(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:latest", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{imageID: "sha256:olddigest"},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:latest", "8443"))
+	services.calls = nil
+
+	require.NoError(t, inst.rollbackUpgrade(t.Context(), snap))
+
+	restored := string(mustReadFile(t, env.QuadletPath(quadletServiceName)))
+	assert.Contains(t, restored, "Image=sha256:olddigest")
+	assert.NotContains(t, restored, "Image=localhost/quay:latest")
+}
+
+func TestHandleFailedUpgradeRollsBackAndReportsError(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	originalData := mustReadFile(t, env.QuadletPath(quadletServiceName))
+
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{imageID: "sha256:olddigest"},
+		healthWait: func(_ context.Context, _, _ string, _ bool, _ time.Duration) error {
+			return nil
+		},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "8443"))
+
+	result := inst.handleFailedUpgrade(t.Context(), snap, "localhost/quay:v3.0.1", fmt.Errorf("new image unhealthy"))
+	require.Error(t, result)
+	assert.Contains(t, result.Error(), "rolled back to previous image localhost/quay:v3.0.0")
+
+	restored := mustReadFile(t, env.QuadletPath(quadletServiceName))
+	assert.Contains(t, string(restored), "Image=sha256:olddigest")
+	_ = originalData
+}
+
+func TestHandleFailedUpgradeStopsServiceWhenRollbackAlsoUnhealthy(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{},
+		healthWait: func(_ context.Context, _, _ string, _ bool, _ time.Duration) error {
+			return fmt.Errorf("still unhealthy")
+		},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "8443"))
+	services.calls = nil
+
+	result := inst.handleFailedUpgrade(t.Context(), snap, "localhost/quay:v3.0.1", fmt.Errorf("health failed"))
+	require.Error(t, result)
+	assert.Contains(t, result.Error(), "also unhealthy")
+	assert.Contains(t, result.Error(), "new image localhost/quay:v3.0.1")
+	assert.Contains(t, services.calls, "stop:quay", "service should be stopped when rollback is unhealthy")
+}
+
+func TestHandleFailedUpgradeStopsServiceWhenRollbackFails(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	stopCount := 0
+	services := &configurableServiceManager{
+		stopFunc: func(_ context.Context, _ string) error {
+			stopCount++
+			if stopCount == 2 {
+				return fmt.Errorf("stop failed")
+			}
+			return nil
+		},
+	}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{}, "localhost/quay:v3.0.1", "8443"))
+
+	result := inst.handleFailedUpgrade(t.Context(), snap, "localhost/quay:v3.0.1", fmt.Errorf("health failed"))
+	require.Error(t, result)
+	assert.Contains(t, result.Error(), "rollback failed")
+	assert.Contains(t, result.Error(), "previous image localhost/quay:v3.0.0")
+	assert.Contains(t, result.Error(), "new image localhost/quay:v3.0.1")
+}
+
+func TestRunSkipsRollbackOnContextCancellation(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{loadRef: "localhost/quay:v3.0.1"},
+		runner:  &cgroupFakeRunner{version: "v2"},
+		healthWait: func(_ context.Context, _, _ string, _ bool, _ time.Duration) error {
+			return context.Canceled
+		},
+	}
+
+	err := inst.Upgrade(t.Context(), &Config{
+		DataDir:      dataDir,
+		ImageArchive: "fake-archive.tar",
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	image, _ := quadlet.Image(quadletServiceName)
+	assert.Equal(t, "localhost/quay:v3.0.1", image, "no rollback should occur on cancellation")
+}
+
+func TestRecoverFromFailedDeployRollsBack(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+	originalData := mustReadFile(t, env.QuadletPath(quadletServiceName))
+
+	startCount := 0
+	services := &configurableServiceManager{
+		startFunc: func(_ context.Context, _ string) error {
+			startCount++
+			if startCount == 1 {
+				return fmt.Errorf("port already bound")
+			}
+			return nil
+		},
+	}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{loadRef: "localhost/quay:v3.0.1"},
+		runner:  &cgroupFakeRunner{version: "v2"},
+		healthWait: func(_ context.Context, _, _ string, _ bool, _ time.Duration) error {
+			return nil
+		},
+	}
+
+	err := inst.Upgrade(t.Context(), &Config{
+		DataDir:      dataDir,
+		ImageArchive: "fake-archive.tar",
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rolled back to previous")
+	restored := mustReadFile(t, env.QuadletPath(quadletServiceName))
+	assert.Equal(t, string(originalData), string(restored))
+}
+
+func TestRollbackRestoresTLSFiles(t *testing.T) {
+	dataDir := t.TempDir()
+	env := &system.Env{Mode: system.UserMode, HomeDir: t.TempDir()}
+	quadlet := system.NewQuadletManager(system.OSFS{}, env)
+	require.NoError(t, quadlet.Install(quadletServiceName, &system.QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: dataDir, Hostname: "registry.example.com", Port: "8443",
+	}))
+
+	oldCert, oldKey := generateTLSFiles(t, dataDir)
+	oldCertData, err := os.ReadFile(oldCert)
+	require.NoError(t, err)
+	oldKeyData, err := os.ReadFile(oldKey)
+	require.NoError(t, err)
+	rootCAPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(rootCAPath, []byte("old ca"), 0o644))
+
+	sourceDir := t.TempDir()
+	newCert, newKey := generateTLSFiles(t, sourceDir)
+
+	services := &recordingServiceManager{}
+	inst := &Installer{
+		systemd: services,
+		quadlet: quadlet,
+		env:     env,
+		fs:      system.OSFS{},
+		images:  &fakeImageLoader{},
+	}
+
+	snap, err := inst.snapshotUpgrade(t.Context(), &Config{
+		DataDir: dataDir,
+		SSLCert: newCert,
+		SSLKey:  newKey,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, oldCertData, snap.tlsCert)
+	assert.Equal(t, oldKeyData, snap.tlsKey)
+
+	require.NoError(t, inst.upgrade(t.Context(), &Config{
+		Hostname: "registry.example.com",
+		DataDir:  dataDir,
+		SSLCert:  newCert,
+		SSLKey:   newKey,
+	}, "localhost/quay:v3.0.1", "8443"))
+	services.calls = nil
+
+	require.NoError(t, inst.rollbackUpgrade(t.Context(), snap))
+
+	restoredCert := mustReadFile(t, filepath.Join(dataDir, "ssl.cert"))
+	restoredKey := mustReadFile(t, filepath.Join(dataDir, "ssl.key"))
+	assert.Equal(t, oldCertData, restoredCert)
+	assert.Equal(t, oldKeyData, restoredKey)
+	assert.Equal(t, []byte("old ca"), mustReadFile(t, rootCAPath))
 }
 
 func TestRemoveFailedInstallation(t *testing.T) {
@@ -607,14 +922,12 @@ func TestUpgradeInstallsReplacementTLS(t *testing.T) {
 		fs:      system.OSFS{},
 	}
 
-	err = inst.upgrade(t.Context(), &Config{
+	require.NoError(t, inst.upgrade(t.Context(), &Config{
 		Hostname: "registry.example.com",
 		DataDir:  dataDir,
 		SSLCert:  newCert,
 		SSLKey:   newKey,
-	}, "localhost/quay:new", "8443")
-
-	require.NoError(t, err)
+	}, "localhost/quay:new", "8443"))
 	assert.Equal(t, newCertData, mustReadFile(t, filepath.Join(dataDir, "ssl.cert")))
 	assert.Equal(t, newKeyData, mustReadFile(t, filepath.Join(dataDir, "ssl.key")))
 	keyInfo, err := os.Stat(filepath.Join(dataDir, "ssl.key"))
@@ -674,6 +987,49 @@ func (r *recordingServiceManager) DisableLinger(context.Context) error {
 }
 
 var _ system.ServiceManager = (*recordingServiceManager)(nil)
+
+type fakeImageLoader struct {
+	imageID string
+	loadRef string
+	loadErr error
+	pullErr error
+}
+
+func (f *fakeImageLoader) Load(_ context.Context, _ string) (string, error) {
+	return f.loadRef, f.loadErr
+}
+func (f *fakeImageLoader) Pull(_ context.Context, _ string) error { return f.pullErr }
+func (f *fakeImageLoader) ImageID(_ context.Context, _ string) (string, error) {
+	if f.imageID == "" {
+		return "", fmt.Errorf("image not found")
+	}
+	return f.imageID, nil
+}
+
+var _ system.ImageLoader = (*fakeImageLoader)(nil)
+
+type configurableServiceManager struct {
+	stopFunc  func(context.Context, string) error
+	startFunc func(context.Context, string) error
+}
+
+func (c *configurableServiceManager) DaemonReload(context.Context) error { return nil }
+func (c *configurableServiceManager) Start(ctx context.Context, service string) error {
+	if c.startFunc != nil {
+		return c.startFunc(ctx, service)
+	}
+	return nil
+}
+func (c *configurableServiceManager) Stop(ctx context.Context, service string) error {
+	if c.stopFunc != nil {
+		return c.stopFunc(ctx, service)
+	}
+	return nil
+}
+func (c *configurableServiceManager) EnableLinger(context.Context) error  { return nil }
+func (c *configurableServiceManager) DisableLinger(context.Context) error { return nil }
+
+var _ system.ServiceManager = (*configurableServiceManager)(nil)
 
 type cgroupFakeRunner struct {
 	version string
@@ -742,7 +1098,7 @@ func TestVerifyCertHostname(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("myhost.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -770,7 +1126,7 @@ func TestVerifyCertHostnameIP(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("192.168.1.100", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -798,7 +1154,7 @@ func TestParseCertPEM(t *testing.T) {
 	certPath := filepath.Join(dir, "ssl.cert")
 	keyPath := filepath.Join(dir, "ssl.key")
 
-	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath); err != nil {
+	if err := certs.GenerateSelfSigned("test.example.com", certPath, keyPath, filepath.Join(dir, "rootCA.pem")); err != nil {
 		t.Fatalf("generate cert: %v", err)
 	}
 
@@ -965,6 +1321,41 @@ func TestCopyUserTLSRollsBackPairWhenKeyReplacementFails(t *testing.T) {
 	assert.Len(t, entries, 2)
 }
 
+func TestCopyUserTLSRemovesGeneratedCA(t *testing.T) {
+	dataDir := t.TempDir()
+	generateTLSFiles(t, dataDir)
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "rootCA.pem"), []byte("ca"), 0o644))
+
+	sourceDir := t.TempDir()
+	certPath, keyPath := generateTLSFiles(t, sourceDir)
+	inst := &Installer{fs: system.OSFS{}}
+
+	require.NoError(t, inst.copyUserTLS(&Config{
+		Hostname: "registry.example.com",
+		DataDir:  dataDir,
+		SSLCert:  certPath,
+		SSLKey:   keyPath,
+	}))
+
+	assert.NoFileExists(t, filepath.Join(dataDir, "rootCA.pem"))
+	assert.Empty(t, inst.generatedCAPath(&Config{DataDir: dataDir}))
+}
+
+func TestGeneratedCAPath(t *testing.T) {
+	dataDir := t.TempDir()
+	inst := &Installer{fs: system.OSFS{}}
+	cfg := &Config{DataDir: dataDir}
+
+	assert.Empty(t, inst.generatedCAPath(cfg), "no rootCA.pem")
+
+	caPath := filepath.Join(dataDir, "rootCA.pem")
+	require.NoError(t, os.WriteFile(caPath, []byte("ca"), 0o644))
+	assert.Equal(t, caPath, inst.generatedCAPath(cfg))
+
+	cfg.SSLCert = "/user/ssl.cert"
+	assert.Empty(t, inst.generatedCAPath(cfg), "user-supplied ssl.cert leaves rootCA.pem stale")
+}
+
 type failKeyRenameFS struct {
 	system.OSFS
 	keyDestination string
@@ -981,7 +1372,7 @@ func generateTLSFiles(t *testing.T, dir string) (certPath, keyPath string) {
 	t.Helper()
 	certPath = filepath.Join(dir, "ssl.cert")
 	keyPath = filepath.Join(dir, "ssl.key")
-	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath))
+	require.NoError(t, certs.GenerateSelfSigned("registry.example.com", certPath, keyPath, filepath.Join(t.TempDir(), "rootCA.pem")))
 	return certPath, keyPath
 }
 

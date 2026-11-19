@@ -48,6 +48,7 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from storage import Storage
+from storage.upstreamproxy import UpstreamProxy
 from util import get_app_url
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
@@ -213,6 +214,7 @@ def _request_start():
 DEFAULT_FILTER = lambda x: "[FILTERED]"
 FILTERED_VALUES = [
     {"key": ["password"], "fn": DEFAULT_FILTER},
+    {"key": ["subject_token"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_password"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_username"], "fn": DEFAULT_FILTER},
     {"key": ["user", "password"], "fn": DEFAULT_FILTER},
@@ -228,7 +230,10 @@ def _request_end(resp):
     except HTTPException:
         jsonbody = None
 
-    values = request.values.to_dict()
+    try:
+        values = request.values.to_dict()
+    except HTTPException:
+        values = None
 
     if isinstance(jsonbody, dict):
         filter_logs(jsonbody, FILTERED_VALUES)
@@ -335,6 +340,12 @@ all_queues = [
     repository_gc_queue,
     namespace_gc_queue,
 ]
+
+# initialize upstream proxy downloader instance
+upstream_proxy = None
+if app.config.get("FEATURE_PROXY_CACHE", False) and instance_keys is not None:
+    logger.debug("Initializing upstream proxy downloader")
+    upstream_proxy = UpstreamProxy(app, instance_keys)
 
 url_scheme_and_hostname = URLSchemeAndHostname(
     app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]

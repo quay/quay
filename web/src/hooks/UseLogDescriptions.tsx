@@ -1056,6 +1056,23 @@ export function useLogDescriptions() {
     regenerate_robot_token: function (metadata: Metadata) {
       return <>Regenerated token for robot {wrapVariable(metadata.robot)}</>;
     },
+    create_robot_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Created API token {wrapVariable(metadata.token_display_name)} for
+          robot {wrapVariable(metadata.robot)} with scope{' '}
+          {wrapVariable(metadata.scope)}
+        </>
+      );
+    },
+    revoke_robot_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Revoked API token {wrapVariable(metadata.api_token_uuid)} from robot{' '}
+          {wrapVariable(metadata.robot)}
+        </>
+      );
+    },
 
     service_key_create: function (metadata: Metadata) {
       const keyName = formatServiceKeyName(metadata);

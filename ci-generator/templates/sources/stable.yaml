@@ -1,4 +1,0 @@
-tests:
-- steps:
-    env:
-      QUAY_OPERATOR_SOURCE: redhat-operators

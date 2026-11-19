@@ -163,6 +163,168 @@ loginShell: /bin/bash
 homeDirectory: /home/readonly_ldap
 mail: readonly_ldap@example.com
 
+# Playwright isolated user: quota_ldap (regular user, one per isolatedUser slot)
+dn: uid=quota_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: quota_ldap
+sn: Ldap
+givenName: Quota
+cn: Quota Ldap
+displayName: Quota Ldap
+uidNumber: 10008
+gidNumber: 10008
+userPassword: password
+gecos: Quota Ldap
+loginShell: /bin/bash
+homeDirectory: /home/quota_ldap
+mail: quota_ldap@example.com
+
+# Playwright isolated user: prune_count_ldap (regular user, one per isolatedUser slot)
+dn: uid=prune_count_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: prune_count_ldap
+sn: Ldap
+givenName: PruneCount
+cn: PruneCount Ldap
+displayName: PruneCount Ldap
+uidNumber: 10009
+gidNumber: 10009
+userPassword: password
+gecos: PruneCount Ldap
+loginShell: /bin/bash
+homeDirectory: /home/prune_count_ldap
+mail: prune_count_ldap@example.com
+
+# Playwright isolated user: prune_age_ldap (regular user, one per isolatedUser slot)
+dn: uid=prune_age_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: prune_age_ldap
+sn: Ldap
+givenName: PruneAge
+cn: PruneAge Ldap
+displayName: PruneAge Ldap
+uidNumber: 10010
+gidNumber: 10010
+userPassword: password
+gecos: PruneAge Ldap
+loginShell: /bin/bash
+homeDirectory: /home/prune_age_ldap
+mail: prune_age_ldap@example.com
+
+# Playwright isolated user: prune_both_ldap (regular user, one per isolatedUser slot)
+dn: uid=prune_both_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: prune_both_ldap
+sn: Ldap
+givenName: PruneBoth
+cn: PruneBoth Ldap
+displayName: PruneBoth Ldap
+uidNumber: 10011
+gidNumber: 10011
+userPassword: password
+gecos: PruneBoth Ldap
+loginShell: /bin/bash
+homeDirectory: /home/prune_both_ldap
+mail: prune_both_ldap@example.com
+
+# Playwright isolated user: logout_success_ldap (regular user, one per isolatedUser slot)
+dn: uid=logout_success_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: logout_success_ldap
+sn: Ldap
+givenName: LogoutSuccess
+cn: LogoutSuccess Ldap
+displayName: LogoutSuccess Ldap
+uidNumber: 10012
+gidNumber: 10012
+userPassword: password
+gecos: LogoutSuccess Ldap
+loginShell: /bin/bash
+homeDirectory: /home/logout_success_ldap
+mail: logout_success_ldap@example.com
+
+# Playwright isolated user: logout_error_ldap (regular user, one per isolatedUser slot)
+dn: uid=logout_error_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: logout_error_ldap
+sn: Ldap
+givenName: LogoutError
+cn: LogoutError Ldap
+displayName: LogoutError Ldap
+uidNumber: 10013
+gidNumber: 10013
+userPassword: password
+gecos: LogoutError Ldap
+loginShell: /bin/bash
+homeDirectory: /home/logout_error_ldap
+mail: logout_error_ldap@example.com
+
+# Playwright isolated user: logout_access_ldap (regular user, one per isolatedUser slot)
+dn: uid=logout_access_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: logout_access_ldap
+sn: Ldap
+givenName: LogoutAccess
+cn: LogoutAccess Ldap
+displayName: LogoutAccess Ldap
+uidNumber: 10014
+gidNumber: 10014
+userPassword: password
+gecos: LogoutAccess Ldap
+loginShell: /bin/bash
+homeDirectory: /home/logout_access_ldap
+mail: logout_access_ldap@example.com
+
+# Playwright isolated user: metadata_submit_ldap (regular user, one per isolatedUser slot)
+dn: uid=metadata_submit_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: metadata_submit_ldap
+sn: Ldap
+givenName: MetadataSubmit
+cn: MetadataSubmit Ldap
+displayName: MetadataSubmit Ldap
+uidNumber: 10015
+gidNumber: 10015
+userPassword: password
+gecos: MetadataSubmit Ldap
+loginShell: /bin/bash
+homeDirectory: /home/metadata_submit_ldap
+mail: metadata_submit_ldap@example.com
+
+# Playwright isolated user: metadata_skip_ldap (regular user, one per isolatedUser slot)
+dn: uid=metadata_skip_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: metadata_skip_ldap
+sn: Ldap
+givenName: MetadataSkip
+cn: MetadataSkip Ldap
+displayName: MetadataSkip Ldap
+uidNumber: 10016
+gidNumber: 10016
+userPassword: password
+gecos: MetadataSkip Ldap
+loginShell: /bin/bash
+homeDirectory: /home/metadata_skip_ldap
+mail: metadata_skip_ldap@example.com
+
 # Organizational unit for groups (used by team syncing)
 dn: ou=groups,dc=example,dc=org
 objectClass: organizationalUnit

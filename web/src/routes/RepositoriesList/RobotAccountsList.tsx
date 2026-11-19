@@ -620,6 +620,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           isModalOpen={isRobotFederationModalOpen}
           setIsModalOpen={setRobotFederationModalOpen}
           namespace={props.organizationName}
+          isUser={props.isUser}
         />
         <Table
           aria-label="Expandable table"
@@ -691,7 +692,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                   </Td>
                   <Td dataLabel={RobotAccountColumnNames.lastAccessed}>
                     {robotAccount.last_accessed
-                      ? robotAccount.last_accessed
+                      ? formatDate(robotAccount.last_accessed)
                       : 'Never'}
                   </Td>
                   <Td dataLabel={RobotAccountColumnNames.created}>

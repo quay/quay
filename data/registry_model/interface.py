@@ -482,3 +482,17 @@ class RegistryDataInterface(object):
         Updates any expired tags in the time machine window referencing the given manifest
         with an expiry outside the time machine window.
         """
+
+    @abstractmethod
+    def get_upstream_blob_proxy_url(self, namespace, repo, digest, upstream_proxy):
+        """
+        Constructs an upstream blob URL address based on the namespace/repo and blob digest
+        and returns it to the caller.
+        """
+
+    @abstractmethod
+    def get_proxy_blob_size(self, namespace, repository, digest):
+        """
+        Returns the proxied blob size directly from the ImageStorage table. Returns None
+        if the method is unsupported. Returns BlobUnknown() if the blob cannot be found.
+        """

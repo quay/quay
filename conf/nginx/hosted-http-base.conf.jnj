@@ -3,12 +3,21 @@
 server {
 
 {% if feature_proxy_protocol %}
+    {% if use_ipv4 %}
     listen 8080 default_server proxy_protocol;
+    {% endif %}
+    {% if use_ipv6 %}
+    listen [::]:8080 default_server proxy_protocol;
+    {% endif %}
 {% else %}
+    {% if use_ipv4 %}
     listen 8080 default_server;
+    {% endif %}
+    {% if use_ipv6 %}
+    listen [::]:8080 default_server;
+    {% endif %}
 {% endif %}
 
     server_name _;
     rewrite ^ https://$host$request_uri? permanent;
 }
-

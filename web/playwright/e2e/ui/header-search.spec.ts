@@ -13,6 +13,32 @@ test.describe('Header search bar', {tag: ['@ui', '@PROJQUAY-12269']}, () => {
     ).toBeVisible();
   });
 
+  test(
+    'does not overlap the masthead logo at tablet width',
+    {tag: '@PROJQUAY-13716'},
+    async ({authenticatedPage}) => {
+      await authenticatedPage.setViewportSize({width: 1024, height: 768});
+      await authenticatedPage.goto('/organization');
+
+      const logo = authenticatedPage.getByAltText('Red Hat Quay');
+      const searchInput = authenticatedPage.getByRole('combobox', {
+        name: SEARCH_LABEL,
+      });
+      await expect(logo).toBeVisible();
+      await expect(searchInput).toBeVisible();
+
+      const logoBox = await logo.boundingBox();
+      const searchBox = await searchInput.boundingBox();
+      expect(logoBox).not.toBeNull();
+      expect(searchBox).not.toBeNull();
+      if (!logoBox || !searchBox) {
+        throw new Error('Header logo and search input must have layout boxes');
+      }
+
+      expect(searchBox.x).toBeGreaterThanOrEqual(logoBox.x + logoBox.width);
+    },
+  );
+
   test('is hidden on the search page, which has its own input', async ({
     authenticatedPage,
   }) => {

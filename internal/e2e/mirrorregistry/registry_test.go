@@ -526,3 +526,147 @@ func assertBlobMissing(t *testing.T, h *e2etest.Harness, repository string, dgst
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP 404")
 }
+
+// singleChildIndex returns an OCI index that references one image manifest.
+func singleChildIndex(t *testing.T, child pushedImage) []byte {
+	t.Helper()
+	indexBytes, err := json.Marshal(v1.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: v1.MediaTypeImageIndex,
+		Manifests: []v1.Descriptor{{
+			MediaType: v1.MediaTypeImageManifest,
+			Digest:    child.digest,
+			Size:      int64(len(child.manifest)),
+			Platform:  &v1.Platform{Architecture: "amd64", OS: "linux"},
+		}},
+	})
+	require.NoError(t, err)
+	return indexBytes
+}
+
+// A manifest pushed by digest (how skopeo pushes multi-arch children) must
+// survive garbage collection until its temporary tag expires, including after
+// the upload markers on its blobs have lapsed (PROJQUAY-12886).
+func TestRegistryDigestPushSurvivesGarbageCollection(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-digest-gc"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("digest-only child layer")
+	image := pushImage(t, h, repository, "", configBytes, layerBytes)
+
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted, "a digest-pushed manifest is protected by its temporary tag")
+	assert.Zero(t, stats.BlobsDeleted)
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err = h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted, "blobs of a digest-pushed manifest outlive their upload markers")
+
+	got, err := h.Registry().GetManifest(ctx, repository, image.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, image.manifest, got.Body)
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, image.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+
+	require.NoError(t, h.ExpireTemporaryTags(ctx))
+	stats, err = h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, stats.ManifestsDeleted, "the manifest is collected once its temporary tag has expired")
+	assertRegistryMissing(t, h, repository, image.digest.String())
+}
+
+func TestRegistryTaggedImageSurvivesUploadExpiry(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-tagged-gc"
+
+	configBytes := []byte(`{"architecture":"amd64","os":"linux"}`)
+	layerBytes := []byte("tagged image layer")
+	image := pushImage(t, h, repository, "latest", configBytes, layerBytes)
+
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.TagsExpired)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted)
+
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, image.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+	gotConfig, err := h.Registry().GetBlob(ctx, repository, image.config)
+	require.NoError(t, err)
+	assert.Equal(t, configBytes, gotConfig)
+	manifest, err := h.Registry().GetManifest(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, image.manifest, manifest.Body)
+}
+
+// An index whose child has been collected from the catalog is a client error:
+// the registry answers 400 MANIFEST_BLOB_UNKNOWN naming the child, and the tag
+// is not created (PROJQUAY-12913).
+func TestRegistryIndexWithCollectedChildRejected(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-missing-child"
+
+	child := pushImage(t, h, repository, "", []byte(`{"architecture":"amd64","os":"linux"}`), []byte("child that gets collected"))
+	indexBytes := singleChildIndex(t, child)
+
+	require.NoError(t, h.ExpireTemporaryTags(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats.ManifestsDeleted, "child must be collected before the index arrives")
+
+	_, err = h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	require.Error(t, err, "index PUT must fail when its child is not in the catalog")
+	assert.Contains(t, err.Error(), "HTTP 400", "a missing child is a client error, not a server error")
+	assert.Contains(t, err.Error(), "MANIFEST_BLOB_UNKNOWN")
+	assert.Contains(t, err.Error(), child.digest.String(), "the error must name the missing child")
+	assertRegistryMissing(t, h, repository, "latest")
+}
+
+// A child pushed by digest and then referenced by a tagged index keeps its own
+// content, and the whole image survives garbage collection after the upload
+// markers expire (PROJQUAY-12913).
+func TestRegistryIndexAfterChildDigestPush(t *testing.T) {
+	h := e2etest.New(t)
+	ctx := t.Context()
+	const repository = "admin/e2e-index-after-child"
+
+	layerBytes := []byte("digest-then-index child layer")
+	child := pushImage(t, h, repository, "", []byte(`{"architecture":"amd64","os":"linux"}`), layerBytes)
+	indexBytes := singleChildIndex(t, child)
+
+	_, err := h.Registry().PutManifest(ctx, repository, "latest", indexBytes, v1.MediaTypeImageIndex)
+	require.NoError(t, err)
+
+	gotChild, err := h.Registry().GetManifest(ctx, repository, child.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, child.manifest, gotChild.Body, "index PUT must not replace the child's manifest")
+
+	// Even with the child's temporary tag and upload markers gone, the tagged
+	// index keeps the child and its layers alive.
+	require.NoError(t, h.ExpireUploadProtection(ctx))
+	require.NoError(t, h.ExpireTemporaryTags(ctx))
+	stats, err := h.CollectGarbage(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, stats.ManifestsDeleted)
+	assert.Zero(t, stats.BlobsDeleted)
+
+	gotIndex, err := h.Registry().GetManifest(ctx, repository, "latest")
+	require.NoError(t, err)
+	assert.Equal(t, indexBytes, gotIndex.Body)
+	gotChild, err = h.Registry().GetManifest(ctx, repository, child.digest.String())
+	require.NoError(t, err)
+	assert.Equal(t, child.manifest, gotChild.Body)
+	gotLayer, err := h.Registry().GetBlob(ctx, repository, child.layer)
+	require.NoError(t, err)
+	assert.Equal(t, layerBytes, gotLayer)
+}

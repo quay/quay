@@ -5,7 +5,6 @@ conf/stack/config.yaml
 config.yaml
 screenshots
 tools
-ci-generator
 test/data/registry
 venv
 .venv

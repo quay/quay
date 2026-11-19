@@ -165,6 +165,52 @@ func TestTokenHandlerDoesNotGrantPullWhenMissingRepositoryPushIsDenied(t *testin
 	assert.Empty(t, claims.Access)
 }
 
+func TestTokenHandlerUserPushCreatesOwnedNamespace(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	allowNamespaceCreation(t, db)
+	handler, service, _ := newBearerTestComponents(t, db, true)
+
+	raw := requestToken(t, handler, "admin", "correct-password", "repository:newns/app:pull,push", http.StatusOK)
+	claims, err := service.Validate(raw)
+	require.NoError(t, err)
+	assert.Equal(t, []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: "newns/app", Actions: []string{jwtauth.PullAction, jwtauth.PushAction},
+	}}, claims.Access)
+
+	var owners int
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT count(*)
+		FROM teammember tm
+		JOIN team t ON tm.team_id = t.id
+		JOIN "user" org ON t.organization_id = org.id
+		JOIN "user" u ON tm.user_id = u.id
+		WHERE org.username = 'newns' AND org.organization = 1 AND t.name = 'owners' AND u.username = 'admin'`).Scan(&owners))
+	assert.Equal(t, 1, owners, "pusher owns the created namespace")
+
+	raw = requestToken(t, handler, "admin", "correct-password", "repository:newns/other:push", http.StatusOK)
+	claims, err = service.Validate(raw)
+	require.NoError(t, err)
+	assert.Equal(t, []jwtauth.ResourceActions{{
+		Type: jwtauth.RepositoryType, Name: "newns/other", Actions: []string{jwtauth.PushAction},
+	}}, claims.Access)
+}
+
+func TestTokenHandlerUserPullOfMissingNamespaceGrantsNothing(t *testing.T) {
+	db := setupTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	allowNamespaceCreation(t, db)
+	handler, service, _ := newBearerTestComponents(t, db, true)
+
+	raw := requestToken(t, handler, "admin", "correct-password", "repository:newns/app:pull", http.StatusOK)
+	claims, err := service.Validate(raw)
+	require.NoError(t, err)
+	assert.Empty(t, claims.Access)
+
+	var n int
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT count(*) FROM "user" WHERE username = 'newns'`).Scan(&n))
+	assert.Zero(t, n, "pull created the namespace")
+}
+
 func TestTokenHandlerLimitsRequestedScopes(t *testing.T) {
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
@@ -347,6 +393,22 @@ type tokenPolicyFunc func(*http.Request, *auth.Principal, distauth.Access, []dis
 
 func (f tokenPolicyFunc) AuthorizeRepositoryAccess(r *http.Request, principal *auth.Principal, access distauth.Access, all []distauth.Access) error {
 	return f(r, principal, access, all)
+}
+
+// allowNamespaceCreation adds the user columns and unique username index that
+// creating a namespace on push writes.
+func allowNamespaceCreation(t *testing.T, db *sql.DB) {
+	t.Helper()
+	for _, stmt := range []string{
+		`ALTER TABLE "user" ADD COLUMN invoice_email INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE "user" ADD COLUMN invalid_login_attempts INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE "user" ADD COLUMN last_invalid_login DATETIME`,
+		`ALTER TABLE "user" ADD COLUMN removed_tag_expiration_s INTEGER NOT NULL DEFAULT 0`,
+		`CREATE UNIQUE INDEX user_username ON "user" (username)`,
+	} {
+		_, err := db.ExecContext(t.Context(), stmt)
+		require.NoError(t, err, stmt)
+	}
 }
 
 func newBearerTestComponents(t *testing.T, db *sql.DB, anonymous bool) (*TokenHandler, *jwtauth.Service, *accessController) {

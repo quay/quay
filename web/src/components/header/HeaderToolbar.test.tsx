@@ -1,5 +1,5 @@
 import {MemoryRouter} from 'react-router-dom';
-import {render, screen} from 'src/test-utils';
+import {render, screen, within} from 'src/test-utils';
 import {HeaderToolbar} from './HeaderToolbar';
 
 const mockUseCurrentUser = vi.hoisted(() =>
@@ -86,13 +86,16 @@ describe('HeaderToolbar', () => {
     );
   });
 
-  it('renders the header search bar on ordinary pages', () => {
+  it('renders the header search bar in the right-aligned action group on ordinary pages', () => {
     mockUseCurrentUser.mockReturnValue({
       user: {username: 'testuser', anonymous: false},
     });
 
     renderToolbar('/organization');
-    expect(screen.getByTestId('header-search-item')).toBeInTheDocument();
+    const actionGroup = screen.getByTestId('header-action-group');
+    expect(
+      within(actionGroup).getByTestId('header-search-item'),
+    ).toBeInTheDocument();
   });
 
   it('hides the header search bar on the search page', () => {

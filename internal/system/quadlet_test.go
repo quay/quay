@@ -235,6 +235,18 @@ func TestQuadletConfigPath(t *testing.T) {
 	assert.Equal(t, "/data/config.yaml", configPath)
 }
 
+func TestQuadletImageReturnsInstalledImage(t *testing.T) {
+	env := &Env{Mode: UserMode, HomeDir: t.TempDir()}
+	manager := NewQuadletManager(OSFS{}, env)
+	require.NoError(t, manager.Install("quay", &QuadletSpec{
+		Image: "localhost/quay:v3.0.0", DataDir: "/var/lib/quay", Hostname: "localhost", Port: "8443",
+	}))
+
+	image, err := manager.Image("quay")
+	require.NoError(t, err)
+	assert.Equal(t, "localhost/quay:v3.0.0", image)
+}
+
 func TestQuadletUpdateImageAndPortUpdatesAdvertisedHostname(t *testing.T) {
 	tests := []struct {
 		name, hostname, want string

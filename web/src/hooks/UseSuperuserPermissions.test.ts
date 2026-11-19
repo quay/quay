@@ -53,6 +53,23 @@ describe('useSuperuserPermissions', () => {
     expect(result.current.canModify).toBe(false);
   });
 
+  it('keeps read-only precedence when a user has both superuser flags', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: {super_user: true, global_readonly_super_user: true} as never,
+      loading: false,
+      error: null,
+      isSuperUser: true,
+    });
+    vi.mocked(useQuayState).mockReturnValue({
+      inReadOnlyMode: false,
+      inAccountRecoveryMode: false,
+    });
+    const {result} = renderHook(() => useSuperuserPermissions());
+    expect(result.current.isSuperUser).toBe(true);
+    expect(result.current.isReadOnlySuperUser).toBe(true);
+    expect(result.current.canModify).toBe(false);
+  });
+
   it('regular superuser cannot modify in read-only registry mode', () => {
     vi.mocked(useCurrentUser).mockReturnValue({
       user: {super_user: true, global_readonly_super_user: false} as any,

@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from auth.auth_context_type import (
@@ -8,6 +6,7 @@ from auth.auth_context_type import (
     ValidatedAuthContext,
 )
 from data import database, model
+from test.fixtures import *
 
 
 def get_oauth_token(_):

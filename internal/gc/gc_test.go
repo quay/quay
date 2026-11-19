@@ -1481,3 +1481,53 @@ func ctx(t *testing.T) context.Context {
 	t.Helper()
 	return t.Context()
 }
+
+// A manifest pushed by digest is protected by its temporary tag, and so are
+// its blobs, even after the upload marker has expired. Once the temporary tag
+// is past its grace period both are collected (PROJQUAY-12886).
+func TestCollect_DigestPushProtectedUntilTemporaryTagExpires(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "digest-only")
+	content := []byte("digest-only-layer")
+	blobDgst := mustDigest("digest-only-layer")
+	if err := env.blobs.PutContent(ctx, blobDgst, content); err != nil {
+		t.Fatal(err)
+	}
+	blobID, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: blobDgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.PutUploadedBlob(ctx, repoID, blobDgst); err != nil {
+		t.Fatal(err)
+	}
+	manifestID := insertManifest(t, env, repoID, mustDigest("digest-only-manifest"), "")
+	linkBlobToManifest(t, env, repoID, manifestID, blobID)
+
+	if _, err := env.db.ExecContext(ctx, "UPDATE uploadedblob SET expires_at = datetime('now', '-1 second')"); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 || stats.BlobsDeleted != 0 {
+		t.Fatalf("temporary tag must protect the manifest and its blob, got manifests=%d blobs=%d", stats.ManifestsDeleted, stats.BlobsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDgst); err != nil {
+		t.Fatalf("blob file must still exist while the temporary tag lives: %v", err)
+	}
+
+	expireTemporaryTag(t, env, manifestID, time.Now().Add(-30*24*time.Hour).UnixMilli())
+	stats, err = env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 1 || stats.BlobsDeleted != 1 {
+		t.Fatalf("expired temporary tag must release the manifest and its blob, got manifests=%d blobs=%d", stats.ManifestsDeleted, stats.BlobsDeleted)
+	}
+	if _, err := env.blobs.Stat(ctx, blobDgst); err == nil {
+		t.Fatal("blob file must be deleted once nothing protects it")
+	}
+}

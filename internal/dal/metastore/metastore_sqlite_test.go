@@ -986,3 +986,137 @@ func assertProtectionTagCount(t *testing.T, s *metastore.SQLiteStore, manifestID
 		t.Errorf("non-expiring tags for manifest %d: got %d, want 1", manifestID, count)
 	}
 }
+
+// A digest-only re-push after the temporary tag has expired, but before GC
+// has removed the expired row, must renew that row rather than add a second
+// one (PROJQUAY-12886).
+func TestPutManifest_DigestRePushAfterExpiryRenewsTemporaryTag(t *testing.T) {
+	store := setupStore(t)
+	db := store.(*metastore.SQLiteStore).DB()
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "repush"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := oci.ManifestRecord{
+		Digest:    digest.FromString("repush-after-expiry"),
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+	}
+	manifestID, err := store.PutManifest(ctx, repoID, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expiredMs := time.Now().Add(-time.Hour).UnixMilli()
+	res, err := db.ExecContext(ctx, `UPDATE tag SET lifetime_end_ms = ? WHERE manifest_id = ? AND hidden = 1 AND name LIKE '$temp-%'`, expiredMs, manifestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("expected 1 temporary tag after the first push, got %d", n)
+	}
+
+	if _, err := store.PutManifest(ctx, repoID, record); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	var endMs int64
+	if err := db.QueryRowContext(ctx, `SELECT count(*), max(lifetime_end_ms) FROM tag WHERE manifest_id = ?`, manifestID).Scan(&count, &endMs); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, count, "re-push after expiry must renew the existing temporary tag, not add a row")
+	assert.Greater(t, endMs, time.Now().UnixMilli(), "renewed temporary tag must expire in the future")
+}
+
+// An index PUT links children that are already in the catalog and must leave
+// their stored bytes and tags alone (PROJQUAY-12913).
+func TestPutManifest_IndexLeavesChildUntouched(t *testing.T) {
+	store := setupStore(t)
+	db := store.(*metastore.SQLiteStore).DB()
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "index-child"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	childContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`)
+	childDgst := digest.FromBytes(childContent)
+	childID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    childDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   childContent,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indexID, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("parent-index"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"schemaVersion":2,"manifests":[]}`),
+		ChildDigests: []digest.Digest{childDgst},
+		Tag:          "latest",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var bytes, mediaType string
+	if err := db.QueryRowContext(ctx, `
+		SELECT m.manifest_bytes, mt.name FROM manifest m
+		JOIN mediatype mt ON mt.id = m.media_type_id WHERE m.id = ?`, childID).Scan(&bytes, &mediaType); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, string(childContent), bytes, "index PUT must not rewrite the child's manifest_bytes")
+	assert.Equal(t, "application/vnd.oci.image.manifest.v1+json", mediaType, "child must keep the media type it was pushed with")
+
+	var childTags, links int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM tag WHERE manifest_id = ?`, childID).Scan(&childTags); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, childTags, "child keeps only the temporary tag from its own digest push")
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM manifestchild WHERE manifest_id = ? AND child_manifest_id = ?`, indexID, childID).Scan(&links); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, links)
+}
+
+// An index that names a child missing from the catalog is rejected with a
+// typed error carrying that child's digest, and the transaction writes
+// nothing: no index row, no tag, no placeholder child (PROJQUAY-12913).
+func TestPutManifest_IndexWithMissingChildWritesNothing(t *testing.T) {
+	store := setupStore(t)
+	db := store.(*metastore.SQLiteStore).DB()
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "index-missing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing := digest.FromString("never-pushed-child")
+
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       digest.FromString("index-with-missing-child"),
+		MediaType:    "application/vnd.oci.image.index.v1+json",
+		Content:      []byte(`{"schemaVersion":2,"manifests":[]}`),
+		ChildDigests: []digest.Digest{missing},
+		Tag:          "latest",
+	})
+
+	var childErr oci.ChildManifestUnknownError
+	if !errors.As(err, &childErr) {
+		t.Fatalf("err = %T (%v), want oci.ChildManifestUnknownError", err, err)
+	}
+	assert.Equal(t, missing, childErr.Digest)
+
+	for _, table := range []string{"manifest", "tag", "manifestchild"} {
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE repository_id = ?`, repoID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		assert.Zero(t, n, "rejected index PUT left rows in %s", table)
+	}
+}

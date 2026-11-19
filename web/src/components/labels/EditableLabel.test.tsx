@@ -58,6 +58,44 @@ describe('EditableLabel', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 
+  it('calls onEditComplete with filled value when mousedown fires before React re-renders', async () => {
+    // Reproduces the race condition from GitHub issue #7779:
+    // onChange fires → setValue (mock, so no re-render) → mousedown fires
+    // before re-render → handleClickOutside must read the value typed in
+    // onChange, not the stale props.value.
+    const onEditComplete = vi.fn();
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+    render(
+      <EditableLabel
+        value=""
+        setValue={vi.fn()}
+        onEditComplete={onEditComplete}
+      />,
+    );
+    await userEvent.click(screen.getByText('Add new label'));
+
+    // Capture the mousedown handler registered by useEffect
+    const mousedownCalls = addEventListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === 'mousedown',
+    );
+    const mousedownCall = mousedownCalls[mousedownCalls.length - 1];
+    const mousedownHandler = mousedownCall[1] as (event: {
+      target: EventTarget;
+    }) => void;
+
+    // Simulate typing — setValue is a mock so no re-render occurs,
+    // meaning valueRef.current is only updated if onChange sets it synchronously.
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: {value: 'testkey=testval'},
+    });
+
+    // Simulate mousedown outside before React re-renders
+    mousedownHandler({target: document.body});
+
+    expect(onEditComplete).toHaveBeenCalledWith('testkey=testval');
+    addEventListenerSpy.mockRestore();
+  });
+
   it('commits the current value on an outside click that reuses the listener registered before the value changed', async () => {
     const onEditComplete = vi.fn();
     const addEventListenerSpy = vi.spyOn(document, 'addEventListener');

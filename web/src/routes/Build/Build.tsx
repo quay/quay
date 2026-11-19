@@ -323,6 +323,7 @@ function BuildLog({
     <>
       <div
         className="log-header"
+        data-testid="build-log-header"
         style={{
           paddingTop: '.5em',
           paddingBottom: '.5em',
@@ -365,12 +366,17 @@ function BuildLog({
           </FlexItem>
         </Flex>
         <Conditional if={isExpanded}>
-          <div style={{marginLeft: '2em'}} className="container-logs">
+          <div
+            style={{marginLeft: '2em'}}
+            className="container-logs"
+            data-testid="build-container-logs"
+          >
             {entry.logs.map((log, index) => (
               <div key={index} style={{display: 'flex'}}>
                 <Conditional if={showTimestamps}>
                   <div className="build-log-timestamp">
-                    {log?.data?.datetime && formatDate(log?.data?.datetime)}{' '}
+                    {log?.data?.datetime &&
+                      formatDate(log?.data?.datetime)}{' '}
                   </div>
                 </Conditional>
                 <div>{log.message}</div>

@@ -33,9 +33,15 @@ function getOidcConfig(quayConfig: {config: Record<string, unknown>}): {
     ) {
       const loginConfig = value as Record<string, string>;
       let oidcServer = loginConfig.OIDC_SERVER;
-      // Keycloak runs inside containers, but tests run on the host.
-      // Replace container-internal hostnames with localhost.
-      oidcServer = oidcServer.replace('host.containers.internal', 'localhost');
+      // Locally Keycloak runs inside containers, but tests run on the host, so
+      // replace container-internal hostnames with localhost. Assumes OIDC_SERVER
+      // names a host reachable from the tests when KEYCLOAK_HOST is set.
+      if (!process.env.KEYCLOAK_HOST) {
+        oidcServer = oidcServer.replace(
+          'host.containers.internal',
+          'localhost',
+        );
+      }
       if (!oidcServer.endsWith('/')) oidcServer += '/';
       return {
         tokenEndpoint: `${oidcServer}protocol/openid-connect/token`,

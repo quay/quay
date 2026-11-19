@@ -65,7 +65,7 @@ make types-test                      # Type checking (mypy)
 ## Universal Conventions
 
 1. **Testing:** Every code change must include tests. The **Playwright suite** (`web/playwright/`) is Quay's end-to-end (e2e) blackbox test suite — it exercises the running system through its real UI and API surfaces, with no mocks or DB seeding (see `web/playwright/AGENTS.md`). Prefer testing behavior e2e via Playwright whenever practical, rather than relying solely on unit/mock-level coverage, since e2e tests catch regressions that unit tests and mocks can miss. When fixing a bug, add or extend an e2e test that reproduces the original failure when feasible, so the regression stays caught. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory, and add or extend a Playwright `e2e/api/` test when the change affects externally observable API behavior. A backend-only change with no observable behavior change (internal refactor, logging, etc.) does not require Playwright. Always run relevant tests before committing.
-2. **Test reporting:** In PR descriptions, report each exact command and its outcome as passed, failed, not run, or infrastructure-blocked. Do not describe an attempted or planned command as having run successfully, and keep infrastructure failures distinct from test failures.
+2. **Test reporting:** Never describe a test as passing unless it ran and passed, and keep infrastructure failures distinct from test failures. PR descriptions need no per-command test list; CI checks carry that evidence.
 3. **Formatting:** Rely on pre-commit hook to format code on commit
 4. **No secrets:** Never commit credentials, API keys, or sensitive config
 5. **Imports:** Follow existing import ordering patterns in each file
@@ -82,11 +82,12 @@ make types-test                      # Type checking (mypy)
   - Use a Jira key only when the exact key is explicitly associated with the work. A GitHub issue reference such as `#6530` is not `PROJQUAY-6530`; use `NO-ISSUE:` when no Jira key is provided.
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - Scope should be a short descriptive name for the affected subsystem or area (e.g., `api`, `auth`, `mirroring`, `agents`, `gc`), not an issue or PR number
-  - For backports to a `redhat-X.Y` release branch, prefix the title with `[redhat-X.Y] ` *before* the Jira key, not after. The `conventional commit check` job in `.github/workflows/ci-lint.yaml` enforces this exact order and fails CI if the bracket comes after the Jira key.
+  - For backports to a `redhat-X.Y` or `mirror-registry-X.Y` release branch, prefix the title with the matching `[redhat-X.Y] ` or `[mirror-registry-X.Y] ` *before* the Jira key, not after. The `conventional commit check` job in `.github/workflows/ci-lint.yaml` enforces this exact order and fails CI if the bracket comes after the Jira key.
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `QUAYIO-12345: feat(auth): add SSO support for quay.io`
   - `NO-ISSUE: docs(agents): add contributing guide`
   - `[redhat-3.17] PROJQUAY-12461: fix(cve): bump postcss for CVE-2026-69153`
+  - `[mirror-registry-3.0] PROJQUAY-13482: fix(omr): roll back to previous image when upgrade health check fails`
 - **Branch naming:** `<type>/{projquay|quayio}-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
@@ -150,7 +151,6 @@ PRs modifying the following files are accepted only from `quay` org members:
 - `.coderabbit.yaml` — CodeRabbit review configuration
 - `.github/workflows/` — CI/CD workflow definitions
 - `.github/CODEOWNERS` — code ownership rules
-- `.fullsend/` — agent and automation configuration
 
 External contributors: if an issue involves these files, comment on the issue and a maintainer will arrange an internal PR. Do not open a PR for these files — it will be closed.
 

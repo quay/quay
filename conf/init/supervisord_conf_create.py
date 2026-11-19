@@ -47,6 +47,7 @@ def registry_services():
         "storagereplication": {"autostart": "true"},
         "teamsyncworker": {"autostart": "true"},
         "dnsmasq": {"autostart": "true"},
+        "gunicorn-blobstream": {"autostart": "true"},
         "gunicorn-registry": {"autostart": "true"},
         "gunicorn-secscan": {"autostart": "true"},
         "gunicorn-web": {"autostart": "true"},

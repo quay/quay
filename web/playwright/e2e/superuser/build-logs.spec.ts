@@ -172,7 +172,8 @@ test.describe(
       superuserApi,
     }) => {
       test.slow();
-      test.setTimeout(300_000);
+      // Budget: waitForBuildPhase default (180s) + archive poll (300s) + UI waits (~45s).
+      test.setTimeout(600_000);
 
       // Create a private repo under a separate org — the readonly superuser
       // has no membership in this org, so /logarchive/<uuid> would 403.
@@ -185,15 +186,19 @@ test.describe(
         'FROM scratch\nLABEL test="readonly-archived-logs"\n',
       );
 
-      await superuserApi.raw.waitForBuildPhase(
+      const {phase} = await superuserApi.raw.waitForBuildPhase(
         org.name,
         repo.name,
         build.buildId,
       );
+      // Only these phases are archived (data/model/build.py ARCHIVABLE_BUILD_PHASES);
+      // internal_error/expired would otherwise time out below with a misleading error.
+      expect(['complete', 'error', 'cancelled']).toContain(phase);
 
       // Wait for the build logs archiver to archive this build's logs.
-      // The archiver polls every 30s and archives one build per cycle.
-      const archiveDeadline = Date.now() + 120_000;
+      // The archiver polls every 30s (POLL_PERIOD_SECONDS) and archives one
+      // build per cycle, so the deadline covers the poll period plus queue.
+      const archiveDeadline = Date.now() + 300_000;
       let hasLogsUrl = false;
       while (Date.now() < archiveDeadline) {
         const resp = await readonlyApi.raw.getBuildLogsAsSuperuser(
@@ -208,12 +213,18 @@ test.describe(
         } else if ([400, 401, 403].includes(resp.status())) {
           const body = await resp.text();
           throw new Error(
-            `Unexpected ${resp.status()} polling build logs for ${build.buildId}: ${body}`,
+            `Unexpected ${resp.status()} polling build logs for ${
+              build.buildId
+            }: ${body}`,
           );
         }
         await new Promise((r) => setTimeout(r, 5_000));
       }
-      test.skip(!hasLogsUrl, 'Archiver did not archive logs within timeout');
+      if (!hasLogsUrl) {
+        throw new Error(
+          `Archiver did not archive logs for ${build.buildId} within timeout`,
+        );
+      }
 
       // Load Build Logs page as the readonly superuser — should render
       // archived logs via the superuser archive endpoint, not 403 from /logarchive/

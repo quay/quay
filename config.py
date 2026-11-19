@@ -655,6 +655,9 @@ class DefaultConfig(ImmutableConfig):
     # some additional window time.
     INSTANCE_SERVICE_KEY_REFRESH = 55
 
+    # If true, import the instance service key from mounted files instead of generating one.
+    INSTANCE_SERVICE_KEY_IMPORT_FROM_FILES = False
+
     # The whitelist of client IDs for OAuth applications that allow for direct login.
     DIRECT_OAUTH_CLIENTID_WHITELIST: Optional[List[str]] = []
 
@@ -786,6 +789,10 @@ class DefaultConfig(ImmutableConfig):
     # None disables the cap.
     OAUTH_APPLICATION_MAXIMUM_TOKEN_COUNT: Optional[int] = None
 
+    # Maximum number of active Quay-issued API tokens per user or robot.
+    # Set to None to disable the cap.
+    API_TOKEN_MAXIMUM_TOKEN_COUNT: Optional[int] = 20
+
     # Defines the number of results per page used to show search results
     SEARCH_RESULTS_PER_PAGE = 10
 
@@ -911,6 +918,10 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Controls programmatic bootstrap token provisioning.
     FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+
+    # Feature Flags: Control robot Management API tokens and federated token exchange.
+    FEATURE_ROBOT_API_TOKENS = False
+    FEATURE_ROBOT_API_TOKEN_EXCHANGE = False
     BOOTSTRAP_TOKEN_OWNER: Optional[str] = None
     BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
     PROGRAMMATIC_TOKEN_K8S_SECRET: Optional[str] = None
@@ -953,6 +964,20 @@ class DefaultConfig(ImmutableConfig):
 
     # Enables the quota backfill worker
     QUOTA_BACKFILL = True
+
+    # Enables exposing quota metrics for the registry, organizations and repositories.
+    # Beware of high cardinality if there are many organizations and repositories.
+    # Per-tenant series use namespace/repository names as labels (needed for
+    # dashboards); renames create new series until Prometheus drops stale ones.
+    QUOTA_METRICS = False
+
+    # Maximum number of repositories to report per-repository quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_REPOS_LIMIT = 10000
+
+    # Maximum number of namespaces to report per-namespace quota metrics for.
+    # Hard ceiling is 100000 (enforced in schema and at runtime).
+    QUOTA_METRICS_NAMESPACES_LIMIT = 10000
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False

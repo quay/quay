@@ -15,7 +15,7 @@ import type {APIRequestContext} from '@playwright/test';
 import {test, expect} from '../../fixtures';
 import {API_URL} from '../../utils/config';
 
-const KEYCLOAK_HOST = 'http://localhost:8081';
+const KEYCLOAK_HOST = process.env.KEYCLOAK_HOST || 'http://localhost:8081';
 
 /**
  * Extract OIDC config from Quay config, checking for multi-issuer fields.

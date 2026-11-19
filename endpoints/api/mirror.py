@@ -13,6 +13,7 @@ from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     define_json_response,
     format_date,
     nickname,
@@ -25,7 +26,11 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_reference
+from util.security.ssrf import (
+    SSRFBlockedError,
+    resolve_proxy_config_for_ssrf,
+    validate_external_registry_reference,
+)
 
 SSRF_GENERIC_ERROR = "The provided registry location is not allowed"
 
@@ -63,7 +68,7 @@ def _validate_external_reference(reference, proxy_config=None):
         validate_external_registry_reference(
             reference,
             allowed_hosts=_get_ssrf_allowed_hosts(),
-            proxy_config=proxy_config,
+            proxy_config=resolve_proxy_config_for_ssrf(proxy_config),
         )
     except SSRFBlockedError:
         raise InvalidRequest(SSRF_GENERIC_ERROR)
@@ -319,12 +324,16 @@ class RepoMirrorResource(RepositoryParamResource):
         robot = mirror.internal_robot.username if mirror.internal_robot is not None else None
         timeout = mirror.skopeo_timeout
 
+        is_readonly = allow_if_global_readonly_superuser()
+
         return {
             "is_enabled": mirror.is_enabled,
             "mirror_type": mirror.mirror_type.name,
             "external_reference": mirror.external_reference,
-            "external_registry_username": username,
-            "external_registry_config": mirror.external_registry_config or {},
+            "external_registry_username": None if is_readonly else username,
+            "external_registry_config": (
+                {} if is_readonly else (mirror.external_registry_config or {})
+            ),
             "sync_interval": mirror.sync_interval,
             "sync_start_date": sync_start_date,
             "sync_expiration_date": sync_expiration_date,

@@ -54,7 +54,7 @@ export default function OAuthLocalHandler() {
 
     // Check if format=json requested (for API clients)
     if (searchParams.get('format') === 'json') {
-      document.body.innerHTML = JSON.stringify({access_token: token});
+      document.body.textContent = JSON.stringify({access_token: token});
       setIsLoading(false);
       return;
     }

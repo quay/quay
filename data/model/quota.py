@@ -18,6 +18,7 @@ from data.database import (
     RepositoryState,
     Tag,
     User,
+    UserOrganizationQuota,
 )
 from data.model import config, db_transaction
 from data.model.repository import lookup_repository
@@ -274,6 +275,171 @@ def get_repository_size(repository_id: int):
         return repository_size
     except QuotaRepositorySize.DoesNotExist:
         return None
+
+
+def _next_namespace_quota_candidate_ids(last_id: int, fetch_limit: int):
+    """
+    Return up to fetch_limit distinct namespace IDs that have a completed size
+    row, a quota row, or both, with id > last_id, ordered ascending.
+
+    Candidates are collected from the indexed quota tables first so LIMIT
+    bounds indexed scans rather than a filtered User full-table join.
+
+    Size rows where backfill_complete is False are excluded because their
+    size_bytes is temporarily 0 during invalidation/backfill.  Namespaces
+    with an incomplete size row but an existing quota are still discovered
+    via the UserOrganizationQuota branch.
+    """
+    size_ids = [
+        row[0]
+        for row in (
+            QuotaNamespaceSize.select(QuotaNamespaceSize.namespace_user, can_use_read_replica=True)
+            .where(
+                QuotaNamespaceSize.namespace_user > last_id,
+                QuotaNamespaceSize.backfill_complete == True,  # noqa: E712
+            )
+            .order_by(QuotaNamespaceSize.namespace_user)  # type: ignore[func-returns-value]
+            .limit(fetch_limit)
+            .tuples()
+        )
+    ]
+    quota_ids = [
+        row[0]
+        for row in (
+            UserOrganizationQuota.select(UserOrganizationQuota.namespace, can_use_read_replica=True)
+            .where(UserOrganizationQuota.namespace > last_id)
+            .order_by(UserOrganizationQuota.namespace)  # type: ignore[func-returns-value]
+            .limit(fetch_limit)
+            .tuples()
+        )
+    ]
+
+    merged = sorted(set(size_ids) | set(quota_ids))
+    return merged[:fetch_limit]
+
+
+def get_all_namespace_quota_data(batch_size: int = 500, max_rows: int = 0):
+    """
+    Yields one record per namespace that has a quota, a computed size, or both.
+    Candidate namespace IDs are taken from the indexed quota tables first, then
+    joined to User so size-only and quota-only namespaces appear in one
+    deterministic set ordered by User.id.
+
+    Each yielded dict contains: id, username, organization, size_bytes (None
+    when no QuotaNamespaceSize row or when backfill is still in progress),
+    limit_bytes (None when no quota).
+
+    Size rows where backfill_complete is False are treated as absent because
+    their size_bytes is temporarily 0 during invalidation/backfill.  The
+    worker should not report that temporary value as real usage.
+
+    When max_rows > 0, stops yielding after that many rows to bound memory
+    and database work.
+    """
+    last_id = 0
+    emitted = 0
+    while True:
+        fetch_limit = batch_size
+        if max_rows > 0:
+            remaining = max_rows - emitted
+            if remaining <= 0:
+                break
+            fetch_limit = min(batch_size, remaining)
+
+        candidate_ids = _next_namespace_quota_candidate_ids(last_id, fetch_limit)
+        if not candidate_ids:
+            break
+
+        batch = list(
+            User.select(
+                User.id,
+                User.username,
+                User.organization,
+                QuotaNamespaceSize.size_bytes,
+                UserOrganizationQuota.limit_bytes,
+                can_use_read_replica=True,
+            )
+            .join(
+                QuotaNamespaceSize,
+                JOIN.LEFT_OUTER,
+                on=(
+                    (User.id == QuotaNamespaceSize.namespace_user)
+                    & (QuotaNamespaceSize.backfill_complete == True)  # noqa: E712
+                ),
+            )
+            .switch(User)
+            .join(
+                UserOrganizationQuota,
+                JOIN.LEFT_OUTER,
+                on=(User.id == UserOrganizationQuota.namespace),
+            )
+            .where(User.id << candidate_ids)
+            .order_by(User.id)
+            .dicts()
+        )
+
+        if not batch:
+            break
+
+        for row in batch:
+            yield row
+            emitted += 1
+
+        last_id = batch[-1]["id"]
+
+
+def get_all_repository_sizes(batch_size: int = 500, max_rows: int = 0):
+    """
+    Yields repository size records in batches to avoid full table scans.
+    Each yielded dict contains id, name, namespace and size_bytes.
+
+    Pagination starts from QuotaRepositorySize (unique index on repository)
+    so LIMIT bounds an indexed scan even when size rows are sparse relative
+    to Repository.
+
+    Rows where backfill_complete is False are excluded because their
+    size_bytes is temporarily 0 during invalidation/backfill.
+
+    When max_rows > 0, stops yielding after that many rows to bound memory
+    and database work.
+    """
+    last_id = 0
+    emitted = 0
+    while True:
+        fetch_limit = batch_size
+        if max_rows > 0:
+            remaining = max_rows - emitted
+            if remaining <= 0:
+                break
+            fetch_limit = min(batch_size, remaining)
+
+        batch = list(
+            QuotaRepositorySize.select(
+                Repository.id,
+                Repository.name,
+                User.username.alias("namespace"),
+                QuotaRepositorySize.size_bytes,
+                can_use_read_replica=True,
+            )
+            .join(Repository, on=(QuotaRepositorySize.repository == Repository.id))
+            .join(User, on=(Repository.namespace_user == User.id))
+            .where(
+                QuotaRepositorySize.repository > last_id,
+                QuotaRepositorySize.backfill_complete == True,  # noqa: E712
+            )
+            .order_by(QuotaRepositorySize.repository)  # type: ignore[func-returns-value]
+            .limit(fetch_limit)
+            .dicts()
+        )
+
+        if not batch:
+            break
+
+        for row in batch:
+            yield row
+            emitted += 1
+
+        last_id = batch[-1]["id"]
 
 
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):

@@ -63,20 +63,90 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 
 ### Tag Categories
 
-| Category     | Format                 | Example                | Purpose                                                                |
-| ------------ | ---------------------- | ---------------------- | ---------------------------------------------------------------------- |
-| JIRA         | `@PROJQUAY-####`       | `@PROJQUAY-1234`       | Link to JIRA ticket                                                    |
-| Priority     | `@critical`, `@smoke`  | `@critical`            | Test importance                                                        |
-| Feature      | `@repository`          | `@repository`          | Feature area                                                           |
-| Config       | `@config:BILLING`      | `@config:OIDC`         | Required config                                                        |
-| Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature                                                       |
-| Container    | `@container`           | `@container`           | Requires registry image tooling (auto-skip)                            |
-| Superuser    | `@superuser`           | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them |
-| Webhook      | `@webhook`             | `@webhook`             | Uses the webhook receiver fixture or helper                            |
+| Category     | Format                             | Example                | Purpose                                                                   |
+| ------------ | ---------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| JIRA         | `@PROJQUAY-####`                   | `@PROJQUAY-1234`       | Link to JIRA ticket                                                       |
+| Priority     | `@critical`, `@smoke`              | `@critical`            | Test importance                                                           |
+| Feature      | `@repository`                      | `@repository`          | Feature area                                                              |
+| Config       | `@config:BILLING`                  | `@config:OIDC`         | Required config                                                           |
+| Feature Flag | `@feature:PROXY_CACHE`             | `@feature:REPO_MIRROR` | Required feature                                                          |
+| Container    | `@container`                       | `@container`           | Requires registry image tooling (auto-skip)                               |
+| Superuser    | `@superuser`                       | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
+| Webhook      | `@webhook`                         | `@webhook`             | Uses the webhook receiver fixture or helper                               |
+| LDAP smoke   | `@ldap-smoke`                      | `@ldap-smoke`          | Run in the GHA LDAP phase of ci-web.yaml; keep the set small              |
+| Upgrade      | `@upgrade-seed`, `@upgrade-verify` | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
+| Branding     | `@redhat-branding`                 | `@redhat-branding`     | Red Hat branding verification; downstream OCP lanes only (see below) |
+
+#### Operator-upgrade specs (`@upgrade-seed` / `@upgrade-verify`)
+
+`e2e/upgrade/` holds two specs that prove a Quay operator upgrade (n-1 → n, e.g.
+3.17 → 3.18) preserved user data. They run as **two independent Playwright
+invocations against the same server** with an OLM upgrade in between: CI runs
+`--grep @upgrade-seed` on the n-1 server, upgrades, then `--grep @upgrade-verify`
+on the n server. The invocations share NO memory/env/files — only persisted Quay
+state (Postgres + S3).
+
+These two specs **deliberately diverge** from the "NO DATABASE SEEDING /
+auto-cleanup" convention: they use **fixed, deterministic names** (from
+`utils/upgrade-fixtures.ts`, never `uniqueName()`) and the raw `adminClient` (never
+the auto-cleanup `api` fixture), and they **do not clean up** — the seeded data
+must survive to the verify invocation. Each CI run is a fresh cluster, so fixed
+names never collide across runs.
+
+The `@upgrade-seed` / `@upgrade-verify` tags are **reserved** for this lane. Do not
+add them to ordinary specs: the daily functional e2e job grep-inverts them so these
+specs never run standalone (verify would fail with nothing seeded). Keep both files
+version-tolerant and byte-identical across `master`, `redhat-3.18`, and
+`redhat-3.17` so backport cherry-picks apply cleanly.
+
+### Red Hat branding downstream tests (`@redhat-branding`)
+
+`e2e/ui/branding.spec.ts` verifies that a **downstream** image (built with
+`RED_HAT_QUAY=true`) serves Red Hat branding: the `/config` payload
+(`BRANDING.logo`/`logo_dark`/`footer_img`/`footer_url`, `REGISTRY_TITLE`) and
+the rendered UI (header logo in light and dark themes, sign-in page, footer).
+It also checks version reporting: `/config.version_number` must be one of the two
+downstream shapes, and the Help menu must render exactly that value:
+
+- **Release form** `Quay vX.Y.Z` — the operator sets `QUAY_VERSION` on the Quay
+  pod from the installed release, replacing the built value entirely.
+- **Nightly form** `Quay vX.Y.Z-nightly-<YYYYMMDDHHMM>` — top CHANGELOG heading
+  plus the `BUILD_DATE` that `Dockerfile.downstream` writes in its final stage.
+
+A versionless or malformed value fails the test.
+
+- The spec self-skips unless `PLAYWRIGHT_BRANDING_E2E=1`, so it never runs in
+  GHA (which also grep-inverts `@redhat-branding` in ci-web.yaml) or in the
+  functional Prow lanes.
+- The lane wiring — setting `PLAYWRIGHT_BRANDING_E2E=1` on the downstream
+  e2e-install jobs' `quay-test-e2e` step — lives in **openshift/release**
+  (`ci-operator/config/quay/quay/_generator/`), not this repo.
+- Expected asset paths are pinned in a constants block at the top of the spec;
+  update it in one place if the downstream defaults in `config.py` change.
 
 ### Proxy-route SSRF deployment tests
 
-Some org-mirror and proxy-cache specs are gated on `PLAYWRIGHT_PROXY_SSRF_E2E=1` and require a Quay deployment with real `HTTP_PROXY`/`HTTPS_PROXY`, SSRF allowlist entries, and (for positive cases) DNS-isolated upstream hostnames. Do not simulate proxy or DNS with `page.route()`; routing proof belongs in Python tests.
+Some org-mirror, repo-mirror, and proxy-cache specs are gated on
+`PLAYWRIGHT_PROXY_SSRF_E2E=1` and require a Quay deployment with real
+`HTTP_PROXY`/`HTTPS_PROXY` (or `ALL_PROXY`), `SSRF_ALLOWED_HOSTS` entries, and
+(for positive cases) DNS-isolated upstream hostnames.
+
+- **Explicit UI proxy:** fill mirror http/https proxy fields (org-mirror suite).
+- **Ambient env fallback (PROJQUAY-12833):** leave mirror proxy fields empty so
+  SSRF validation uses the Quay process proxy env. Set
+  `PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE` (repo API) and/or
+  `PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL` (org UI verify).
+
+Do not simulate proxy or DNS with `page.route()`; routing proof belongs in
+Python tests.
+
+```bash
+# Run ambient-env mirror SSRF acceptance (gated)
+PLAYWRIGHT_PROXY_SSRF_E2E=1 \
+PLAYWRIGHT_REPO_MIRROR_EXTERNAL_REFERENCE=allowlisted-host.example/ns/repo \
+PLAYWRIGHT_ORG_MIRROR_REGISTRY_URL=https://allowlisted-host.example \
+npx playwright test --grep ambient
+```
 
 ### Running Tagged Tests
 
@@ -124,11 +194,11 @@ Playwright's `getByTestId()` only works with the standard `data-testid` attribut
 
 ```tsx
 // Wrong - requires manual locator
-<Button test-id="my-button">Click</Button>
+<Button test-id="my-button">Click</Button>;
 await page.locator('[test-id="my-button"]').click();
 
 // Correct - works with getByTestId()
-<Button data-testid="my-button">Click</Button>
+<Button data-testid="my-button">Click</Button>;
 await page.getByTestId('my-button').click();
 ```
 
@@ -487,13 +557,13 @@ test.describe('Multi-Arch Tests', {tag: ['@container']}, () => {
 
 ## Common Gotchas
 
-| Issue | What to Know |
-| ----- | ------------ |
-| **Async/Await** | Every Playwright interaction must be `await`ed - no implicit chaining |
-| **Auto-waiting** | Locators auto-wait for elements; explicit waits are rarely needed |
-| **Timeouts** | Configure via `timeout` in `playwright.config.ts`, not per-command |
-| **Screenshots** | Configure capture-on-failure in `playwright.config.ts` |
-| **Selectors** | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors |
-| **Network waits** | Usually unnecessary - Playwright auto-waits for navigation and network idle |
+| Issue               | What to Know                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Async/Await**     | Every Playwright interaction must be `await`ed - no implicit chaining                                                                                                                                                                                                                                                                                  |
+| **Auto-waiting**    | Locators auto-wait for elements; explicit waits are rarely needed                                                                                                                                                                                                                                                                                      |
+| **Timeouts**        | Configure via `timeout` in `playwright.config.ts`, not per-command                                                                                                                                                                                                                                                                                     |
+| **Screenshots**     | Configure capture-on-failure in `playwright.config.ts`                                                                                                                                                                                                                                                                                                 |
+| **Selectors**       | Prefer `getByRole()`, `getByTestId()`, `getByText()` over CSS selectors                                                                                                                                                                                                                                                                                |
+| **Network waits**   | Usually unnecessary - Playwright auto-waits for navigation and network idle                                                                                                                                                                                                                                                                            |
 | **Parallel safety** | Use `uniqueName()` for resources created via raw API calls; never hard-code entity names. **Note:** TestApi fixture methods (`api.organization()`, `api.repository()`, `api.team()`, `api.robot()`, `api.user()`, `api.oauthApplication()`) already call `uniqueName()` internally — pass a short descriptive prefix string, not a `uniqueName()` call |
-| **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup |
+| **Fixture scoping** | `api` fixture is per-test; use `beforeAll` + `cachedContainerAvailable` for expensive shared setup                                                                                                                                                                                                                                                     |

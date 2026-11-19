@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Repository Details - Tag Date Column Sorting (PROJQUAY-11351)',
   {tag: ['@tags', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     let repo: {namespace: string; name: string; fullName: string};
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
@@ -15,12 +20,12 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `tag-sort-dates-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       repo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       const ensureDistinctTimestamp = () =>
@@ -30,24 +35,24 @@ test.describe(
         repo.namespace,
         repo.name,
         'first',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
       await ensureDistinctTimestamp();
       await pushImage(
         repo.namespace,
         repo.name,
         'second',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
       await ensureDistinctTimestamp();
       await pushImage(
         repo.namespace,
         repo.name,
         'third',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
     });
 

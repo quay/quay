@@ -199,6 +199,30 @@ def test_create_token_rejects_global_readonly_superuser(app):
         )
 
 
+def test_create_token_allows_global_readonly_superuser_with_org_admin_permission(app):
+    owner = model.user.get_user("randomuser")
+    readonly_user = model.user.get_user("globalreadonlysuperuser")
+    org = model.organization.create_organization(
+        "readonlyscopedtokens", "readonlyscopedtokens@example.com", owner
+    )
+    admins = model.team.create_team("readonlyadmins", org, "admin")
+    model.team.add_user_to_team(readonly_user, admins)
+    _, application = _setup_app(org.username)
+
+    with client_with_identity("globalreadonlysuperuser", app) as cl:
+        created = conduct_api_call(
+            cl,
+            OrganizationApplicationTokens,
+            "POST",
+            {"orgname": org.username, "client_id": application.client_id},
+            {"name": "Scoped token", "scope": "repo:read"},
+            200,
+        ).json
+
+    assert created["name"] == "Scoped token"
+    assert created["scope"] == "repo:read"
+
+
 def test_create_token_enforces_scope_subset_for_oauth_caller(app):
     _, application = _setup_app()
     user = model.user.get_user("devtable")

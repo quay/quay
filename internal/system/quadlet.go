@@ -220,6 +220,31 @@ func (q *QuadletManager) ConfigPath(service string) (string, error) {
 	return "", fmt.Errorf("no Exec= directive found in %s", path)
 }
 
+// Image returns the container image from an existing Quadlet file.
+func (q *QuadletManager) Image(service string) (string, error) {
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read quadlet: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		image, found := strings.CutPrefix(scanner.Text(), "Image=")
+		if !found {
+			continue
+		}
+		if image == "" {
+			return "", fmt.Errorf("empty Image= directive in %s", path)
+		}
+		return image, nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan quadlet: %w", err)
+	}
+	return "", fmt.Errorf("no Image= directive found in %s", path)
+}
+
 // UpdateImage replaces the image while retaining the existing published host port.
 func (q *QuadletManager) UpdateImage(service, newImage string) error {
 	hostPort, err := q.HostPort(service)

@@ -1,4 +1,4 @@
-// Package repository contains repository business operations.
+// Package repository defines repository identity, visibility, and state types.
 package repository
 
 // Ref identifies a repository by namespace and name.
@@ -30,11 +30,6 @@ const (
 	// KindImage is the repositorykind id for image repositories.
 	KindImage int64 = 1
 )
-
-// Valid reports whether v is a supported repository visibility.
-func (v Visibility) Valid() bool {
-	return v == VisibilityPublic || v == VisibilityPrivate
-}
 
 // Repository contains repository fields needed by business operations.
 type Repository struct {

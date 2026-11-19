@@ -334,10 +334,16 @@ const APIAccessTokensTab: React.FC<APIAccessTokensTabProps> = (
   const clientId = props.application?.client_id || '';
   const assignOAuthTokenEnabled =
     quayConfig?.features?.ASSIGN_OAUTH_TOKEN === true;
+  const hasOrganizationAdminPermission =
+    user?.organizations?.some(
+      (organization) =>
+        organization.name === props.orgName &&
+        organization.is_org_admin === true,
+    ) === true;
   const canManage =
     user != null &&
     quayConfig != null &&
-    user.global_readonly_super_user !== true &&
+    (!user.global_readonly_super_user || hasOrganizationAdminPermission) &&
     quayConfig.registry_state !== 'readonly';
   const localOAuthHandler = quayConfig?.config?.LOCAL_OAUTH_HANDLER;
 

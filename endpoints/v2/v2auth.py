@@ -42,6 +42,7 @@ from util.cache import no_cache
 from util.names import (
     REPOSITORY_NAME_EXTENDED_REGEX,
     REPOSITORY_NAME_REGEX,
+    conflicts_with_build_route,
     parse_namespace_repository,
     parse_robot_username,
 )
@@ -176,7 +177,12 @@ def generate_registry_jwt(auth_result):
     }
     context, subject = build_context_and_subject(get_authenticated_context(), tuf_roots=tuf_roots)
     token = generate_bearer_token(
-        audience_param, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, instance_keys
+        app.config["SERVER_HOSTNAME"],
+        subject,
+        context,
+        access,
+        TOKEN_VALIDITY_LIFETIME_S,
+        instance_keys,
     )
     return jsonify({"token": token})
 
@@ -394,6 +400,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                             namespace,
                         )
                     else:
+                        if conflicts_with_build_route(reponame):
+                            raise NameInvalid(
+                                message="Repository name conflicts with a build route"
+                            )
                         logger.debug("Creating repository: %s/%s", namespace, reponame)
                         visibility = (
                             "private"

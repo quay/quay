@@ -20,6 +20,8 @@ from data.model.notification import (
 
 _SERVICE_NAME_REGEX = re.compile(r"^[a-z0-9_]+$")
 
+OPERATOR_MANAGED_CREATED_BY = "quay-operator-readonly"
+
 
 def _expired_keys_clause(service):
     return (ServiceKey.service == service) & (ServiceKey.expiration_date <= datetime.utcnow())
@@ -123,10 +125,14 @@ def generate_service_key(
     return (jwk.get_private_key(), key)
 
 
-def replace_service_key(old_kid, kid, jwk, metadata, expiration_date):
+def replace_service_key(old_kid, service, kid, jwk, metadata, expiration_date):
     try:
         with db_transaction():
-            key = db_for_update(ServiceKey.select().where(ServiceKey.kid == old_kid)).get()
+            key = db_for_update(
+                ServiceKey.select().where(
+                    (ServiceKey.kid == old_kid) & (ServiceKey.service == service)
+                )
+            ).get()
             key.metadata.update(metadata)
 
             ServiceKey.create(
@@ -163,10 +169,12 @@ def update_service_key(kid, name=None, metadata=None):
         raise ServiceKeyDoesNotExist
 
 
-def delete_service_key(kid):
+def delete_service_key(kid, service):
     try:
-        key = ServiceKey.get(kid=kid)
-        ServiceKey.delete().where(ServiceKey.kid == kid).execute()
+        key = ServiceKey.get((ServiceKey.kid == kid) & (ServiceKey.service == service))
+        ServiceKey.delete().where(
+            (ServiceKey.kid == kid) & (ServiceKey.service == service)
+        ).execute()
     except ServiceKey.DoesNotExist:
         raise ServiceKeyDoesNotExist
 
@@ -239,6 +247,13 @@ def list_all_keys():
 
 def list_service_keys(service):
     return list(_list_service_keys_query(service=service))
+
+
+def get_service_key_for_status(kid, service):
+    try:
+        return ServiceKey.select().where(ServiceKey.kid == kid, ServiceKey.service == service).get()
+    except ServiceKey.DoesNotExist:
+        raise ServiceKeyDoesNotExist
 
 
 def get_service_key(kid, service=None, alive_only=True, approved_only=True):

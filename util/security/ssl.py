@@ -1,6 +1,7 @@
 from fnmatch import fnmatch
 
 import OpenSSL
+from cryptography import x509
 
 
 class CertInvalidException(Exception):
@@ -29,9 +30,6 @@ def load_certificate(cert_contents):
         return SSLCertificate(cert)
     except OpenSSL.crypto.Error as ex:
         raise CertInvalidException(ex.args[0][0][2])
-
-
-_SUBJECT_ALT_NAME = b"subjectAltName"
 
 
 class SSLCertificate(object):
@@ -94,13 +92,13 @@ class SSLCertificate(object):
             dns_names.add(common_name)
 
         # Find the DNS extension, if any.
-        for i in range(0, self.openssl_cert.get_extension_count()):
-            ext = self.openssl_cert.get_extension(i)
-            if ext.get_short_name() == _SUBJECT_ALT_NAME:
-                value = str(ext)
-                for san_name in value.split(","):
-                    san_name_trimmed = san_name.strip()
-                    if san_name_trimmed.startswith("DNS:"):
-                        dns_names.add(san_name_trimmed[4:])
+        try:
+            san = self.openssl_cert.to_cryptography().extensions.get_extension_for_class(
+                x509.SubjectAlternativeName
+            )
+        except x509.ExtensionNotFound:
+            return dns_names
+
+        dns_names.update(san.value.get_values_for_type(x509.DNSName))
 
         return dns_names

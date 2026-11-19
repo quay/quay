@@ -14,6 +14,7 @@ from util.security.ssrf import (
     SSRFBlockedError,
     get_environment_proxy_config,
     proxy_route_for_url,
+    resolve_proxy_config_for_ssrf,
     validate_external_registry_reference,
     validate_external_registry_url,
 )
@@ -533,6 +534,102 @@ class TestEnvironmentProxyConfig:
     def test_get_environment_proxy_config_returns_none_when_unset(self):
         with patch.dict(os.environ, {}, clear=True):
             assert get_environment_proxy_config() is None
+
+
+class TestResolveProxyConfigForSsrf:
+    """resolve_proxy_config_for_ssrf prefers explicit proxy, else process env."""
+
+    _ENV_PROXY = {
+        "HTTPS_PROXY": "http://ambient:9999",
+        "HTTP_PROXY": "http://ambient:9999",
+    }
+
+    def test_explicit_proxy_wins_over_environment(self):
+        """Explicit scheme value wins; unset schemes fill from ambient env."""
+        explicit = {"https_proxy": "http://explicit:8443"}
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            config = resolve_proxy_config_for_ssrf(explicit)
+            assert config["https_proxy"] == "http://explicit:8443"
+            assert config["http_proxy"] == "http://ambient:9999"
+            assert config["no_proxy"] is None
+
+    def test_both_scheme_proxies_not_merged_with_environment(self):
+        explicit = {
+            "http_proxy": "http://explicit:8080",
+            "https_proxy": "http://explicit:8443",
+        }
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            assert resolve_proxy_config_for_ssrf(explicit) is explicit
+
+    def test_none_falls_back_to_environment(self):
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            config = resolve_proxy_config_for_ssrf(None)
+            assert config["https_proxy"] == "http://ambient:9999"
+
+    def test_empty_mapping_falls_back_to_environment(self):
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            config = resolve_proxy_config_for_ssrf({})
+            assert config["http_proxy"] == "http://ambient:9999"
+
+    def test_blank_proxy_values_fall_back_to_environment(self):
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            config = resolve_proxy_config_for_ssrf(
+                {"http_proxy": "", "https_proxy": "", "all_proxy": ""}
+            )
+            assert config["https_proxy"] == "http://ambient:9999"
+
+    def test_returns_none_when_explicit_empty_and_env_unset(self):
+        with patch.dict(os.environ, {}, clear=True):
+            assert resolve_proxy_config_for_ssrf(None) is None
+            assert resolve_proxy_config_for_ssrf({}) is None
+
+    def test_no_proxy_only_overlays_environment_proxy(self):
+        """no_proxy-only mirror config must keep ambient proxy URLs (Skopeo parity)."""
+        explicit = {"no_proxy": "registry.example.com"}
+        with patch.dict(
+            os.environ,
+            {
+                "HTTPS_PROXY": "http://ambient:9999",
+                "NO_PROXY": "other.example.com",
+            },
+            clear=True,
+        ):
+            config = resolve_proxy_config_for_ssrf(explicit)
+            assert config["https_proxy"] == "http://ambient:9999"
+            assert config["no_proxy"] == "registry.example.com"
+            assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.DIRECT
+            assert proxy_route_for_url("https://other.example.com", config) is ProxyRoute.PROXY
+
+    def test_no_proxy_only_without_environment_returns_explicit(self):
+        explicit = {"no_proxy": "registry.example.com"}
+        with patch.dict(os.environ, {}, clear=True):
+            assert resolve_proxy_config_for_ssrf(explicit) is explicit
+
+    def test_partial_explicit_fills_missing_scheme_from_environment(self):
+        """http_proxy-only mirror must still PROXY https via ambient HTTPS_PROXY."""
+        explicit = {"http_proxy": "http://explicit:8080"}
+        with patch.dict(os.environ, self._ENV_PROXY, clear=True):
+            config = resolve_proxy_config_for_ssrf(explicit)
+            assert config["http_proxy"] == "http://explicit:8080"
+            assert config["https_proxy"] == "http://ambient:9999"
+            assert config["no_proxy"] is None
+            assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.PROXY
+
+    def test_explicit_no_proxy_kept_when_filling_missing_scheme(self):
+        explicit = {
+            "https_proxy": "http://explicit:8443",
+            "no_proxy": "registry.example.com",
+        }
+        with patch.dict(
+            os.environ,
+            {"HTTPS_PROXY": "http://ambient:9999", "NO_PROXY": "other.example.com"},
+            clear=True,
+        ):
+            config = resolve_proxy_config_for_ssrf(explicit)
+            assert config["https_proxy"] == "http://explicit:8443"
+            assert config["no_proxy"] == "registry.example.com"
+            assert proxy_route_for_url("https://registry.example.com", config) is ProxyRoute.DIRECT
+            assert proxy_route_for_url("https://other.example.com", config) is ProxyRoute.PROXY
 
 
 class TestProxyRouteForUrl:

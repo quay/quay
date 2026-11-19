@@ -11,9 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	apiv1 "github.com/quay/quay/internal/api/v1"
-	repositoryapi "github.com/quay/quay/internal/api/v1/repository"
-	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
@@ -25,8 +22,6 @@ import (
 	"github.com/quay/quay/internal/registry"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 	"github.com/quay/quay/internal/registry/jwtauth"
-	"github.com/quay/quay/internal/repository"
-	repositorydal "github.com/quay/quay/internal/repository/dal"
 )
 
 type metricsConfig struct {
@@ -75,14 +70,6 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 
 	featureUserLastAccessed := cfg.Features.FeatureUserLastAccessed
 	passwordAuthCacheTTL := time.Duration(resolved.Config.PasswordAuthCacheTTLS) * time.Second
-	databaseVerifierConfig := auth.DatabaseVerifierConfig{
-		DatabaseSecretKey:              resolved.Config.DatabaseSecretKey,
-		RobotsDisallow:                 resolved.Config.RobotsDisallow,
-		RobotsWhitelist:                resolved.Config.RobotsWhitelist,
-		FeatureUserLastAccessed:        featureUserLastAccessed,
-		LastAccessedUpdateThresholdSec: resolved.Config.LastAccessedUpdateThresholdS,
-		PasswordCacheTTL:               passwordAuthCacheTTL,
-	}
 	jwtService, tokenRealm, err := loadRegistryTokenService(resolved)
 	if err != nil {
 		return result, fmt.Errorf("registry token service: %w", err)
@@ -114,26 +101,6 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 		return result, fmt.Errorf("registry setup: %w", err)
 	}
 
-	superUsersFullAccess := cfg.Features.HasFullSuperuserAccess()
-	repositoryService, err := repository.NewService(
-		repositorydal.NewStore(result.db),
-		repositorydal.NewAuthorizer(result.db, repositorydal.AuthorizerConfig{
-			SuperUsers:           resolved.Config.SuperUsers,
-			SuperUsersFullAccess: superUsersFullAccess,
-		}),
-	)
-	if err != nil {
-		return result, fmt.Errorf("repository service setup: %w", err)
-	}
-
-	api, err := apiv1.New(apiv1.Config{
-		Authenticator: auth.NewBasicAuthenticator(auth.NewDatabaseVerifier(result.db, databaseVerifierConfig)),
-		Realm:         resolved.Config.ServerHostname,
-	}, repositoryapi.NewModule(repositoryService))
-	if err != nil {
-		return result, fmt.Errorf("api setup: %w", err)
-	}
-
 	distHandler := registrymw.SubjectHeaderMiddleware(result.reg.Handler())
 	v2Handler := distHandler
 	if cfg.Features.FeatureReferrersAPI {
@@ -155,7 +122,6 @@ func compose(ctx context.Context, cfg *Config, resolved *config.Resolved, metric
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", healthHandler(result.db))
 	mux.Handle("/metrics", metricsHandler)
-	mux.Handle("/api/", api)
 	mux.Handle("/v2/auth", result.reg.TokenHandler())
 	mux.Handle("/", v2Handler)
 	result.handler = mux

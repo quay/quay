@@ -294,6 +294,8 @@ test.describe(
                 issuer:
                   'https://sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1/',
                 subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
+                audiences: ['quay'],
+                api_scopes: 'repo:read',
                 isExpanded: true,
               },
             ],
@@ -314,6 +316,12 @@ test.describe(
           expect(fedBody[0].subject).toContain(
             '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
           );
+          expect(fedBody[0]).toMatchObject({
+            audiences: ['quay'],
+            api_scopes: 'repo:read',
+            version: 1,
+          });
+          expect(fedBody[0].id).toBeTruthy();
 
           // Delete federation
           const del = await adminClient.delete(
@@ -322,6 +330,71 @@ test.describe(
           expect(del.status()).toBe(204);
         },
       );
+
+      test('create, get, and delete federation on a user robot', async ({
+        userClient,
+      }) => {
+        const shortname = uniqueName('fedbot').replace(/-/g, '_');
+        const fedPath = `/api/v1/user/robots/${shortname}/federation`;
+        let created = false;
+        try {
+          const robot = await userClient.put(
+            `/api/v1/user/robots/${shortname}`,
+            {description: 'user robot federation'},
+          );
+          created = robot.status() === 201;
+          expect(robot.status()).toBe(201);
+
+          const create = await userClient.post(fedPath, [
+            {
+              issuer:
+                'https://sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1/',
+              subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
+              audiences: ['quay'],
+              api_scopes: 'repo:read',
+            },
+          ]);
+          expect(create.status()).toBe(200);
+
+          const getFed = await userClient.get(fedPath);
+          expect(getFed.status()).toBe(200);
+          const fedBody = await getFed.json();
+          expect(fedBody).toHaveLength(1);
+          expect(fedBody[0]).toMatchObject({
+            issuer:
+              'https://sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1/',
+            subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
+            audiences: ['quay'],
+            api_scopes: 'repo:read',
+          });
+
+          const del = await userClient.delete(fedPath);
+          expect(del.status()).toBe(204);
+
+          const afterDelete = await userClient.get(fedPath);
+          expect(afterDelete.status()).toBe(200);
+          expect(await afterDelete.json()).toEqual([]);
+        } finally {
+          // Quay answers a missing robot with 400 "Could not find robot".
+          // A rejected request or body read is caught and the result checked
+          // soft, so a cleanup failure never replaces the test body's error.
+          const {status, missing} = await userClient
+            .delete(`/api/v1/user/robots/${shortname}`)
+            .then(async (del) => ({
+              status: del.status(),
+              missing:
+                del.status() === 400 &&
+                (await del.text()).includes('Could not find robot'),
+            }))
+            .catch((err) => ({status: String(err), missing: false}));
+          expect
+            .soft(
+              status === 204 || (!created && missing),
+              `delete robot ${shortname} returned ${status}`,
+            )
+            .toBe(true);
+        }
+      });
     });
 
     // ========================================================================

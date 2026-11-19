@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Download PR data
-        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309 # v28
         with:
           name: pr-data-*
           name_is_regexp: true
@@ -101,16 +101,57 @@ jobs:
               }
             }
 
-            // Handle backport labels for redhat-3.x branches
+            // Handle backport labels for supported release branches.
             const baseBranch = pr.baseRefName;
-            const backportMatch = baseBranch.match(/^redhat-3\.\d+$/);
+            const backportMatch = baseBranch.match(/^(redhat|mirror-registry)-\d+\.\d+$/);
 
             if (backportMatch) {
-              // PR targets a redhat-3.x branch
+              // PR targets a supported release branch.
               const expectedBackportLabel = `backport/${baseBranch}`;
+              const isMirrorRegistryBackport = baseBranch.startsWith('mirror-registry-');
 
               // Add the correct backport label if missing
               if (!currentLabels.includes(expectedBackportLabel)) {
+                // Mirror Registry backport labels are provisioned on demand.
+                if (isMirrorRegistryBackport) {
+                  try {
+                    await github.rest.issues.getLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: expectedBackportLabel,
+                    });
+                  } catch (error) {
+                    if (error.status !== 404) {
+                      throw error;
+                    }
+                    try {
+                      await github.rest.issues.createLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                        color: '0E8A16', // Green to indicate successful backport
+                        description: `Backported to ${baseBranch}`,
+                      });
+                    } catch (createError) {
+                      const errors = createError.response?.data?.errors;
+                      const labelAlreadyExists =
+                        createError.status === 422 &&
+                        Array.isArray(errors) &&
+                        errors.length === 1 &&
+                        errors[0].resource === 'Label' &&
+                        errors[0].field === 'name' &&
+                        errors[0].code === 'already_exists';
+                      if (!labelAlreadyExists) {
+                        throw createError;
+                      }
+                      await github.rest.issues.getLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: expectedBackportLabel,
+                      });
+                    }
+                  }
+                }
                 labelsToAdd.push(expectedBackportLabel);
               }
 

@@ -1,5 +1,4 @@
-import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushMultiArchImage} from '../../utils/container';
 
@@ -7,6 +6,12 @@ test.describe(
   'Repository Details - Tag CRUD, Labels & Navigation',
   {tag: ['@tags', '@repository', '@container']},
   () => {
+    let user: {username: string; password: string};
+
+    test.beforeAll(({cachedQuayConfig}) => {
+      user = getTestUsers(cachedQuayConfig).user;
+    });
+
     // Shared repo for read-only tests (rendering, navigation, popover, labels)
     let sharedRepo: {namespace: string; name: string; fullName: string};
 
@@ -16,28 +21,28 @@ test.describe(
 
       const api = new ApiClient(userContext.request);
       const repoName = `tag-crud-${Date.now()}`;
-      await api.createRepository(TEST_USERS.user.username, repoName, 'private');
+      await api.createRepository(user.username, repoName, 'private');
 
       sharedRepo = {
-        namespace: TEST_USERS.user.username,
+        namespace: user.username,
         name: repoName,
-        fullName: `${TEST_USERS.user.username}/${repoName}`,
+        fullName: `${user.username}/${repoName}`,
       };
 
       await pushImage(
         sharedRepo.namespace,
         sharedRepo.name,
         'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await pushMultiArchImage(
         sharedRepo.namespace,
         sharedRepo.name,
         'manifestlist',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
     });
 
@@ -134,7 +139,9 @@ test.describe(
           exact: true,
         }),
       });
-      await latestRow.locator('td[data-label="Pull"] svg').hover();
+      // @patternfly/react-icons >= 6.6 nests two inner <svg>s (default and
+      // rh-ui icon sets) in the outer svg.pf-v6-svg, so a bare "svg" matches 3.
+      await latestRow.locator('td[data-label="Pull"] svg.pf-v6-svg').hover();
 
       const popover = authenticatedPage.getByTestId('pull-popover');
       await expect(popover).toBeVisible({timeout: 10000});
@@ -208,8 +215,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -248,8 +255,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -292,8 +299,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -333,15 +340,15 @@ test.describe(
         repo.namespace,
         repo.name,
         'tag1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
       await pushImage(
         repo.namespace,
         repo.name,
         'tag2',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -381,8 +388,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -425,8 +432,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       const errorMessage = `Must start with a letter, digit or underscore. Only letters, digits, underscores, hyphens and periods allowed. Max 128 characters.`;
@@ -490,8 +497,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.route(
@@ -538,8 +545,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
@@ -565,11 +572,15 @@ test.describe(
         .locator('input[placeholder="key=value"]')
         .fill('testkey=testval');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert first label was committed before adding the second
+      await expect(mutableLabels).toContainText('testkey=testval');
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('foo=bar');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Assert second label was committed before saving
+      await expect(mutableLabels).toContainText('foo=bar');
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(
@@ -607,8 +618,8 @@ test.describe(
         repo.namespace,
         repo.name,
         'v1',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        user.username,
+        user.password,
       );
 
       await authenticatedPage.route('**/labels', async (route) => {

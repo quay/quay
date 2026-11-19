@@ -31,6 +31,7 @@ import {
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL, BASE_URL} from './utils/config';
+import {requestCsrfToken} from './utils/api/csrf';
 import {
   ApiClient,
   ApiRequestError,
@@ -41,7 +42,7 @@ import {
   ServiceKey,
   TeamRole,
 } from './utils/api';
-import {isContainerRuntimeAvailable} from './utils/container';
+import {isContainerRuntimeAvailable, isHelmAvailable} from './utils/container';
 import {WebhookReceiver} from './utils/webhook';
 import {
   attachFailureArtifacts,
@@ -49,6 +50,13 @@ import {
   shouldCollect,
   TraceContext,
 } from './utils/failure-artifacts';
+import {proxyOptionFromEnv} from './utils/proxy';
+
+// Proxy for standalone APIRequestContexts created below. These do not inherit
+// `use.proxy` from the config, so when Quay is reachable only through a proxy
+// (bare-metal CI) they must be configured explicitly. undefined (the local-dev
+// default) means no proxy.
+const REQUEST_PROXY = proxyOptionFromEnv();
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -179,9 +187,9 @@ export class TestApi {
   private cleanupStack: CleanupAction[] = [];
   private defaultNamespace: string;
 
-  constructor(client: ApiClient, defaultNamespace?: string) {
+  constructor(client: ApiClient, defaultNamespace: string) {
     this.client = client;
-    this.defaultNamespace = defaultNamespace ?? TEST_USERS.user.username;
+    this.defaultNamespace = defaultNamespace;
   }
 
   /**
@@ -324,6 +332,23 @@ export class TestApi {
     });
 
     return {orgName, teamName, memberName};
+  }
+
+  /**
+   * Accept a pending team invite for an organization when the deployment
+   * requires invitations for users not already in that organization.
+   */
+  async acceptTeamInviteForOrganization(orgName: string): Promise<void> {
+    const {notifications} = await this.client.getUserNotifications(1000);
+    const invite = notifications.find(
+      (notification) =>
+        notification.kind === 'org_team_invite' &&
+        notification.metadata.org === orgName,
+    );
+
+    if (invite?.metadata.code) {
+      await this.client.acceptTeamInvite(invite.metadata.code);
+    }
   }
 
   /**
@@ -706,12 +731,14 @@ export class TestApi {
     repoName: string,
     dockerfileContent = 'FROM scratch\n',
     dockerTags: string[] = [],
+    pullRobot?: string,
   ): Promise<CreatedBuild> {
     const result = await this.client.startDockerfileBuild(
       namespace,
       repoName,
       dockerfileContent,
       dockerTags,
+      pullRobot,
     );
 
     // No cleanup needed - builds are deleted when the repository is deleted
@@ -946,6 +973,7 @@ export class TestApi {
  * Known Quay feature flags that can be enabled/disabled
  */
 export type QuayFeature =
+  | 'EXTENDED_REPOSITORY_NAMES'
   | 'ANONYMOUS_ACCESS'
   | 'BILLING'
   | 'QUOTA_MANAGEMENT'
@@ -968,7 +996,9 @@ export type QuayFeature =
   | 'BUILD_SUPPORT'
   | 'STORAGE_REPLICATION'
   | 'SPAM_DETECTION'
-  | 'SUPER_USERS';
+  | 'SUPER_USERS'
+  | 'ROBOT_API_TOKENS'
+  | 'ROBOT_API_TOKEN_EXCHANGE';
 
 /**
  * Quay configuration from /config endpoint
@@ -978,6 +1008,8 @@ export interface QuayConfig {
   config: Record<string, unknown>;
   external_login?: Array<{id: string; title: string; icon?: string}>;
   registry_state?: 'normal' | 'readonly';
+  /** "Quay <version>"; empty when BILLING is enabled (see endpoints/web.py). */
+  version_number?: string;
 }
 
 /**
@@ -1053,6 +1085,49 @@ export function getTestUsers(config?: QuayConfig | null) {
   return TEST_USERS;
 }
 
+export type IsolatedUserSlot =
+  | 'quota'
+  | 'prune-count'
+  | 'prune-age'
+  | 'prune-both'
+  | 'logout-success'
+  | 'logout-error'
+  | 'logout-access'
+  | 'metadata-submit'
+  | 'metadata-skip';
+
+// Seeded in local-dev/ldap/base.ldif. LDAP accounts cannot be created through
+// the API, so each slot gets its own pre-seeded identity.
+const LDAP_ISOLATED_USERS: Record<IsolatedUserSlot, string> = {
+  quota: 'quota_ldap',
+  'prune-count': 'prune_count_ldap',
+  'prune-age': 'prune_age_ldap',
+  'prune-both': 'prune_both_ldap',
+  'logout-success': 'logout_success_ldap',
+  'logout-error': 'logout_error_ldap',
+  'logout-access': 'logout_access_ldap',
+  'metadata-submit': 'metadata_submit_ldap',
+  'metadata-skip': 'metadata_skip_ldap',
+};
+
+async function createDatabaseUser(superuserApi: TestApi): Promise<CreatedUser> {
+  const created = await superuserApi.user('iso');
+  await superuserApi.raw.updateUserAsSuperuser(created.username, {
+    email: created.email,
+  });
+  return created;
+}
+
+async function signedInApi(
+  request: APIRequestContext,
+  user: CreatedUser,
+): Promise<TestApi> {
+  const client = new ApiClient(request);
+  await client.signIn(user.username, user.password);
+  client.setCredentials(user.username, user.password);
+  return new TestApi(client, user.username);
+}
+
 async function setReactUICookie(context: BrowserContext): Promise<void> {
   const domain = new URL(BASE_URL).hostname;
   await context.addCookies([
@@ -1085,8 +1160,30 @@ async function loginUser(
   if (isOIDC) {
     const page = await context.newPage();
     try {
-      await page.goto('/signin');
-      await page.locator('[data-testid^="external-login-"]').first().click();
+      // Request the provider URL directly. This avoids depending on whether
+      // the React sign-in page has rendered before its single-provider
+      // auto-redirect runs, and keeps the OAuth session in this context.
+      const provider = config?.external_login?.[0];
+      if (!provider) {
+        throw new Error('No OIDC external login provider is configured');
+      }
+      const csrfToken = await requestCsrfToken(context.request, BASE_URL);
+      const loginResponse = await context.request.post(
+        `${BASE_URL}/api/v1/externallogin/${provider.id}`,
+        {
+          data: {kind: 'login'},
+          headers: {'X-CSRF-Token': csrfToken},
+        },
+      );
+      if (!loginResponse.ok()) {
+        throw new Error(
+          `Could not obtain OIDC login URL: ${loginResponse.status()}`,
+        );
+      }
+      const {auth_url: authUrl} = (await loginResponse.json()) as {
+        auth_url: string;
+      };
+      await page.goto(authUrl);
       await page.waitForURL(/.*realms\/.*/, {timeout: 15000});
       await page.fill('#username', username);
       await page.fill('#password', password);
@@ -1094,7 +1191,8 @@ async function loginUser(
       // Wait for redirect back to Quay (exclude Keycloak realm paths)
       await page.waitForURL(
         (url) =>
-          url.hostname === 'localhost' && !url.pathname.includes('/realms/'),
+          url.origin === new URL(BASE_URL).origin &&
+          !url.pathname.includes('/realms/'),
         {timeout: 15000},
       );
     } finally {
@@ -1163,6 +1261,13 @@ type TestFixtures = {
   // Isolated user with its own API client (no shared namespace state)
   freshUser: {user: CreatedUser; api: TestApi};
 
+  // User with its own API client that works under Database and LDAP auth.
+  // Database creates (and deletes) a unique user; LDAP signs in the slot's
+  // seeded identity, which is never deleted. Not supported under OIDC.
+  isolatedUser: (
+    slot: IsolatedUserSlot,
+  ) => Promise<{user: CreatedUser; api: TestApi}>;
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
@@ -1174,6 +1279,12 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
+
+  // Helm CLI availability (cached per worker)
+  helmAvailable: boolean;
+
+  // Auto-fixture: skips tests based on @helm tag (runs automatically)
+  _autoSkipByHelm: void;
 
   // WebhookReceiver that auto-starts and auto-stops per test
   webhook: WebhookReceiver;
@@ -1205,6 +1316,9 @@ type WorkerFixtures = {
 
   // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
+
+  // Cached Helm CLI availability (checked once per worker)
+  cachedHelmAvailable: boolean;
 };
 
 /**
@@ -1285,6 +1399,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // eslint-disable-next-line no-empty-pattern
     async ({}, use) => {
       const available = await isContainerRuntimeAvailable();
+      await use(available);
+    },
+    {scope: 'worker'},
+  ],
+
+  cachedHelmAvailable: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const available = await isHelmAvailable();
       await use(available);
     },
     {scope: 'worker'},
@@ -1422,7 +1545,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const client = new ApiClient(superuserRequest);
     const users = getTestUsers(cachedQuayConfig);
     client.setCredentials(users.admin.username, users.admin.password);
-    const testApi = new TestApi(client);
+    const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
@@ -1437,23 +1560,68 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   freshUser: async ({superuserApi, playwright, traceparent}, use) => {
-    const created = await superuserApi.user('iso');
-    await superuserApi.raw.updateUserAsSuperuser(created.username, {
-      email: created.email,
-    });
+    const created = await createDatabaseUser(superuserApi);
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
-    const client = new ApiClient(request);
-    await client.signIn(created.username, created.password);
-    client.setCredentials(created.username, created.password);
-    const testApi = new TestApi(client, created.username);
+    const testApi = await signedInApi(request, created);
 
     await use({user: created, api: testApi});
 
     await testApi.cleanup();
     await request.dispose();
+  },
+
+  isolatedUser: async (
+    {superuserApi, playwright, traceparent, cachedQuayConfig},
+    use,
+  ) => {
+    const authType = cachedQuayConfig?.config?.AUTHENTICATION_TYPE;
+    const opened: {api: TestApi; request: APIRequestContext}[] = [];
+
+    await use(async (slot) => {
+      if (authType === 'OIDC') {
+        throw new Error(`isolatedUser('${slot}') is not supported under OIDC`);
+      }
+      let user: CreatedUser;
+      if (authType === 'LDAP') {
+        const username = LDAP_ISOLATED_USERS[slot];
+        user = {
+          username,
+          email: `${username}@example.com`,
+          password: 'password',
+        };
+      } else {
+        user = await createDatabaseUser(superuserApi);
+      }
+      const request = await playwright.request.newContext({
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+        ignoreHTTPSErrors: true,
+        extraHTTPHeaders: {traceparent: traceparent.traceparent},
+      });
+      // Under LDAP this first sign-in is what creates the Quay account.
+      const api = await signedInApi(request, user);
+      opened.push({api, request});
+      return {user, api};
+    });
+
+    let firstError: unknown;
+    for (const {api, request} of opened.reverse()) {
+      try {
+        await api.cleanup();
+      } catch (err) {
+        firstError ??= err;
+      } finally {
+        try {
+          await request.dispose();
+        } catch (err) {
+          firstError ??= err;
+        }
+      }
+    }
+    if (firstError !== undefined) throw firstError;
   },
 
   // =========================================================================
@@ -1462,6 +1630,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   adminClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1477,6 +1646,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   userClient: async ({playwright, cachedQuayConfig, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1499,6 +1669,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     testInfo,
   ) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1540,6 +1711,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   anonClient: async ({playwright, traceparent}, use) => {
     const request = await playwright.request.newContext({
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1560,6 +1732,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   request: async ({playwright, baseURL, traceparent}, use) => {
     const request = await playwright.request.newContext({
       baseURL,
+      ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {traceparent: traceparent.traceparent},
     });
@@ -1656,6 +1829,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   // =========================================================================
+  // Helm CLI availability
+  // =========================================================================
+
+  helmAvailable: async ({cachedHelmAvailable}, use) => {
+    await use(cachedHelmAvailable);
+  },
+
+  // =========================================================================
   // Auto-fixture: Skip tests based on @container tag
   // =========================================================================
 
@@ -1677,6 +1858,34 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
         testInfo.skip(true, 'Registry image tooling (skopeo) required');
+      }
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @helm tag
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @helm tag when the
+   * Helm CLI is not available.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Helm Chart Tests', {tag: ['@helm']}, () => {
+   *   test('pushes chart', async ({authenticatedPage}) => {
+   *     // Auto-skipped if Helm CLI not available!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByHelm: [
+    async ({helmAvailable}, use, testInfo) => {
+      const hasHelmTag = testInfo.tags.includes('@helm');
+      if (hasHelmTag && !helmAvailable) {
+        testInfo.skip(true, 'Helm CLI required');
       }
       await use();
     },

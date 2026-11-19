@@ -30,7 +30,11 @@ export default function EditableLabel(props: EditableLabelProps) {
         id="new-label-input"
         ref={wrapperRef}
         value={props.value}
-        onChange={(_event, newValue) => props.setValue(newValue.trim())}
+        onChange={(_event, newValue) => {
+          const trimmed = newValue.trim();
+          valueRef.current = trimmed;
+          props.setValue(trimmed);
+        }}
         style={{width: '50%'}}
         placeholder="key=value"
         validated={props.invalid ? 'error' : 'default'}

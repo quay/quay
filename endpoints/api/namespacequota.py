@@ -6,7 +6,7 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import OrganizationMemberPermission
+from auth.permissions import OrganizationMemberPermission, SuperUserPermission
 from data import model
 from data.model import config
 from endpoints.api import (
@@ -351,7 +351,10 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
-        if not allow_if_superuser_with_full_access():
+        # Quota policy management is a core superuser operation. Unlike quota
+        # size writes through the tenant route, it intentionally does not
+        # require FEATURE_SUPERUSERS_FULL_ACCESS.
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -370,7 +373,9 @@ class OrganizationQuotaLimitList(ApiResource):
             msg = "Quota limit already exists"
             raise request_error(message=msg)
 
-        if quota_limit_data["type"].lower() == "reject" and quota_limit:
+        if quota_type.lower() == "reject" and model.namespacequota.get_namespace_quota_limit_list(
+            quota, quota_type="Reject"
+        ):
             raise request_error(message="Only one quota limit of type 'Reject' allowed.")
 
         try:
@@ -441,7 +446,7 @@ class OrganizationQuotaLimit(ApiResource):
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -454,6 +459,13 @@ class OrganizationQuotaLimit(ApiResource):
         # Capture previous values for audit logging
         previous_type = quota_limit.quota_type.name
         previous_threshold = quota_limit.percent_of_limit
+
+        if (
+            quota_limit_data.get("type", "").lower() == "reject"
+            and previous_type != "Reject"
+            and model.namespacequota.get_namespace_quota_limit_list(quota, quota_type="Reject")
+        ):
+            raise request_error(message="Only one quota limit of type 'Reject' allowed.")
 
         if "type" in quota_limit_data:
             new_type = quota_limit_data["type"]
@@ -486,7 +498,7 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
-        if not allow_if_superuser_with_full_access():
+        if not SuperUserPermission().can():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)

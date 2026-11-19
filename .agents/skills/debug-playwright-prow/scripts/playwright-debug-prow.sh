@@ -62,6 +62,26 @@ fi
 # Extract the job name (last path component before build ID)
 JOB_NAME=$(basename "$GCS_JOB_PATH")
 
+# --- Bucket Resolution ---
+# Prow links still name gs/test-platform-results, which refuses anonymous
+# reads; the run's artifacts are served from the bucket its public
+# prowjob.json status.url names, else test-platform-results-public.
+PUBLIC_BUCKET="test-platform-results-public"
+if curl -sfL "${CURL_TIMEOUT[@]}" --head "https://storage.googleapis.com/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}/prowjob.json" >/dev/null 2>&1; then
+  echo "Bucket: gs/${GCS_BUCKET} (readable as given)" >&2
+else
+  RESOLVED_BUCKET="$PUBLIC_BUCKET"
+  RESOLVED_REASON="default public bucket"
+  STATUS_URL=$(curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" "https://storage.googleapis.com/${PUBLIC_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}/prowjob.json" 2>/dev/null | jq -r '.status.url // empty' 2>/dev/null || true)
+  if [[ "$STATUS_URL" =~ /view/gs/([^/]+)/ && "${BASH_REMATCH[1]}" != "$GCS_BUCKET" ]] &&
+    curl -sfL "${CURL_TIMEOUT[@]}" --head "https://storage.googleapis.com/${BASH_REMATCH[1]}/${GCS_JOB_PATH}/${BUILD_ID}/prowjob.json" >/dev/null 2>&1; then
+    RESOLVED_BUCKET="${BASH_REMATCH[1]}"
+    RESOLVED_REASON="named by prowjob.json status.url"
+  fi
+  echo "Bucket: gs/${RESOLVED_BUCKET} (gs/${GCS_BUCKET} not readable anonymously; ${RESOLVED_REASON})" >&2
+  GCS_BUCKET="$RESOLVED_BUCKET"
+fi
+
 GCS_BASE="https://storage.googleapis.com/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
 PROW_URL="https://prow.ci.openshift.org/view/gs/${GCS_BUCKET}/${GCS_JOB_PATH}/${BUILD_ID}"
@@ -700,6 +720,27 @@ if [ "$HAS_JAEGER_TRACES" != "true" ]; then
   echo "  Not available: valid Jaeger trace artifacts" >&2
 fi
 
+# Mailpit is deployed by its own sibling step; its log, result and API URL
+# answer whether mail tests had a mail server. An absent step (a job without
+# Mailpit) leaves every record unavailable.
+MAILPIT_STEP_BASE="${WORKFLOW_BASE}/quay-deploy-mailpit"
+mkdir -p "$WORK_DIR/mailpit"
+MAILPIT_RECORDS=()
+for mailpit_file in build-log.txt finished.json artifacts/mailpit_api; do
+  mailpit_path="$WORK_DIR/mailpit/$(basename "$mailpit_file")"
+  if curl -sfL "${CURL_TIMEOUT[@]}" "${CURL_MAXSIZE[@]}" \
+    "${MAILPIT_STEP_BASE}/${mailpit_file}" -o "$mailpit_path" 2>/dev/null && [ -s "$mailpit_path" ] &&
+    { [ "$mailpit_file" != finished.json ] || jq -e . "$mailpit_path" >/dev/null 2>&1; }; then
+    echo "  Downloaded Mailpit step file: ${mailpit_file}" >&2
+    MAILPIT_RECORDS+=("$(jq -nc --arg url "${MAILPIT_STEP_BASE}/${mailpit_file}" --arg path "$mailpit_path" '{source_url: $url, local_path: $path, status: "downloaded"}')")
+  else
+    rm -f "$mailpit_path"
+    MAILPIT_RECORDS+=("$(jq -nc --arg url "${MAILPIT_STEP_BASE}/${mailpit_file}" '{source_url: $url, local_path: null, status: "unavailable"}')")
+  fi
+done
+rmdir "$WORK_DIR/mailpit" 2>/dev/null || true
+MAILPIT_JSON=$(printf '%s\n' "${MAILPIT_RECORDS[@]}" | jq -sc '{build_log: .[0], finished: .[1], api_url: .[2]}')
+
 CONTAINER_LOG_FILES_JSON=$(json_array "${CONTAINER_LOG_FILES[@]}")
 REDACTED_CONTAINER_LOG_FILES_JSON=$(json_array "${REDACTED_CONTAINER_LOG_FILES[@]}")
 JAEGER_TRACE_FILES_JSON=$(json_array "${JAEGER_TRACE_FILES[@]}")
@@ -761,6 +802,7 @@ jq \
   --argjson redacted_container_log_files "$REDACTED_CONTAINER_LOG_FILES_JSON" \
   --argjson jaeger_trace_files "$JAEGER_TRACE_FILES_JSON" \
   --arg jaeger_artifact_base_url "$JAEGER_ARTIFACT_BASE" \
+  --argjson mailpit "$MAILPIT_JSON" \
   --arg prowjob_url "$PROWJOB_URL" \
   --arg prowjob_path "$PROWJOB_PATH" \
   --arg prowjob_status "$PROWJOB_STATUS" \
@@ -849,6 +891,7 @@ jq \
       redacted_container_log_files: $redacted_container_log_files,
       jaeger_trace_files: $jaeger_trace_files,
       jaeger_artifact_base_url: $jaeger_artifact_base_url,
+      mailpit: $mailpit,
       evidence_gaps: $evidence_gaps,
       builder_diagnostics: $builder_diagnostics,
       global_setup_failure: ($total == 0),

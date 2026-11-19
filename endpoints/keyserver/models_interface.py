@@ -57,6 +57,14 @@ class KeyServerDataInterface(object):
         pass
 
     @abstractmethod
+    def get_service_key_for_status(self, kid, service):
+        """
+        Returns a service key by kid and service, bypassing stale-expired filtering.
+        Raises ServiceKeyDoesNotExist if not found.
+        """
+        pass
+
+    @abstractmethod
     def create_service_key(
         self, name, kid, service, jwk, metadata, expiration_date, rotation_duration=None
     ):
@@ -66,15 +74,15 @@ class KeyServerDataInterface(object):
         pass
 
     @abstractmethod
-    def replace_service_key(self, old_kid, kid, jwk, metadata, expiration_date):
+    def replace_service_key(self, old_kid, service, kid, jwk, metadata, expiration_date):
         """
-        Replaces a service with a new key or raises ServiceKeyNotFound.
+        Replaces a service key or raises ServiceKeyNotFound.
         """
         pass
 
     @abstractmethod
-    def delete_service_key(self, kid):
+    def delete_service_key(self, kid, service):
         """
-        Deletes and returns a service key with the given kid or raises ServiceKeyNotFound.
+        Deletes and returns a service key for the service or raises ServiceKeyNotFound.
         """
         pass

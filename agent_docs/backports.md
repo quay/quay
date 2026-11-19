@@ -1,10 +1,15 @@
-# Backporting to `redhat-*` Release Branches
+# Backporting to Quay `redhat-*` Release Branches
 
 A checklist for carrying a merged `master` change onto the maintained release
 branches. Every rule here comes from a real backport chain (PR #7196 and the
 five predecessors it turned out to need, 2026-09-20 to 2026-09-23). Where a
 current fact is stated, it is dated and names the command that produced it —
 re-run the command instead of trusting the date.
+
+The branch lifecycle and target-selection rules in this document describe Quay
+`redhat-X.Y` branches. Mirror Registry backport titles use
+`[mirror-registry-X.Y]`; this document does not define Mirror Registry
+release or synchronization policy.
 
 For JIRA Target Version/fixVersions rules and the basic `/cherrypick`/`/jira
 backport` mechanics, see `agent_docs/workflow.md` (Target Version &
@@ -63,8 +68,8 @@ the false positives by hand before calling anything missing:
 
 - **Re-authored backports.** A fix rewritten on the branch instead of
   cherry-picked has a different patch-id and still shows up. Check the path's
-  own branch log for a `[redhat-X.Y]` counterpart. (#7235 is on the branches as
-  #7253/#7254/#7255.)
+  own branch log for a `[redhat-X.Y]` or `[mirror-registry-X.Y]` counterpart.
+  (#7235 is on the branches as #7253/#7254/#7255.)
 - **Commits newer than the one you are porting** are not predecessors
   (`git merge-base --is-ancestor <candidate> <master-sha>`).
 
@@ -165,9 +170,11 @@ Then, in order:
    cleanly, and the whole item stayed bot-authored.
 2. Hand-port only when the bot fails again, or no predecessor explains it.
    Port to the newest failing branch first, get it reviewed and merged, and
-   continue the cascade from that merged PR. Title a PROJQUAY hand-port
-   `[redhat-X.Y] PROJQUAY-<clone>: ...` using the clone key from the
-   `/jira backport` reply, never the master key: #7319 retitled from the
+   continue the cascade from that merged PR. Title a PROJQUAY hand-port with
+   its target branch family prefix: `[redhat-X.Y] PROJQUAY-<clone>: ...` for
+   Quay or `[mirror-registry-X.Y] PROJQUAY-<clone>: ...` for Mirror Registry.
+   Use the clone key from the `/jira backport` reply, never the master key:
+   #7319 retitled from the
    master key to PROJQUAY-13339, which then moved to MODIFIED on merge, while
    the master-key hand-ports #7268/#7276/#7310 got "unrecognized state
    (MODIFIED)". After opening the hand-port PR, comment `/jira refresh` to
