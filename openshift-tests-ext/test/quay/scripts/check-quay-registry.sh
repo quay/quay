@@ -31,11 +31,8 @@ quayStatus=$(oc get quayregistry -n "${namespace}" -o jsonpath='{.items[0].statu
 if [[ "${quayStatus}" != "True" ]]; then
     declare quayPods
     quayPods=$(oc get pods -n "${namespace}" --no-headers --field-selector=status.phase=Running 2>/dev/null | wc -l | tr -d ' ')
-    if [[ "${quayPods}" -eq 0 ]]; then
-        echo "FAIL: Quay registry not available and no running pods in ${namespace}" >&2
-        exit 1
-    fi
-    echo "WARN: QuayRegistry CR status not Available, but ${quayPods} pods running" >&2
+    echo "FAIL: QuayRegistry Available=${quayStatus} in ${namespace} (${quayPods} running pods; a namespace-wide pod count is not evidence the registry is operational)" >&2
+    exit 1
 fi
 
 echo "PASS: Quay registry is operational in ${namespace}"
