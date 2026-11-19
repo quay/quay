@@ -104,7 +104,6 @@ def generate_mock_oidc_token(
 
     payload = {
         "iss": issuer,
-        "sub": subject,
         "aud": audience,
         "exp": int(exp.timestamp()),
         "iat": int(iat.timestamp()),
@@ -117,6 +116,9 @@ def generate_mock_oidc_token(
         "email": "mockuser@test.com",
         "email_verified": True,
     }
+
+    if subject is not None:
+        payload["sub"] = subject
 
     if azp:
         payload["azp"] = azp

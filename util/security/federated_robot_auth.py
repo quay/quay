@@ -145,7 +145,11 @@ def verify_federated_robot_jwt_token(robot, token):
         raise InvalidRobotCredentialException(f"Invalid token: {e}")
 
     assert decoded_token
-    matches = [item for item in issuer_bindings if item.get("subject") == decoded_token.get("sub")]
+    token_subject = decoded_token.get("sub")
+    if not isinstance(token_subject, str) or not token_subject:
+        raise InvalidRobotCredentialException("Token does not contain subject")
+
+    matches = [item for item in issuer_bindings if item.get("subject") == token_subject]
     if len(matches) > 1:
         raise InvalidRobotCredentialException("Ambiguous federation binding for this robot")
     if not matches:
@@ -153,19 +157,23 @@ def verify_federated_robot_jwt_token(robot, token):
     binding = matches[0]
 
     allowed_audiences = binding.get("audiences")
-    if allowed_audiences:
-        token_audience = decoded_token.get("aud", [])
-        if isinstance(token_audience, str):
-            token_audience = [token_audience]
-        if not isinstance(token_audience, list) or not set(token_audience).intersection(
-            allowed_audiences
-        ):
-            raise InvalidRobotCredentialException("Token audience is not allowed for this robot")
-    else:
-        logger.warning(
-            "Federated robot '%s' authenticated without audience validation. "
-            "Audience-less federation is deprecated and will be removed in a future release.",
-            robot.username,
+    if (
+        not isinstance(allowed_audiences, list)
+        or not allowed_audiences
+        or not all(isinstance(audience, str) and audience for audience in allowed_audiences)
+    ):
+        raise InvalidRobotCredentialException(
+            "Federation binding does not configure allowed audiences"
         )
+
+    token_audience = decoded_token.get("aud", [])
+    if isinstance(token_audience, str):
+        token_audience = [token_audience]
+    if (
+        not isinstance(token_audience, list)
+        or not all(isinstance(audience, str) for audience in token_audience)
+        or not set(token_audience).intersection(allowed_audiences)
+    ):
+        raise InvalidRobotCredentialException("Token audience is not allowed for this robot")
 
     return ValidateResult(AuthKind.credentials, robot=robot, federation_binding=binding)
