@@ -42,7 +42,8 @@ func main() {
 	// Build test specs from Quay scenarios (following Ori's adapter pattern)
 	specs, err := adapter.BuildExtensionTestSpecsFromQuayScenarios(quay.QuayScenarios, quay.QuayScripts)
 	if err != nil {
-		panic(fmt.Sprintf("couldn't build extension test specs from Quay scenarios: %+v", err.Error()))
+		fmt.Fprintf(os.Stderr, "couldn't build extension test specs from Quay scenarios: %v\n", err)
+		os.Exit(1)
 	}
 
 	ext.AddSpecs(specs)
