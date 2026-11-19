@@ -21,12 +21,11 @@
       "description": "Update the ART runtime base and public RPM lock context from the same UBI tag",
       "managerFilePatterns": ["/^(Containerfile\\.art|rpms\\.in\\.yaml)$/"],
       "matchStrings": [
-        "(?<registry>registry\\.(?:redhat\\.io|access\\.redhat\\.com)/ubi9/ubi-minimal):(?<currentValue>9\\.[0-9]+-[0-9]+)"
+        "(?:registry\\.redhat\\.io|registry\\.access\\.redhat\\.com)/ubi9/ubi-minimal:(?<currentValue>9\\.[0-9]+(?:-[0-9]+)?)"
       ],
       "depNameTemplate": "registry.access.redhat.com/ubi9/ubi-minimal",
       "datasourceTemplate": "docker",
-      "versioningTemplate": "redhat",
-      "autoReplaceStringTemplate": "{{{registry}}}:{{{newValue}}}"
+      "versioningTemplate": "redhat"
     }
   ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
