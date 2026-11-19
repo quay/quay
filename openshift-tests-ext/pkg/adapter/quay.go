@@ -44,8 +44,6 @@ func BuildExtensionTestSpecsFromQuayScenarios(metadata []byte, scriptFS fs.FS) (
 
 	specs := make(ext.ExtensionTestSpecs, 0, len(scenarios))
 	for _, sc := range scenarios {
-		sc := sc // capture loop variable
-
 		if err := validateScenarioSpec(sc); err != nil {
 			return nil, err
 		}
@@ -75,7 +73,7 @@ func BuildExtensionTestSpecsFromQuayScenarios(metadata []byte, scriptFS fs.FS) (
 		for _, tag := range sc.Tags {
 			spec.Tags[tag] = "true"
 		}
-		spec.Tags["component"] = getComponent(sc.Tags)
+		spec.Tags["component"] = getComponent()
 
 		runFn := func(ctx context.Context) *ext.ExtensionTestResult {
 			timeout := spec.Timeout
@@ -115,14 +113,12 @@ func codeLocation(sc ScenarioSpec) string {
 	return ""
 }
 
-// getComponent extracts the component name from scenario tags, defaulting to "quay".
-func getComponent(tags []string) string {
-	// Extract component from tags
-	for _, tag := range tags {
-		if tag == "quay" {
-			return "quay"
-		}
-	}
+// getComponent returns the component name recorded on scenario specs.
+//
+// The adapter is scenario-agnostic and must not branch on tags or product
+// type (see ScenarioSpec); when a second component is introduced, route
+// this through configuration instead of tag inspection.
+func getComponent() string {
 	return "quay"
 }
 
