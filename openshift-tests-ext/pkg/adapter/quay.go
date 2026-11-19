@@ -162,20 +162,27 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Materialize embedded scripts if scriptFS provided and INTEROP_SCRIPTS_DIR not set
+	// Materialize embedded scripts if scriptFS provided and INTEROP_SCRIPTS_DIR not set.
+	// Fail loudly rather than falling through: a silent failure would leave
+	// INTEROP_SCRIPTS_DIR unset and the scenario would fail with a confusing
+	// "No such file or directory" for ./check-quay-*.sh instead of the real
+	// materialization error.
 	scriptsDir := os.Getenv("INTEROP_SCRIPTS_DIR")
-	var cleanupFunc func()
 	if scriptsDir == "" && scriptFS != nil {
 		tmpDir, err := os.MkdirTemp("", "quay-scripts-*")
-		if err == nil {
-			if materializeErr := materializeFS(scriptFS, tmpDir); materializeErr == nil {
-				scriptsDir = filepath.Join(tmpDir, "scripts")
-				cleanupFunc = func() { os.RemoveAll(tmpDir) }
-			}
+		if err != nil {
+			result.Result = ext.ResultFailed
+			result.Error = fmt.Sprintf("failed to create temp dir for embedded scripts: %v", err)
+			return result
 		}
-	}
-	if cleanupFunc != nil {
-		defer cleanupFunc()
+		// Remove the temp dir on every exit path from this point on.
+		defer os.RemoveAll(tmpDir)
+		if materializeErr := materializeFS(scriptFS, tmpDir); materializeErr != nil {
+			result.Result = ext.ResultFailed
+			result.Error = fmt.Sprintf("failed to materialize embedded scripts: %v", materializeErr)
+			return result
+		}
+		scriptsDir = filepath.Join(tmpDir, "scripts")
 	}
 
 	out := newBoundedBuffer(maxCapturedOutputBytes)
