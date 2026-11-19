@@ -180,7 +180,12 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 
 	out := newBoundedBuffer(maxCapturedOutputBytes)
 
-	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
+	// Deliberately exec.Command (not exec.CommandContext): CommandContext's
+	// default Cancel SIGKILLs the process the moment runCtx is done, which
+	// defeats the SIGTERM -> grace -> SIGKILL escalation in
+	// waitWithGracefulCancel and can orphan grandchild processes (oc, curl).
+	// The process group and shutdown sequence are managed there instead.
+	cmd := exec.Command(argv[0], argv[1:]...)
 	env := buildEnv(sc.EnvVars, sc.EnvFrom)
 	if scriptsDir != "" {
 		env = append(env, "INTEROP_SCRIPTS_DIR="+scriptsDir)
