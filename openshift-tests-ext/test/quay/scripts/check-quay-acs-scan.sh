@@ -5,6 +5,9 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
+declare authFile="" initPayload="" regPayload="" scanPayload=""
+trap 'rm -f "${authFile:-}" "${initPayload:-}" "${regPayload:-}" "${scanPayload:-}"' EXIT
+
 if [[ -z "${KUBECONFIG:-}" ]]; then
     echo "KUBECONFIG not set, skipping" >&2
     exit 2
@@ -63,31 +66,33 @@ fi
 if [[ -z "${quayToken}" && -z "${quayPass}" ]]; then
     quayPass=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20 || true)
     declare initResult=""
+    initPayload=$(mktemp)
+    chmod 600 "${initPayload}"
+    printf '{"username":"quayadmin","password":"%s","email":"quayadmin@example.com","access_token":true}' "${quayPass}" > "${initPayload}"
     initResult=$(curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/user/initialize" \
         -H "Content-Type: application/json" \
-        -d "{\"username\":\"quayadmin\",\"password\":\"${quayPass}\",\"email\":\"quayadmin@example.com\",\"access_token\":true}" 2>/dev/null || true)
-    quayToken=$(printf '%s' "${initResult}" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+        --data @"${initPayload}" 2>/dev/null || true)
+    rm -f "${initPayload}"
+    quayToken=$(printf '%s' "${initResult}" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
     [[ -n "${quayToken}" ]] && quayUser="quayadmin"
 fi
 if [[ -z "${quayToken}" && -z "${quayPass}" ]]; then
     echo "FAIL: could not obtain Quay credentials from any source" >&2
     exit 1
 fi
-declare -a authArgs=()
 if [[ -n "${quayToken}" ]]; then
-    authArgs=(-H "Authorization: Bearer ${quayToken}")
+    curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
+        -K <(printf 'header = "Authorization: Bearer %s"\n' "${quayToken}") -H "Content-Type: application/json" \
+        -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
 else
-    authArgs=(-u "${quayUser}:${quayPass}")
+    curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
+        -K <(printf 'user = "%s:%s"\n' "${quayUser}" "${quayPass}") -H "Content-Type: application/json" \
+        -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
 fi
-curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
-    "${authArgs[@]}" -H "Content-Type: application/json" \
-    -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
 
 # Own tag so this scenario never races the push/pull scenario
 declare pushTarget="${quayHost}/interop-smoke-test/ubi-smoke:acs"
-declare authFile=""
 authFile=$(mktemp)
-trap 'rm -f "${authFile}"' EXIT
 if [[ -n "${quayToken}" ]]; then
     printf '{"auths":{"%s":{"auth":"%s"}}}\n' "${quayHost}" "$(echo -n "\$oauthtoken:${quayToken}" | base64 -w0)" > "${authFile}"
 else
@@ -101,16 +106,18 @@ skopeo copy --dest-tls-verify=false --dest-authfile="${authFile}" \
 
 # --- Register Quay as an ACS image integration (idempotent) ------------
 declare response=""
-response=$(curl -sk --connect-timeout 15 --max-time 60 -u "admin:${acsPass}" "https://${acsHost}/v1/imageintegrations" 2>/dev/null || true)
+response=$(curl -sk --connect-timeout 15 --max-time 60 -K <(printf 'user = "admin:%s"\n' "${acsPass}") "https://${acsHost}/v1/imageintegrations" 2>/dev/null || true)
 if ! printf '%s' "${response}" | grep -q "${quayHost}"; then
     declare regUser="" regPass=""
     if [[ -n "${quayToken}" ]]; then regUser="\$oauthtoken"; regPass="${quayToken}"; else regUser="${quayUser}"; regPass="${quayPass}"; fi
-    declare regPayload=""
-    regPayload=$(printf '{"name":"interop-quay-smoke","type":"docker","categories":["REGISTRY"],"docker":{"endpoint":"%s","username":"%s","password":"%s","insecure":true},"skipTestIntegration":true}' "${quayHost}" "${regUser}" "${regPass}")
+    regPayload=$(mktemp)
+    chmod 600 "${regPayload}"
+    printf '{"name":"interop-quay-smoke","type":"docker","categories":["REGISTRY"],"docker":{"endpoint":"%s","username":"%s","password":"%s","insecure":true},"skipTestIntegration":true}' "${quayHost}" "${regUser}" "${regPass}" > "${regPayload}"
     declare regCode=""
     regCode=$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 15 --max-time 60 \
-        -X POST "https://${acsHost}/v1/imageintegrations" -u "admin:${acsPass}" \
-        -H "Content-Type: application/json" -d "${regPayload}" 2>/dev/null || echo 000)
+        -X POST "https://${acsHost}/v1/imageintegrations" -K <(printf 'user = "admin:%s"\n' "${acsPass}") \
+        -H "Content-Type: application/json" --data @"${regPayload}" 2>/dev/null || echo 000)
+    rm -f "${regPayload}"
     if [[ "${regCode}" != 2* ]]; then
         echo "FAIL: could not register Quay in ACS (HTTP ${regCode})" >&2
         exit 1
@@ -118,14 +125,18 @@ if ! printf '%s' "${response}" | grep -q "${quayHost}"; then
 fi
 
 # --- Request a scan and poll until ACS reports the image ---------------
+scanPayload=$(mktemp)
+chmod 600 "${scanPayload}"
+printf '{"imageName":"%s","force":true}' "${pushTarget}" > "${scanPayload}"
 curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${acsHost}/v1/images/scan" \
-    -u "admin:${acsPass}" -H "Content-Type: application/json" \
-    -d "{\"imageName\":\"${pushTarget}\",\"force\":true}" >/dev/null 2>&1 || true
+    -K <(printf 'user = "admin:%s"\n' "${acsPass}") -H "Content-Type: application/json" \
+    --data @"${scanPayload}" >/dev/null 2>&1 || true
+rm -f "${scanPayload}"
 
 declare -i attempts=0
 while (( attempts < 40 )); do
     declare scanResult=""
-    scanResult=$(curl -sk --connect-timeout 15 --max-time 30 -u "admin:${acsPass}" \
+    scanResult=$(curl -sk --connect-timeout 15 --max-time 30 -K <(printf 'user = "admin:%s"\n' "${acsPass}") \
         "https://${acsHost}/v1/images?query=Image:${pushTarget}" 2>/dev/null || true)
     if printf '%s' "${scanResult}" | grep -q "${pushTarget}"; then
         echo "PASS: ACS scanned ${pushTarget}"

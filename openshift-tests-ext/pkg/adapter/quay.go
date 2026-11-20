@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -158,12 +159,17 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Materialize embedded scripts if scriptFS provided and INTEROP_SCRIPTS_DIR not set.
-	// Fail loudly rather than falling through: a silent failure would leave
-	// INTEROP_SCRIPTS_DIR unset and the scenario would fail with a confusing
-	// "No such file or directory" for ./check-quay-*.sh instead of the real
-	// materialization error.
-	scriptsDir := os.Getenv("INTEROP_SCRIPTS_DIR")
+	out := newBoundedBuffer(maxCapturedOutputBytes)
+
+	// Build the merged environment first so caller-provided overrides are visible.
+	// Env vars are resolved from the merged environment after buildEnv, falling back
+	// to embedded/default values only when the merged value is empty.
+	env := buildEnv(sc.EnvVars, sc.EnvFrom)
+
+	// Resolve INTEROP_SCRIPTS_DIR from the merged environment, falling back to
+	// embedded materialization only when the merged value is empty. This ensures
+	// caller-provided env overrides work consistently.
+	scriptsDir := envValue(env, "INTEROP_SCRIPTS_DIR")
 	if scriptsDir == "" && scriptFS != nil {
 		tmpDir, err := os.MkdirTemp("", "quay-scripts-*")
 		if err != nil {
@@ -171,7 +177,6 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 			result.Error = fmt.Sprintf("failed to create temp dir for embedded scripts: %v", err)
 			return result
 		}
-		// Remove the temp dir on every exit path from this point on.
 		defer os.RemoveAll(tmpDir)
 		if materializeErr := materializeFS(scriptFS, tmpDir); materializeErr != nil {
 			result.Result = ext.ResultFailed
@@ -179,9 +184,8 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 			return result
 		}
 		scriptsDir = filepath.Join(tmpDir, "scripts")
+		env = append(env, "INTEROP_SCRIPTS_DIR="+scriptsDir)
 	}
-
-	out := newBoundedBuffer(maxCapturedOutputBytes)
 
 	// Deliberately exec.Command (not exec.CommandContext): CommandContext's
 	// default Cancel SIGKILLs the process the moment runCtx is done, which
@@ -189,10 +193,6 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	// waitWithGracefulCancel and can orphan grandchild processes (oc, curl).
 	// The process group and shutdown sequence are managed there instead.
 	cmd := exec.Command(argv[0], argv[1:]...)
-	env := buildEnv(sc.EnvVars, sc.EnvFrom)
-	if scriptsDir != "" {
-		env = append(env, "INTEROP_SCRIPTS_DIR="+scriptsDir)
-	}
 	cmd.Env = env
 	cmd.Dir = sc.WorkDir
 	cmd.Stdout = out
@@ -211,7 +211,19 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	result.Output = out.String()
 
 	if waitErr != nil {
-		// Exit code 2 means resource not deployed (intentional skip)
+		// Check context cancellation FIRST so a timed-out or cancelled run is
+		// never masked as a skip (exit 2). Only map exit 2 to ResultSkipped
+		// when the context was not cancelled.
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			result.Result = ext.ResultFailed
+			result.Error = fmt.Sprintf("scenario timed out after %s: %v", timeout, waitErr)
+			return result
+		}
+		if errors.Is(runCtx.Err(), context.Canceled) {
+			result.Result = ext.ResultFailed
+			result.Error = fmt.Sprintf("scenario was cancelled: %v", waitErr)
+			return result
+		}
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
 			result.Result = ext.ResultSkipped
 			result.Error = "resource not deployed"
@@ -219,14 +231,7 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 		}
 
 		result.Result = ext.ResultFailed
-		switch {
-		case errors.Is(runCtx.Err(), context.DeadlineExceeded):
-			result.Error = fmt.Sprintf("scenario timed out after %s: %v", timeout, waitErr)
-		case errors.Is(runCtx.Err(), context.Canceled):
-			result.Error = fmt.Sprintf("scenario was cancelled: %v", waitErr)
-		default:
-			result.Error = fmt.Sprintf("scenario exited with error: %v", waitErr)
-		}
+		result.Error = fmt.Sprintf("scenario exited with error: %v", waitErr)
 		return result
 	}
 
@@ -322,6 +327,10 @@ func buildEnv(overrides, envFrom map[string]string) []string {
 	}
 
 	for k, v := range overrides {
+		// Preserve ambient non-empty values; scenario EnvVars fill only missing or empty keys.
+		if existing, ok := env[k]; ok && existing != "" {
+			continue
+		}
 		env[k] = v
 	}
 
@@ -330,6 +339,17 @@ func buildEnv(overrides, envFrom map[string]string) []string {
 		result = append(result, k+"="+v)
 	}
 	return result
+}
+
+// envValue looks up a key in an env slice (KEY=VALUE format).
+func envValue(env []string, key string) string {
+	prefix := key + "="
+	for _, kv := range env {
+		if strings.HasPrefix(kv, prefix) {
+			return kv[len(prefix):]
+		}
+	}
+	return ""
 }
 
 // splitEnv splits a KEY=VALUE environment string into its components.

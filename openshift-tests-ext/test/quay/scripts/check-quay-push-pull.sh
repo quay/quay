@@ -4,6 +4,9 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
+declare authFile="" initPayload=""
+trap 'rm -f "${authFile:-}" "${initPayload:-}"' EXIT
+
 if [[ -z "${KUBECONFIG:-}" ]]; then
     echo "KUBECONFIG not set, skipping" >&2
     exit 2
@@ -48,10 +51,14 @@ fi
 if [[ -z "${quayToken}" && -z "${quayPass}" ]]; then
     quayPass=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20 || true)
     declare initResult=""
+    initPayload=$(mktemp)
+    chmod 600 "${initPayload}"
+    printf '{"username":"quayadmin","password":"%s","email":"quayadmin@example.com","access_token":true}' "${quayPass}" > "${initPayload}"
     initResult=$(curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/user/initialize" \
         -H "Content-Type: application/json" \
-        -d "{\"username\":\"quayadmin\",\"password\":\"${quayPass}\",\"email\":\"quayadmin@example.com\",\"access_token\":true}" 2>/dev/null || true)
-    quayToken=$(printf '%s' "${initResult}" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+        --data @"${initPayload}" 2>/dev/null || true)
+    rm -f "${initPayload}"
+    quayToken=$(printf '%s' "${initResult}" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
     [[ -n "${quayToken}" ]] && quayUser="quayadmin"
 fi
 if [[ -z "${quayToken}" && -z "${quayPass}" ]]; then
@@ -59,23 +66,20 @@ if [[ -z "${quayToken}" && -z "${quayPass}" ]]; then
     exit 1
 fi
 
-declare -a authArgs=()
-if [[ -n "${quayToken}" ]]; then
-    authArgs=(-H "Authorization: Bearer ${quayToken}")
-else
-    authArgs=(-u "${quayUser}:${quayPass}")
-fi
-
 # --- Create the test organization (idempotent) -------------------------
-curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
-    "${authArgs[@]}" -H "Content-Type: application/json" \
-    -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
+if [[ -n "${quayToken}" ]]; then
+    curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
+        -K <(printf 'header = "Authorization: Bearer %s"\n' "${quayToken}") -H "Content-Type: application/json" \
+        -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
+else
+    curl -sk --connect-timeout 15 --max-time 60 -X POST "https://${quayHost}/api/v1/organization/" \
+        -K <(printf 'user = "%s:%s"\n' "${quayUser}" "${quayPass}") -H "Content-Type: application/json" \
+        -d '{"name":"interop-smoke-test","email":"interop-test@example.com"}' >/dev/null 2>&1 || true
+fi
 
 # --- Push ubi9-minimal into Quay, then verify it pulls back out --------
 declare pushTarget="${quayHost}/interop-smoke-test/ubi-smoke:interop"
-declare authFile=""
 authFile=$(mktemp)
-trap 'rm -f "${authFile}"' EXIT
 if [[ -n "${quayToken}" ]]; then
     printf '{"auths":{"%s":{"auth":"%s"}}}\n' "${quayHost}" "$(echo -n "\$oauthtoken:${quayToken}" | base64 -w0)" > "${authFile}"
 else
