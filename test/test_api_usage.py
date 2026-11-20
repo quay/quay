@@ -103,6 +103,7 @@ from endpoints.api.robot import (
     UserRobot,
     UserRobotList,
 )
+from endpoints.api.robot_application_tokens import NEW_ROBOT_TOKEN_SCHEMA
 from endpoints.api.search import ConductSearch, EntitySearch
 from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.superuser import (
@@ -178,6 +179,29 @@ NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"
+
+ROBOT_TOKEN_OPERATIONS = {
+    "/api/v1/user/robots/{robot_shortname}/mintable-scopes": {
+        "get": "listUserRobotMintableScopes",
+    },
+    "/api/v1/user/robots/{robot_shortname}/tokens": {
+        "get": "listUserRobotTokens",
+        "post": "createUserRobotToken",
+    },
+    "/api/v1/user/robots/{robot_shortname}/tokens/{token_uuid}": {
+        "delete": "deleteUserRobotToken",
+    },
+    "/api/v1/organization/{orgname}/robots/{robot_shortname}/mintable-scopes": {
+        "get": "listOrganizationRobotMintableScopes",
+    },
+    "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens": {
+        "get": "listOrganizationRobotTokens",
+        "post": "createOrganizationRobotToken",
+    },
+    "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens/{token_uuid}": {
+        "delete": "deleteOrganizationRobotToken",
+    },
+}
 
 ADMIN_ACCESS_EMAIL = "jschorr@devtable.com"
 
@@ -432,6 +456,33 @@ class TestDiscovery(ApiTestCase):
     def test_discovery(self):
         json = self.getJsonResponse(DiscoveryResource)
         assert "paths" in json
+
+    def test_robot_token_operations_in_discovery(self):
+        swagger = self.getJsonResponse(DiscoveryResource)
+        operations = {
+            path: {method: swagger["paths"][path][method]["operationId"] for method in methods}
+            for path, methods in ROBOT_TOKEN_OPERATIONS.items()
+        }
+
+        assert operations == ROBOT_TOKEN_OPERATIONS
+
+        operation_ids = [
+            operation_id for methods in operations.values() for operation_id in methods.values()
+        ]
+        assert len(operation_ids) == len(set(operation_ids)) == 8
+
+        for path in (
+            "/api/v1/user/robots/{robot_shortname}/tokens",
+            "/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens",
+        ):
+            body = next(
+                parameter
+                for parameter in swagger["paths"][path]["post"]["parameters"]
+                if parameter["in"] == "body"
+            )
+            assert body["schema"] == {"$ref": "#/definitions/NewRobotToken"}
+
+        assert swagger["definitions"]["NewRobotToken"] == NEW_ROBOT_TOKEN_SCHEMA
 
 
 class TestErrorDescription(ApiTestCase):

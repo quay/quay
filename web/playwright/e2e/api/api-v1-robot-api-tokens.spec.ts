@@ -13,6 +13,53 @@ interface RobotAPITokensResponse {
   tokens: RobotAPIToken[];
 }
 
+type DiscoveryOperation = {
+  operationId?: string;
+  parameters?: Array<{
+    in?: string;
+    schema?: unknown;
+  }>;
+};
+
+type DiscoveryDocument = {
+  paths: Record<string, Record<string, DiscoveryOperation>>;
+  definitions: Record<string, unknown>;
+};
+
+const ROBOT_TOKEN_OPERATIONS = {
+  '/api/v1/user/robots/{robot_shortname}/mintable-scopes': {
+    get: 'listUserRobotMintableScopes',
+  },
+  '/api/v1/user/robots/{robot_shortname}/tokens': {
+    get: 'listUserRobotTokens',
+    post: 'createUserRobotToken',
+  },
+  '/api/v1/user/robots/{robot_shortname}/tokens/{token_uuid}': {
+    delete: 'deleteUserRobotToken',
+  },
+  '/api/v1/organization/{orgname}/robots/{robot_shortname}/mintable-scopes': {
+    get: 'listOrganizationRobotMintableScopes',
+  },
+  '/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens': {
+    get: 'listOrganizationRobotTokens',
+    post: 'createOrganizationRobotToken',
+  },
+  '/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens/{token_uuid}':
+    {
+      delete: 'deleteOrganizationRobotToken',
+    },
+} as const;
+
+const NEW_ROBOT_TOKEN_SCHEMA = {
+  type: 'object',
+  required: ['name', 'scope'],
+  properties: {
+    name: {type: 'string', minLength: 1, maxLength: 255},
+    scope: {type: 'string'},
+    expiration: {type: 'number', minimum: 1},
+  },
+};
+
 test.describe(
   'Robot API Tokens',
   {
@@ -24,6 +71,66 @@ test.describe(
     ],
   },
   () => {
+    test('exposes robot API token operations in API discovery', async ({
+      authenticatedRequest,
+    }) => {
+      const response = await authenticatedRequest.get(
+        `${API_URL}/api/v1/discovery`,
+      );
+      expect(response.status()).toBe(200);
+      const discovery = (await response.json()) as DiscoveryDocument;
+
+      const discoveredOperations = Object.fromEntries(
+        Object.entries(ROBOT_TOKEN_OPERATIONS).map(
+          ([path, expectedOperations]) => {
+            const pathData = discovery.paths[path];
+            expect(pathData, `missing discovery path ${path}`).toBeDefined();
+
+            const methods = Object.keys(pathData ?? {}).filter((method) =>
+              ['get', 'post', 'delete'].includes(method),
+            );
+            expect(methods.sort()).toEqual(
+              Object.keys(expectedOperations).sort(),
+            );
+
+            return [
+              path,
+              Object.fromEntries(
+                Object.keys(expectedOperations).map((method) => [
+                  method,
+                  pathData?.[method]?.operationId,
+                ]),
+              ),
+            ];
+          },
+        ),
+      );
+
+      expect(discoveredOperations).toEqual(ROBOT_TOKEN_OPERATIONS);
+
+      const operationIds = Object.values(discoveredOperations).flatMap(
+        (operations) => Object.values(operations),
+      );
+      expect(operationIds).toHaveLength(8);
+      expect(new Set(operationIds).size).toBe(operationIds.length);
+
+      for (const path of [
+        '/api/v1/user/robots/{robot_shortname}/tokens',
+        '/api/v1/organization/{orgname}/robots/{robot_shortname}/tokens',
+      ]) {
+        const bodyParameter = discovery.paths[path]?.post?.parameters?.find(
+          (parameter) => parameter.in === 'body',
+        );
+        expect(bodyParameter?.schema).toEqual({
+          $ref: '#/definitions/NewRobotToken',
+        });
+      }
+
+      expect(discovery.definitions.NewRobotToken).toEqual(
+        NEW_ROBOT_TOKEN_SCHEMA,
+      );
+    });
+
     test(
       'organization admin creates, authenticates with, lists, and revokes a robot API token',
       {tag: '@PROJQUAY-11090'},
