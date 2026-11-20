@@ -307,3 +307,38 @@ func TestRunQuayScenarioTimeout(t *testing.T) {
 		t.Errorf("timed-out scenario took %v to terminate; graceful shutdown did not fire", elapsed)
 	}
 }
+
+// TestRunQuayScenarioDeadlineWinsOverExitCodes verifies deterministic deadline-wins
+// semantics: when the run context is expired or cancelled and the child exits
+// concurrently, the result is always failure regardless of exit code. This
+// closes the select nondeterminism where both done and ctx.Done are ready.
+func TestRunQuayScenarioDeadlineWinsOverExitCodes(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "deadline wins over exit 0 (should be failure not pass)",
+			args: []string{"-c", "exit 0"},
+		},
+		{
+			name: "deadline wins over exit 2 (should be failure not skip)",
+			args: []string{"-c", "exit 2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			sc := ScenarioSpec{
+				Name:       "[sig-quay] deadline-wins",
+				Entrypoint: "/bin/sh",
+				Args:       tt.args,
+			}
+			result := runQuayScenario(ctx, sc, nil, 5*time.Second)
+			if result.Result != ext.ResultFailed {
+				t.Fatalf("expected ResultFailed when context cancelled and child would exit with %q, got %v (error=%q)", tt.args[1], result.Result, result.Error)
+			}
+		})
+	}
+}

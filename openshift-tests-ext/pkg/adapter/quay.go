@@ -210,10 +210,11 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	waitRes := waitWithGracefulCancel(runCtx, cmd, quayShutdownGracePeriod)
 	result.Output = out.String()
 
-	// Cancellation takes precedence over exit codes: if wait took the cancellation path,
-	// report failure regardless of exit code (including exit 0 after SIGTERM handling and exit 2).
-	// Only a non-cancelled run consults exit codes (0 pass, 2 skip, else fail).
-	if waitRes.Cancelled {
+	// Cancellation takes precedence over exit codes: an expired or cancelled context
+	// always classifies as failure before exit-code consultation. The Cancelled flag
+	// plus runCtx.Err() together close the race where both done and ctx.Done are
+	// ready and select picks nondeterministically.
+	if waitRes.Cancelled || runCtx.Err() != nil {
 		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 			result.Result = ext.ResultFailed
 			result.Error = fmt.Sprintf("scenario timed out after %s: %v", timeout, waitRes.Err)

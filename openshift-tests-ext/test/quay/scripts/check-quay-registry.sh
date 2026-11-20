@@ -46,17 +46,58 @@ fi
 
 # Existence: only a successful empty list proceeds to skip.
 declare quayCount=0
-quayCount=$(printf '%s' "${quayJson}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("items", [])))' 2>/dev/null || echo 0)
+declare quayCountErr=""
+declare quayCountErrFile
+quayCountErrFile=$(mktemp)
+trap 'rm -f "${quayCountErrFile:-}"' EXIT
+if ! quayCount=$(printf '%s' "${quayJson}" | python3 -c '
+import json, sys
+try:
+    d=json.load(sys.stdin)
+except Exception as e:
+    print(f"json parse error: {e}", file=sys.stderr)
+    sys.exit(1)
+if "items" not in d:
+    print("missing \"items\" key in QuayRegistry list JSON", file=sys.stderr)
+    sys.exit(1)
+items=d["items"]
+if not isinstance(items, list):
+    print(f"\"items\" value is not a list: {type(items).__name__}", file=sys.stderr)
+    sys.exit(1)
+print(len(items))
+' 2>"${quayCountErrFile}"); then
+    quayCountErr=$(cat "${quayCountErrFile}" 2>/dev/null || true)
+    echo "FAIL: could not parse QuayRegistry list JSON in ${namespace}: ${quayCountErr}" >&2
+    rm -f "${quayCountErrFile}"
+    trap - EXIT
+    exit 1
+fi
+rm -f "${quayCountErrFile}"
+trap - EXIT
 if (( quayCount == 0 )); then
     echo "No QuayRegistry CR found in ${namespace}" >&2
     exit 2
 fi
 
 declare quayStatus=""
-quayStatus=$(printf '%s' "${quayJson}" | python3 -c '
+declare quayStatusErr=""
+declare quayStatusErrFile
+quayStatusErrFile=$(mktemp)
+trap 'rm -f "${quayStatusErrFile:-}"' EXIT
+if ! quayStatus=$(printf '%s' "${quayJson}" | python3 -c '
 import json, sys
-d=json.load(sys.stdin)
-items=d.get("items", [])
+try:
+    d=json.load(sys.stdin)
+except Exception as e:
+    print(f"json parse error: {e}", file=sys.stderr)
+    sys.exit(1)
+if "items" not in d:
+    print("missing \"items\" key in QuayRegistry list JSON", file=sys.stderr)
+    sys.exit(1)
+items=d["items"]
+if not isinstance(items, list):
+    print(f"\"items\" value is not a list: {type(items).__name__}", file=sys.stderr)
+    sys.exit(1)
 if not items:
     print("NotFound")
 else:
@@ -67,7 +108,15 @@ else:
             v=c.get("status", "NotFound")
             break
     print(v)
-' 2>/dev/null || echo "NotFound")
+' 2>"${quayStatusErrFile}"); then
+    quayStatusErr=$(cat "${quayStatusErrFile}" 2>/dev/null || true)
+    echo "FAIL: could not parse QuayRegistry Available condition in ${namespace}: ${quayStatusErr}" >&2
+    rm -f "${quayStatusErrFile}"
+    trap - EXIT
+    exit 1
+fi
+rm -f "${quayStatusErrFile}"
+trap - EXIT
 
 if [[ "${quayStatus}" != "True" ]]; then
     declare quayPods
