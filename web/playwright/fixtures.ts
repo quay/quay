@@ -1128,7 +1128,7 @@ async function signedInApi(
   return new TestApi(client, user.username);
 }
 
-async function setReactUICookie(context: BrowserContext): Promise<void> {
+export async function setReactUICookie(context: BrowserContext): Promise<void> {
   const domain = new URL(BASE_URL).hostname;
   await context.addCookies([
     {name: 'defaultui', value: 'react', domain, path: '/'},
@@ -1143,6 +1143,30 @@ const FRESH_LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
 // risk falling outside FRESH_LOGIN_TIMEOUT_MS.
 const SUPERUSER_PAGE_REFRESH_INTERVAL_MS = FRESH_LOGIN_TIMEOUT_MS / 2;
 const superuserPageLastLogin = new WeakMap<BrowserContext, number>();
+
+/**
+ * The page fixtures share worker-scoped sessions that can outlive
+ * FRESH_LOGIN_TIMEOUT_MS, after which @require_fresh_login endpoints raise the
+ * "Please Verify" modal. Answer it with the role's password whenever it
+ * appears; addLocatorHandler then waits for the modal to close. OIDC raises no
+ * modal (it redirects to sign-in instead).
+ */
+async function verifyFreshLoginWhenPrompted(
+  page: Page,
+  password: string,
+  config: QuayConfig | null,
+): Promise<void> {
+  if (config?.config?.AUTHENTICATION_TYPE === 'OIDC') return;
+  const passwordInput = page.locator('#fresh-password');
+  await page.addLocatorHandler(passwordInput, async () => {
+    await passwordInput.fill(password);
+    await page
+      .getByRole('dialog')
+      .filter({has: passwordInput})
+      .getByRole('button', {name: 'Verify', exact: true})
+      .click();
+  });
+}
 
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
@@ -1437,11 +1461,19 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(token);
   },
 
-  authenticatedPage: async ({userContext, traceparent}, use) => {
+  authenticatedPage: async (
+    {userContext, cachedQuayConfig, traceparent},
+    use,
+  ) => {
     const page = await userContext.newPage();
     // page-level headers are test-scoped and override the (worker-scoped,
     // shared) context headers, so this cannot leak into other tests.
     await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
+    await verifyFreshLoginWhenPrompted(
+      page,
+      getTestUsers(cachedQuayConfig).user.password,
+      cachedQuayConfig,
+    );
     await use(page);
     await page.close();
   },
@@ -1482,13 +1514,26 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
     const page = await superuserContext.newPage();
     await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
+    await verifyFreshLoginWhenPrompted(
+      page,
+      getTestUsers(cachedQuayConfig).admin.password,
+      cachedQuayConfig,
+    );
     await use(page);
     await page.close();
   },
 
-  readonlyPage: async ({readonlyContext, traceparent}, use) => {
+  readonlyPage: async (
+    {readonlyContext, cachedQuayConfig, traceparent},
+    use,
+  ) => {
     const page = await readonlyContext.newPage();
     await page.setExtraHTTPHeaders({traceparent: traceparent.traceparent});
+    await verifyFreshLoginWhenPrompted(
+      page,
+      getTestUsers(cachedQuayConfig).readonly.password,
+      cachedQuayConfig,
+    );
     await use(page);
     await page.close();
   },

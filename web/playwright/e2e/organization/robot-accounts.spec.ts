@@ -81,7 +81,7 @@ test.describe(
     test(
       'robot API token list paginates, filters and bulk revokes',
       {tag: ['@PROJQUAY-11090', '@feature:ROBOT_API_TOKENS']},
-      async ({authenticatedPage, userClient, quayConfig}) => {
+      async ({authenticatedPage, userClient}) => {
         const robotShortname = uniqueName('api-token-list').replace(/-/g, '_');
 
         try {
@@ -125,25 +125,10 @@ test.describe(
             .getByRole('tab', {name: 'API Tokens'})
             .click();
 
-          // Token endpoints carry @require_fresh_login (10 min timeout).
-          // Handle the re-auth modal if the worker session has expired.
           const tokensTable = authenticatedPage.getByTestId(
             'robot-api-tokens-table',
           );
-          const freshPasswordInput =
-            authenticatedPage.locator('#fresh-password');
-          await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
-            timeout: 15_000,
-          });
-          if (await freshPasswordInput.isVisible()) {
-            await freshPasswordInput.fill(
-              getTestUsers(quayConfig).user.password,
-            );
-            await authenticatedPage
-              .getByRole('button', {name: 'Verify'})
-              .click();
-          }
-          await expect(tokensTable).toBeVisible();
+          await expect(tokensTable).toBeVisible({timeout: 15_000});
           // Ten rows per page plus the header row.
           await expect(tokensTable.getByRole('row')).toHaveCount(11);
           const pagination = authenticatedPage.locator(
@@ -209,7 +194,7 @@ test.describe(
     test(
       'organization manager retains robot API token mutation controls',
       {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS']},
-      async ({authenticatedPage, api, userClient, quayConfig}) => {
+      async ({authenticatedPage, api, userClient}) => {
         const org = await api.organization('robotapitokenmanager');
         const robot = await api.robot(org.name, 'tokenbot');
         const tokenName = uniqueName('manager-token');
@@ -230,16 +215,7 @@ test.describe(
         const tokensTable = authenticatedPage.getByTestId(
           'robot-api-tokens-table',
         );
-        const freshPasswordInput =
-          authenticatedPage.getByLabel('Current Password');
-        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
-          timeout: 15_000,
-        });
-        if (await freshPasswordInput.isVisible()) {
-          await freshPasswordInput.fill(getTestUsers(quayConfig).user.password);
-          await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
-        }
-        await expect(tokensTable).toBeVisible();
+        await expect(tokensTable).toBeVisible({timeout: 15_000});
         await expect(
           tokensTable.getByText(tokenName, {exact: true}),
         ).toBeVisible();
@@ -263,7 +239,7 @@ test.describe(
     test(
       'global readonly superuser can list robot API tokens without mutation controls',
       {tag: ['@PROJQUAY-13991', '@feature:ROBOT_API_TOKENS', '@superuser']},
-      async ({api, readonlyPage, userClient, quayConfig}) => {
+      async ({api, readonlyPage, userClient}) => {
         const org = await api.organization('robotapitokenreadonly');
         const robot = await api.robot(org.name, 'tokenbot');
         const tokenName = uniqueName('readonly-token');
@@ -278,17 +254,7 @@ test.describe(
         await readonlyPage.getByRole('tab', {name: 'API Tokens'}).click();
 
         const tokensTable = readonlyPage.getByTestId('robot-api-tokens-table');
-        const freshPasswordInput = readonlyPage.getByLabel('Current Password');
-        await expect(tokensTable.or(freshPasswordInput)).toBeVisible({
-          timeout: 15_000,
-        });
-        if (await freshPasswordInput.isVisible()) {
-          await freshPasswordInput.fill(
-            getTestUsers(quayConfig).readonly.password,
-          );
-          await readonlyPage.getByRole('button', {name: 'Verify'}).click();
-        }
-        await expect(tokensTable).toBeVisible();
+        await expect(tokensTable).toBeVisible({timeout: 15_000});
         await expect(
           tokensTable.getByText(tokenName, {exact: true}),
         ).toBeVisible();
