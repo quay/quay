@@ -148,7 +148,7 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
       });
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-      await authenticatedPage.getByText('Billing information').click();
+      await authenticatedPage.getByText('Plan information').click();
 
       await expect(
         authenticatedPage.getByTestId('billing-invoice-email'),
@@ -168,7 +168,7 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     await mockCommonEndpoints(authenticatedPage);
 
     await authenticatedPage.goto(`/organization/${username}?tab=Settings`);
-    await authenticatedPage.getByText('Billing information').click();
+    await authenticatedPage.getByText('Plan information').click();
 
     const subscriptionList = authenticatedPage.locator(
       '#user-subscription-list',
@@ -216,7 +216,7 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     );
 
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-    await authenticatedPage.getByText('Billing information').click();
+    await authenticatedPage.getByText('Plan information').click();
 
     // Attach subscription
     await authenticatedPage.locator('#attach-subscription-button').click();
@@ -283,7 +283,7 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     );
 
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-    await authenticatedPage.getByText('Billing information').click();
+    await authenticatedPage.getByText('Plan information').click();
 
     await expect(
       authenticatedPage

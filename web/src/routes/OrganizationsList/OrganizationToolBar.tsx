@@ -6,7 +6,8 @@ import {
 } from '@patternfly/react-core';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {Kebab} from 'src/components/toolbar/Kebab';
-import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
+import {useNavigate} from 'react-router-dom';
+import {NavigationPath} from 'src/routes/NavigationPath';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 import * as React from 'react';
@@ -19,6 +20,7 @@ import {OrganizationsTableItem} from './OrganizationsList';
 import {CreateUserModal} from './modals/CreateUserModal';
 
 export function OrganizationToolBar(props: OrganizationToolBarProps) {
+  const navigate = useNavigate();
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] =
     useState<boolean>(false);
   const {canModify} = useSuperuserPermissions();
@@ -47,13 +49,14 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
             onChange={handleSearchChange}
           />
           {props.isAuthenticated !== false && (
-            <ToolbarButton
-              id="create-organization-button"
-              buttonValue="Create Organization"
-              Modal={props.createOrgModal}
-              isModalOpen={props.isOrganizationModalOpen}
-              setModalOpen={props.setOrganizationModalOpen}
-            />
+            <ToolbarItem>
+              <Button
+                id="create-organization-button"
+                onClick={() => navigate(NavigationPath.createOrganization)}
+              >
+                Create Organization
+              </Button>
+            </ToolbarItem>
           )}
           {canModify && !props.isExternalAuth && (
             <ToolbarItem>
@@ -104,9 +107,6 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
 }
 
 type OrganizationToolBarProps = {
-  createOrgModal: object;
-  isOrganizationModalOpen: boolean;
-  setOrganizationModalOpen: (open) => void;
   isKebabOpen: boolean;
   setKebabOpen: (open) => void;
   kebabItems: React.ReactElement[];

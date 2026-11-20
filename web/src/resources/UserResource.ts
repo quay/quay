@@ -71,7 +71,11 @@ export async function fetchUser(): Promise<IUserResource> {
     setAnonymousMode(false);
     return response.data;
   } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 401) {
+    if (
+      isAxiosError(error) &&
+      error.response?.status === 401 &&
+      process.env.QUAY_HOSTED !== 'true'
+    ) {
       // Not authenticated — return anonymous user object instead of throwing.
       // This matches Angular UI behavior and enables anonymous browsing of
       // public repos when FEATURE_ANONYMOUS_ACCESS is enabled (PROJQUAY-10610).

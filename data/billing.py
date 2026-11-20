@@ -1,3 +1,4 @@
+import json
 import random
 import string
 import sys
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict
 
 import stripe
+from redis import StrictRedis
 
 from util.morecollections import AttrDict
 
@@ -416,6 +418,25 @@ def get_plan_using_rh_sku(sku):
 
 class FakeStripe(object):
     ACTIVE_CUSTOMERS: Dict[str, Any] = {}
+    redis = None
+
+    @classmethod
+    def save_customer(cls, customer):
+        """Share local checkout customers between web workers without storing card details."""
+        cls.ACTIVE_CUSTOMERS[customer.id] = customer
+        if cls.redis is not None and customer.id.startswith("cus_fake_"):
+            subscription = customer._subscription
+            cls.redis.set(
+                "quay:fake-billing:customer:" + customer.id,
+                json.dumps(
+                    {
+                        "plan": subscription.plan.id if subscription else None,
+                        "start": subscription.current_period_start if subscription else None,
+                        "card": bool(customer.default_card),
+                        "metadata": customer.get("metadata", {}),
+                    }
+                ),
+            )
 
     class error(object):
         class InvalidRequestError(Exception):
@@ -430,10 +451,17 @@ class FakeStripe(object):
             data = AttrDict.deep_copy(data)
             data["customer"] = customer
             data["id"] = "sub_" + "".join(random.choices(string.ascii_lowercase, k=14))
+            if customer.id.startswith("cus_fake_"):
+                data["id"] = customer.id.replace("cus_fake_", "sub_fake_", 1)
             return cls(data)
 
         @classmethod
         def delete(cls, sub_id):
+            if sub_id.startswith("sub_fake_"):
+                customer = FakeStripe.Customer.retrieve(sub_id.replace("sub_fake_", "cus_fake_", 1))
+                customer._subscription = None
+                FakeStripe.save_customer(customer)
+                return
             for _, cus_obj in FakeStripe.ACTIVE_CUSTOMERS.items():
                 if cus_obj._subscription and cus_obj._subscription.id == sub_id:
                     cus_obj._subscription = None
@@ -467,7 +495,7 @@ class FakeStripe(object):
                 "type": "Visa",
                 "last4": "4242",
                 "exp_month": 5,
-                "exp_year": 2016,
+                "exp_year": datetime.utcnow().year + 2,
             }
         )
 
@@ -515,9 +543,31 @@ class FakeStripe(object):
                         self.FAKE_SUBSCRIPTION, self
                     )
                 self._subscription.plan.id = self.get("new_plan")
+            FakeStripe.save_customer(self)
 
         @classmethod
         def retrieve(cls, stripe_customer_id):
+            if stripe_customer_id.startswith("cus_fake_") and FakeStripe.redis is not None:
+                stored = FakeStripe.redis.get("quay:fake-billing:customer:" + stripe_customer_id)
+                state = json.loads(stored) if stored else {}
+                customer = cls(
+                    {
+                        "id": stripe_customer_id,
+                        "default_card": "card123" if state.get("card") else None,
+                        "cards": AttrDict.deep_copy(cls.FAKE_CARD_LIST),
+                        "metadata": state.get("metadata", {}),
+                    }
+                )
+                customer._subscription = None
+                if state.get("plan"):
+                    customer._subscription = FakeStripe.FakeSubscription.build(
+                        cls.FAKE_SUBSCRIPTION, customer
+                    )
+                    customer._subscription.plan = AttrDict({"id": state["plan"]})
+                    customer._subscription.current_period_start = state["start"]
+                    customer._subscription.current_period_end = state["start"] + 30 * 86400
+                FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id] = customer
+                return customer
             if stripe_customer_id in FakeStripe.ACTIVE_CUSTOMERS:
                 FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_card", None)
                 FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_plan", None)
@@ -537,41 +587,28 @@ class FakeStripe(object):
                 new_customer._subscription = FakeStripe.FakeSubscription.build(
                     cls.FAKE_SUBSCRIPTION, new_customer
                 )
+                if stripe_customer_id.startswith("cus_fake_"):
+                    new_customer._subscription = None
 
                 return new_customer
 
         @classmethod
         def create(cls, **kwargs):
-            cus_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+            cus_id = "cus_fake_" + "".join(random.choices(string.ascii_lowercase, k=14))
             new_customer = cls(
                 {
-                    "default_card": "card123",
+                    "default_card": None,
                     "cards": AttrDict.deep_copy(cls.FAKE_CARD_LIST),
                     "id": cus_id,
                 }
             )
-            new_customer._subscription = FakeStripe.FakeSubscription.build(
-                cls.FAKE_SUBSCRIPTION, new_customer
-            )
-            FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id] = new_customer
+            new_customer._subscription = None
+            FakeStripe.save_customer(new_customer)
             return new_customer
 
         @classmethod
         def modify(cls, cus_id, **kwargs):
-            customer = FakeStripe.ACTIVE_CUSTOMERS.get(cus_id)
-            if not customer:
-                # For testing, assume customer exists
-                customer = cls(
-                    {
-                        "default_card": "card123",
-                        "cards": AttrDict.deep_copy(cls.FAKE_CARD_LIST),
-                        "id": cus_id,
-                    }
-                )
-                customer._subscription = FakeStripe.FakeSubscription.build(
-                    cls.FAKE_SUBSCRIPTION, new_customer
-                )
-                FakeStripe.ACTIVE_CUSTOMERS[cus_id] = customer
+            customer = cls.retrieve(cus_id)
 
             if kwargs.get("plan"):
                 if customer._subscription is None:
@@ -580,6 +617,7 @@ class FakeStripe(object):
                     )
                 customer._subscription.plan.id = kwargs.get("plan")
 
+            FakeStripe.save_customer(customer)
             return customer
 
     class Invoice(AttrDict):
@@ -600,7 +638,7 @@ class FakeStripe(object):
                     {
                         "last4": "4242",
                         "exp_month": 5,
-                        "exp_year": 2016,
+                        "exp_year": datetime.utcnow().year + 2,
                     }
                 ),
                 "billing_details": AttrDict({"name": "Joe User"}),
@@ -631,6 +669,12 @@ class Billing(object):
 
         elif billing_type == "FakeStripe":
             billing = FakeStripe
+            redis_config = app.config.get("USER_EVENTS_REDIS")
+            FakeStripe.redis = (
+                StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
+                if redis_config and not app.testing
+                else None
+            )
 
         else:
             raise RuntimeError("Unknown billing type: %s" % billing_type)

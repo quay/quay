@@ -6,6 +6,8 @@ import {
   fetchPlans,
   fetchPrivateAllowed,
   fetchCard,
+  createCardSetupSession,
+  createSubscriptionCheckoutSession,
   setMarketplaceOrgAttachment,
   setMarketplaceOrgRemoval,
 } from './BillingResource';
@@ -103,6 +105,80 @@ describe('BillingResource', () => {
 
       const result = await fetchCard();
       expect(result).toEqual(card);
+    });
+  });
+
+  describe('createCardSetupSession', () => {
+    const returnUrls = {
+      success_url:
+        'http://localhost:9010/organization/user1?tab=Settings&settingsTab=billinginformation&paymentMethod=returned',
+      cancel_url:
+        'http://localhost:9010/organization/user1?tab=Settings&settingsTab=billinginformation&paymentMethod=canceled',
+    };
+
+    it.each([null, 'myorg'])(
+      'starts the existing Stripe card setup flow for %s',
+      async (org) => {
+        const session = {
+          url: 'https://checkout.stripe.com/c/pay/cs_test_sample',
+        };
+        vi.mocked(axios.post).mockResolvedValueOnce(mockResponse(session));
+        expect(await createCardSetupSession(returnUrls, org)).toEqual(session);
+        expect(axios.post).toHaveBeenCalledWith(
+          org ? `/api/v1/organization/${org}/card` : '/api/v1/user/card',
+          returnUrls,
+        );
+      },
+    );
+
+    it('rejects an incomplete checkout response', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
+      await expect(createCardSetupSession(returnUrls)).rejects.toThrow(
+        'Stripe did not return a checkout URL',
+      );
+    });
+
+    it('passes checkout failures back to the UI', async () => {
+      vi.mocked(axios.post).mockRejectedValueOnce(
+        new AxiosError('Cannot contact Stripe'),
+      );
+      await expect(createCardSetupSession(returnUrls)).rejects.toThrow(
+        'Cannot contact Stripe',
+      );
+    });
+  });
+
+  describe('createSubscriptionCheckoutSession', () => {
+    const returnUrls = {
+      success_url:
+        'http://localhost:9010/organization/user1?tab=Settings&settingsTab=billinginformation',
+      cancel_url: 'http://localhost:9010/organization/user1/plans',
+    };
+    it.each([null, 'projectquay'])(
+      'includes the selected plan in the Stripe checkout request for %s',
+      async (org) => {
+        const session = {
+          url: 'https://checkout.stripe.com/c/pay/cs_test_sample',
+        };
+        vi.mocked(axios.post).mockResolvedValueOnce(mockResponse(session));
+        expect(
+          await createSubscriptionCheckoutSession(
+            'bus-small-2018',
+            returnUrls,
+            org,
+          ),
+        ).toEqual(session);
+        expect(axios.post).toHaveBeenCalledWith(
+          org ? `/api/v1/organization/${org}/plan` : '/api/v1/user/plan',
+          {plan: 'bus-small-2018', ...returnUrls},
+        );
+      },
+    );
+    it('rejects a response with no checkout URL', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce(mockResponse({}));
+      await expect(
+        createSubscriptionCheckoutSession('bus-small-2018', returnUrls),
+      ).rejects.toThrow('Stripe did not return a checkout URL');
     });
   });
 

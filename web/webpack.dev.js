@@ -17,23 +17,23 @@ module.exports = merge(common('development'), {
     open: true,
     proxy: {
       '/api/v1': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8082',
         logLevel: 'debug',
       },
       '/csrf_token': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8082',
         logLevel: 'debug',
       },
       '/config': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8082',
         logLevel: 'debug',
       },
       '/static': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8082',
         logLevel: 'debug',
       },
       '/oauth': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8082',
         logLevel: 'debug',
       },
     },

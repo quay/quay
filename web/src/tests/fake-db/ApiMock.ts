@@ -20,4 +20,6 @@ import './data/organization/members';
 import './data/organization/robots';
 import './data/organization/organization';
 
+import './data/billing/billing';
+
 mock.onAny().passThrough();
