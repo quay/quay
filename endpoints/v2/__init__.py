@@ -34,7 +34,7 @@ from endpoints.v2.errors import (
 )
 from proxy import UpstreamRegistryError
 from util.http import abort
-from util.locking import LockAcquireTimeout
+from util.locking import LockAcquireTimeout, LockOwnershipLost
 from util.metrics.prometheus import timed_blueprint
 from util.pagination import decrypt_page_token, encrypt_page_token
 from util.registry.dockerver import docker_version
@@ -75,8 +75,10 @@ def handle_pushes_disabled(error):
 
 
 @v2_bp.app_errorhandler(LockAcquireTimeout)
+@v2_bp.app_errorhandler(LockOwnershipLost)
 def handle_lock_acquire_timeout(error):
-    # Transient: another holder (e.g. GC) has the blob's BLOB_DELETE lock. Clients retry a 503.
+    # Transient: another holder (e.g. GC) has the blob's BLOB_DELETE lock, or we lost ownership
+    # of it mid-commit. Clients retry a 503.
     logger.warning("Returning 503: %s", error)
     return _format_error_response(TemporarilyUnavailable())
 
